@@ -1,7 +1,7 @@
 [toolchain]
 package_manager = "pnpm"
-anchor_version = "0.31.0"
-solana_version = "2.2.4"
+anchor_version = "0.31.1"
+solana_version = "2.2.11"
 
 [features]
 resolution = true

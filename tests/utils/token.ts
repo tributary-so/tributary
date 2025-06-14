@@ -1,19 +1,17 @@
-import { LiteSVMProvider } from "anchor-litesvm";
 import {
   createMint as splCreateMint,
   createAccount,
   mintTo,
-  getAccount,
 } from "@solana/spl-token";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 
 export async function createMint(
-  provider: LiteSVMProvider,
+  connection: Connection,
   decimals: number = 6
 ): Promise<PublicKey> {
   const mintAuthority = Keypair.generate();
   const mint = await splCreateMint(
-    provider.connection,
+    connection,
     mintAuthority,
     mintAuthority.publicKey,
     null,
@@ -23,28 +21,28 @@ export async function createMint(
 }
 
 export async function createTokenAccount(
-  provider: LiteSVMProvider,
+  connection: Connection,
   mint: PublicKey,
-  owner: PublicKey
+  owner: Keypair
 ): Promise<PublicKey> {
   const tokenAccount = await createAccount(
-    provider.connection,
+    connection,
     owner,
     mint,
-    owner
+    owner.publicKey
   );
   return tokenAccount;
 }
 
 export async function mintTokens(
-  provider: LiteSVMProvider,
+  connection: Connection,
   mint: PublicKey,
   destination: PublicKey,
   amount: number,
   mintAuthority: Keypair
 ): Promise<void> {
   await mintTo(
-    provider.connection,
+    connection,
     mintAuthority,
     mint,
     destination,

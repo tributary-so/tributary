@@ -107,7 +107,7 @@ repos:
       - id: fmt
         files: ^programs/.*/.*.rs
         args:
-          [--manifest-path=contract/programs/repotrade/Cargo.toml, --check, --]
+          [--manifest-path=programs/recurring_payments/Cargo.toml, --check, --]
       - id: cargo-check
         files: ^programs/
-        args: [--manifest-path=contract/programs/repotrade/Cargo.toml, --]
+        args: [--manifest-path=programs/recurring_payments/Cargo.toml, --]

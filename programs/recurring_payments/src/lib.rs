@@ -1,3 +1,6 @@
+#![allow(unexpected_cfgs)]
+#![allow(clippy::result_large_err)]
+
 pub mod constants;
 pub mod error;
 pub mod instructions;
@@ -16,6 +19,10 @@ pub mod recurring_payments {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+        instructions::initialize::handle_initialize(ctx)
+    }
+
+    pub fn create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
+        instructions::create_user_payment::handler_create_user_payment(ctx)
     }
 }

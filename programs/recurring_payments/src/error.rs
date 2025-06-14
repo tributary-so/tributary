@@ -2,6 +2,20 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Custom error message")]
-    CustomError,
+    #[msg("Program is paused")]
+    ProgramPaused,
+    #[msg("Amount must be greater than zero")]
+    InvalidAmount,
+    #[msg("Invalid payment frequency")]
+    InvalidFrequency,
+    #[msg("Maximum policies per user reached")]
+    MaxPoliciesReached,
+    #[msg("Unauthorized")]
+    Unauthorized,
+    #[msg("Invalid policy status transition")]
+    InvalidPolicyStatusTransition,
+    #[msg("Payment policy not found")]
+    PolicyNotFound,
+    #[msg("Insufficient delegated amount")]
+    InsufficientDelegatedAmount,
 }

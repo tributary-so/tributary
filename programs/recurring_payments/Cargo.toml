@@ -10,11 +10,17 @@ name = "recurring_payments"
 
 [features]
 default = []
-cpi = ["no-entrypoint"]
+cpi = []
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = "0.31.0"
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+
+# https://solana.stackexchange.com/a/21694
+proc-macro2 = "1.0"
+syn = "1.0"
+quote = "1.0"
