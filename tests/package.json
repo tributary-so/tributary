@@ -14,8 +14,9 @@
     "vitest": "^1.0.0"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.29.0",
+    "@coral-xyz/anchor": "^0.31.0",
+    "@solana-project/sdk": "workspace:*",
     "@solana/web3.js": "^1.87.0",
-    "@solana-project/sdk": "workspace:*"
+    "anchor-litesvm": "^0.1.2"
   }
 }
