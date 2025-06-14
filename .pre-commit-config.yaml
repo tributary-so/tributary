@@ -1,0 +1,113 @@
+---
+repos:
+  ######################################
+  # Hooks for all projects
+  ######################################
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude_types:
+          - javascript
+          - ts
+      - id: check-executables-have-shebangs
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  - repo: https://github.com/ljnsn/cz-conventional-gitmoji
+    rev: v0.3.3
+    hooks:
+      - id: conventional-gitmoji
+
+  - repo: local
+    hooks:
+      #     - id: no-repeated-whitespace
+      #       name: No repeated spaces
+      #       entry: '\S+\s{2,}'
+      #       language: pygrep
+      #       types: [text]
+      #       exclude_types: [javascript, ts]
+      #
+      #     - id: no-bracket-links
+      #       name: "Brackets should not be inside links [[link]](url) -> [[link](url)]"
+      #       entry: '\]\]\('
+      #       language: pygrep
+      #       types: [markdown]
+      #
+      - id: no-http
+        name: URLs must use HTTPS
+        entry: "http:"
+        language: pygrep
+        types_or: [markdown, yaml]
+        exclude: |
+          (?x)^(
+              .pre-commit-config.yaml|
+              app/pnpm-lock.yaml
+          )$
+
+  ######################################
+  # docs and other markdown files
+  ######################################
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.41.0
+    hooks:
+      - id: markdownlint
+        files: ".*.md"
+        # MD013: line too long
+        # MD033: no inline HTML
+        # MD041: first line in a file should be a top-level heading
+        args: [--fix, --disable, MD013, MD033, MD041, MD046, "--"]
+
+  ######################################
+  # frontend project
+  ######################################
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.9.1
+    hooks:
+      - id: eslint
+        types: [file]
+        args: [--fix, --config, app/eslint.config.js]
+        files: ^app/.*\.(js|ts|svelte)$
+        exclude: |
+          (?x)^(
+              app/.svelte-kit/tsconfig.json|
+              app/pnpm-lock.yaml
+          )$
+        additional_dependencies:
+          - eslint
+          - eslint-plugin-svelte
+          - typescript-eslint
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        args: [--config, app/.prettierrc.yml, --write] # edit files in-place
+        files: ^app/.*
+        exclude: |
+          (?x)^(
+              app/.svelte-kit/tsconfig.json|
+              app/pnpm-lock.yaml
+          )$
+        additional_dependencies:
+          - prettier
+          - prettier-plugin-svelte
+          - svelte
+
+  ######################################
+  # Contract project
+  ######################################
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+        files: ^programs/.*/.*.rs
+        args:
+          [--manifest-path=contract/programs/repotrade/Cargo.toml, --check, --]
+      - id: cargo-check
+        files: ^programs/
+        args: [--manifest-path=contract/programs/repotrade/Cargo.toml, --]
