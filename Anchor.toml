@@ -1,0 +1,21 @@
+[toolchain]
+package_manager = "pnpm"
+anchor-lang = "0.31.0"
+solana-program = "2.3.0"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+recurring_payments = "CPt2GNFqP5ZAaF1mGYseAi7eRi9aNavqb9sByF5Ypayi"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "pnpm exec jest --preset ts-jest"

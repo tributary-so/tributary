@@ -1,0 +1,5 @@
+packages:
+  - 'programs/*'
+  - 'app'
+  - 'sdk'
+  - 'tests'
