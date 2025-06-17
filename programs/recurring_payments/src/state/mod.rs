@@ -58,9 +58,34 @@ impl UserPayment {
 }
 
 #[account]
+pub struct PaymentGateway {
+    pub authority: Pubkey,
+    pub fee_recipient: Pubkey,
+    pub gateway_fee_bps: u16,
+    pub is_active: bool,
+    pub total_processed: u64,
+    pub created_at: i64,
+    pub bump: u8,
+    pub padding: [u8; 256],
+}
+
+impl PaymentGateway {
+    pub const SIZE: usize = 8 + // discriminator
+        32 + // authority: Pubkey
+        32 + // fee_recipient: Pubkey
+        2 + // gateway_fee_bps: u16
+        1 + // is_active: bool
+        8 + // total_processed: u64
+        8 + // created_at: i64
+        1 + // bump: u8
+        256; // padding: [u8; 256]
+}
+
+#[account]
 pub struct PaymentPolicyAccount {
     pub user_payment_account: Pubkey,
     pub recipient: Pubkey,
+    pub gateway: Pubkey,
     pub policy_type: PaymentPolicy,
     pub status: PaymentStatus,
     pub payment_frequency: PaymentFrequency,
@@ -100,6 +125,7 @@ impl ProgramConfig {
 #[event]
 pub struct PaymentRecord {
     pub policy_account: Pubkey,
+    pub gateway: Pubkey,
     pub amount: u64,
     pub timestamp: i64,
     pub transaction_signature: String,
