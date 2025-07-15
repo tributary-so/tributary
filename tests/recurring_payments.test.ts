@@ -1,13 +1,12 @@
-import { BankrunProvider, ProgramTestContext, createBankrunContext } from "anchor-bankrun";
+import { BankrunProvider, startAnchor } from "anchor-bankrun";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { BN, Program } from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import { RecurringPayments } from "../target/types/recurring_payments";
-import { createMint, createTokenAccount } from "./utils/token";
 
 const IDL = require("../target/idl/recurring_payments.json");
 
 describe("Recurring Payments", () => {
-  let context: ProgramTestContext;
+  let context;
   let provider: BankrunProvider;
   let program: Program<RecurringPayments>;
 
@@ -24,13 +23,9 @@ describe("Recurring Payments", () => {
     user = Keypair.generate();
 
     // Create bankrun context
-    context = await createBankrunContext();
+    context = await startAnchor("./", [], []);
     provider = new BankrunProvider(context);
-    program = new Program<RecurringPayments>(IDL, program.programId, provider);
-
-    // Create token mint and user's token account
-    tokenMint = await createMint(provider);
-    userTokenAccount = await createTokenAccount(provider, tokenMint, user);
+    program = new Program<RecurringPayments>(IDL, provider);
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
