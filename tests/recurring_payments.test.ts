@@ -1,4 +1,4 @@
-import { fromWorkspace, LiteSVMProvider } from "anchor-litesvm";
+import { BankrunProvider, ProgramTestContext, createBankrunContext } from "anchor-bankrun";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
 import { RecurringPayments } from "../target/types/recurring_payments";
@@ -7,10 +7,9 @@ import { createMint, createTokenAccount } from "./utils/token";
 const IDL = require("../target/idl/recurring_payments.json");
 
 describe("Recurring Payments", () => {
-  const client = fromWorkspace("./");
-  const provider = new LiteSVMProvider(client);
-  const program = new Program<RecurringPayments>(IDL, provider);
-  const connection = provider.connection as any;
+  let context: ProgramTestContext;
+  let provider: BankrunProvider;
+  let program: Program<RecurringPayments>;
 
   // Common variables
   let admin: Keypair;
@@ -24,9 +23,14 @@ describe("Recurring Payments", () => {
     admin = Keypair.generate();
     user = Keypair.generate();
 
+    // Create bankrun context
+    context = await createBankrunContext();
+    provider = new BankrunProvider(context);
+    program = new Program<RecurringPayments>(IDL, program.programId, provider);
+
     // Create token mint and user's token account
-    tokenMint = await createMint(connection);
-    userTokenAccount = await createTokenAccount(connection, tokenMint, user);
+    tokenMint = await createMint(provider);
+    userTokenAccount = await createTokenAccount(provider, tokenMint, user);
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
