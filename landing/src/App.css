@@ -1,0 +1,11 @@
+body {
+  font-family: "Space Grotesk", sans-serif;
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+.gradient-text {
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
