@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: ./pnpm-lock.yaml
 
       - name: Install dependencies
         working-directory: ./landing
@@ -43,19 +43,15 @@ jobs:
           VITE_VCS_REF: ${{ github.sha }}
           NODE_ENV: production
 
-      - name: Configure CNAME
-        working-directory: ./landing
-        run: |
-          echo "tribute.money" > CNAME
-
       - name: Deploy to external repository
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
         with:
-          personal_token: ${{ secrets.DEPLOY_TOKEN }}
+          deploy_key: ${{ secrets.LANDING_DEPLOY_KEY }}
           external_repository: xeroc/tribute.money
           publish_branch: gh-pages
           publish_dir: ./landing/dist
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
+          cname: tribute.money

@@ -1,5 +1,6 @@
 packages:
-  - 'programs/*'
-  - 'app'
-  - 'sdk'
-  - 'tests'
+  - "programs/*"
+  - "app"
+  - "landing"
+  - "sdk"
+  - "tests"
