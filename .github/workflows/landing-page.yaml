@@ -1,0 +1,61 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+      - ".github/workflows/*app*"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ./landing
+        run: pnpm install
+
+      - name: Build
+        working-directory: ./landing
+        run: pnpm run build
+        env:
+          # https://github.com/actions/runner-images/issues/70
+          VITE_VCS_REF: ${{ github.sha }}
+          NODE_ENV: production
+
+      - name: Configure CNAME
+        working-directory: ./landing
+        run: |
+          echo "tribute.money" > CNAME
+
+      - name: Deploy to external repository
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          personal_token: ${{ secrets.DEPLOY_TOKEN }}
+          external_repository: xeroc/tribute.money
+          publish_branch: gh-pages
+          publish_dir: ./landing/dist
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
