@@ -1,17 +1,3 @@
-# Welcome to MkDocs
+# Welcome to Tributary
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
-
-## Commands
-
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+Bringing Web2's subscription simplicity to Web3. Tributary enables any Solana-based business to offer truly automated recurring payments - no manual transactions signing every month, no deposit into a contract, payments straight from the token account. Users sign once, and payments flow seamlessly according to smart contract rules they've agreed to. Think Stripe's subscription power, but native to crypto and completely trustless. From SaaS platforms to content creators, any business model that relies on predictable recurring revenue can now operate seamlessly on Solana with the reliability users expect and the transparency only blockchain can provide. Internet Payments.
