@@ -1,5 +1,6 @@
 import AOS from "aos";
 import feather from "feather-icons";
+import logo from "./assets/logo.png";
 
 import "./App.css";
 
@@ -19,7 +20,10 @@ function App() {
       {/* Header/Navigation */}
       <header className="py-6 px-4 border-b border-gray-800">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="text-2xl font-bold gradient-text">Tributary</div>
+          <div className="flex items-center gap-3 text-2xl font-bold gradient-text">
+            <img src={logo} alt="Tributary Logo" className="h-8 w-8" />
+            Tributary
+          </div>
           <nav className="hidden md:flex space-x-8">
             <a
               href="#features"
