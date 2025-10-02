@@ -1,13 +1,16 @@
+import { useEffect } from "react";
 import AOS from "aos";
 import feather from "feather-icons";
 import logo from "./assets/logo.png";
 
 import "./App.css";
 
-feather.replace();
 AOS.init();
 
 function App() {
+  useEffect(() => {
+    feather.replace();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Work in Progress Banner */}
