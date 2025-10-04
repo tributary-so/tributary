@@ -25,4 +25,11 @@ pub mod recurring_payments {
     pub fn create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
         instructions::create_user_payment::handler_create_user_payment(ctx)
     }
+
+    pub fn create_payment_gateway(
+        ctx: Context<CreatePaymentGateway>,
+        gateway_fee_bps: u16,
+    ) -> Result<()> {
+        instructions::create_payment_gateway::handler_create_payment_gateway(ctx, gateway_fee_bps)
+    }
 }

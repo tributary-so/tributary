@@ -32,6 +32,10 @@ describe("Recurring Payments", () => {
   let tokenMint: PublicKey;
   let userTokenAccount: PublicKey;
   let mintAuthority: Keypair;
+  let gatewayAuthority: Keypair;
+  let feeRecipient: Keypair;
+  let gatewayPDA: PublicKey;
+  let gatewayBump: number;
 
   async function fund(account: PublicKey, amount: number) {
     const transaction = new anchor.web3.Transaction().add(
@@ -92,6 +96,18 @@ describe("Recurring Payments", () => {
       mintAuthority,
       1000000n // 1 token with 6 decimals
     );
+
+    // Create gateway authority and fee recipient
+    gatewayAuthority = Keypair.generate();
+    await fund(gatewayAuthority.publicKey, 10);
+    feeRecipient = Keypair.generate();
+    await fund(feeRecipient.publicKey, 1);
+
+    // Derive gateway PDA
+    [gatewayPDA, gatewayBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("gateway"), gatewayAuthority.publicKey.toBuffer()],
+      program.programId
+    );
   });
 
   test("Initialize program", async () => {
@@ -144,5 +160,33 @@ describe("Recurring Payments", () => {
     expect(userPaymentAccount.activePoliciesCount).toBe(0);
     expect(userPaymentAccount.isActive).toBe(true);
     expect(userPaymentAccount.bump).toBe(userPaymentBump);
+  });
+
+  test("Create payment gateway", async () => {
+    const gatewayFeeBps = 250; // 2.5% fee
+
+    const accounts = {
+      authority: gatewayAuthority.publicKey,
+      gateway: gatewayPDA,
+      feeRecipient: feeRecipient.publicKey,
+      systemProgram: SystemProgram.programId,
+    };
+    await program.methods
+      .createPaymentGateway(gatewayFeeBps)
+      .accounts(accounts)
+      .signers([gatewayAuthority])
+      .rpc();
+
+    const gatewayAccount = await program.account.paymentGateway.fetch(
+      gatewayPDA
+    );
+
+    expect(gatewayAccount.authority).toEqual(gatewayAuthority.publicKey);
+    expect(gatewayAccount.feeRecipient).toEqual(feeRecipient.publicKey);
+    expect(gatewayAccount.gatewayFeeBps).toBe(gatewayFeeBps);
+    expect(gatewayAccount.isActive).toBe(true);
+    expect(gatewayAccount.totalProcessed.toNumber()).toBe(0);
+    expect(gatewayAccount.bump).toBe(gatewayBump);
+    expect(gatewayAccount.createdAt.toNumber()).toBeGreaterThan(0);
   });
 });
