@@ -50,4 +50,8 @@ pub mod recurring_payments {
             start_time,
         )
     }
+
+    pub fn execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
+        instructions::execute_payment::handler_execute_payment(ctx)
+    }
 }

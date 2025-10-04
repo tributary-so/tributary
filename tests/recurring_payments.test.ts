@@ -4,12 +4,15 @@ import {
   Keypair,
   SystemProgram,
   LAMPORTS_PER_SOL,
+  Commitment,
 } from "@solana/web3.js";
 import {
   createMint,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccount,
   mintTo,
+  approve,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { RecurringPayments } from "../target/types/recurring_payments";
 
@@ -20,7 +23,6 @@ describe("Recurring Payments", () => {
   const program = anchor.workspace
     .RecurringPayments as anchor.Program<RecurringPayments>;
   const wallet = provider.wallet as anchor.Wallet;
-  const payer = wallet.payer;
 
   let connection: any;
 
@@ -37,12 +39,15 @@ describe("Recurring Payments", () => {
   let gatewayPDA: PublicKey;
   let gatewayBump: number;
   let recipient: Keypair;
+  let recipientTokenAccount: PublicKey;
   let userPaymentPDA: PublicKey;
   let userPaymentBump: number;
   let paymentPolicyPDA: PublicKey;
   let paymentPolicyBump: number;
+  let paymentsDelegate: PublicKey;
+  let paymentsDelegateBump: number;
 
-  async function fund(account: PublicKey, amount: number) {
+  async function fund(account: PublicKey, amount: number): Promise<void> {
     const transaction = new anchor.web3.Transaction().add(
       SystemProgram.transfer({
         fromPubkey: provider.wallet.publicKey,
@@ -51,7 +56,10 @@ describe("Recurring Payments", () => {
       })
     );
     const signature = await provider.sendAndConfirm(transaction);
-    return await provider.connection.confirmTransaction(signature, "confirmed");
+    await provider.connection.confirmTransaction(
+      signature,
+      "processed" as Commitment
+    );
   }
 
   beforeAll(async () => {
@@ -137,6 +145,20 @@ describe("Recurring Payments", () => {
         new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
       ],
       program.programId
+    );
+
+    // Derive payments delegate PDA
+    [paymentsDelegate, paymentsDelegateBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("payments")],
+      program.programId
+    );
+
+    // Create recipient token account
+    recipientTokenAccount = await createAssociatedTokenAccount(
+      connection,
+      admin,
+      tokenMint,
+      recipient.publicKey
     );
   });
 
@@ -279,5 +301,92 @@ describe("Recurring Payments", () => {
       userPaymentPDA
     );
     expect(updatedUserPayment.activePoliciesCount).toBe(1);
+  });
+
+  test("Set delegate approval for payment execution", async () => {
+    const amount = 1000000; // 1 token with 6 decimals
+
+    await approve(
+      connection,
+      user,
+      userTokenAccount,
+      paymentsDelegate,
+      user,
+      amount
+    );
+
+    // Verify delegate approval was set
+    const tokenAccountInfo = await connection.getParsedAccountInfo(
+      userTokenAccount
+    );
+    const parsedData = tokenAccountInfo.value?.data as any;
+    expect(parsedData.parsed.info.delegate).toEqual(
+      paymentsDelegate.toString()
+    );
+    expect(parsedData.parsed.info.delegatedAmount.uiAmount).toBe(1);
+  });
+
+  test("Execute payment", async () => {
+    const initialRecipientBalance = await connection.getTokenAccountBalance(
+      recipientTokenAccount
+    );
+
+    // Create fee recipient token accounts
+    const gatewayFeeAccount = await createAssociatedTokenAccount(
+      connection,
+      admin,
+      tokenMint,
+      feeRecipient.publicKey
+    );
+
+    const protocolFeeAccount = await createAssociatedTokenAccount(
+      connection,
+      admin,
+      tokenMint,
+      admin.publicKey // config.fee_recipient
+    );
+
+    const accounts = {
+      gatewayAuthority: gatewayAuthority.publicKey,
+      paymentsDelegate: paymentsDelegate,
+      paymentPolicy: paymentPolicyPDA,
+      userPayment: userPaymentPDA,
+      gateway: gatewayPDA,
+      config: configPDA,
+      userTokenAccount: userTokenAccount,
+      recipientTokenAccount: recipientTokenAccount,
+      gatewayFeeAccount: gatewayFeeAccount,
+      protocolFeeAccount: protocolFeeAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    await program.methods
+      .executePayment()
+      .accounts(accounts)
+      .signers([gatewayAuthority])
+      .rpc();
+
+    // Verify payment was executed
+    const finalRecipientBalance = await connection.getTokenAccountBalance(
+      recipientTokenAccount
+    );
+    expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
+      initialRecipientBalance.value.uiAmount || 0
+    );
+
+    // Verify policy was updated
+    const updatedPolicy = await program.account.paymentPolicy.fetch(
+      paymentPolicyPDA
+    );
+    expect(updatedPolicy.paymentCount).toBe(1);
+    expect(updatedPolicy.totalPaid.toNumber()).toBe(10000); // 0.01 token
+    expect(updatedPolicy.nextPaymentDue.toNumber()).toBeGreaterThan(
+      Date.now() / 1000
+    );
+
+    // Verify gateway stats were updated
+    const updatedGateway = await program.account.paymentGateway.fetch(
+      gatewayPDA
+    );
+    expect(updatedGateway.totalProcessed.toNumber()).toBe(10000);
   });
 });

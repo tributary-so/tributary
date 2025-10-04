@@ -1,4 +1,4 @@
-use crate::{error::ErrorCode, state::*, USER_PAYMENT_SEED};
+use crate::{error::RecurringPaymentsError, state::*, USER_PAYMENT_SEED};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
@@ -26,7 +26,7 @@ pub struct CreateUserPayment<'info> {
     #[account(
         seeds = [b"config"],
         bump = config.bump,
-        constraint = !config.emergency_pause @ ErrorCode::ProgramPaused
+        constraint = !config.emergency_pause @ RecurringPaymentsError::ProgramPaused
     )]
     pub config: Account<'info, ProgramConfig>,
 

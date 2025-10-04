@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum ErrorCode {
+pub enum RecurringPaymentsError {
     #[msg("Program is paused")]
     ProgramPaused,
     #[msg("Amount must be greater than zero")]
@@ -18,4 +18,8 @@ pub enum ErrorCode {
     PolicyNotFound,
     #[msg("Insufficient delegated amount")]
     InsufficientDelegatedAmount,
+    #[msg("Payment is not yet due")]
+    PaymentNotDue,
+    #[msg("Insufficient balance for payment")]
+    InsufficientBalance,
 }
