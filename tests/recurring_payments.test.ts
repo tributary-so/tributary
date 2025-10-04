@@ -36,6 +36,11 @@ describe("Recurring Payments", () => {
   let feeRecipient: Keypair;
   let gatewayPDA: PublicKey;
   let gatewayBump: number;
+  let recipient: Keypair;
+  let userPaymentPDA: PublicKey;
+  let userPaymentBump: number;
+  let paymentPolicyPDA: PublicKey;
+  let paymentPolicyBump: number;
 
   async function fund(account: PublicKey, amount: number) {
     const transaction = new anchor.web3.Transaction().add(
@@ -108,6 +113,31 @@ describe("Recurring Payments", () => {
       [Buffer.from("gateway"), gatewayAuthority.publicKey.toBuffer()],
       program.programId
     );
+
+    // Create recipient
+    recipient = Keypair.generate();
+    await fund(recipient.publicKey, 1);
+
+    // Derive user payment PDA
+    [userPaymentPDA, userPaymentBump] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_payment"),
+        user.publicKey.toBuffer(),
+        tokenMint.toBuffer(),
+      ],
+      program.programId
+    );
+
+    // Derive payment policy PDA
+    const policyId = 1;
+    [paymentPolicyPDA, paymentPolicyBump] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("payment_policy"),
+        userPaymentPDA.toBuffer(),
+        new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+      ],
+      program.programId
+    );
   });
 
   test("Initialize program", async () => {
@@ -130,16 +160,6 @@ describe("Recurring Payments", () => {
   });
 
   test("Create user payment account", async () => {
-    // Derive user payment PDA
-    const [userPaymentPDA, userPaymentBump] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("user_payment"),
-        new PublicKey(user.publicKey).toBuffer(),
-        new PublicKey(tokenMint).toBuffer(),
-      ],
-      program.programId
-    );
-
     await program.methods
       .createUserPayment()
       .accounts({
@@ -150,16 +170,14 @@ describe("Recurring Payments", () => {
       .signers([user as any])
       .rpc();
 
-    const userPaymentAccount = await program.account.userPayment.fetch(
-      userPaymentPDA
-    );
+    const userPayment = await program.account.userPayment.fetch(userPaymentPDA);
 
-    expect(userPaymentAccount.owner).toEqual(user.publicKey);
-    expect(userPaymentAccount.tokenAccount).toEqual(userTokenAccount);
-    expect(userPaymentAccount.tokenMint).toEqual(tokenMint);
-    expect(userPaymentAccount.activePoliciesCount).toBe(0);
-    expect(userPaymentAccount.isActive).toBe(true);
-    expect(userPaymentAccount.bump).toBe(userPaymentBump);
+    expect(userPayment.owner).toEqual(user.publicKey);
+    expect(userPayment.tokenAccount).toEqual(userTokenAccount);
+    expect(userPayment.tokenMint).toEqual(tokenMint);
+    expect(userPayment.activePoliciesCount).toBe(0);
+    expect(userPayment.isActive).toBe(true);
+    expect(userPayment.bump).toBe(userPaymentBump);
   });
 
   test("Create payment gateway", async () => {
@@ -188,5 +206,78 @@ describe("Recurring Payments", () => {
     expect(gatewayAccount.totalProcessed.toNumber()).toBe(0);
     expect(gatewayAccount.bump).toBe(gatewayBump);
     expect(gatewayAccount.createdAt.toNumber()).toBeGreaterThan(0);
+  });
+
+  test("Create payment policy", async () => {
+    const policyId = 1;
+    const amount = new anchor.BN(10000); // 0.01 token with 6 decimals
+    const intervalSeconds = new anchor.BN(86400); // 1 day
+    const memo = new Uint8Array(64).fill(0);
+    Buffer.from("test subscription").copy(memo);
+
+    const policyType = {
+      subscription: {
+        amount: amount,
+        intervalSeconds: intervalSeconds,
+        autoRenew: true,
+        maxRenewals: null,
+        padding: Array(8).fill(new anchor.BN(0)),
+      },
+    };
+
+    const paymentFrequency = { daily: {} };
+
+    const accounts = {
+      user: user.publicKey,
+      userPayment: userPaymentPDA,
+      recipient: recipient.publicKey,
+      tokenMint: tokenMint,
+      gateway: gatewayPDA,
+      paymentPolicy: paymentPolicyPDA,
+      systemProgram: SystemProgram.programId,
+    };
+    await program.methods
+      .createPaymentPolicy(
+        policyId,
+        policyType,
+        paymentFrequency,
+        Array.from(memo),
+        null // start_time
+      )
+      .accounts(accounts)
+      .signers([user])
+      .rpc();
+
+    const policyAccount = await program.account.paymentPolicy.fetch(
+      paymentPolicyPDA
+    );
+
+    expect(policyAccount.userPayment).toEqual(userPaymentPDA);
+    expect(policyAccount.recipient).toEqual(recipient.publicKey);
+    expect(policyAccount.gateway).toEqual(gatewayPDA);
+    expect(policyAccount.policyId).toBe(policyId);
+    expect(policyAccount.status).toEqual({ active: {} });
+    expect(policyAccount.paymentFrequency).toEqual({ daily: {} });
+    expect(policyAccount.totalPaid.toNumber()).toBe(0);
+    expect(policyAccount.paymentCount).toBe(0);
+    expect(policyAccount.failedPaymentCount).toBe(0);
+    expect(policyAccount.bump).toBe(paymentPolicyBump);
+    expect(policyAccount.createdAt.toNumber()).toBeGreaterThan(0);
+
+    // Verify policy type is subscription
+    expect(policyAccount.policyType.subscription).toBeDefined();
+    expect(policyAccount.policyType.subscription.amount.toNumber()).toBe(
+      amount.toNumber()
+    );
+    expect(
+      policyAccount.policyType.subscription.intervalSeconds.toNumber()
+    ).toBe(intervalSeconds.toNumber());
+    expect(policyAccount.policyType.subscription.autoRenew).toBe(true);
+
+    // Check that user payment account was updated
+    const updatedUserPayment = await program.account.userPayment.fetch(
+      userPaymentPDA
+    );
+    expect(updatedUserPayment.activePoliciesCount).toBe(1);
   });
 });

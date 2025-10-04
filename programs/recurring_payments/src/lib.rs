@@ -32,4 +32,22 @@ pub mod recurring_payments {
     ) -> Result<()> {
         instructions::create_payment_gateway::handler_create_payment_gateway(ctx, gateway_fee_bps)
     }
+
+    pub fn create_payment_policy(
+        ctx: Context<CreatePaymentPolicy>,
+        policy_id: u32,
+        policy_type: PolicyType,
+        payment_frequency: PaymentFrequency,
+        memo: [u8; 64],
+        start_time: Option<i64>,
+    ) -> Result<()> {
+        instructions::create_payment_policy::handler_create_payment_policy(
+            ctx,
+            policy_id,
+            policy_type,
+            payment_frequency,
+            memo,
+            start_time,
+        )
+    }
 }

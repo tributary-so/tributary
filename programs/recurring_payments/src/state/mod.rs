@@ -95,7 +95,7 @@ impl PaymentGateway {
 /// expect from an invoice. The SDK would setup these PaymentPolicy
 #[account]
 pub struct PaymentPolicy {
-    pub user_payment_account: Pubkey,
+    pub user_payment: Pubkey,
     pub recipient: Pubkey,
     pub gateway: Pubkey,
     pub policy_type: PolicyType,
