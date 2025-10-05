@@ -1,4 +1,5 @@
 import {
+  Connection,
   PublicKey,
   SystemProgram,
   TransactionInstruction,
@@ -20,9 +21,27 @@ import type {
   PolicyType,
   PaymentFrequency,
 } from "./types.js";
+import IDL from "../../target/idl/recurring_payments.json";
 
 export class RecurringPaymentsSDK {
-  constructor(private program: anchor.Program, private programId: PublicKey) {}
+  program: anchor.Program;
+  programId: PublicKey;
+  connection: Connection;
+  provider: any;
+
+  constructor(connection: Connection, programId: PublicKey) {
+    this.connection = connection;
+    this.programId = programId;
+    this.provider = { connection };
+    this.program = new anchor.Program(IDL as anchor.Idl, this.provider);
+  }
+
+  async updateWallet(wallet: any) {
+    this.provider = new anchor.AnchorProvider(this.connection, wallet, {
+      preflightCommitment: "confirmed",
+    });
+    this.program = new anchor.Program(IDL as anchor.Idl, this.provider);
+  }
 
   async initialize(admin: PublicKey): Promise<TransactionInstruction> {
     const { address: configPda } = getConfigPda(this.programId);
