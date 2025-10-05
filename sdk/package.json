@@ -8,6 +8,7 @@
     "build": "pnpm run clean && npm run build:esm",
     "build:esm": "tsc -p ./tsconfig.esm.json && mv lib/esm/sdk/src/index.js lib/esm/sdk/src/index.mjs && echo '{\"type\": \"module\"}' > lib/esm/package.json",
     "build:cjs": "tsc -p ./tsconfig.cjs.json && echo '{\"type\": \"commonjs\"}' > lib/cjs/package.json",
+    "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build"
   },
   "dependencies": {
