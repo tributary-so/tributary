@@ -16,6 +16,7 @@ import {
 } from "@solana/spl-token";
 import { RecurringPayments } from "../target/types/recurring_payments";
 import { RecurringPaymentsSDK } from "../sdk/src";
+import assert from "assert";
 
 describe("Recurring Payments", () => {
   const provider = anchor.AnchorProvider.env();
@@ -408,5 +409,166 @@ describe("Recurring Payments", () => {
     expect(
       allPolicies[0].account.policyType.subscription.amount.toNumber()
     ).toBe(10000);
+  });
+
+  test("Cannot execute payment twice within period", async () => {
+    // Create fee recipient token accounts
+    const gatewayFeeAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      feeRecipient.publicKey
+    );
+    const protocolFeeAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      admin.publicKey
+    );
+
+    const accounts = {
+      gatewayAuthority: gatewayAuthority.publicKey,
+      paymentsDelegate: paymentsDelegate,
+      paymentPolicy: paymentPolicyPDA,
+      userPayment: userPaymentPDA,
+      gateway: gatewayPDA,
+      config: configPDA,
+      userTokenAccount: userTokenAccount,
+      recipientTokenAccount: recipientTokenAccount,
+      gatewayFeeAccount: gatewayFeeAccount,
+      protocolFeeAccount: protocolFeeAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+
+    // First execution should succeed (already done in previous test)
+    // Second execution should fail because next_payment_due is in the future
+    try {
+      await program.methods
+        .executePayment()
+        .accounts(accounts)
+        .signers([gatewayAuthority])
+        .rpc();
+
+      fail(
+        "Expected payment execution to fail when next_payment_due is in future"
+      );
+    } catch (error: any) {
+      expect(error.message).toContain("PaymentNotDue");
+    }
+  });
+
+  test("Can execute payment when next_payment_due is in past", async () => {
+    // Get current policy to check next_payment_due
+    const policy = await program.account.paymentPolicy.fetch(paymentPolicyPDA);
+    const nextPaymentDue = policy.nextPaymentDue.toNumber();
+
+    // Verify next payment is indeed in the future (from previous execution)
+    expect(nextPaymentDue).toBeGreaterThan(Math.floor(Date.now() / 1000));
+
+    // Create a new policy with start_time in the past to test timing validation
+    const policyId2 = 2;
+    const amount = new anchor.BN(5000); // 0.005 token
+    const intervalSeconds = new anchor.BN(3600); // 1 hour
+    const memo = new Uint8Array(64).fill(0);
+    Buffer.from("test policy 2").copy(memo);
+
+    const policyType = {
+      subscription: {
+        amount: amount,
+        intervalSeconds: intervalSeconds,
+        autoRenew: true,
+        maxRenewals: null,
+        padding: Array(8).fill(new anchor.BN(0)),
+      },
+    };
+
+    const paymentFrequency = { custom: { 0: new anchor.BN(3600) } }; // 1 hour in seconds
+
+    // Derive second policy PDA
+    const [paymentPolicy2PDA, paymentPolicy2Bump] =
+      PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+    // Create policy with start_time in the past (2 hours ago)
+    const twoHoursAgo = Math.floor(Date.now() / 1000) - 7200;
+
+    const accounts = {
+      user: user.publicKey,
+      userPayment: userPaymentPDA,
+      recipient: recipient.publicKey,
+      tokenMint: tokenMint,
+      gateway: gatewayPDA,
+      paymentPolicy: paymentPolicy2PDA,
+      systemProgram: SystemProgram.programId,
+    };
+
+    await program.methods
+      .createPaymentPolicy(
+        policyId2,
+        policyType,
+        paymentFrequency,
+        Array.from(memo),
+        new anchor.BN(twoHoursAgo) // start_time in past
+      )
+      .accounts(accounts)
+      .signers([user])
+      .rpc();
+
+    // Create fee recipient token accounts if they don't exist
+    const gatewayFeeAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      feeRecipient.publicKey
+    );
+    const protocolFeeAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      admin.publicKey
+    );
+
+    // Execute payment on the new policy (should succeed since next_payment_due is in past)
+    const executeAccounts = {
+      gatewayAuthority: gatewayAuthority.publicKey,
+      paymentsDelegate: paymentsDelegate,
+      paymentPolicy: paymentPolicy2PDA,
+      userPayment: userPaymentPDA,
+      gateway: gatewayPDA,
+      config: configPDA,
+      userTokenAccount: userTokenAccount,
+      recipientTokenAccount: recipientTokenAccount,
+      gatewayFeeAccount: gatewayFeeAccount,
+      protocolFeeAccount: protocolFeeAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+
+    await program.methods
+      .executePayment()
+      .accounts(executeAccounts)
+      .signers([gatewayAuthority])
+      .rpc();
+
+    // Verify payment was executed
+    const updatedPolicy = await program.account.paymentPolicy.fetch(
+      paymentPolicy2PDA
+    );
+    expect(updatedPolicy.paymentCount).toBe(1);
+    expect(updatedPolicy.totalPaid.toNumber()).toBe(5000);
+
+    // Immediately try to execute again - should fail
+    try {
+      await program.methods
+        .executePayment()
+        .accounts(executeAccounts)
+        .signers([gatewayAuthority])
+        .rpc();
+
+      assert(
+        false,
+        "Expected second payment execution to fail within same period"
+      );
+    } catch (error: any) {
+      console.error(error.message);
+      expect(error.message).toContain("PaymentNotDue");
+    }
   });
 });
