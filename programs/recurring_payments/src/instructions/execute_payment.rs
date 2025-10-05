@@ -170,7 +170,8 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
             interval_seconds, ..
         } => *interval_seconds,
     };
-    payment_policy.next_payment_due = clock.unix_timestamp + interval as i64;
+    // Advance the next payment due
+    payment_policy.next_payment_due += interval as i64;
 
     // Update payment policy
     payment_policy.total_paid = payment_policy
