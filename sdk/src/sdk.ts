@@ -15,10 +15,6 @@ import {
   getPaymentsDelegatePda,
 } from "./pda.js";
 import type {
-  CreateUserPaymentAccounts,
-  CreatePaymentGatewayAccounts,
-  CreatePaymentPolicyAccounts,
-  ExecutePaymentAccounts,
   PolicyType,
   PaymentFrequency,
   UserPayment,
