@@ -4,8 +4,8 @@ import { Command } from "commander";
 import { Connection, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
-import { RecurringPaymentsSDK } from "./sdk.js";
-import type { PolicyType, PaymentFrequency } from "./types.js";
+import { RecurringPaymentsSDK } from "./sdk";
+import type { PolicyType, PaymentFrequency } from "./types";
 
 function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
   try {

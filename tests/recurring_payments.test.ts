@@ -15,6 +15,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { RecurringPayments } from "../target/types/recurring_payments";
+import { RecurringPaymentsSDK } from "../sdk/src";
 
 describe("Recurring Payments", () => {
   const provider = anchor.AnchorProvider.env();
@@ -46,6 +47,7 @@ describe("Recurring Payments", () => {
   let paymentPolicyBump: number;
   let paymentsDelegate: PublicKey;
   let paymentsDelegateBump: number;
+  let sdk: RecurringPaymentsSDK;
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
     const transaction = new anchor.web3.Transaction().add(
@@ -65,6 +67,7 @@ describe("Recurring Payments", () => {
   beforeAll(async () => {
     // Create Solana Kite connection
     connection = provider.connection;
+    sdk = new RecurringPaymentsSDK(connection, wallet);
 
     // Create wallets
     admin = Keypair.generate();
@@ -388,5 +391,22 @@ describe("Recurring Payments", () => {
       gatewayPDA
     );
     expect(updatedGateway.totalProcessed.toNumber()).toBe(10000);
+  });
+
+  test("Get all payment policies using SDK", async () => {
+    // Get all payment policies
+    const allPolicies = await sdk.getAllPaymentPolicies();
+
+    expect(allPolicies.length).toBeGreaterThan(0);
+    expect(allPolicies[0].account.policyId).toBe(1);
+    expect(allPolicies[0].account.userPayment).toEqual(userPaymentPDA);
+    expect(allPolicies[0].account.recipient).toEqual(recipient.publicKey);
+    expect(allPolicies[0].account.gateway).toEqual(gatewayPDA);
+
+    // Verify the policy type is subscription
+    expect(allPolicies[0].account.policyType.subscription).toBeDefined();
+    expect(
+      allPolicies[0].account.policyType.subscription.amount.toNumber()
+    ).toBe(10000);
   });
 });

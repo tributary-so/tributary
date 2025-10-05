@@ -5,9 +5,7 @@
   "scripts": {
     "lint": "eslint src",
     "clean": "rm -rf ./lib",
-    "build": "pnpm run clean && npm run build:esm",
-    "build:esm": "tsc -p ./tsconfig.esm.json && mv lib/esm/sdk/src/index.js lib/esm/sdk/src/index.mjs && echo '{\"type\": \"module\"}' > lib/esm/package.json",
-    "build:cjs": "tsc -p ./tsconfig.cjs.json && echo '{\"type\": \"commonjs\"}' > lib/cjs/package.json",
+    "build": "pnpm run clean && tsc",
     "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build"
   },
@@ -34,13 +32,12 @@
   ],
   "exports": {
     ".": {
-      "require-not-supported": "./lib/cjs/sdk/src/index.js",
-      "import": "./lib/esm/sdk/src/index.mjs",
-      "types": "./lib/types/sdk/src/index.d.ts"
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
     }
   },
-  "main": "./lib/sdk/src/index.js",
-  "module": "./lib/sdk/src/index.js",
-  "types": "./lib/types/sdk/src/index.d.ts",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "packageManager": "pnpm@9.6.0"
 }

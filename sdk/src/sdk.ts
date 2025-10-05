@@ -13,14 +13,14 @@ import {
   getUserPaymentPda,
   getPaymentPolicyPda,
   getPaymentsDelegatePda,
-} from "./pda.js";
+} from "./pda";
 import type {
   PolicyType,
   PaymentFrequency,
   UserPayment,
   PaymentPolicy,
 } from "./types.js";
-import IDL from "../../target/idl/recurring_payments.json" with { type: "json" };
+import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
 
 export class RecurringPaymentsSDK {
@@ -138,21 +138,21 @@ export class RecurringPaymentsSDK {
   }
 
   async executePayment(
-    userPaymentPda: PublicKey
+    paymentPolicyPda: PublicKey
   ): Promise<TransactionInstruction> {
-    const authority = this.provider.publicKey;
+    const paymentPolicy: PaymentPolicy =
+      await this.program.account.paymentPolicy.fetch(paymentPolicyPda);
+    const userPaymentPda = paymentPolicy.userPayment;
     const userPayment: UserPayment =
       await this.program.account.userPayment.fetch(userPaymentPda);
-    const policyId: number = userPayment.activePoliciesCount + 1;
-    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
-    const paymentPolicy: PaymentPolicy =
-      await this.program.account.paymentPolicy.fetch(paymentPolicyPda.address);
+
     const { address: configPda } = getConfigPda(this.programId);
     const config = await this.program.account.programConfig.fetch(configPda);
+    const authority = this.provider.publicKey;
     const accounts = {
       gatewayAuthority: authority,
       paymentsDelegate: this.getPaymentsDelegatePda().address,
-      paymentPolicy: paymentPolicyPda.address,
+      paymentPolicy: paymentPolicyPda,
       userPayment: userPaymentPda,
       gateway: paymentPolicy.gateway,
       config: configPda,
@@ -199,6 +199,39 @@ export class RecurringPaymentsSDK {
 
   getPaymentsDelegatePda() {
     return getPaymentsDelegatePda(this.programId);
+  }
+
+  // Query methods
+  async getAllPaymentPolicies(): Promise<
+    Array<{ publicKey: PublicKey; account: PaymentPolicy }>
+  > {
+    return await this.program.account.paymentPolicy.all();
+  }
+
+  async getPaymentPoliciesByUser(
+    user: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    return await this.program.account.paymentPolicy.all([
+      {
+        memcmp: {
+          offset: 8, // Skip discriminator
+          bytes: user.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  async getPaymentPoliciesByGateway(
+    gateway: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    return await this.program.account.paymentPolicy.all([
+      {
+        memcmp: {
+          offset: 8 + 32 + 32, // Skip discriminator + user_payment + recipient
+          bytes: gateway.toBase58(),
+        },
+      },
+    ]);
   }
 
   // Utility methods

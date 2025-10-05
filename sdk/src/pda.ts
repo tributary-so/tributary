@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
-import { SEEDS } from "./constants.js";
-import type { PdaResult } from "./types.js";
+import { SEEDS } from "./constants";
+import type { PdaResult } from "./types";
 
 export function getConfigPda(programId: PublicKey): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
