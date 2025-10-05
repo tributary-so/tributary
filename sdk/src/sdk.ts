@@ -20,10 +20,11 @@ import type {
   UserPayment,
   PaymentPolicy,
 } from "./types.js";
-import IDL from "../../target/idl/recurring_payments.json";
+import IDL from "../../target/idl/recurring_payments.json" with { type: "json" };
+import { RecurringPayments } from "../../target/types/recurring_payments.js";
 
 export class RecurringPaymentsSDK {
-  program: anchor.Program;
+  program: anchor.Program<RecurringPayments>;
   programId: PublicKey;
   connection: Connection;
   provider: anchor.AnchorProvider;
@@ -31,14 +32,18 @@ export class RecurringPaymentsSDK {
   constructor(connection: Connection, wallet: anchor.Wallet) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
-    this.updateWallet(wallet);
+
+    this.provider = new anchor.AnchorProvider(this.connection, wallet, {
+      preflightCommitment: "confirmed",
+    });
+    this.program = new anchor.Program(IDL as RecurringPayments, this.provider);
   }
 
   async updateWallet(wallet: any) {
     this.provider = new anchor.AnchorProvider(this.connection, wallet, {
       preflightCommitment: "confirmed",
     });
-    this.program = new anchor.Program(IDL as anchor.Idl, this.provider);
+    this.program = new anchor.Program(IDL as RecurringPayments, this.provider);
   }
 
   async initialize(admin: PublicKey): Promise<TransactionInstruction> {
@@ -46,7 +51,7 @@ export class RecurringPaymentsSDK {
 
     return await this.program.methods
       .initialize()
-      .accounts({
+      .accountsStrict({
         admin,
         config: configPda,
         systemProgram: SystemProgram.programId,
@@ -62,8 +67,10 @@ export class RecurringPaymentsSDK {
       owner,
       tokenMint
     );
+    const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       owner: owner,
+      config: configPda,
       tokenAccount: getAssociatedTokenAddressSync(tokenMint, owner),
       tokenMint: tokenMint,
       userPayment: userPaymentPda,
@@ -72,7 +79,7 @@ export class RecurringPaymentsSDK {
 
     return await this.program.methods
       .createUserPayment()
-      .accounts(accounts)
+      .accountsStrict(accounts)
       .instruction();
   }
 
@@ -90,7 +97,7 @@ export class RecurringPaymentsSDK {
     };
     return await this.program.methods
       .createPaymentGateway(gatewayFeeBps)
-      .accounts(accounts)
+      .accountsStrict(accounts)
       .instruction();
   }
 
@@ -106,7 +113,7 @@ export class RecurringPaymentsSDK {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
     const userPayment: UserPayment =
-      this.program.account.userPayment.fetch(userPaymentPda);
+      await this.program.account.userPayment.fetch(userPaymentPda);
     const policyId: number = userPayment.activePoliciesCount + 1;
     const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const accounts = {
@@ -126,7 +133,7 @@ export class RecurringPaymentsSDK {
         memo,
         startTime || null
       )
-      .accounts(accounts)
+      .accountsStrict(accounts)
       .instruction();
   }
 
@@ -135,13 +142,13 @@ export class RecurringPaymentsSDK {
   ): Promise<TransactionInstruction> {
     const authority = this.provider.publicKey;
     const userPayment: UserPayment =
-      this.program.account.userPayment.fetch(userPaymentPda);
+      await this.program.account.userPayment.fetch(userPaymentPda);
     const policyId: number = userPayment.activePoliciesCount + 1;
     const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const paymentPolicy: PaymentPolicy =
-      this.program.account.paymentPolicy.fetch(paymentPolicyPda);
+      await this.program.account.paymentPolicy.fetch(paymentPolicyPda.address);
     const { address: configPda } = getConfigPda(this.programId);
-    const config = this.program.account.config.fetch(configPda);
+    const config = await this.program.account.programConfig.fetch(configPda);
     const accounts = {
       gatewayAuthority: authority,
       paymentsDelegate: this.getPaymentsDelegatePda().address,
@@ -169,7 +176,7 @@ export class RecurringPaymentsSDK {
     };
     return await this.program.methods
       .executePayment()
-      .accounts(accounts)
+      .accountsStrict(accounts)
       .instruction();
   }
 
