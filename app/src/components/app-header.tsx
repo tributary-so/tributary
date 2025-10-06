@@ -26,7 +26,9 @@ export function AppHeader({ links = [] }: { links: { label: string; path: string
               {links.map(({ label, path }) => (
                 <li key={path}>
                   <Link
-                    className={`hover:text-neutral-500 dark:hover:text-white ${isActive(path) ? 'text-neutral-500 dark:text-white' : ''}`}
+                    className={`hover:text-neutral-500 dark:hover:text-white ${
+                      isActive(path) ? 'text-neutral-500 dark:text-white' : ''
+                    }`}
                     to={path}
                   >
                     {label}
@@ -54,7 +56,9 @@ export function AppHeader({ links = [] }: { links: { label: string; path: string
                 {links.map(({ label, path }) => (
                   <li key={path}>
                     <Link
-                      className={`hover:text-neutral-500 dark:hover:text-white block text-lg py-2  ${isActive(path) ? 'text-neutral-500 dark:text-white' : ''} `}
+                      className={`hover:text-neutral-500 dark:hover:text-white block text-lg py-2  ${
+                        isActive(path) ? 'text-neutral-500 dark:text-white' : ''
+                      } `}
                       to={path}
                       onClick={() => setShowMenu(false)}
                     >

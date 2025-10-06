@@ -46,7 +46,7 @@ repos:
         exclude: |
           (?x)^(
               .pre-commit-config.yaml|
-              app/pnpm-lock.yaml
+              pnpm-lock.yaml
           )$
 
   ######################################
@@ -81,7 +81,7 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        args: [--config, app/.prettierrc.yml, --write] # edit files in-place
+        args: [--config, app/.prettierrc, --write] # edit files in-place
         files: ^app/.*
         additional_dependencies:
           - prettier

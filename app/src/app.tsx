@@ -7,10 +7,12 @@ const links = [
   //
   { label: 'Home', path: '/' },
   { label: 'Account', path: '/account' },
+  { label: 'Create Gateway', path: '/gateway' },
 ]
 const LazyDashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
 const LazyAccountIndex = lazy(() => import('@/components/account/account-index-feature'))
 const LazyAccountDetail = lazy(() => import('@/components/account/account-detail-feature'))
+const LazyGateway = lazy(() => import('@/components/gateway/gateway-feature'))
 
 const routes: RouteObject[] = [
   { index: true, element: <LazyDashboard /> },
@@ -21,6 +23,7 @@ const routes: RouteObject[] = [
       { path: ':address', element: <LazyAccountDetail /> },
     ],
   },
+  { path: 'gateway', element: <LazyGateway /> },
 ]
 
 export function App() {
