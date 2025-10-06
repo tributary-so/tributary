@@ -164,6 +164,10 @@ describe("Recurring Payments", () => {
       tokenMint,
       recipient.publicKey
     );
+
+    expect(program.programId.toString()).toEqual(
+      "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+    );
   });
 
   test("Initialize program", async () => {
@@ -567,7 +571,6 @@ describe("Recurring Payments", () => {
         "Expected second payment execution to fail within same period"
       );
     } catch (error: any) {
-      console.error(error.message);
       expect(error.message).toContain("PaymentNotDue");
     }
   });

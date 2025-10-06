@@ -7,8 +7,14 @@ solana_version = "2.2.11"
 resolution = true
 skip-lint = false
 
+[programs.devnet]
+recurring_payments = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+
+[programs.mainnet]
+recurring_payments = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+
 [programs.localnet]
-recurring_payments = "CPt2GNFqP5ZAaF1mGYseAi7eRi9aNavqb9sByF5Ypayi"
+recurring_payments = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
 
 [registry]
 url = "https://api.apr.dev"

@@ -12,7 +12,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("CPt2GNFqP5ZAaF1mGYseAi7eRi9aNavqb9sByF5Ypayi");
+declare_id!("TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ");
 
 #[program]
 pub mod recurring_payments {
