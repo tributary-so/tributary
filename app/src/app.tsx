@@ -8,11 +8,13 @@ const links = [
   { label: 'Home', path: '/' },
   { label: 'Account', path: '/account' },
   { label: 'Create Gateway', path: '/gateway' },
+  { label: 'Create Policy', path: '/policy' },
 ]
 const LazyDashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
 const LazyAccountIndex = lazy(() => import('@/components/account/account-index-feature'))
 const LazyAccountDetail = lazy(() => import('@/components/account/account-detail-feature'))
 const LazyGateway = lazy(() => import('@/components/gateway/gateway-feature'))
+const LazyPaymentPolicy = lazy(() => import('@/components/payment-policy/payment-policy-feature'))
 
 const routes: RouteObject[] = [
   { index: true, element: <LazyDashboard /> },
@@ -24,6 +26,7 @@ const routes: RouteObject[] = [
     ],
   },
   { path: 'gateway', element: <LazyGateway /> },
+  { path: 'policy', element: <LazyPaymentPolicy /> },
 ]
 
 export function App() {

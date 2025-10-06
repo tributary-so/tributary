@@ -6,6 +6,7 @@ import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
 import { RecurringPaymentsSDK } from "./sdk";
 import type { PolicyType, PaymentFrequency } from "./types";
+import { createMemoBuffer } from "./utils";
 
 function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
   try {
@@ -169,7 +170,7 @@ program
       } as PaymentFrequency;
 
       // Create memo
-      const memo = RecurringPaymentsSDK.createMemoBuffer(options.memo);
+      const memo = createMemoBuffer(options.memo);
 
       const instruction = await sdk.createPaymentPolicy(
         tokenMint,

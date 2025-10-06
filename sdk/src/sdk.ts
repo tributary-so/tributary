@@ -113,9 +113,12 @@ export class RecurringPaymentsSDK {
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
-    const userPayment: UserPayment =
-      await this.program.account.userPayment.fetch(userPaymentPda);
-    const policyId: number = userPayment.activePoliciesCount + 1;
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
     const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const accounts = {
       user: user,
@@ -136,6 +139,64 @@ export class RecurringPaymentsSDK {
       )
       .accountsStrict(accounts)
       .instruction();
+  }
+
+  async createPaymentPolicyWithUser(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    policyType: PolicyType,
+    paymentFrequency: PaymentFrequency,
+    memo: number[],
+    startTime?: anchor.BN | null
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    const instructions: TransactionInstruction[] = [];
+
+    // If userPayment doesn't exist, create it first
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      instructions.push(createUserPaymentIx);
+    }
+
+    // Determine policy ID
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
+
+    // Create payment policy instruction
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const accounts = {
+      user: user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(
+        policyId,
+        policyType,
+        paymentFrequency,
+        memo,
+        startTime || null
+      )
+      .accountsStrict(accounts)
+      .instruction();
+
+    instructions.push(createPaymentPolicyIx);
+
+    return instructions;
   }
 
   async executePayment(
@@ -239,29 +300,5 @@ export class RecurringPaymentsSDK {
         },
       },
     ]);
-  }
-
-  // Utility methods
-  static createSubscriptionPolicy(
-    amount: anchor.BN,
-    intervalSeconds: anchor.BN,
-    autoRenew: boolean = true,
-    maxRenewals: number | null = null
-  ): PolicyType {
-    return {
-      subscription: {
-        amount,
-        intervalSeconds,
-        autoRenew,
-        maxRenewals,
-        padding: Array(8).fill(new anchor.BN(0)),
-      },
-    };
-  }
-
-  static createMemoBuffer(memo: string, size: number = 64): number[] {
-    const buffer = new Uint8Array(size).fill(0);
-    Buffer.from(memo).copy(buffer);
-    return Array.from(buffer);
   }
 }
