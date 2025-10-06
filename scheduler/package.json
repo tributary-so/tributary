@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
-    "@solana/web3.js": "^1.87.0",
+    "@solana/web3.js": "^1.98.4",
     "@tributary/sdk": "workspace:*",
     "bn.js": "^4.12.1",
     "commander": "^14.0.1",
