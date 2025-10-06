@@ -71,15 +71,10 @@ repos:
       - id: eslint
         types: [file]
         args: [--fix, --config, app/eslint.config.js]
-        files: ^app/.*\.(js|ts|svelte)$
-        exclude: |
-          (?x)^(
-              app/.svelte-kit/tsconfig.json|
-              app/pnpm-lock.yaml
-          )$
+        files: ^app/.*\.(js|ts|tsx)$
         additional_dependencies:
           - eslint
-          - eslint-plugin-svelte
+          - eslint-plugin-react
           - typescript-eslint
 
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -88,15 +83,10 @@ repos:
       - id: prettier
         args: [--config, app/.prettierrc.yml, --write] # edit files in-place
         files: ^app/.*
-        exclude: |
-          (?x)^(
-              app/.svelte-kit/tsconfig.json|
-              app/pnpm-lock.yaml
-          )$
         additional_dependencies:
           - prettier
-          - prettier-plugin-svelte
-          - svelte
+          - prettier-plugin-react
+          - react
 
   ######################################
   # Contract project
