@@ -15,7 +15,7 @@ devnet_expand:
 	solana program extend $(PROGRAM_ID) 20480
 
 devnet_build: prep
-	anchor build -- --features raydium-cp-swap/devnet
+	anchor build
 
 devnet_deploy:
 	anchor deploy --provider.cluster devnet
