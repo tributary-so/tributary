@@ -19,6 +19,7 @@ import type {
   PaymentFrequency,
   UserPayment,
   PaymentPolicy,
+  PaymentGateway,
 } from "./types.js";
 import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
@@ -202,6 +203,12 @@ export class RecurringPaymentsSDK {
   }
 
   // Query methods
+  async getAllPaymentGateway(): Promise<
+    Array<{ publicKey: PublicKey; account: PaymentGateway }>
+  > {
+    return await this.program.account.paymentGateway.all();
+  }
+
   async getAllPaymentPolicies(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentPolicy }>
   > {

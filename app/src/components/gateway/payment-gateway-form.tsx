@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PublicKey } from '@solana/web3.js'
 import { Card, CardHeader, CardBody, Button, Input } from '@heroui/react'
 import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { useSDK } from '@/lib/client'
 import { toast } from 'sonner'
 
-export function PaymentGatewayForm() {
+export default function PaymentGatewayForm() {
   const [gatewayFeeBps, setGatewayFeeBps] = useState('')
   const [gatewayFeeRecipient, setGatewayFeeRecipient] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -13,6 +13,10 @@ export function PaymentGatewayForm() {
   const { connection } = useConnection()
   const wallet = useWallet()
   const sdk = useSDK(wallet, connection)
+
+  useEffect(() => {
+    setGatewayFeeRecipient(wallet?.publicKey?.toString() || '')
+  }, [wallet])
 
   const handleSubmit = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
@@ -77,42 +81,44 @@ export function PaymentGatewayForm() {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-8">
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-bold">Create Payment Gateway</h2>
-        </CardHeader>
-        <CardBody>
-          <div className="flex flex-col gap-4">
-            <Input
-              label="Gateway Fee (basis points)"
-              placeholder="100"
-              value={gatewayFeeBps}
-              onChange={(e) => setGatewayFeeBps(e.target.value)}
-              description="Fee in basis points (1 bp = 0.01%). Max 10000 (100%)"
-              type="number"
-              min="0"
-              max="10000"
-            />
-            <Input
-              label="Fee Recipient Address"
-              placeholder="Enter Solana wallet address"
-              value={gatewayFeeRecipient}
-              onChange={(e) => setGatewayFeeRecipient(e.target.value)}
-              description="Wallet address that will receive the gateway fees"
-            />
-            <Button
-              color="primary"
-              onPress={handleSubmit}
-              isLoading={isLoading}
-              isDisabled={!wallet.connected || !gatewayFeeBps || !gatewayFeeRecipient}
-              className="mt-4"
-            >
-              Create Gateway
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-xl mx-auto mt-8">
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-bold">Create Payment Gateway</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Gateway Fee (basis points)"
+                placeholder="100"
+                value={gatewayFeeBps}
+                onChange={(e) => setGatewayFeeBps(e.target.value)}
+                description="Fee in basis points (1 bp = 0.01%). Max 10000 (100%)"
+                type="number"
+                min="0"
+                max="10000"
+              />
+              <Input
+                label="Fee Recipient Address"
+                placeholder={wallet?.publicKey?.toString() || 'Enter Solana wallet address'}
+                value={gatewayFeeRecipient}
+                onChange={(e) => setGatewayFeeRecipient(e.target.value)}
+                description="Wallet address that will receive the gateway fees"
+              />
+              <Button
+                color="primary"
+                onPress={handleSubmit}
+                isLoading={isLoading}
+                isDisabled={!wallet.connected || !gatewayFeeBps || !gatewayFeeRecipient}
+                className="mt-4"
+              >
+                Create Gateway
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
     </div>
   )
 }
