@@ -1,6 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
-import { useCreateSubscription, PaymentInterval } from "@tributary/sdk-react";
+import {
+  useCreateSubscription,
+  PaymentInterval,
+  CreateSubscriptionResult,
+} from "../";
 import { Loader2 } from "lucide-react";
 
 interface SubscriptionButtonProps {
@@ -15,7 +19,7 @@ interface SubscriptionButtonProps {
   label?: string;
   className?: string;
   disabled?: boolean;
-  onSuccess?: (result: { txId: string; instructions: any[] }) => void;
+  onSuccess?: (result: CreateSubscriptionResult) => void;
   onError?: (error: Error) => void;
 }
 

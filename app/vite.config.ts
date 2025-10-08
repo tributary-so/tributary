@@ -8,7 +8,11 @@ import { resolve } from 'node:path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    nodePolyfills({}),
+    nodePolyfills({
+      globals: {
+        Buffer: true,
+      },
+    }),
     react(),
     tailwindcss(),
     viteTsconfigPaths({
