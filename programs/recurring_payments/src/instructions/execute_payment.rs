@@ -1,6 +1,17 @@
 use crate::{constants::*, state::*};
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::program_option::COption};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+
+// Add this helper function to your program
+pub fn token_account_has_delegate(
+    token_account: &TokenAccount,
+    expected_delegate: &Pubkey,
+) -> bool {
+    match token_account.delegate {
+        COption::Some(delegate) => delegate == *expected_delegate,
+        COption::None => false,
+    }
+}
 
 #[derive(Accounts)]
 pub struct ExecutePayment<'info> {
@@ -51,7 +62,7 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
-        constraint = user_token_account.delegate.unwrap() == payments_delegate.key(),
+        constraint = token_account_has_delegate(&user_token_account, &payments_delegate.key()) @ crate::error::RecurringPaymentsError::NoDelegateSet,
     )]
     pub user_token_account: Account<'info, TokenAccount>,
 

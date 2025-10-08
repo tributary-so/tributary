@@ -22,4 +22,6 @@ pub enum RecurringPaymentsError {
     PaymentNotDue,
     #[msg("Insufficient balance for payment")]
     InsufficientBalance,
+    #[msg("No or incorrect delegate set in ata")]
+    NoDelegateSet,
 }

@@ -49,6 +49,8 @@ describe("Recurring Payments", () => {
   let paymentsDelegate: PublicKey;
   let paymentsDelegateBump: number;
   let sdk: RecurringPaymentsSDK;
+  let gatewayFeeAccount: PublicKey;
+  let protocolFeeAccount: PublicKey;
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
     const transaction = new anchor.web3.Transaction().add(
@@ -163,6 +165,21 @@ describe("Recurring Payments", () => {
       admin,
       tokenMint,
       recipient.publicKey
+    );
+
+    // Create fee recipient token accounts
+    gatewayFeeAccount = await createAssociatedTokenAccount(
+      connection,
+      admin,
+      tokenMint,
+      feeRecipient.publicKey
+    );
+
+    protocolFeeAccount = await createAssociatedTokenAccount(
+      connection,
+      admin,
+      tokenMint,
+      admin.publicKey // config.fee_recipient
     );
 
     expect(program.programId.toString()).toEqual(
@@ -311,6 +328,40 @@ describe("Recurring Payments", () => {
     expect(updatedUserPayment.activePoliciesCount).toBe(1);
   });
 
+  test("Execute payment fails without delegate approval", async () => {
+    const accounts = {
+      gatewayAuthority: gatewayAuthority.publicKey,
+      paymentsDelegate: paymentsDelegate,
+      paymentPolicy: paymentPolicyPDA,
+      userPayment: userPaymentPDA,
+      gateway: gatewayPDA,
+      config: configPDA,
+      userTokenAccount: userTokenAccount,
+      recipientTokenAccount: recipientTokenAccount,
+      gatewayFeeAccount: gatewayFeeAccount,
+      protocolFeeAccount: protocolFeeAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+
+    // Try to execute payment without delegate approval - should fail
+    try {
+      await program.methods
+        .executePayment()
+        .accounts(accounts)
+        .signers([gatewayAuthority])
+        .rpc();
+
+      assert(
+        false,
+        "Expected payment execution to fail without delegate approval"
+      );
+    } catch (error: any) {
+      // Should fail due to insufficient delegate approval
+      console.log(error.message);
+      expect(error.message).toContain("No or incorrect delegate set in ata");
+    }
+  });
+
   test("Set delegate approval for payment execution", async () => {
     const amount = 1000000; // 1 token with 6 decimals
 
@@ -337,21 +388,6 @@ describe("Recurring Payments", () => {
   test("Execute payment", async () => {
     const initialRecipientBalance = await connection.getTokenAccountBalance(
       recipientTokenAccount
-    );
-
-    // Create fee recipient token accounts
-    const gatewayFeeAccount = await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      feeRecipient.publicKey
-    );
-
-    const protocolFeeAccount = await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      admin.publicKey // config.fee_recipient
     );
 
     const accounts = {
@@ -417,15 +453,6 @@ describe("Recurring Payments", () => {
 
   test("Cannot execute payment twice within period", async () => {
     // Create fee recipient token accounts
-    const gatewayFeeAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      feeRecipient.publicKey
-    );
-    const protocolFeeAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      admin.publicKey
-    );
-
     const accounts = {
       gatewayAuthority: gatewayAuthority.publicKey,
       paymentsDelegate: paymentsDelegate,
@@ -449,10 +476,12 @@ describe("Recurring Payments", () => {
         .signers([gatewayAuthority])
         .rpc();
 
-      fail(
+      assert(
+        false,
         "Expected payment execution to fail when next_payment_due is in future"
       );
     } catch (error: any) {
+      console.log(error.message);
       expect(error.message).toContain("PaymentNotDue");
     }
   });
@@ -519,16 +548,6 @@ describe("Recurring Payments", () => {
       .accounts(accounts)
       .signers([user])
       .rpc();
-
-    // Create fee recipient token accounts if they don't exist
-    const gatewayFeeAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      feeRecipient.publicKey
-    );
-    const protocolFeeAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      admin.publicKey
-    );
 
     // Execute payment on the new policy (should succeed since next_payment_due is in past)
     const executeAccounts = {
