@@ -1,0 +1,46 @@
+{
+  "name": "@tributary/sdk-widgets",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pre-built UI components for Tributary recurring payments",
+  "scripts": {
+    "lint": "eslint src",
+    "clean": "rm -rf ./lib",
+    "build": "pnpm run clean && tsc",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@tributary/sdk-react": "workspace:*",
+    "react": "^19.2.0",
+    "@solana/web3.js": "^1.98.4",
+    "lucide-react": "^0.544.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/node": "^22.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.7.3",
+    "tailwindcss": "^3.4.0"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
+    }
+  },
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "packageManager": "pnpm@9.6.0"
+}

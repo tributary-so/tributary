@@ -39,7 +39,7 @@
     "@solana/web3.js": "^1.98.4",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-query": "^5.89.0",
-    "@tributary/sdk": "workspace:^",
+    "@tributary/sdk": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.22",

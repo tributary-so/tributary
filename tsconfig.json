@@ -6,6 +6,9 @@
     "module": "commonjs",
     "target": "es2020",
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "paths": {
+      "@tributary/sdk": ["./sdk/src"]
+    }
   }
 }

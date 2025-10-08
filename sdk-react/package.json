@@ -1,0 +1,46 @@
+{
+  "name": "@tributary/sdk-react",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "React hooks and utilities for Tributary recurring payments",
+  "scripts": {
+    "lint": "eslint src",
+    "clean": "rm -rf ./lib",
+    "build": "pnpm run clean && tsc",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@tributary/sdk": "workspace:*",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/web3.js": "^1.98.4",
+    "react": "^18.2.0",
+    "@coral-xyz/anchor": "^0.31.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/node": "^22.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/sdk-react/src/index.js",
+      "types": "./lib/sdk-react/src/index.d.ts"
+    }
+  },
+  "main": "./lib/sdk-react/src/index.js",
+  "module": "./lib/sdk-react/src/index.js",
+  "types": "./lib/sdk-react/src/index.d.ts",
+  "packageManager": "pnpm@9.6.0"
+}
