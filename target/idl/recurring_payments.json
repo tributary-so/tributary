@@ -1,0 +1,1070 @@
+{
+  "address": "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
+  "metadata": {
+    "name": "recurring_payments",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "create_payment_gateway",
+      "discriminator": [
+        186,
+        227,
+        210,
+        95,
+        154,
+        36,
+        146,
+        9
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_recipient"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "gateway_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "create_payment_policy",
+      "discriminator": [
+        32,
+        50,
+        29,
+        251,
+        174,
+        23,
+        112,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient"
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "PaymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment"
+              },
+              {
+                "kind": "arg",
+                "path": "policy_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "policy_id",
+          "type": "u32"
+        },
+        {
+          "name": "policy_type",
+          "type": {
+            "defined": {
+              "name": "PolicyType"
+            }
+          }
+        },
+        {
+          "name": "payment_frequency",
+          "type": {
+            "defined": {
+              "name": "PaymentFrequency"
+            }
+          }
+        },
+        {
+          "name": "memo",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "start_time",
+          "type": {
+            "option": "i64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_user_payment",
+      "discriminator": [
+        115,
+        54,
+        209,
+        72,
+        127,
+        194,
+        206,
+        49
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_account"
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "execute_payment",
+      "discriminator": [
+        86,
+        4,
+        7,
+        7,
+        120,
+        139,
+        232,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "gateway_authority",
+          "signer": true
+        },
+        {
+          "name": "payments_delegate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "payment_policy.user_payment",
+                "account": "PaymentPolicy"
+              },
+              {
+                "kind": "account",
+                "path": "payment_policy.policy_id",
+                "account": "PaymentPolicy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "UserPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "UserPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "PaymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "gateway_fee_account",
+          "writable": true
+        },
+        {
+          "name": "protocol_fee_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PaymentGateway",
+      "discriminator": [
+        200,
+        101,
+        8,
+        23,
+        141,
+        157,
+        106,
+        112
+      ]
+    },
+    {
+      "name": "PaymentPolicy",
+      "discriminator": [
+        48,
+        74,
+        183,
+        94,
+        41,
+        92,
+        52,
+        44
+      ]
+    },
+    {
+      "name": "ProgramConfig",
+      "discriminator": [
+        196,
+        210,
+        90,
+        231,
+        144,
+        149,
+        140,
+        63
+      ]
+    },
+    {
+      "name": "UserPayment",
+      "discriminator": [
+        115,
+        161,
+        14,
+        69,
+        223,
+        123,
+        210,
+        9
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "PaymentRecord",
+      "discriminator": [
+        42,
+        100,
+        253,
+        124,
+        170,
+        186,
+        231,
+        186
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ProgramPaused",
+      "msg": "Program is paused"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidFrequency",
+      "msg": "Invalid payment frequency"
+    },
+    {
+      "code": 6003,
+      "name": "MaxPoliciesReached",
+      "msg": "Maximum policies per user reached"
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidPolicyStatusTransition",
+      "msg": "Invalid policy status transition"
+    },
+    {
+      "code": 6006,
+      "name": "PolicyNotFound",
+      "msg": "Payment policy not found"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientDelegatedAmount",
+      "msg": "Insufficient delegated amount"
+    },
+    {
+      "code": 6008,
+      "name": "PaymentNotDue",
+      "msg": "Payment is not yet due"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientBalance",
+      "msg": "Insufficient balance for payment"
+    },
+    {
+      "code": 6010,
+      "name": "NoDelegateSet",
+      "msg": "No or incorrect delegate set in ata"
+    }
+  ],
+  "types": [
+    {
+      "name": "PaymentFrequency",
+      "docs": [
+        "Simplify the payment frequency while also allowing a custom period as well,",
+        "defined in seconds."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Daily"
+          },
+          {
+            "name": "Weekly"
+          },
+          {
+            "name": "Monthly"
+          },
+          {
+            "name": "Quarterly"
+          },
+          {
+            "name": "SemiAnnually"
+          },
+          {
+            "name": "Annually"
+          },
+          {
+            "name": "Custom",
+            "fields": [
+              "u64"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentGateway",
+      "docs": [
+        "A gateway operator runs the service that triggers payment.",
+        "Hence, the gateway can take a cut of the fees payed by the users"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "total_processed",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentPolicy",
+      "docs": [
+        "This structure connects a UserPayment (user/mint) with a Policy, a Gateway and the Payment",
+        "Frequency. This is the structure that actually specifies the subscription payment as you would",
+        "expect from an invoice. The SDK would setup these PaymentPolicy"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user_payment",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_type",
+            "type": {
+              "defined": {
+                "name": "PolicyType"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "PaymentStatus"
+              }
+            }
+          },
+          {
+            "name": "payment_frequency",
+            "type": {
+              "defined": {
+                "name": "PaymentFrequency"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "specified by the serice provider when installed (e.g. via sdk). Helps identify the payer"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "next_payment_due",
+            "type": "i64"
+          },
+          {
+            "name": "total_paid",
+            "type": "u64"
+          },
+          {
+            "name": "payment_count",
+            "type": "u32"
+          },
+          {
+            "name": "failed_payment_count",
+            "type": "u32"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "policy_id",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentRecord",
+      "docs": [
+        "An event that is thrown when a payment takes place"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payment_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "transaction_signature",
+            "type": "string"
+          },
+          {
+            "name": "payment_type",
+            "type": "string"
+          },
+          {
+            "name": "success",
+            "type": "bool"
+          },
+          {
+            "name": "failure_reason",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "record_id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentStatus",
+      "docs": [
+        "A status enum for installed payment policies indicating if payment can be made"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Paused"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyType",
+      "docs": [
+        "The PolicyType enum implements the payment schemes. The initial policy",
+        "will be a subscription payment that enables the regular payment according to",
+        "a schedule."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Subscription",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              },
+              {
+                "name": "interval_seconds",
+                "type": "u64"
+              },
+              {
+                "name": "auto_renew",
+                "type": "bool"
+              },
+              {
+                "name": "max_renewals",
+                "type": {
+                  "option": "u32"
+                }
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u64",
+                    8
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfig",
+      "docs": [
+        "This is a unique global program configuration managed by an admin that",
+        "defines the protocol fees and potentially more."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_policies_per_user",
+            "type": "u32"
+          },
+          {
+            "name": "emergency_pause",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserPayment",
+      "docs": [
+        "Each owner/authority+mint has a unique UserPayment account.",
+        "The purpose of this account is to be able to identify quickly",
+        "some statistics that are valid across *all* payment policies",
+        "for an authority across a mint."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "active_policies_count",
+            "type": "u32"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "SEED",
+      "type": "string",
+      "value": "\"anchor\""
+    }
+  ]
+}
