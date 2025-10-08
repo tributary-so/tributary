@@ -4,9 +4,13 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   getConfigPda,
   getGatewayPda,
@@ -153,11 +157,26 @@ export class RecurringPaymentsSDK {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
 
+    const instructions: TransactionInstruction[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
     // Check if userPayment already exists
     const userPayment: UserPayment | null =
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
-
-    const instructions: TransactionInstruction[] = [];
 
     // If userPayment doesn't exist, create it first
     if (!userPayment) {
