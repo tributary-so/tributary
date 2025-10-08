@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import * as anchor from '@coral-xyz/anchor'
@@ -6,9 +6,10 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Alert, AlertDescription } from '../ui/alert'
+import { Spinner } from '@heroui/react'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
-import { type PolicyType, type PaymentFrequency, createMemoBuffer } from '../../../.../../../sdk/src'
+import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary/sdk'
 
 interface PaymentPolicyFormProps {
   onSuccess?: () => void
@@ -21,6 +22,11 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
   const sdk = useSDK(wallet, connection)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Gateway state
+  const [gateways, setGateways] = useState<Array<{ publicKey: PublicKey; account: PaymentGateway }>>([])
+  const [gatewaysLoading, setGatewaysLoading] = useState(false)
+  const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -36,12 +42,42 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
     startTime: '',
   })
 
+  // Fetch gateways on component mount
+  useEffect(() => {
+    const fetchGateways = async () => {
+      if (!sdk || gatewaysLoaded) {
+        return
+      }
+
+      try {
+        setGatewaysLoading(true)
+        const gatewayData = await sdk.getAllPaymentGateway()
+        setGateways(gatewayData)
+        setGatewaysLoaded(true)
+      } catch (error) {
+        console.error('Error fetching payment gateways:', error)
+        toast.error(error instanceof Error ? error.message : 'Failed to fetch payment gateways')
+      } finally {
+        setGatewaysLoading(false)
+      }
+    }
+
+    if (sdk && !gatewaysLoaded) {
+      fetchGateways()
+    }
+  }, [sdk, gatewaysLoaded])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }))
+  }
+
+  const truncateAddress = (address: string) => {
+    if (address.length <= 8) return address
+    return `${address.slice(0, 4)}...${address.slice(-4)}`
   }
 
   const validateForm = () => {
@@ -235,14 +271,28 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
 
           <div className="space-y-2">
             <Label htmlFor="gateway">Gateway Address</Label>
-            <Input
-              id="gateway"
-              name="gateway"
-              value={formData.gateway}
-              onChange={handleInputChange}
-              placeholder="Enter gateway public key"
-              required
-            />
+            {gatewaysLoading ? (
+              <div className="flex items-center space-x-2 p-2 border rounded-md">
+                <Spinner size="sm" />
+                <span className="text-gray-500">Loading gateways...</span>
+              </div>
+            ) : (
+              <select
+                id="gateway"
+                name="gateway"
+                value={formData.gateway}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md"
+                required
+              >
+                <option value="">Select a gateway</option>
+                {gateways.map((gateway, index) => (
+                  <option key={index} value={gateway.publicKey.toString()}>
+                    {truncateAddress(gateway.publicKey.toString())} - {gateway.account.gatewayFeeBps} bps
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -3,5 +3,7 @@ packages:
   - "app"
   - "landing"
   - "sdk"
+  - "sdk-react"
+  - "sdk-widgets"
   - "tests"
   - "scheduler"

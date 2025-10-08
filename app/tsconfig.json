@@ -11,7 +11,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@tributary/sdk": ["../sdk/src"],
+      "@tributary/sdk-react": ["../sdk-react/src"],
+      "@tributary/sdk-widgets": ["../sdk-widgets/src"]
     }
   }
 }

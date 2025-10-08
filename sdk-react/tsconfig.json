@@ -11,12 +11,17 @@
     "declarationMap": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "lib": ["es2020"],
-    "target": "es2020",
-    "module": "es2020",
+    "target": "esnext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["node"],
-    "outDir": "./dist"
+    "outDir": "./lib",
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tributary/sdk": ["../sdk/src"]
+    }
   },
   "exclude": ["node_modules", "tests"]
 }
