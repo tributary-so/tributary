@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { PublicKey } from '@solana/web3.js'
-import { Spinner } from '@heroui/react'
+import { PublicKey, Transaction } from '@solana/web3.js'
+import { Spinner, Button } from '@heroui/react'
 import { Alert, AlertDescription } from '../ui/alert'
 import { useSDK } from '@/lib/client'
-import type { PaymentPolicy, UserPayment } from '@tributary/sdk'
+import type { PaymentPolicy, UserPayment, PaymentGateway } from '@tributary/sdk'
 import { PublicKeyComponent } from '@/components/ui/public-key'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
+import { Play } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface UserPaymentWithPolicies {
   userPaymentAddress: PublicKey
@@ -22,6 +24,7 @@ export default function PaymentPolicyList() {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userPayments, setUserPayments] = useState<UserPaymentWithPolicies[]>([])
+  const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchPolicies = async () => {
@@ -134,6 +137,57 @@ export default function PaymentPolicyList() {
     return 'Unknown'
   }
 
+  const isPaymentDue = (policy: PaymentPolicy): boolean => {
+    const nextPaymentDue = policy.nextPaymentDue
+    if (!nextPaymentDue) return false
+
+    const nextPaymentDate = new Date(nextPaymentDue.toNumber() * 1000)
+    const now = new Date()
+
+    return nextPaymentDate <= now
+  }
+
+  const handleExecutePayment = async (policyPublicKey: PublicKey, policy: PaymentPolicy) => {
+    if (!sdk || !wallet.publicKey) {
+      toast.error('Wallet not connected')
+      return
+    }
+
+    try {
+      const gateway: PaymentGateway | null = await sdk.getPaymentGateway(policy.gateway)
+
+      if (!gateway) {
+        toast.error('Gateway not found')
+        return
+      }
+
+      if (gateway.authority.toString() !== wallet.publicKey.toString()) {
+        toast.error('Only the gateway authority can execute payments')
+        return
+      }
+
+      setExecutingPayments((prev) => new Set(prev).add(policyPublicKey.toString()))
+
+      const tx = new Transaction()
+      const executeIxs = await sdk.executePayment(policyPublicKey)
+      executeIxs.map((instruction) => tx.add(instruction))
+      await sdk.provider.sendAndConfirm(tx)
+
+      toast.success(`Payment executed successfully! TX: ${tx}`)
+
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error executing payment:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to execute payment')
+    } finally {
+      setExecutingPayments((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-7xl mx-auto">
@@ -233,6 +287,7 @@ export default function PaymentPolicyList() {
                           <th className="border p-2 text-left text-xs">Payments</th>
                           <th className="border p-2 text-left text-xs">Failed</th>
                           <th className="border p-2 text-left text-xs">Memo</th>
+                          <th className="border p-2 text-left text-xs">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -257,6 +312,19 @@ export default function PaymentPolicyList() {
                             <td className="border p-2 text-center text-sm">{account.paymentCount}</td>
                             <td className="border p-2 text-center text-sm">{account.failedPaymentCount}</td>
                             <td className="border p-2 text-xs">{getMemo(account)}</td>
+                            <td className="border p-2">
+                              <Button
+                                size="sm"
+                                isIconOnly
+                                color="primary"
+                                variant="flat"
+                                isDisabled={!isPaymentDue(account) || executingPayments.has(publicKey.toString())}
+                                isLoading={executingPayments.has(publicKey.toString())}
+                                onPress={() => handleExecutePayment(publicKey, account)}
+                              >
+                                <Play className="h-4 w-4" />
+                              </Button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

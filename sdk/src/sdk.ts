@@ -261,16 +261,79 @@ export class RecurringPaymentsSDK {
 
   async executePayment(
     paymentPolicyPda: PublicKey
-  ): Promise<TransactionInstruction> {
+  ): Promise<TransactionInstruction[]> {
+    const instructions: TransactionInstruction[] = [];
     const paymentPolicy: PaymentPolicy =
       await this.program.account.paymentPolicy.fetch(paymentPolicyPda);
     const userPaymentPda = paymentPolicy.userPayment;
     const userPayment: UserPayment =
       await this.program.account.userPayment.fetch(userPaymentPda);
 
+    const gateway = await this.getPaymentGateway(paymentPolicy.gateway);
     const { address: configPda } = getConfigPda(this.programId);
     const config = await this.program.account.programConfig.fetch(configPda);
     const authority = this.provider.publicKey;
+
+    // Payment Recipient ATA
+    const recipientTokenAccount = getAssociatedTokenAddressSync(
+      userPayment.tokenMint,
+      paymentPolicy.recipient
+    );
+    const recipientAccountInfo = await this.connection.getAccountInfo(
+      recipientTokenAccount
+    );
+    if (!recipientAccountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        authority,
+        recipientTokenAccount,
+        paymentPolicy.recipient,
+        userPayment.tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Gateway Fee account ATA
+    const gatewayFeeAccount = getAssociatedTokenAddressSync(
+      userPayment.tokenMint,
+      gateway!.feeRecipient
+    );
+    const gatewayFeeAccountInfo = await this.connection.getAccountInfo(
+      gatewayFeeAccount
+    );
+    if (!gatewayFeeAccountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        authority,
+        gatewayFeeAccount,
+        gateway!.feeRecipient,
+        userPayment.tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Protocol Fee account ATA
+    const protocolFeeAccount = getAssociatedTokenAddressSync(
+      userPayment.tokenMint,
+      config!.feeRecipient
+    );
+    const protocolFeeAccountInfo = await this.connection.getAccountInfo(
+      protocolFeeAccount
+    );
+    if (!protocolFeeAccountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        authority,
+        protocolFeeAccount,
+        config!.feeRecipient,
+        userPayment.tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
     const accounts = {
       gatewayAuthority: authority,
       paymentsDelegate: this.getPaymentsDelegatePda().address,
@@ -278,28 +341,20 @@ export class RecurringPaymentsSDK {
       userPayment: userPaymentPda,
       gateway: paymentPolicy.gateway,
       config: configPda,
-      userTokenAccount: getAssociatedTokenAddressSync(
-        userPayment.tokenMint,
-        userPayment.owner
-      ),
-      recipientTokenAccount: getAssociatedTokenAddressSync(
-        userPayment.tokenMint,
-        paymentPolicy.recipient
-      ),
-      gatewayFeeAccount: getAssociatedTokenAddressSync(
-        userPayment.tokenMint,
-        paymentPolicy.gateway
-      ),
-      protocolFeeAccount: getAssociatedTokenAddressSync(
-        userPayment.tokenMint,
-        config.feeRecipient
-      ),
+      userTokenAccount: userPayment.tokenAccount,
+      recipientTokenAccount,
+      gatewayFeeAccount: gatewayFeeAccount,
+      protocolFeeAccount: protocolFeeAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
-    return await this.program.methods
-      .executePayment()
-      .accountsStrict(accounts)
-      .instruction();
+    instructions.push(
+      await this.program.methods
+        .executePayment()
+        .accountsStrict(accounts)
+        .instruction()
+    );
+
+    return instructions;
   }
 
   // Helper methods to get PDAs

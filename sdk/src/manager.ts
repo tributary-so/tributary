@@ -208,8 +208,9 @@ program
       );
       const userPaymentPda = new PublicKey(options.userPayment);
 
-      const instruction = await sdk.executePayment(userPaymentPda);
-      const tx = new anchor.web3.Transaction().add(instruction);
+      const instructions = await sdk.executePayment(userPaymentPda);
+      const tx = new anchor.web3.Transaction();
+      instructions.map((instruction) => tx.add(instruction));
       const signature = await sdk.provider.sendAndConfirm(tx);
 
       console.log("Payment executed successfully!");
