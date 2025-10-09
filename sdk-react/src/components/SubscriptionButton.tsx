@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
+import { Button } from "@heroui/button";
 import {
   useCreateSubscription,
   PaymentInterval,
@@ -20,6 +21,8 @@ interface SubscriptionButtonProps {
   label?: string;
   className?: string;
   disabled?: boolean;
+  radius: "none" | "sm" | "md" | "lg" | "full" | undefined;
+  size: "sm" | "md" | "lg" | undefined;
   onSuccess?: (result: CreateSubscriptionResult) => void;
   onError?: (error: Error) => void;
 }
@@ -37,6 +40,8 @@ export function SubscriptionButton({
   label = "Subscribe",
   className = "",
   disabled = false,
+  radius = "none",
+  size = "lg",
   onSuccess,
   onError,
 }: SubscriptionButtonProps) {
@@ -64,13 +69,15 @@ export function SubscriptionButton({
   const isDisabled = disabled || loading;
 
   return (
-    <button
+    <Button
       onClick={handleClick}
       disabled={isDisabled}
       className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border border-transparent shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      radius={radius}
+      size={size}
     >
       {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
       {loading ? "Creating Subscription..." : label}
-    </button>
+    </Button>
   );
 }
