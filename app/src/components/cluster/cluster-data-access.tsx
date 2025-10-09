@@ -17,14 +17,25 @@ export enum ClusterNetwork {
   Custom = 'custom',
 }
 
-// By default, we don't configure the mainnet-beta cluster
-// The endpoint provided by clusterApiUrl('mainnet-beta') does not allow access from the browser due to CORS restrictions
-// To use the mainnet-beta cluster, provide a custom endpoint
+const getDefaultEndpoint = (): string => {
+  return import.meta.env.VITE_SOLANA_API || clusterApiUrl('devnet')
+}
+
+const getDefaultNetwork = (): ClusterNetwork => {
+  const customEndpoint = import.meta.env.VITE_SOLANA_API
+  if (!customEndpoint) return ClusterNetwork.Devnet
+
+  if (customEndpoint.includes('mainnet')) return ClusterNetwork.Mainnet
+  if (customEndpoint.includes('testnet')) return ClusterNetwork.Testnet
+  if (customEndpoint.includes('devnet')) return ClusterNetwork.Devnet
+  return ClusterNetwork.Custom
+}
+
 export const defaultClusters: SolanaCluster[] = [
   {
-    name: 'devnet',
-    endpoint: clusterApiUrl('devnet'),
-    network: ClusterNetwork.Devnet,
+    name: import.meta.env.VITE_SOLANA_API ? 'custom' : 'devnet',
+    endpoint: getDefaultEndpoint(),
+    network: getDefaultNetwork(),
   },
   { name: 'local', endpoint: 'http://localhost:8899' },
   {

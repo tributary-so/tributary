@@ -25,6 +25,7 @@ import type {
   UserPayment,
   PaymentPolicy,
   PaymentGateway,
+  ProgramConfig,
 } from "./types.js";
 import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
@@ -359,5 +360,37 @@ export class RecurringPaymentsSDK {
         },
       },
     ]);
+  }
+
+  async getUserPayment(
+    userPaymentAddress: PublicKey
+  ): Promise<UserPayment | null> {
+    return await this.program.account.userPayment.fetchNullable(
+      userPaymentAddress
+    );
+  }
+
+  async getProgramConfig(
+    configAddress: PublicKey
+  ): Promise<ProgramConfig | null> {
+    return await this.program.account.programConfig.fetchNullable(
+      configAddress
+    );
+  }
+
+  async getPaymentGateway(
+    gatewayAddress: PublicKey
+  ): Promise<PaymentGateway | null> {
+    return await this.program.account.paymentGateway.fetchNullable(
+      gatewayAddress
+    );
+  }
+
+  async getPaymentPolicy(
+    policyAddress: PublicKey
+  ): Promise<PaymentPolicy | null> {
+    return await this.program.account.paymentPolicy.fetchNullable(
+      policyAddress
+    );
   }
 }
