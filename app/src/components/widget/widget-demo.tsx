@@ -5,6 +5,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
 
+const PAYMENT_GATEWAY_PUBLIC_KEY = new PublicKey('AWqqH2c5zKhBUKrme1D28uQooS54HvAeS1ix8nfQ4bEt')
+const PAYMENT_RECIPIENT = new PublicKey('13t75JFchMhN5HLxymskNBkNSPFcbwYV2e5TeFNtHHbj')
+
 export default function WidgetDemo() {
   const [txId, setTxId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -67,12 +70,13 @@ export default function WidgetDemo() {
             </div>
 
             <SubscriptionButton
-              amount={new BN(10_000_000)} // TODO: Set actual amount
-              token={new PublicKey('13B9cWZtpyWahiSueGt2GQKYgj45QeUHvUyCQZ3kRRLa')} // TODO: Set token mint (e.g., USDC)
-              recipient={new PublicKey('13t75JFchMhN5HLxymskNBkNSPFcbwYV2e5TeFNtHHbj')} // TODO: Set recipient wallet
-              gateway={new PublicKey('12t1Np3PFz4yPo9geRU6XeunJiVHJ8nJG4F67jyoHF7L')} // TODO: Set gateway address
+              amount={new BN(10_000_000)}
+              token={new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU')}
+              recipient={PAYMENT_RECIPIENT}
+              gateway={PAYMENT_GATEWAY_PUBLIC_KEY}
               interval={PaymentInterval.Monthly}
               maxRenewals={12}
+              approvalAmount={new BN(10_000_000_000)} // 10k USDC
               memo="Premium subscription - Widget Demo"
               label="Subscribe for $10/month"
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -93,15 +97,16 @@ import { BN } from '@coral-xyz/anchor'
 
 <SubscriptionButton
   amount={new BN(10_000_000)}
-  token={new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")}
-  recipient={new PublicKey("merchantWallet...")}
-  gateway={new PublicKey("gatewayWallet...")}
+  token={new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU')}
+  recipient={PAYMENT_RECIPIENT}
+  gateway={PAYMENT_GATEWAY_PUBLIC_KEY}
   interval={PaymentInterval.Monthly}
   maxRenewals={12}
-  memo="Premium subscription"
+  memo="Premium subscription - Widget Demo"
   label="Subscribe for $10/month"
-  onSuccess={(result) => console.log('Success!', result)}
-  onError={(error) => console.error('Error:', error)}
+  className="bg-blue-600 hover:bg-blue-700 text-white"
+  onSuccess={handleSuccess}
+  onError={handleError}
 />`}</code>
             </pre>
           </div>

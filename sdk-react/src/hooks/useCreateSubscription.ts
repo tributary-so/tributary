@@ -99,7 +99,8 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         policyType,
         frequency,
         memoBuffer,
-        startTime
+        startTime,
+        params.approvalAmount
       );
 
       // Build transaction

@@ -19,6 +19,7 @@ export interface CreateSubscriptionParams {
   maxRenewals?: number;
   memo?: string;
   startTime?: Date;
+  approvalAmount?: BN;
 }
 
 export interface CreateSubscriptionResult {

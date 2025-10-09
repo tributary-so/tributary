@@ -16,6 +16,7 @@ interface SubscriptionButtonProps {
   maxRenewals?: number;
   memo?: string;
   startTime?: Date;
+  approvalAmount?: BN;
   label?: string;
   className?: string;
   disabled?: boolean;
@@ -32,6 +33,7 @@ export function SubscriptionButton({
   maxRenewals,
   memo,
   startTime,
+  approvalAmount,
   label = "Subscribe",
   className = "",
   disabled = false,
@@ -51,6 +53,7 @@ export function SubscriptionButton({
         maxRenewals,
         memo,
         startTime,
+        approvalAmount,
       });
       onSuccess?.(result);
     } catch (err) {

@@ -40,6 +40,7 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
     autoRenew: true,
     maxRenewals: '',
     startTime: '',
+    approvalAmount: '',
   })
 
   // Fetch gateways on component mount
@@ -167,6 +168,12 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
         startTime = new anchor.BN(Math.floor(new Date(formData.startTime).getTime() / 1000))
       }
 
+      // Parse approval amount if provided
+      let approvalAmount: anchor.BN | undefined = undefined
+      if (formData.approvalAmount) {
+        approvalAmount = new anchor.BN(formData.approvalAmount)
+      }
+
       // Get instructions using the new method
       const instructions = await sdk.createPaymentPolicyWithUser(
         new PublicKey(formData.tokenMint),
@@ -176,6 +183,7 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
         paymentFrequency,
         memo,
         startTime,
+        approvalAmount,
       )
 
       // Create and send transaction
@@ -212,6 +220,7 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
         autoRenew: true,
         maxRenewals: '',
         startTime: '',
+        approvalAmount: '',
       })
 
       onSuccess?.()
@@ -362,6 +371,19 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
               type="datetime-local"
               value={formData.startTime}
               onChange={handleInputChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="approvalAmount">Delegate Approval Amount (optional)</Label>
+            <Input
+              id="approvalAmount"
+              name="approvalAmount"
+              type="number"
+              value={formData.approvalAmount}
+              onChange={handleInputChange}
+              placeholder="Token amount to approve for delegate"
+              min="1"
             />
           </div>
         </div>

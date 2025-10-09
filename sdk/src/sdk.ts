@@ -7,6 +7,7 @@ import {
 import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
+  createApproveInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -152,7 +153,8 @@ export class RecurringPaymentsSDK {
     policyType: PolicyType,
     paymentFrequency: PaymentFrequency,
     memo: number[],
-    startTime?: anchor.BN | null
+    startTime?: anchor.BN | null,
+    approvalAmount?: anchor.BN
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -214,6 +216,44 @@ export class RecurringPaymentsSDK {
       .instruction();
 
     instructions.push(createPaymentPolicyIx);
+
+    if (approvalAmount) {
+      const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+      let needsApproval = false;
+
+      const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+        ownerTokenAccount
+      );
+
+      if (tokenAccountInfo.value?.data) {
+        const parsedData = tokenAccountInfo.value.data as any;
+        const currentDelegate = parsedData.parsed?.info?.delegate;
+        const currentDelegatedAmount =
+          parsedData.parsed?.info?.delegatedAmount?.amount;
+
+        if (!currentDelegate) {
+          needsApproval = true;
+        } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+          needsApproval = true;
+        } else if (currentDelegatedAmount !== approvalAmount.toString()) {
+          needsApproval = true;
+        }
+      } else {
+        needsApproval = true;
+      }
+
+      if (needsApproval) {
+        const approveIx = createApproveInstruction(
+          ownerTokenAccount,
+          paymentsDelegatePda,
+          user,
+          BigInt(approvalAmount.toString()),
+          [],
+          TOKEN_PROGRAM_ID
+        );
+        instructions.push(approveIx);
+      }
+    }
 
     return instructions;
   }
