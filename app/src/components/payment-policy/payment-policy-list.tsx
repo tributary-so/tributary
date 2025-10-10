@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, Transaction } from '@solana/web3.js'
+import { getMint } from '@solana/spl-token'
 import { Spinner, Button } from '@heroui/react'
 import { Alert, AlertDescription } from '../ui/alert'
 import { useSDK } from '@/lib/client'
@@ -9,6 +10,11 @@ import { PublicKeyComponent } from '@/components/ui/public-key'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
 import { Play } from 'lucide-react'
 import { toast } from 'sonner'
+
+interface TokenInfo {
+  decimals: number
+  symbol?: string
+}
 
 interface UserPaymentWithPolicies {
   userPaymentAddress: PublicKey
@@ -25,6 +31,7 @@ export default function PaymentPolicyList() {
   const [error, setError] = useState<string | null>(null)
   const [userPayments, setUserPayments] = useState<UserPaymentWithPolicies[]>([])
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
+  const [tokenInfoCache, setTokenInfoCache] = useState<Map<string, TokenInfo>>(new Map())
 
   useEffect(() => {
     const fetchPolicies = async () => {
@@ -39,6 +46,7 @@ export default function PaymentPolicyList() {
         const allPolicies = await sdk.getAllPaymentPolicies()
 
         const userPaymentMap = new Map<string, UserPaymentWithPolicies>()
+        const tokenInfoMap = new Map<string, TokenInfo>()
 
         for (const policy of allPolicies) {
           const userPaymentAddress = policy.account.userPayment.toString()
@@ -51,6 +59,20 @@ export default function PaymentPolicyList() {
                 userPayment,
                 policies: [],
               })
+
+              const mintAddress = userPayment.tokenMint.toString()
+              if (!tokenInfoMap.has(mintAddress)) {
+                try {
+                  const mintInfo = await getMint(connection, userPayment.tokenMint)
+                  console.log(mintInfo)
+                  tokenInfoMap.set(mintAddress, {
+                    decimals: mintInfo.decimals,
+                    symbol: undefined,
+                  })
+                } catch (err) {
+                  console.error('Error fetching mint info:', err)
+                }
+              }
             }
           }
 
@@ -61,6 +83,7 @@ export default function PaymentPolicyList() {
         }
 
         setUserPayments(Array.from(userPaymentMap.values()))
+        setTokenInfoCache(tokenInfoMap)
         setLoaded(true)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch payment policies'
@@ -72,7 +95,7 @@ export default function PaymentPolicyList() {
     }
 
     fetchPolicies()
-  }, [sdk, loaded])
+  }, [sdk, loaded, connection])
 
   const getPolicyType = (policy: PaymentPolicy) => {
     const policyType = policy.policyType as Record<string, unknown>
@@ -135,6 +158,35 @@ export default function PaymentPolicyList() {
     if (status.completed) return 'Completed'
     if (status.failed) return 'Failed'
     return 'Unknown'
+  }
+
+  const getAmount = (policy: PaymentPolicy): string | null => {
+    const policyType = policy.policyType as Record<string, unknown>
+    let amount: number | null = null
+
+    if (policyType.subscription) {
+      amount = Number((policyType.subscription as Record<string, unknown>).amount)
+    }
+
+    if (amount === null) return null
+
+    return amount.toString()
+  }
+
+  const formatAmount = (policy: PaymentPolicy, tokenMint: PublicKey): string => {
+    const rawAmount = getAmount(policy)
+    if (!rawAmount) return 'N/A'
+
+    const tokenInfo = tokenInfoCache.get(tokenMint.toString())
+    if (!tokenInfo) return rawAmount
+
+    const amount = Number(rawAmount) / Math.pow(10, tokenInfo.decimals)
+    const formattedAmount = amount.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: tokenInfo.decimals,
+    })
+
+    return tokenInfo.symbol ? `${formattedAmount} ${tokenInfo.symbol}` : formattedAmount
   }
 
   const isPaymentDue = (policy: PaymentPolicy): boolean => {
@@ -279,6 +331,7 @@ export default function PaymentPolicyList() {
                           <th className="border p-2 text-left text-xs">Policy Address</th>
                           <th className="border p-2 text-left text-xs">ID</th>
                           <th className="border p-2 text-left text-xs">Type</th>
+                          <th className="border p-2 text-left text-xs">Amount</th>
                           <th className="border p-2 text-left text-xs">Recipient</th>
                           <th className="border p-2 text-left text-xs">Total Paid</th>
                           <th className="border p-2 text-left text-xs">Interval</th>
@@ -298,6 +351,7 @@ export default function PaymentPolicyList() {
                             </td>
                             <td className="border p-2 text-center text-sm">{account.policyId}</td>
                             <td className="border p-2 text-sm">{getPolicyType(account)}</td>
+                            <td className="border p-2 text-sm">{formatAmount(account, userPayment.tokenMint)}</td>
                             <td className="border p-2 font-mono text-xs">
                               <PublicKeyComponent publicKey={account.recipient} />
                             </td>
