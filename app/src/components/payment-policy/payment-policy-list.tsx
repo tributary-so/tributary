@@ -5,7 +5,7 @@ import { getMint } from '@solana/spl-token'
 import { Spinner, Button } from '@heroui/react'
 import { Alert, AlertDescription } from '../ui/alert'
 import { useSDK } from '@/lib/client'
-import type { PaymentPolicy, UserPayment, PaymentGateway } from '@tributary/sdk'
+import { type PaymentPolicy, type UserPayment, type PaymentGateway, getTokenInfo, Metadata } from '@tributary/sdk'
 import { PublicKeyComponent } from '@/components/ui/public-key'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
 import { Play } from 'lucide-react'
@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 
 interface TokenInfo {
   decimals: number
+  metadata?: Metadata
   symbol?: string
 }
 
@@ -64,10 +65,11 @@ export default function PaymentPolicyList() {
               if (!tokenInfoMap.has(mintAddress)) {
                 try {
                   const mintInfo = await getMint(connection, userPayment.tokenMint)
-                  console.log(mintInfo)
+                  const metadata = await getTokenInfo(connection, userPayment.tokenMint)
                   tokenInfoMap.set(mintAddress, {
                     decimals: mintInfo.decimals,
-                    symbol: undefined,
+                    metadata: metadata ?? undefined,
+                    symbol: metadata?.data.symbol,
                   })
                 } catch (err) {
                   console.error('Error fetching mint info:', err)
@@ -81,6 +83,10 @@ export default function PaymentPolicyList() {
             entry.policies.push(policy)
           }
         }
+
+        // Hard coded mint data not using metaplex
+        // TODO: put this into the constants
+        tokenInfoMap.set('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', { decimals: 6, symbol: 'USDC' })
 
         setUserPayments(Array.from(userPaymentMap.values()))
         setTokenInfoCache(tokenInfoMap)
@@ -338,7 +344,6 @@ export default function PaymentPolicyList() {
                           <th className="border p-2 text-left text-xs">Next Payment</th>
                           <th className="border p-2 text-left text-xs">Status</th>
                           <th className="border p-2 text-left text-xs">Payments</th>
-                          <th className="border p-2 text-left text-xs">Failed</th>
                           <th className="border p-2 text-left text-xs">Memo</th>
                           <th className="border p-2 text-left text-xs">Actions</th>
                         </tr>
@@ -364,7 +369,6 @@ export default function PaymentPolicyList() {
                               </span>
                             </td>
                             <td className="border p-2 text-center text-sm">{account.paymentCount}</td>
-                            <td className="border p-2 text-center text-sm">{account.failedPaymentCount}</td>
                             <td className="border p-2 text-xs">{getMemo(account)}</td>
                             <td className="border p-2">
                               <Button

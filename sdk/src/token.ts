@@ -100,7 +100,6 @@ export async function getTokenInfo(
       collection: collectionData,
     };
   } catch (error) {
-    console.error("Error fetching token metadata:", error);
     return null;
   }
 }
