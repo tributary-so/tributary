@@ -100,7 +100,8 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         frequency,
         memoBuffer,
         startTime,
-        params.approvalAmount
+        params.approvalAmount,
+        params.executeImmediately ?? true
       );
 
       // Build transaction

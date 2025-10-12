@@ -64,4 +64,8 @@ pub mod recurring_payments {
             ctx, policy_id, new_status,
         )
     }
+
+    pub fn delete_payment_policy(ctx: Context<DeletePaymentPolicy>, policy_id: u32) -> Result<()> {
+        instructions::delete_payment_policy::handler_delete_payment_policy(ctx, policy_id)
+    }
 }

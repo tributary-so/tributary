@@ -416,6 +416,103 @@ export type RecurringPayments = {
       "args": []
     },
     {
+      "name": "deletePaymentPolicy",
+      "discriminator": [
+        146,
+        180,
+        143,
+        169,
+        50,
+        40,
+        146,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint"
+        },
+        {
+          "name": "paymentPolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "arg",
+                "path": "policyId"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "policyId",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "executePayment",
       "discriminator": [
         86,

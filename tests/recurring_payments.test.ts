@@ -827,4 +827,46 @@ describe("Recurring Payments", () => {
     expect(updatedPolicy!.paymentCount).toBe(1);
     expect(updatedPolicy!.totalPaid.toNumber()).toBe(20000);
   });
+
+  test("Delete payment policy", async () => {
+    // Get initial user payment state
+    const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
+    const initialActivePoliciesCount = initialUserPayment!.activePoliciesCount;
+
+    // Use policy ID 2 from a previous test (the second policy created)
+    const policyIdToDelete = 2;
+    const [policyToDeletePDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("payment_policy"),
+        userPaymentPDA.toBuffer(),
+        new anchor.BN(policyIdToDelete).toArrayLike(Buffer, "le", 4),
+      ],
+      program.programId
+    );
+
+    // Verify policy exists before deletion
+    const policyBeforeDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
+    expect(policyBeforeDeletion).not.toBeNull();
+    expect(policyBeforeDeletion!.policyId).toBe(policyIdToDelete);
+
+    // Delete the payment policy (only owner can delete)
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
+    const deleteTx = new Transaction().add(deleteIx);
+    await sendAndConfirmTransaction(connection, deleteTx, [user]);
+
+    // Verify policy was deleted (account should not exist)
+    const policyAfterDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
+    expect(policyAfterDeletion).toBeNull();
+
+    // Verify user payment active policies count was decremented
+    const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
+    expect(updatedUserPayment!.activePoliciesCount).toBe(
+      initialActivePoliciesCount - 1
+    );
+    expect(updatedUserPayment!.updatedAt.toNumber()).toBeGreaterThanOrEqual(
+      initialUserPayment!.updatedAt.toNumber()
+    );
+  });
 });

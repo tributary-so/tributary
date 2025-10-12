@@ -476,6 +476,33 @@ export class RecurringPaymentsSDK {
       .instruction();
   }
 
+  async deletePaymentPolicy(
+    tokenMint: PublicKey,
+    policyId: number
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: paymentPolicyPda } = this.getPaymentPolicyPda(
+      userPaymentPda,
+      policyId
+    );
+
+    const accounts = {
+      owner: owner,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      paymentPolicy: paymentPolicyPda,
+    };
+
+    return await this.program.methods
+      .deletePaymentPolicy(policyId)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
   // Query methods
   async getAllPaymentGateway(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentGateway }>

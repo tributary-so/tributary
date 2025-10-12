@@ -18,6 +18,7 @@ interface SubscriptionButtonProps {
   memo?: string;
   startTime?: Date;
   approvalAmount?: BN;
+  executeImmediately?: boolean;
   label?: string;
   className?: string;
   disabled?: boolean;
@@ -37,6 +38,7 @@ export function SubscriptionButton({
   memo,
   startTime,
   approvalAmount,
+  executeImmediately = true,
   label = "Subscribe",
   className = "",
   disabled = false,
@@ -59,6 +61,7 @@ export function SubscriptionButton({
         memo,
         startTime,
         approvalAmount,
+        executeImmediately,
       });
       onSuccess?.(result);
     } catch (err) {
