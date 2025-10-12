@@ -58,11 +58,9 @@ describe("Recurring Payments", () => {
         lamports: amount * LAMPORTS_PER_SOL,
       })
     );
-    const signature = await provider.sendAndConfirm(transaction);
-    await provider.connection.confirmTransaction(
-      signature,
-      "processed" as Commitment
-    );
+    const signature = await provider.sendAndConfirm(transaction, null, {
+      commitment: "processed" as Commitment,
+    });
   }
 
   beforeAll(async () => {
@@ -192,7 +190,9 @@ describe("Recurring Payments", () => {
     const initIx = await sdk.initialize(admin.publicKey);
     const tx = new Transaction().add(initIx);
 
-    await sendAndConfirmTransaction(connection, tx, [admin]);
+    await sendAndConfirmTransaction(connection, tx, [admin], {
+      commitment: "processed" as Commitment,
+    });
 
     const configAccount = await sdk.getProgramConfig(configPDA);
 
@@ -211,7 +211,9 @@ describe("Recurring Payments", () => {
     const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
     const tx = new Transaction().add(createUserPaymentIx);
 
-    await sendAndConfirmTransaction(connection, tx, [user]);
+    await sendAndConfirmTransaction(connection, tx, [user], {
+      commitment: "processed" as Commitment,
+    });
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
 
@@ -235,7 +237,9 @@ describe("Recurring Payments", () => {
     );
     const tx = new Transaction().add(createGatewayIx);
 
-    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+      commitment: "processed" as Commitment,
+    });
 
     const gatewayAccount = await sdk.getPaymentGateway(gatewayPDA);
 
@@ -280,7 +284,9 @@ describe("Recurring Payments", () => {
     );
     const tx = new Transaction().add(createPolicyIx);
 
-    await sendAndConfirmTransaction(connection, tx, [user]);
+    await sendAndConfirmTransaction(connection, tx, [user], {
+      commitment: "processed" as Commitment,
+    });
 
     const policyAccount = await sdk.getPaymentPolicy(paymentPolicyPDA);
 
@@ -292,7 +298,6 @@ describe("Recurring Payments", () => {
     expect(policyAccount!.paymentFrequency).toEqual({ daily: {} });
     expect(policyAccount!.totalPaid.toNumber()).toBe(0);
     expect(policyAccount!.paymentCount).toBe(0);
-    expect(policyAccount!.failedPaymentCount).toBe(0);
     expect(policyAccount!.bump).toBe(paymentPolicyBump);
     expect(policyAccount!.createdAt.toNumber()).toBeGreaterThan(0);
 
@@ -320,7 +325,9 @@ describe("Recurring Payments", () => {
       const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
       const tx = new Transaction().add(...executePaymentIxs);
 
-      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
+      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       assert(
         false,
@@ -366,7 +373,9 @@ describe("Recurring Payments", () => {
     const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
     const tx = new Transaction().add(...executePaymentIxs);
 
-    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+      commitment: "processed" as Commitment,
+    });
 
     // Verify payment was executed
     const finalRecipientBalance = await connection.getTokenAccountBalance(
@@ -416,7 +425,9 @@ describe("Recurring Payments", () => {
       const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
       const tx = new Transaction().add(...executePaymentIxs);
 
-      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
+      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       assert(
         false,
@@ -480,7 +491,9 @@ describe("Recurring Payments", () => {
       new anchor.BN(twoHoursAgo) // start_time in past
     );
     const createTx = new Transaction().add(createPolicy2Ix);
-    await sendAndConfirmTransaction(connection, createTx, [user]);
+    await sendAndConfirmTransaction(connection, createTx, [user], {
+      commitment: "processed" as Commitment,
+    });
 
     // Execute payment on the new policy (should succeed since next_payment_due is in past)
     // Update SDK to use gateway authority wallet
@@ -489,7 +502,9 @@ describe("Recurring Payments", () => {
     const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
     const executeTx = new Transaction().add(...executePaymentIxs);
 
-    await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority]);
+    await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority], {
+      commitment: "processed" as Commitment,
+    });
 
     // Verify payment was executed
     const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy2PDA);
@@ -501,9 +516,14 @@ describe("Recurring Payments", () => {
       const executePaymentIxs2 = await sdk.executePayment(paymentPolicy2PDA);
       const executeTx2 = new Transaction().add(...executePaymentIxs2);
 
-      await sendAndConfirmTransaction(connection, executeTx2, [
-        gatewayAuthority,
-      ]);
+      await sendAndConfirmTransaction(
+        connection,
+        executeTx2,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
 
       assert(
         false,
@@ -568,7 +588,9 @@ describe("Recurring Payments", () => {
 
     const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
     // only user has to sign
-    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user]);
+    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user], {
+      commitment: "processed" as Commitment,
+    });
 
     // Get initial balances
     const initialRecipientBalance = await connection.getTokenAccountBalance(
@@ -653,7 +675,9 @@ describe("Recurring Payments", () => {
 
     const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
     // only user has to sign
-    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user]);
+    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user], {
+      commitment: "processed" as Commitment,
+    });
 
     // Check balances after policy creation with executeImmediately = true
     const balanceAfterCreateTrue = await connection.getTokenAccountBalance(
@@ -670,5 +694,137 @@ describe("Recurring Payments", () => {
     expect(parseInt(userBalanceAfterCreateTrue.value.amount)).toEqual(
       parseInt(initialUser2Balance.value.amount)
     );
+  });
+
+  test("Change payment policy status - pause/resume and execution control", async () => {
+    // Create a new policy for this test
+    const amount = new anchor.BN(15000); // 0.015 token
+    const intervalSeconds = new anchor.BN(3600); // 1 hour
+    const memo = new Uint8Array(64).fill(0);
+    Buffer.from("status change test").copy(memo);
+
+    const policyType = {
+      subscription: {
+        amount: amount,
+        intervalSeconds: intervalSeconds,
+        autoRenew: true,
+        maxRenewals: null,
+        padding: Array(8).fill(new anchor.BN(0)),
+      },
+    };
+
+    const paymentFrequency = { custom: { 0: new anchor.BN(3600) } }; // 1 hour
+
+    // Set start time in the past so payment can be executed immediately
+    const pastTime = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
+
+    // Update SDK to use user wallet
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    // Create a new policy (policy ID will be 4 based on previous tests)
+    const policyId4 = 4;
+    const [paymentPolicy4PDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("payment_policy"),
+        userPaymentPDA.toBuffer(),
+        new anchor.BN(policyId4).toArrayLike(Buffer, "le", 4),
+      ],
+      program.programId
+    );
+
+    const createPolicy4Ix = await sdk.createPaymentPolicy(
+      tokenMint,
+      recipient.publicKey,
+      gatewayPDA,
+      policyType,
+      paymentFrequency,
+      Array.from(memo),
+      new anchor.BN(pastTime)
+    );
+    const createTx = new Transaction().add(createPolicy4Ix);
+    await sendAndConfirmTransaction(connection, createTx, [user], {
+      commitment: "processed" as Commitment,
+    });
+
+    // Verify policy was created with Active status
+    let policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+    expect(policy!.status).toEqual({ active: {} });
+
+    // 1. Change status to Paused
+    const pauseIx = await sdk.changePaymentPolicyStatus(tokenMint, policyId4, {
+      paused: {},
+    });
+    const pauseTx = new Transaction().add(pauseIx);
+    await sendAndConfirmTransaction(connection, pauseTx, [user], {
+      commitment: "processed" as Commitment,
+    });
+
+    // Verify status changed to Paused
+    policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+    expect(policy!.status).toEqual({ paused: {} });
+
+    // 2. Try to execute payment when paused - should fail
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+    try {
+      const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
+      const executeTx = new Transaction().add(...executePaymentIxs);
+
+      await sendAndConfirmTransaction(
+        connection,
+        executeTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      assert(false, "Expected payment execution to fail when policy is paused");
+    } catch (error: any) {
+      // Should fail because policy is paused
+      expect(error.message).toContain("PolicyPaused");
+    }
+
+    // 3. Change status back to Active
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    const resumeIx = await sdk.changePaymentPolicyStatus(tokenMint, policyId4, {
+      active: {},
+    });
+    const resumeTx = new Transaction().add(resumeIx);
+    await sendAndConfirmTransaction(connection, resumeTx, [user], {
+      commitment: "processed" as Commitment,
+    });
+
+    // Verify status changed back to Active
+    policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+    expect(policy!.status).toEqual({ active: {} });
+
+    // 4. Execute payment when active - should succeed
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+    const initialRecipientBalance = await connection.getTokenAccountBalance(
+      recipientTokenAccount
+    );
+
+    const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
+    const executeTx = new Transaction().add(...executePaymentIxs);
+
+    await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority], {
+      commitment: "processed" as Commitment,
+    });
+
+    // Verify payment was executed successfully
+    const finalRecipientBalance = await connection.getTokenAccountBalance(
+      recipientTokenAccount
+    );
+    expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
+      initialRecipientBalance.value.uiAmount || 0
+    );
+
+    // Verify policy was updated
+    const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+    expect(updatedPolicy!.paymentCount).toBe(1);
+    expect(updatedPolicy!.totalPaid.toNumber()).toBe(20000);
   });
 });

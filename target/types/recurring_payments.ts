@@ -14,6 +14,110 @@ export type RecurringPayments = {
   },
   "instructions": [
     {
+      "name": "changePaymentPolicyStatus",
+      "discriminator": [
+        250,
+        83,
+        53,
+        119,
+        200,
+        114,
+        9,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint"
+        },
+        {
+          "name": "paymentPolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "arg",
+                "path": "policyId"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "policyId",
+          "type": "u32"
+        },
+        {
+          "name": "newStatus",
+          "type": {
+            "defined": {
+              "name": "paymentStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "createPaymentGateway",
       "discriminator": [
         186,
@@ -655,6 +759,11 @@ export type RecurringPayments = {
       "code": 6010,
       "name": "noDelegateSet",
       "msg": "No or incorrect delegate set in ata"
+    },
+    {
+      "code": 6011,
+      "name": "policyPaused",
+      "msg": "Payment policy is paused"
     }
   ],
   "types": [

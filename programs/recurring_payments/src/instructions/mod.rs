@@ -1,9 +1,11 @@
+pub mod change_payment_policy_status;
 pub mod create_payment_gateway;
 pub mod create_payment_policy;
 pub mod create_user_payment;
 pub mod execute_payment;
 pub mod initialize;
 
+pub use change_payment_policy_status::*;
 pub use create_payment_gateway::*;
 pub use create_payment_policy::*;
 pub use create_user_payment::*;

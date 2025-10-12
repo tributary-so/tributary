@@ -54,4 +54,14 @@ pub mod recurring_payments {
     pub fn execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
         instructions::execute_payment::handler_execute_payment(ctx)
     }
+
+    pub fn change_payment_policy_status(
+        ctx: Context<ChangePaymentPolicyStatus>,
+        policy_id: u32,
+        new_status: PaymentStatus,
+    ) -> Result<()> {
+        instructions::change_payment_policy_status::handler_change_payment_policy_status(
+            ctx, policy_id, new_status,
+        )
+    }
 }

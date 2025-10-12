@@ -8,6 +8,110 @@
   },
   "instructions": [
     {
+      "name": "change_payment_policy_status",
+      "discriminator": [
+        250,
+        83,
+        53,
+        119,
+        200,
+        114,
+        9,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_payment",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "payment_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment"
+              },
+              {
+                "kind": "arg",
+                "path": "policy_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "policy_id",
+          "type": "u32"
+        },
+        {
+          "name": "new_status",
+          "type": {
+            "defined": {
+              "name": "PaymentStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "create_payment_gateway",
       "discriminator": [
         186,
@@ -649,6 +753,11 @@
       "code": 6010,
       "name": "NoDelegateSet",
       "msg": "No or incorrect delegate set in ata"
+    },
+    {
+      "code": 6011,
+      "name": "PolicyPaused",
+      "msg": "Payment policy is paused"
     }
   ],
   "types": [
