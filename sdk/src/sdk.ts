@@ -155,7 +155,8 @@ export class RecurringPaymentsSDK {
     paymentFrequency: PaymentFrequency,
     memo: number[],
     startTime?: anchor.BN | null,
-    approvalAmount?: anchor.BN
+    approvalAmount?: anchor.BN,
+    executeImmediately?: boolean
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -194,14 +195,14 @@ export class RecurringPaymentsSDK {
     }
 
     // Create payment policy instruction
-    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const accounts = {
       user: user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
       gateway: gateway,
-      paymentPolicy: paymentPolicy.address,
+      paymentPolicy: paymentPolicyPda.address,
       systemProgram: SystemProgram.programId,
     };
 
@@ -254,6 +255,13 @@ export class RecurringPaymentsSDK {
         );
         instructions.push(approveIx);
       }
+    }
+
+    if (executeImmediately) {
+      const executePaymentIxs = await this.executePayment(
+        paymentPolicyPda.address
+      );
+      instructions.push(...executePaymentIxs);
     }
 
     return instructions;

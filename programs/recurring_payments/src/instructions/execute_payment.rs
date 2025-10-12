@@ -47,7 +47,7 @@ pub struct ExecutePayment<'info> {
         bump = gateway.bump,
         constraint = gateway.is_active,
         constraint = gateway.key() == payment_policy.gateway,
-        constraint = gateway.authority == gateway_authority.key(),
+        constraint = gateway.authority == gateway_authority.key() || user_payment.owner == gateway_authority.key(),
     )]
     pub gateway: Box<Account<'info, PaymentGateway>>,
 
