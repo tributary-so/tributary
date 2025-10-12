@@ -328,7 +328,6 @@ describe("Recurring Payments", () => {
       );
     } catch (error: any) {
       // Should fail due to insufficient delegate approval
-      console.log(error.message);
       expect(error.message).toContain("No or incorrect delegate set in ata");
     }
   });
@@ -424,7 +423,6 @@ describe("Recurring Payments", () => {
         "Expected payment execution to fail when next_payment_due is in future"
       );
     } catch (error: any) {
-      console.log(error.message);
       expect(error.message).toContain("PaymentNotDue");
     }
   });
@@ -514,5 +512,163 @@ describe("Recurring Payments", () => {
     } catch (error: any) {
       expect(error.message).toContain("PaymentNotDue");
     }
+  });
+
+  test("executeImmediately option - token transfer only occurs when true", async () => {
+    // Update SDK to use user wallet
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    // Create token accounts for test user and recipient
+    const testRecipientTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      recipient.publicKey
+    );
+
+    // Mint tokens to test user
+    await mintTo(
+      connection,
+      mintAuthority,
+      tokenMint,
+      userTokenAccount,
+      mintAuthority,
+      1000000n // 1 token with 6 decimals
+    );
+
+    // Setup policy parameters
+    const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
+    const testIntervalSeconds = new anchor.BN(86400); // 1 day
+    const testMemo = new Uint8Array(64).fill(0);
+    Buffer.from("executeImmediately test").copy(testMemo);
+    const testPaymentFrequency = { daily: {} };
+    const approvalAmount = new anchor.BN(1000000); // 1 token
+    const currentTime = Math.floor(Date.now() / 1000);
+    const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
+
+    const testPolicyType = {
+      subscription: {
+        amount: testAmount,
+        intervalSeconds: testIntervalSeconds,
+        autoRenew: true,
+        maxRenewals: null,
+        padding: Array(8).fill(new anchor.BN(0)),
+      },
+    };
+
+    const createPolicyTrueIxs = await sdk.createPaymentPolicyWithUser(
+      tokenMint,
+      recipient.publicKey,
+      gatewayPDA,
+      testPolicyType,
+      testPaymentFrequency,
+      Array.from(testMemo),
+      testStartTime,
+      approvalAmount,
+      true // executeImmediately = true
+    );
+
+    const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
+    // only user has to sign
+    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user]);
+
+    // Get initial balances
+    const initialRecipientBalance = await connection.getTokenAccountBalance(
+      testRecipientTokenAccount
+    );
+    const initialUserBalance = await connection.getTokenAccountBalance(
+      userTokenAccount
+    );
+
+    // Check balances after policy creation with executeImmediately = false
+    const balanceAfterCreateFalse = await connection.getTokenAccountBalance(
+      testRecipientTokenAccount
+    );
+    const userBalanceAfterCreateFalse = await connection.getTokenAccountBalance(
+      userTokenAccount
+    );
+
+    // No token transfer should have occurred
+    expect(balanceAfterCreateFalse.value.amount).toBe(
+      initialRecipientBalance.value.amount
+    );
+    expect(userBalanceAfterCreateFalse.value.amount).toBe(
+      initialUserBalance.value.amount
+    );
+  });
+
+  test("executeImmediately option - no transfer if false", async () => {
+    const testRecipient2TokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      recipient.publicKey
+    );
+
+    // Mint tokens to test user 2
+    await mintTo(
+      connection,
+      mintAuthority,
+      tokenMint,
+      userTokenAccount,
+      mintAuthority,
+      1000000n // 1 token with 6 decimals
+    );
+
+    // Get initial balances for test 2
+    const initialRecipient2Balance = await connection.getTokenAccountBalance(
+      testRecipient2TokenAccount
+    );
+    const initialUser2Balance = await connection.getTokenAccountBalance(
+      userTokenAccount
+    );
+
+    // Setup policy parameters
+    const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
+    const testIntervalSeconds = new anchor.BN(86400); // 1 day
+    const testMemo = new Uint8Array(64).fill(0);
+    Buffer.from("executeImmediately test").copy(testMemo);
+    const testPaymentFrequency = { daily: {} };
+    const approvalAmount = new anchor.BN(1000000); // 1 token
+    const currentTime = Math.floor(Date.now() / 1000);
+    const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
+
+    const testPolicyType = {
+      subscription: {
+        amount: testAmount,
+        intervalSeconds: testIntervalSeconds,
+        autoRenew: true,
+        maxRenewals: null,
+        padding: Array(8).fill(new anchor.BN(0)),
+      },
+    };
+
+    const createPolicyTrueIxs = await sdk.createPaymentPolicyWithUser(
+      tokenMint,
+      recipient.publicKey,
+      gatewayPDA,
+      testPolicyType,
+      testPaymentFrequency,
+      Array.from(testMemo),
+      testStartTime,
+      approvalAmount,
+      false // executeImmediately = false
+    );
+
+    const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
+    // only user has to sign
+    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user]);
+
+    // Check balances after policy creation with executeImmediately = true
+    const balanceAfterCreateTrue = await connection.getTokenAccountBalance(
+      testRecipient2TokenAccount
+    );
+    const userBalanceAfterCreateTrue = await connection.getTokenAccountBalance(
+      userTokenAccount
+    );
+
+    // Token transfers should have occurred
+    expect(parseInt(balanceAfterCreateTrue.value.amount)).toEqual(
+      parseInt(initialRecipient2Balance.value.amount)
+    );
+    expect(parseInt(userBalanceAfterCreateTrue.value.amount)).toEqual(
+      parseInt(initialUser2Balance.value.amount)
+    );
   });
 });
