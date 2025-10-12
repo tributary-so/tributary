@@ -290,14 +290,25 @@ function App() {
             </div>
             <div className="bg-slate-900 p-8 rounded-lg border border-gray-700">
               <pre className="text-sm text-green-400 overflow-x-auto">
-                {`// Set up a subscription in 3 lines
-const subscription = await tributary.createSubscription({
-  amount: new BN(10_000_000), // 10 USDC
-  interval: PaymentInterval.Monthly,
-  recipient: merchantWallet,
-  token: USDC_MINT,
-  maxRenewals: 12 // 1 year
-});
+                {`import { SubscriptionButton } from '@tributary/sdk-widgets'
+import { PaymentInterval } from '@tributary/sdk-react'
+import { PublicKey } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
+
+<SubscriptionButton
+  amount={new BN(10_000_000)}
+  token={new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU')}
+  recipient={PAYMENT_RECIPIENT}
+  gateway={PAYMENT_GATEWAY_PUBLIC_KEY}
+  interval={PaymentInterval.Monthly}
+  maxRenewals={12}
+  memo="Premium subscription - Widget Demo"
+  label="Subscribe for $10/month"
+  executeImmediately={true}
+  className="bg-blue-600 hover:bg-blue-700 text-white"
+  onSuccess={handleSuccess}
+  onError={handleError}
+/>
 
 // That's it! Payments now flow automatically`}
               </pre>

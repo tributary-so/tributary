@@ -99,7 +99,7 @@ export default function WidgetDemo() {
                 className="bg-linear-to-tr from-pink-500 to-yellow-500 text-white shadow-lg"
                 radius="full"
                 size="lg"
-                executeImmediately={false}
+                executeImmediately={true}
                 onSuccess={handleSuccess}
                 onError={handleError}
               />
