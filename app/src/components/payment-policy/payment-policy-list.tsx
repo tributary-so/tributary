@@ -181,8 +181,7 @@ export default function PaymentPolicyList() {
     return amount.toString()
   }
 
-  const formatAmount = (policy: PaymentPolicy, tokenMint: PublicKey): string => {
-    const rawAmount = getAmount(policy)
+  const formatAmount = (rawAmount: string | null, tokenMint: PublicKey): string => {
     if (!rawAmount) return 'N/A'
 
     const tokenInfo = tokenInfoCache.get(tokenMint.toString())
@@ -438,11 +437,15 @@ export default function PaymentPolicyList() {
                             </td>
                             <td className="border p-2 text-center text-sm">{account.policyId}</td>
                             <td className="border p-2 text-sm">{getPolicyType(account)}</td>
-                            <td className="border p-2 text-sm">{formatAmount(account, userPayment.tokenMint)}</td>
+                            <td className="border p-2 text-sm">
+                              {formatAmount(getAmount(account), userPayment.tokenMint)}
+                            </td>
                             <td className="border p-2 font-mono text-xs">
                               <PublicKeyComponent publicKey={account.recipient} />
                             </td>
-                            <td className="border p-2 font-mono text-xs">{account.totalPaid.toString()}</td>
+                            <td className="border p-2 font-mono text-xs">
+                              {formatAmount(account.totalPaid.toString(), userPayment.tokenMint)}
+                            </td>
                             <td className="border p-2 text-sm">{getInterval(account)}</td>
                             <td className="border p-2 text-sm">{getNextPaymentDue(account)}</td>
                             <td className="border p-2">
