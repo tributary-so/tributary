@@ -814,10 +814,6 @@ export type RecurringPayments = {
             "type": "u32"
           },
           {
-            "name": "failedPaymentCount",
-            "type": "u32"
-          },
-          {
             "name": "createdAt",
             "type": "i64"
           },

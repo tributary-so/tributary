@@ -808,10 +808,6 @@
             "type": "u32"
           },
           {
-            "name": "failed_payment_count",
-            "type": "u32"
-          },
-          {
             "name": "created_at",
             "type": "i64"
           },
