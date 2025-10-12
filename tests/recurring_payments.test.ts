@@ -5,6 +5,8 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL,
   Commitment,
+  Transaction,
+  sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
   createMint,
@@ -12,7 +14,6 @@ import {
   createAssociatedTokenAccount,
   mintTo,
   approve,
-  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { RecurringPayments } from "../target/types/recurring_payments";
 import { RecurringPaymentsSDK } from "../sdk/src";
@@ -47,10 +48,7 @@ describe("Recurring Payments", () => {
   let paymentPolicyPDA: PublicKey;
   let paymentPolicyBump: number;
   let paymentsDelegate: PublicKey;
-  let paymentsDelegateBump: number;
   let sdk: RecurringPaymentsSDK;
-  let gatewayFeeAccount: PublicKey;
-  let protocolFeeAccount: PublicKey;
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
     const transaction = new anchor.web3.Transaction().add(
@@ -154,7 +152,7 @@ describe("Recurring Payments", () => {
     );
 
     // Derive payments delegate PDA
-    [paymentsDelegate, paymentsDelegateBump] = PublicKey.findProgramAddressSync(
+    [paymentsDelegate] = PublicKey.findProgramAddressSync(
       [Buffer.from("payments")],
       program.programId
     );
@@ -167,15 +165,15 @@ describe("Recurring Payments", () => {
       recipient.publicKey
     );
 
-    // Create fee recipient token accounts
-    gatewayFeeAccount = await createAssociatedTokenAccount(
+    // Create fee recipient token accounts (SDK will handle ATA creation automatically)
+    await createAssociatedTokenAccount(
       connection,
       admin,
       tokenMint,
       feeRecipient.publicKey
     );
 
-    protocolFeeAccount = await createAssociatedTokenAccount(
+    await createAssociatedTokenAccount(
       connection,
       admin,
       tokenMint,
@@ -188,75 +186,69 @@ describe("Recurring Payments", () => {
   });
 
   test("Initialize program", async () => {
-    await program.methods
-      .initialize()
-      .accounts({
-        admin: admin.publicKey,
-      })
-      .signers([admin])
-      .rpc();
+    // Update SDK to use admin wallet for this operation
+    await sdk.updateWallet(new anchor.Wallet(admin));
 
-    const configAccount = await program.account.programConfig.fetch(configPDA);
+    const initIx = await sdk.initialize(admin.publicKey);
+    const tx = new Transaction().add(initIx);
 
-    expect(configAccount.admin).toEqual(admin.publicKey);
-    expect(configAccount.feeRecipient).toEqual(admin.publicKey);
-    expect(configAccount.protocolFeeBps).toBe(100);
-    expect(configAccount.maxPoliciesPerUser).toBe(10);
-    expect(configAccount.emergencyPause).toBe(false);
-    expect(configAccount.bump).toBe(configBump);
+    await sendAndConfirmTransaction(connection, tx, [admin]);
+
+    const configAccount = await sdk.getProgramConfig(configPDA);
+
+    expect(configAccount!.admin).toEqual(admin.publicKey);
+    expect(configAccount!.feeRecipient).toEqual(admin.publicKey);
+    expect(configAccount!.protocolFeeBps).toBe(100);
+    expect(configAccount!.maxPoliciesPerUser).toBe(10);
+    expect(configAccount!.emergencyPause).toBe(false);
+    expect(configAccount!.bump).toBe(configBump);
   });
 
   test("Create user payment account", async () => {
-    await program.methods
-      .createUserPayment()
-      .accounts({
-        owner: user.publicKey,
-        tokenAccount: userTokenAccount,
-        tokenMint: tokenMint,
-      })
-      .signers([user as any])
-      .rpc();
+    // Update SDK to use user wallet
+    await sdk.updateWallet(new anchor.Wallet(user));
 
-    const userPayment = await program.account.userPayment.fetch(userPaymentPDA);
+    const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
+    const tx = new Transaction().add(createUserPaymentIx);
 
-    expect(userPayment.owner).toEqual(user.publicKey);
-    expect(userPayment.tokenAccount).toEqual(userTokenAccount);
-    expect(userPayment.tokenMint).toEqual(tokenMint);
-    expect(userPayment.activePoliciesCount).toBe(0);
-    expect(userPayment.isActive).toBe(true);
-    expect(userPayment.bump).toBe(userPaymentBump);
+    await sendAndConfirmTransaction(connection, tx, [user]);
+
+    const userPayment = await sdk.getUserPayment(userPaymentPDA);
+
+    expect(userPayment!.owner).toEqual(user.publicKey);
+    expect(userPayment!.tokenAccount).toEqual(userTokenAccount);
+    expect(userPayment!.tokenMint).toEqual(tokenMint);
+    expect(userPayment!.activePoliciesCount).toBe(0);
+    expect(userPayment!.isActive).toBe(true);
+    expect(userPayment!.bump).toBe(userPaymentBump);
   });
 
   test("Create payment gateway", async () => {
     const gatewayFeeBps = 250; // 2.5% fee
 
-    const accounts = {
-      authority: gatewayAuthority.publicKey,
-      gateway: gatewayPDA,
-      feeRecipient: feeRecipient.publicKey,
-      systemProgram: SystemProgram.programId,
-    };
-    await program.methods
-      .createPaymentGateway(gatewayFeeBps)
-      .accounts(accounts)
-      .signers([gatewayAuthority])
-      .rpc();
+    // Update SDK to use gateway authority wallet
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    const gatewayAccount = await program.account.paymentGateway.fetch(
-      gatewayPDA
+    const createGatewayIx = await sdk.createPaymentGateway(
+      gatewayFeeBps,
+      feeRecipient.publicKey
     );
+    const tx = new Transaction().add(createGatewayIx);
 
-    expect(gatewayAccount.authority).toEqual(gatewayAuthority.publicKey);
-    expect(gatewayAccount.feeRecipient).toEqual(feeRecipient.publicKey);
-    expect(gatewayAccount.gatewayFeeBps).toBe(gatewayFeeBps);
-    expect(gatewayAccount.isActive).toBe(true);
-    expect(gatewayAccount.totalProcessed.toNumber()).toBe(0);
-    expect(gatewayAccount.bump).toBe(gatewayBump);
-    expect(gatewayAccount.createdAt.toNumber()).toBeGreaterThan(0);
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
+
+    const gatewayAccount = await sdk.getPaymentGateway(gatewayPDA);
+
+    expect(gatewayAccount!.authority).toEqual(gatewayAuthority.publicKey);
+    expect(gatewayAccount!.feeRecipient).toEqual(feeRecipient.publicKey);
+    expect(gatewayAccount!.gatewayFeeBps).toBe(gatewayFeeBps);
+    expect(gatewayAccount!.isActive).toBe(true);
+    expect(gatewayAccount!.totalProcessed.toNumber()).toBe(0);
+    expect(gatewayAccount!.bump).toBe(gatewayBump);
+    expect(gatewayAccount!.createdAt.toNumber()).toBeGreaterThan(0);
   });
 
   test("Create payment policy", async () => {
-    const policyId = 1;
     const amount = new anchor.BN(10000); // 0.01 token with 6 decimals
     const intervalSeconds = new anchor.BN(86400); // 1 day
     const memo = new Uint8Array(64).fill(0);
@@ -274,82 +266,61 @@ describe("Recurring Payments", () => {
 
     const paymentFrequency = { daily: {} };
 
-    const accounts = {
-      user: user.publicKey,
-      userPayment: userPaymentPDA,
-      recipient: recipient.publicKey,
-      tokenMint: tokenMint,
-      gateway: gatewayPDA,
-      paymentPolicy: paymentPolicyPDA,
-      systemProgram: SystemProgram.programId,
-    };
-    await program.methods
-      .createPaymentPolicy(
-        policyId,
-        policyType,
-        paymentFrequency,
-        Array.from(memo),
-        null // start_time
-      )
-      .accounts(accounts)
-      .signers([user])
-      .rpc();
+    // Update SDK to use user wallet
+    await sdk.updateWallet(new anchor.Wallet(user));
 
-    const policyAccount = await program.account.paymentPolicy.fetch(
-      paymentPolicyPDA
+    const createPolicyIx = await sdk.createPaymentPolicy(
+      tokenMint,
+      recipient.publicKey,
+      gatewayPDA,
+      policyType,
+      paymentFrequency,
+      Array.from(memo),
+      null // start_time
     );
+    const tx = new Transaction().add(createPolicyIx);
 
-    expect(policyAccount.userPayment).toEqual(userPaymentPDA);
-    expect(policyAccount.recipient).toEqual(recipient.publicKey);
-    expect(policyAccount.gateway).toEqual(gatewayPDA);
-    expect(policyAccount.policyId).toBe(policyId);
-    expect(policyAccount.status).toEqual({ active: {} });
-    expect(policyAccount.paymentFrequency).toEqual({ daily: {} });
-    expect(policyAccount.totalPaid.toNumber()).toBe(0);
-    expect(policyAccount.paymentCount).toBe(0);
-    expect(policyAccount.failedPaymentCount).toBe(0);
-    expect(policyAccount.bump).toBe(paymentPolicyBump);
-    expect(policyAccount.createdAt.toNumber()).toBeGreaterThan(0);
+    await sendAndConfirmTransaction(connection, tx, [user]);
+
+    const policyAccount = await sdk.getPaymentPolicy(paymentPolicyPDA);
+
+    expect(policyAccount!.userPayment).toEqual(userPaymentPDA);
+    expect(policyAccount!.recipient).toEqual(recipient.publicKey);
+    expect(policyAccount!.gateway).toEqual(gatewayPDA);
+    expect(policyAccount!.policyId).toBe(1);
+    expect(policyAccount!.status).toEqual({ active: {} });
+    expect(policyAccount!.paymentFrequency).toEqual({ daily: {} });
+    expect(policyAccount!.totalPaid.toNumber()).toBe(0);
+    expect(policyAccount!.paymentCount).toBe(0);
+    expect(policyAccount!.failedPaymentCount).toBe(0);
+    expect(policyAccount!.bump).toBe(paymentPolicyBump);
+    expect(policyAccount!.createdAt.toNumber()).toBeGreaterThan(0);
 
     // Verify policy type is subscription
-    expect(policyAccount.policyType.subscription).toBeDefined();
-    expect(policyAccount.policyType.subscription.amount.toNumber()).toBe(
+    expect(policyAccount!.policyType.subscription).toBeDefined();
+    expect(policyAccount!.policyType.subscription.amount.toNumber()).toBe(
       amount.toNumber()
     );
     expect(
-      policyAccount.policyType.subscription.intervalSeconds.toNumber()
+      policyAccount!.policyType.subscription.intervalSeconds.toNumber()
     ).toBe(intervalSeconds.toNumber());
-    expect(policyAccount.policyType.subscription.autoRenew).toBe(true);
+    expect(policyAccount!.policyType.subscription.autoRenew).toBe(true);
 
     // Check that user payment account was updated
-    const updatedUserPayment = await program.account.userPayment.fetch(
-      userPaymentPDA
-    );
-    expect(updatedUserPayment.activePoliciesCount).toBe(1);
+    const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
+    expect(updatedUserPayment!.activePoliciesCount).toBe(1);
   });
 
   test("Execute payment fails without delegate approval", async () => {
-    const accounts = {
-      gatewayAuthority: gatewayAuthority.publicKey,
-      paymentsDelegate: paymentsDelegate,
-      paymentPolicy: paymentPolicyPDA,
-      userPayment: userPaymentPDA,
-      gateway: gatewayPDA,
-      config: configPDA,
-      userTokenAccount: userTokenAccount,
-      recipientTokenAccount: recipientTokenAccount,
-      gatewayFeeAccount: gatewayFeeAccount,
-      protocolFeeAccount: protocolFeeAccount,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    };
+    // Update SDK to use gateway authority wallet
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     // Try to execute payment without delegate approval - should fail
     try {
-      await program.methods
-        .executePayment()
-        .accounts(accounts)
-        .signers([gatewayAuthority])
-        .rpc();
+      const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
+      const tx = new Transaction().add(...executePaymentIxs);
+
+      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
 
       assert(
         false,
@@ -390,24 +361,13 @@ describe("Recurring Payments", () => {
       recipientTokenAccount
     );
 
-    const accounts = {
-      gatewayAuthority: gatewayAuthority.publicKey,
-      paymentsDelegate: paymentsDelegate,
-      paymentPolicy: paymentPolicyPDA,
-      userPayment: userPaymentPDA,
-      gateway: gatewayPDA,
-      config: configPDA,
-      userTokenAccount: userTokenAccount,
-      recipientTokenAccount: recipientTokenAccount,
-      gatewayFeeAccount: gatewayFeeAccount,
-      protocolFeeAccount: protocolFeeAccount,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    };
-    await program.methods
-      .executePayment()
-      .accounts(accounts)
-      .signers([gatewayAuthority])
-      .rpc();
+    // Update SDK to use gateway authority wallet
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+    const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
+    const tx = new Transaction().add(...executePaymentIxs);
+
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
 
     // Verify payment was executed
     const finalRecipientBalance = await connection.getTokenAccountBalance(
@@ -418,20 +378,16 @@ describe("Recurring Payments", () => {
     );
 
     // Verify policy was updated
-    const updatedPolicy = await program.account.paymentPolicy.fetch(
-      paymentPolicyPDA
-    );
-    expect(updatedPolicy.paymentCount).toBe(1);
-    expect(updatedPolicy.totalPaid.toNumber()).toBe(10000); // 0.01 token
-    expect(updatedPolicy.nextPaymentDue.toNumber()).toBeGreaterThan(
+    const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicyPDA);
+    expect(updatedPolicy!.paymentCount).toBe(1);
+    expect(updatedPolicy!.totalPaid.toNumber()).toBe(10000); // 0.01 token
+    expect(updatedPolicy!.nextPaymentDue.toNumber()).toBeGreaterThan(
       Date.now() / 1000
     );
 
     // Verify gateway stats were updated
-    const updatedGateway = await program.account.paymentGateway.fetch(
-      gatewayPDA
-    );
-    expect(updatedGateway.totalProcessed.toNumber()).toBe(10000);
+    const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
+    expect(updatedGateway!.totalProcessed.toNumber()).toBe(10000);
   });
 
   test("Get all payment policies using SDK", async () => {
@@ -452,29 +408,16 @@ describe("Recurring Payments", () => {
   });
 
   test("Cannot execute payment twice within period", async () => {
-    // Create fee recipient token accounts
-    const accounts = {
-      gatewayAuthority: gatewayAuthority.publicKey,
-      paymentsDelegate: paymentsDelegate,
-      paymentPolicy: paymentPolicyPDA,
-      userPayment: userPaymentPDA,
-      gateway: gatewayPDA,
-      config: configPDA,
-      userTokenAccount: userTokenAccount,
-      recipientTokenAccount: recipientTokenAccount,
-      gatewayFeeAccount: gatewayFeeAccount,
-      protocolFeeAccount: protocolFeeAccount,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    };
+    // Update SDK to use gateway authority wallet
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     // First execution should succeed (already done in previous test)
     // Second execution should fail because next_payment_due is in the future
     try {
-      await program.methods
-        .executePayment()
-        .accounts(accounts)
-        .signers([gatewayAuthority])
-        .rpc();
+      const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
+      const tx = new Transaction().add(...executePaymentIxs);
+
+      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority]);
 
       assert(
         false,
@@ -488,14 +431,13 @@ describe("Recurring Payments", () => {
 
   test("Can execute payment when next_payment_due is in past", async () => {
     // Get current policy to check next_payment_due
-    const policy = await program.account.paymentPolicy.fetch(paymentPolicyPDA);
-    const nextPaymentDue = policy.nextPaymentDue.toNumber();
+    const policy = await sdk.getPaymentPolicy(paymentPolicyPDA);
+    const nextPaymentDue = policy!.nextPaymentDue.toNumber();
 
     // Verify next payment is indeed in the future (from previous execution)
     expect(nextPaymentDue).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
     // Create a new policy with start_time in the past to test timing validation
-    const policyId2 = 2;
     const amount = new anchor.BN(5000); // 0.005 token
     const intervalSeconds = new anchor.BN(3600); // 1 hour
     const memo = new Uint8Array(64).fill(0);
@@ -514,76 +456,56 @@ describe("Recurring Payments", () => {
     const paymentFrequency = { custom: { 0: new anchor.BN(3600) } }; // 1 hour in seconds
 
     // Derive second policy PDA
-    const [paymentPolicy2PDA, paymentPolicy2Bump] =
-      PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("payment_policy"),
-          userPaymentPDA.toBuffer(),
-          new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
-        ],
-        program.programId
-      );
+    const policyId2 = 2;
+    const [paymentPolicy2PDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("payment_policy"),
+        userPaymentPDA.toBuffer(),
+        new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
+      ],
+      program.programId
+    );
 
     // Create policy with start_time in the past (2 hours ago)
     const twoHoursAgo = Math.floor(Date.now() / 1000) - 7200;
 
-    const accounts = {
-      user: user.publicKey,
-      userPayment: userPaymentPDA,
-      recipient: recipient.publicKey,
-      tokenMint: tokenMint,
-      gateway: gatewayPDA,
-      paymentPolicy: paymentPolicy2PDA,
-      systemProgram: SystemProgram.programId,
-    };
+    // Update SDK to use user wallet
+    await sdk.updateWallet(new anchor.Wallet(user));
 
-    await program.methods
-      .createPaymentPolicy(
-        policyId2,
-        policyType,
-        paymentFrequency,
-        Array.from(memo),
-        new anchor.BN(twoHoursAgo) // start_time in past
-      )
-      .accounts(accounts)
-      .signers([user])
-      .rpc();
+    const createPolicy2Ix = await sdk.createPaymentPolicy(
+      tokenMint,
+      recipient.publicKey,
+      gatewayPDA,
+      policyType,
+      paymentFrequency,
+      Array.from(memo),
+      new anchor.BN(twoHoursAgo) // start_time in past
+    );
+    const createTx = new Transaction().add(createPolicy2Ix);
+    await sendAndConfirmTransaction(connection, createTx, [user]);
 
     // Execute payment on the new policy (should succeed since next_payment_due is in past)
-    const executeAccounts = {
-      gatewayAuthority: gatewayAuthority.publicKey,
-      paymentsDelegate: paymentsDelegate,
-      paymentPolicy: paymentPolicy2PDA,
-      userPayment: userPaymentPDA,
-      gateway: gatewayPDA,
-      config: configPDA,
-      userTokenAccount: userTokenAccount,
-      recipientTokenAccount: recipientTokenAccount,
-      gatewayFeeAccount: gatewayFeeAccount,
-      protocolFeeAccount: protocolFeeAccount,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    };
+    // Update SDK to use gateway authority wallet
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    await program.methods
-      .executePayment()
-      .accounts(executeAccounts)
-      .signers([gatewayAuthority])
-      .rpc();
+    const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
+    const executeTx = new Transaction().add(...executePaymentIxs);
+
+    await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority]);
 
     // Verify payment was executed
-    const updatedPolicy = await program.account.paymentPolicy.fetch(
-      paymentPolicy2PDA
-    );
-    expect(updatedPolicy.paymentCount).toBe(1);
-    expect(updatedPolicy.totalPaid.toNumber()).toBe(5000);
+    const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy2PDA);
+    expect(updatedPolicy!.paymentCount).toBe(1);
+    expect(updatedPolicy!.totalPaid.toNumber()).toBe(5000);
 
     // Immediately try to execute again - should fail
     try {
-      await program.methods
-        .executePayment()
-        .accounts(executeAccounts)
-        .signers([gatewayAuthority])
-        .rpc();
+      const executePaymentIxs2 = await sdk.executePayment(paymentPolicy2PDA);
+      const executeTx2 = new Transaction().add(...executePaymentIxs2);
+
+      await sendAndConfirmTransaction(connection, executeTx2, [
+        gatewayAuthority,
+      ]);
 
       assert(
         false,
