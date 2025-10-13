@@ -1,5 +1,5 @@
 {
-  "name": "@tributary/app",
+  "name": "@tributary-so/app",
   "scripts": {
     "build": "tsc -b && vite build",
     "ci": "npm run build && npm run lint && npm run format:check",
@@ -39,8 +39,8 @@
     "@solana/web3.js": "^1.98.4",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-query": "^5.89.0",
-    "@tributary/sdk": "workspace:*",
-    "@tributary/sdk-react": "workspace:*",
+    "@tributary-so/sdk": "workspace:*",
+    "@tributary-so/sdk-react": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

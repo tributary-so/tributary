@@ -290,8 +290,8 @@ function App() {
             </div>
             <div className="bg-slate-900 p-8 rounded-lg border border-gray-700">
               <pre className="text-sm text-green-400 overflow-x-auto">
-                {`import { SubscriptionButton } from '@tributary/sdk-widgets'
-import { PaymentInterval } from '@tributary/sdk-react'
+                {`import { SubscriptionButton } from '@tributary-so/sdk-react'
+import { PaymentInterval } from '@tributary-so/sdk-react'
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 
@@ -382,9 +382,9 @@ import { BN } from '@coral-xyz/anchor'
             <h3 className="text-2xl font-semibold mb-6">Quick Start</h3>
             <div className="bg-slate-900 p-6 rounded-lg border border-gray-700">
               <pre className="text-sm text-green-400 overflow-x-auto">
-                {`npm install @tributary/sdk
+                {`npm install @tributary-so/sdk
 
-import { Tributary } from '@tributary/sdk';
+import { Tributary } from '@tributary-so/sdk';
 
 const tributary = new Tributary({
   connection: new Connection(SOLANA_RPC),

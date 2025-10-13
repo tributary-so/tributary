@@ -20,7 +20,7 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": ["./src/*"],
-      "@tributary/sdk": ["../sdk/src"]
+      "@tributary-so/sdk": ["../sdk/src"]
     }
   },
   "exclude": ["node_modules", "tests"]

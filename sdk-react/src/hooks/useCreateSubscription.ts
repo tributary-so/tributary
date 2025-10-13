@@ -9,7 +9,7 @@ import {
   CreateSubscriptionResult,
   UseCreateSubscriptionReturn,
 } from "../types";
-import { PolicyType, PaymentFrequency, createMemoBuffer } from "@tributary/sdk";
+import { PolicyType, PaymentFrequency, createMemoBuffer } from "@tributary-so/sdk";
 
 function createPolicyType(params: CreateSubscriptionParams): PolicyType {
   return {

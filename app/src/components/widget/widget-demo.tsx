@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
-import { CreateSubscriptionResult, PaymentInterval, SubscriptionButton } from '@tributary/sdk-react'
+import { CreateSubscriptionResult, PaymentInterval, SubscriptionButton } from '@tributary-so/sdk-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
@@ -118,8 +118,8 @@ export default function WidgetDemo() {
                   fontSize: '0.875rem',
                 }}
               >
-                {`import { SubscriptionButton } from '@tributary/sdk-widgets'
-import { PaymentInterval } from '@tributary/sdk-react'
+                {`import { SubscriptionButton } from '@tributary-so/sdk-widgets'
+import { PaymentInterval } from '@tributary-so/sdk-react'
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 

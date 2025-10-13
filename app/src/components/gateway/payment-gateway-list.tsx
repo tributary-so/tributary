@@ -15,7 +15,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { useSDK } from '@/lib/client'
 import { PublicKeyComponent } from '@/components/ui/public-key'
 import { toast } from 'sonner'
-import type { PaymentGateway } from '@tributary/sdk'
+import type { PaymentGateway } from '@tributary-so/sdk'
 import { PublicKey } from '@solana/web3.js'
 
 interface PaymentGatewayData {

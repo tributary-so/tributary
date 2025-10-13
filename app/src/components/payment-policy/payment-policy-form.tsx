@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '../ui/alert'
 import { Spinner } from '@heroui/react'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
-import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary/sdk'
+import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
 
 interface PaymentPolicyFormProps {
   onSuccess?: () => void
