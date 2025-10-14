@@ -12,7 +12,7 @@ const links = [
   { label: 'Create Policy', path: '/policy' },
   { label: 'View Policies', path: '/policies' },
   { label: 'Account', path: '/account' },
-  { label: 'Widget Demo', path: '/widget-demo' }
+  { label: 'Widget Demo', path: '/widget-demo' },
 ]
 
 const LazyDashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
@@ -27,7 +27,7 @@ const routes: RouteObject[] = [
   { path: 'gateway', element: <LazyGateway /> },
   { path: 'policy', element: <LazyPaymentPolicy /> },
   { path: 'policies', element: <LazyPaymentPolicyList /> },
-    { path: 'widget-demo', element: <LazyWidgetDemo /> },
+  { path: 'widget-demo', element: <LazyWidgetDemo /> },
   { path: 'account', element: <LazyAccount /> },
   { path: 'about', element: <div className="p-8">About Page</div> },
   { path: 'demo', element: <div className="p-8">Demo Page</div> },
@@ -42,3 +42,4 @@ export function App() {
     </AppProviders>
   )
 }
+

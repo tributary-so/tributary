@@ -5,17 +5,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
-import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary/sdk'
-
-function createMemoBuffer(memo: string, maxLength: number = 64): number[] {
-  const encoder = new TextEncoder()
-  const encoded = encoder.encode(memo.slice(0, maxLength))
-  const buffer = new Array(maxLength).fill(0)
-  for (let i = 0; i < encoded.length; i++) {
-    buffer[i] = encoded[i]
-  }
-  return buffer
-}
+import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
 
 export default function PaymentPolicyForm() {
   const { connection } = useConnection()
@@ -155,26 +145,14 @@ export default function PaymentPolicyForm() {
 
   if (!wallet.connected) {
     return (
-      <div
-        className="border-r border-l border-[var(--color-primary)] flex items-center justify-center"
-        style={{
-          padding: '32px',
-          minHeight: '500px',
-        }}
-      >
+      <div className="items-center">
         <p className="text-xl">Please connect your wallet</p>
       </div>
     )
   }
 
   return (
-    <div
-      className="border-r border-l border-[var(--color-primary)]"
-      style={{
-        padding: '0 32px 0 32px',
-        minHeight: '500px',
-      }}
-    >
+    <div className="items-center">
       <div className="max-w-3xl">
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-secondary)' }}>
@@ -366,4 +344,3 @@ export default function PaymentPolicyForm() {
     </div>
   )
 }
-
