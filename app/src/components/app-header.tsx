@@ -1,81 +1,135 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Menu, X } from 'lucide-react'
-import { ThemeSelect } from '@/components/theme-select'
-import { ClusterUiSelect } from './cluster/cluster-ui'
 import { WalletButton } from '@/components/solana/solana-provider'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { useWallet } from '@solana/wallet-adapter-react'
 
-export function AppHeader({ links = [] }: { links: { label: string; path: string }[] }) {
+interface AppHeaderProps {
+  links?: { label: string; path: string }[]
+}
+
+export function AppHeader({ links = [] }: AppHeaderProps) {
   const { pathname } = useLocation()
-  const [showMenu, setShowMenu] = useState(false)
+  const { connected } = useWallet()
+  const navigate = useNavigate()
+  const isAccountPage = pathname.includes('/account')
+  const isPolicyPage = pathname.includes('/policy') || pathname.includes('/policies') || pathname.includes('/gateway')
 
-  function isActive(path: string) {
-    return path === '/' ? pathname === '/' : pathname.startsWith(path)
+  const handleNavClick = (path: string) => {
+    navigate(path)
   }
 
+  const handleDashboardClick = () => {
+    if (connected) {
+      navigate('/account')
+    }
+  }
+
+  const buttonClass = "flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase"
+
   return (
-    <header className="relative z-50 px-4 py-2 bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-400">
-      <div className="mx-auto flex justify-between items-center">
-        <div className="flex items-baseline gap-4">
-          <Link to="/" className="text-xl hover:text-neutral-500 dark:hover:text-white">
-            <span>App</span>
-          </Link>
-          <div className="hidden md:flex items-center">
-            <ul className="flex gap-4 flex-nowrap items-center">
-              {links.map(({ label, path }) => (
-                <li key={path}>
-                  <Link
-                    className={`hover:text-neutral-500 dark:hover:text-white ${
-                      isActive(path) ? 'text-neutral-500 dark:text-white' : ''
-                    }`}
-                    to={path}
-                  >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowMenu(!showMenu)}>
-          {showMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </Button>
-
-        <div className="hidden md:flex items-center gap-4">
-          <WalletButton />
-          <ClusterUiSelect />
-          <ThemeSelect />
-        </div>
-
-        {showMenu && (
-          <div className="md:hidden fixed inset-x-0 top-[52px] bottom-0 bg-neutral-100/95 dark:bg-neutral-900/95 backdrop-blur-sm">
-            <div className="flex flex-col p-4 gap-4 border-t dark:border-neutral-800">
-              <ul className="flex flex-col gap-4">
-                {links.map(({ label, path }) => (
-                  <li key={path}>
-                    <Link
-                      className={`hover:text-neutral-500 dark:hover:text-white block text-lg py-2  ${
-                        isActive(path) ? 'text-neutral-500 dark:text-white' : ''
-                      } `}
-                      to={path}
-                      onClick={() => setShowMenu(false)}
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-col gap-4">
-                <WalletButton />
-                <ClusterUiSelect />
-                <ThemeSelect />
-              </div>
+    <div className="relative z-50 w-full" style={{ fontFamily: 'var(--font-primary)' }}>
+      <div className="max-w-[1440px] mx-auto px-[40px]">
+        <div 
+          className="relative flex items-center justify-between"
+          style={{
+            marginTop: '21px',
+            height: '40px',
+            borderTop: '1px solid var(--color-primary)',
+            borderRight: '1px solid var(--color-primary)',
+            borderLeft: '1px solid var(--color-primary)',
+            paddingLeft: '16px',
+            paddingRight: '16px',
+          }}
+        >
+          {/* Logo - Left */}
+          <Link 
+            to="/"
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <div 
+              className="rounded-full"
+              style={{
+                height: '10px',
+                width: '10px',
+                backgroundColor: 'var(--color-primary)',
+              }}
+            />
+            <div 
+              style={{
+                letterSpacing: '0.8px',
+                textTransform: 'uppercase',
+                fontSize: '14px',
+              }}
+            >
+              Tributary
             </div>
+          </Link>
+
+          {/* Center Section */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            {!isAccountPage && !isPolicyPage ? (
+              // Navigation Links (only on home)
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleNavClick('/about')}
+                  className={buttonClass}
+                  style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+                >
+                  About
+                </button>
+                <button
+                  onClick={() => handleNavClick('/demo')}
+                  className={buttonClass}
+                  style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+                >
+                  Demo
+                </button>
+                <button
+                  onClick={() => handleNavClick('/docs')}
+                  className={buttonClass}
+                  style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+                >
+                  Docs
+                </button>
+              </div>
+            ) : (
+              // Dashboard Text (only on other pages)
+              <div className="text-center" style={{ fontSize: '14px', textTransform: 'uppercase' }}>Dashboard</div>
+            )}
           </div>
-        )}
+
+          {/* Right Section */}
+          <div className="flex items-center gap-2">
+            {/* Manage Policies / New Subscription Button */}
+            {connected && (isAccountPage || isPolicyPage) && (
+              <Link
+                to={isPolicyPage ? '/account' : '/policy'}
+                className={buttonClass}
+                style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+              >
+                <span>{isPolicyPage ? 'manage policies' : 'new subscription'}</span>
+                <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor">
+                  <path d="M4 0v8M0 4h8" strokeWidth="1.5"/>
+                </svg>
+              </Link>
+            )}
+
+            {/* Wallet/Dashboard/Account Button */}
+            {!connected ? (
+              <WalletButton />
+            ) : isAccountPage || isPolicyPage ? (
+              <WalletButton />
+            ) : (
+              <button
+                onClick={handleDashboardClick}
+                className={buttonClass}
+                style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+              >
+                Dashboard
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    </header>
+    </div>
   )
 }

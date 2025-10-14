@@ -1,10 +1,8 @@
 import { ThemeProvider } from './theme-provider'
 import { Toaster } from './ui/sonner'
 import { AppHeader } from '@/components/app-header'
-import React from 'react'
 import { AppFooter } from '@/components/app-footer'
-import { ClusterChecker } from '@/components/cluster/cluster-ui'
-import { AccountChecker } from '@/components/account/account-ui'
+import React from 'react'
 
 export function AppLayout({
   children,
@@ -14,13 +12,16 @@ export function AppLayout({
   links: { label: string; path: string }[]
 }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <div className="flex flex-col min-h-screen">
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+      <div 
+        className="flex flex-col"
+        style={{ 
+          minHeight: '100vh',
+          backgroundColor: '#fff',
+        }}
+      >
         <AppHeader links={links} />
-        <main className="flex-grow container mx-auto p-4">
-          <ClusterChecker>
-            <AccountChecker />
-          </ClusterChecker>
+        <main className="flex-grow" style={{ display: 'flex', flexDirection: 'column' }}>
           {children}
         </main>
         <AppFooter />
