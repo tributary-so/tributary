@@ -69,7 +69,6 @@ pub fn handler_create_payment_policy(
     payment_policy.next_payment_due = next_payment_due;
     payment_policy.total_paid = 0;
     payment_policy.payment_count = 0;
-    payment_policy.failed_payment_count = 0;
     payment_policy.created_at = clock.unix_timestamp;
     payment_policy.updated_at = clock.unix_timestamp;
     payment_policy.policy_id = policy_id;
@@ -101,7 +100,6 @@ impl PaymentPolicy {
         8 + // next_payment_due: i64
         8 + // total_paid: u64
         4 + // payment_count: u32
-        4 + // failed_payment_count: u32
         8 + // created_at: i64
         8 + // updated_at: i64
         4 + // policy_id: u32

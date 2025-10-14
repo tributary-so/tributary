@@ -29,7 +29,7 @@ pub struct ExecutePayment<'info> {
         mut,
         seeds = [PAYMENT_POLICY_SEED, payment_policy.user_payment.as_ref(), payment_policy.policy_id.to_le_bytes().as_ref()],
         bump = payment_policy.bump,
-        constraint = payment_policy.status == PaymentStatus::Active,
+        constraint = payment_policy.status == PaymentStatus::Active @ crate::error::RecurringPaymentsError::PolicyPaused,
     )]
     pub payment_policy: Box<Account<'info, PaymentPolicy>>,
 
@@ -47,7 +47,7 @@ pub struct ExecutePayment<'info> {
         bump = gateway.bump,
         constraint = gateway.is_active,
         constraint = gateway.key() == payment_policy.gateway,
-        constraint = gateway.authority == gateway_authority.key(),
+        constraint = gateway.authority == gateway_authority.key() || user_payment.owner == gateway_authority.key(),
     )]
     pub gateway: Box<Account<'info, PaymentGateway>>,
 

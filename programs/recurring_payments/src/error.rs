@@ -24,4 +24,6 @@ pub enum RecurringPaymentsError {
     InsufficientBalance,
     #[msg("No or incorrect delegate set in ata")]
     NoDelegateSet,
+    #[msg("Payment policy is paused")]
+    PolicyPaused,
 }

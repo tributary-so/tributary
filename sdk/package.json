@@ -1,5 +1,6 @@
 {
-  "name": "@tributary/sdk",
+  "name": "@tributary-so/sdk",
+  "private": false,
   "version": "0.1.0",
   "type": "module",
   "scripts": {

@@ -9,7 +9,7 @@ import {
   CreateSubscriptionResult,
   UseCreateSubscriptionReturn,
 } from "../types";
-import { PolicyType, PaymentFrequency, createMemoBuffer } from "@tributary/sdk";
+import { PolicyType, PaymentFrequency, createMemoBuffer } from "@tributary-so/sdk";
 
 function createPolicyType(params: CreateSubscriptionParams): PolicyType {
   return {
@@ -100,7 +100,8 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         frequency,
         memoBuffer,
         startTime,
-        params.approvalAmount
+        params.approvalAmount,
+        params.executeImmediately ?? true
       );
 
       // Build transaction

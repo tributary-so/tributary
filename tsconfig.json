@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "paths": {
-      "@tributary/sdk": ["./sdk/src"]
+      "@tributary-so/sdk": ["./sdk/src"]
     }
   }
 }

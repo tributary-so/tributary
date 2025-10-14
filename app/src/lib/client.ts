@@ -1,6 +1,6 @@
 import { Connection } from '@solana/web3.js'
 import { WalletContextState } from '@solana/wallet-adapter-react'
-import { RecurringPaymentsSDK } from '@tributary/sdk'
+import { RecurringPaymentsSDK } from '@tributary-so/sdk'
 import { Wallet } from '@coral-xyz/anchor'
 
 /**

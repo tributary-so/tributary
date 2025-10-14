@@ -43,15 +43,28 @@ jobs:
           VITE_VCS_REF: ${{ github.sha }}
           NODE_ENV: production
 
+      # - name: Deploy to external repository
+      #   uses: peaceiris/actions-gh-pages@v3
+      #   if: github.ref == 'refs/heads/main'
+      #   with:
+      #     deploy_key: ${{ secrets.LANDING_DEPLOY_KEY }}
+      #     external_repository: xeroc/tribute.money
+      #     publish_branch: gh-pages
+      #     publish_dir: ./landing/dist
+      #     user_name: "github-actions[bot]"
+      #     user_email: "github-actions[bot]@users.noreply.github.com"
+      #     commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
+      #     cname: tribute.money
+
       - name: Deploy to external repository
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
         with:
-          deploy_key: ${{ secrets.LANDING_DEPLOY_KEY }}
-          external_repository: xeroc/tribute.money
+          deploy_key: ${{ secrets.LANDING_DEPLOY_KEY_TRIBUTARY_SO }}
+          external_repository: xeroc/tributary.so
           publish_branch: gh-pages
           publish_dir: ./landing/dist
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
-          cname: tribute.money
+          cname: tributary.so

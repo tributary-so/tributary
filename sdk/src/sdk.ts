@@ -155,7 +155,8 @@ export class RecurringPaymentsSDK {
     paymentFrequency: PaymentFrequency,
     memo: number[],
     startTime?: anchor.BN | null,
-    approvalAmount?: anchor.BN
+    approvalAmount?: anchor.BN,
+    executeImmediately?: boolean
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -194,14 +195,14 @@ export class RecurringPaymentsSDK {
     }
 
     // Create payment policy instruction
-    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const accounts = {
       user: user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
       gateway: gateway,
-      paymentPolicy: paymentPolicy.address,
+      paymentPolicy: paymentPolicyPda.address,
       systemProgram: SystemProgram.programId,
     };
 
@@ -256,28 +257,97 @@ export class RecurringPaymentsSDK {
       }
     }
 
+    if (executeImmediately) {
+      const executePaymentIxs = await this.executePayment(
+        paymentPolicyPda.address,
+        recipient,
+        tokenMint,
+        gateway,
+        user
+      );
+      instructions.push(...executePaymentIxs);
+    }
+
     return instructions;
   }
 
   async executePayment(
-    paymentPolicyPda: PublicKey
+    paymentPolicyPda: PublicKey,
+    recipient?: PublicKey,
+    tokenMint?: PublicKey,
+    gateway?: PublicKey,
+    user?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const instructions: TransactionInstruction[] = [];
-    const paymentPolicy: PaymentPolicy =
-      await this.program.account.paymentPolicy.fetch(paymentPolicyPda);
-    const userPaymentPda = paymentPolicy.userPayment;
-    const userPayment: UserPayment =
-      await this.program.account.userPayment.fetch(userPaymentPda);
+    const authority = this.provider.publicKey;
+    let _tokenMint: PublicKey | undefined = undefined;
+    let _recipient: PublicKey | undefined = undefined;
+    let _gateway: PublicKey | undefined = undefined;
+    let _user: PublicKey | undefined = undefined;
 
-    const gateway = await this.getPaymentGateway(paymentPolicy.gateway);
+    const paymentPolicy: PaymentPolicy | null =
+      await this.program.account.paymentPolicy.fetchNullable(paymentPolicyPda);
+
+    let userPayment: UserPayment | null = null;
+    if (paymentPolicy) {
+      const userPaymentPda = paymentPolicy.userPayment;
+
+      _gateway = paymentPolicy.gateway;
+      _recipient = paymentPolicy.recipient;
+
+      userPayment = await this.program.account.userPayment.fetchNullable(
+        userPaymentPda
+      );
+
+      if (userPayment) {
+        _tokenMint = userPayment.tokenMint;
+        _user = userPayment.owner;
+      }
+    }
+
+    _tokenMint = _tokenMint || tokenMint;
+    _recipient = _recipient || recipient;
+    _gateway = _gateway || gateway;
+    _user = _user || user;
+
+    if (!_tokenMint) {
+      throw new Error(
+        "Either provide tokenMint or have a valid paymentPolicy account!"
+      );
+    }
+
+    if (!_recipient) {
+      throw new Error(
+        "Either provide recipient or have a valid paymentPolicy account!"
+      );
+    }
+
+    if (!_gateway) {
+      throw new Error(
+        "Either provide gateway or have a valid paymentPolicy account!"
+      );
+    }
+
+    if (!_user) {
+      throw new Error(
+        "Either provide user or have a valid paymentPolicy account!"
+      );
+    }
+
+    const gatewayAccount = await this.getPaymentGateway(_gateway);
     const { address: configPda } = getConfigPda(this.programId);
     const config = await this.program.account.programConfig.fetch(configPda);
-    const authority = this.provider.publicKey;
+
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      _user,
+      _tokenMint
+    );
+    const tokenAccount = getAssociatedTokenAddressSync(_tokenMint, _user);
 
     // Payment Recipient ATA
     const recipientTokenAccount = getAssociatedTokenAddressSync(
-      userPayment.tokenMint,
-      paymentPolicy.recipient
+      _tokenMint,
+      _recipient
     );
     const recipientAccountInfo = await this.connection.getAccountInfo(
       recipientTokenAccount
@@ -286,8 +356,8 @@ export class RecurringPaymentsSDK {
       const createAtaIx = createAssociatedTokenAccountInstruction(
         authority,
         recipientTokenAccount,
-        paymentPolicy.recipient,
-        userPayment.tokenMint,
+        _recipient,
+        _tokenMint,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
@@ -296,8 +366,8 @@ export class RecurringPaymentsSDK {
 
     // Gateway Fee account ATA
     const gatewayFeeAccount = getAssociatedTokenAddressSync(
-      userPayment.tokenMint,
-      gateway!.feeRecipient
+      _tokenMint,
+      gatewayAccount!.feeRecipient
     );
     const gatewayFeeAccountInfo = await this.connection.getAccountInfo(
       gatewayFeeAccount
@@ -306,8 +376,8 @@ export class RecurringPaymentsSDK {
       const createAtaIx = createAssociatedTokenAccountInstruction(
         authority,
         gatewayFeeAccount,
-        gateway!.feeRecipient,
-        userPayment.tokenMint,
+        gatewayAccount!.feeRecipient,
+        _tokenMint,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
@@ -316,7 +386,7 @@ export class RecurringPaymentsSDK {
 
     // Protocol Fee account ATA
     const protocolFeeAccount = getAssociatedTokenAddressSync(
-      userPayment.tokenMint,
+      _tokenMint,
       config!.feeRecipient
     );
     const protocolFeeAccountInfo = await this.connection.getAccountInfo(
@@ -327,7 +397,7 @@ export class RecurringPaymentsSDK {
         authority,
         protocolFeeAccount,
         config!.feeRecipient,
-        userPayment.tokenMint,
+        _tokenMint,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
@@ -339,9 +409,9 @@ export class RecurringPaymentsSDK {
       paymentsDelegate: this.getPaymentsDelegatePda().address,
       paymentPolicy: paymentPolicyPda,
       userPayment: userPaymentPda,
-      gateway: paymentPolicy.gateway,
+      gateway: _gateway,
       config: configPda,
-      userTokenAccount: userPayment.tokenAccount,
+      userTokenAccount: tokenAccount,
       recipientTokenAccount,
       gatewayFeeAccount: gatewayFeeAccount,
       protocolFeeAccount: protocolFeeAccount,
@@ -376,6 +446,61 @@ export class RecurringPaymentsSDK {
 
   getPaymentsDelegatePda() {
     return getPaymentsDelegatePda(this.programId);
+  }
+
+  async changePaymentPolicyStatus(
+    tokenMint: PublicKey,
+    policyId: number,
+    newStatus: { active: {} } | { paused: {} }
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: paymentPolicyPda } = this.getPaymentPolicyPda(
+      userPaymentPda,
+      policyId
+    );
+
+    const accounts = {
+      owner: owner,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      paymentPolicy: paymentPolicyPda,
+    };
+
+    return await this.program.methods
+      .changePaymentPolicyStatus(policyId, newStatus)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  async deletePaymentPolicy(
+    tokenMint: PublicKey,
+    policyId: number
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: paymentPolicyPda } = this.getPaymentPolicyPda(
+      userPaymentPda,
+      policyId
+    );
+
+    const accounts = {
+      owner: owner,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      paymentPolicy: paymentPolicyPda,
+    };
+
+    return await this.program.methods
+      .deletePaymentPolicy(policyId)
+      .accountsStrict(accounts)
+      .instruction();
   }
 
   // Query methods

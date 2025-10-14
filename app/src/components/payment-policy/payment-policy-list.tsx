@@ -5,10 +5,10 @@ import { getMint } from '@solana/spl-token'
 import { Spinner, Button } from '@heroui/react'
 import { Alert, AlertDescription } from '../ui/alert'
 import { useSDK } from '@/lib/client'
-import { type PaymentPolicy, type UserPayment, type PaymentGateway, getTokenInfo, Metadata } from '@tributary/sdk'
+import { type PaymentPolicy, type UserPayment, type PaymentGateway, getTokenInfo, Metadata } from '@tributary-so/sdk'
 import { PublicKeyComponent } from '@/components/ui/public-key'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
-import { Play } from 'lucide-react'
+import { Play, Pause, Trash2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TokenInfo {
@@ -32,6 +32,8 @@ export default function PaymentPolicyList() {
   const [error, setError] = useState<string | null>(null)
   const [userPayments, setUserPayments] = useState<UserPaymentWithPolicies[]>([])
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
+  const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
+  const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
   const [tokenInfoCache, setTokenInfoCache] = useState<Map<string, TokenInfo>>(new Map())
 
   useEffect(() => {
@@ -179,8 +181,7 @@ export default function PaymentPolicyList() {
     return amount.toString()
   }
 
-  const formatAmount = (policy: PaymentPolicy, tokenMint: PublicKey): string => {
-    const rawAmount = getAmount(policy)
+  const formatAmount = (rawAmount: string | null, tokenMint: PublicKey): string => {
     if (!rawAmount) return 'N/A'
 
     const tokenInfo = tokenInfoCache.get(tokenMint.toString())
@@ -205,7 +206,7 @@ export default function PaymentPolicyList() {
     return nextPaymentDate <= now
   }
 
-  const handleExecutePayment = async (policyPublicKey: PublicKey, policy: PaymentPolicy) => {
+  const handleExecutePayment = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
     if (!sdk || !wallet.publicKey) {
       toast.error('Wallet not connected')
       return
@@ -219,7 +220,10 @@ export default function PaymentPolicyList() {
         return
       }
 
-      if (gateway.authority.toString() !== wallet.publicKey.toString()) {
+      if (
+        gateway.authority.toString() !== wallet.publicKey.toString() &&
+        userPayment.owner.toString() != wallet.publicKey.toString()
+      ) {
         toast.error('Only the gateway authority can execute payments')
         return
       }
@@ -229,9 +233,9 @@ export default function PaymentPolicyList() {
       const tx = new Transaction()
       const executeIxs = await sdk.executePayment(policyPublicKey)
       executeIxs.map((instruction) => tx.add(instruction))
-      await sdk.provider.sendAndConfirm(tx)
+      const txid = await sdk.provider.sendAndConfirm(tx)
 
-      toast.success(`Payment executed successfully! TX: ${tx}`)
+      toast.success(`Payment executed successfully! TX: ${txid}`)
 
       setLoaded(false)
     } catch (err) {
@@ -239,6 +243,83 @@ export default function PaymentPolicyList() {
       toast.error(err instanceof Error ? err.message : 'Failed to execute payment')
     } finally {
       setExecutingPayments((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
+  const handleToggleStatus = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
+    if (!sdk || !wallet.publicKey) {
+      toast.error('Wallet not connected')
+      return
+    }
+
+    if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
+      toast.error('Only the policy owner can change status')
+      return
+    }
+
+    try {
+      setTogglingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
+
+      const currentStatus = policy.status as Record<string, unknown>
+      const isCurrentlyActive = currentStatus.active
+      const newStatus = isCurrentlyActive ? { paused: {} } : { active: {} }
+
+      const tx = new Transaction()
+      const toggleIx = await sdk.changePaymentPolicyStatus(userPayment.tokenMint, policy.policyId, newStatus)
+      tx.add(toggleIx)
+      await sdk.provider.sendAndConfirm(tx)
+
+      const actionText = isCurrentlyActive ? 'paused' : 'resumed'
+      toast.success(`Payment policy ${actionText} successfully!`)
+
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error toggling payment policy status:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle policy status')
+    } finally {
+      setTogglingPolicies((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
+  const handleDeletePolicy = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
+    if (!sdk || !wallet.publicKey) {
+      toast.error('Wallet not connected')
+      return
+    }
+
+    if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
+      toast.error('Only the policy owner can delete the policy')
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete this payment policy? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
+
+      const tx = new Transaction()
+      const deleteIx = await sdk.deletePaymentPolicy(userPayment.tokenMint, policy.policyId)
+      tx.add(deleteIx)
+      await sdk.provider.sendAndConfirm(tx)
+
+      toast.success('Payment policy deleted successfully!')
+
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error deleting payment policy:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to delete policy')
+    } finally {
+      setDeletingPolicies((prev) => {
         const newSet = new Set(prev)
         newSet.delete(policyPublicKey.toString())
         return newSet
@@ -356,11 +437,15 @@ export default function PaymentPolicyList() {
                             </td>
                             <td className="border p-2 text-center text-sm">{account.policyId}</td>
                             <td className="border p-2 text-sm">{getPolicyType(account)}</td>
-                            <td className="border p-2 text-sm">{formatAmount(account, userPayment.tokenMint)}</td>
+                            <td className="border p-2 text-sm">
+                              {formatAmount(getAmount(account), userPayment.tokenMint)}
+                            </td>
                             <td className="border p-2 font-mono text-xs">
                               <PublicKeyComponent publicKey={account.recipient} />
                             </td>
-                            <td className="border p-2 font-mono text-xs">{account.totalPaid.toString()}</td>
+                            <td className="border p-2 font-mono text-xs">
+                              {formatAmount(account.totalPaid.toString(), userPayment.tokenMint)}
+                            </td>
                             <td className="border p-2 text-sm">{getInterval(account)}</td>
                             <td className="border p-2 text-sm">{getNextPaymentDue(account)}</td>
                             <td className="border p-2">
@@ -371,17 +456,45 @@ export default function PaymentPolicyList() {
                             <td className="border p-2 text-center text-sm">{account.paymentCount}</td>
                             <td className="border p-2 text-xs">{getMemo(account)}</td>
                             <td className="border p-2">
-                              <Button
-                                size="sm"
-                                isIconOnly
-                                color="primary"
-                                variant="flat"
-                                isDisabled={!isPaymentDue(account) || executingPayments.has(publicKey.toString())}
-                                isLoading={executingPayments.has(publicKey.toString())}
-                                onPress={() => handleExecutePayment(publicKey, account)}
-                              >
-                                <Play className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  isIconOnly
+                                  color="primary"
+                                  variant="flat"
+                                  isDisabled={!isPaymentDue(account) || executingPayments.has(publicKey.toString())}
+                                  isLoading={executingPayments.has(publicKey.toString())}
+                                  onPress={() => handleExecutePayment(publicKey, account, userPayment)}
+                                >
+                                  <Play className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  isIconOnly
+                                  color={getStatus(account) === 'Active' ? 'warning' : 'success'}
+                                  variant="flat"
+                                  isDisabled={togglingPolicies.has(publicKey.toString())}
+                                  isLoading={togglingPolicies.has(publicKey.toString())}
+                                  onPress={() => handleToggleStatus(publicKey, account, userPayment)}
+                                >
+                                  {getStatus(account) === 'Active' ? (
+                                    <Pause className="h-4 w-4" />
+                                  ) : (
+                                    <RotateCcw className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  isIconOnly
+                                  color="danger"
+                                  variant="flat"
+                                  isDisabled={deletingPolicies.has(publicKey.toString())}
+                                  isLoading={deletingPolicies.has(publicKey.toString())}
+                                  onPress={() => handleDeletePolicy(publicKey, account, userPayment)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}

@@ -106,7 +106,6 @@ pub struct PaymentPolicy {
     pub next_payment_due: i64,
     pub total_paid: u64,
     pub payment_count: u32,
-    pub failed_payment_count: u32,
     pub created_at: i64,
     pub updated_at: i64,
     pub policy_id: u32,

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
-    "@tributary/sdk": "workspace:*",
+    "@tributary-so/sdk": "workspace:*",
     "@solana/kit": "^3.0.3",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4"

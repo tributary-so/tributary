@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
-import { CreateSubscriptionResult, PaymentInterval, SubscriptionButton } from '@tributary/sdk-react'
+import { CreateSubscriptionResult, PaymentInterval, SubscriptionButton } from '@tributary-so/sdk-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
@@ -8,7 +8,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 const PAYMENT_GATEWAY_PUBLIC_KEY = new PublicKey('AWqqH2c5zKhBUKrme1D28uQooS54HvAeS1ix8nfQ4bEt')
-const PAYMENT_RECIPIENT = new PublicKey('13t75JFchMhN5HLxymskNBkNSPFcbwYV2e5TeFNtHHbj')
+const PAYMENT_RECIPIENT = new PublicKey('8EVBvLDVhJUw1nkAUp73mPyxviVFK9Wza5ba1GRANEw1')
 
 export default function WidgetDemo() {
   const [txId, setTxId] = useState<string | null>(null)
@@ -87,7 +87,7 @@ export default function WidgetDemo() {
 
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 space-y-4 flex justify-center items-center">
               <SubscriptionButton
-                amount={new BN(10_000_000)}
+                amount={new BN(10 * 1e6)}
                 token={new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU')}
                 recipient={PAYMENT_RECIPIENT}
                 gateway={PAYMENT_GATEWAY_PUBLIC_KEY}
@@ -99,6 +99,7 @@ export default function WidgetDemo() {
                 className="bg-linear-to-tr from-pink-500 to-yellow-500 text-white shadow-lg"
                 radius="full"
                 size="lg"
+                executeImmediately={true}
                 onSuccess={handleSuccess}
                 onError={handleError}
               />
@@ -117,8 +118,8 @@ export default function WidgetDemo() {
                   fontSize: '0.875rem',
                 }}
               >
-                {`import { SubscriptionButton } from '@tributary/sdk-widgets'
-import { PaymentInterval } from '@tributary/sdk-react'
+                {`import { SubscriptionButton } from '@tributary-so/sdk-widgets'
+import { PaymentInterval } from '@tributary-so/sdk-react'
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 
@@ -131,6 +132,7 @@ import { BN } from '@coral-xyz/anchor'
   maxRenewals={12}
   memo="Premium subscription - Widget Demo"
   label="Subscribe for $10/month"
+  executeImmediately={true}
   className="bg-blue-600 hover:bg-blue-700 text-white"
   onSuccess={handleSuccess}
   onError={handleError}

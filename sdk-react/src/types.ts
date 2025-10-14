@@ -20,6 +20,7 @@ export interface CreateSubscriptionParams {
   memo?: string;
   startTime?: Date;
   approvalAmount?: BN;
+  executeImmediately?: boolean;
 }
 
 export interface CreateSubscriptionResult {

@@ -5,7 +5,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
-import type { PolicyType, PaymentFrequency, PaymentGateway } from '@tributary-so/sdk'
+import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary/sdk'
 
 function createMemoBuffer(memo: string, maxLength: number = 64): number[] {
   const encoder = new TextEncoder()
@@ -48,7 +48,7 @@ export default function PaymentPolicyForm() {
         const gatewayData = await sdk.getAllPaymentGateway()
         setGateways(gatewayData)
         if (gatewayData.length > 0) {
-          setFormData(prev => ({ ...prev, gateway: gatewayData[0].publicKey.toString() }))
+          setFormData((prev) => ({ ...prev, gateway: gatewayData[0].publicKey.toString() }))
         }
         setGatewaysLoaded(true)
       } catch (error) {
@@ -98,13 +98,20 @@ export default function PaymentPolicyForm() {
       }
       const paymentFrequency: PaymentFrequency = (() => {
         switch (formData.frequency) {
-          case 'daily': return { daily: {} }
-          case 'weekly': return { weekly: {} }
-          case 'monthly': return { monthly: {} }
-          case 'quarterly': return { quarterly: {} }
-          case 'semiAnnually': return { semiAnnually: {} }
-          case 'annually': return { annually: {} }
-          default: return { daily: {} }
+          case 'daily':
+            return { daily: {} }
+          case 'weekly':
+            return { weekly: {} }
+          case 'monthly':
+            return { monthly: {} }
+          case 'quarterly':
+            return { quarterly: {} }
+          case 'semiAnnually':
+            return { semiAnnually: {} }
+          case 'annually':
+            return { annually: {} }
+          default:
+            return { daily: {} }
         }
       })()
       const memo = createMemoBuffer(formData.memo, 64)
@@ -142,12 +149,13 @@ export default function PaymentPolicyForm() {
     }
   }
 
-  const inputClass = "w-full px-3 py-2 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] placeholder:text-gray-400 focus:outline-none transition-colors text-sm"
-  const labelClass = "text-xs font-medium text-[var(--color-primary)] uppercase mb-1"
+  const inputClass =
+    'w-full px-3 py-2 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] placeholder:text-gray-400 focus:outline-none transition-colors text-sm'
+  const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
 
   if (!wallet.connected) {
     return (
-      <div 
+      <div
         className="border-r border-l border-[var(--color-primary)] flex items-center justify-center"
         style={{
           padding: '32px',
@@ -160,7 +168,7 @@ export default function PaymentPolicyForm() {
   }
 
   return (
-    <div 
+    <div
       className="border-r border-l border-[var(--color-primary)]"
       style={{
         padding: '0 32px 0 32px',
@@ -180,21 +188,50 @@ export default function PaymentPolicyForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="tokenMint" className={labelClass}>Token Mint Address</label>
-              <input id="tokenMint" name="tokenMint" value={formData.tokenMint} onChange={handleInputChange} placeholder="Token mint address" required className={inputClass} />
+              <label htmlFor="tokenMint" className={labelClass}>
+                Token Mint Address
+              </label>
+              <input
+                id="tokenMint"
+                name="tokenMint"
+                value={formData.tokenMint}
+                onChange={handleInputChange}
+                placeholder="Token mint address"
+                required
+                className={inputClass}
+              />
             </div>
             <div>
-              <label htmlFor="recipient" className={labelClass}>Recipient Address</label>
-              <input id="recipient" name="recipient" value={formData.recipient} onChange={handleInputChange} placeholder="Recipient address" required className={inputClass} />
+              <label htmlFor="recipient" className={labelClass}>
+                Recipient Address
+              </label>
+              <input
+                id="recipient"
+                name="recipient"
+                value={formData.recipient}
+                onChange={handleInputChange}
+                placeholder="Recipient address"
+                required
+                className={inputClass}
+              />
             </div>
             <div>
-              <label htmlFor="gateway" className={labelClass}>Gateway Address</label>
+              <label htmlFor="gateway" className={labelClass}>
+                Gateway Address
+              </label>
               {gatewaysLoading ? (
                 <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
                   <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
-                <select id="gateway" name="gateway" value={formData.gateway} onChange={handleInputChange} required className={inputClass}>
+                <select
+                  id="gateway"
+                  name="gateway"
+                  value={formData.gateway}
+                  onChange={handleInputChange}
+                  required
+                  className={inputClass}
+                >
                   <option value="">Select gateway</option>
                   {gateways.map((gateway, index) => (
                     <option key={index} value={gateway.publicKey.toString()}>
@@ -205,16 +242,48 @@ export default function PaymentPolicyForm() {
               )}
             </div>
             <div>
-              <label htmlFor="amount" className={labelClass}>Amount (base units)</label>
-              <input id="amount" name="amount" type="number" value={formData.amount} onChange={handleInputChange} placeholder="e.g., 10000000" required min="1" className={inputClass} />
+              <label htmlFor="amount" className={labelClass}>
+                Amount (base units)
+              </label>
+              <input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleInputChange}
+                placeholder="e.g., 10000000"
+                required
+                min="1"
+                className={inputClass}
+              />
             </div>
             <div>
-              <label htmlFor="intervalSeconds" className={labelClass}>Interval (seconds)</label>
-              <input id="intervalSeconds" name="intervalSeconds" type="number" value={formData.intervalSeconds} onChange={handleInputChange} placeholder="e.g., 2592000" required min="1" className={inputClass} />
+              <label htmlFor="intervalSeconds" className={labelClass}>
+                Interval (seconds)
+              </label>
+              <input
+                id="intervalSeconds"
+                name="intervalSeconds"
+                type="number"
+                value={formData.intervalSeconds}
+                onChange={handleInputChange}
+                placeholder="e.g., 2592000"
+                required
+                min="1"
+                className={inputClass}
+              />
             </div>
             <div>
-              <label htmlFor="frequency" className={labelClass}>Frequency</label>
-              <select id="frequency" name="frequency" value={formData.frequency} onChange={handleInputChange} className={inputClass}>
+              <label htmlFor="frequency" className={labelClass}>
+                Frequency
+              </label>
+              <select
+                id="frequency"
+                name="frequency"
+                value={formData.frequency}
+                onChange={handleInputChange}
+                className={inputClass}
+              >
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
@@ -224,23 +293,64 @@ export default function PaymentPolicyForm() {
               </select>
             </div>
             <div>
-              <label htmlFor="maxRenewals" className={labelClass}>Max Renewals</label>
-              <input id="maxRenewals" name="maxRenewals" type="number" value={formData.maxRenewals} onChange={handleInputChange} placeholder="Leave empty for unlimited" min="1" className={inputClass} />
+              <label htmlFor="maxRenewals" className={labelClass}>
+                Max Renewals
+              </label>
+              <input
+                id="maxRenewals"
+                name="maxRenewals"
+                type="number"
+                value={formData.maxRenewals}
+                onChange={handleInputChange}
+                placeholder="Leave empty for unlimited"
+                min="1"
+                className={inputClass}
+              />
             </div>
             <div>
-              <label htmlFor="approvalAmount" className={labelClass}>Approval Amount</label>
-              <input id="approvalAmount" name="approvalAmount" type="number" value={formData.approvalAmount} onChange={handleInputChange} placeholder="Token approval amount" min="1" className={inputClass} />
+              <label htmlFor="approvalAmount" className={labelClass}>
+                Approval Amount
+              </label>
+              <input
+                id="approvalAmount"
+                name="approvalAmount"
+                type="number"
+                value={formData.approvalAmount}
+                onChange={handleInputChange}
+                placeholder="Token approval amount"
+                min="1"
+                className={inputClass}
+              />
             </div>
           </div>
 
           <div>
-            <label htmlFor="memo" className={labelClass}>Memo (optional)</label>
-            <input id="memo" name="memo" value={formData.memo} onChange={handleInputChange} placeholder="Payment description" maxLength={64} className={inputClass} />
+            <label htmlFor="memo" className={labelClass}>
+              Memo (optional)
+            </label>
+            <input
+              id="memo"
+              name="memo"
+              value={formData.memo}
+              onChange={handleInputChange}
+              placeholder="Payment description"
+              maxLength={64}
+              className={inputClass}
+            />
           </div>
 
           <div className="flex items-center gap-2">
-            <input id="autoRenew" name="autoRenew" type="checkbox" checked={formData.autoRenew} onChange={handleInputChange} className="w-4 h-4 border border-[var(--color-primary)] rounded" />
-            <label htmlFor="autoRenew" className="text-sm">Auto-renew payments</label>
+            <input
+              id="autoRenew"
+              name="autoRenew"
+              type="checkbox"
+              checked={formData.autoRenew}
+              onChange={handleInputChange}
+              className="w-4 h-4 border border-[var(--color-primary)] rounded"
+            />
+            <label htmlFor="autoRenew" className="text-sm">
+              Auto-renew payments
+            </label>
           </div>
 
           <button
@@ -256,3 +366,4 @@ export default function PaymentPolicyForm() {
     </div>
   )
 }
+

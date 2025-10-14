@@ -1,5 +1,5 @@
 {
-  "name": "@tributary/scheduler",
+  "name": "@tributary-so/scheduler",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -12,7 +12,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
     "@solana/web3.js": "^1.98.4",
-    "@tributary/sdk": "workspace:*",
+    "@tributary-so/sdk": "workspace:*",
     "bn.js": "^4.12.1",
     "commander": "^14.0.1",
     "node-cron": "^3.0.3"

@@ -1,5 +1,5 @@
 {
-  "name": "@tributary/sdk-react",
+  "name": "@tributary-so/sdk-react",
   "version": "0.1.0",
   "type": "module",
   "description": "React hooks and utilities for Tributary recurring payments",
@@ -10,7 +10,7 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@tributary/sdk": "workspace:*",
+    "@tributary-so/sdk": "workspace:*",
     "react": "^19.2.0",
     "@solana/web3.js": "^1.98.4",
     "lucide-react": "^0.544.0",
