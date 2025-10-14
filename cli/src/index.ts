@@ -4,9 +4,12 @@ import { Command } from "commander";
 import { Connection, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
-import { RecurringPaymentsSDK } from "./sdk";
-import type { PolicyType, PaymentFrequency } from "./types";
-import { createMemoBuffer } from "./utils";
+import {
+  RecurringPaymentsSDK,
+  type PolicyType,
+  type PaymentFrequency,
+  createMemoBuffer,
+} from "@tributary-so/sdk";
 
 function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
   try {

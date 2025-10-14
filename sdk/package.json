@@ -16,8 +16,7 @@
     "@metaplex-foundation/umi": "^1.4.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.4.1",
     "@solana/web3.js": "^1.98.4",
-    "bn.js": "^4.12.1",
-    "commander": "^14.0.1"
+    "bn.js": "^4.12.1"
   },
   "devDependencies": {
     "@types/bn.js": "^4.11.6",

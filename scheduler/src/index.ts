@@ -4,7 +4,7 @@ import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
-import { RecurringPaymentsSDK } from "../../sdk/src";
+import { RecurringPaymentsSDK } from "@tributary-so/sdk";
 
 interface SchedulerConfig {
   connectionUrl: string;
