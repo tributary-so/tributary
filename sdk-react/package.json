@@ -15,7 +15,12 @@
     "@solana/web3.js": "^1.98.4",
     "lucide-react": "^0.544.0",
     "@solana/wallet-adapter-react": "^0.15.35",
-    "@coral-xyz/anchor": "^0.31.0"
+    "@coral-xyz/anchor": "^0.31.0",
+    "@heroui/button": "^2.2.27",
+    "@heroui/input": "^2.4.28",
+    "@heroui/react": "^2.8.5",
+    "@heroui/system": "^2.4.23",
+    "@heroui/theme": "^2.4.23"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

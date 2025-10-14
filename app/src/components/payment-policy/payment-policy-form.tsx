@@ -2,67 +2,51 @@ import React, { useState, useEffect } from 'react'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import * as anchor from '@coral-xyz/anchor'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Label } from '../ui/label'
-import { Alert, AlertDescription } from '../ui/alert'
-import { Spinner } from '@heroui/react'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
+import { useNavigate } from 'react-router'
 import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
 
-interface PaymentPolicyFormProps {
-  onSuccess?: () => void
-  onError?: (error: Error) => void
-}
-
-export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyFormProps) {
+export default function PaymentPolicyForm() {
   const { connection } = useConnection()
   const wallet = useWallet()
   const sdk = useSDK(wallet, connection)
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Gateway state
   const [gateways, setGateways] = useState<Array<{ publicKey: PublicKey; account: PaymentGateway }>>([])
   const [gatewaysLoading, setGatewaysLoading] = useState(false)
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
 
-  // Form state
   const [formData, setFormData] = useState({
-    tokenMint: '',
+    tokenMint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
     recipient: '',
     gateway: '',
     amount: '',
-    intervalSeconds: '',
+    intervalSeconds: '2592000',
     memo: '',
-    frequency: 'daily' as keyof PaymentFrequency,
+    frequency: 'monthly' as keyof PaymentFrequency,
     autoRenew: true,
     maxRenewals: '',
-    startTime: '',
     approvalAmount: '',
   })
 
-  // Fetch gateways on component mount
   useEffect(() => {
     const fetchGateways = async () => {
-      if (!sdk || gatewaysLoaded) {
-        return
-      }
-
+      if (!sdk || gatewaysLoaded) return
       try {
         setGatewaysLoading(true)
         const gatewayData = await sdk.getAllPaymentGateway()
         setGateways(gatewayData)
+        if (gatewayData.length > 0) {
+          setFormData((prev) => ({ ...prev, gateway: gatewayData[0].publicKey.toString() }))
+        }
         setGatewaysLoaded(true)
       } catch (error) {
         console.error('Error fetching payment gateways:', error)
-        toast.error(error instanceof Error ? error.message : 'Failed to fetch payment gateways')
       } finally {
         setGatewaysLoading(false)
       }
     }
-
     if (sdk && !gatewaysLoaded) {
       fetchGateways()
     }
@@ -81,54 +65,18 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
     return `${address.slice(0, 4)}...${address.slice(-4)}`
   }
 
-  const validateForm = () => {
-    const required = ['tokenMint', 'recipient', 'gateway', 'amount', 'intervalSeconds']
-    for (const field of required) {
-      if (!formData[field as keyof typeof formData]) {
-        throw new Error(`${field} is required`)
-      }
-    }
-
-    // Validate public keys
-    try {
-      new PublicKey(formData.tokenMint)
-      new PublicKey(formData.recipient)
-      new PublicKey(formData.gateway)
-    } catch {
-      throw new Error('Invalid public key format')
-    }
-
-    // Validate numbers
-    if (isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
-      throw new Error('Amount must be a positive number')
-    }
-    if (isNaN(Number(formData.intervalSeconds)) || Number(formData.intervalSeconds) <= 0) {
-      throw new Error('Interval seconds must be a positive number')
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!wallet.publicKey || !wallet.signTransaction) {
-      setError('Please connect your wallet')
-      toast.error('Wallet not connected')
+      toast.error('Please connect your wallet')
       return
     }
-
     if (!sdk) {
-      setError('SDK not available')
       toast.error('SDK not available')
       return
     }
-
     setLoading(true)
-    setError(null)
-
     try {
-      validateForm()
-
-      // Create policy type
       const policyType: PolicyType = {
         subscription: {
           amount: new anchor.BN(formData.amount),
@@ -138,8 +86,6 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
           padding: Array(8).fill(new anchor.BN(0)),
         },
       }
-
-      // Create payment frequency
       const paymentFrequency: PaymentFrequency = (() => {
         switch (formData.frequency) {
           case 'daily':
@@ -158,23 +104,11 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
             return { daily: {} }
         }
       })()
-
-      // Create memo buffer
       const memo = createMemoBuffer(formData.memo, 64)
-
-      // Parse start time if provided
-      let startTime: anchor.BN | null = null
-      if (formData.startTime) {
-        startTime = new anchor.BN(Math.floor(new Date(formData.startTime).getTime() / 1000))
-      }
-
-      // Parse approval amount if provided
       let approvalAmount: anchor.BN | undefined = undefined
       if (formData.approvalAmount) {
         approvalAmount = new anchor.BN(formData.approvalAmount)
       }
-
-      // Get instructions using the new method
       const instructions = await sdk.createPaymentPolicyWithUser(
         new PublicKey(formData.tokenMint),
         new PublicKey(formData.recipient),
@@ -182,240 +116,231 @@ export default function PaymentPolicyForm({ onSuccess, onError }: PaymentPolicyF
         policyType,
         paymentFrequency,
         memo,
-        startTime,
+        null,
         approvalAmount,
       )
-
-      // Create and send transaction
       const { Transaction } = await import('@solana/web3.js')
       const transaction = new Transaction()
       instructions.forEach((ix) => transaction.add(ix))
       transaction.feePayer = wallet.publicKey
-
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
       transaction.recentBlockhash = blockhash
-
       const signedTx = await wallet.signTransaction(transaction)
       const txId = await connection.sendRawTransaction(signedTx.serialize())
-
-      await connection.confirmTransaction({
-        signature: txId,
-        blockhash,
-        lastValidBlockHeight,
-      })
-
-      toast.success('Payment policy created successfully!', {
-        description: `Transaction: ${txId}`,
-      })
-
-      // Reset form
-      setFormData({
-        tokenMint: '',
-        recipient: '',
-        gateway: '',
-        amount: '',
-        intervalSeconds: '',
-        memo: '',
-        frequency: 'daily',
-        autoRenew: true,
-        maxRenewals: '',
-        startTime: '',
-        approvalAmount: '',
-      })
-
-      onSuccess?.()
+      await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
+      toast.success('Payment policy created successfully!')
+      setTimeout(() => navigate('/account'), 1000)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(errorMessage)
-      onError?.(err instanceof Error ? err : new Error(errorMessage))
-      toast.error('Failed to create payment policy', {
-        description: errorMessage,
-      })
+      toast.error('Failed to create payment policy: ' + errorMessage)
+      console.error('Error creating policy:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="w-full max-w-2xl mx-auto p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Create Payment Policy</h2>
-        <p className="text-gray-600">
-          Create a new recurring payment policy. If you don't have a user payment account for this token, it will be
-          created automatically.
-        </p>
+  const inputClass =
+    'w-full px-3 py-2 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] placeholder:text-gray-400 focus:outline-none transition-colors text-sm'
+  const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
+
+  if (!wallet.connected) {
+    return (
+      <div className="items-center">
+        <p className="text-xl">Please connect your wallet</p>
       </div>
+    )
+  }
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+  return (
+    <div className="items-center">
+      <div className="max-w-3xl">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-secondary)' }}>
+            Create Payment Policy
+          </h2>
+          <p className="text-sm text-gray-600">
+            Create a new recurring payment policy. User payment account will be created if needed.
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="tokenMint">Token Mint Address</Label>
-            <Input
-              id="tokenMint"
-              name="tokenMint"
-              value={formData.tokenMint}
-              onChange={handleInputChange}
-              placeholder="Enter token mint public key"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="recipient">Recipient Address</Label>
-            <Input
-              id="recipient"
-              name="recipient"
-              value={formData.recipient}
-              onChange={handleInputChange}
-              placeholder="Enter recipient public key"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="gateway">Gateway Address</Label>
-            {gatewaysLoading ? (
-              <div className="flex items-center space-x-2 p-2 border rounded-md">
-                <Spinner size="sm" />
-                <span className="text-gray-500">Loading gateways...</span>
-              </div>
-            ) : (
-              <select
-                id="gateway"
-                name="gateway"
-                value={formData.gateway}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="tokenMint" className={labelClass}>
+                Token Mint Address
+              </label>
+              <input
+                id="tokenMint"
+                name="tokenMint"
+                value={formData.tokenMint}
                 onChange={handleInputChange}
-                className="w-full p-2 border rounded-md"
+                placeholder="Token mint address"
                 required
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="recipient" className={labelClass}>
+                Recipient Address
+              </label>
+              <input
+                id="recipient"
+                name="recipient"
+                value={formData.recipient}
+                onChange={handleInputChange}
+                placeholder="Recipient address"
+                required
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="gateway" className={labelClass}>
+                Gateway Address
+              </label>
+              {gatewaysLoading ? (
+                <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
+                  <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <select
+                  id="gateway"
+                  name="gateway"
+                  value={formData.gateway}
+                  onChange={handleInputChange}
+                  required
+                  className={inputClass}
+                >
+                  <option value="">Select gateway</option>
+                  {gateways.map((gateway, index) => (
+                    <option key={index} value={gateway.publicKey.toString()}>
+                      {truncateAddress(gateway.publicKey.toString())} - {gateway.account.gatewayFeeBps} bps
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div>
+              <label htmlFor="amount" className={labelClass}>
+                Amount (base units)
+              </label>
+              <input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleInputChange}
+                placeholder="e.g., 10000000"
+                required
+                min="1"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="intervalSeconds" className={labelClass}>
+                Interval (seconds)
+              </label>
+              <input
+                id="intervalSeconds"
+                name="intervalSeconds"
+                type="number"
+                value={formData.intervalSeconds}
+                onChange={handleInputChange}
+                placeholder="e.g., 2592000"
+                required
+                min="1"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="frequency" className={labelClass}>
+                Frequency
+              </label>
+              <select
+                id="frequency"
+                name="frequency"
+                value={formData.frequency}
+                onChange={handleInputChange}
+                className={inputClass}
               >
-                <option value="">Select a gateway</option>
-                {gateways.map((gateway, index) => (
-                  <option key={index} value={gateway.publicKey.toString()}>
-                    {truncateAddress(gateway.publicKey.toString())} - {gateway.account.gatewayFeeBps} bps
-                  </option>
-                ))}
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="semiAnnually">Semi-Annually</option>
+                <option value="annually">Annually</option>
               </select>
-            )}
+            </div>
+            <div>
+              <label htmlFor="maxRenewals" className={labelClass}>
+                Max Renewals
+              </label>
+              <input
+                id="maxRenewals"
+                name="maxRenewals"
+                type="number"
+                value={formData.maxRenewals}
+                onChange={handleInputChange}
+                placeholder="Leave empty for unlimited"
+                min="1"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="approvalAmount" className={labelClass}>
+                Approval Amount
+              </label>
+              <input
+                id="approvalAmount"
+                name="approvalAmount"
+                type="number"
+                value={formData.approvalAmount}
+                onChange={handleInputChange}
+                placeholder="Token approval amount"
+                min="1"
+                className={inputClass}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Payment Amount</Label>
-            <Input
-              id="amount"
-              name="amount"
-              type="number"
-              value={formData.amount}
+          <div>
+            <label htmlFor="memo" className={labelClass}>
+              Memo (optional)
+            </label>
+            <input
+              id="memo"
+              name="memo"
+              value={formData.memo}
               onChange={handleInputChange}
-              placeholder="Amount in token base units"
-              required
-              min="1"
+              placeholder="Payment description"
+              maxLength={64}
+              className={inputClass}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="intervalSeconds">Interval (seconds)</Label>
-            <Input
-              id="intervalSeconds"
-              name="intervalSeconds"
-              type="number"
-              value={formData.intervalSeconds}
+          <div className="flex items-center gap-2">
+            <input
+              id="autoRenew"
+              name="autoRenew"
+              type="checkbox"
+              checked={formData.autoRenew}
               onChange={handleInputChange}
-              placeholder="Payment interval in seconds"
-              required
-              min="1"
+              className="w-4 h-4 border border-[var(--color-primary)] rounded"
             />
+            <label htmlFor="autoRenew" className="text-sm">
+              Auto-renew payments
+            </label>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="frequency">Payment Frequency</Label>
-            <select
-              id="frequency"
-              name="frequency"
-              value={formData.frequency}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="semiAnnually">Semi-Annually</option>
-              <option value="annually">Annually</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="maxRenewals">Max Renewals (optional)</Label>
-            <Input
-              id="maxRenewals"
-              name="maxRenewals"
-              type="number"
-              value={formData.maxRenewals}
-              onChange={handleInputChange}
-              placeholder="Leave empty for unlimited"
-              min="1"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="startTime">Start Time (optional)</Label>
-            <Input
-              id="startTime"
-              name="startTime"
-              type="datetime-local"
-              value={formData.startTime}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="approvalAmount">Delegate Approval Amount (optional)</Label>
-            <Input
-              id="approvalAmount"
-              name="approvalAmount"
-              type="number"
-              value={formData.approvalAmount}
-              onChange={handleInputChange}
-              placeholder="Token amount to approve for delegate"
-              min="1"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="memo">Memo (optional)</Label>
-          <Input
-            id="memo"
-            name="memo"
-            value={formData.memo}
-            onChange={handleInputChange}
-            placeholder="Payment description or memo"
-            maxLength={64}
-          />
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <input
-            id="autoRenew"
-            name="autoRenew"
-            type="checkbox"
-            checked={formData.autoRenew}
-            onChange={handleInputChange}
-            className="rounded"
-          />
-          <Label htmlFor="autoRenew">Auto-renew payments</Label>
-        </div>
-
-        <Button type="submit" disabled={loading || !wallet.connected} className="w-full">
-          {loading ? 'Creating Payment Policy...' : 'Create Payment Policy'}
-        </Button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading || !wallet.connected}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-6 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ fontFamily: 'var(--font-secondary)', fontSize: '14px', textTransform: 'uppercase' }}
+          >
+            {loading ? 'Creating...' : 'Create Payment Policy'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

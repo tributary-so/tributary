@@ -1,10 +1,9 @@
 import { ThemeProvider } from './theme-provider'
 import { Toaster } from './ui/sonner'
 import { AppHeader } from '@/components/app-header'
-import React from 'react'
 import { AppFooter } from '@/components/app-footer'
-import { ClusterChecker } from '@/components/cluster/cluster-ui'
-import { AccountChecker } from '@/components/account/account-ui'
+import React from 'react'
+import { BorderedContainer } from './ui/bordered-container'
 
 export function AppLayout({
   children,
@@ -14,14 +13,35 @@ export function AppLayout({
   links: { label: string; path: string }[]
 }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <div className="flex flex-col min-h-screen">
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+      <div
+        className="flex flex-col"
+        style={{
+          minHeight: '100vh',
+          backgroundColor: '#fff',
+        }}
+      >
         <AppHeader links={links} />
-        <main className="flex-grow container mx-auto p-4">
-          <ClusterChecker>
-            <AccountChecker />
-          </ClusterChecker>
-          {children}
+        <main className="flex-grow" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <BorderedContainer
+              borderSides={['right', 'left']}
+              className="flex justify-center"
+              style={{
+                padding: '32px',
+                flex: 1,
+              }}
+              fillHeight={true}
+            >
+              {children}
+            </BorderedContainer>
+          </div>
         </main>
         <AppFooter />
       </div>
@@ -29,3 +49,4 @@ export function AppLayout({
     </ThemeProvider>
   )
 }
+
