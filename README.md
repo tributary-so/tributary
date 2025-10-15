@@ -17,7 +17,7 @@ pnpm install
 cd sdk
 pnpm build
 
-cd ../ssdk-react
+cd ../sdk-react
 pnpm build
 
 cd ../app

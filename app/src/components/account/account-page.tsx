@@ -35,7 +35,6 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (wallet.publicKey?.toString()) {
-      // reload
       setLoaded(false)
     }
   }, [wallet.publicKey])
@@ -253,32 +252,30 @@ export default function AccountPage() {
 
   if (!wallet.connected) {
     return (
-      <div className="flex items-center">
-        <p className="text-xl">Please connect your wallet to view your account</p>
+      <div className="flex items-center justify-center min-h-[500px]">
+        <p className="text-lg text-gray-600">Please connect your wallet to view your account</p>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex items-center">
-        <div>
-          <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-          <p
-            className="text-sm uppercase"
-            style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-          >
-            Loading...
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+        <div className="w-16 h-16 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+        <p
+          className="text-sm uppercase tracking-wide"
+          style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
+        >
+          Loading...
+        </p>
       </div>
     )
   }
 
   if (userPayments.length < 1) {
     return (
-      <div className="flex items-center">
-        <p className="text-xl">You don't have any Subscriptions yet</p>
+      <div className="flex items-center justify-center min-h-[500px]">
+        <p className="text-lg text-gray-600">You don't have any Subscriptions yet</p>
       </div>
     )
   }
@@ -288,19 +285,20 @@ export default function AccountPage() {
     : null
 
   const DetailRow = ({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) => (
-    <div className="flex items-center py-2 border-b border-gray-100">
-      <span className="min-w-[180px] text-sm text-gray-600 uppercase">{label}</span>
-      <div className="flex items-center gap-2">
-        <span className="text-sm break-all">{value}</span>
+    <div className="flex items-center py-3 border-b border-gray-100 last:border-0">
+      <span className="min-w-[200px] text-sm text-gray-600 uppercase font-medium">{label}</span>
+      <div className="flex items-center gap-3 flex-1">
+        <span className="text-sm break-all text-gray-900">{value}</span>
         {copyable && (
           <button
             onClick={() => copyToClipboard(value, label)}
-            className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+            className="p-1.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+            title="Copy to clipboard"
           >
             {copiedAddress === label ? (
-              <Check className="h-3 w-3 text-green-600" />
+              <Check className="h-4 w-4 text-green-600" />
             ) : (
-              <Copy className="h-3 w-3 text-gray-500" />
+              <Copy className="h-4 w-4 text-gray-500" />
             )}
           </button>
         )}
