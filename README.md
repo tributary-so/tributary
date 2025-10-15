@@ -10,7 +10,11 @@ Tributary - a river or stream that flows into a larget river or a lake
 
 ## Setup & Run
 
+```bash
 gh repo clone xeroc/tributary
+# or
+git clone https://github.com/xeroc/tributary
+
 cd tributary
 pnpm install
 
@@ -22,3 +26,4 @@ pnpm build
 
 cd ../app
 pnpm run dev
+```
