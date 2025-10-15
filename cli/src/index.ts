@@ -4,9 +4,12 @@ import { Command } from "commander";
 import { Connection, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
-import { RecurringPaymentsSDK } from "./sdk";
-import type { PolicyType, PaymentFrequency } from "./types";
-import { createMemoBuffer } from "./utils";
+import {
+  RecurringPaymentsSDK,
+  type PolicyType,
+  type PaymentFrequency,
+  createMemoBuffer,
+} from "@tributary-so/sdk";
 
 function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
   try {
@@ -321,6 +324,119 @@ program
       console.log("Bump:", pda.bump);
     } catch (error) {
       console.error("Error getting payments delegate PDA:", error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("list-user-payments")
+  .description("List all user payment")
+  .action(async () => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const users = await sdk.getAllUserPayments();
+      for (const user of users) {
+        console.log(`User Payment: ${user.publicKey.toString()}`);
+        console.log(`Owner ${user.account.owner.toString()}`);
+      }
+    } catch (error) {
+      console.error("Error listing policies:", error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("list-policies")
+  .description(
+    "List all payment policies for a given owner, ordered by user payment"
+  )
+  .action(async () => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const policies = await sdk.getAllPaymentPolicies();
+
+      // Group by userPayment
+      const grouped: Record<
+        string,
+        Array<{ publicKey: PublicKey; account: any }>
+      > = {};
+      for (const policy of policies) {
+        const userPaymentStr = policy.account.userPayment.toString();
+        if (!grouped[userPaymentStr]) {
+          grouped[userPaymentStr] = [];
+        }
+        grouped[userPaymentStr].push(policy);
+      }
+
+      // Sort user payments
+      const sortedUserPayments = Object.keys(grouped).sort();
+
+      for (const userPaymentStr of sortedUserPayments) {
+        console.log(`User Payment: ${userPaymentStr}`);
+        for (const policy of grouped[userPaymentStr]) {
+          console.log(
+            `  Policy ${policy.account.policyId}: Status ${
+              Object.keys(policy.account.status)[0]
+            }, Recipient ${policy.account.recipient.toString()}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error listing policies:", error);
+      process.exit(1);
+    }
+  });
+
+// List Policies by Owner command
+program
+  .command("list-policies-by-owner")
+  .description(
+    "List all payment policies for a given owner, ordered by user payment"
+  )
+  .requiredOption("-o, --owner <pubkey>", "Owner public key")
+  .action(async (options) => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const owner = new PublicKey(options.owner);
+      const policies = await sdk.getPaymentPoliciesByUser(owner);
+
+      // Group by userPayment
+      const grouped: Record<
+        string,
+        Array<{ publicKey: PublicKey; account: any }>
+      > = {};
+      for (const policy of policies) {
+        const userPaymentStr = policy.account.userPayment.toString();
+        if (!grouped[userPaymentStr]) {
+          grouped[userPaymentStr] = [];
+        }
+        grouped[userPaymentStr].push(policy);
+      }
+
+      // Sort user payments
+      const sortedUserPayments = Object.keys(grouped).sort();
+
+      for (const userPaymentStr of sortedUserPayments) {
+        console.log(`User Payment: ${userPaymentStr}`);
+        for (const policy of grouped[userPaymentStr]) {
+          console.log(
+            `  Policy ${policy.account.policyId}: Status ${
+              Object.keys(policy.account.status)[0]
+            }, Recipient ${policy.account.recipient.toString()}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error listing policies:", error);
       process.exit(1);
     }
   });

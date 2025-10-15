@@ -1,8 +1,27 @@
-import PaymentPolicyForm from './payment-policy-form'
+import { useState } from 'react'
+import PaymentPolicyForm, { PaymentPolicyFormData } from './payment-policy-form'
+import IntegrationCode from './integration-code'
 
 export default function PaymentPolicyFeature() {
+  const [formData, setFormData] = useState<PaymentPolicyFormData>({
+    tokenMint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+    recipient: '',
+    gateway: '',
+    amount: '',
+    intervalSeconds: '2592000',
+    memo: '',
+    frequency: 'monthly',
+    autoRenew: true,
+    maxRenewals: '',
+    approvalAmount: '',
+  })
+
+  const handleFormDataChange = (newFormData: typeof formData) => {
+    setFormData(newFormData)
+  }
+
   return (
-    <div 
+    <div
       style={{
         width: '100%',
         backgroundColor: '#fff',
@@ -10,8 +29,22 @@ export default function PaymentPolicyFeature() {
         flex: 1,
       }}
     >
-      <div className="max-w-[1440px] mx-auto px-[40px]">
-        <PaymentPolicyForm />
+      <div>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-secondary)' }}>
+            Payment Policy Setup
+          </h2>
+          <p className="text-sm text-gray-600">Create a new recurring payment policy and get integration code.</p>
+        </div>
+
+        <div className="flex justify-between">
+          <div>
+            <PaymentPolicyForm formData={formData} onFormDataChange={handleFormDataChange} />
+          </div>
+          <div className="relative">
+            <IntegrationCode formData={formData} />
+          </div>
+        </div>
       </div>
     </div>
   )

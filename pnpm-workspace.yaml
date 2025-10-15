@@ -7,3 +7,4 @@ packages:
   - "sdk-widgets"
   - "tests"
   - "scheduler"
+  - "cli"

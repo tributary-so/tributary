@@ -4,7 +4,7 @@ import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
-import { RecurringPaymentsSDK } from "../../sdk/src";
+import { RecurringPaymentsSDK } from "@tributary-so/sdk";
 
 interface SchedulerConfig {
   connectionUrl: string;
@@ -178,23 +178,19 @@ class PaymentScheduler {
 
 // CLI interface
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const args = process.argv.slice(2);
-
-  if (args.length < 2) {
-    console.error(
-      "Usage: npm start <connection-url> <gateway-keypair-path> [cron-schedule]"
-    );
-    console.error(
-      "Example: npm start https://api.devnet.solana.com /path/to/gateway-keypair.json"
-    );
-    console.error("Optional cron schedule (default: '0 * * * *' - every hour)");
+  if (!process.env.SOLANA_API) {
+    console.error("Environment variable SOLANA_API required");
+    process.exit(1);
+  }
+  if (!process.env.ANCHOR_WALLET) {
+    console.error("Environment variable ANCHOR_WALLET required");
     process.exit(1);
   }
 
   const config: SchedulerConfig = {
-    connectionUrl: args[0],
-    gatewayKeypairPath: args[1],
-    cronSchedule: args[2] || "0 * * * *",
+    connectionUrl: process.env.SOLANA_API,
+    gatewayKeypairPath: process.env.ANCHOR_WALLET,
+    cronSchedule: process.env.CRON_SCHEDULE || "0 * * * *",
   };
 
   const scheduler = new PaymentScheduler(config);

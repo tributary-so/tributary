@@ -516,6 +516,12 @@ export class RecurringPaymentsSDK {
     return await this.program.account.paymentPolicy.all();
   }
 
+  async getAllUserPayments(): Promise<
+    Array<{ publicKey: PublicKey; account: UserPayment }>
+  > {
+    return await this.program.account.userPayment.all();
+  }
+
   async getPaymentPoliciesByUser(
     user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {

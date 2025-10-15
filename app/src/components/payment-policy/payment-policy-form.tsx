@@ -7,7 +7,24 @@ import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
 import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
 
-export default function PaymentPolicyForm() {
+export interface PaymentPolicyFormData {
+  tokenMint: string
+  recipient: string
+  gateway: string
+  amount: string
+  intervalSeconds: string
+  memo: string
+  frequency: string
+  autoRenew: boolean
+  maxRenewals: string
+  approvalAmount: string
+}
+export interface PaymentPolicyFormProps {
+  formData: PaymentPolicyFormData
+  onFormDataChange: (newFormData: PaymentPolicyFormProps['formData']) => void
+}
+
+export default function PaymentPolicyForm({ formData, onFormDataChange }: PaymentPolicyFormProps) {
   const { connection } = useConnection()
   const wallet = useWallet()
   const sdk = useSDK(wallet, connection)
@@ -17,18 +34,11 @@ export default function PaymentPolicyForm() {
   const [gatewaysLoading, setGatewaysLoading] = useState(false)
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
 
-  const [formData, setFormData] = useState({
-    tokenMint: '',
-    recipient: '',
-    gateway: '',
-    amount: '',
-    intervalSeconds: '',
-    memo: '',
-    frequency: 'monthly' as keyof PaymentFrequency,
-    autoRenew: true,
-    maxRenewals: '',
-    approvalAmount: '',
-  })
+  useEffect(() => {
+    if (wallet.publicKey && !formData.recipient) {
+      onFormDataChange({ ...formData, recipient: wallet.publicKey.toString() })
+    }
+  }, [wallet.publicKey, formData, onFormDataChange])
 
   useEffect(() => {
     const fetchGateways = async () => {
@@ -37,8 +47,8 @@ export default function PaymentPolicyForm() {
         setGatewaysLoading(true)
         const gatewayData = await sdk.getAllPaymentGateway()
         setGateways(gatewayData)
-        if (gatewayData.length > 0) {
-          setFormData((prev) => ({ ...prev, gateway: gatewayData[0].publicKey.toString() }))
+        if (gatewayData.length > 0 && !formData.gateway) {
+          onFormDataChange({ ...formData, gateway: gatewayData[0].publicKey.toString() })
         }
         setGatewaysLoaded(true)
       } catch (error) {
@@ -50,14 +60,15 @@ export default function PaymentPolicyForm() {
     if (sdk && !gatewaysLoaded) {
       fetchGateways()
     }
-  }, [sdk, gatewaysLoaded])
+  }, [sdk, gatewaysLoaded, formData, onFormDataChange])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    setFormData((prev) => ({
-      ...prev,
+    const newData = {
+      ...formData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }))
+    }
+    onFormDataChange(newData)
   }
 
   const truncateAddress = (address: string) => {
@@ -143,26 +154,17 @@ export default function PaymentPolicyForm() {
     'w-full px-3 py-2 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] placeholder:text-gray-400 focus:outline-none transition-colors text-sm'
   const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
 
-  if (!wallet.connected) {
-    return (
-      <div className="items-center">
-        <p className="text-xl">Please connect your wallet</p>
-      </div>
-    )
-  }
+  // if (!wallet.connected) {
+  //   return (
+  //     <div className="items-center">
+  //       <p className="text-xl">Please connect your wallet</p>
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="items-center">
       <div className="max-w-3xl">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-secondary)' }}>
-            Create Payment Policy
-          </h2>
-          <p className="text-sm text-gray-600">
-            Create a new recurring payment policy. User payment account will be created if needed.
-          </p>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>

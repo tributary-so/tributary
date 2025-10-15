@@ -26,23 +26,12 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [userPayments, setUserPayments] = useState<UserPaymentWithPolicies[]>([])
-  const [selectedFilter, setSelectedFilter] = useState('Details')
-  const [showDropdown, setShowDropdown] = useState(false)
   const [selectedPolicy, setSelectedPolicy] = useState<{ publicKey: PublicKey; account: PaymentPolicy } | null>(null)
   const [tokenInfoCache, setTokenInfoCache] = useState<Map<string, TokenInfo>>(new Map())
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
   const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
   const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
-  const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
-  const [buttonHtml, setButtonHtml] = useState('')
-  const [buttonCss, setButtonCss] = useState('')
-
-  const filterOptions = [
-    { label: 'Details', value: 'details' },
-    { label: 'Integration Code', value: 'integration' },
-    { label: 'Subscribers', value: 'subscribers' },
-  ]
 
   useEffect(() => {
     if (wallet.publicKey?.toString()) {
@@ -94,25 +83,6 @@ export default function AccountPage() {
         if (Array.from(userPaymentMap.values()).length > 0) {
           const firstPolicy = Array.from(userPaymentMap.values())[0].policies[0]
           setSelectedPolicy(firstPolicy)
-          setButtonHtml(
-            `<button class="tributary-subscribe-btn" data-policy-id="${firstPolicy.account.policyId}">Subscribe Now</button>`,
-          )
-          setButtonCss(`.tributary-subscribe-btn {
-          padding: 8px 16px;
-          border: 1px solid #000970;
-          border-radius: 4px;
-          background: transparent;
-          color: #000970;
-          font-family: 'Denim', sans-serif;
-          font-size: 14px;
-          text-transform: uppercase;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .tributary-subscribe-btn:hover {
-          background: #000970;
-          color: white;
-        }`)
         }
         setLoaded(true)
       } catch (err) {
@@ -280,24 +250,10 @@ export default function AccountPage() {
     }
   }
 
-  const copyCode = (code: string, type: string) => {
-    navigator.clipboard.writeText(code)
-    setCopiedCode(type)
-    setTimeout(() => setCopiedCode(null), 2000)
-  }
-
   if (!wallet.connected) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
         <p className="text-lg text-gray-600">Please connect your wallet to view your account</p>
-      </div>
-    )
-  }
-
-  if (userPayments.length < 1 && !loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[500px]">
-        <p className="text-lg text-gray-600">You don't have any Subscriptions yet</p>
       </div>
     )
   }
@@ -316,11 +272,17 @@ export default function AccountPage() {
     )
   }
 
+  if (userPayments.length < 1) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <p className="text-lg text-gray-600">You don't have any Subscriptions yet</p>
+      </div>
+    )
+  }
+
   const currentUserPayment = selectedPolicy
     ? userPayments.find((up) => up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()))
     : null
-
-  const jsCode = `<script src="https://cdn.tributary.io/v1/tributary.js"></script>\n<script>\n  Tributary.init({\n    apiKey: 'your_api_key_here',\n    network: 'mainnet'\n  })\n</script>`
 
   const DetailRow = ({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) => (
     <div className="flex items-center py-3 border-b border-gray-100 last:border-0">
@@ -347,331 +309,153 @@ export default function AccountPage() {
   let policyCounter = 0
 
   return (
-    <div className="w-full min-h-screen">
-      <div className="flex max-w-[1400px] mx-auto">
-        {/* Sticky Sidebar */}
-        <div className="w-[380px] flex-shrink-0">
-          <div className="sticky top-0">
-            <div className="border-r border-gray-200">
-              {/* Sidebar Header */}
-              <div className="h-14 flex items-center justify-between px-5 border-b border-gray-200 bg-white">
-                <div className="flex items-center gap-2">
-                  <span className="uppercase text-sm font-medium">Subscriptions</span>
-                  <span className="text-sm text-gray-500">
-                    ({userPayments.reduce((sum, up) => sum + up.policies.length, 0)})
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedFilter('Details')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all uppercase font-medium"
-                  style={{ fontFamily: 'var(--font-secondary)' }}
+    <div className="flex items-start">
+      <div className="w-[368px] border-r border-gray-200">
+        <div className="flex flex-col">
+          {userPayments.map(({ policies, userPayment }) => {
+            const policiesComponent = policies.map((policy) => {
+              policyCounter++
+              const isSelected = selectedPolicy?.publicKey.toString() === policy.publicKey.toString()
+              return (
+                <div
+                  key={policy.publicKey.toString()}
+                  onClick={() => setSelectedPolicy(policy)}
+                  className="h-14 flex items-center px-4 cursor-pointer transition-colors hover:bg-gray-50"
+                  style={{ backgroundColor: isSelected ? '#f5f7f7' : 'transparent' }}
                 >
-                  Overview
-                  <svg className="w-3 h-3" viewBox="0 0 4 9" fill="currentColor">
-                    <path d="M0 0L4 4.5L0 9" />
-                  </svg>
-                </button>
-              </div>
+                  <div
+                    className="w-8 h-8 flex items-center justify-center border border-[var(--color-primary)] rounded text-xs"
+                    style={{ backgroundColor: isSelected ? '#fff' : 'transparent' }}
+                  >
+                    {policyCounter}
+                  </div>
+                  <div className="ml-3 flex items-center gap-2 text-sm">
+                    <span className="uppercase" style={{ color: 'var(--color-primary)' }}>
+                      Policy-{policy.account.policyId}
+                    </span>
+                    <span className="uppercase text-gray-600">( {policy.account.paymentCount} )</span>
+                  </div>
+                </div>
+              )
+            })
 
-              {/* Policy List */}
-              <div className="bg-white">
-                {userPayments.map(({ policies, userPayment }) =>
-                  policies.map((policy) => {
-                    policyCounter++
-                    const isSelected = selectedPolicy?.publicKey.toString() === policy.publicKey.toString()
-                    return (
-                      <div
-                        key={policy.publicKey.toString()}
-                        onClick={() => setSelectedPolicy(policy)}
-                        className="h-16 flex items-center px-5 cursor-pointer transition-colors hover:bg-gray-50"
-                        style={{ backgroundColor: isSelected ? '#f5f7f7' : 'transparent' }}
-                      >
-                        <div
-                          className="w-9 h-9 flex items-center justify-center border border-[var(--color-primary)] rounded text-sm font-medium flex-shrink-0"
-                          style={{ backgroundColor: isSelected ? '#fff' : 'transparent' }}
-                        >
-                          {policyCounter}
-                        </div>
-                        <div className="ml-4 flex items-center gap-2 text-sm">
-                          <span className="uppercase font-medium" style={{ color: 'var(--color-primary)' }}>
-                            Policy-{policy.account.policyId}
-                          </span>
-                          <span className="text-gray-500">
-                            ({tokenInfoCache.get(userPayment.tokenMint.toString())?.symbol ?? 'unknown'})
-                          </span>
-                          <span className="text-gray-400">· {policy.account.paymentCount}</span>
-                        </div>
-                      </div>
+            return (
+              <div>
+                <div className="h-12 flex items-center justify-between px-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className="uppercase text-sm">
+                      {tokenInfoCache.get(userPayment.tokenMint.toString())?.symbol ?? 'unknown'}
+                    </span>
+                    <span className="uppercase text-sm">
+                      ({userPayments.reduce((sum, up) => sum + up.policies.length, 0)})
+                    </span>
+                  </div>
+                </div>
+                <div>{policiesComponent}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="h-12 flex items-center px-6 border-b border-gray-200">
+          <span className="uppercase text-sm">
+            {selectedPolicy ? `Policy-${selectedPolicy.account.policyId} subscription` : 'Select a policy'}
+          </span>
+        </div>
+
+        {selectedPolicy && currentUserPayment && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" viewBox="0 0 18 18" fill="none" stroke="var(--color-primary)" strokeWidth="2">
+                  <circle cx="9" cy="9" r="7" />
+                </svg>
+                <span className="underline font-medium">Details</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    handleExecutePayment(
+                      selectedPolicy.publicKey,
+                      selectedPolicy.account,
+                      currentUserPayment.userPayment,
                     )
-                  }),
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 min-w-0">
-          {/* Sticky Header */}
-          <div className="sticky top-0 bg-white z-10 border-b border-gray-200">
-            <div className="h-14 flex items-center px-8">
-              <span className="uppercase text-sm font-medium">
-                {selectedPolicy ? `Policy-${selectedPolicy.account.policyId} subscription` : 'Select a policy'}
-              </span>
-              <div className="relative ml-5">
-                <button
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs bg-gray-100 rounded cursor-pointer hover:bg-gray-200 transition-colors"
+                  }
+                  disabled={
+                    !isPaymentDue(selectedPolicy.account) || executingPayments.has(selectedPolicy.publicKey.toString())
+                  }
+                  className="p-2 border border-blue-600 rounded hover:bg-blue-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {selectedFilter}
-                  <svg className="w-2.5 h-2.5" viewBox="0 0 8 8" fill="currentColor">
-                    <path d="M0 2L4 6L8 2" />
-                  </svg>
+                  {executingPayments.has(selectedPolicy.publicKey.toString()) ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
                 </button>
-                {showDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg min-w-[180px] z-50">
-                    {filterOptions.map((option) => (
-                      <div
-                        key={option.value}
-                        className="px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
-                        style={{
-                          backgroundColor: selectedFilter === option.label ? '#edefef' : 'transparent',
-                          fontWeight: selectedFilter === option.label ? 600 : 400,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedFilter(option.label)
-                          setShowDropdown(false)
-                        }}
-                      >
-                        {option.label}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <button
+                  onClick={() =>
+                    handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                  }
+                  disabled={togglingPolicies.has(selectedPolicy.publicKey.toString())}
+                  className="p-2 border border-orange-600 rounded hover:bg-orange-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {togglingPolicies.has(selectedPolicy.publicKey.toString()) ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : getStatus(selectedPolicy.account) === 'Active' ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                </button>
+                <button
+                  onClick={() =>
+                    handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                  }
+                  disabled={deletingPolicies.has(selectedPolicy.publicKey.toString())}
+                  className="p-2 border border-red-600 rounded hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingPolicies.has(selectedPolicy.publicKey.toString()) ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
               </div>
+            </div>
+
+            <div className="max-w-[700px]">
+              <DetailRow label="Policy Address" value={selectedPolicy.publicKey.toString()} copyable />
+              <DetailRow label="Owner" value={currentUserPayment.userPayment.owner.toString()} copyable />
+              <DetailRow label="Policy ID" value={`#${selectedPolicy.account.policyId}`} />
+              <DetailRow label="Type" value={getPolicyType(selectedPolicy.account)} />
+              <DetailRow label="Status" value={getStatus(selectedPolicy.account)} />
+              <DetailRow label="Recipient" value={selectedPolicy.account.recipient.toString()} copyable />
+              <DetailRow label="Gateway" value={selectedPolicy.account.gateway.toString()} copyable />
+              <DetailRow label="Token Mint" value={currentUserPayment.userPayment.tokenMint.toString()} copyable />
+              <DetailRow
+                label="Amount"
+                value={formatAmount(getAmount(selectedPolicy.account), currentUserPayment.userPayment.tokenMint)}
+              />
+              <DetailRow label="Interval" value={getInterval(selectedPolicy.account)} />
+              <DetailRow label="Next Payment" value={getNextPaymentDue(selectedPolicy.account)} />
+              <DetailRow
+                label="Total Paid"
+                value={formatAmount(
+                  selectedPolicy.account.totalPaid.toString(),
+                  currentUserPayment.userPayment.tokenMint,
+                )}
+              />
+              <DetailRow label="Payments" value={selectedPolicy.account.paymentCount.toString()} />
+              <DetailRow
+                label="Created"
+                value={new Date(currentUserPayment.userPayment.createdAt.toNumber() * 1000).toLocaleString()}
+              />
+              {getMemo(selectedPolicy.account) && <DetailRow label="Memo" value={getMemo(selectedPolicy.account)} />}
             </div>
           </div>
-
-          {/* Scrollable Content */}
-          {selectedPolicy && currentUserPayment && (
-            <div className="p-8">
-              {/* Section Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5" viewBox="0 0 18 18" fill="none" stroke="var(--color-primary)" strokeWidth="2">
-                    <circle cx="9" cy="9" r="7" />
-                  </svg>
-                  <span className="underline font-medium" style={{ textUnderlineOffset: '3px' }}>{selectedFilter}</span>
-                </div>
-                {selectedFilter === 'Details' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        handleExecutePayment(
-                          selectedPolicy.publicKey,
-                          selectedPolicy.account,
-                          currentUserPayment.userPayment,
-                        )
-                      }
-                      disabled={
-                        !isPaymentDue(selectedPolicy.account) ||
-                        executingPayments.has(selectedPolicy.publicKey.toString())
-                      }
-                      className="p-2.5 border border-blue-600 rounded hover:bg-blue-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Execute payment"
-                    >
-                      {executingPayments.has(selectedPolicy.publicKey.toString()) ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleToggleStatus(
-                          selectedPolicy.publicKey,
-                          selectedPolicy.account,
-                          currentUserPayment.userPayment,
-                        )
-                      }
-                      disabled={togglingPolicies.has(selectedPolicy.publicKey.toString())}
-                      className="p-2.5 border border-orange-600 rounded hover:bg-orange-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={getStatus(selectedPolicy.account) === 'Active' ? 'Pause' : 'Resume'}
-                    >
-                      {togglingPolicies.has(selectedPolicy.publicKey.toString()) ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : getStatus(selectedPolicy.account) === 'Active' ? (
-                        <Pause className="h-4 w-4" />
-                      ) : (
-                        <RotateCcw className="h-4 w-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleDeletePolicy(
-                          selectedPolicy.publicKey,
-                          selectedPolicy.account,
-                          currentUserPayment.userPayment,
-                        )
-                      }
-                      disabled={deletingPolicies.has(selectedPolicy.publicKey.toString())}
-                      className="p-2.5 border border-red-600 rounded hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete policy"
-                    >
-                      {deletingPolicies.has(selectedPolicy.publicKey.toString()) ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Details View */}
-              {selectedFilter === 'Details' && (
-                <div className="max-w-full">
-                  <div className="bg-white border border-gray-200 rounded-lg p-5">
-                    <DetailRow label="Policy Address" value={selectedPolicy.publicKey.toString()} copyable />
-                    <DetailRow label="Owner" value={currentUserPayment.userPayment.owner.toString()} copyable />
-                    <DetailRow label="Policy ID" value={`#${selectedPolicy.account.policyId}`} />
-                    <DetailRow label="Type" value={getPolicyType(selectedPolicy.account)} />
-                    <DetailRow label="Status" value={getStatus(selectedPolicy.account)} />
-                    <DetailRow label="Recipient" value={selectedPolicy.account.recipient.toString()} copyable />
-                    <DetailRow label="Gateway" value={selectedPolicy.account.gateway.toString()} copyable />
-                    <DetailRow label="Token Mint" value={currentUserPayment.userPayment.tokenMint.toString()} copyable />
-                    <DetailRow
-                      label="Amount"
-                      value={formatAmount(getAmount(selectedPolicy.account), currentUserPayment.userPayment.tokenMint)}
-                    />
-                    <DetailRow label="Interval" value={getInterval(selectedPolicy.account)} />
-                    <DetailRow label="Next Payment" value={getNextPaymentDue(selectedPolicy.account)} />
-                    <DetailRow
-                      label="Total Paid"
-                      value={formatAmount(
-                        selectedPolicy.account.totalPaid.toString(),
-                        currentUserPayment.userPayment.tokenMint,
-                      )}
-                    />
-                    <DetailRow label="Payments" value={selectedPolicy.account.paymentCount.toString()} />
-                    <DetailRow
-                      label="Created"
-                      value={new Date(currentUserPayment.userPayment.createdAt.toNumber() * 1000).toLocaleString()}
-                    />
-                    {getMemo(selectedPolicy.account) && <DetailRow label="Memo" value={getMemo(selectedPolicy.account)} />}
-                  </div>
-                </div>
-              )}
-
-              {/* Integration Code View */}
-              {selectedFilter === 'Integration Code' && (
-                <div className="max-w-full space-y-5">
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Edit the HTML and CSS below. The button preview updates in real-time.
-                  </p>
-
-                  {/* Preview */}
-                  <div className="p-5 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p className="text-xs uppercase font-semibold mb-3 text-gray-600">Preview</p>
-                    <div className="flex items-center justify-center p-6 bg-white border border-gray-200 rounded">
-                      <div dangerouslySetInnerHTML={{ __html: `<style>${buttonCss}</style>${buttonHtml}` }} />
-                    </div>
-                  </div>
-
-                  {/* HTML */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-semibold uppercase text-gray-700">HTML</span>
-                      <button
-                        onClick={() => copyCode(buttonHtml, 'html')}
-                        className="px-3 py-1.5 text-xs border rounded hover:bg-gray-200 transition-colors font-medium"
-                        style={{ borderColor: 'var(--color-primary)' }}
-                      >
-                        {copiedCode === 'html' ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                    <textarea
-                      value={buttonHtml}
-                      onChange={(e) => setButtonHtml(e.target.value)}
-                      className="w-full p-4 bg-white text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                    />
-                  </div>
-
-                  {/* CSS */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-semibold uppercase text-gray-700">CSS</span>
-                      <button
-                        onClick={() => copyCode(buttonCss, 'css')}
-                        className="px-3 py-1.5 text-xs border rounded hover:bg-gray-200 transition-colors font-medium"
-                        style={{ borderColor: 'var(--color-primary)' }}
-                      >
-                        {copiedCode === 'css' ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                    <textarea
-                      value={buttonCss}
-                      onChange={(e) => setButtonCss(e.target.value)}
-                      className="w-full p-4 bg-white text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={12}
-                    />
-                  </div>
-
-                  {/* JavaScript */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-semibold uppercase text-gray-700">JavaScript</span>
-                      <button
-                        onClick={() => copyCode(jsCode, 'js')}
-                        className="px-3 py-1.5 text-xs border rounded hover:bg-gray-200 transition-colors font-medium"
-                        style={{ borderColor: 'var(--color-primary)' }}
-                      >
-                        {copiedCode === 'js' ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                    <pre className="p-4 bg-white overflow-x-auto text-sm font-mono">
-                      {jsCode}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {/* Subscribers View */}
-              {selectedFilter === 'Subscribers' && (
-                <div className="max-w-full">
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="p-5 border border-gray-200 rounded-lg text-center bg-gray-50">
-                      <div className="text-3xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-                        0
-                      </div>
-                      <div className="text-xs text-gray-600 uppercase tracking-wide">Active</div>
-                    </div>
-                    <div className="p-5 border border-gray-200 rounded-lg text-center bg-gray-50">
-                      <div className="text-3xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-                        0
-                      </div>
-                      <div className="text-xs text-gray-600 uppercase tracking-wide">New</div>
-                    </div>
-                    <div className="p-5 border border-gray-200 rounded-lg text-center bg-gray-50">
-                      <div className="text-3xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-                        0
-                      </div>
-                      <div className="text-xs text-gray-600 uppercase tracking-wide">Cancelled</div>
-                    </div>
-                    <div className="p-5 border border-gray-200 rounded-lg text-center bg-gray-50">
-                      <div className="text-3xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
-                        0%
-                      </div>
-                      <div className="text-xs text-gray-600 uppercase tracking-wide">Retention</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
