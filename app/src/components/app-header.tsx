@@ -3,16 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { BorderedContainer } from '@/components/ui/bordered-container'
 
-interface AppHeaderProps {
-  links?: { label: string; path: string }[]
-}
-
-export function AppHeader({}: AppHeaderProps) {
+export function AppHeader() {
   const { pathname } = useLocation()
   const { connected } = useWallet()
   const navigate = useNavigate()
   const isAccountPage = pathname.includes('/account')
-  const isPolicyPage = pathname.includes('/policy') || pathname.includes('/policies') || pathname.includes('/gateway')
+  const isPolicyPage =
+    pathname.includes('/quickstart') || pathname.includes('/policies') || pathname.includes('/gateway')
 
   const handleNavClick = (path: string) => {
     navigate(path)
@@ -79,11 +76,11 @@ export function AppHeader({}: AppHeaderProps) {
                 Docs
               </button>
               <button
-                onClick={() => handleNavClick('/demo')}
+                onClick={() => handleNavClick('/quickstart')}
                 className={buttonClass}
                 style={{ fontFamily: 'var(--font-secondary)' }}
               >
-                Demo
+                Quick Start
               </button>
             </div>
           ) : (
@@ -94,20 +91,6 @@ export function AppHeader({}: AppHeaderProps) {
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Manage Policies / New Subscription Button */}
-          {connected && (isAccountPage || isPolicyPage) && (
-            <Link
-              to={isPolicyPage ? '/account' : '/policy'}
-              className={buttonClass}
-              style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
-            >
-              <span>{isPolicyPage ? 'manage policies' : 'new subscription'}</span>
-              <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor">
-                <path d="M4 0v8M0 4h8" strokeWidth="1.5" />
-              </svg>
-            </Link>
-          )}
-
           {/* Wallet/Dashboard/Account Button */}
           {!connected ? (
             <WalletButton />

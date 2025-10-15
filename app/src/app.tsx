@@ -25,7 +25,7 @@ const LazyWidgetDemo = lazy(() => import('@/components/widget/widget-demo'))
 const routes: RouteObject[] = [
   { index: true, element: <LazyDashboard /> },
   { path: 'gateway', element: <LazyGateway /> },
-  { path: 'policy', element: <LazyPaymentPolicy /> },
+  { path: 'quickstart', element: <LazyPaymentPolicy /> },
   { path: 'policies', element: <LazyPaymentPolicyList /> },
   { path: 'widget-demo', element: <LazyWidgetDemo /> },
   { path: 'account', element: <LazyAccount /> },
@@ -38,8 +38,7 @@ export function App() {
   const router = useRoutes(routes)
   return (
     <AppProviders>
-      <AppLayout links={links}>{router}</AppLayout>
+      <AppLayout>{router}</AppLayout>
     </AppProviders>
   )
 }
-

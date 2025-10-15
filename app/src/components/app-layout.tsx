@@ -5,13 +5,7 @@ import { AppFooter } from '@/components/app-footer'
 import React from 'react'
 import { BorderedContainer } from './ui/bordered-container'
 
-export function AppLayout({
-  children,
-  links,
-}: {
-  children: React.ReactNode
-  links: { label: string; path: string }[]
-}) {
+export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <div
@@ -21,7 +15,7 @@ export function AppLayout({
           backgroundColor: '#fff',
         }}
       >
-        <AppHeader links={links} />
+        <AppHeader />
         <main className="flex-grow" style={{ display: 'flex', flexDirection: 'column' }}>
           <div
             style={{
@@ -49,4 +43,3 @@ export function AppLayout({
     </ThemeProvider>
   )
 }
-
