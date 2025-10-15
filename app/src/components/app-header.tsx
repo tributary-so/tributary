@@ -12,7 +12,7 @@ export function AppHeader() {
   }
 
   const buttonClass =
-    'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
+    'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
 
   return (
     <div className="relative z-50" style={{ fontFamily: 'var(--font-primary)', marginTop: '21px' }}>
@@ -65,7 +65,7 @@ export function AppHeader() {
             </button>
             <button
               onClick={() => handleNavClick('/quickstart')}
-              className={buttonClass}
+              className={`${buttonClass} bg-primary text-white`}
               style={{ fontFamily: 'var(--font-secondary)' }}
             >
               Quick Start

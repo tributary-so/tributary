@@ -259,14 +259,6 @@ export default function AccountPage() {
     )
   }
 
-  if (userPayments.length < 1) {
-    return (
-      <div className="flex items-center">
-        <p className="text-xl">You don't have any Subscriptions yet</p>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="flex items-center">
@@ -279,6 +271,14 @@ export default function AccountPage() {
             Loading...
           </p>
         </div>
+      </div>
+    )
+  }
+
+  if (userPayments.length < 1) {
+    return (
+      <div className="flex items-center">
+        <p className="text-xl">You don't have any Subscriptions yet</p>
       </div>
     )
   }
