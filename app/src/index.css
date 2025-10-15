@@ -102,7 +102,7 @@
   font-size: 13px !important;
   height: auto !important;
   line-height: normal !important;
-  font-weight: normal;
+  font-weight: normal !important;
   transition: background-color 0.2s ease, color 0.2s ease !important;
 }
 
@@ -123,11 +123,16 @@
   background-color: #fff !important;
   border: 1px solid var(--color-primary) !important;
   border-radius: 4px !important;
+  box-shadow:none !important;
 }
 
 .wallet-adapter-dropdown-list-item {
   font-family: var(--font-primary) !important;
   color: var(--color-primary) !important;
+  font-weight: normal !important;
+  font-size: 13px !important;
+  padding: 10px;
+  text-transform: uppercase !important;
 }
 
 .wallet-adapter-dropdown-list-item:hover {

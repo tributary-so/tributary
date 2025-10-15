@@ -18,11 +18,11 @@ export default function PaymentPolicyForm() {
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
 
   const [formData, setFormData] = useState({
-    tokenMint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+    tokenMint: '',
     recipient: '',
     gateway: '',
     amount: '',
-    intervalSeconds: '2592000',
+    intervalSeconds: '',
     memo: '',
     frequency: 'monthly' as keyof PaymentFrequency,
     autoRenew: true,

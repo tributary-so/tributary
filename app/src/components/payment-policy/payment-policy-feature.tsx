@@ -7,8 +7,6 @@ export default function PaymentPolicyFeature() {
         width: '100%',
         backgroundColor: '#fff',
         fontFamily: 'var(--font-primary)',
-        paddingTop: '40px',
-        paddingBottom: '40px',
         flex: 1,
       }}
     >
