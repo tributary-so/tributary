@@ -25,7 +25,7 @@ export function AppHeader({}: AppHeaderProps) {
   }
 
   const buttonClass =
-    'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase'
+    'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
 
   return (
     <div className="relative z-50" style={{ fontFamily: 'var(--font-primary)', marginTop: '21px' }}>
@@ -67,30 +67,28 @@ export function AppHeader({}: AppHeaderProps) {
               <button
                 onClick={() => handleNavClick('/about')}
                 className={buttonClass}
-                style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+                style={{ fontFamily: 'var(--font-secondary)' }}
               >
                 About
               </button>
               <button
-                onClick={() => handleNavClick('/demo')}
-                className={buttonClass}
-                style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
-              >
-                Demo
-              </button>
-              <button
                 onClick={() => handleNavClick('/docs')}
                 className={buttonClass}
-                style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+                style={{ fontFamily: 'var(--font-secondary)' }}
               >
                 Docs
+              </button>
+              <button
+                onClick={() => handleNavClick('/demo')}
+                className={buttonClass}
+                style={{ fontFamily: 'var(--font-secondary)' }}
+              >
+                Demo
               </button>
             </div>
           ) : (
             // Dashboard Text (only on other pages)
-            <div className="text-center" style={{ fontSize: '14px', textTransform: 'uppercase' }}>
-              Dashboard
-            </div>
+            <div className="text-center text-sm uppercase">Dashboard</div>
           )}
         </div>
 
