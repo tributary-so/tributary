@@ -54,10 +54,13 @@ export default function PaymentPolicyForm() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    setFormData((prev) => ({
-      ...prev,
+    const newData = {
+      ...formData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }))
+    }
+    setFormData(newData)
+    // Save to localStorage for integration code
+    localStorage.setItem('payment-policy-form-data', JSON.stringify(newData))
   }
 
   const truncateAddress = (address: string) => {
