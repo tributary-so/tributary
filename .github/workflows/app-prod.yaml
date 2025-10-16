@@ -35,7 +35,15 @@ jobs:
         working-directory: ./app
         run: pnpm install
 
-      - name: Build
+      - name: Build SDK
+        working-directory: ./sdk
+        run: pnpm run build
+
+      - name: Build SDK-react
+        working-directory: ./sdk-react
+        run: pnpm run build
+
+      - name: Build App
         working-directory: ./app
         run: pnpm run build
         env:
