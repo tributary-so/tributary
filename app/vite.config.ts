@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import viteTsconfigPaths from 'vite-tsconfig-paths'
 import { resolve } from 'node:path'
+import inject from '@rollup/plugin-inject'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -22,7 +23,9 @@ export default defineConfig({
     }),
   ],
   build: {
+    target: 'esnext', // Output ESNext code
     rollupOptions: {
+      plugins: [inject({ Buffer: ['buffer', 'Buffer'] })],
       // external: ['vite-plugin-node-polyfills/shims/buffer', 'stream', 'http', 'https', 'zlib'],
       output: {
         manualChunks: {
@@ -30,6 +33,14 @@ export default defineConfig({
           'wallet-adapter': ['@solana/wallet-adapter-react', '@solana/wallet-adapter-react-ui'],
           'ui-vendor': ['@heroui/react', 'framer-motion'],
         },
+      },
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'esnext', // Ensure dependency pre-bundling supports ESNext
+      supported: {
+        'import-assertions': true, // Explicitly enable import assertions in esbuild
       },
     },
   },
