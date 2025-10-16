@@ -123,8 +123,11 @@ class PaymentScheduler {
 
   private async executePayment(paymentPolicyPda: PublicKey): Promise<void> {
     try {
-      const instruction = await this.sdk.executePayment(paymentPolicyPda);
-      const transaction = new anchor.web3.Transaction().add(instruction);
+      const transaction = new anchor.web3.Transaction();
+      const instructions = await this.sdk.executePayment(paymentPolicyPda);
+      for (const instruction of instructions) {
+        transaction.add(instruction);
+      }
 
       const signature = await this.sdk.provider.sendAndConfirm(
         transaction,

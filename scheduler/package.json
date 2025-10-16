@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "node lib/scheduler/src/index.js",
-    "dev": "npx tsx src/index.ts",
+    "start": "npx tsx src/index.ts",
+    "dev": "pnpm start",
     "lint": "eslint src",
     "clean": "rm -rf ./lib",
     "build": "pnpm run clean && npx tsc"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
+    "@rollup/plugin-inject": "^5.0.5",
+    "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
     "@tributary-so/sdk": "workspace:*",
     "bn.js": "^4.12.1",
