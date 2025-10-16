@@ -91,14 +91,18 @@ export class RecurringPaymentsSDK {
   }
 
   async createPaymentGateway(
+    authority: PublicKey,
     gatewayFeeBps: number,
     gatewayFeeRecipient: PublicKey
   ): Promise<TransactionInstruction> {
-    const authority = this.provider.publicKey;
+    const admin = this.provider.publicKey;
     const gateway = this.getGatewayPda(authority).address;
+    const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
+      admin: admin,
       authority: authority,
       gateway: gateway,
+      config: configPda,
       feeRecipient: gatewayFeeRecipient,
       systemProgram: SystemProgram.programId,
     };

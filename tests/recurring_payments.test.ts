@@ -228,16 +228,17 @@ describe("Recurring Payments", () => {
   test("Create payment gateway", async () => {
     const gatewayFeeBps = 250; // 2.5% fee
 
-    // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    // Update SDK to use admin wallet
+    await sdk.updateWallet(new anchor.Wallet(admin));
 
     const createGatewayIx = await sdk.createPaymentGateway(
+      gatewayAuthority.publicKey,
       gatewayFeeBps,
       feeRecipient.publicKey
     );
     const tx = new Transaction().add(createGatewayIx);
 
-    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+    await sendAndConfirmTransaction(connection, tx, [admin], {
       commitment: "processed" as Commitment,
     });
 

@@ -4,16 +4,26 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct CreatePaymentGateway<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub admin: Signer<'info>,
+
+    /// CHECK: The authority that will own the gateway
+    pub authority: UncheckedAccount<'info>,
 
     #[account(
         init,
-        payer = authority,
+        payer = admin,
         space = PaymentGateway::SIZE,
         seeds = [GATEWAY_SEED, authority.key().as_ref()],
         bump
     )]
     pub gateway: Account<'info, PaymentGateway>,
+
+    #[account(
+        seeds = [CONFIG_SEED],
+        bump = config.bump,
+        constraint = config.admin == admin.key()
+    )]
+    pub config: Account<'info, ProgramConfig>,
 
     /// CHECK: This is the fee recipient account that will receive gateway fees
     pub fee_recipient: UncheckedAccount<'info>,

@@ -131,9 +131,12 @@ export type RecurringPayments = {
       ],
       "accounts": [
         {
-          "name": "authority",
+          "name": "admin",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "authority"
         },
         {
           "name": "gateway",
@@ -155,6 +158,24 @@ export type RecurringPayments = {
               {
                 "kind": "account",
                 "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
