@@ -1,6 +1,6 @@
 import { useWallet } from '@solana/wallet-adapter-react'
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw } from '../../icons'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 

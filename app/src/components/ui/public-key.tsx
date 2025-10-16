@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PublicKey } from '@solana/web3.js'
 import { Button } from '@heroui/react'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check } from '../../icons'
 import { toast } from 'sonner'
 
 interface PublicKeyProps {

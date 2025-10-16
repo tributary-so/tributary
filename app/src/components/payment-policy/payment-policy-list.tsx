@@ -8,7 +8,7 @@ import { useSDK } from '@/lib/client'
 import { type PaymentPolicy, type UserPayment, type PaymentGateway, getTokenInfo, Metadata } from '@tributary-so/sdk'
 import { PublicKeyComponent } from '@/components/ui/public-key'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
-import { Play, Pause, Trash2, RotateCcw } from 'lucide-react'
+import { Play, Pause, Trash2, RotateCcw } from '../../icons'
 import { toast } from 'sonner'
 
 interface TokenInfo {

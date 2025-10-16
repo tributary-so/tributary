@@ -1,10 +1,10 @@
-name: Build and Deploy to GitHub Pages
+name: Build and Deploy app to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
-      - "landing/**"
+      - "app/**"
       - ".github/workflows/*app*"
   workflow_dispatch:
 
@@ -32,11 +32,11 @@ jobs:
           cache-dependency-path: ./pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: ./landing
+        working-directory: ./app
         run: pnpm install
 
       - name: Build
-        working-directory: ./landing
+        working-directory: ./app
         run: pnpm run build
         env:
           # https://github.com/actions/runner-images/issues/70
@@ -47,11 +47,9 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
         with:
-          deploy_key: ${{ secrets.LANDING_DEPLOY_KEY_TRIBUTARY_SO }}
-          external_repository: tributary-so/tributary.so
-          publish_branch: gh-pages
-          publish_dir: ./landing/dist
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./app/dist
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
-          cname: tributary.so
+          cname: app.tributary.so

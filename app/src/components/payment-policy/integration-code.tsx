@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { Copy, Check } from 'lucide-react'
-import { PaymentPolicyFormProps } from './payment-policy-form'
+import { Copy, Check } from '../../icons'
+import { PaymentPolicyFormData } from './payment-policy-form'
 
-export default function IntegrationCode({ formData }: PaymentPolicyFormProps) {
+interface IntegrationCodeProps {
+  formData: PaymentPolicyFormData
+}
+
+export default function IntegrationCode({ formData }: IntegrationCodeProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [buttonHtml, setButtonHtml] = useState(
     '<button class="tributary-subscribe-btn" data-policy-id="your_policy_id">Subscribe Now</button>',
