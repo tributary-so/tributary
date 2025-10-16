@@ -8,13 +8,13 @@ import { resolve } from 'node:path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    react(),
     nodePolyfills({
       globals: {
-        Buffer: true,
+        Buffer: false,
       },
       include: ['buffer'],
     }),
-    react(),
     tailwindcss(),
     viteTsconfigPaths({
       //
@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
-      external: ['vite-plugin-node-polyfills/shims/buffer', 'stream', 'http', 'https', 'zlib'],
+      // external: ['vite-plugin-node-polyfills/shims/buffer', 'stream', 'http', 'https', 'zlib'],
       output: {
         manualChunks: {
           'solana-vendor': ['@solana/web3.js', '@solana/spl-token'],
