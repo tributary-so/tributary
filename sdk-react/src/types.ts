@@ -8,6 +8,7 @@ export enum PaymentInterval {
   Quarterly = "quarterly",
   SemiAnnually = "semiAnnually",
   Annually = "annually",
+  Custom = "custom",
 }
 
 export interface CreateSubscriptionParams {

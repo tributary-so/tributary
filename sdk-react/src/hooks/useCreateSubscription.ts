@@ -9,40 +9,12 @@ import {
   CreateSubscriptionResult,
   UseCreateSubscriptionReturn,
 } from "../types";
-import { PolicyType, PaymentFrequency, createMemoBuffer } from "@tributary-so/sdk";
+import { PaymentFrequency, createMemoBuffer } from "@tributary-so/sdk";
 
-function createPolicyType(params: CreateSubscriptionParams): PolicyType {
-  return {
-    subscription: {
-      amount: params.amount,
-      intervalSeconds: getIntervalSeconds(params.interval),
-      autoRenew: true,
-      maxRenewals: params.maxRenewals || null,
-      padding: Array(8).fill(new BN(0)),
-    },
-  };
-}
-
-function getIntervalSeconds(interval: PaymentInterval): BN {
-  switch (interval) {
-    case PaymentInterval.Daily:
-      return new BN(24 * 60 * 60); // 1 day
-    case PaymentInterval.Weekly:
-      return new BN(7 * 24 * 60 * 60); // 1 week
-    case PaymentInterval.Monthly:
-      return new BN(30 * 24 * 60 * 60); // ~1 month
-    case PaymentInterval.Quarterly:
-      return new BN(90 * 24 * 60 * 60); // ~3 months
-    case PaymentInterval.SemiAnnually:
-      return new BN(180 * 24 * 60 * 60); // ~6 months
-    case PaymentInterval.Annually:
-      return new BN(365 * 24 * 60 * 60); // ~1 year
-    default:
-      throw new Error(`Unsupported interval: ${interval}`);
-  }
-}
-
-function createPaymentFrequency(interval: PaymentInterval): PaymentFrequency {
+function createPaymentFrequency(
+  interval: PaymentInterval,
+  seconds?: number
+): PaymentFrequency {
   switch (interval) {
     case PaymentInterval.Daily:
       return { daily: {} };
@@ -56,6 +28,8 @@ function createPaymentFrequency(interval: PaymentInterval): PaymentFrequency {
       return { semiAnnually: {} };
     case PaymentInterval.Annually:
       return { annually: {} };
+    case PaymentInterval.Custom:
+      return { custom: { 0: new BN(seconds!) } };
     default:
       throw new Error(`Unsupported interval: ${interval}`);
   }
@@ -84,7 +58,6 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
 
     try {
       // Convert simplified params to SDK format
-      const policyType = createPolicyType(params);
       const frequency = createPaymentFrequency(params.interval);
       const memoBuffer = createMemoBuffer(params.memo || "", 64);
       const startTime = params.startTime
@@ -96,7 +69,9 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         params.token,
         params.recipient,
         params.gateway,
-        policyType,
+        params.amount,
+        false,
+        null,
         frequency,
         memoBuffer,
         startTime,
