@@ -1148,7 +1148,10 @@ export type RecurringPayments = {
       "docs": [
         "The PolicyType enum implements the payment schemes. The initial policy",
         "will be a subscription payment that enables the regular payment according to",
-        "a schedule."
+        "a schedule.",
+        "",
+        "IMPORTANT: All variants MUST be exactly 128 bytes to ensure consistent account sizing",
+        "and enable future enum variant additions without breaking existing accounts."
       ],
       "type": {
         "kind": "enum",
@@ -1178,8 +1181,8 @@ export type RecurringPayments = {
                 "name": "padding",
                 "type": {
                   "array": [
-                    "u64",
-                    8
+                    "u8",
+                    106
                   ]
                 }
               }

@@ -3,15 +3,38 @@ use anchor_lang::prelude::*;
 /// The PolicyType enum implements the payment schemes. The initial policy
 /// will be a subscription payment that enables the regular payment according to
 /// a schedule.
+///
+/// IMPORTANT: All variants MUST be exactly 128 bytes to ensure consistent account sizing
+/// and enable future enum variant additions without breaking existing accounts.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub enum PolicyType {
     Subscription {
-        amount: u64,
-        interval_seconds: u64,
-        auto_renew: bool,
-        max_renewals: Option<u32>,
-        padding: [u64; 8],
+        amount: u64,               // 8 bytes
+        interval_seconds: u64,     // 8 bytes
+        auto_renew: bool,          // 1 byte
+        max_renewals: Option<u32>, // 5 bytes (1 + 4)
+        padding: [u8; 106],        // 106 bytes padding
     },
+    // Future variants can be added like this:
+    // OneTime {
+    //     amount: u64,                // 8 bytes
+    //     due_date: i64,              // 8 bytes
+    //     grace_period_seconds: u64,  // 8 bytes
+    //     padding: [u8; 104],        // 104 bytes padding
+    // },
+    // Milestone {
+    //     milestones: [u64; 8],       // 64 bytes (8 payments)
+    //     intervals: [u64; 8],        // 64 bytes (time intervals)
+    //     padding: [u8; 0],          // 0 bytes padding (exactly 128 bytes used)
+    // },
+}
+
+impl PolicyType {
+    /// Each variant must be exactly this size (excluding enum discriminator)
+    pub const VARIANT_SIZE: usize = 128;
+
+    /// Total size including enum discriminator
+    pub const TOTAL_SIZE: usize = 1 + Self::VARIANT_SIZE; // 129 bytes
 }
 
 /// A status enum for installed payment policies indicating if payment can be made

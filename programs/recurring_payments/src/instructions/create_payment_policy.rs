@@ -93,7 +93,7 @@ impl PaymentPolicy {
         32 + // user_payment: Pubkey
         32 + // recipient: Pubkey
         32 + // gateway: Pubkey
-        1 + 8 + 8 + 1 + 4 + 8 * 8 + // policy_type: PolicyType (largest variant)
+        PolicyType::VARIANT_SIZE + // policy type size
         1 + // status: PaymentStatus
         1 + 8 + // payment_frequency: PaymentFrequency (largest variant)
         64 + // memo: [u8; 64]
