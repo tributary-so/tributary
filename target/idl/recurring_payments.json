@@ -324,26 +324,12 @@
           }
         },
         {
-          "name": "payment_frequency",
-          "type": {
-            "defined": {
-              "name": "PaymentFrequency"
-            }
-          }
-        },
-        {
           "name": "memo",
           "type": {
             "array": [
               "u8",
               64
             ]
-          }
-        },
-        {
-          "name": "start_time",
-          "type": {
-            "option": "i64"
           }
         }
       ]
@@ -876,6 +862,11 @@
       "code": 6011,
       "name": "PolicyPaused",
       "msg": "Payment policy is paused"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidInterval",
+      "msg": "Invalid Interval"
     }
   ],
   "types": [
@@ -967,8 +958,8 @@
     {
       "name": "PaymentPolicy",
       "docs": [
-        "This structure connects a UserPayment (user/mint) with a Policy, a Gateway and the Payment",
-        "Frequency. This is the structure that actually specifies the subscription payment as you would",
+        "This structure connects a UserPayment (user/mint) with a Policy, a Gateway.",
+        "This is the structure that actually specifies the subscription payment as you would",
         "expect from an invoice. The SDK would setup these PaymentPolicy"
       ],
       "type": {
@@ -1003,14 +994,6 @@
             }
           },
           {
-            "name": "payment_frequency",
-            "type": {
-              "defined": {
-                "name": "PaymentFrequency"
-              }
-            }
-          },
-          {
             "name": "memo",
             "docs": [
               "specified by the serice provider when installed (e.g. via sdk). Helps identify the payer"
@@ -1021,10 +1004,6 @@
                 64
               ]
             }
-          },
-          {
-            "name": "next_payment_due",
-            "type": "i64"
           },
           {
             "name": "total_paid",
@@ -1087,24 +1066,6 @@
             "type": "i64"
           },
           {
-            "name": "transaction_signature",
-            "type": "string"
-          },
-          {
-            "name": "payment_type",
-            "type": "string"
-          },
-          {
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "name": "failure_reason",
-            "type": {
-              "option": "string"
-            }
-          },
-          {
             "name": "memo",
             "type": {
               "array": [
@@ -1158,10 +1119,6 @@
                 "type": "u64"
               },
               {
-                "name": "interval_seconds",
-                "type": "u64"
-              },
-              {
                 "name": "auto_renew",
                 "type": "bool"
               },
@@ -1172,11 +1129,23 @@
                 }
               },
               {
+                "name": "payment_frequency",
+                "type": {
+                  "defined": {
+                    "name": "PaymentFrequency"
+                  }
+                }
+              },
+              {
+                "name": "next_payment_due",
+                "type": "i64"
+              },
+              {
                 "name": "padding",
                 "type": {
                   "array": [
                     "u8",
-                    106
+                    97
                   ]
                 }
               }

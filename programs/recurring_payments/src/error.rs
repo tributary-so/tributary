@@ -26,4 +26,6 @@ pub enum RecurringPaymentsError {
     NoDelegateSet,
     #[msg("Payment policy is paused")]
     PolicyPaused,
+    #[msg("Invalid Interval")]
+    InvalidInterval,
 }

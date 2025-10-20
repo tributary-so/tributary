@@ -48,25 +48,21 @@ pub fn handler_create_payment_policy(
     ctx: Context<CreatePaymentPolicy>,
     policy_id: u32,
     policy_type: PolicyType,
-    payment_frequency: PaymentFrequency,
     memo: [u8; 64],
-    start_time: Option<i64>,
 ) -> Result<()> {
+    // Validate the policy type and its parameters
+    policy_type.validate()?;
+
     let payment_policy = &mut ctx.accounts.payment_policy;
     let user_payment = &mut ctx.accounts.user_payment;
     let clock = Clock::get()?;
 
-    // Calculate next payment due time
-    let next_payment_due = start_time.unwrap_or(clock.unix_timestamp);
-
     payment_policy.user_payment = user_payment.key();
     payment_policy.recipient = ctx.accounts.recipient.key();
     payment_policy.gateway = ctx.accounts.gateway.key();
-    payment_policy.policy_type = policy_type;
+    payment_policy.policy_type = policy_type.clone();
     payment_policy.status = PaymentStatus::Active;
-    payment_policy.payment_frequency = payment_frequency;
     payment_policy.memo = memo;
-    payment_policy.next_payment_due = next_payment_due;
     payment_policy.total_paid = 0;
     payment_policy.payment_count = 0;
     payment_policy.created_at = clock.unix_timestamp;
@@ -77,6 +73,13 @@ pub fn handler_create_payment_policy(
     // Update user payment account
     user_payment.active_policies_count = user_payment.active_policies_count.checked_add(1).unwrap();
     user_payment.updated_at = clock.unix_timestamp;
+
+    // Get next_payment_due from policy_type
+    let next_payment_due = match &policy_type {
+        PolicyType::Subscription {
+            next_payment_due, ..
+        } => *next_payment_due,
+    };
 
     msg!(
         "Payment policy created with ID: {}, recipient: {:?}, next payment due: {}",
@@ -95,9 +98,7 @@ impl PaymentPolicy {
         32 + // gateway: Pubkey
         PolicyType::VARIANT_SIZE + // policy type size
         1 + // status: PaymentStatus
-        1 + 8 + // payment_frequency: PaymentFrequency (largest variant)
         64 + // memo: [u8; 64]
-        8 + // next_payment_due: i64
         8 + // total_paid: u64
         4 + // payment_count: u32
         8 + // created_at: i64

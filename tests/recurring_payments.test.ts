@@ -15,8 +15,9 @@ import {
   mintTo,
   approve,
 } from "@solana/spl-token";
+import { ComputeBudgetProgram } from "@solana/web3.js";
 import { RecurringPayments } from "../target/types/recurring_payments";
-import { RecurringPaymentsSDK } from "../sdk/src";
+import { PaymentFrequency, RecurringPaymentsSDK } from "../sdk/src";
 import assert from "assert";
 
 describe("Recurring Payments", () => {
@@ -255,19 +256,8 @@ describe("Recurring Payments", () => {
 
   test("Create payment policy", async () => {
     const amount = new anchor.BN(10000); // 0.01 token with 6 decimals
-    const intervalSeconds = new anchor.BN(86400); // 1 day
     const memo = new Uint8Array(64).fill(0);
     Buffer.from("test subscription").copy(memo);
-
-    const policyType = {
-      subscription: {
-        amount: amount,
-        intervalSeconds: intervalSeconds,
-        autoRenew: true,
-        maxRenewals: null,
-        padding: Array(8).fill(new anchor.BN(0)),
-      },
-    };
 
     const paymentFrequency = { daily: {} };
 
@@ -278,7 +268,9 @@ describe("Recurring Payments", () => {
       tokenMint,
       recipient.publicKey,
       gatewayPDA,
-      policyType,
+      amount,
+      true,
+      null,
       paymentFrequency,
       Array.from(memo),
       null // start_time
@@ -296,7 +288,6 @@ describe("Recurring Payments", () => {
     expect(policyAccount!.gateway).toEqual(gatewayPDA);
     expect(policyAccount!.policyId).toBe(1);
     expect(policyAccount!.status).toEqual({ active: {} });
-    expect(policyAccount!.paymentFrequency).toEqual({ daily: {} });
     expect(policyAccount!.totalPaid.toNumber()).toBe(0);
     expect(policyAccount!.paymentCount).toBe(0);
     expect(policyAccount!.bump).toBe(paymentPolicyBump);
@@ -307,9 +298,12 @@ describe("Recurring Payments", () => {
     expect(policyAccount!.policyType.subscription.amount.toNumber()).toBe(
       amount.toNumber()
     );
+    expect(policyAccount!.policyType.subscription.paymentFrequency).toEqual({
+      daily: {},
+    });
     expect(
-      policyAccount!.policyType.subscription.intervalSeconds.toNumber()
-    ).toBe(intervalSeconds.toNumber());
+      policyAccount!.policyType.subscription.nextPaymentDue.toNumber()
+    ).toBeGreaterThan(0);
     expect(policyAccount!.policyType.subscription.autoRenew).toBe(true);
 
     // Check that user payment account was updated
@@ -390,9 +384,9 @@ describe("Recurring Payments", () => {
     const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicyPDA);
     expect(updatedPolicy!.paymentCount).toBe(1);
     expect(updatedPolicy!.totalPaid.toNumber()).toBe(10000); // 0.01 token
-    expect(updatedPolicy!.nextPaymentDue.toNumber()).toBeGreaterThan(
-      Date.now() / 1000
-    );
+    expect(
+      updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber()
+    ).toBeGreaterThan(Date.now() / 1000);
 
     // Verify gateway stats were updated
     const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
@@ -442,28 +436,20 @@ describe("Recurring Payments", () => {
   test("Can execute payment when next_payment_due is in past", async () => {
     // Get current policy to check next_payment_due
     const policy = await sdk.getPaymentPolicy(paymentPolicyPDA);
-    const nextPaymentDue = policy!.nextPaymentDue.toNumber();
+    const nextPaymentDue =
+      policy!.policyType.subscription.nextPaymentDue.toNumber();
 
     // Verify next payment is indeed in the future (from previous execution)
     expect(nextPaymentDue).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
     // Create a new policy with start_time in the past to test timing validation
     const amount = new anchor.BN(5000); // 0.005 token
-    const intervalSeconds = new anchor.BN(3600); // 1 hour
     const memo = new Uint8Array(64).fill(0);
     Buffer.from("test policy 2").copy(memo);
 
-    const policyType = {
-      subscription: {
-        amount: amount,
-        intervalSeconds: intervalSeconds,
-        autoRenew: true,
-        maxRenewals: null,
-        padding: Array(8).fill(new anchor.BN(0)),
-      },
-    };
-
-    const paymentFrequency = { custom: { 0: new anchor.BN(3600) } }; // 1 hour in seconds
+    const paymentFrequency: PaymentFrequency = {
+      custom: { 0: new anchor.BN(3600) },
+    }; // 1 hour in seconds
 
     // Derive second policy PDA
     const policyId2 = 2;
@@ -486,7 +472,9 @@ describe("Recurring Payments", () => {
       tokenMint,
       recipient.publicKey,
       gatewayPDA,
-      policyType,
+      amount,
+      true,
+      null,
       paymentFrequency,
       Array.from(memo),
       new anchor.BN(twoHoursAgo) // start_time in past
@@ -501,7 +489,9 @@ describe("Recurring Payments", () => {
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
-    const executeTx = new Transaction().add(...executePaymentIxs);
+    const executeTx = new Transaction();
+    executeTx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }));
+    executeTx.add(...executePaymentIxs);
 
     await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority], {
       commitment: "processed" as Commitment,
@@ -565,21 +555,13 @@ describe("Recurring Payments", () => {
     const currentTime = Math.floor(Date.now() / 1000);
     const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
 
-    const testPolicyType = {
-      subscription: {
-        amount: testAmount,
-        intervalSeconds: testIntervalSeconds,
-        autoRenew: true,
-        maxRenewals: null,
-        padding: Array(8).fill(new anchor.BN(0)),
-      },
-    };
-
-    const createPolicyTrueIxs = await sdk.createPaymentPolicyWithUser(
+    const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
       tokenMint,
       recipient.publicKey,
       gatewayPDA,
-      testPolicyType,
+      testAmount,
+      true,
+      null,
       testPaymentFrequency,
       Array.from(testMemo),
       testStartTime,
@@ -652,21 +634,13 @@ describe("Recurring Payments", () => {
     const currentTime = Math.floor(Date.now() / 1000);
     const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
 
-    const testPolicyType = {
-      subscription: {
-        amount: testAmount,
-        intervalSeconds: testIntervalSeconds,
-        autoRenew: true,
-        maxRenewals: null,
-        padding: Array(8).fill(new anchor.BN(0)),
-      },
-    };
-
-    const createPolicyTrueIxs = await sdk.createPaymentPolicyWithUser(
+    const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
       tokenMint,
       recipient.publicKey,
       gatewayPDA,
-      testPolicyType,
+      testAmount,
+      true,
+      null,
       testPaymentFrequency,
       Array.from(testMemo),
       testStartTime,
@@ -700,21 +674,12 @@ describe("Recurring Payments", () => {
   test("Change payment policy status - pause/resume and execution control", async () => {
     // Create a new policy for this test
     const amount = new anchor.BN(15000); // 0.015 token
-    const intervalSeconds = new anchor.BN(3600); // 1 hour
     const memo = new Uint8Array(64).fill(0);
     Buffer.from("status change test").copy(memo);
 
-    const policyType = {
-      subscription: {
-        amount: amount,
-        intervalSeconds: intervalSeconds,
-        autoRenew: true,
-        maxRenewals: null,
-        padding: Array(8).fill(new anchor.BN(0)),
-      },
-    };
-
-    const paymentFrequency = { custom: { 0: new anchor.BN(3600) } }; // 1 hour
+    const paymentFrequency: PaymentFrequency = {
+      custom: { 0: new anchor.BN(3600) },
+    }; // 1 hour
 
     // Set start time in the past so payment can be executed immediately
     const pastTime = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
@@ -737,7 +702,9 @@ describe("Recurring Payments", () => {
       tokenMint,
       recipient.publicKey,
       gatewayPDA,
-      policyType,
+      amount,
+      true,
+      null,
       paymentFrequency,
       Array.from(memo),
       new anchor.BN(pastTime)

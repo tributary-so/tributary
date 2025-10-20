@@ -92,7 +92,7 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         : null;
 
       // Get instructions
-      const instructions = await sdk.createPaymentPolicyWithUser(
+      const instructions = await sdk.createSubscriptionInstruction(
         params.token,
         params.recipient,
         params.gateway,

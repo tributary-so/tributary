@@ -120,7 +120,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       if (formData.approvalAmount) {
         approvalAmount = new anchor.BN(formData.approvalAmount)
       }
-      const instructions = await sdk.createPaymentPolicyWithUser(
+      const instructions = await sdk.createSubscriptionInstruction(
         new PublicKey(formData.tokenMint),
         new PublicKey(formData.recipient),
         new PublicKey(formData.gateway),

@@ -9,11 +9,12 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub enum PolicyType {
     Subscription {
-        amount: u64,               // 8 bytes
-        interval_seconds: u64,     // 8 bytes
-        auto_renew: bool,          // 1 byte
-        max_renewals: Option<u32>, // 5 bytes (1 + 4)
-        padding: [u8; 106],        // 106 bytes padding
+        amount: u64,                         // 8 bytes
+        auto_renew: bool,                    // 1 byte
+        max_renewals: Option<u32>,           // 5 bytes (1 + 4)
+        payment_frequency: PaymentFrequency, // 9 bytes (1 + 8)
+        next_payment_due: i64,               // 8 bytes
+        padding: [u8; 97],                   // 97 bytes padding
     },
     // Future variants can be added like this:
     // OneTime {
@@ -35,6 +36,36 @@ impl PolicyType {
 
     /// Total size including enum discriminator
     pub const TOTAL_SIZE: usize = 1 + Self::VARIANT_SIZE; // 129 bytes
+
+    /// Validates the policy type and its parameters
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            PolicyType::Subscription {
+                amount,
+                payment_frequency,
+                max_renewals,
+                ..
+            } => {
+                // Validate amount is greater than zero
+                require!(
+                    *amount > 0,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate payment frequency
+                payment_frequency.validate()?;
+
+                // Validate max_renewals if set (must be greater than 0)
+                if let Some(renewals) = max_renewals {
+                    require!(
+                        *renewals > 0,
+                        crate::error::RecurringPaymentsError::InvalidInterval
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// A status enum for installed payment policies indicating if payment can be made
@@ -55,6 +86,22 @@ pub enum PaymentFrequency {
     SemiAnnually,
     Annually,
     Custom(u64),
+}
+
+impl PaymentFrequency {
+    /// Validates the payment frequency
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            PaymentFrequency::Custom(interval) => {
+                require!(
+                    *interval > 0,
+                    crate::error::RecurringPaymentsError::InvalidFrequency
+                );
+            }
+            _ => {} // Built-in frequencies are always valid
+        }
+        Ok(())
+    }
 }
 
 /// Each owner/authority+mint has a unique UserPayment account.
@@ -113,8 +160,8 @@ impl PaymentGateway {
         256; // padding: [u8; 256]
 }
 
-/// This structure connects a UserPayment (user/mint) with a Policy, a Gateway and the Payment
-/// Frequency. This is the structure that actually specifies the subscription payment as you would
+/// This structure connects a UserPayment (user/mint) with a Policy, a Gateway.
+/// This is the structure that actually specifies the subscription payment as you would
 /// expect from an invoice. The SDK would setup these PaymentPolicy
 #[account]
 pub struct PaymentPolicy {
@@ -123,10 +170,8 @@ pub struct PaymentPolicy {
     pub gateway: Pubkey,
     pub policy_type: PolicyType,
     pub status: PaymentStatus,
-    pub payment_frequency: PaymentFrequency,
     /// specified by the serice provider when installed (e.g. via sdk). Helps identify the payer
     pub memo: [u8; 64],
-    pub next_payment_due: i64,
     pub total_paid: u64,
     pub payment_count: u32,
     pub created_at: i64,
@@ -167,10 +212,6 @@ pub struct PaymentRecord {
     pub gateway: Pubkey,
     pub amount: u64,
     pub timestamp: i64,
-    pub transaction_signature: String,
-    pub payment_type: String,
-    pub success: bool,
-    pub failure_reason: Option<String>,
     pub memo: [u8; 64],
     pub record_id: u32,
 }

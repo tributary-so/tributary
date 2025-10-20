@@ -116,7 +116,9 @@ export class RecurringPaymentsSDK {
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
-    policyType: PolicyType,
+    amount: anchor.BN,
+    autoRenew: boolean,
+    maxRenewals: number | null,
     paymentFrequency: PaymentFrequency,
     memo: number[],
     startTime?: anchor.BN | null
@@ -130,6 +132,18 @@ export class RecurringPaymentsSDK {
       policyId = userPayment.activePoliciesCount + 1;
     }
     const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const nextPaymentDue =
+      startTime || new anchor.BN(Math.floor(Date.now() / 1000));
+    const policyType: PolicyType = {
+      subscription: {
+        amount: amount,
+        autoRenew: autoRenew,
+        maxRenewals: maxRenewals,
+        paymentFrequency: paymentFrequency,
+        nextPaymentDue: nextPaymentDue,
+        padding: new Array(97).fill(0),
+      },
+    };
     const accounts = {
       user: user,
       userPayment: userPaymentPda,
@@ -140,22 +154,18 @@ export class RecurringPaymentsSDK {
       systemProgram: SystemProgram.programId,
     };
     return await this.program.methods
-      .createPaymentPolicy(
-        policyId,
-        policyType,
-        paymentFrequency,
-        memo,
-        startTime || null
-      )
+      .createPaymentPolicy(policyId, policyType, memo)
       .accountsStrict(accounts)
       .instruction();
   }
 
-  async createPaymentPolicyWithUser(
+  async createSubscriptionInstruction(
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
-    policyType: PolicyType,
+    amount: anchor.BN,
+    autoRenew: boolean,
+    maxRenewals: number | null,
     paymentFrequency: PaymentFrequency,
     memo: number[],
     startTime?: anchor.BN | null,
@@ -198,6 +208,20 @@ export class RecurringPaymentsSDK {
       policyId = userPayment.activePoliciesCount + 1;
     }
 
+    // Build policy type
+    const nextPaymentDue =
+      startTime || new anchor.BN(Math.floor(Date.now() / 1000));
+    const policyType: PolicyType = {
+      subscription: {
+        amount: amount,
+        autoRenew: autoRenew,
+        maxRenewals: maxRenewals,
+        paymentFrequency: paymentFrequency,
+        nextPaymentDue: nextPaymentDue,
+        padding: new Array(97).fill(0),
+      },
+    };
+
     // Create payment policy instruction
     const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const accounts = {
@@ -211,13 +235,7 @@ export class RecurringPaymentsSDK {
     };
 
     const createPaymentPolicyIx = await this.program.methods
-      .createPaymentPolicy(
-        policyId,
-        policyType,
-        paymentFrequency,
-        memo,
-        startTime || null
-      )
+      .createPaymentPolicy(policyId, policyType, memo)
       .accountsStrict(accounts)
       .instruction();
 

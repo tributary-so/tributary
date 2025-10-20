@@ -97,16 +97,21 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
     let config = &ctx.accounts.config;
     let clock = Clock::get()?;
 
+    // Get payment details from policy
+    let (payment_amount, current_next_due, payment_frequency) = match &payment_policy.policy_type {
+        PolicyType::Subscription {
+            amount,
+            next_payment_due,
+            payment_frequency,
+            ..
+        } => (*amount, *next_payment_due, payment_frequency),
+    };
+
     // Validate payment timing
     require!(
-        clock.unix_timestamp >= payment_policy.next_payment_due,
+        clock.unix_timestamp >= current_next_due,
         crate::error::RecurringPaymentsError::PaymentNotDue
     );
-
-    // Get payment amount from policy
-    let payment_amount = match &payment_policy.policy_type {
-        PolicyType::Subscription { amount, .. } => *amount,
-    };
 
     // Check if user has sufficient balance
     require!(
@@ -176,11 +181,17 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
     }
 
     // Calculate next payment due time based on payment frequency
-    payment_policy.next_payment_due = calculate_next_payment_due(
-        payment_policy.next_payment_due,
-        &payment_policy.payment_frequency,
-        clock.unix_timestamp,
-    )?;
+    let new_next_due =
+        calculate_next_payment_due(current_next_due, payment_frequency, clock.unix_timestamp)?;
+
+    // Update next_payment_due in policy_type
+    match &mut payment_policy.policy_type {
+        PolicyType::Subscription {
+            next_payment_due, ..
+        } => {
+            *next_payment_due = new_next_due;
+        }
+    }
 
     // Update payment policy
     payment_policy.total_paid = payment_policy
@@ -202,10 +213,6 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
         gateway: gateway.key(),
         amount: payment_amount,
         timestamp: clock.unix_timestamp,
-        transaction_signature: "".to_string(), // This would be populated by the client
-        payment_type: "subscription".to_string(),
-        success: true,
-        failure_reason: None,
         memo: payment_policy.memo,
         record_id: payment_policy.payment_count,
     });

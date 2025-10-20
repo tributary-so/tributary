@@ -330,26 +330,12 @@ export type RecurringPayments = {
           }
         },
         {
-          "name": "paymentFrequency",
-          "type": {
-            "defined": {
-              "name": "paymentFrequency"
-            }
-          }
-        },
-        {
           "name": "memo",
           "type": {
             "array": [
               "u8",
               64
             ]
-          }
-        },
-        {
-          "name": "startTime",
-          "type": {
-            "option": "i64"
           }
         }
       ]
@@ -882,6 +868,11 @@ export type RecurringPayments = {
       "code": 6011,
       "name": "policyPaused",
       "msg": "Payment policy is paused"
+    },
+    {
+      "code": 6012,
+      "name": "invalidInterval",
+      "msg": "Invalid Interval"
     }
   ],
   "types": [
@@ -973,8 +964,8 @@ export type RecurringPayments = {
     {
       "name": "paymentPolicy",
       "docs": [
-        "This structure connects a UserPayment (user/mint) with a Policy, a Gateway and the Payment",
-        "Frequency. This is the structure that actually specifies the subscription payment as you would",
+        "This structure connects a UserPayment (user/mint) with a Policy, a Gateway.",
+        "This is the structure that actually specifies the subscription payment as you would",
         "expect from an invoice. The SDK would setup these PaymentPolicy"
       ],
       "type": {
@@ -1009,14 +1000,6 @@ export type RecurringPayments = {
             }
           },
           {
-            "name": "paymentFrequency",
-            "type": {
-              "defined": {
-                "name": "paymentFrequency"
-              }
-            }
-          },
-          {
             "name": "memo",
             "docs": [
               "specified by the serice provider when installed (e.g. via sdk). Helps identify the payer"
@@ -1027,10 +1010,6 @@ export type RecurringPayments = {
                 64
               ]
             }
-          },
-          {
-            "name": "nextPaymentDue",
-            "type": "i64"
           },
           {
             "name": "totalPaid",
@@ -1093,24 +1072,6 @@ export type RecurringPayments = {
             "type": "i64"
           },
           {
-            "name": "transactionSignature",
-            "type": "string"
-          },
-          {
-            "name": "paymentType",
-            "type": "string"
-          },
-          {
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "name": "failureReason",
-            "type": {
-              "option": "string"
-            }
-          },
-          {
             "name": "memo",
             "type": {
               "array": [
@@ -1164,10 +1125,6 @@ export type RecurringPayments = {
                 "type": "u64"
               },
               {
-                "name": "intervalSeconds",
-                "type": "u64"
-              },
-              {
                 "name": "autoRenew",
                 "type": "bool"
               },
@@ -1178,11 +1135,23 @@ export type RecurringPayments = {
                 }
               },
               {
+                "name": "paymentFrequency",
+                "type": {
+                  "defined": {
+                    "name": "paymentFrequency"
+                  }
+                }
+              },
+              {
+                "name": "nextPaymentDue",
+                "type": "i64"
+              },
+              {
                 "name": "padding",
                 "type": {
                   "array": [
                     "u8",
-                    106
+                    97
                   ]
                 }
               }
