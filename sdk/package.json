@@ -1,7 +1,7 @@
 {
   "name": "@tributary-so/sdk",
   "private": false,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "lint": "eslint src",
