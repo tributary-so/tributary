@@ -47,9 +47,13 @@ function App() {
               Developer
             </a>
           </nav>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all">
-            Get Started
-          </button>
+          <a
+            type="button"
+            className="button bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all"
+            href="https://app.tributary.so"
+          >
+            Open App
+          </a>
         </div>
       </header>
 
