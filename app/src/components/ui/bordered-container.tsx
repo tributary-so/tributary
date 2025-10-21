@@ -1,10 +1,11 @@
 import React from 'react'
 
+type BorderSide = 'top' | 'right' | 'bottom' | 'left'
 interface BorderedContainerProps {
   children: React.ReactNode
   className?: string
   style?: React.CSSProperties
-  borderSides?: ('top' | 'right' | 'bottom' | 'left')[]
+  borderSides?: BorderSide[]
   fillHeight?: boolean
 }
 
@@ -15,12 +16,21 @@ export function BorderedContainer({
   borderSides = ['top', 'right', 'bottom', 'left'],
   fillHeight = false,
 }: BorderedContainerProps) {
-  const borderClasses = borderSides.map((side) => `border-${side.slice(0, 1)}`).join(' ')
+  const borderClasses = borderSides.map((side) => `border-${side.slice(0, 1)}-1`).join(' ')
+  const antiBorderClasses = (['top', 'right', 'bottom', 'left'] as BorderSide[])
+    .filter((side) => !borderSides.includes(side))
+    .map((side) => `border-${side.slice(0, 1)}-0`)
+    .join(' ')
+
+  console.log(borderClasses, antiBorderClasses)
 
   return (
     <div className="w-full" style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}>
       <div className="px-[40px]" style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}>
-        <div className={`${borderClasses} border-[var(--color-primary)] ${className}`} style={style}>
+        <div
+          className={`border border-1 ${borderClasses} ${antiBorderClasses} border-[var(--color-primary)] ${className}`}
+          style={style}
+        >
           {children}
         </div>
       </div>
