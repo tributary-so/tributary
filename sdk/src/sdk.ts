@@ -93,11 +93,27 @@ export class RecurringPaymentsSDK {
   async createPaymentGateway(
     authority: PublicKey,
     gatewayFeeBps: number,
-    gatewayFeeRecipient: PublicKey
+    gatewayFeeRecipient: PublicKey,
+    name: string,
+    url: string
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const gateway = this.getGatewayPda(authority).address;
     const { address: configPda } = getConfigPda(this.programId);
+
+    // Convert strings to fixed-size byte arrays
+    const nameBytes = new Array(32).fill(0);
+    const nameBuffer = Buffer.from(name, "utf8");
+    for (let i = 0; i < Math.min(nameBuffer.length, 32); i++) {
+      nameBytes[i] = nameBuffer[i];
+    }
+
+    const urlBytes = new Array(64).fill(0);
+    const urlBuffer = Buffer.from(url, "utf8");
+    for (let i = 0; i < Math.min(urlBuffer.length, 64); i++) {
+      urlBytes[i] = urlBuffer[i];
+    }
+
     const accounts = {
       admin: admin,
       authority: authority,
@@ -107,7 +123,7 @@ export class RecurringPaymentsSDK {
       systemProgram: SystemProgram.programId,
     };
     return await this.program.methods
-      .createPaymentGateway(gatewayFeeBps)
+      .createPaymentGateway(gatewayFeeBps, nameBytes, urlBytes)
       .accountsStrict(accounts)
       .instruction();
   }

@@ -235,7 +235,9 @@ describe("Recurring Payments", () => {
     const createGatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       gatewayFeeBps,
-      feeRecipient.publicKey
+      feeRecipient.publicKey,
+      "custom gateway",
+      "https://example.com"
     );
     const tx = new Transaction().add(createGatewayIx);
 
@@ -252,6 +254,19 @@ describe("Recurring Payments", () => {
     expect(gatewayAccount!.totalProcessed.toNumber()).toBe(0);
     expect(gatewayAccount!.bump).toBe(gatewayBump);
     expect(gatewayAccount!.createdAt.toNumber()).toBeGreaterThan(0);
+
+    // Verify name and url fields
+    const nameBuffer = Buffer.from(gatewayAccount!.name);
+    const nameString = nameBuffer
+      .subarray(0, nameBuffer.indexOf(0))
+      .toString("utf-8");
+    expect(nameString).toBe("custom gateway");
+
+    const urlBuffer = Buffer.from(gatewayAccount!.url);
+    const urlString = urlBuffer
+      .subarray(0, urlBuffer.indexOf(0))
+      .toString("utf-8");
+    expect(urlString).toBe("https://example.com");
   });
 
   test("Create payment policy", async () => {

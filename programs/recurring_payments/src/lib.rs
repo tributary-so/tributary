@@ -29,8 +29,10 @@ pub mod recurring_payments {
     pub fn create_payment_gateway(
         ctx: Context<CreatePaymentGateway>,
         gateway_fee_bps: u16,
+        name: [u8; 32],
+        url: [u8; 64],
     ) -> Result<()> {
-        instructions::create_payment_gateway::handler_create_payment_gateway(ctx, gateway_fee_bps)
+        instructions::create_payment_gateway::handler_create_payment_gateway(ctx, gateway_fee_bps, name, url)
     }
 
     pub fn create_payment_policy(

@@ -201,6 +201,17 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
     payment_policy.payment_count = payment_policy.payment_count.checked_add(1).unwrap();
     payment_policy.updated_at = clock.unix_timestamp;
 
+    // Check if payment count has reached max renewals and set status to Paused
+    match &payment_policy.policy_type {
+        PolicyType::Subscription { max_renewals, .. } => {
+            if let Some(max_renewal) = max_renewals {
+                if payment_policy.payment_count >= *max_renewal {
+                    payment_policy.status = PaymentStatus::Paused;
+                }
+            }
+        }
+    }
+
     // Update gateway
     gateway.total_processed = gateway.total_processed.checked_add(payment_amount).unwrap();
 

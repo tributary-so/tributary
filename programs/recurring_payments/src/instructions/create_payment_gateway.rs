@@ -34,6 +34,8 @@ pub struct CreatePaymentGateway<'info> {
 pub fn handler_create_payment_gateway(
     ctx: Context<CreatePaymentGateway>,
     gateway_fee_bps: u16,
+    name: [u8; 32],
+    url: [u8; 64],
 ) -> Result<()> {
     let gateway = &mut ctx.accounts.gateway;
     let clock = Clock::get()?;
@@ -45,11 +47,15 @@ pub fn handler_create_payment_gateway(
     gateway.total_processed = 0;
     gateway.created_at = clock.unix_timestamp;
     gateway.bump = ctx.bumps.gateway;
+    gateway.name = name;
+    gateway.url = url;
 
     msg!(
-        "Payment gateway created with authority: {:?}, fee: {} bps",
+        "Payment gateway created with authority: {:?}, fee: {} bps, name: {:?}, url: {:?}",
         gateway.authority,
-        gateway.gateway_fee_bps
+        gateway.gateway_fee_bps,
+        String::from_utf8_lossy(&name),
+        String::from_utf8_lossy(&url)
     );
 
     Ok(())

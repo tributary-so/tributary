@@ -145,7 +145,9 @@ pub struct PaymentGateway {
     pub total_processed: u64,
     pub created_at: i64,
     pub bump: u8,
-    pub padding: [u8; 256],
+    pub name: [u8; 32],
+    pub url: [u8; 64],
+    pub padding: [u8; 160],
 }
 
 impl PaymentGateway {
@@ -157,7 +159,9 @@ impl PaymentGateway {
         8 + // total_processed: u64
         8 + // created_at: i64
         1 + // bump: u8
-        256; // padding: [u8; 256]
+        32 + // name: [u8; 32]
+        64 + // url: [u8; 64]
+        160; // padding: [u8; 160]
 }
 
 /// This structure connects a UserPayment (user/mint) with a Policy, a Gateway.
