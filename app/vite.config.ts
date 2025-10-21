@@ -8,11 +8,20 @@ import inject from '@rollup/plugin-inject'
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    global: {},
+  },
+  resolve: {
+    alias: {
+      // https://stackoverflow.com/posts/75778243/revisions
+      'node-fetch': 'isomorphic-fetch',
+    },
+  },
   plugins: [
     react(),
     nodePolyfills({
       globals: {
-        Buffer: false,
+        Buffer: true,
       },
       include: ['buffer'],
     }),
