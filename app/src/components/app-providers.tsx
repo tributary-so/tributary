@@ -1,6 +1,7 @@
 import { ReactQueryProvider } from './react-query-provider'
 import { ClusterProvider } from '@/components/cluster/cluster-data-access'
 import { SolanaProvider } from '@/components/solana/solana-provider'
+import { TokenMetadataProvider } from './token-metadata-provider'
 import { HeroUIProvider } from '@heroui/react'
 import React from 'react'
 
@@ -9,7 +10,9 @@ export function AppProviders({ children }: Readonly<{ children: React.ReactNode 
     <HeroUIProvider>
       <ReactQueryProvider>
         <ClusterProvider>
-          <SolanaProvider>{children}</SolanaProvider>
+          <SolanaProvider>
+            <TokenMetadataProvider>{children}</TokenMetadataProvider>
+          </SolanaProvider>
         </ClusterProvider>
       </ReactQueryProvider>
     </HeroUIProvider>

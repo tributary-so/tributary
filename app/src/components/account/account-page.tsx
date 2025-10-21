@@ -45,7 +45,7 @@ export default function AccountPage() {
       if (!wallet.publicKey) return toast.error('Wallet not connected')
       try {
         setLoading(true)
-        const allPolicies = await sdk.getAllPaymentPolicies()
+        const allPolicies = await sdk.getPaymentPoliciesByUser(wallet.publicKey)
         const userPaymentMap = new Map<string, UserPaymentWithPolicies>()
         const tokenInfoMap = new Map<string, TokenInfo>()
         for (const policy of allPolicies) {

@@ -38,7 +38,7 @@ export default function PaymentPolicyList() {
 
   useEffect(() => {
     const fetchPolicies = async () => {
-      if (!sdk) {
+      if (!sdk || !wallet.publicKey) {
         setLoading(false)
         return
       }
@@ -46,7 +46,7 @@ export default function PaymentPolicyList() {
       try {
         setLoading(true)
         setError(null)
-        const allPolicies = await sdk.getAllPaymentPolicies()
+        const allPolicies = await sdk.getPaymentPoliciesByUser(wallet.publicKey)
 
         const userPaymentMap = new Map<string, UserPaymentWithPolicies>()
         const tokenInfoMap = new Map<string, TokenInfo>()

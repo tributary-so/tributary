@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Copy, Check } from '../../icons'
 import { PaymentPolicyFormData } from './payment-policy-form'
+import { getTokenPrecisionAtom } from '@/lib/token-store'
+import { useAtomValue } from 'jotai'
 
 interface IntegrationCodeProps {
   formData: PaymentPolicyFormData
@@ -8,6 +10,7 @@ interface IntegrationCodeProps {
 
 export default function IntegrationCode({ formData }: IntegrationCodeProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const [buttonHtml, setButtonHtml] = useState(
     '<button class="tributary-subscribe-btn" data-policy-id="your_policy_id">Subscribe Now</button>',
   )
@@ -17,14 +20,11 @@ export default function IntegrationCode({ formData }: IntegrationCodeProps) {
     tokenMint: '${formData.tokenMint}',
     recipient: '${formData.recipient}',
     gateway: '${formData.gateway}',
-    amount: '${formData.amount}',
-    intervalSeconds: ${formData.intervalSeconds},
-    memo: '${formData.memo}',
-    frequency: '${formData.frequency}',
-    autoRenew: ${formData.autoRenew},
-    maxRenewals: ${formData.maxRenewals || 'null'},
-    approvalAmount: '${formData.approvalAmount}',
-    network: 'mainnet'
+    amount: new BN('${parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))}'),
+    ${formData.frequency == 'custom' ? `intervalSeconds: ${formData.intervalSeconds},\n    ` : ''}memo: '${
+      formData.memo
+    }',
+    frequency: '${formData.frequency}'
   })
 </script>`
 
@@ -52,7 +52,7 @@ export default function IntegrationCode({ formData }: IntegrationCodeProps) {
   }
 
   return (
-    <div className="max-w-[700px] space-y-4">
+    <div className="max-w-[500px] space-y-4">
       <p className="text-sm text-gray-600">
         Edit the HTML and CSS below. The button preview updates in real-time. The JavaScript code reflects your form
         configuration.

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { Select, SelectItem, Input } from '@heroui/react'
+import { Button } from '@/components/ui/button'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import * as anchor from '@coral-xyz/anchor'
@@ -6,6 +8,8 @@ import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
 import { type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
+import { useAtomValue } from 'jotai'
+import { availableTokensAtom } from '@/lib/token-store'
 
 export interface PaymentPolicyFormData {
   tokenMint: string
@@ -15,7 +19,7 @@ export interface PaymentPolicyFormData {
   memo: string
   frequency: string
   autoRenew: boolean
-  maxRenewals: string
+  //maxRenewals: string
   approvalAmount: string
   intervalSeconds: string
 }
@@ -33,12 +37,18 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const [gateways, setGateways] = useState<Array<{ publicKey: PublicKey; account: PaymentGateway }>>([])
   const [gatewaysLoading, setGatewaysLoading] = useState(false)
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
+  const availableTokens = useAtomValue(availableTokensAtom)
+  const [isRecipientValid, setIsRecipientValid] = useState(true)
 
   useEffect(() => {
     if (wallet.publicKey && !formData.recipient) {
       onFormDataChange({ ...formData, recipient: wallet.publicKey.toString() })
     }
   }, [wallet.publicKey, formData, onFormDataChange])
+
+  useEffect(() => {
+    setIsRecipientValid(validateRecipientAddress(formData.recipient))
+  }, [formData.recipient])
 
   useEffect(() => {
     const fetchGateways = async () => {
@@ -69,11 +79,26 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }
     onFormDataChange(newData)
+
+    // Validate recipient address
+    if (name === 'recipient') {
+      setIsRecipientValid(validateRecipientAddress(value))
+    }
   }
 
   const truncateAddress = (address: string) => {
     if (address.length <= 8) return address
     return `${address.slice(0, 4)}...${address.slice(-4)}`
+  }
+
+  const validateRecipientAddress = (address: string) => {
+    if (!address) return true // Allow empty for now, required validation will handle it
+    try {
+      new PublicKey(address)
+      return true
+    } catch {
+      return false
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,8 +170,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
   }
 
-  const inputClass =
-    'w-full px-3 py-2 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] placeholder:text-gray-400 focus:outline-none transition-colors text-sm'
   const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
 
   // if (!wallet.connected) {
@@ -166,30 +189,44 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="tokenMint" className={labelClass}>
-                  Token Mint Address
+                  Token
                 </label>
-                <input
+                <Select
                   id="tokenMint"
-                  name="tokenMint"
-                  value={formData.tokenMint}
-                  onChange={handleInputChange}
-                  placeholder="Token mint address"
+                  placeholder="Select token"
+                  selectedKeys={formData.tokenMint ? [formData.tokenMint] : []}
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string
+                    onFormDataChange({ ...formData, tokenMint: selectedKey })
+                  }}
                   required
-                  className={inputClass}
-                />
+                  className="w-full"
+                >
+                  {availableTokens.map((token) => (
+                    <SelectItem
+                      key={token.address}
+                      description={token.name ?? 'No token name'}
+                      // startContent={<GitFolder className={iconClasses} />}
+                    >
+                      {token.symbol}
+                    </SelectItem>
+                  ))}
+                </Select>
               </div>
               <div>
                 <label htmlFor="recipient" className={labelClass}>
                   Recipient Address
                 </label>
-                <input
+                <Input
                   id="recipient"
                   name="recipient"
                   value={formData.recipient}
                   onChange={handleInputChange}
                   placeholder="Recipient address"
                   required
-                  className={inputClass}
+                  className={`w-full ${!isRecipientValid ? 'border-red-500' : ''}`}
+                  isInvalid={!isRecipientValid}
+                  errorMessage={!isRecipientValid ? 'Invalid Solana address' : undefined}
                 />
               </div>
               <div>
@@ -201,28 +238,34 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <select
+                  <Select
                     id="gateway"
                     name="gateway"
-                    value={formData.gateway}
-                    onChange={handleInputChange}
+                    selectedKeys={formData.gateway ? [formData.gateway] : []}
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as string
+                      onFormDataChange({ ...formData, gateway: selectedKey })
+                    }}
+                    placeholder="Select gateway"
                     required
-                    className={inputClass}
+                    className="w-full"
                   >
-                    <option value="">Select gateway</option>
-                    {gateways.map((gateway, index) => (
-                      <option key={index} value={gateway.publicKey.toString()}>
-                        {truncateAddress(gateway.publicKey.toString())} - {gateway.account.gatewayFeeBps} bps
-                      </option>
+                    {gateways.map((gateway) => (
+                      <SelectItem
+                        key={gateway.publicKey.toString()}
+                        description={`${gateway.account.gatewayFeeBps} bps`}
+                      >
+                        {truncateAddress(gateway.publicKey.toString())}
+                      </SelectItem>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </div>
               <div>
                 <label htmlFor="amount" className={labelClass}>
                   Amount (base units)
                 </label>
-                <input
+                <Input
                   id="amount"
                   name="amount"
                   type="number"
@@ -231,34 +274,38 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                   placeholder="e.g., 10000000"
                   required
                   min="1"
-                  className={inputClass}
+                  className="w-full"
                 />
               </div>
               <div>
                 <label htmlFor="frequency" className={labelClass}>
                   Frequency
                 </label>
-                <select
+                <Select
                   id="frequency"
                   name="frequency"
-                  value={formData.frequency}
-                  onChange={handleInputChange}
-                  className={inputClass}
+                  selectedKeys={formData.frequency ? [formData.frequency] : []}
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string
+                    onFormDataChange({ ...formData, frequency: selectedKey })
+                  }}
+                  placeholder="Select frequency"
+                  className="w-full"
                 >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="semiAnnually">Semi-Annually</option>
-                  <option value="annually">Annually</option>
-                  <option value="custom">Custom</option>
-                </select>
+                  <SelectItem key="daily">Daily</SelectItem>
+                  <SelectItem key="weekly">Weekly</SelectItem>
+                  <SelectItem key="monthly">Monthly</SelectItem>
+                  <SelectItem key="quarterly">Quarterly</SelectItem>
+                  <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
+                  <SelectItem key="annually">Annually</SelectItem>
+                  <SelectItem key="custom">Custom</SelectItem>
+                </Select>
               </div>
               <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
                 <label htmlFor="intervalSeconds" className={labelClass}>
-                  Custom Frequency (seconds)
+                  Custom (seconds)
                 </label>
-                <input
+                <Input
                   id="intervalSeconds"
                   name="intervalSeconds"
                   type="number"
@@ -267,7 +314,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                   placeholder="e.g., 2592000"
                   required
                   min="1"
-                  className={inputClass}
+                  className="w-full"
                   disabled={formData.frequency != 'custom'}
                 />
               </div>
@@ -307,25 +354,25 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
               <label htmlFor="memo" className={labelClass}>
                 Memo (optional)
               </label>
-              <input
+              <Input
                 id="memo"
                 name="memo"
                 value={formData.memo}
                 onChange={handleInputChange}
                 placeholder="Payment description"
                 maxLength={64}
-                className={inputClass}
+                className="w-full"
               />
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading || !wallet.connected}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-6 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ fontFamily: 'var(--font-secondary)', fontSize: '14px', textTransform: 'uppercase' }}
+              disabled={loading || !wallet.connected || !isRecipientValid}
+              className="w-full mt-6 text-sm uppercase"
+              style={{ fontFamily: 'var(--font-secondary)' }}
             >
               {loading ? 'Creating...' : 'Create Payment Policy'}
-            </button>
+            </Button>
           </form>
         </div>
       </div>

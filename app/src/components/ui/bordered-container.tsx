@@ -22,8 +22,6 @@ export function BorderedContainer({
     .map((side) => `border-${side.slice(0, 1)}-0`)
     .join(' ')
 
-  console.log(borderClasses, antiBorderClasses)
-
   return (
     <div className="w-full" style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}>
       <div className="px-[40px]" style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}>

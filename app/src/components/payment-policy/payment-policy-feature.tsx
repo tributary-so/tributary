@@ -12,7 +12,6 @@ export default function PaymentPolicyFeature() {
     memo: '',
     frequency: 'monthly',
     autoRenew: true,
-    maxRenewals: '',
     approvalAmount: '',
   })
 
