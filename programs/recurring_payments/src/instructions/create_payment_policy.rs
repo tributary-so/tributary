@@ -90,20 +90,3 @@ pub fn handler_create_payment_policy(
 
     Ok(())
 }
-
-impl PaymentPolicy {
-    pub const SIZE: usize = 8 + // discriminator
-        32 + // user_payment: Pubkey
-        32 + // recipient: Pubkey
-        32 + // gateway: Pubkey
-        PolicyType::VARIANT_SIZE + // policy type size
-        1 + // status: PaymentStatus
-        64 + // memo: [u8; 64]
-        8 + // total_paid: u64
-        4 + // payment_count: u32
-        8 + // created_at: i64
-        8 + // updated_at: i64
-        4 + // policy_id: u32
-        1 + // bump: u8
-        256; // padding: [u8; 256]
-}

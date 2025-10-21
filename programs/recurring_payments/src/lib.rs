@@ -5,6 +5,7 @@ pub mod constants;
 pub mod error;
 pub mod instructions;
 pub mod state;
+pub mod utils;
 
 use anchor_lang::prelude::*;
 
@@ -32,7 +33,12 @@ pub mod recurring_payments {
         name: [u8; 32],
         url: [u8; 64],
     ) -> Result<()> {
-        instructions::create_payment_gateway::handler_create_payment_gateway(ctx, gateway_fee_bps, name, url)
+        instructions::create_payment_gateway::handler_create_payment_gateway(
+            ctx,
+            gateway_fee_bps,
+            name,
+            url,
+        )
     }
 
     pub fn create_payment_policy(

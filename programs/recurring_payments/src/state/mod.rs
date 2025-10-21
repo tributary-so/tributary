@@ -98,7 +98,7 @@ impl PaymentFrequency {
                     crate::error::RecurringPaymentsError::InvalidFrequency
                 );
             }
-            _ => {} // Built-in frequencies are always valid
+            _ => {}
         }
         Ok(())
     }
@@ -174,7 +174,6 @@ pub struct PaymentPolicy {
     pub gateway: Pubkey,
     pub policy_type: PolicyType,
     pub status: PaymentStatus,
-    /// specified by the serice provider when installed (e.g. via sdk). Helps identify the payer
     pub memo: [u8; 64],
     pub total_paid: u64,
     pub payment_count: u32,
@@ -183,6 +182,23 @@ pub struct PaymentPolicy {
     pub policy_id: u32,
     pub bump: u8,
     pub padding: [u8; 256],
+}
+
+impl PaymentPolicy {
+    pub const SIZE: usize = 8 + // discriminator
+        32 + // user_payment: Pubkey
+        32 + // recipient: Pubkey
+        32 + // gateway: Pubkey
+        PolicyType::VARIANT_SIZE + // policy type size
+        1 + // status: PaymentStatus
+        64 + // memo: [u8; 64]
+        8 + // total_paid: u64
+        4 + // payment_count: u32
+        8 + // created_at: i64
+        8 + // updated_at: i64
+        4 + // policy_id: u32
+        1 + // bump: u8
+        256; // padding: [u8; 256]
 }
 
 /// This is a unique global program configuration managed by an admin that

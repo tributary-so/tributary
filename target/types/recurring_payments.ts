@@ -1037,9 +1037,6 @@ export type RecurringPayments = {
           },
           {
             "name": "memo",
-            "docs": [
-              "specified by the serice provider when installed (e.g. via sdk). Helps identify the payer"
-            ],
             "type": {
               "array": [
                 "u8",
