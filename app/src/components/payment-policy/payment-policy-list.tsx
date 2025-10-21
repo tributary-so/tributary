@@ -134,7 +134,7 @@ export default function PaymentPolicyList() {
   }
 
   const getNextPaymentDue = (policy: PaymentPolicy) => {
-    const nextPaymentDue = policy.nextPaymentDue
+    const nextPaymentDue = policy.policyType.subscription.nextPaymentDue
     if (!nextPaymentDue) return 'N/A'
 
     const nextPaymentDate = new Date(nextPaymentDue.toNumber() * 1000)
@@ -197,7 +197,7 @@ export default function PaymentPolicyList() {
   }
 
   const isPaymentDue = (policy: PaymentPolicy): boolean => {
-    const nextPaymentDue = policy.nextPaymentDue
+    const nextPaymentDue = policy.policyType.subscription.nextPaymentDue
     if (!nextPaymentDue) return false
 
     const nextPaymentDate = new Date(nextPaymentDue.toNumber() * 1000)

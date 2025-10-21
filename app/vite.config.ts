@@ -21,7 +21,7 @@ export default defineConfig({
     react(),
     nodePolyfills({
       globals: {
-        Buffer: true,
+        Buffer: false,
       },
       include: ['buffer'],
     }),
