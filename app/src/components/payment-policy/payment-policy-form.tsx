@@ -5,19 +5,19 @@ import * as anchor from '@coral-xyz/anchor'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
-import { type PolicyType, type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
+import { type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
 
 export interface PaymentPolicyFormData {
   tokenMint: string
   recipient: string
   gateway: string
   amount: string
-  intervalSeconds: string
   memo: string
   frequency: string
   autoRenew: boolean
   maxRenewals: string
   approvalAmount: string
+  intervalSeconds: string
 }
 export interface PaymentPolicyFormProps {
   formData: PaymentPolicyFormData
@@ -88,15 +88,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
     setLoading(true)
     try {
-      const policyType: PolicyType = {
-        subscription: {
-          amount: new anchor.BN(formData.amount),
-          intervalSeconds: new anchor.BN(formData.intervalSeconds),
-          autoRenew: formData.autoRenew,
-          maxRenewals: formData.maxRenewals ? parseInt(formData.maxRenewals) : null,
-          padding: Array(8).fill(new anchor.BN(0)),
-        },
-      }
       const paymentFrequency: PaymentFrequency = (() => {
         switch (formData.frequency) {
           case 'daily':
@@ -111,12 +102,14 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             return { semiAnnually: {} }
           case 'annually':
             return { annually: {} }
+          case 'custom':
+            return { custom: { 0: new anchor.BN(formData.intervalSeconds) } }
           default:
             return { daily: {} }
         }
       })()
       const memo = createMemoBuffer(formData.memo, 64)
-      let approvalAmount: anchor.BN | undefined = undefined
+      let approvalAmount: anchor.BN | undefined = new anchor.BN(10_000_000_000) // 10k USDC
       if (formData.approvalAmount) {
         approvalAmount = new anchor.BN(formData.approvalAmount)
       }
@@ -124,7 +117,9 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         new PublicKey(formData.tokenMint),
         new PublicKey(formData.recipient),
         new PublicKey(formData.gateway),
-        policyType,
+        new anchor.BN(formData.amount),
+        false,
+        null,
         paymentFrequency,
         memo,
         null,
@@ -163,185 +158,176 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   // }
 
   return (
-    <div className="items-center">
-      <div className="max-w-3xl">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="tokenMint" className={labelClass}>
-                Token Mint Address
-              </label>
-              <input
-                id="tokenMint"
-                name="tokenMint"
-                value={formData.tokenMint}
-                onChange={handleInputChange}
-                placeholder="Token mint address"
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="recipient" className={labelClass}>
-                Recipient Address
-              </label>
-              <input
-                id="recipient"
-                name="recipient"
-                value={formData.recipient}
-                onChange={handleInputChange}
-                placeholder="Recipient address"
-                required
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="gateway" className={labelClass}>
-                Gateway Address
-              </label>
-              {gatewaysLoading ? (
-                <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
-                  <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : (
-                <select
-                  id="gateway"
-                  name="gateway"
-                  value={formData.gateway}
+    <div className="max-w-[700px] space-y-4">
+      <p className="text-sm text-gray-600">Create a new recurring payment policy and get integration code.</p>
+      <div className="items-center">
+        <div className="max-w-3xl">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="tokenMint" className={labelClass}>
+                  Token Mint Address
+                </label>
+                <input
+                  id="tokenMint"
+                  name="tokenMint"
+                  value={formData.tokenMint}
                   onChange={handleInputChange}
+                  placeholder="Token mint address"
                   required
                   className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="recipient" className={labelClass}>
+                  Recipient Address
+                </label>
+                <input
+                  id="recipient"
+                  name="recipient"
+                  value={formData.recipient}
+                  onChange={handleInputChange}
+                  placeholder="Recipient address"
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="gateway" className={labelClass}>
+                  Gateway Address
+                </label>
+                {gatewaysLoading ? (
+                  <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
+                    <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <select
+                    id="gateway"
+                    name="gateway"
+                    value={formData.gateway}
+                    onChange={handleInputChange}
+                    required
+                    className={inputClass}
+                  >
+                    <option value="">Select gateway</option>
+                    {gateways.map((gateway, index) => (
+                      <option key={index} value={gateway.publicKey.toString()}>
+                        {truncateAddress(gateway.publicKey.toString())} - {gateway.account.gatewayFeeBps} bps
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div>
+                <label htmlFor="amount" className={labelClass}>
+                  Amount (base units)
+                </label>
+                <input
+                  id="amount"
+                  name="amount"
+                  type="number"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 10000000"
+                  required
+                  min="1"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="frequency" className={labelClass}>
+                  Frequency
+                </label>
+                <select
+                  id="frequency"
+                  name="frequency"
+                  value={formData.frequency}
+                  onChange={handleInputChange}
+                  className={inputClass}
                 >
-                  <option value="">Select gateway</option>
-                  {gateways.map((gateway, index) => (
-                    <option key={index} value={gateway.publicKey.toString()}>
-                      {truncateAddress(gateway.publicKey.toString())} - {gateway.account.gatewayFeeBps} bps
-                    </option>
-                  ))}
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="semiAnnually">Semi-Annually</option>
+                  <option value="annually">Annually</option>
+                  <option value="custom">Custom</option>
                 </select>
-              )}
+              </div>
+              <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
+                <label htmlFor="intervalSeconds" className={labelClass}>
+                  Custom Frequency (seconds)
+                </label>
+                <input
+                  id="intervalSeconds"
+                  name="intervalSeconds"
+                  type="number"
+                  value={formData.intervalSeconds}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 2592000"
+                  required
+                  min="1"
+                  className={inputClass}
+                  disabled={formData.frequency != 'custom'}
+                />
+              </div>
+              {/* <div> */}
+              {/*   <label htmlFor="maxRenewals" className={labelClass}> */}
+              {/*     Max Renewals */}
+              {/*   </label> */}
+              {/*   <input */}
+              {/*     id="maxRenewals" */}
+              {/*     name="maxRenewals" */}
+              {/*     type="number" */}
+              {/*     value={formData.maxRenewals} */}
+              {/*     onChange={handleInputChange} */}
+              {/*     placeholder="Leave empty for unlimited" */}
+              {/*     min="1" */}
+              {/*     className={inputClass} */}
+              {/*   /> */}
+              {/* </div> */}
+              {/* <div> */}
+              {/*   <label htmlFor="approvalAmount" className={labelClass}> */}
+              {/*     Approval Amount */}
+              {/*   </label> */}
+              {/*   <input */}
+              {/*     id="approvalAmount" */}
+              {/*     name="approvalAmount" */}
+              {/*     type="number" */}
+              {/*     value={formData.approvalAmount} */}
+              {/*     onChange={handleInputChange} */}
+              {/*     placeholder="Token approval amount" */}
+              {/*     min="1" */}
+              {/*     className={inputClass} */}
+              {/*   /> */}
+              {/* </div> */}
             </div>
-            <div>
-              <label htmlFor="amount" className={labelClass}>
-                Amount (base units)
-              </label>
-              <input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="e.g., 10000000"
-                required
-                min="1"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="intervalSeconds" className={labelClass}>
-                Interval (seconds)
-              </label>
-              <input
-                id="intervalSeconds"
-                name="intervalSeconds"
-                type="number"
-                value={formData.intervalSeconds}
-                onChange={handleInputChange}
-                placeholder="e.g., 2592000"
-                required
-                min="1"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="frequency" className={labelClass}>
-                Frequency
-              </label>
-              <select
-                id="frequency"
-                name="frequency"
-                value={formData.frequency}
-                onChange={handleInputChange}
-                className={inputClass}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="semiAnnually">Semi-Annually</option>
-                <option value="annually">Annually</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="maxRenewals" className={labelClass}>
-                Max Renewals
-              </label>
-              <input
-                id="maxRenewals"
-                name="maxRenewals"
-                type="number"
-                value={formData.maxRenewals}
-                onChange={handleInputChange}
-                placeholder="Leave empty for unlimited"
-                min="1"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="approvalAmount" className={labelClass}>
-                Approval Amount
-              </label>
-              <input
-                id="approvalAmount"
-                name="approvalAmount"
-                type="number"
-                value={formData.approvalAmount}
-                onChange={handleInputChange}
-                placeholder="Token approval amount"
-                min="1"
-                className={inputClass}
-              />
-            </div>
-          </div>
 
-          <div>
-            <label htmlFor="memo" className={labelClass}>
-              Memo (optional)
-            </label>
-            <input
-              id="memo"
-              name="memo"
-              value={formData.memo}
-              onChange={handleInputChange}
-              placeholder="Payment description"
-              maxLength={64}
-              className={inputClass}
-            />
-          </div>
+            <div>
+              <label htmlFor="memo" className={labelClass}>
+                Memo (optional)
+              </label>
+              <input
+                id="memo"
+                name="memo"
+                value={formData.memo}
+                onChange={handleInputChange}
+                placeholder="Payment description"
+                maxLength={64}
+                className={inputClass}
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              id="autoRenew"
-              name="autoRenew"
-              type="checkbox"
-              checked={formData.autoRenew}
-              onChange={handleInputChange}
-              className="w-4 h-4 border border-[var(--color-primary)] rounded"
-            />
-            <label htmlFor="autoRenew" className="text-sm">
-              Auto-renew payments
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !wallet.connected}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-6 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ fontFamily: 'var(--font-secondary)', fontSize: '14px', textTransform: 'uppercase' }}
-          >
-            {loading ? 'Creating...' : 'Create Payment Policy'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading || !wallet.connected}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-6 border border-[var(--color-primary)] rounded bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ fontFamily: 'var(--font-secondary)', fontSize: '14px', textTransform: 'uppercase' }}
+            >
+              {loading ? 'Creating...' : 'Create Payment Policy'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

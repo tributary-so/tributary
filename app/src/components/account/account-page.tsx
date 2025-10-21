@@ -122,8 +122,8 @@ export default function AccountPage() {
   }
 
   const getNextPaymentDue = (policy: PaymentPolicy) => {
-    if (!policy.nextPaymentDue) return 'N/A'
-    const nextPaymentDate = new Date(policy.nextPaymentDue.toNumber() * 1000)
+    if (!policy.policyType.subscription.nextPaymentDue) return 'N/A'
+    const nextPaymentDate = new Date(policy.policyType.subscription.nextPaymentDue.toNumber() * 1000)
     return nextPaymentDate < new Date() ? 'Overdue' : formatDistanceToNow(nextPaymentDate, { addSuffix: true })
   }
 
@@ -156,8 +156,8 @@ export default function AccountPage() {
   }
 
   const isPaymentDue = (policy: PaymentPolicy): boolean => {
-    if (!policy.nextPaymentDue) return false
-    return new Date(policy.nextPaymentDue.toNumber() * 1000) <= new Date()
+    if (!policy.policyType.subscription.nextPaymentDue) return false
+    return new Date(policy.policyType.subscription.nextPaymentDue.toNumber() * 1000) <= new Date()
   }
 
   const copyToClipboard = (text: string, type: string) => {

@@ -34,10 +34,9 @@ export default function PaymentPolicyFeature() {
           <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-secondary)' }}>
             Payment Policy Setup
           </h2>
-          <p className="text-sm text-gray-600">Create a new recurring payment policy and get integration code.</p>
         </div>
 
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-4">
           <div>
             <PaymentPolicyForm formData={formData} onFormDataChange={handleFormDataChange} />
           </div>
