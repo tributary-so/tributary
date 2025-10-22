@@ -28,8 +28,13 @@ jobs:
           restore-keys: |
             mkdocs-material-
 
-      - run: pip install mkdocs mkdocs-material
-      - run: mkdocs build --site-dir public
+      - name: Install dependencies
+        working-directory: ./docs
+        run: pip install mkdocs mkdocs-material
+
+      - name: Build
+        working-directory: ./docs
+        run: mkdocs build --site-dir public
 
       - name: Deploy to external repository
         uses: peaceiris/actions-gh-pages@v3
