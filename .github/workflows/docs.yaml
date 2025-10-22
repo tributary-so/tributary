@@ -1,0 +1,45 @@
+name: Build and Deploy docs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/*docs*"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        with:
+          key: mkdocs-material-${{ env.cache_id }}
+          path: ~/.cache
+          restore-keys: |
+            mkdocs-material-
+
+      - run: pip install mkdocs mkdocs-material
+      - run: mkdocs build --site-dir public
+
+      - name: Deploy to external repository
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          deploy_key: ${{ secrets.DOCS_DEPLOY_KEY_TRIBUTARY_SO }}
+          external_repository: tributary-so/docs.tributary.so
+          publish_branch: gh-pages
+          publish_dir: ./docs/public
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
+          cname: docs.tributary.so

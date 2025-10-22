@@ -1,17 +1,115 @@
-# How
+# How Tributary Works
 
-- Users have an associated token address for USDC
-- the ata can have a delegate with an allowed amount the delegate can withdraw over time
-- The smart contract should be made the delegate for an ata in order to _install_ the service into a USDC balance
-- Now, i want the smart contract to be able to cover different ways of implementing recurring payments by means of something like a "policy" (feel free to find a better name):
-  - Subscription payments - Fixed amounts charged at regular intervals for ongoing services (Netflix, gym memberships, software licenses). You typically agree to automatic renewals.
-  - Installment payments - Breaking a large purchase into smaller, scheduled payments over time (car loans, furniture financing, payment plans). The total amount is predetermined.
-  - Usage-based recurring payments - Variable amounts based on consumption, charged regularly (utility bills, phone bills with usage charges, cloud computing services). The amount fluctuates but the billing cycle is fixed.
-  - Membership dues - Regular payments to maintain membership status (professional associations, clubs, unions). Usually annual or monthly.
-  - Automatic bill pay - You authorize companies to automatically withdraw payment for bills that might vary in amount (credit cards, mortgage payments, insurance premiums).
-  - Standing orders/automatic transfers - You set up regular transfers between accounts or to other parties (rent payments, savings transfers, charitable donations).
-  - Retainer payments - Regular payments to secure ongoing availability of services (legal retainers, consulting agreements, maintenance contracts).
-  - donations - like with patreon or github sponsors
-- A user will be able to create any kind of _recurring payment_ policy configured for different recipients and policy specific parameters. Need to find a way to utilize enums for this and create PDAs for each installed policy per user
-- we allow an ATA with any mint
-- we use Anchor 0.31.0!
+Tributary enables automated recurring payments on Solana through token delegation - users approve payments once, and the protocol handles execution automatically.
+
+## 🔄 Payment Flow
+
+1. **User Approval**: User delegates spending authority to Tributary smart contracts for specific amounts and schedules
+2. **Policy Creation**: Flexible payment policies define when and how much to pay
+3. **Automated Execution**: Smart contracts process payments according to the agreed schedule
+4. **Direct Transfer**: Funds move directly from user token accounts to recipients
+
+## 🎯 For Different Audiences
+
+### End Users
+
+**Getting Started with Payments**
+
+- Connect your Solana wallet (Phantom, Solflare, etc.)
+- Choose a payment provider service
+- Approve one-time delegation for your desired payment schedule
+- Payments execute automatically - no more manual transactions!
+
+**Managing Your Payments**
+
+- View all active subscriptions in your provider's dashboard
+- Pause, modify, or cancel payments anytime
+- Full transparency with payment history and upcoming charges
+
+### Payment Providers
+
+**Building on Tributary**
+
+- Install the SDK: `npm install @tributary-so/sdk @tributary-so/sdk-react`
+- Create payment policies for your users
+- Handle onboarding, webhooks, and customer support
+- Earn fees on payment volume
+
+**Provider Examples:**
+
+- SaaS subscription platforms
+- Creator economy services
+- DeFi protocol payments
+- E-commerce solutions
+
+[Learn more about building providers →](providers.md)
+
+### Protocol Developers
+
+**Technical Implementation**
+
+- **Smart Contracts**: Rust/Anchor programs handling payment logic
+- **Token Delegation**: Solana's native delegation for secure, automatic withdrawals
+- **Payment Policies**: Configurable rules for different payment types
+- **Multi-Token Support**: Any SPL token, not just USDC
+
+**Supported Payment Types:**
+
+- Subscriptions (fixed recurring amounts)
+- Installments (scheduled partial payments)
+- Usage-based (variable amounts by consumption)
+- Membership dues (regular membership fees)
+- Donations (ongoing creator support)
+
+[Technical architecture details →](architecture.md)
+
+## 🚀 Quick Start
+
+### For Users
+
+1. Choose a Tributary-powered payment service
+2. Connect your wallet and approve delegation
+3. Set up your payment schedule
+4. Enjoy automated payments!
+
+### For Developers
+
+```bash
+# Install SDK
+npm install @tributary-so/sdk
+
+# Basic usage
+import { Tributary } from '@tributary-so/sdk';
+
+const tributary = new Tributary({
+  connection: solanaConnection,
+  wallet: userWallet
+});
+
+// Create subscription
+await tributary.createSubscription({
+  amount: new BN(10_000_000), // 10 USDC
+  interval: PaymentInterval.Monthly,
+  recipient: merchantWallet
+});
+```
+
+!!! warning "🏗️ Work in Progress"
+SDK interfaces are under active development and may change.
+
+## 📊 Key Benefits
+
+- **No Fund Lock-up**: Payments from your wallet, not deposited contracts
+- **True Automation**: One signature enables ongoing payments
+- **Full Control**: Pause, modify, or cancel anytime
+- **Any Token**: Support for all Solana SPL tokens
+- **Transparent**: All transactions visible on blockchain
+
+## 🔗 Related Documentation
+
+- [Protocol Architecture](architecture.md) - Technical deep-dive
+- [Use Cases](use-cases.md) - Business applications
+- [Payment Providers](providers.md) - Building services
+- [Why Tributary?](why.md) - Problem & solution overview
+
+Ready to get started? Choose your path above or [explore use cases →](use-cases.md)

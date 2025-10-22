@@ -1,1 +1,71 @@
-site_name: My Docs
+site_name: Tributary Protocol Documentation
+site_description: Open-source, permissionless automated payment infrastructure for Solana
+site_url: https://docs.tributary.so
+repo_url: https://github.com/tributary-so/tributary
+repo_name: tributary-so/tributary
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: blue
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: blue
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Protocol:
+      - What is Tributary?: what.md
+      - Why Tributary?: why.md
+      - Architecture: architecture.md
+  - Use Cases: use-cases.md
+  - Payment Providers: providers.md
+  - Developer Guide: how.md
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tributary-so/tributary
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/tributary_so
+
+extra_css:
+  - stylesheets/extra.css

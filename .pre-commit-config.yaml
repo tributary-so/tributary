@@ -60,7 +60,7 @@ repos:
         # MD013: line too long
         # MD033: no inline HTML
         # MD041: first line in a file should be a top-level heading
-        args: [--fix, --disable, MD013, MD033, MD041, MD046, "--"]
+        args: [--fix, --disable, MD013, MD033, MD041, MD046, MD040, "--"]
 
   ######################################
   # frontend project
