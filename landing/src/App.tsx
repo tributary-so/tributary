@@ -458,12 +458,20 @@ const sub = await tributary.createSubscription({
             payment experience they expect, with the transparency they deserve.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-white text-blue-600 font-bold py-4 px-8 rounded-lg hover:bg-gray-100 transition-all text-lg">
+            <a
+              type="button"
+              className="button bg-white text-blue-600 font-bold py-4 px-8 rounded-lg hover:bg-gray-100 transition-all text-lg"
+              href="https://docs.tributary.so/how"
+            >
               Get Started Now
-            </button>
-            <button className="bg-white text-blue-600 font-bold py-4 px-8 rounded-lg hover:bg-gray-100 transition-all text-lg">
+            </a>
+            <a
+              type="button"
+              className="button bg-white text-blue-600 font-bold py-4 px-8 rounded-lg hover:bg-gray-100 transition-all text-lg"
+              href="https://docs.tributary.so"
+            >
               Read Documentation
-            </button>
+            </a>
           </div>
           <p className="text-sm mt-6 opacity-75">
             Free to use • Open source • Built on Solana
