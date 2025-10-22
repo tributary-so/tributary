@@ -50,6 +50,13 @@ export function AppHeader() {
         <div className="absolute left-1/2 transform -translate-x-1/2">
           <div className="flex items-center gap-2">
             <button
+              onClick={() => handleNavClick('/hackathon')}
+              className={`${buttonClass} bg-warning-300 text-black`}
+              style={{ fontFamily: 'var(--font-secondary)' }}
+            >
+              Hackathon
+            </button>
+            <button
               onClick={() => handleNavClick('/about')}
               className={buttonClass}
               style={{ fontFamily: 'var(--font-secondary)' }}
