@@ -42,39 +42,42 @@ export default function AccountPage() {
   useEffect(() => {
     const fetchPolicies = async () => {
       if (!sdk || loaded) return
-      if (!wallet.publicKey) return toast.error('Wallet not connected')
+      if (!wallet.publicKey) return
       try {
         setLoading(true)
-        const allPolicies = await sdk.getPaymentPoliciesByUser(wallet.publicKey)
+        const allUserPayments = await sdk.getAllUserPaymentsByOwner(wallet.publicKey)
         const userPaymentMap = new Map<string, UserPaymentWithPolicies>()
         const tokenInfoMap = new Map<string, TokenInfo>()
-        for (const policy of allPolicies) {
-          const userPaymentAddress = policy.account.userPayment.toString()
-          if (!userPaymentMap.has(userPaymentAddress)) {
-            const userPayment = await sdk.getUserPayment(policy.account.userPayment)
-            if (userPayment) {
-              if (userPayment.owner.toString() != wallet.publicKey.toString()) {
-                continue
-              }
-              userPaymentMap.set(userPaymentAddress, {
-                userPaymentAddress: policy.account.userPayment,
-                userPayment,
-                policies: [],
-              })
-              const mintAddress = userPayment.tokenMint.toString()
-              if (!tokenInfoMap.has(mintAddress)) {
-                try {
-                  const mintInfo = await getMint(connection, userPayment.tokenMint)
-                  tokenInfoMap.set(mintAddress, { decimals: mintInfo.decimals, symbol: 'TOKEN' })
-                } catch (err) {
-                  console.error('Error fetching mint info:', err)
+        for (const userPayment of allUserPayments) {
+          const policies = await sdk.getPaymentPoliciesByUser(userPayment.publicKey)
+          for (const policy of policies) {
+            const userPaymentAddress = policy.account.userPayment.toString()
+            if (!userPaymentMap.has(userPaymentAddress)) {
+              const userPayment = await sdk.getUserPayment(policy.account.userPayment)
+              if (userPayment) {
+                if (userPayment.owner.toString() != wallet.publicKey.toString()) {
+                  continue
+                }
+                userPaymentMap.set(userPaymentAddress, {
+                  userPaymentAddress: policy.account.userPayment,
+                  userPayment,
+                  policies: [],
+                })
+                const mintAddress = userPayment.tokenMint.toString()
+                if (!tokenInfoMap.has(mintAddress)) {
+                  try {
+                    const mintInfo = await getMint(connection, userPayment.tokenMint)
+                    tokenInfoMap.set(mintAddress, { decimals: mintInfo.decimals, symbol: 'TOKEN' })
+                  } catch (err) {
+                    console.error('Error fetching mint info:', err)
+                  }
                 }
               }
             }
-          }
-          const entry = userPaymentMap.get(userPaymentAddress)
-          if (entry) {
-            entry.policies.push(policy)
+            const entry = userPaymentMap.get(userPaymentAddress)
+            if (entry) {
+              entry.policies.push(policy)
+            }
           }
         }
         tokenInfoMap.set('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', { decimals: 6, symbol: 'USDC' })
