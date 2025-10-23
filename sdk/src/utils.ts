@@ -17,7 +17,7 @@ export function createMemoBuffer(memo: string, size: number = 64): number[] {
 export function decodeMemo(buffer: number[]): string {
   const uint8Array = new Uint8Array(buffer);
   const decoder = new TextDecoder();
-  return decoder.decode(uint8Array).trim();
+  return decoder.decode(uint8Array).replace(/\0+$/, "");
 }
 
 export function getPaymentFrequency(
