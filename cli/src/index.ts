@@ -453,33 +453,39 @@ program
         program.opts().connectionUrl,
         program.opts().keypath
       );
+
       const owner = new PublicKey(options.owner);
-      const policies = await sdk.getPaymentPoliciesByUser(owner);
+      const userPayments = await sdk.getAllUserPaymentsByOwner(owner);
+      for (const userPayment of userPayments) {
+        const policies = await sdk.getPaymentPoliciesByUser(
+          userPayment.publicKey
+        );
 
-      // Group by userPayment
-      const grouped: Record<
-        string,
-        Array<{ publicKey: PublicKey; account: any }>
-      > = {};
-      for (const policy of policies) {
-        const userPaymentStr = policy.account.userPayment.toString();
-        if (!grouped[userPaymentStr]) {
-          grouped[userPaymentStr] = [];
+        // Group by userPayment
+        const grouped: Record<
+          string,
+          Array<{ publicKey: PublicKey; account: any }>
+        > = {};
+        for (const policy of policies) {
+          const userPaymentStr = policy.account.userPayment.toString();
+          if (!grouped[userPaymentStr]) {
+            grouped[userPaymentStr] = [];
+          }
+          grouped[userPaymentStr].push(policy);
         }
-        grouped[userPaymentStr].push(policy);
-      }
 
-      // Sort user payments
-      const sortedUserPayments = Object.keys(grouped).sort();
+        // Sort user payments
+        const sortedUserPayments = Object.keys(grouped).sort();
 
-      for (const userPaymentStr of sortedUserPayments) {
-        console.log(`User Payment: ${userPaymentStr}`);
-        for (const policy of grouped[userPaymentStr]) {
-          console.log(
-            `  Policy ${policy.account.policyId}: Status ${
-              Object.keys(policy.account.status)[0]
-            }, Recipient ${policy.account.recipient.toString()}`
-          );
+        for (const userPaymentStr of sortedUserPayments) {
+          console.log(`User Payment: ${userPaymentStr}`);
+          for (const policy of grouped[userPaymentStr]) {
+            console.log(
+              `  Policy ${policy.account.policyId}: Status ${
+                Object.keys(policy.account.status)[0]
+              }, Recipient ${policy.account.recipient.toString()}`
+            );
+          }
         }
       }
     } catch (error) {

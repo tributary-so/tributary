@@ -7,6 +7,15 @@ export interface PdaResult {
   bump: number;
 }
 
+export type PaymentFrequencyString =
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "semiAnnually"
+  | "annually"
+  | "custom";
+
 // IDL-derived Accounts
 export type ProgramConfig = IdlAccounts<RecurringPayments>["programConfig"];
 export type PaymentGateway = IdlAccounts<RecurringPayments>["paymentGateway"];
