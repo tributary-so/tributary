@@ -24,9 +24,12 @@ export function BorderedContainer({
 
   return (
     <div className="w-full" style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}>
-      <div className="px-[40px]" style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}>
+      <div
+        className="px-[3px] sm:px-[40px]"
+        style={fillHeight ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}}
+      >
         <div
-          className={`border border-1 ${borderClasses} ${antiBorderClasses} border-[var(--color-primary)] ${className}`}
+          className={`border border-1 ${borderClasses} ${antiBorderClasses} border-primary ${className}`}
           style={style}
         >
           {children}
