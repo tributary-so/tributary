@@ -7,7 +7,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
-import { type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
+import { type PaymentFrequency, type PaymentGateway, createMemoBuffer, decodeMemo } from '@tributary-so/sdk'
 import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenSymbolAtom } from '@/lib/token-store'
 
@@ -42,16 +42,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const [isRecipientValid, setIsRecipientValid] = useState(true)
 
   useEffect(() => {
-    if (wallet.publicKey && !formData.recipient) {
-      onFormDataChange({ ...formData, recipient: wallet.publicKey.toString() })
-    }
-  }, [wallet.publicKey, formData, onFormDataChange])
-
-  useEffect(() => {
-    setIsRecipientValid(validateRecipientAddress(formData.recipient))
-  }, [formData.recipient])
-
-  useEffect(() => {
     const fetchGateways = async () => {
       if (!sdk || gatewaysLoaded) return
       try {
@@ -71,7 +61,20 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     if (sdk && !gatewaysLoaded) {
       fetchGateways()
     }
-  }, [sdk, gatewaysLoaded, formData, onFormDataChange])
+
+    // init with first token in the set
+    onFormDataChange({ ...formData, tokenMint: availableTokens[0].address })
+  }, [sdk, gatewaysLoaded, formData, onFormDataChange, availableTokens])
+
+  useEffect(() => {
+    setIsRecipientValid(validateRecipientAddress(formData.recipient))
+  }, [formData.recipient])
+
+  useEffect(() => {
+    if (wallet.publicKey && !formData.recipient) {
+      onFormDataChange({ ...formData, recipient: wallet.publicKey.toString() })
+    }
+  }, [wallet.publicKey, formData, onFormDataChange])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -85,11 +88,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     if (name === 'recipient') {
       setIsRecipientValid(validateRecipientAddress(value))
     }
-  }
-
-  const truncateAddress = (address: string) => {
-    if (address.length <= 8) return address
-    return `${address.slice(0, 4)}...${address.slice(-4)}`
   }
 
   const validateRecipientAddress = (address: string) => {
@@ -232,7 +230,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
               </div>
               <div>
                 <label htmlFor="gateway" className={labelClass}>
-                  Gateway Address
+                  Processor
                 </label>
                 {gatewaysLoading ? (
                   <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
@@ -252,11 +250,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     className="w-full"
                   >
                     {gateways.map((gateway) => (
-                      <SelectItem
-                        key={gateway.publicKey.toString()}
-                        description={`${gateway.account.gatewayFeeBps} bps`}
-                      >
-                        {truncateAddress(gateway.publicKey.toString())}
+                      <SelectItem key={gateway.publicKey.toString()} description={`${decodeMemo(gateway.account.url)}`}>
+                        {decodeMemo(gateway.account.name)}
                       </SelectItem>
                     ))}
                   </Select>

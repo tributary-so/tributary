@@ -1,4 +1,4 @@
-import { Connection } from '@solana/web3.js'
+import { Connection, Keypair } from '@solana/web3.js'
 import { WalletContextState } from '@solana/wallet-adapter-react'
 import { RecurringPaymentsSDK } from '@tributary-so/sdk'
 import { Wallet } from '@coral-xyz/anchor'
@@ -8,16 +8,20 @@ import { Wallet } from '@coral-xyz/anchor'
  * Returns null if wallet is not connected
  */
 export function createSDK(wallet: WalletContextState, connection: Connection): RecurringPaymentsSDK | null {
+  let anchorWallet
   if (!wallet.publicKey || !wallet.signTransaction) {
-    return null
+    anchorWallet = {
+      publicKey: Keypair.generate().publicKey,
+    }
+  } else {
+    anchorWallet = {
+      publicKey: wallet.publicKey,
+      signTransaction: wallet.signTransaction,
+      signAllTransactions: wallet.signAllTransactions,
+    }
   }
 
   // Create wallet adapter compatible with Anchor
-  const anchorWallet = {
-    publicKey: wallet.publicKey,
-    signTransaction: wallet.signTransaction,
-    signAllTransactions: wallet.signAllTransactions,
-  }
 
   return new RecurringPaymentsSDK(connection, anchorWallet as Wallet)
 }
