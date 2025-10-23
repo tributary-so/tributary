@@ -101,25 +101,73 @@ program
 program
   .command("create-gateway")
   .description("Create a payment gateway")
+  .requiredOption("-a, --authority <pubkey>", "Gateway authority public key")
   .requiredOption("-f, --fee-bps <number>", "Gateway fee in basis points")
   .requiredOption("-r, --fee-recipient <pubkey>", "Fee recipient public key")
+  .requiredOption("-n, --name <string>", "Gateway name")
+  .requiredOption("-u, --url <string>", "Gateway URL")
+  .option(
+    "--admin-keypath <path>",
+    "Path to admin keypair file (defaults to main keypath)"
+  )
+  .action(async (options) => {
+    try {
+      const connection = new Connection(program.opts().connectionUrl);
+      const authority = new PublicKey(options.authority);
+      const feeBps = parseInt(options.feeBps);
+      const feeRecipient = new PublicKey(options.feeRecipient);
+      const name = options.name;
+      const url = options.url;
+
+      let adminKeypair = readKeypairFromFile(program.opts().keypath);
+      if (options.adminKeypath) {
+        adminKeypair = readKeypairFromFile(options.adminKeypath);
+      }
+
+      const sdk = new RecurringPaymentsSDK(
+        connection,
+        new anchor.Wallet(adminKeypair)
+      );
+
+      const instruction = await sdk.createPaymentGateway(
+        authority,
+        feeBps,
+        feeRecipient,
+        name,
+        url
+      );
+      const tx = new anchor.web3.Transaction().add(instruction);
+      const signature = await connection.sendTransaction(tx, [adminKeypair]);
+
+      console.log("Payment gateway created successfully!");
+      console.log("Transaction signature:", signature);
+    } catch (error) {
+      console.error("Error creating payment gateway:", error);
+      process.exit(1);
+    }
+  });
+
+// Delete Payment Gateway command
+program
+  .command("delete-gateway")
+  .description("Delete a payment gateway")
+  .requiredOption("-a, --authority <pubkey>", "Gateway authority public key")
   .action(async (options) => {
     try {
       const sdk = createSDK(
         program.opts().connectionUrl,
         program.opts().keypath
       );
-      const feeBps = parseInt(options.feeBps);
-      const feeRecipient = new PublicKey(options.feeRecipient);
+      const authority = new PublicKey(options.authority);
 
-      const instruction = await sdk.createPaymentGateway(feeBps, feeRecipient);
+      const instruction = await sdk.deletePaymentGateway(authority);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
 
-      console.log("Payment gateway created successfully!");
+      console.log("Payment gateway deleted successfully!");
       console.log("Transaction signature:", signature);
     } catch (error) {
-      console.error("Error creating payment gateway:", error);
+      console.error("Error deleting payment gateway:", error);
       process.exit(1);
     }
   });
@@ -349,46 +397,45 @@ program
   });
 
 program
-  .command("list-policies")
-  .description(
-    "List all payment policies for a given owner, ordered by user payment"
-  )
+  .command("list-gateways")
+  .description("List all payment gateways")
   .action(async () => {
     try {
       const sdk = createSDK(
         program.opts().connectionUrl,
         program.opts().keypath
       );
-      const policies = await sdk.getAllPaymentPolicies();
-
-      // Group by userPayment
-      const grouped: Record<
-        string,
-        Array<{ publicKey: PublicKey; account: any }>
-      > = {};
-      for (const policy of policies) {
-        const userPaymentStr = policy.account.userPayment.toString();
-        if (!grouped[userPaymentStr]) {
-          grouped[userPaymentStr] = [];
-        }
-        grouped[userPaymentStr].push(policy);
-      }
-
-      // Sort user payments
-      const sortedUserPayments = Object.keys(grouped).sort();
-
-      for (const userPaymentStr of sortedUserPayments) {
-        console.log(`User Payment: ${userPaymentStr}`);
-        for (const policy of grouped[userPaymentStr]) {
-          console.log(
-            `  Policy ${policy.account.policyId}: Status ${
-              Object.keys(policy.account.status)[0]
-            }, Recipient ${policy.account.recipient.toString()}`
-          );
-        }
+      const gateways = await sdk.getAllPaymentGateway();
+      for (const gateway of gateways) {
+        console.log(`Gateway: ${gateway.publicKey.toString()}`);
+        console.log(`Authority: ${gateway.account.authority.toString()}`);
+        console.log(
+          `Fee Recipient: ${gateway.account.feeRecipient.toString()}`
+        );
+        console.log(`Fee BPS: ${gateway.account.gatewayFeeBps}`);
+        console.log(
+          `Name: ${String.fromCharCode(...gateway.account.name).replace(
+            /\0/g,
+            ""
+          )}`
+        );
+        console.log(
+          `URL: ${String.fromCharCode(...gateway.account.url).replace(
+            /\0/g,
+            ""
+          )}`
+        );
+        console.log(`Active: ${gateway.account.isActive}`);
+        console.log(`Total Processed: ${gateway.account.totalProcessed}`);
+        console.log(
+          `Created At: ${new Date(
+            gateway.account.createdAt * 1000
+          ).toISOString()}`
+        );
+        console.log("---");
       }
     } catch (error) {
-      console.error("Error listing policies:", error);
+      console.error("Error listing gateways:", error);
       process.exit(1);
     }
   });

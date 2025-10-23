@@ -541,6 +541,26 @@ export class RecurringPaymentsSDK {
       .instruction();
   }
 
+  async deletePaymentGateway(
+    gatewayAuthority: PublicKey
+  ): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      admin: admin,
+      authority: gatewayAuthority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .deletePaymentGateway()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
   // Query methods
   async getAllPaymentGateway(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentGateway }>
