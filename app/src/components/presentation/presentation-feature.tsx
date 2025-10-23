@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import QRCodeGenerator from '../qrcode'
 
 const slides = [
   {
@@ -18,6 +19,7 @@ const slides = [
   {
     title: 'EXISTING SOLUTIONS FAIL',
     subtitle: 'Why current approaches dont work',
+    imageUrl: '/presentation.svg',
     comparison: {
       headers: ['Solution', 'Problem', 'Tributary Advantage'],
       rows: [
@@ -31,6 +33,7 @@ const slides = [
   {
     title: 'TRIBUTARY',
     subtitle: 'Automated recurring payments on Solana',
+    imageUrl: '/business-decision.svg',
     points: [
       'Sign once, payments flow automatically forever',
       'Non-custodial: Funds never leave user wallet until payment',
@@ -41,29 +44,30 @@ const slides = [
       label: 'Developer-First Infrastructure',
       items: [
         { value: '< 5 min', label: 'Integration time' },
-        { value: '$0.0001', label: 'Cost per payment' },
-        { value: '400ms', label: 'Settlement time' },
+        { value: '< $0.001', label: 'Cost per payment' },
+        { value: '< 400ms', label: 'Settlement time' },
       ],
     },
   },
   {
     title: 'HOW IT WORKS',
+    imageUrl: '/code-review.svg',
     subtitle: 'Token delegation meets smart contracts',
     architecture: [
       {
         step: '1',
-        title: 'User Approves Policy',
+        title: 'User creates Policy',
         desc: 'One transaction: amount, interval, recipient',
       },
       {
         step: '2',
-        title: 'Token Delegation',
+        title: 'Delegation to Contract',
         desc: 'SPL token delegate authority (no custody)',
       },
       {
         step: '3',
         title: 'Auto Execution',
-        desc: 'Program transfers on schedule via gateway',
+        desc: 'Program transfers on schedule via payment processor',
       },
       {
         step: '4',
@@ -76,6 +80,7 @@ const slides = [
   {
     title: 'LIVE DEMO',
     subtitle: 'Working on Solana Devnet today',
+    imageUrl: '/development.svg',
     demo: {
       features: [
         { icon: '✓', text: 'Create subscription in 1 click', status: 'Live' },
@@ -85,11 +90,12 @@ const slides = [
       ],
     },
     cta: 'tributary.so - Try it now',
-    footer: 'Full source code: github.com/tributary-labs',
+    footer: 'Full source code: github.com/tributary-so',
   },
   {
     title: 'MARKET OPPORTUNITY',
     subtitle: 'First mover in massive category',
+    imageUrl: '/visual-data.svg',
     market: [
       {
         segment: 'Global Subscription Economy',
@@ -115,6 +121,7 @@ const slides = [
   {
     title: 'USE CASES',
     subtitle: 'Powering every Web3 business model',
+    imageUrl: '/subscriptions.svg',
     grid: [
       { category: 'SaaS', examples: 'Dev tools, analytics, APIs' },
       { category: 'Creators', examples: 'Memberships, exclusive content' },
@@ -128,23 +135,44 @@ const slides = [
   {
     title: 'TRACTION',
     subtitle: 'Built in 3 weeks for Colosseum Hackathon',
+    imageUrl: '/growth.svg',
     metrics: [
-      { value: '100%', label: 'Feature complete' },
-      { value: '3', label: 'Working demo flows' },
-      { value: '2', label: 'SDKs shipped' },
+      { value: '100%', label: 'MVP Feature complete' },
+      { value: '4', label: 'Working demo flows' },
+      { value: '3', label: 'Packages shipped' },
+      // { value: '2', label: 'Proof of Concepts' },
       { value: '0', label: 'Direct competitors' },
     ],
-    footer: 'Ready for mainnet launch post-audit',
   },
+  // {
+  //   title: 'NEXT: MAINNET',
+  //   subtitle: 'Path to production',
+  //   roadmap: [
+  //     { phase: 'Now', items: ['Security audit with OtterSec', 'Mainnet deployment'] },
+  //     { phase: 'Q1 2025', items: ['Webhook system', 'Multi-token support', 'Analytics dashboard'] },
+  //     { phase: 'Q2 2025', items: ['Cross-chain via Wormhole', 'Mobile SDK', 'Enterprise features'] },
+  //   ],
+  //   cta: 'tributary.so • Built on Solana',
+  // },
   {
-    title: 'NEXT: MAINNET',
-    subtitle: 'Path to production',
-    roadmap: [
-      { phase: 'Now', items: ['Security audit with OtterSec', 'Mainnet deployment'] },
-      { phase: 'Q1 2025', items: ['Webhook system', 'Multi-token support', 'Analytics dashboard'] },
-      { phase: 'Q2 2025', items: ['Cross-chain via Wormhole', 'Mobile SDK', 'Enterprise features'] },
+    title: 'Experienced Team Building Web3 Infrastructure',
+    subtitle: 'Team & Vision',
+    imageUrl: '/team.svg',
+    points: [
+      'Founders: 10+ years combined in Web3, DeFi, and payment systems',
+      'Technical Stack: Rust/Solana experts, React specialists, security auditors',
+      'Track Record: Multiple successful Web3 projects, payment integrations',
     ],
-    cta: 'tributary.so • Built on Solana',
+    footer: 'Ready to build the payment infrastructure Web3 needs',
+  },
+
+  {
+    title: 'Try now!',
+    subtitle: 'Get your donations button for GitHub repos and X accounts',
+    imageUrl: '/proud.svg',
+    points: ['Integrate recurring payments with our SDK', 'Get a badge for monthly donations via contribute.so'],
+    footer: 'Get your badge for donations now!',
+    qrCodes: ['https://contribute.so'],
   },
 ]
 
@@ -173,6 +201,15 @@ export default function PresentationFeature() {
   const renderSlide = (slide: (typeof slides)[0]) => (
     <div className="flex flex-col items-center justify-center h-full w-full px-12">
       <div className="w-full max-w-5xl">
+        {slide.imageUrl && (
+          <motion.img
+            src={slide.imageUrl}
+            alt={slide.title}
+            className="h-24 object-cover mb-8"
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          />
+        )}
         <motion.div
           className="uppercase tracking-wide mb-2 text-4xl font-bold"
           initial={{ y: -15, opacity: 0 }}
@@ -319,33 +356,33 @@ export default function PresentationFeature() {
           )}
 
           {slide.metrics && (
-            <div className="grid grid-cols-4 gap-4 mt-4">
+            <div className="grid grid-cols-4 gap-2 mt-4">
               {slide.metrics.map((metric, i) => (
                 <div key={i} className="text-center">
-                  <div className="text-4xl font-bold mb-1">{metric.value}</div>
-                  <div className="text-xs uppercase text-gray-600">{metric.label}</div>
+                  <div className="text-4xl font-bold mb-1 border-1 rounded-full p-4 bg-gray-300">{metric.value}</div>
+                  <div className="text-sm font-semibold uppercase text-gray-600">{metric.label}</div>
                 </div>
               ))}
             </div>
           )}
 
-          {slide.roadmap && (
-            <div className="grid grid-cols-3 gap-3 mt-4">
-              {slide.roadmap.map((phase, i) => (
-                <div key={i} className="border border-[var(--color-primary)] rounded p-3 bg-gray-300">
-                  <div className="text-sm uppercase font-bold mb-3">{phase.phase}</div>
-                  <ul className="space-y-1">
-                    {phase.items.map((item, j) => (
-                      <li key={j} className="text-xs flex items-start gap-2">
-                        <span>•</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* {slide.roadmap && ( */}
+          {/*   <div className="grid grid-cols-3 gap-3 mt-4"> */}
+          {/*     {slide.roadmap.map((phase, i) => ( */}
+          {/*       <div key={i} className="border border-[var(--color-primary)] rounded p-3 bg-gray-300"> */}
+          {/*         <div className="text-sm uppercase font-bold mb-3">{phase.phase}</div> */}
+          {/*         <ul className="space-y-1"> */}
+          {/*           {phase.items.map((item, j) => ( */}
+          {/*             <li key={j} className="text-xs flex items-start gap-2"> */}
+          {/*               <span>•</span> */}
+          {/*               <span>{item}</span> */}
+          {/*             </li> */}
+          {/*           ))} */}
+          {/*         </ul> */}
+          {/*       </div> */}
+          {/*     ))} */}
+          {/*   </div> */}
+          {/* )} */}
         </motion.div>
 
         {(slide.cta || slide.footer) && (
@@ -359,6 +396,26 @@ export default function PresentationFeature() {
             {slide.footer && <div className="text-xs italic text-gray-400">{slide.footer}</div>}
           </motion.div>
         )}
+
+        {slide.qrCodes && (
+          <motion.div
+            className="mt-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          >
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {slide.qrCodes.map((item, i) => (
+                <div key={i}>
+                  {/*   <div className="grid grid-cols-3 gap-3 mt-4"> */}
+                  <QRCodeGenerator text={item} size="180px" />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* END */}
       </div>
     </div>
   )

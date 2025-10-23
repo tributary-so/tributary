@@ -47,6 +47,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dfts-qrcode": "^1.1.0",
     "framer-motion": "^12.23.22",
     "isomorphic-fetch": "^3.0.0",
     "jotai": "^2.14.0",
