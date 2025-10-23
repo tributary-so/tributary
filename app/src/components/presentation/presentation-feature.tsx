@@ -155,7 +155,7 @@ const slides = [
   //   cta: 'tributary.so • Built on Solana',
   // },
   {
-    title: 'Experienced Team Building Web3 Infrastructure',
+    title: 'Experienced Team',
     subtitle: 'Team & Vision',
     imageUrl: '/team.svg',
     points: [
@@ -199,7 +199,7 @@ export default function PresentationFeature() {
   }
 
   const renderSlide = (slide: (typeof slides)[0]) => (
-    <div className="flex flex-col items-center justify-center h-full w-full px-12">
+    <div className="flex flex-col items-center justify-center h-full w-full px-4 sm:px-8 md:px-12">
       <div className="w-full max-w-5xl">
         {slide.imageUrl && (
           <motion.img
@@ -256,7 +256,7 @@ export default function PresentationFeature() {
                     {slide.comparison.headers.map((header, i) => (
                       <th
                         key={i}
-                        className="border border-[var(--color-primary)] px-3 py-2 text-left text-sm uppercase"
+                        className="border border-[var(--color-primary)] px-2 sm:px-3 py-2 text-left text-sm uppercase"
                       >
                         {header}
                       </th>
@@ -267,7 +267,7 @@ export default function PresentationFeature() {
                   {slide.comparison.rows.map((row, i) => (
                     <tr key={i}>
                       {row.map((cell, j) => (
-                        <td key={j} className="border border-[var(--color-primary)] px-3 py-2 text-sm">
+                        <td key={j} className="border border-[var(--color-primary)] px-2 sm:px-3 py-2 text-sm">
                           {cell}
                         </td>
                       ))}
@@ -281,7 +281,7 @@ export default function PresentationFeature() {
           {slide.stats && (
             <div className="mt-4">
               <div className="text-sm uppercase mb-3 text-gray-200">{slide.stats.label}</div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 {slide.stats.items.map((item, i) => (
                   <div key={i} className="border border-[var(--color-primary)] rounded p-3 text-center bg-gray-200">
                     <div className="text-2xl font-bold mb-1">{item.value}</div>
@@ -293,7 +293,7 @@ export default function PresentationFeature() {
           )}
 
           {slide.architecture && (
-            <div className="grid grid-cols-4 gap-3 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
               {slide.architecture.map((item, i) => (
                 <div key={i} className="text-center">
                   <div className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-xl bg-primary">
@@ -308,7 +308,7 @@ export default function PresentationFeature() {
 
           {slide.demo && (
             <div className="mt-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {slide.demo.features.map((feature, i) => (
                   <div
                     key={i}
@@ -345,7 +345,7 @@ export default function PresentationFeature() {
           )}
 
           {slide.grid && (
-            <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
               {slide.grid.map((item, i) => (
                 <div key={i} className="border border-[var(--color-primary)] rounded p-3 bg-gray-300">
                   <div className="text-sm uppercase font-bold mb-2">{item.category}</div>
@@ -356,7 +356,7 @@ export default function PresentationFeature() {
           )}
 
           {slide.metrics && (
-            <div className="grid grid-cols-4 gap-2 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
               {slide.metrics.map((metric, i) => (
                 <div key={i} className="text-center">
                   <div className="text-4xl font-bold mb-1 border-1 rounded-full p-4 bg-gray-300">{metric.value}</div>
@@ -404,7 +404,7 @@ export default function PresentationFeature() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.5 }}
           >
-            <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
               {slide.qrCodes.map((item, i) => (
                 <div key={i}>
                   {/*   <div className="grid grid-cols-3 gap-3 mt-4"> */}
@@ -428,14 +428,14 @@ export default function PresentationFeature() {
     >
       <button
         onClick={prevSlide}
-        className="absolute top-8 left-6 z-10 p-2 border border rounded hover:bg-primary hover:text-white transition-all"
+        className="absolute top-8 right-11 sm:right-15 z-10 p-2 border rounded hover:bg-primary hover:text-white transition-all"
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
 
       <button
         onClick={nextSlide}
-        className="absolute top-8 right-6 z-10 p-2 border border rounded hover:bg-primary hover:text-white transition-all"
+        className="absolute top-8 right-2 sm:right-6 z-10 p-2 border rounded hover:bg-primary hover:text-white transition-all"
       >
         <ChevronRight className="w-4 h-4" />
       </button>
@@ -456,7 +456,7 @@ export default function PresentationFeature() {
         </AnimatePresence>
       </div>
 
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
         {slides.map((_, index) => (
           <button
             key={index}
@@ -469,7 +469,7 @@ export default function PresentationFeature() {
         ))}
       </div>
 
-      <div className="absolute top-4 right-6 text-xs uppercase tracking-wide">
+      <div className="absolute top-4 right-2 sm:right-6 text-xs uppercase tracking-wide">
         {currentSlide + 1} / {slides.length}
       </div>
     </div>

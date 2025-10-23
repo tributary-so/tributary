@@ -11,20 +11,21 @@ export function AppFooter() {
     >
       <BorderedContainer
         borderSides={['right', 'bottom', 'left']}
-        className="flex items-center justify-between"
+        className="flex flex-col md:flex-row items-center justify-center md:justify-between"
         style={{
           boxSizing: 'border-box',
-          height: '40px',
-          fontSize: '14px',
-          paddingLeft: '16px',
-          paddingRight: '16px',
+          minHeight: '40px',
+          fontSize: '12px',
+          padding: '8px 16px',
         }}
       >
         {/* Copyright */}
-        <div style={{ textTransform: 'uppercase' }}>( 2025 TRIBUTARY ALL RIGHTS RESERVED )</div>
+        <div className="text-center md:text-left" style={{ textTransform: 'uppercase' }}>
+          ( 2025 TRIBUTARY ALL RIGHTS RESERVED )
+        </div>
 
         {/* Legal Section */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2 mt-2 md:mt-0">
           <div style={{ textTransform: 'uppercase' }}>( LEGAL</div>
           <a href="#" className="relative cursor-pointer group" style={{ textTransform: 'uppercase' }}>
             TERMS OF USE
@@ -39,7 +40,7 @@ export function AppFooter() {
         </div>
 
         {/* Social Section */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2 mt-2 md:mt-0">
           <div style={{ textTransform: 'uppercase' }}>( SOCIAL</div>
           <a
             href="https://twitter.com"
