@@ -9,7 +9,7 @@ import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
 import { type PaymentFrequency, type PaymentGateway, createMemoBuffer } from '@tributary-so/sdk'
 import { useAtomValue } from 'jotai'
-import { availableTokensAtom } from '@/lib/token-store'
+import { availableTokensAtom, getTokenSymbolAtom } from '@/lib/token-store'
 
 export interface PaymentPolicyFormData {
   tokenMint: string
@@ -38,6 +38,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const [gatewaysLoading, setGatewaysLoading] = useState(false)
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
   const availableTokens = useAtomValue(availableTokensAtom)
+  const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const [isRecipientValid, setIsRecipientValid] = useState(true)
 
   useEffect(() => {
@@ -263,7 +264,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
               </div>
               <div>
                 <label htmlFor="amount" className={labelClass}>
-                  Amount (base units)
+                  Amount
                 </label>
                 <Input
                   id="amount"
@@ -271,10 +272,18 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                   type="number"
                   value={formData.amount}
                   onChange={handleInputChange}
-                  placeholder="e.g., 10000000"
+                  placeholder="e.g., 10"
                   required
                   min="1"
                   className="w-full"
+                  endContent={
+                    formData.tokenMint &&
+                    getTokenSymbol(formData.tokenMint) && (
+                      <div className="pointer-events-none flex items-center">
+                        <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                      </div>
+                    )
+                  }
                 />
               </div>
               <div>
