@@ -1,111 +1,115 @@
-# Tributary: The Foundation for Automated Payments in Web3
+# Tributary 3-Minute Presentation Script
+**9 Slides**
 
-## Slide 1: Web3's Missing Infrastructure
 
-### Why?
+## Slide 1: THE PROBLEM
+**[20 seconds]**
 
-- Web3 promises automation but lacks fundamental payment infrastructure
-- Every business needs predictable, automated revenue streams
-- Current solutions: Manual transactions, locked funds, poor UX
-- Developers waste months building payment systems from scratch
-- $2T+ global economy runs on automated payments - Web3 has none
+"$1.5 trillion subscription economy, locked out of Web3. Why? Every payment needs manual approval - 67% cart abandonment, 30% revenue loss from friction. Web2 solved this decades ago. Web3 hasn't."
 
-From SaaS subscriptions to memberships, automated payments power everything
-
-## Slide 2: Subscriptions Are Just the Beginning
-
-### Why Tributary Matters
-
-- **Entry Point**: Subscriptions showcase with $500B+ proven market
-- **Real Opportunity**: Foundation for ALL automated payment use cases
-- **Micropayments Breakthrough**: Finally makes micropayments convenient
-- **Developer Focus**: Enable 1000s of businesses to integrate payments seamlessly
-- **Ecosystem Vision**: From creator tips to DAO treasuries, insurance premiums to NFT rentals
-
-## Slide 3: One Protocol, Infinite Possibilities
-
-### How Tributary Works
-
-- **Token Delegation**: Users approve once, enable automated payments forever
-- **Flexible Policies**: Support any payment model - subscriptions, installments, usage-based, donations
-- **No Lock-Up**: Funds stay in user wallets, payments flow directly
-- **Provider Ecosystem**: Developers build specialized payment services on top
-
-Simple infrastructure that powers complex payment ecosystems
-
-## Slide 4: Powering Every Business Model
-
-### How Developers Integrate
-
-**For SaaS Platforms:**
-
-```typescript
-// One line integration
-<SubscriptionButton amount={fee} interval={"monthly"} recipient={yourWallet} />
-```
-
-**For Content Creators:**
-
-- Fan subscription management
-- Micropayment Donations
-- Exclusive content access
-
-**For DeFi Protocols:**
-
-- Automated yield distributions
-- Staking reward payments
-- Insurance premium collections
-
-Any business model becomes possible with automated payments
-
-## Slide 5: Live Demo - The Foundation in Action
-
-### What We've Built
-
-[Visual: Subscription demo + architecture overview]
-
-- Working subscription prototype on Solana
-- React SDK for easy integration
-- TypeScript SDK for advanced use cases
-- Smart contracts handling complex payment policies
-
-Subscriptions prove the concept - the protocol enables everything else
-
-## Slide 6: $2T+ Market Opportunity
-
-### Market & Business Model
-
-- **Addressable Market**: $2T+ global automated payments economy
-- **Entry Market**: $500B+ subscription segment for initial traction
-- **Business Model**: 2% protocol fee on all payments + provider fee
-- **Revenue Potential**: $100M+ annual from protocol fees as ecosystem grows
-- **Funding Ask**: $250K for developer adoption and ecosystem expansion
-
-We're not competing in subscriptions - we're enabling the entire automated payments industry
-
-## Slide 7: Experienced Team Building Web3 Infrastructure
-
-### Team & Vision
-
-- **Founders**: 10+ years combined in Web3, DeFi, and payment systems
-- **Technical Stack**: Rust/Solana experts, React specialists, security auditors
-- **Track Record**: Multiple successful Web3 projects, payment integrations
-- **Mission**: Democratize automated payments for every Web3 business
-
-Ready to build the payment infrastructure Web3 needs
+**[Click]**
 
 ---
 
-### Total Time: 3 minutes
+## Slide 2: EXISTING SOLUTIONS FAIL
+**[20 seconds]**
 
-### Structure: Why (2 slides) → How (2 slides) → What (3 slides)
+"Competition? Squads Grid - complex multi-sig setup. Helio, now MoonPay - custodial and centralized. Manual payments - friction every time. We're the only non-custodial, one-click, automated solution."
 
-### Key Message: Subscriptions are the showcase - Tributary enables the entire automated payments ecosystem
+**[Click]**
 
-## Appendix
+---
 
-• Slide 1: Web3's missing infrastructure problem ($2T+ economy)
-• Slide 2: Subscriptions as entry point, broader ecosystem vision
-• Slide 4: Specific integration examples for different business types
-• Slide 5: Demo shows subscriptions proving the concept
-• Slide 6: Massive market opportunity across all automated payments
+## Slide 3: TRIBUTARY
+**[20 seconds]**
+
+"Tributary. Sign once, payments flow forever. Non-custodial - funds stay in your wallet. Native Solana - tenth of a penny, 400 milliseconds. Under 5 minutes to integrate, zero competitors, 100% complete."
+
+**[Click]**
+
+---
+
+## Slide 4: HOW IT WORKS
+**[10 seconds]**
+
+"**[Quick scan of circles]** User approves policy. Token delegation, no custody. Auto-execution on schedule. Full control - pause, resume, cancel anytime. Built on SPL Token Extensions."
+
+**[Click]**
+
+---
+
+## Slide 5: LIVE DEMO
+**[50 seconds]**
+
+"Go to quick start. Make sure your wallet is connected before starting"
+
+**[Click]**
+
+---
+
+## Slide 6: MARKET OPPORTUNITY
+**[10 seconds]**
+
+"**[Quick scan of metrics]** $1.5 trillion subscription economy, 18% growth. $50 billion Web3 payments, up 156% year-over-year. 500+ SaaS tools on Solana need billing. Zero competition for non-custodial automation."
+
+**[Click]**
+
+---
+
+## Slide 7: USE CASES
+**[10 seconds]**
+
+"**[Scan grid]** SaaS - dev tools and APIs. Creators - memberships. Gaming - season passes. DeFi - strategy fees. DAOs - treasury automation. Commerce - subscriptions. Every Web3 business model needs recurring revenue."
+
+**[Click]**
+
+---
+
+## Slide 8: TRACTION
+**[20 seconds]**
+
+"Built in three weeks. **[Point to metrics]** 100% feature complete, two SDKs shipped, zero direct competitors. Ready for mainnet post-audit."
+
+**[Click]**
+
+---
+
+## Slide 9: NEXT: MAINNET
+**[20 seconds]**
+
+"**[Scan roadmap]** Security audit, mainnet launch. Q1 - webhooks, multi-token, analytics. Q2 - cross-chain, mobile SDK, enterprise. tributary.so - built on Solana. Thank you."
+
+---
+
+## TIMING TARGETS
+
+| Check Point | Target Time |
+|-------------|-------------|
+| After Slide 3 | 1:00 |
+| After Slide 6 | 2:00 |
+| After Slide 9 | 3:00 |
+
+## 🎬 PRACTICE ROUTINE
+
+### Run 1: Read Through
+- Time each slide
+- Mark where you're slow
+- Note breathing points
+
+### Run 2: With Slides
+- Actually click through
+- Point to visuals
+- Full performance
+
+### Run 3: Record It
+- Use phone camera
+- Watch for timing
+- Adjust pace
+
+### Final: Speed Test
+- Aim for 2:50
+- Build in 10-second buffer
+- Feel confident
+
+---
+
