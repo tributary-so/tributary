@@ -18,7 +18,7 @@ export function AppHeader() {
     'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
 
   return (
-    <div className="relative z-50 pt-[3px] sm:pt-[40px]" style={{ fontFamily: 'var(--font-primary)' }}>
+    <div className="relative z-50 pt-[3px] sm:pt-[23px]" style={{ fontFamily: 'var(--font-primary)' }}>
       <BorderedContainer
         borderSides={['top', 'right', 'left']}
         className="relative flex items-center justify-between"
