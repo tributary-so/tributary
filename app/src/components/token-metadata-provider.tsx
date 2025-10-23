@@ -28,6 +28,11 @@ export function TokenMetadataProvider({ children }: { children: React.ReactNode 
         name: 'Marinade staked SOL',
         decimals: 9,
       },
+      '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU': {
+        symbol: 'USDC (devnet)',
+        name: 'USD Coin on Devnet',
+        decimals: 6,
+      },
     })
   }, [setTokenMetadataMap])
 

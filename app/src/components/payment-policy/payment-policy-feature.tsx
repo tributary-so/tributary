@@ -35,11 +35,11 @@ export default function PaymentPolicyFeature() {
           </h2>
         </div>
 
-        <div className="flex flex-col md:flex-row md:justify-between gap-4">
-          <div>
+        <div className="flex flex-col md:flex-row gap-4 max-w-6xl mx-auto">
+          <div className="w-full md:w-1/2">
             <PaymentPolicyForm formData={formData} onFormDataChange={handleFormDataChange} />
           </div>
-          <div className="relative">
+          <div className="relative w-full md:w-1/2">
             <IntegrationCode formData={formData} />
           </div>
         </div>

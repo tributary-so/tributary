@@ -7,7 +7,13 @@ import * as anchor from '@coral-xyz/anchor'
 import { toast } from 'sonner'
 import { useSDK } from '@/lib/client'
 import { useNavigate } from 'react-router'
-import { type PaymentFrequency, type PaymentGateway, createMemoBuffer, decodeMemo } from '@tributary-so/sdk'
+import {
+  PaymentFrequencyString,
+  type PaymentGateway,
+  createMemoBuffer,
+  decodeMemo,
+  getPaymentFrequency,
+} from '@tributary-so/sdk'
 import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenSymbolAtom } from '@/lib/token-store'
 
@@ -17,7 +23,7 @@ export interface PaymentPolicyFormData {
   gateway: string
   amount: string
   memo: string
-  frequency: string
+  frequency: PaymentFrequencyString
   autoRenew: boolean
   //maxRenewals: string
   approvalAmount: string
@@ -60,10 +66,9 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
     if (sdk && !gatewaysLoaded) {
       fetchGateways()
+      // init with first token in the set
+      onFormDataChange({ ...formData, tokenMint: availableTokens[0]?.address })
     }
-
-    // init with first token in the set
-    onFormDataChange({ ...formData, tokenMint: availableTokens[0].address })
   }, [sdk, gatewaysLoaded, formData, onFormDataChange, availableTokens])
 
   useEffect(() => {
@@ -112,26 +117,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
     setLoading(true)
     try {
-      const paymentFrequency: PaymentFrequency = (() => {
-        switch (formData.frequency) {
-          case 'daily':
-            return { daily: {} }
-          case 'weekly':
-            return { weekly: {} }
-          case 'monthly':
-            return { monthly: {} }
-          case 'quarterly':
-            return { quarterly: {} }
-          case 'semiAnnually':
-            return { semiAnnually: {} }
-          case 'annually':
-            return { annually: {} }
-          case 'custom':
-            return { custom: { 0: new anchor.BN(formData.intervalSeconds) } }
-          default:
-            return { daily: {} }
-        }
-      })()
+      const paymentFrequency = getPaymentFrequency(formData.frequency, Number(formData.intervalSeconds))
       const memo = createMemoBuffer(formData.memo, 64)
       let approvalAmount: anchor.BN | undefined = new anchor.BN(10_000_000_000) // 10k USDC
       if (formData.approvalAmount) {
@@ -159,7 +145,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       const txId = await connection.sendRawTransaction(signedTx.serialize())
       await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
       toast.success('Payment policy created successfully!')
-      setTimeout(() => navigate('/account'), 1000)
+      setTimeout(() => navigate('/account'), 3000)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       toast.error('Failed to create payment policy: ' + errorMessage)
