@@ -276,7 +276,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                   name="frequency"
                   selectedKeys={formData.frequency ? [formData.frequency] : []}
                   onSelectionChange={(keys) => {
-                    const selectedKey = Array.from(keys)[0] as string
+                    const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
                     onFormDataChange({ ...formData, frequency: selectedKey })
                   }}
                   placeholder="Select frequency"
