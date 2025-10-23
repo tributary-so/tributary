@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const slides = [
   {
-    title: 'THE PROBLEM',
+    title: "Web3's Missing Infrastructure",
     subtitle: '$1.5 Trillion subscription economy locked out of Web3',
+    imageUrl: '/dev-env.svg',
     points: [
       'Every payment requires manual wallet approval - killing user experience',
       'No infrastructure for subscriptions, memberships, or recurring billing',
@@ -170,44 +171,29 @@ export default function PresentationFeature() {
   }
 
   const renderSlide = (slide: (typeof slides)[0]) => (
-    <div
-      className="flex flex-col items-center justify-center h-full w-full px-12"
-      style={{ fontFamily: 'var(--font-primary)' }}
-    >
+    <div className="flex flex-col items-center justify-center h-full w-full px-12">
       <div className="w-full max-w-5xl">
         <motion.div
-          className="uppercase tracking-wide mb-2"
-          style={{
-            fontFamily: 'var(--font-secondary)',
-            fontSize: '2.75rem',
-            lineHeight: '1',
-            color: 'var(--color-primary)',
-            fontWeight: 'normal',
-          }}
+          className="uppercase tracking-wide mb-2 text-4xl font-bold"
           initial={{ y: -15, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {slide.title}
+          <span className="uppercase">{slide.title}</span>
         </motion.div>
 
         {slide.subtitle && (
           <motion.div
             className="text-lg mb-6"
-            style={{ color: '#666' }}
             initial={{ y: -10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
-            {slide.subtitle}
+            <span className="text-gray-600 font-semibold">{slide.subtitle}</span>
           </motion.div>
         )}
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.15 }}
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.15 }}>
           {slide.points && (
             <div className="space-y-3">
               {slide.points.map((point, index) => (
@@ -218,13 +204,8 @@ export default function PresentationFeature() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.25, delay: 0.2 + index * 0.08 }}
                 >
-                  <div
-                    className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  />
-                  <div className="text-base leading-snug" style={{ color: '#333' }}>
-                    {point}
-                  </div>
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" />
+                  <div className="text-black leading-snug">{point}</div>
                 </motion.div>
               ))}
             </div>
@@ -234,12 +215,11 @@ export default function PresentationFeature() {
             <div className="mt-4">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr style={{ backgroundColor: '#f5f7f7' }}>
+                  <tr className="bg-gray-300">
                     {slide.comparison.headers.map((header, i) => (
                       <th
                         key={i}
                         className="border border-[var(--color-primary)] px-3 py-2 text-left text-sm uppercase"
-                        style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
                       >
                         {header}
                       </th>
@@ -263,25 +243,12 @@ export default function PresentationFeature() {
 
           {slide.stats && (
             <div className="mt-4">
-              <div className="text-sm uppercase mb-3" style={{ color: '#666' }}>
-                {slide.stats.label}
-              </div>
+              <div className="text-sm uppercase mb-3 text-gray-200">{slide.stats.label}</div>
               <div className="grid grid-cols-3 gap-4">
                 {slide.stats.items.map((item, i) => (
-                  <div
-                    key={i}
-                    className="border border-[var(--color-primary)] rounded p-3 text-center"
-                    style={{ backgroundColor: '#f5f7f7' }}
-                  >
-                    <div
-                      className="text-2xl font-bold mb-1"
-                      style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-                    >
-                      {item.value}
-                    </div>
-                    <div className="text-xs uppercase" style={{ color: '#666' }}>
-                      {item.label}
-                    </div>
+                  <div key={i} className="border border-[var(--color-primary)] rounded p-3 text-center bg-gray-200">
+                    <div className="text-2xl font-bold mb-1">{item.value}</div>
+                    <div className="text-xs uppercase bg-gray-200">{item.label}</div>
                   </div>
                 ))}
               </div>
@@ -292,19 +259,11 @@ export default function PresentationFeature() {
             <div className="grid grid-cols-4 gap-3 mt-4">
               {slide.architecture.map((item, i) => (
                 <div key={i} className="text-center">
-                  <div
-                    className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-xl"
-                    style={{
-                      backgroundColor: 'var(--color-primary)',
-                      fontFamily: 'var(--font-secondary)',
-                    }}
-                  >
+                  <div className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-xl bg-primary">
                     {item.step}
                   </div>
                   <div className="text-sm font-semibold mb-1">{item.title}</div>
-                  <div className="text-xs" style={{ color: '#666' }}>
-                    {item.desc}
-                  </div>
+                  <div className="text-xs text-gray-600">{item.desc}</div>
                 </div>
               ))}
             </div>
@@ -316,18 +275,12 @@ export default function PresentationFeature() {
                 {slide.demo.features.map((feature, i) => (
                   <div
                     key={i}
-                    className="border border-[var(--color-primary)] rounded p-3 flex items-center gap-3"
-                    style={{ backgroundColor: '#f5f7f7' }}
+                    className="border border-[var(--color-primary)] rounded p-3 flex items-center gap-3 bg-gray-300"
                   >
                     <div className="text-2xl">{feature.icon}</div>
                     <div className="flex-1">
                       <div className="text-sm font-semibold">{feature.text}</div>
-                      <div
-                        className="text-xs uppercase"
-                        style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-secondary)' }}
-                      >
-                        {feature.status}
-                      </div>
+                      <div className="text-xs uppercase">{feature.status}</div>
                     </div>
                   </div>
                 ))}
@@ -338,28 +291,15 @@ export default function PresentationFeature() {
           {slide.market && (
             <div className="mt-4 space-y-2">
               {slide.market.map((item, i) => (
-                <div
-                  key={i}
-                  className="border border-[var(--color-primary)] rounded p-3"
-                  style={{ backgroundColor: '#f5f7f7' }}
-                >
+                <div key={i} className="border border-[var(--color-primary)] rounded p-3 bg-gray-300">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="font-semibold text-sm">{item.segment}</div>
-                      <div className="text-xs mt-1" style={{ color: '#666' }}>
-                        Source: {item.source}
-                      </div>
+                      <div className="text-xs mt-1 text-gray-600">Source: {item.source}</div>
                     </div>
                     <div className="text-right">
-                      <div
-                        className="text-xl font-bold"
-                        style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-                      >
-                        {item.size}
-                      </div>
-                      <div className="text-xs" style={{ color: '#666' }}>
-                        {item.growth}
-                      </div>
+                      <div className="text-xl font-bold">{item.size}</div>
+                      <div className="text-xs text-gray-600">{item.growth}</div>
                     </div>
                   </div>
                 </div>
@@ -370,20 +310,9 @@ export default function PresentationFeature() {
           {slide.grid && (
             <div className="grid grid-cols-3 gap-3 mt-4">
               {slide.grid.map((item, i) => (
-                <div
-                  key={i}
-                  className="border border-[var(--color-primary)] rounded p-3"
-                  style={{ backgroundColor: '#f5f7f7' }}
-                >
-                  <div
-                    className="text-sm uppercase font-bold mb-2"
-                    style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-                  >
-                    {item.category}
-                  </div>
-                  <div className="text-xs" style={{ color: '#666' }}>
-                    {item.examples}
-                  </div>
+                <div key={i} className="border border-[var(--color-primary)] rounded p-3 bg-gray-300">
+                  <div className="text-sm uppercase font-bold mb-2">{item.category}</div>
+                  <div className="text-xs text-gray-600">{item.examples}</div>
                 </div>
               ))}
             </div>
@@ -393,15 +322,8 @@ export default function PresentationFeature() {
             <div className="grid grid-cols-4 gap-4 mt-4">
               {slide.metrics.map((metric, i) => (
                 <div key={i} className="text-center">
-                  <div
-                    className="text-4xl font-bold mb-1"
-                    style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-                  >
-                    {metric.value}
-                  </div>
-                  <div className="text-xs uppercase" style={{ color: '#666' }}>
-                    {metric.label}
-                  </div>
+                  <div className="text-4xl font-bold mb-1">{metric.value}</div>
+                  <div className="text-xs uppercase text-gray-600">{metric.label}</div>
                 </div>
               ))}
             </div>
@@ -410,21 +332,12 @@ export default function PresentationFeature() {
           {slide.roadmap && (
             <div className="grid grid-cols-3 gap-3 mt-4">
               {slide.roadmap.map((phase, i) => (
-                <div
-                  key={i}
-                  className="border border-[var(--color-primary)] rounded p-3"
-                  style={{ backgroundColor: '#f5f7f7' }}
-                >
-                  <div
-                    className="text-sm uppercase font-bold mb-3"
-                    style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-                  >
-                    {phase.phase}
-                  </div>
+                <div key={i} className="border border-[var(--color-primary)] rounded p-3 bg-gray-300">
+                  <div className="text-sm uppercase font-bold mb-3">{phase.phase}</div>
                   <ul className="space-y-1">
                     {phase.items.map((item, j) => (
                       <li key={j} className="text-xs flex items-start gap-2">
-                        <span style={{ color: 'var(--color-primary)' }}>•</span>
+                        <span>•</span>
                         <span>{item}</span>
                       </li>
                     ))}
@@ -442,22 +355,8 @@ export default function PresentationFeature() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.5 }}
           >
-            {slide.cta && (
-              <div
-                className="text-lg uppercase tracking-wide mb-2"
-                style={{
-                  fontFamily: 'var(--font-secondary)',
-                  color: 'var(--color-primary)',
-                }}
-              >
-                → {slide.cta}
-              </div>
-            )}
-            {slide.footer && (
-              <div className="text-xs italic" style={{ color: '#999' }}>
-                {slide.footer}
-              </div>
-            )}
+            {slide.cta && <div className="text-lg uppercase tracking-wide mb-2">→ {slide.cta}</div>}
+            {slide.footer && <div className="text-xs italic text-gray-400">{slide.footer}</div>}
           </motion.div>
         )}
       </div>
@@ -466,25 +365,22 @@ export default function PresentationFeature() {
 
   return (
     <div
-      className="w-full h-full flex items-center justify-center relative"
-      style={{ height: 'calc(100vh - 200px)' }}
+      className="w-full h-full flex items-center justify-center relative min-h-[80vh]"
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
       <button
         onClick={prevSlide}
-        className="absolute left-12 top-1/2 -translate-y-1/2 z-10 p-2 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all"
-        style={{ backgroundColor: 'transparent' }}
+        className="absolute top-8 left-6 z-10 p-2 border border rounded hover:bg-primary hover:text-white transition-all"
       >
-        <ChevronLeft className="w-4 h-4" style={{ color: 'inherit' }} />
+        <ChevronLeft className="w-4 h-4" />
       </button>
 
       <button
         onClick={nextSlide}
-        className="absolute right-12 top-1/2 -translate-y-1/2 z-10 p-2 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all"
-        style={{ backgroundColor: 'transparent' }}
+        className="absolute top-8 right-6 z-10 p-2 border border rounded hover:bg-primary hover:text-white transition-all"
       >
-        <ChevronRight className="w-4 h-4" style={{ color: 'inherit' }} />
+        <ChevronRight className="w-4 h-4" />
       </button>
 
       <div className="w-full h-full">
@@ -508,19 +404,15 @@ export default function PresentationFeature() {
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className="w-2.5 h-2.5 rounded-full transition-all border"
+            className="w-2.5 h-2.5 rounded-full transition-all border border-primary"
             style={{
               backgroundColor: index === currentSlide ? 'var(--color-primary)' : 'transparent',
-              borderColor: 'var(--color-primary)',
             }}
           />
         ))}
       </div>
 
-      <div
-        className="absolute top-4 right-6 text-xs uppercase tracking-wide"
-        style={{ fontFamily: 'var(--font-secondary)', color: 'var(--color-primary)' }}
-      >
+      <div className="absolute top-4 right-6 text-xs uppercase tracking-wide">
         {currentSlide + 1} / {slides.length}
       </div>
     </div>
