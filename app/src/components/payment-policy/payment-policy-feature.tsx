@@ -35,7 +35,7 @@ export default function PaymentPolicyFeature() {
           </h2>
         </div>
 
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:justify-between gap-4">
           <div>
             <PaymentPolicyForm formData={formData} onFormDataChange={handleFormDataChange} />
           </div>

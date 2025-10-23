@@ -21,7 +21,7 @@ export default defineConfig({
     react(),
     nodePolyfills({
       globals: {
-        Buffer: false,
+        Buffer: process.env.NODE_ENV == 'development',
       },
       include: ['buffer'],
     }),
