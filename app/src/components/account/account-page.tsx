@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { useSDK } from '@/lib/client'
-import { type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
+import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
 import { Play, Pause, Trash2, RotateCcw, Copy, Check } from '../../icons'
 import { toast } from 'sonner'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
 import { getMint } from '@solana/spl-token'
+import { PublicKeyComponent } from '../ui/public-key'
 
 interface UserPaymentWithPolicies {
   userPaymentAddress: PublicKey
@@ -42,39 +43,42 @@ export default function AccountPage() {
   useEffect(() => {
     const fetchPolicies = async () => {
       if (!sdk || loaded) return
-      if (!wallet.publicKey) return toast.error('Wallet not connected')
+      if (!wallet.publicKey) return
       try {
         setLoading(true)
-        const allPolicies = await sdk.getPaymentPoliciesByUser(wallet.publicKey)
+        const allUserPayments = await sdk.getAllUserPaymentsByOwner(wallet.publicKey)
         const userPaymentMap = new Map<string, UserPaymentWithPolicies>()
         const tokenInfoMap = new Map<string, TokenInfo>()
-        for (const policy of allPolicies) {
-          const userPaymentAddress = policy.account.userPayment.toString()
-          if (!userPaymentMap.has(userPaymentAddress)) {
-            const userPayment = await sdk.getUserPayment(policy.account.userPayment)
-            if (userPayment) {
-              if (userPayment.owner.toString() != wallet.publicKey.toString()) {
-                continue
-              }
-              userPaymentMap.set(userPaymentAddress, {
-                userPaymentAddress: policy.account.userPayment,
-                userPayment,
-                policies: [],
-              })
-              const mintAddress = userPayment.tokenMint.toString()
-              if (!tokenInfoMap.has(mintAddress)) {
-                try {
-                  const mintInfo = await getMint(connection, userPayment.tokenMint)
-                  tokenInfoMap.set(mintAddress, { decimals: mintInfo.decimals, symbol: 'TOKEN' })
-                } catch (err) {
-                  console.error('Error fetching mint info:', err)
+        for (const userPayment of allUserPayments) {
+          const policies = await sdk.getPaymentPoliciesByUser(userPayment.publicKey)
+          for (const policy of policies) {
+            const userPaymentAddress = policy.account.userPayment.toString()
+            if (!userPaymentMap.has(userPaymentAddress)) {
+              const userPayment = await sdk.getUserPayment(policy.account.userPayment)
+              if (userPayment) {
+                if (userPayment.owner.toString() != wallet.publicKey.toString()) {
+                  continue
+                }
+                userPaymentMap.set(userPaymentAddress, {
+                  userPaymentAddress: policy.account.userPayment,
+                  userPayment,
+                  policies: [],
+                })
+                const mintAddress = userPayment.tokenMint.toString()
+                if (!tokenInfoMap.has(mintAddress)) {
+                  try {
+                    const mintInfo = await getMint(connection, userPayment.tokenMint)
+                    tokenInfoMap.set(mintAddress, { decimals: mintInfo.decimals, symbol: 'TOKEN' })
+                  } catch (err) {
+                    console.error('Error fetching mint info:', err)
+                  }
                 }
               }
             }
-          }
-          const entry = userPaymentMap.get(userPaymentAddress)
-          if (entry) {
-            entry.policies.push(policy)
+            const entry = userPaymentMap.get(userPaymentAddress)
+            if (entry) {
+              entry.policies.push(policy)
+            }
           }
         }
         tokenInfoMap.set('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', { decimals: 6, symbol: 'USDC' })
@@ -145,14 +149,9 @@ export default function AccountPage() {
   }
 
   const getMemo = (policy: PaymentPolicy) => {
-    if (!policy.memo || policy.memo.length === 0) return ''
-    try {
-      const decoder = new TextDecoder()
-      const filteredMemo = policy.memo.filter((byte: number) => byte !== 0)
-      return decoder.decode(new Uint8Array(filteredMemo))
-    } catch {
-      return ''
-    }
+    if (!policy.memo || policy.memo.length === 0) return 'no memo'
+    const memo = decodeMemo(policy.memo)
+    return memo.length ? memo : 'no memo'
   }
 
   const isPaymentDue = (policy: PaymentPolicy): boolean => {
@@ -285,10 +284,10 @@ export default function AccountPage() {
     : null
 
   const DetailRow = ({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) => (
-    <div className="flex items-center py-3 border-b border-gray-100 last:border-0">
-      <span className="min-w-[200px] text-sm text-gray-600 uppercase font-medium">{label}</span>
+    <div className="flex items-center py-1 border-b border-gray-100 last:border-0">
+      <span className="min-w-[120px] md:min-w-[200px] text-sm text-gray-600 uppercase font-medium">{label}</span>
       <div className="flex items-center gap-3 flex-1">
-        <span className="text-sm break-all text-gray-900">{value}</span>
+        <span className="text-sm break-all font-mono text-gray-700">{value}</span>
         {copyable && (
           <button
             onClick={() => copyToClipboard(value, label)}
@@ -306,34 +305,34 @@ export default function AccountPage() {
     </div>
   )
 
-  let policyCounter = 0
-
   return (
-    <div className="flex items-start">
-      <div className="w-[368px] border-r border-gray-200">
+    <div className="flex flex-col md:flex-row">
+      <div className="w-full md:w-[368px] md:border-r md:border-gray-200">
         <div className="flex flex-col">
           {userPayments.map(({ policies, userPayment }) => {
             const policiesComponent = policies.map((policy) => {
-              policyCounter++
               const isSelected = selectedPolicy?.publicKey.toString() === policy.publicKey.toString()
               return (
                 <div
                   key={policy.publicKey.toString()}
                   onClick={() => setSelectedPolicy(policy)}
-                  className="h-14 flex items-center px-4 cursor-pointer transition-colors hover:bg-gray-50"
-                  style={{ backgroundColor: isSelected ? '#f5f7f7' : 'transparent' }}
+                  className={`${'min-h-[3rem] flex items-center px-4 cursor-pointer transition-colors hover:bg-gray-200'} ${
+                    isSelected ? 'border-l-primary border-l-5' : ''
+                  }`}
                 >
                   <div
                     className="w-8 h-8 flex items-center justify-center border border-[var(--color-primary)] rounded text-xs"
                     style={{ backgroundColor: isSelected ? '#fff' : 'transparent' }}
                   >
-                    {policyCounter}
+                    {policy.account.policyId}
                   </div>
-                  <div className="ml-3 flex items-center gap-2 text-sm">
-                    <span className="uppercase" style={{ color: 'var(--color-primary)' }}>
-                      Policy-{policy.account.policyId}
+                  <div className="ml-3 flex flex-col gap-1 text-sm p-2">
+                    <span className="uppercase">
+                      <PublicKeyComponent publicKey={policy.account.recipient} />
                     </span>
-                    <span className="uppercase text-gray-600">( {policy.account.paymentCount} )</span>
+                    <span className="text-xs text-gray-500">
+                      {getMemo(policy.account)} | {policy.account.paymentCount} payments
+                    </span>
                   </div>
                 </div>
               )
@@ -359,15 +358,15 @@ export default function AccountPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="h-12 flex items-center px-6 border-b border-gray-200">
+        <div className="h-12 flex items-center px-4 md:px-6 border-b border-gray-200">
           <span className="uppercase text-sm">
             {selectedPolicy ? `Policy-${selectedPolicy.account.policyId} subscription` : 'Select a policy'}
           </span>
         </div>
 
         {selectedPolicy && currentUserPayment && (
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4" viewBox="0 0 18 18" fill="none" stroke="var(--color-primary)" strokeWidth="2">
                   <circle cx="9" cy="9" r="7" />

@@ -26,11 +26,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <BorderedContainer
               borderSides={['right', 'left']}
-              className="flex justify-center"
-              style={{
-                padding: '32px',
-                flex: 1,
-              }}
+              className="flex flex-1 justify-center p-3 sm:p-6"
               fillHeight={true}
             >
               {children}

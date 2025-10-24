@@ -541,6 +541,26 @@ export class RecurringPaymentsSDK {
       .instruction();
   }
 
+  async deletePaymentGateway(
+    gatewayAuthority: PublicKey
+  ): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      admin: admin,
+      authority: gatewayAuthority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .deletePaymentGateway()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
   // Query methods
   async getAllPaymentGateway(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentGateway }>
@@ -560,6 +580,19 @@ export class RecurringPaymentsSDK {
     return await this.program.account.userPayment.all();
   }
 
+  async getAllUserPaymentsByOwner(
+    owner: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: UserPayment }>> {
+    return await this.program.account.userPayment.all([
+      {
+        memcmp: {
+          offset: 8, // Skip discriminator
+          bytes: owner.toBase58(),
+        },
+      },
+    ]);
+  }
+
   async getPaymentPoliciesByUser(
     user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
@@ -567,6 +600,19 @@ export class RecurringPaymentsSDK {
       {
         memcmp: {
           offset: 8, // Skip discriminator
+          bytes: user.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  async getPaymentPoliciesByRecipient(
+    user: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    return await this.program.account.paymentPolicy.all([
+      {
+        memcmp: {
+          offset: 8 + 32, // Skip discriminator
           bytes: user.toBase58(),
         },
       },

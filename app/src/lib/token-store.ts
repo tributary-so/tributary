@@ -13,7 +13,7 @@ export const tokenMetadataAtom = atom<TokenMetadataMap>({})
 
 export const getTokenSymbolAtom = atom((get) => (tokenMint: string): string => {
   const metadata = get(tokenMetadataAtom)[tokenMint]
-  return metadata?.symbol ?? tokenMint.slice(0, 4) + '...' + tokenMint.slice(-4)
+  return metadata?.symbol ?? tokenMint.slice(0, 4) + '...'
 })
 
 export const setTokenMetadataAtom = atom(null, (get, set, tokenMint: string, metadata: TokenMetadata) => {
