@@ -1,5 +1,4 @@
 import { ThemeProvider } from './theme-provider'
-import { Toaster } from './ui/sonner'
 import { AppHeader } from '@/components/app-header'
 import { AppFooter } from '@/components/app-footer'
 import React from 'react'
@@ -35,7 +34,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
         <AppFooter />
       </div>
-      <Toaster />
     </ThemeProvider>
   )
 }

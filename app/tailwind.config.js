@@ -3,7 +3,7 @@ const { heroui } = require('@heroui/theme')
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./node_modules/@heroui/theme/dist/components/(button|input|ripple|spinner|form).js'],
+  content: ['./node_modules/@heroui/theme/dist/components/(button|input|spinner|ripple|form).js'],
   themes: {
     light: {
       colors: {

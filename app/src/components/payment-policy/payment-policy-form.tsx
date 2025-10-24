@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Select, SelectItem, Input } from '@heroui/react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import * as anchor from '@coral-xyz/anchor'
-import { toast } from 'sonner'
+import { addToast } from '@heroui/react'
 import { useSDK, createAndSendTransaction } from '@/lib/client'
 import { useNavigate } from 'react-router'
 import {
@@ -105,14 +105,13 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
-      toast.error('Please connect your wallet')
+      addToast({ title: 'Error', description: 'Please connect your wallet', color: 'danger' })
       return
     }
     if (!sdk) {
-      toast.error('SDK not available')
+      addToast({ title: 'Error', description: 'SDK not available', color: 'danger' })
       return
     }
     setLoading(true)
@@ -136,11 +135,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         approvalAmount,
       )
       await createAndSendTransaction(instructions, wallet, connection)
-      toast.success('Payment policy created successfully!')
+      addToast({ title: 'Success', description: 'Payment policy created successfully!', color: 'success' })
       setTimeout(() => navigate('/account'), 3000)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      toast.error('Failed to create payment policy: ' + errorMessage)
+      addToast({ title: 'Error', description: 'Failed to create payment policy: ' + errorMessage, color: 'danger' })
       console.error('Error creating policy:', err)
     } finally {
       setLoading(false)
@@ -162,199 +161,199 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       <p className="text-sm text-gray-600">Create a new recurring payment policy and get integration code.</p>
       <div className="items-center">
         <div className="max-w-3xl">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="tokenMint" className={labelClass}>
-                  Token
-                </label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="tokenMint" className={labelClass}>
+                Token
+              </label>
+              <Select
+                id="tokenMint"
+                placeholder="Select token"
+                selectedKeys={formData.tokenMint ? [formData.tokenMint] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string
+                  onFormDataChange({ ...formData, tokenMint: selectedKey })
+                }}
+                required
+                className="w-full"
+              >
+                {availableTokens.map((token) => (
+                  <SelectItem
+                    key={token.address}
+                    description={token.name ?? 'No token name'}
+                    // startContent={<GitFolder className={iconClasses} />}
+                  >
+                    {token.symbol}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="recipient" className={labelClass}>
+                Recipient Address
+              </label>
+              <Input
+                id="recipient"
+                name="recipient"
+                value={formData.recipient}
+                onChange={handleInputChange}
+                placeholder="Recipient address"
+                required
+                className={`w-full ${!isRecipientValid ? 'border-red-500' : ''}`}
+                isInvalid={!isRecipientValid}
+                errorMessage={!isRecipientValid ? 'Invalid Solana address' : undefined}
+              />
+            </div>
+            <div>
+              <label htmlFor="gateway" className={labelClass}>
+                Processor
+              </label>
+              {gatewaysLoading ? (
+                <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
+                  <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
                 <Select
-                  id="tokenMint"
-                  placeholder="Select token"
-                  selectedKeys={formData.tokenMint ? [formData.tokenMint] : []}
+                  id="gateway"
+                  name="gateway"
+                  selectedKeys={formData.gateway ? [formData.gateway] : []}
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string
-                    onFormDataChange({ ...formData, tokenMint: selectedKey })
+                    onFormDataChange({ ...formData, gateway: selectedKey })
                   }}
+                  placeholder="Select gateway"
                   required
                   className="w-full"
                 >
-                  {availableTokens.map((token) => (
-                    <SelectItem
-                      key={token.address}
-                      description={token.name ?? 'No token name'}
-                      // startContent={<GitFolder className={iconClasses} />}
-                    >
-                      {token.symbol}
+                  {gateways.map((gateway) => (
+                    <SelectItem key={gateway.publicKey.toString()} description={`${decodeMemo(gateway.account.url)}`}>
+                      {decodeMemo(gateway.account.name)}
                     </SelectItem>
                   ))}
                 </Select>
-              </div>
-              <div>
-                <label htmlFor="recipient" className={labelClass}>
-                  Recipient Address
-                </label>
-                <Input
-                  id="recipient"
-                  name="recipient"
-                  value={formData.recipient}
-                  onChange={handleInputChange}
-                  placeholder="Recipient address"
-                  required
-                  className={`w-full ${!isRecipientValid ? 'border-red-500' : ''}`}
-                  isInvalid={!isRecipientValid}
-                  errorMessage={!isRecipientValid ? 'Invalid Solana address' : undefined}
-                />
-              </div>
-              <div>
-                <label htmlFor="gateway" className={labelClass}>
-                  Processor
-                </label>
-                {gatewaysLoading ? (
-                  <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
-                    <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : (
-                  <Select
-                    id="gateway"
-                    name="gateway"
-                    selectedKeys={formData.gateway ? [formData.gateway] : []}
-                    onSelectionChange={(keys) => {
-                      const selectedKey = Array.from(keys)[0] as string
-                      onFormDataChange({ ...formData, gateway: selectedKey })
-                    }}
-                    placeholder="Select gateway"
-                    required
-                    className="w-full"
-                  >
-                    {gateways.map((gateway) => (
-                      <SelectItem key={gateway.publicKey.toString()} description={`${decodeMemo(gateway.account.url)}`}>
-                        {decodeMemo(gateway.account.name)}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                )}
-              </div>
-              <div>
-                <label htmlFor="amount" className={labelClass}>
-                  Amount
-                </label>
-                <Input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  value={formData.amount}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 10"
-                  required
-                  min="1"
-                  className="w-full"
-                  endContent={
-                    formData.tokenMint &&
-                    getTokenSymbol(formData.tokenMint) && (
-                      <div className="pointer-events-none flex items-center">
-                        <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
-                      </div>
-                    )
-                  }
-                />
-              </div>
-              <div>
-                <label htmlFor="frequency" className={labelClass}>
-                  Frequency
-                </label>
-                <Select
-                  id="frequency"
-                  name="frequency"
-                  selectedKeys={formData.frequency ? [formData.frequency] : []}
-                  onSelectionChange={(keys) => {
-                    const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
-                    onFormDataChange({ ...formData, frequency: selectedKey })
-                  }}
-                  placeholder="Select frequency"
-                  className="w-full"
-                >
-                  <SelectItem key="daily">Daily</SelectItem>
-                  <SelectItem key="weekly">Weekly</SelectItem>
-                  <SelectItem key="monthly">Monthly</SelectItem>
-                  <SelectItem key="quarterly">Quarterly</SelectItem>
-                  <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
-                  <SelectItem key="annually">Annually</SelectItem>
-                  <SelectItem key="custom">Custom</SelectItem>
-                </Select>
-              </div>
-              <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
-                <label htmlFor="intervalSeconds" className={labelClass}>
-                  Custom (seconds)
-                </label>
-                <Input
-                  id="intervalSeconds"
-                  name="intervalSeconds"
-                  type="number"
-                  value={formData.intervalSeconds}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 2592000"
-                  required
-                  min="1"
-                  className="w-full"
-                  disabled={formData.frequency != 'custom'}
-                />
-              </div>
-              {/* <div> */}
-              {/*   <label htmlFor="maxRenewals" className={labelClass}> */}
-              {/*     Max Renewals */}
-              {/*   </label> */}
-              {/*   <input */}
-              {/*     id="maxRenewals" */}
-              {/*     name="maxRenewals" */}
-              {/*     type="number" */}
-              {/*     value={formData.maxRenewals} */}
-              {/*     onChange={handleInputChange} */}
-              {/*     placeholder="Leave empty for unlimited" */}
-              {/*     min="1" */}
-              {/*     className={inputClass} */}
-              {/*   /> */}
-              {/* </div> */}
-              {/* <div> */}
-              {/*   <label htmlFor="approvalAmount" className={labelClass}> */}
-              {/*     Approval Amount */}
-              {/*   </label> */}
-              {/*   <input */}
-              {/*     id="approvalAmount" */}
-              {/*     name="approvalAmount" */}
-              {/*     type="number" */}
-              {/*     value={formData.approvalAmount} */}
-              {/*     onChange={handleInputChange} */}
-              {/*     placeholder="Token approval amount" */}
-              {/*     min="1" */}
-              {/*     className={inputClass} */}
-              {/*   /> */}
-              {/* </div> */}
+              )}
             </div>
-
             <div>
-              <label htmlFor="memo" className={labelClass}>
-                Memo (optional)
+              <label htmlFor="amount" className={labelClass}>
+                Amount
               </label>
               <Input
-                id="memo"
-                name="memo"
-                value={formData.memo}
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
                 onChange={handleInputChange}
-                placeholder="Payment description"
-                maxLength={64}
+                placeholder="e.g., 10"
+                required
+                min="1"
                 className="w-full"
+                endContent={
+                  formData.tokenMint &&
+                  getTokenSymbol(formData.tokenMint) && (
+                    <div className="pointer-events-none flex items-center">
+                      <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                    </div>
+                  )
+                }
               />
             </div>
+            <div>
+              <label htmlFor="frequency" className={labelClass}>
+                Frequency
+              </label>
+              <Select
+                id="frequency"
+                name="frequency"
+                selectedKeys={formData.frequency ? [formData.frequency] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
+                  onFormDataChange({ ...formData, frequency: selectedKey })
+                }}
+                placeholder="Select frequency"
+                className="w-full"
+              >
+                <SelectItem key="daily">Daily</SelectItem>
+                <SelectItem key="weekly">Weekly</SelectItem>
+                <SelectItem key="monthly">Monthly</SelectItem>
+                <SelectItem key="quarterly">Quarterly</SelectItem>
+                <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
+                <SelectItem key="annually">Annually</SelectItem>
+                <SelectItem key="custom">Custom</SelectItem>
+              </Select>
+            </div>
+            <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
+              <label htmlFor="intervalSeconds" className={labelClass}>
+                Custom (seconds)
+              </label>
+              <Input
+                id="intervalSeconds"
+                name="intervalSeconds"
+                type="number"
+                value={formData.intervalSeconds}
+                onChange={handleInputChange}
+                placeholder="e.g., 2592000"
+                required
+                min="1"
+                className="w-full"
+                disabled={formData.frequency != 'custom'}
+              />
+            </div>
+            {/* <div> */}
+            {/*   <label htmlFor="maxRenewals" className={labelClass}> */}
+            {/*     Max Renewals */}
+            {/*   </label> */}
+            {/*   <input */}
+            {/*     id="maxRenewals" */}
+            {/*     name="maxRenewals" */}
+            {/*     type="number" */}
+            {/*     value={formData.maxRenewals} */}
+            {/*     onChange={handleInputChange} */}
+            {/*     placeholder="Leave empty for unlimited" */}
+            {/*     min="1" */}
+            {/*     className={inputClass} */}
+            {/*   /> */}
+            {/* </div> */}
+            {/* <div> */}
+            {/*   <label htmlFor="approvalAmount" className={labelClass}> */}
+            {/*     Approval Amount */}
+            {/*   </label> */}
+            {/*   <input */}
+            {/*     id="approvalAmount" */}
+            {/*     name="approvalAmount" */}
+            {/*     type="number" */}
+            {/*     value={formData.approvalAmount} */}
+            {/*     onChange={handleInputChange} */}
+            {/*     placeholder="Token approval amount" */}
+            {/*     min="1" */}
+            {/*     className={inputClass} */}
+            {/*   /> */}
+            {/* </div> */}
+          </div>
 
-            <Button
-              type="submit"
-              disabled={loading || !wallet.connected || !isRecipientValid}
-              className="w-full mt-6 text-sm uppercase bg-primary text-white"
-            >
-              {loading ? 'Creating...' : 'Create Payment Policy'}
-            </Button>
-          </form>
+          <div>
+            <label htmlFor="memo" className={labelClass}>
+              Memo (optional)
+            </label>
+            <Input
+              id="memo"
+              name="memo"
+              value={formData.memo}
+              onChange={handleInputChange}
+              placeholder="Payment description"
+              maxLength={64}
+              className="w-full"
+            />
+          </div>
+
+          <Button
+            isDisabled={loading || !wallet.connected || !isRecipientValid || !formData.amount}
+            className="w-full mt-6 text-sm uppercase text-white"
+            color="primary"
+            isLoading={loading}
+            onClick={handleSubmit}
+          >
+            {loading ? 'Creating...' : 'Create Payment Policy'}
+          </Button>
         </div>
       </div>
     </div>

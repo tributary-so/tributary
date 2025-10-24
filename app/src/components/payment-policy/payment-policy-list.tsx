@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { getMint } from '@solana/spl-token'
-import { Spinner, Button } from '@heroui/react'
-import { Alert, AlertDescription } from '../ui/alert'
+import { Spinner, Button, Alert } from '@heroui/react'
 import { useSDK } from '@/lib/client'
 import { type PaymentPolicy, type UserPayment, type PaymentGateway, getTokenInfo, Metadata } from '@tributary-so/sdk'
 import { PublicKeyComponent } from '@/components/ui/public-key'
 import { formatDistanceToNow, formatDuration, intervalToDuration } from 'date-fns'
 import { Play, Pause, Trash2, RotateCcw } from '../../icons'
-import { toast } from 'sonner'
+import { addToast } from '@heroui/react'
 
 interface TokenInfo {
   decimals: number
@@ -39,7 +38,7 @@ export default function PaymentPolicyList() {
   useEffect(() => {
     const fetchPolicies = async () => {
       if (!sdk || !wallet.publicKey) {
-        setLoading(false)
+        addToast({ title: 'Error', description: 'Wallet not connected', color: 'danger' })
         return
       }
       if (loaded) return
@@ -208,7 +207,7 @@ export default function PaymentPolicyList() {
 
   const handleExecutePayment = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
     if (!sdk || !wallet.publicKey) {
-      toast.error('Wallet not connected')
+      addToast({ title: 'Error', description: 'Wallet not connected', color: 'danger' })
       return
     }
 
@@ -216,7 +215,7 @@ export default function PaymentPolicyList() {
       const gateway: PaymentGateway | null = await sdk.getPaymentGateway(policy.gateway)
 
       if (!gateway) {
-        toast.error('Gateway not found')
+        addToast({ title: 'Error', description: 'Gateway not found', color: 'danger' })
         return
       }
 
@@ -224,7 +223,7 @@ export default function PaymentPolicyList() {
         gateway.authority.toString() !== wallet.publicKey.toString() &&
         userPayment.owner.toString() != wallet.publicKey.toString()
       ) {
-        toast.error('Only the gateway authority can execute payments')
+        addToast({ title: 'Error', description: 'Only the gateway authority can execute payments', color: 'danger' })
         return
       }
 
@@ -235,12 +234,16 @@ export default function PaymentPolicyList() {
       executeIxs.map((instruction) => tx.add(instruction))
       const txid = await sdk.provider.sendAndConfirm(tx)
 
-      toast.success(`Payment executed successfully! TX: ${txid}`)
+      addToast({ title: 'Success', description: `Payment executed successfully! TX: ${txid}`, color: 'success' })
 
       setLoaded(false)
     } catch (err) {
       console.error('Error executing payment:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to execute payment')
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to execute payment',
+        color: 'danger',
+      })
     } finally {
       setExecutingPayments((prev) => {
         const newSet = new Set(prev)
@@ -252,12 +255,12 @@ export default function PaymentPolicyList() {
 
   const handleToggleStatus = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
     if (!sdk || !wallet.publicKey) {
-      toast.error('Wallet not connected')
+      addToast({ title: 'Error', description: 'Wallet not connected', color: 'danger' })
       return
     }
 
     if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
-      toast.error('Only the policy owner can change status')
+      addToast({ title: 'Error', description: 'Only the policy owner can change status', color: 'danger' })
       return
     }
 
@@ -274,12 +277,16 @@ export default function PaymentPolicyList() {
       await sdk.provider.sendAndConfirm(tx)
 
       const actionText = isCurrentlyActive ? 'paused' : 'resumed'
-      toast.success(`Payment policy ${actionText} successfully!`)
+      addToast({ title: 'Success', description: `Payment policy ${actionText} successfully!`, color: 'success' })
 
       setLoaded(false)
     } catch (err) {
       console.error('Error toggling payment policy status:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to toggle policy status')
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to toggle policy status',
+        color: 'danger',
+      })
     } finally {
       setTogglingPolicies((prev) => {
         const newSet = new Set(prev)
@@ -291,12 +298,12 @@ export default function PaymentPolicyList() {
 
   const handleDeletePolicy = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
     if (!sdk || !wallet.publicKey) {
-      toast.error('Wallet not connected')
+      addToast({ title: 'Error', description: 'Wallet not connected', color: 'danger' })
       return
     }
 
     if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
-      toast.error('Only the policy owner can delete the policy')
+      addToast({ title: 'Error', description: 'Only the policy owner can delete the policy', color: 'danger' })
       return
     }
 
@@ -312,12 +319,16 @@ export default function PaymentPolicyList() {
       tx.add(deleteIx)
       await sdk.provider.sendAndConfirm(tx)
 
-      toast.success('Payment policy deleted successfully!')
+      addToast({ title: 'Success', description: 'Payment policy deleted successfully!', color: 'success' })
 
       setLoaded(false)
     } catch (err) {
       console.error('Error deleting payment policy:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to delete policy')
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete policy',
+        color: 'danger',
+      })
     } finally {
       setDeletingPolicies((prev) => {
         const newSet = new Set(prev)
@@ -337,11 +348,7 @@ export default function PaymentPolicyList() {
           </div>
         )}
 
-        {!loading && error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        {!loading && error && <Alert color="danger" description={error} />}
 
         {!loading && !error && userPayments.length === 0 && (
           <div className="text-center py-12">
