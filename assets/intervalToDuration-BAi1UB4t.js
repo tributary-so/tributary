@@ -1,4 +1,4 @@
-import{c as S}from"./createLucideIcon-QEjNn_cq.js";import{j as p,b as z}from"./ui-vendor-CRek-TH2.js";import{r as X}from"./wallet-adapter-BdusPX8w.js";import{t as H}from"./index-HlDSzHus.js";import{C as L,a as V}from"./copy-DZkuWqx-.js";/**
+import{c as S}from"./createLucideIcon-QEjNn_cq.js";import{j as p,b as z}from"./ui-vendor-CRek-TH2.js";import{r as X}from"./wallet-adapter-BdusPX8w.js";import{t as H}from"./index-w-U20KRi.js";import{C as L,a as V}from"./copy-DZkuWqx-.js";/**
  * @license lucide-react v0.544.0 - ISC
  *
  * This source code is licensed under the ISC license.
