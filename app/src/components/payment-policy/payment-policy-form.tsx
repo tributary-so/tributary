@@ -350,8 +350,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             <Button
               type="submit"
               disabled={loading || !wallet.connected || !isRecipientValid}
-              className="w-full mt-6 text-sm uppercase"
-              style={{ fontFamily: 'var(--font-secondary)' }}
+              className="w-full mt-6 text-sm uppercase bg-primary text-white"
             >
               {loading ? 'Creating...' : 'Create Payment Policy'}
             </Button>
