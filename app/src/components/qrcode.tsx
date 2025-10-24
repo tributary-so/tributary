@@ -30,7 +30,9 @@ export default function QRCodeGenerator({ text = 'https://example.com', size = '
   return (
     <div>
       <div ref={qrRef} className="bg-white p-4 rounded-lg -m-5" />
-      <div className="text-xs italic text-gray-400 ml-5">{text}</div>
+      <a href="{text}" className="text-xs italic text-gray-400 ml-5 underline underline-offset-4">
+        {text}
+      </a>
     </div>
   )
 }
