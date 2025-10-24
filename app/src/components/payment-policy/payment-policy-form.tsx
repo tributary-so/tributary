@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import * as anchor from '@coral-xyz/anchor'
 import { toast } from 'sonner'
-import { useSDK } from '@/lib/client'
+import { useSDK, createAndSendTransaction } from '@/lib/client'
 import { useNavigate } from 'react-router'
 import {
   PaymentFrequencyString,
@@ -135,15 +135,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         null,
         approvalAmount,
       )
-      const { Transaction } = await import('@solana/web3.js')
-      const transaction = new Transaction()
-      instructions.forEach((ix) => transaction.add(ix))
-      transaction.feePayer = wallet.publicKey
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
-      transaction.recentBlockhash = blockhash
-      const signedTx = await wallet.signTransaction(transaction)
-      const txId = await connection.sendRawTransaction(signedTx.serialize())
-      await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
+      await createAndSendTransaction(instructions, wallet, connection)
       toast.success('Payment policy created successfully!')
       setTimeout(() => navigate('/account'), 3000)
     } catch (err) {
