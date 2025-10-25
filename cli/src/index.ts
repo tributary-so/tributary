@@ -203,10 +203,10 @@ program
       const gateway = new PublicKey(options.gateway);
 
       // Create policy type
+      // FIXME:
       const policyType: PolicyType = {
         subscription: {
           amount: new anchor.BN(options.amount),
-          intervalSeconds: new anchor.BN(options.interval),
           autoRenew: options.autoRenew,
           maxRenewals: options.maxRenewals
             ? parseInt(options.maxRenewals)
@@ -223,6 +223,7 @@ program
       // Create memo
       const memo = createMemoBuffer(options.memo);
 
+      // FIXME:
       const instruction = await sdk.createPaymentPolicy(
         tokenMint,
         recipient,
