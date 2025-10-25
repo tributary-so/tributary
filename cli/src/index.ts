@@ -495,4 +495,53 @@ program
     }
   });
 
+program
+  .command("list-payment-policies")
+  .description("List all payment policies, ordered by user payment")
+  .action(async (options) => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+
+      const userPayments = await sdk.getAllUserPayments();
+      for (const userPayment of userPayments) {
+        const policies = await sdk.getPaymentPoliciesByUser(
+          userPayment.publicKey
+        );
+
+        // Group by userPayment
+        const grouped: Record<
+          string,
+          Array<{ publicKey: PublicKey; account: any }>
+        > = {};
+        for (const policy of policies) {
+          const userPaymentStr = policy.account.userPayment.toString();
+          if (!grouped[userPaymentStr]) {
+            grouped[userPaymentStr] = [];
+          }
+          grouped[userPaymentStr].push(policy);
+        }
+
+        // Sort user payments
+        const sortedUserPayments = Object.keys(grouped).sort();
+
+        for (const userPaymentStr of sortedUserPayments) {
+          console.log(`User Payment: ${userPaymentStr}`);
+          for (const policy of grouped[userPaymentStr]) {
+            console.log(
+              `  Policy ${policy.account.policyId}: Status ${
+                Object.keys(policy.account.status)[0]
+              }, Recipient ${policy.account.recipient.toString()}, Gateway ${policy.account.gateway.toString()}`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error listing policies:", error);
+      process.exit(1);
+    }
+  });
+
 program.parse();
