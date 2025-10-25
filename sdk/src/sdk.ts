@@ -571,19 +571,30 @@ export class RecurringPaymentsSDK {
   async getAllPaymentPolicies(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentPolicy }>
   > {
-    return await this.program.account.paymentPolicy.all();
+    return await this.program.account.paymentPolicy.all([
+      {
+        dataSize: 586,
+      },
+    ]);
   }
 
   async getAllUserPayments(): Promise<
     Array<{ publicKey: PublicKey; account: UserPayment }>
   > {
-    return await this.program.account.userPayment.all();
+    return await this.program.account.userPayment.all([
+      {
+        dataSize: 382,
+      },
+    ]);
   }
 
   async getAllUserPaymentsByOwner(
     owner: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: UserPayment }>> {
     return await this.program.account.userPayment.all([
+      {
+        dataSize: 382,
+      },
       {
         memcmp: {
           offset: 8, // Skip discriminator
@@ -598,6 +609,9 @@ export class RecurringPaymentsSDK {
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
+        dataSize: 586,
+      },
+      {
         memcmp: {
           offset: 8, // Skip discriminator
           bytes: user.toBase58(),
@@ -611,6 +625,9 @@ export class RecurringPaymentsSDK {
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
+        dataSize: 586,
+      },
+      {
         memcmp: {
           offset: 8 + 32, // Skip discriminator
           bytes: user.toBase58(),
@@ -623,6 +640,9 @@ export class RecurringPaymentsSDK {
     gateway: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
+      {
+        dataSize: 586,
+      },
       {
         memcmp: {
           offset: 8 + 32 + 32, // Skip discriminator + user_payment + recipient
