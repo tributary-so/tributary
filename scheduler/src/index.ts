@@ -4,11 +4,13 @@ import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
-import { RecurringPaymentsSDK } from "@tributary-so/sdk";
+import { getGatewayPda, RecurringPaymentsSDK } from "@tributary-so/sdk";
+import { exit } from "process";
 
 interface SchedulerConfig {
   connectionUrl: string;
-  gatewayKeypairPath: string;
+  gatewayKeypairPath?: string;
+  privateKey?: string;
   cronSchedule?: string; // Default: every hour
 }
 
@@ -21,7 +23,14 @@ class PaymentScheduler {
     this.config = config;
 
     // Load gateway keypair
-    this.gatewayKeypair = this.loadKeypairFromFile(config.gatewayKeypairPath);
+    if (config.gatewayKeypairPath) {
+      this.gatewayKeypair = this.loadKeypairFromFile(config.gatewayKeypairPath);
+    } else if (config.privateKey) {
+      this.gatewayKeypair = this.loadKeypair(config.privateKey);
+    } else {
+      console.log("Error: need private key!");
+      exit(1);
+    }
 
     // Initialize SDK
     const connection = new Connection(config.connectionUrl, "confirmed");
@@ -29,12 +38,16 @@ class PaymentScheduler {
     this.sdk = new RecurringPaymentsSDK(connection, wallet);
   }
 
+  private loadKeypair(data: string) {
+    const secretKeyArray = JSON.parse(data);
+    const secretKeyBuffer = new Uint8Array(secretKeyArray);
+    return Keypair.fromSecretKey(secretKeyBuffer);
+  }
+
   private loadKeypairFromFile(filePath: string): Keypair {
     try {
       const jsonContent = fs.readFileSync(filePath, "ascii");
-      const secretKeyArray = JSON.parse(jsonContent);
-      const secretKeyBuffer = new Uint8Array(secretKeyArray);
-      return Keypair.fromSecretKey(secretKeyBuffer);
+      return this.loadKeypair(jsonContent);
     } catch (error) {
       console.error("Error reading keypair:", error);
       throw error;
@@ -48,8 +61,11 @@ class PaymentScheduler {
 
     try {
       // Get all payment policies managed by this gateway
-      const paymentPolicies = await this.sdk.getPaymentPoliciesByGateway(
+      const { address: gatewayPda } = this.sdk.getGatewayPda(
         this.gatewayKeypair.publicKey
+      );
+      const paymentPolicies = await this.sdk.getPaymentPoliciesByGateway(
+        gatewayPda
       );
 
       console.log(
@@ -72,7 +88,7 @@ class PaymentScheduler {
             executedCount++;
 
             console.log(
-              `✓ Payment executed successfully for ${policyPda.toString()}`
+              `✅ Payment executed successfully for ${policyPda.toString()}`
             );
 
             // Add small delay between payments to avoid overwhelming the RPC
@@ -80,8 +96,7 @@ class PaymentScheduler {
           }
         } catch (error) {
           console.error(
-            `✗ Error executing payment for ${policyPda.toString()}:`,
-            error
+            `🚩 Error executing payment for ${policyPda.toString()}`
           );
           errorCount++;
         }
@@ -91,7 +106,7 @@ class PaymentScheduler {
         `Payment execution completed. Executed: ${executedCount}, Errors: ${errorCount}`
       );
     } catch (error) {
-      console.error("Error in payment checking process:", error);
+      console.error("Error in payment checking process");
     }
   }
 
@@ -102,14 +117,15 @@ class PaymentScheduler {
     }
 
     // Check if payment is due
-    const nextPaymentDue = policy.nextPaymentDue.toNumber();
-    if (nextPaymentDue > currentTime) {
-      return false;
-    }
-
-    // For subscription policies, check if we haven't exceeded max renewals
+    // For subscription policies, check if we can execute now haven't exceeded max renewals
     if (policy.policyType.subscription) {
-      const maxRenewals = policy.policyType.subscription.maxRenewals;
+      const subscriptionDetails = policy.policyType.subscription;
+      const nextPaymentDue = subscriptionDetails.nextPaymentDue.toNumber();
+      if (nextPaymentDue > currentTime) {
+        return false;
+      }
+
+      const maxRenewals = subscriptionDetails.maxRenewals;
       if (maxRenewals !== null && policy.paymentCount >= maxRenewals) {
         console.log(
           `Policy ${policy.policyId} has reached max renewals (${maxRenewals})`
@@ -140,7 +156,7 @@ class PaymentScheduler {
 
       console.log(`Payment executed with signature: ${signature}`);
     } catch (error) {
-      console.error(`Failed to execute payment:`, error);
+      console.error(`Failed to execute payment`);
       throw error;
     }
   }
@@ -150,7 +166,7 @@ class PaymentScheduler {
   }
 
   public start(): void {
-    const schedule = this.config.cronSchedule || "0 * * * *"; // Every hour at minute 0
+    const schedule = this.config.cronSchedule || "*/5 * * * *"; // Every 5mins
 
     console.log(`Starting payment scheduler with schedule: ${schedule}`);
     console.log(`Gateway: ${this.gatewayKeypair.publicKey.toString()}`);
@@ -185,14 +201,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("Environment variable SOLANA_API required");
     process.exit(1);
   }
-  if (!process.env.ANCHOR_WALLET) {
-    console.error("Environment variable ANCHOR_WALLET required");
+  if (!process.env.ANCHOR_WALLET && !process.env.PRIVATE_KEY) {
+    console.error("Environment variable ANCHOR_WALLET or PRIVATE_KEY required");
     process.exit(1);
   }
 
   const config: SchedulerConfig = {
     connectionUrl: process.env.SOLANA_API,
     gatewayKeypairPath: process.env.ANCHOR_WALLET,
+    privateKey: process.env.PRIVATE_KEY,
     cronSchedule: process.env.CRON_SCHEDULE || "0 * * * *",
   };
 
