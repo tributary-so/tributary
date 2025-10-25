@@ -15,7 +15,7 @@ import {
   getPaymentFrequency,
 } from '@tributary-so/sdk'
 import { useAtomValue } from 'jotai'
-import { availableTokensAtom, getTokenSymbolAtom } from '@/lib/token-store'
+import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom } from '@/lib/token-store'
 
 export interface PaymentPolicyFormData {
   tokenMint: string
@@ -45,6 +45,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
   const availableTokens = useAtomValue(availableTokensAtom)
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
+  const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const [isRecipientValid, setIsRecipientValid] = useState(true)
 
   useEffect(() => {
@@ -122,11 +123,12 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       if (formData.approvalAmount) {
         approvalAmount = new anchor.BN(formData.approvalAmount)
       }
+      const amountBn = parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
       const instructions = await sdk.createSubscriptionInstruction(
         new PublicKey(formData.tokenMint),
         new PublicKey(formData.recipient),
         new PublicKey(formData.gateway),
-        new anchor.BN(formData.amount),
+        new anchor.BN(amountBn),
         false,
         null,
         paymentFrequency,
@@ -245,7 +247,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 onChange={handleInputChange}
                 placeholder="e.g., 10"
                 required
-                min="1"
+                min="0.00001"
                 className="w-full"
                 endContent={
                   formData.tokenMint &&
