@@ -34,10 +34,21 @@ nav:
   - Protocol:
       - What is Tributary?: what.md
       - Why Tributary?: why.md
-      - Architecture: architecture.md
+      - Architecture:
+          - Overview: architecture.md
+          - Protocol: smart-contract.md
+          - SDKs: sdks.md
+          - Tools: tools.md
+          - Payment Provider Layer: business.md
+          - Fees: fees.md
+          - Security: security.md
+          - Integration: integration.md
+          - Network Effect: networkeffect.md
   - Use Cases: use-cases.md
   - Payment Providers: providers.md
-  - Developer Guide: how.md
+  - Developer Guide:
+      - Guide: how.md
+      - Contributions: contributions.md
 
 plugins:
   - search

@@ -17,6 +17,16 @@ pub enum PolicyType {
         padding: [u8; 97],                   // 97 bytes padding
     },
     // Future variants can be added like this:
+    // Installment {
+    //     total_amount: u64,              // 8 bytes - Maximum amount that can be withdrawn (X$)
+    //     num_installments: u32,          // 4 bytes - Number of installments (Y)
+    //     installment_amount: u64,        // 8 bytes - Amount per installment (total_amount / num_installments)
+    //     period: PaymentFrequency,       // 9 bytes - Frequency of installments (e.g., Monthly)
+    //     start_date: i64,                // 8 bytes - When installments begin
+    //     next_installment_due: i64,      // 8 bytes - Next payment timestamp
+    //     installments_completed: u32,    // 4 bytes - Track progress
+    //     padding: [u8; 87],              // 87 bytes padding (total: 8+4+8+9+8+8+4+87=128)
+    // },
     // OneTime {
     //     amount: u64,                // 8 bytes
     //     due_date: i64,              // 8 bytes
