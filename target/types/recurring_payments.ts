@@ -14,6 +14,54 @@ export type RecurringPayments = {
   },
   "instructions": [
     {
+      "name": "changeGatewaySigner",
+      "discriminator": [
+        212,
+        253,
+        96,
+        169,
+        171,
+        244,
+        137,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "newSigner"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "changePaymentPolicyStatus",
       "discriminator": [
         250,
@@ -617,7 +665,7 @@ export type RecurringPayments = {
       ],
       "accounts": [
         {
-          "name": "gatewayAuthority",
+          "name": "feePayer",
           "signer": true
         },
         {
@@ -1007,10 +1055,16 @@ export type RecurringPayments = {
         "fields": [
           {
             "name": "authority",
+            "docs": [
+              "this key is considered the owner. It cannot be changed"
+            ],
             "type": "pubkey"
           },
           {
             "name": "feeRecipient",
+            "docs": [
+              "Which key recevies the fees"
+            ],
             "type": "pubkey"
           },
           {
@@ -1052,11 +1106,18 @@ export type RecurringPayments = {
             }
           },
           {
+            "name": "signer",
+            "docs": [
+              "This signer key is to execute payments"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u8",
-                160
+                128
               ]
             }
           }

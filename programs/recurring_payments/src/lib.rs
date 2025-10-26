@@ -76,4 +76,8 @@ pub mod recurring_payments {
     pub fn delete_payment_gateway(ctx: Context<DeletePaymentGateway>) -> Result<()> {
         instructions::delete_payment_gateway::handler_delete_payment_gateway(ctx)
     }
+
+    pub fn change_gateway_signer(ctx: Context<ChangeGatewaySigner>) -> Result<()> {
+        instructions::change_gateway_signer::handler_change_gateway_signer(ctx)
+    }
 }

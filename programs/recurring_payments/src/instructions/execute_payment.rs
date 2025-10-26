@@ -16,7 +16,7 @@ pub fn token_account_has_delegate(
 #[derive(Accounts)]
 pub struct ExecutePayment<'info> {
     /// CHECK: The gateway authority that can trigger payments
-    pub gateway_authority: Signer<'info>,
+    pub fee_payer: Signer<'info>,
 
     #[account(
         seeds = [PAYMENTS_SEED],
@@ -47,7 +47,7 @@ pub struct ExecutePayment<'info> {
         bump = gateway.bump,
         constraint = gateway.is_active,
         constraint = gateway.key() == payment_policy.gateway,
-        constraint = gateway.authority == gateway_authority.key() || user_payment.owner == gateway_authority.key(),
+        constraint = gateway.signer == fee_payer.key() || user_payment.owner == fee_payer.key(),
     )]
     pub gateway: Box<Account<'info, PaymentGateway>>,
 

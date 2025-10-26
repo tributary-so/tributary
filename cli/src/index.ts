@@ -544,4 +544,30 @@ program
     }
   });
 
+program
+  .command("change-gateway-signer")
+  .description("Change the signer for a payment gateway")
+  .requiredOption("-a, --authority <pubkey>", "Gateway authority public key")
+  .requiredOption("-s, --new-signer <pubkey>", "New signer public key")
+  .action(async (options) => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const authority = new PublicKey(options.authority);
+      const newSigner = new PublicKey(options.newSigner);
+
+      const instruction = await sdk.changeGatewaySigner(authority, newSigner);
+      const tx = new anchor.web3.Transaction().add(instruction);
+      const signature = await sdk.provider.sendAndConfirm(tx);
+
+      console.log("Gateway signer changed successfully!");
+      console.log("Transaction signature:", signature);
+    } catch (error) {
+      console.error("Error changing gateway signer:", error);
+      process.exit(1);
+    }
+  });
+
 program.parse();

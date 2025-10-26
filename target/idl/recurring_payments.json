@@ -8,6 +8,54 @@
   },
   "instructions": [
     {
+      "name": "change_gateway_signer",
+      "discriminator": [
+        212,
+        253,
+        96,
+        169,
+        171,
+        244,
+        137,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_signer"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "change_payment_policy_status",
       "discriminator": [
         250,
@@ -611,7 +659,7 @@
       ],
       "accounts": [
         {
-          "name": "gateway_authority",
+          "name": "fee_payer",
           "signer": true
         },
         {
@@ -1001,10 +1049,16 @@
         "fields": [
           {
             "name": "authority",
+            "docs": [
+              "this key is considered the owner. It cannot be changed"
+            ],
             "type": "pubkey"
           },
           {
             "name": "fee_recipient",
+            "docs": [
+              "Which key recevies the fees"
+            ],
             "type": "pubkey"
           },
           {
@@ -1046,11 +1100,18 @@
             }
           },
           {
+            "name": "signer",
+            "docs": [
+              "This signer key is to execute payments"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u8",
-                160
+                128
               ]
             }
           }

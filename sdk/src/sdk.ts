@@ -443,7 +443,7 @@ export class RecurringPaymentsSDK {
     }
 
     const accounts = {
-      gatewayAuthority: authority,
+      feePayer: authority,
       paymentsDelegate: this.getPaymentsDelegatePda().address,
       paymentPolicy: paymentPolicyPda,
       userPayment: userPaymentPda,
@@ -557,6 +557,25 @@ export class RecurringPaymentsSDK {
 
     return await this.program.methods
       .deletePaymentGateway()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  async changeGatewaySigner(
+    gatewayAuthority: PublicKey,
+    newSigner: PublicKey
+  ): Promise<TransactionInstruction> {
+    const authority = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+
+    const accounts = {
+      authority: authority,
+      gateway: gatewayPda,
+      newSigner: newSigner,
+    };
+
+    return await this.program.methods
+      .changeGatewaySigner()
       .accountsStrict(accounts)
       .instruction();
   }

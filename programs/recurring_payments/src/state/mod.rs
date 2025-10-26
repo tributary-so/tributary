@@ -138,7 +138,9 @@ impl UserPayment {
 /// Hence, the gateway can take a cut of the fees payed by the users
 #[account]
 pub struct PaymentGateway {
+    /// this key is considered the owner. It cannot be changed
     pub authority: Pubkey,
+    /// Which key recevies the fees
     pub fee_recipient: Pubkey,
     pub gateway_fee_bps: u16,
     pub is_active: bool,
@@ -147,7 +149,9 @@ pub struct PaymentGateway {
     pub bump: u8,
     pub name: [u8; 32],
     pub url: [u8; 64],
-    pub padding: [u8; 160],
+    /// This signer key is to execute payments
+    pub signer: Pubkey,
+    pub padding: [u8; 128],
 }
 
 impl PaymentGateway {
@@ -161,7 +165,8 @@ impl PaymentGateway {
         1 + // bump: u8
         32 + // name: [u8; 32]
         64 + // url: [u8; 64]
-        160; // padding: [u8; 160]
+        32 + // signer: Pubkey
+        128; // padding: [u8; 160]
 }
 
 /// This structure connects a UserPayment (user/mint) with a Policy, a Gateway.
