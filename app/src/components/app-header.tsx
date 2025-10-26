@@ -59,20 +59,23 @@ export function AppHeader() {
             >
               Hackathon
             </button>
-            <button
-              onClick={() => handleNavClick('/about')}
-              className={buttonClass}
-              style={{ fontFamily: 'var(--font-secondary)' }}
-            >
-              About
-            </button>
-            <button
-              onClick={() => handleNavClick('/docs')}
+            {/* <button */}
+            {/*   onClick={() => handleNavClick('/about')} */}
+            {/*   className={buttonClass} */}
+            {/*   style={{ fontFamily: 'var(--font-secondary)' }} */}
+            {/* > */}
+            {/*   About */}
+            {/* </button> */}
+            <a
+              type="button"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://docs.tributary.so/"
               className={buttonClass}
               style={{ fontFamily: 'var(--font-secondary)' }}
             >
               Docs
-            </button>
+            </a>
             <button
               onClick={() => handleNavClick('/quickstart')}
               className={`${buttonClass} bg-primary text-white`}
