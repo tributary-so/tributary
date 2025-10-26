@@ -247,7 +247,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 onChange={handleInputChange}
                 placeholder="e.g., 10"
                 required
-                min="0.00001"
+                step="0.00000001"
+                min="0.00000001"
                 className="w-full"
                 endContent={
                   formData.tokenMint &&
