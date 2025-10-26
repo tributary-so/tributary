@@ -102,7 +102,7 @@ export default function PaymentPolicyList() {
     }
 
     fetchPolicies()
-  }, [sdk, loaded, connection])
+  }, [sdk, loaded, connection, wallet.publicKey])
 
   const getPolicyType = (policy: PaymentPolicy) => {
     const policyType = policy.policyType as Record<string, unknown>
@@ -183,6 +183,7 @@ export default function PaymentPolicyList() {
   const formatAmount = (rawAmount: string | null, tokenMint: PublicKey): string => {
     if (!rawAmount) return 'N/A'
 
+    console.log(rawAmount)
     const tokenInfo = tokenInfoCache.get(tokenMint.toString())
     if (!tokenInfo) return rawAmount
 

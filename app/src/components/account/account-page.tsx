@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, Transaction } from '@solana/web3.js'
+import * as anchor from '@coral-xyz/anchor'
 import { useSDK } from '@/lib/client'
 import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
 import { Play, Pause, Trash2, RotateCcw, Copy, Check } from '../../icons'
@@ -108,17 +109,53 @@ export default function AccountPage() {
 
   const formatAmount = (rawAmount: string | null, tokenMint: PublicKey): string => {
     if (!rawAmount) return 'N/A'
+
     const tokenInfo = tokenInfoCache.get(tokenMint.toString())
     if (!tokenInfo) return rawAmount
+
     const amount = Number(rawAmount) / Math.pow(10, tokenInfo.decimals)
-    return tokenInfo.symbol ? `${amount.toLocaleString()} ${tokenInfo.symbol}` : amount.toLocaleString()
+    const formattedAmount = amount.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: tokenInfo.decimals,
+    })
+
+    return tokenInfo.symbol ? `${formattedAmount} ${tokenInfo.symbol}` : formattedAmount
   }
 
   const getInterval = (policy: PaymentPolicy) => {
     const policyType = policy.policyType as Record<string, unknown>
     let intervalSeconds = 0
     if (policyType.subscription) {
-      intervalSeconds = Number((policyType.subscription as Record<string, unknown>).intervalSeconds)
+      const paymentFrequency = (policyType.subscription as Record<string, unknown>).paymentFrequency as Record<
+        string,
+        unknown
+      >
+      const frequencyKey = Object.keys(paymentFrequency)[0]
+      switch (frequencyKey) {
+        case 'daily':
+          return frequencyKey
+          break
+        case 'weekly':
+          return frequencyKey
+          break
+        case 'monthly':
+          return frequencyKey
+          break
+        case 'quarterly':
+          return frequencyKey
+          break
+        case 'semiAnnually':
+          return frequencyKey
+          break
+        case 'annually':
+          return frequencyKey
+          break
+        case 'custom':
+          intervalSeconds = ((paymentFrequency.custom as Record<string, unknown>)[0] as anchor.BN).toNumber()
+          break
+        default:
+          intervalSeconds = 0
+      }
     }
     if (intervalSeconds === 0) return 'N/A'
     const duration = intervalToDuration({ start: 0, end: intervalSeconds * 1000 })
