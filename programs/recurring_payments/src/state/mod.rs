@@ -250,3 +250,73 @@ pub struct PaymentRecord {
     pub memo: [u8; 64],
     pub record_id: u32,
 }
+
+/// An event that is thrown when the program is initialized
+#[event]
+pub struct ProgramConfigCreated {
+    pub admin: Pubkey,
+    pub fee_recipient: Pubkey,
+    pub protocol_fee_bps: u16,
+    pub max_policies_per_user: u32,
+}
+
+/// An event that is thrown when a user payment account is created
+#[event]
+pub struct UserPaymentCreated {
+    pub owner: Pubkey,
+    pub token_account: Pubkey,
+    pub token_mint: Pubkey,
+}
+
+/// An event that is thrown when a payment gateway is created
+#[event]
+pub struct PaymentGatewayCreated {
+    pub authority: Pubkey,
+    pub fee_recipient: Pubkey,
+    pub gateway_fee_bps: u16,
+    pub name: [u8; 32],
+    pub url: [u8; 64],
+}
+
+/// An event that is thrown when a payment policy is created
+#[event]
+pub struct PaymentPolicyCreated {
+    pub user_payment: Pubkey,
+    pub recipient: Pubkey,
+    pub gateway: Pubkey,
+    pub policy_id: u32,
+    pub policy_type: PolicyType,
+    pub memo: [u8; 64],
+}
+
+/// An event that is thrown when a gateway signer is changed
+#[event]
+pub struct GatewaySignerChanged {
+    pub gateway: Pubkey,
+    pub old_signer: Pubkey,
+    pub new_signer: Pubkey,
+}
+
+/// An event that is thrown when a payment policy status is changed
+#[event]
+pub struct PaymentPolicyStatusChanged {
+    pub payment_policy: Pubkey,
+    pub old_status: PaymentStatus,
+    pub new_status: PaymentStatus,
+}
+
+/// An event that is thrown when a payment policy is deleted
+#[event]
+pub struct PaymentPolicyDeleted {
+    pub payment_policy: Pubkey,
+    pub owner: Pubkey,
+    pub policy_id: u32,
+}
+
+/// An event that is thrown when a payment gateway is deleted
+#[event]
+pub struct PaymentGatewayDeleted {
+    pub gateway: Pubkey,
+    pub authority: Pubkey,
+    pub name: [u8; 32],
+}

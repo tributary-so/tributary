@@ -921,6 +921,84 @@
   ],
   "events": [
     {
+      "name": "GatewaySignerChanged",
+      "discriminator": [
+        123,
+        161,
+        22,
+        153,
+        186,
+        125,
+        49,
+        187
+      ]
+    },
+    {
+      "name": "PaymentGatewayCreated",
+      "discriminator": [
+        117,
+        71,
+        161,
+        238,
+        28,
+        132,
+        111,
+        238
+      ]
+    },
+    {
+      "name": "PaymentGatewayDeleted",
+      "discriminator": [
+        159,
+        159,
+        169,
+        53,
+        140,
+        91,
+        101,
+        217
+      ]
+    },
+    {
+      "name": "PaymentPolicyCreated",
+      "discriminator": [
+        183,
+        14,
+        150,
+        236,
+        3,
+        166,
+        91,
+        44
+      ]
+    },
+    {
+      "name": "PaymentPolicyDeleted",
+      "discriminator": [
+        164,
+        228,
+        135,
+        36,
+        87,
+        156,
+        237,
+        126
+      ]
+    },
+    {
+      "name": "PaymentPolicyStatusChanged",
+      "discriminator": [
+        66,
+        140,
+        136,
+        203,
+        34,
+        132,
+        190,
+        93
+      ]
+    },
+    {
       "name": "PaymentRecord",
       "discriminator": [
         42,
@@ -931,6 +1009,32 @@
         186,
         231,
         186
+      ]
+    },
+    {
+      "name": "ProgramConfigCreated",
+      "discriminator": [
+        96,
+        218,
+        177,
+        136,
+        188,
+        157,
+        105,
+        177
+      ]
+    },
+    {
+      "name": "UserPaymentCreated",
+      "discriminator": [
+        112,
+        162,
+        36,
+        73,
+        210,
+        62,
+        34,
+        21
       ]
     }
   ],
@@ -1002,6 +1106,29 @@
     }
   ],
   "types": [
+    {
+      "name": "GatewaySignerChanged",
+      "docs": [
+        "An event that is thrown when a gateway signer is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_signer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "PaymentFrequency",
       "docs": [
@@ -1119,6 +1246,75 @@
       }
     },
     {
+      "name": "PaymentGatewayCreated",
+      "docs": [
+        "An event that is thrown when a payment gateway is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "url",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentGatewayDeleted",
+      "docs": [
+        "An event that is thrown when a payment gateway is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "PaymentPolicy",
       "docs": [
         "This structure connects a UserPayment (user/mint) with a Policy, a Gateway.",
@@ -1196,6 +1392,104 @@
                 "u8",
                 256
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentPolicyCreated",
+      "docs": [
+        "An event that is thrown when a payment policy is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user_payment",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_id",
+            "type": "u32"
+          },
+          {
+            "name": "policy_type",
+            "type": {
+              "defined": {
+                "name": "PolicyType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentPolicyDeleted",
+      "docs": [
+        "An event that is thrown when a payment policy is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payment_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentPolicyStatusChanged",
+      "docs": [
+        "An event that is thrown when a payment policy status is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payment_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_status",
+            "type": {
+              "defined": {
+                "name": "PaymentStatus"
+              }
+            }
+          },
+          {
+            "name": "new_status",
+            "type": {
+              "defined": {
+                "name": "PaymentStatus"
+              }
             }
           }
         ]
@@ -1360,6 +1654,33 @@
       }
     },
     {
+      "name": "ProgramConfigCreated",
+      "docs": [
+        "An event that is thrown when the program is initialized"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_policies_per_user",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "UserPayment",
       "docs": [
         "Each owner/authority+mint has a unique UserPayment account.",
@@ -1410,6 +1731,29 @@
                 256
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserPaymentCreated",
+      "docs": [
+        "An event that is thrown when a user payment account is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
           }
         ]
       }

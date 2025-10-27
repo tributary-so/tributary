@@ -74,6 +74,15 @@ pub fn handler_create_payment_policy(
     user_payment.active_policies_count = user_payment.active_policies_count.checked_add(1).unwrap();
     user_payment.updated_at = clock.unix_timestamp;
 
+    emit!(PaymentPolicyCreated {
+        user_payment: payment_policy.user_payment,
+        recipient: payment_policy.recipient,
+        gateway: payment_policy.gateway,
+        policy_id: payment_policy.policy_id,
+        policy_type: payment_policy.policy_type.clone(),
+        memo: payment_policy.memo,
+    });
+
     // Get next_payment_due from policy_type
     let next_payment_due = match &policy_type {
         PolicyType::Subscription {

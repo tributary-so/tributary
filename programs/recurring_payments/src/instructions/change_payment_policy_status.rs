@@ -40,11 +40,17 @@ pub fn handler_change_payment_policy_status(
 
     // Update the policy status
     let old_status = payment_policy.status.clone();
-    payment_policy.status = new_status;
+    payment_policy.status = new_status.clone();
     payment_policy.updated_at = clock.unix_timestamp;
 
     // Update user payment updated timestamp
     user_payment.updated_at = clock.unix_timestamp;
+
+    emit!(PaymentPolicyStatusChanged {
+        payment_policy: payment_policy.key(),
+        old_status: old_status.clone(),
+        new_status,
+    });
 
     msg!(
         "Payment policy status changed from {:?} to {:?} for policy ID: {}",

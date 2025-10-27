@@ -927,6 +927,84 @@ export type RecurringPayments = {
   ],
   "events": [
     {
+      "name": "gatewaySignerChanged",
+      "discriminator": [
+        123,
+        161,
+        22,
+        153,
+        186,
+        125,
+        49,
+        187
+      ]
+    },
+    {
+      "name": "paymentGatewayCreated",
+      "discriminator": [
+        117,
+        71,
+        161,
+        238,
+        28,
+        132,
+        111,
+        238
+      ]
+    },
+    {
+      "name": "paymentGatewayDeleted",
+      "discriminator": [
+        159,
+        159,
+        169,
+        53,
+        140,
+        91,
+        101,
+        217
+      ]
+    },
+    {
+      "name": "paymentPolicyCreated",
+      "discriminator": [
+        183,
+        14,
+        150,
+        236,
+        3,
+        166,
+        91,
+        44
+      ]
+    },
+    {
+      "name": "paymentPolicyDeleted",
+      "discriminator": [
+        164,
+        228,
+        135,
+        36,
+        87,
+        156,
+        237,
+        126
+      ]
+    },
+    {
+      "name": "paymentPolicyStatusChanged",
+      "discriminator": [
+        66,
+        140,
+        136,
+        203,
+        34,
+        132,
+        190,
+        93
+      ]
+    },
+    {
       "name": "paymentRecord",
       "discriminator": [
         42,
@@ -937,6 +1015,32 @@ export type RecurringPayments = {
         186,
         231,
         186
+      ]
+    },
+    {
+      "name": "programConfigCreated",
+      "discriminator": [
+        96,
+        218,
+        177,
+        136,
+        188,
+        157,
+        105,
+        177
+      ]
+    },
+    {
+      "name": "userPaymentCreated",
+      "discriminator": [
+        112,
+        162,
+        36,
+        73,
+        210,
+        62,
+        34,
+        21
       ]
     }
   ],
@@ -1008,6 +1112,29 @@ export type RecurringPayments = {
     }
   ],
   "types": [
+    {
+      "name": "gatewaySignerChanged",
+      "docs": [
+        "An event that is thrown when a gateway signer is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldSigner",
+            "type": "pubkey"
+          },
+          {
+            "name": "newSigner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "paymentFrequency",
       "docs": [
@@ -1125,6 +1252,75 @@ export type RecurringPayments = {
       }
     },
     {
+      "name": "paymentGatewayCreated",
+      "docs": [
+        "An event that is thrown when a payment gateway is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeRecipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gatewayFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "url",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "paymentGatewayDeleted",
+      "docs": [
+        "An event that is thrown when a payment gateway is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "paymentPolicy",
       "docs": [
         "This structure connects a UserPayment (user/mint) with a Policy, a Gateway.",
@@ -1202,6 +1398,104 @@ export type RecurringPayments = {
                 "u8",
                 256
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "paymentPolicyCreated",
+      "docs": [
+        "An event that is thrown when a payment policy is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          },
+          {
+            "name": "policyType",
+            "type": {
+              "defined": {
+                "name": "policyType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "paymentPolicyDeleted",
+      "docs": [
+        "An event that is thrown when a payment policy is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paymentPolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "paymentPolicyStatusChanged",
+      "docs": [
+        "An event that is thrown when a payment policy status is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paymentPolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldStatus",
+            "type": {
+              "defined": {
+                "name": "paymentStatus"
+              }
+            }
+          },
+          {
+            "name": "newStatus",
+            "type": {
+              "defined": {
+                "name": "paymentStatus"
+              }
             }
           }
         ]
@@ -1366,6 +1660,33 @@ export type RecurringPayments = {
       }
     },
     {
+      "name": "programConfigCreated",
+      "docs": [
+        "An event that is thrown when the program is initialized"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeRecipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocolFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "maxPoliciesPerUser",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "userPayment",
       "docs": [
         "Each owner/authority+mint has a unique UserPayment account.",
@@ -1416,6 +1737,29 @@ export type RecurringPayments = {
                 256
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "userPaymentCreated",
+      "docs": [
+        "An event that is thrown when a user payment account is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenAccount",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenMint",
+            "type": "pubkey"
           }
         ]
       }

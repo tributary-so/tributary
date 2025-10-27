@@ -28,6 +28,12 @@ pub struct DeletePaymentGateway<'info> {
 pub fn handler_delete_payment_gateway(ctx: Context<DeletePaymentGateway>) -> Result<()> {
     let gateway = &ctx.accounts.gateway;
 
+    emit!(PaymentGatewayDeleted {
+        gateway: gateway.key(),
+        authority: gateway.authority,
+        name: gateway.name,
+    });
+
     msg!(
         "Payment gateway deleted with authority: {:?}, name: {:?}",
         gateway.authority,

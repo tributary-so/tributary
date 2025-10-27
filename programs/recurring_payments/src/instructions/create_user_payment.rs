@@ -46,6 +46,12 @@ pub fn handler_create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()
     user_payment.is_active = true;
     user_payment.bump = ctx.bumps.user_payment;
 
+    emit!(UserPaymentCreated {
+        owner: user_payment.owner,
+        token_account: user_payment.token_account,
+        token_mint: user_payment.token_mint,
+    });
+
     msg!("User payment account created for: {:?}", user_payment.owner);
     Ok(())
 }

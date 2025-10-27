@@ -51,6 +51,14 @@ pub fn handler_create_payment_gateway(
     gateway.url = url;
     gateway.signer = ctx.accounts.authority.key();
 
+    emit!(PaymentGatewayCreated {
+        authority: gateway.authority,
+        fee_recipient: gateway.fee_recipient,
+        gateway_fee_bps: gateway.gateway_fee_bps,
+        name: gateway.name,
+        url: gateway.url,
+    });
+
     msg!(
         "Payment gateway created with authority: {:?}, fee: {} bps, name: {:?}, url: {:?}",
         gateway.authority,

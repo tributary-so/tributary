@@ -28,6 +28,13 @@ pub fn handle_initialize(ctx: Context<Initialize>) -> Result<()> {
     config.emergency_pause = false;
     config.bump = ctx.bumps.config;
 
+    emit!(ProgramConfigCreated {
+        admin: config.admin,
+        fee_recipient: config.fee_recipient,
+        protocol_fee_bps: config.protocol_fee_bps,
+        max_policies_per_user: config.max_policies_per_user,
+    });
+
     msg!("Program initialized with admin: {:?}", config.admin);
     Ok(())
 }

@@ -39,6 +39,12 @@ pub fn handler_delete_payment_policy(
     let user_payment = &mut ctx.accounts.user_payment;
     let clock = Clock::get()?;
 
+    emit!(PaymentPolicyDeleted {
+        payment_policy: payment_policy.key(),
+        owner: user_payment.owner,
+        policy_id: payment_policy.policy_id,
+    });
+
     // Update user payment count (decrease active policies count)
     user_payment.active_policies_count = user_payment
         .active_policies_count

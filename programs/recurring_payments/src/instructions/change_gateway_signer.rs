@@ -24,6 +24,12 @@ pub fn handler_change_gateway_signer(ctx: Context<ChangeGatewaySigner>) -> Resul
     let old_signer = gateway.signer;
     gateway.signer = ctx.accounts.new_signer.key();
 
+    emit!(GatewaySignerChanged {
+        gateway: gateway.key(),
+        old_signer,
+        new_signer: gateway.signer,
+    });
+
     msg!(
         "Gateway signer changed from {:?} to {:?} for gateway: {:?}",
         old_signer,
