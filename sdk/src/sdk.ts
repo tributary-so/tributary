@@ -30,7 +30,9 @@ import type {
 import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
 
-export class RecurringPaymentsSDK {
+export type Program = anchor.Program<RecurringPayments>;
+
+export class Tributary {
   program: anchor.Program<RecurringPayments>;
   programId: PublicKey;
   connection: Connection;
@@ -703,3 +705,6 @@ export class RecurringPaymentsSDK {
     );
   }
 }
+
+// legacy name
+export const RecurringPaymentsSDK = Tributary;
