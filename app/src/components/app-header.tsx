@@ -18,7 +18,7 @@ export function AppHeader() {
     'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
 
   return (
-    <div className="relative z-50 pt-[3px] sm:pt-[23px]" style={{ fontFamily: 'var(--font-primary)' }}>
+    <div className="relative z-50 pt-[2px] sm:pt-[23px]" style={{ fontFamily: 'var(--font-primary)' }}>
       <BorderedContainer
         borderSides={['top', 'right', 'left']}
         className="relative flex items-center justify-between"
@@ -131,7 +131,7 @@ export function AppHeader() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-white border border-[var(--color-primary)] border-t-0 z-40">
+        <div className="md:hidden absolute top-full left-[3px] right-[3px] bg-white border border-[var(--color-primary)] border-t-0 z-40">
           <div className="flex flex-col p-4 gap-2">
             <button
               onClick={() => handleNavClick('/hackathon')}
@@ -140,13 +140,13 @@ export function AppHeader() {
             >
               Hackathon
             </button>
-            <button
-              onClick={() => handleNavClick('/about')}
-              className={`${buttonClass} w-full justify-start`}
-              style={{ fontFamily: 'var(--font-secondary)' }}
-            >
-              About
-            </button>
+            {/* <button */}
+            {/*   onClick={() => handleNavClick('/about')} */}
+            {/*   className={`${buttonClass} w-full justify-start`} */}
+            {/*   style={{ fontFamily: 'var(--font-secondary)' }} */}
+            {/* > */}
+            {/*   About */}
+            {/* </button> */}
             <button
               onClick={() => handleNavClick('/docs')}
               className={`${buttonClass} w-full justify-start`}
