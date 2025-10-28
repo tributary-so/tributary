@@ -8,13 +8,13 @@
 
 ## Opening Hook (10 seconds)
 
-"Judges, imagine the $1.5 trillion subscription economy locked out of Web3. In Crypto, every payment requires manual wallet approval. Huge UX friction leading to 67% cart abandonment and 30% revenue loss. Web2 solved this 20 years ago. Web3 needs Tributary."
+"Hi, I am Fabian and I would like you to imagine the $1.5 trillion subscription economy that is locked out of Solana. In Crypto, every payment requires manual wallet approval. Huge UX friction leading to 67% of shopping carts being abandoned and 30% revenue loss. Web2 solved this 20 years ago. Web3 needs Tributary."
 
 ---
 
 ## Slide 1: Web3's Payment Problem (20 seconds)
 
-"The problem is fundamental: Web3 promises automation but lacks basic payment infrastructure. Businesses need predictable revenue streams, but current solutions force users to sign transactions every billing cycle. Funds get locked in contracts, UX suffers, and adoption stalls. This isn't just inconvenient - it's blocking Solana's growth."
+"The problem is fundamental: Web3 promises automation but lacks basic payment infrastructure. Businesses need predictable revenue streams, but current solutions force users to manually sign transactions every billing cycle. Funds get locked in contracts, UX suffers, and adoption stalls. This isn't just inconvenient - it's blocking Solana's growth."
 
 ---
 
@@ -26,13 +26,13 @@
 
 ## Slide 3: TRIBUTARY SOLUTION (20 seconds)
 
-"Tributary: Sign once, payments can flow automatically. Non-custodial: funds stay in your wallet. Together with Tributary,Together with Tributary, Solana's sub-cent fees and 400ms settlement enables a micropayment economy. Zero setup complexity, full user control. Under 5 minutes to integrate, less than $0.001 per payment. We're not just another payment tool - we're the infrastructure layer Solana has been missing."
+"Tributary: Sign once, payments can flow automatically. Non-custodial: funds stay in your wallet. Together with Tributary, Solana's sub-cent fees and 400ms settlement enables a micropayment economy. Zero setup complexity, full user control. Under 5 minutes to integrate, less than a fraction of a cent per payment. We're not just another payment tool - we're the infrastructure layer Solana has been missing."
 
 ---
 
 ## Slide 4: HOW IT WORKS + LIVE DEMO (40 seconds)
 
-"How it works: Token delegation meets smart contracts. Users create a payment policy, delegate SPL token authority, and payments execute automatically on schedule. No fund lock-up, direct transfers, full user control, 100% transparency.
+"How does it work: Token delegation meets smart contracts. Users create a payment policy, delegate SPL token authority, and payments execute automatically on schedule. No fund lock-up, direct transfers, full user control, 100% transparency.
 
 [DEMO: Show live dashboard, create subscription, execute payment]
 
@@ -48,7 +48,7 @@ As you can see, our MVP is fully functional: Create subscriptions in one click, 
 
 ## Slide 6: TRACTION & TEAM (20 seconds)
 
-"We built this MVP in 3 weeks for Colosseum Hackathon. 100% feature complete (for subscriptions), 4 demo flows, 3 packages shipped, 0 direct competitors. Our experienced team brings 10+ years combined in Web3, DeFi, and payment systems - Rust/Solana experts, React specialists, security auditing with multiple successful projects. We're ready to launch _the_ payment infrastructure Solana desperately needs."
+"We built this MVP for the Colosseum Hackathon. 100% feature complete (for subscriptions), 4 demo flows, 3 packages shipped, 0 direct competitors. Our experienced team brings 10+ years combined in Web3, DeFi, and payment systems - Rust/Solana experts, React specialists, security auditing with multiple successful projects. We're ready to launch _the_ payment infrastructure Solana desperately needs."
 
 ---
 
