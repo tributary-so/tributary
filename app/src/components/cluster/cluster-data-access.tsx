@@ -17,8 +17,11 @@ export enum ClusterNetwork {
   Custom = 'custom',
 }
 
+const DEVNET_RPC_URL = 'https://devnet.helius-rpc.com/?api-key=756c46f1-dcfa-42f7-a873-0561431937e1'
+const MAINNET_RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=756c46f1-dcfa-42f7-a873-0561431937e1'
+
 const getDefaultEndpoint = (): string => {
-  return import.meta.env.VITE_SOLANA_API || clusterApiUrl('devnet')
+  return import.meta.env.VITE_SOLANA_API || DEVNET_RPC_URL
 }
 
 const getDefaultNetwork = (): ClusterNetwork => {
@@ -36,6 +39,11 @@ export const defaultClusters: SolanaCluster[] = [
     name: import.meta.env.VITE_SOLANA_API ? 'custom' : 'devnet',
     endpoint: getDefaultEndpoint(),
     network: getDefaultNetwork(),
+  },
+  {
+    name: 'mainnet',
+    endpoint: MAINNET_RPC_URL,
+    network: ClusterNetwork.Mainnet,
   },
   { name: 'local', endpoint: 'http://localhost:8899' },
   {
