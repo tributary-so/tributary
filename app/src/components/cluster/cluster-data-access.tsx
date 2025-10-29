@@ -1,4 +1,4 @@
-import { clusterApiUrl, Connection } from '@solana/web3.js'
+import { Connection } from '@solana/web3.js'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import React, { createContext, useContext } from 'react'
@@ -45,12 +45,12 @@ export const defaultClusters: SolanaCluster[] = [
     endpoint: MAINNET_RPC_URL,
     network: ClusterNetwork.Mainnet,
   },
-  { name: 'local', endpoint: 'http://localhost:8899' },
-  {
-    name: 'testnet',
-    endpoint: clusterApiUrl('testnet'),
-    network: ClusterNetwork.Testnet,
-  },
+  // { name: 'local', endpoint: 'http://localhost:8899' },
+  // {
+  //   name: 'testnet',
+  //   endpoint: clusterApiUrl('testnet'),
+  //   network: ClusterNetwork.Testnet,
+  // },
 ]
 
 const clusterAtom = atomWithStorage<SolanaCluster>('solana-cluster', defaultClusters[0])
