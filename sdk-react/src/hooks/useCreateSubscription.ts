@@ -84,7 +84,7 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
 
       // Build transaction
       const transaction = new Transaction();
-      instructions.forEach((ix) => transaction.add(ix));
+      instructions.forEach((ix: any) => transaction.add(ix));
       transaction.feePayer = wallet.publicKey;
 
       // Get recent blockhash

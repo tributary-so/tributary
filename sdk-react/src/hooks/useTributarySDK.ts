@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { RecurringPaymentsSDK } from "@tributary-so/sdk";
+import { Tributary } from "@tributary-so/sdk";
 
-export function useTributarySDK(): RecurringPaymentsSDK | null {
+export function useTributarySDK(): Tributary | null {
   const { connection } = useConnection();
   const wallet = useWallet();
 
@@ -11,6 +11,6 @@ export function useTributarySDK(): RecurringPaymentsSDK | null {
       return null;
     }
 
-    return new RecurringPaymentsSDK(connection, wallet as any);
+    return new Tributary(connection, wallet as any);
   }, [connection, wallet]);
 }
