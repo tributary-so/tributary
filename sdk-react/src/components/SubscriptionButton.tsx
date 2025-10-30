@@ -14,6 +14,7 @@ interface SubscriptionButtonProps {
   recipient: PublicKey;
   gateway: PublicKey;
   interval: PaymentInterval;
+  custom_interval?: number;
   maxRenewals?: number;
   memo?: string;
   startTime?: Date;
@@ -34,6 +35,7 @@ export function SubscriptionButton({
   recipient,
   gateway,
   interval,
+  custom_interval,
   maxRenewals,
   memo,
   startTime,
@@ -57,6 +59,7 @@ export function SubscriptionButton({
         recipient,
         gateway,
         interval,
+        custom_interval,
         maxRenewals,
         memo,
         startTime,

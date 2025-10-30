@@ -17,6 +17,7 @@ export interface CreateSubscriptionParams {
   recipient: PublicKey;
   gateway: PublicKey;
   interval: PaymentInterval;
+  custom_interval?: number; // seconds
   maxRenewals?: number;
   memo?: string;
   startTime?: Date;

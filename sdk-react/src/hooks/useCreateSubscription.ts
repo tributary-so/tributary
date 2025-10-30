@@ -58,7 +58,10 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
 
     try {
       // Convert simplified params to SDK format
-      const frequency = createPaymentFrequency(params.interval);
+      const frequency = createPaymentFrequency(
+        params.interval,
+        params.custom_interval
+      );
       const memoBuffer = createMemoBuffer(params.memo || "", 64);
       const startTime = params.startTime
         ? new BN(Math.floor(params.startTime.getTime() / 1000))
