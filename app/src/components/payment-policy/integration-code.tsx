@@ -6,6 +6,8 @@ import { getTokenPrecisionAtom } from '@/lib/token-store'
 import { useAtomValue } from 'jotai'
 import { BN } from '@coral-xyz/anchor'
 import { PublicKey } from '@solana/web3.js'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { ghcolors } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface IntegrationCodeProps {
   formData: PaymentPolicyFormData
@@ -143,9 +145,24 @@ import { BN } from '@coral-xyz/anchor'
             )}
           </button>
         </div>
-        <pre className="p-3 bg-gray-50 border border-t-0 border-gray-200 rounded-b overflow-x-auto text-xs">
+        <SyntaxHighlighter
+          language="typescript"
+          style={ghcolors}
+          customStyle={{
+            margin: 0,
+            borderRadius: '0 0 0.375rem 0.375rem',
+            fontSize: '0.75rem',
+            lineHeight: '1rem',
+          }}
+          codeTagProps={{
+            style: {
+              fontSize: 'inherit',
+              lineHeight: 'inherit',
+            },
+          }}
+        >
           {jsCode}
-        </pre>
+        </SyntaxHighlighter>
       </div>
     </div>
   )
