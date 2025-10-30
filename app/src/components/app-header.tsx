@@ -3,6 +3,7 @@ import { WalletButton } from '@/components/solana/solana-provider'
 import { Link, useNavigate } from 'react-router'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { BorderedContainer } from '@/components/ui/bordered-container'
+import { ClusterUiSelect } from './cluster/cluster-ui'
 
 export function AppHeader() {
   const { connected } = useWallet()
@@ -103,6 +104,7 @@ export function AppHeader() {
               <WalletButton />
             </div>
           )}
+          <ClusterUiSelect />
         </div>
 
         {/* Burger Menu - Mobile */}
