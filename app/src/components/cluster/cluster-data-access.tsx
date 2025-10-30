@@ -36,14 +36,14 @@ const getDefaultNetwork = (): ClusterNetwork => {
 
 export const defaultClusters: SolanaCluster[] = [
   {
-    name: import.meta.env.VITE_SOLANA_API ? 'custom' : 'devnet',
-    endpoint: getDefaultEndpoint(),
-    network: getDefaultNetwork(),
-  },
-  {
     name: 'mainnet',
     endpoint: MAINNET_RPC_URL,
     network: ClusterNetwork.Mainnet,
+  },
+  {
+    name: import.meta.env.VITE_SOLANA_API ? 'custom' : 'devnet',
+    endpoint: getDefaultEndpoint(),
+    network: getDefaultNetwork(),
   },
   // { name: 'local', endpoint: 'http://localhost:8899' },
   // {

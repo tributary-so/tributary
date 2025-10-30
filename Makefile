@@ -2,9 +2,10 @@ DEPLOY_KEY_PATH := ~/.config/solana/ADmSd9uYBRbLGa9rN1NtFv5LXtwLPdtVwGT5xhAYY4xZ
 PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.json
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
 SOLANA_API := $(or $(SOLANA_API),wss://api.mainnet-beta.solana.com)
+SOLANA_WS := $(subst https://,wss://,$(SOLANA_API))
 SOL_ARGS:=--with-compute-unit-price 1000 \
 		  --keypair $(DEPLOY_KEY_PATH) \
-		  --ws $(SOLANA_API) \
+		  --ws $(SOLANA_WS) \
 		  --max-sign-attempts 1000
 prep:
 	solana-install init 1.18.20
@@ -31,7 +32,7 @@ mainnet_expand:
 	solana program extend -k $(DEPLOY_KEY_PATH) $(PROGRAM_ID) 20480
 
 mainnet_build: prep
-	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p recurring_payments -- --features mainnet
+	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p recurring_payments # -- --features mainnet
 
 mainnet_deploy_buffer:
 	solana -k ${DEPLOY_KEY_PATH} balance
