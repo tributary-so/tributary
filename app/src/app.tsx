@@ -5,7 +5,6 @@ import { lazy } from 'react'
 
 const LazyDashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
 const LazyPaymentPolicy = lazy(() => import('@/components/payment-policy/payment-policy-feature'))
-const LazyPaymentPolicyList = lazy(() => import('@/components/payment-policy/payment-policy-list'))
 const LazyAccount = lazy(() => import('@/components/account/account-page'))
 const LazyPresentation = lazy(() => import('@/components/presentation/presentation-feature'))
 
@@ -15,7 +14,6 @@ const routes: RouteObject[] = [
   { path: 'demo', element: <LazyDashboard /> },
   { path: 'docs', element: <LazyDashboard /> },
   { path: 'quickstart', element: <LazyPaymentPolicy /> },
-  { path: 'policies', element: <LazyPaymentPolicyList /> },
   { path: 'account', element: <LazyAccount /> },
   { path: 'hackathon', element: <LazyPresentation /> },
 ]
