@@ -9,8 +9,8 @@ const slides = [
     subtitle: '$1.5T subscription economy locked out of Web3',
     imageUrl: '/dev-env.svg',
     points: [
-      'Every payment requires manual wallet approval - killing UX',
       'No infrastructure for subscriptions or recurring billing',
+      'Every payment requires manual wallet approval - killing UX',
       '67% cart abandonment from repeated signing (Recurly 2024)',
       'Businesses lose 30% revenue from payment friction',
     ],
@@ -25,20 +25,26 @@ const slides = [
       rows: [
         ['Squads Grid', 'Complex multi-sig setup, requires account creation', 'One-click approval, no setup'],
         ['Helio (MoonPay)', 'Custodial, funds locked, centralized', 'Non-custodial, funds stay in wallet'],
+        [
+          'x402',
+          'Require signing every payment, facilitator KYC',
+          'Live on mainnet today, smart contract as intermediary',
+        ],
         ['Manual payments', 'User must remember & approve each time', 'Automatic execution on schedule'],
       ],
     },
-    footer: 'Were the only non-custodial, automated, zero-setup solution',
+    footer: 'Were the only non-custodial, automated, one-click-setup solution',
   },
   {
     title: 'TRIBUTARY SOLUTION',
-    subtitle: 'Sign once, pay automatically forever',
+    subtitle: 'Sign once, automate forever',
     imageUrl: '/business-decision.svg',
     points: [
       'Non-custodial: Funds stay in your wallet until payment',
       'Native Solana: Sub-cent fees, 400ms settlement',
-      'Zero setup: No accounts, no multi-sig complexity',
-      'Full control: Pause, resume, or cancel anytime',
+      'Zero setup: No Signups, no multi-sig complexity',
+      'Full control: Pause, resume, or cancel subscriptions anytime',
+      'Protocol: One Smart Contract, unlimited businesses on top',
     ],
     stats: {
       label: 'Developer-First Infrastructure',
@@ -110,9 +116,8 @@ const slides = [
       { category: 'Gaming', examples: 'Season passes' },
       { category: 'DeFi', examples: 'Strategy fees' },
       { category: 'DAOs', examples: 'Treasury automation' },
-      { category: 'Commerce', examples: 'Subscriptions' },
+      { category: 'AI', examples: 'Agent Fees' },
     ],
-    footer: 'Zero competition for non-custodial automated payments on Solana',
   },
   {
     title: 'TRACTION & TEAM',
@@ -128,8 +133,8 @@ const slides = [
       title: 'Experienced Team',
       points: [
         '10+ years combined Web3, DeFi & payment systems experience',
-        'Rust/Solana experts + React specialists + security auditors',
-        'Multiple successful Web3 projects and payment integrations',
+        'Rust/Solana experts + React specialists + security expertice',
+        '>5 operational projects on Solana alone',
       ],
     },
     footer: 'Ready to build the payment infrastructure Web3 needs',
@@ -285,7 +290,7 @@ export default function PresentationFeature() {
 
           {slide.demo && (
             <div className="mt-3">
-              <div className="text-xs sm:text-sm uppercase mb-2 text-gray-600 font-semibold">Live Features</div>
+              <div className="text-xs sm:text-sm uppercase mt-2 mb-2 text-gray-600 font-semibold">Live Features</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {slide.demo.features.map((feature, i) => (
                   <div key={i} className="border border-primary rounded p-2 flex items-center gap-2 bg-gray-50">
@@ -343,7 +348,7 @@ export default function PresentationFeature() {
               </div>
               {slide.team && (
                 <div className="mt-5 border-t-2 border-primary pt-4">
-                  <div className="text-sm sm:text-base font-bold uppercase mb-3 text-primary">{slide.team.title}</div>
+                  <div className="text-xl font-bold uppercase mb-3 text-primary">{slide.team.title}</div>
                   <div className="space-y-2">
                     {slide.team.points.map((item, i) => (
                       <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700">
