@@ -41,6 +41,9 @@ export async function createAndSendTransaction(
     throw new Error('Missing wallet.signTransaction!')
   }
 
+  // Force signatures to be empty
+  transaction.signatures = []
+
   const signedTx = await wallet.signTransaction(transaction)
   console.log(`Signed Transaction: `, signedTx)
 
