@@ -67,7 +67,7 @@ const slides = [
       {
         step: '3',
         title: 'Execute',
-        desc: 'Auto transfer on schedule',
+        desc: 'Automatically execute when due',
       },
       {
         step: '4',
@@ -83,7 +83,9 @@ const slides = [
         { icon: '✓', text: 'TypeScript + React SDK', status: 'Live' },
       ],
     },
-    cta: 'tributary.so - Working on Devnet today',
+    video:
+      'https://www.youtube.com/embed/0irXnJaL_Rs?autoplay=1&enablejsapi=1&showinfo=0&controls=0&modestbranding=1&rel=0&loop=1',
+    cta: 'tributary.so - Devnet + Mainnet',
     footer: 'Built on SPL Token Extensions • Full source: github.com/tributary-so',
   },
   {
@@ -233,7 +235,10 @@ export default function PresentationFeature() {
                   {slide.comparison.rows.map((row, i) => (
                     <tr key={i} className="bg-gray-50">
                       {row.map((cell, j) => (
-                        <td key={j} className="border border-primary px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-700">
+                        <td
+                          key={j}
+                          className="border border-primary px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-700"
+                        >
                           {cell}
                         </td>
                       ))}
@@ -354,7 +359,11 @@ export default function PresentationFeature() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.5 }}
           >
-            {slide.cta && <div className="text-sm sm:text-base md:text-lg uppercase tracking-wide mb-2 text-primary font-bold">→ {slide.cta}</div>}
+            {slide.cta && (
+              <div className="text-sm sm:text-base md:text-lg uppercase tracking-wide mb-2 text-primary font-bold">
+                → {slide.cta}
+              </div>
+            )}
             {slide.footer && <div className="text-xs italic text-gray-400">{slide.footer}</div>}
           </motion.div>
         )}
@@ -412,7 +421,22 @@ export default function PresentationFeature() {
             transition={{ duration: 0.25 }}
             className="w-full h-full"
           >
-            {renderSlide(slides[currentSlide])}
+            {slides[currentSlide].video ? (
+              <div className="grid grid-cols-2 gap-2">
+                {renderSlide(slides[currentSlide])}
+                <div className="flex items-start justify-center">
+                  <iframe
+                    src={slides[currentSlide].video}
+                    title="Demo Video"
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              </div>
+            ) : (
+              <>{renderSlide(slides[currentSlide])}</>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
