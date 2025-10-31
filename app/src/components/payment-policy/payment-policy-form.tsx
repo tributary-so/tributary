@@ -107,7 +107,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   }
 
   const handleSubmit = async () => {
-    if (!wallet.publicKey || !wallet.signTransaction) {
+    if (!wallet.publicKey || !wallet.connected) {
       addToast({ title: 'Error', description: 'Please connect your wallet', color: 'danger' })
       return
     }

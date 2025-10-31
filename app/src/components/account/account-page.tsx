@@ -134,22 +134,16 @@ export default function AccountPage() {
       switch (frequencyKey) {
         case 'daily':
           return frequencyKey
-          break
         case 'weekly':
           return frequencyKey
-          break
         case 'monthly':
           return frequencyKey
-          break
         case 'quarterly':
           return frequencyKey
-          break
         case 'semiAnnually':
           return frequencyKey
-          break
         case 'annually':
           return frequencyKey
-          break
         case 'custom':
           intervalSeconds = ((paymentFrequency.custom as Record<string, unknown>)[0] as anchor.BN).toNumber()
           break
@@ -203,7 +197,7 @@ export default function AccountPage() {
   }
 
   const handleExecutePayment = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
-    if (!sdk || !wallet.publicKey) return toast.error('Wallet not connected')
+    if (!sdk || !wallet.publicKey || !wallet.connected) return toast.error('Wallet not connected')
     try {
       const gateway: PaymentGateway | null = await sdk.getPaymentGateway(policy.gateway)
       if (!gateway) return toast.error('Gateway not found')
@@ -231,7 +225,7 @@ export default function AccountPage() {
   }
 
   const handleToggleStatus = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
-    if (!sdk || !wallet.publicKey) return toast.error('Wallet not connected')
+    if (!sdk || !wallet.publicKey || !wallet.connected) return toast.error('Wallet not connected')
     if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
       return toast.error('Only the policy owner can change status')
     }
@@ -257,7 +251,7 @@ export default function AccountPage() {
   }
 
   const handleDeletePolicy = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
-    if (!sdk || !wallet.publicKey) return toast.error('Wallet not connected')
+    if (!sdk || !wallet.publicKey || !wallet.connected) return toast.error('Wallet not connected')
     if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
       return toast.error('Only the policy owner can delete')
     }
