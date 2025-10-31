@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Transaction } from "@solana/web3.js";
+import { TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { useTributarySDK } from "./useTributarySDK";
 import {
@@ -81,22 +81,16 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         params.approvalAmount,
         params.executeImmediately ?? true
       );
-
-      // Build transaction
-      const transaction = new Transaction();
-      instructions.forEach((ix: any) => transaction.add(ix));
-      transaction.feePayer = wallet.publicKey;
-
-      // Get recent blockhash
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-
-      // Sign and send transaction
+      const messageV0 = new TransactionMessage({
+        payerKey: wallet.publicKey,
+        recentBlockhash: blockhash,
+        instructions: instructions,
+      }).compileToV0Message();
+      const transaction = new VersionedTransaction(messageV0);
       const signedTx = await wallet.signTransaction(transaction);
       const txId = await connection.sendRawTransaction(signedTx.serialize());
-
-      // Confirm transaction
       await connection.confirmTransaction({
         signature: txId,
         blockhash,
