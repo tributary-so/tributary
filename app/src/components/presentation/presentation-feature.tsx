@@ -24,7 +24,7 @@ const slides = [
       headers: ['Solution', 'Problem', 'Tributary Advantage'],
       rows: [
         ['Squads Grid', 'Complex multi-sig setup, requires account creation', 'One-click approval, no setup'],
-        ['Helio (MoonPay)', 'Custodial, funds locked, centralized', 'Non-custodial, funds stay in wallet'],
+        ['Helio (MoonPay)', 'KYC required, Payment Reminders for subscriptions', 'Non-custodial, funds stay in wallet'],
         [
           'x402',
           'Require signing every payment, facilitator KYC',
