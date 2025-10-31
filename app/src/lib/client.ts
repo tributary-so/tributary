@@ -1,4 +1,10 @@
-import { Connection, Transaction, TransactionInstruction } from '@solana/web3.js'
+import {
+  Connection,
+  // Transaction,
+  TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
+} from '@solana/web3.js'
 import { WalletContextState } from '@solana/wallet-adapter-react'
 import { RecurringPaymentsSDK } from '@tributary-so/sdk'
 import { Wallet } from '@coral-xyz/anchor'
@@ -27,24 +33,23 @@ export async function createAndSendTransaction(
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
   console.log(`Wallet:`, wallet)
-  const transaction = new Transaction()
-  instructions.forEach((ix) => transaction.add(ix))
-  transaction.feePayer = wallet.publicKey
-  transaction.recentBlockhash = blockhash
-  transaction.signatures = [] // Force signatures to be empty
-
-  console.log(`Unsigned Transaction`, transaction)
+  const messageV0 = new TransactionMessage({
+    payerKey: wallet.publicKey,
+    recentBlockhash: blockhash,
+    instructions: instructions,
+  }).compileToV0Message()
+  const transaction = new VersionedTransaction(messageV0)
 
   // const txId = await wallet.sendTransaction(transaction, connection)
-
+  //
+  console.log(`Unsigned Transaction`, transaction)
   if (!wallet.signTransaction) {
     throw new Error('Missing wallet.signTransaction!')
   }
-
   const signedTx = await wallet.signTransaction(transaction)
-  console.log(`Signed Transaction: `, signedTx)
 
-  const txId = await connection.sendRawTransaction(signedTx.serialize())
+  console.log(`Signed Transaction: `, signedTx)
+  const txId = await connection.sendTransaction(signedTx)
 
   await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
   return txId
