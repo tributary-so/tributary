@@ -707,4 +707,4 @@ export class Tributary {
 }
 
 // legacy name
-export const RecurringPaymentsSDK = Tributary;
+export { Tributary as RecurringPaymentsSDK };
