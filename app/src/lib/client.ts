@@ -24,14 +24,14 @@ export async function createAndSendTransaction(
   if (!wallet.publicKey) {
     throw new Error('Wallet not connected')
   }
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
   console.log(`Wallet:`, wallet)
   const transaction = new Transaction()
   instructions.forEach((ix) => transaction.add(ix))
   transaction.feePayer = wallet.publicKey
-
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
+  transaction.signatures = [] // Force signatures to be empty
 
   console.log(`Unsigned Transaction`, transaction)
 
@@ -40,9 +40,6 @@ export async function createAndSendTransaction(
   if (!wallet.signTransaction) {
     throw new Error('Missing wallet.signTransaction!')
   }
-
-  // Force signatures to be empty
-  transaction.signatures = []
 
   const signedTx = await wallet.signTransaction(transaction)
   console.log(`Signed Transaction: `, signedTx)
