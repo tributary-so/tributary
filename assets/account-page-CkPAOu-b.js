@@ -1,4 +1,4 @@
-import{j as s,c as Mt}from"./ui-vendor-hyNDTlrI.js";import{R as I,r as P,L as Pt,J as kt}from"./wallet-adapter-D9AatMge.js";import{C as st,b as it,u as jt,d as Dt,a as L}from"./copy-Cukwl4Sn.js";import{b as Nt}from"./solana-vendor-B9K9-FNn.js";import{c as R}from"./createLucideIcon-CkbqrUwR.js";/**
+import{j as s,c as Mt}from"./ui-vendor-hyNDTlrI.js";import{R as I,r as P,L as Pt,J as kt}from"./wallet-adapter-D9AatMge.js";import{C as st,b as it,u as jt,d as Dt,a as L}from"./copy-BgNcXI7D.js";import{b as Nt}from"./solana-vendor-B9K9-FNn.js";import{c as R}from"./createLucideIcon-CkbqrUwR.js";/**
  * @license lucide-react v0.544.0 - ISC
  *
  * This source code is licensed under the ISC license.
