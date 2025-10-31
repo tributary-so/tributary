@@ -143,12 +143,7 @@ const slides = [
     title: 'GET STARTED',
     subtitle: 'Recurring payments & donations for Web3',
     imageUrl: '/proud.svg',
-    points: [
-      'SDK for recurring payments integration',
-      'Badge for monthly donations via contribute.so',
-      // starting at 31. Oct 2025
-      '🎉 50% off of protocol fees for the next 6 months 🎉',
-    ],
+    points: ['SDK for recurring payments integration', 'Badge for monthly donations via contribute.so'],
     sideImage: '/demo-contribute.so-form.png',
     footer: 'tributary.so • Built on Solana',
     qrCodes: [{ url: 'https://contribute.so', title: 'contribute.so' }],
