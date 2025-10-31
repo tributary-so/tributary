@@ -32,18 +32,7 @@ export async function createAndSendTransaction(
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
 
-  let txId: string
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  const walletAny = wallet as any
-  if (walletAny.signAndSendTransaction) {
-    const result = await walletAny.signAndSendTransaction(transaction)
-    txId = result.signature
-  } else if (wallet.signTransaction) {
-    const signedTx = await wallet.signTransaction(transaction)
-    txId = await connection.sendRawTransaction(signedTx.serialize())
-  } else {
-    throw new Error('Wallet does not support transaction signing')
-  }
+  const txId = await wallet.sendTransaction(transaction, connection)
 
   await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
   return txId
