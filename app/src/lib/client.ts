@@ -12,17 +12,6 @@ export function useSDK(wallet: WalletContextState, connection: Connection) {
   return new RecurringPaymentsSDK(connection, wallet as any as Wallet)
 }
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    solana?: any
-    phantom?: {
-      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-      solana?: any
-    }
-  }
-}
-
 /**
  * Creates a transaction from instructions, signs it, sends it, and confirms it
  * Handles both desktop (signTransaction) and mobile (signAndSendTransaction) flows
@@ -34,19 +23,6 @@ export async function createAndSendTransaction(
 ): Promise<string> {
   if (!wallet.publicKey) {
     throw new Error('Wallet not connected')
-  }
-
-  // Check if mobile browser without injected wallet
-  const isMobile = /Android|iPhone/i.test(navigator.userAgent)
-
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  const hasInjectedWallet = window.solana || (window as any).phantom?.solana
-
-  if (isMobile && !hasInjectedWallet) {
-    // Redirect to Phantom browser
-    const dappUrl = encodeURIComponent(window.location.href)
-    window.location.href = `https://phantom.app/ul/browse/${dappUrl}`
-    throw new Error('Redirecting to Phantom...')
   }
 
   console.log(wallet)
