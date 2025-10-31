@@ -1,4 +1,3 @@
-import { WalletError } from '@solana/wallet-adapter-base'
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import React, { useCallback, useMemo } from 'react'
@@ -13,10 +12,8 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
   const { cluster } = useCluster()
   const endpoint = useMemo(() => cluster.endpoint, [cluster])
   const wallets = useMemo(() => [new PhantomWalletAdapter(), new SolflareWalletAdapter(), new TorusWalletAdapter()], [])
-  const onError = useCallback((error: WalletError) => {
-    console.error(error)
-    console.trace(error)
-  }, [])
+
+  const onError = useCallback(() => {}, [])
 
   return (
     <ConnectionProvider endpoint={endpoint}>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { PublicKey, Transaction } from '@solana/web3.js'
+import { PublicKey } from '@solana/web3.js'
 import * as anchor from '@coral-xyz/anchor'
-import { useSDK } from '@/lib/client'
+import { useSDK, createAndSendTransaction } from '@/lib/client'
 import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
 import { Play, Pause, Trash2, RotateCcw, Copy, Check } from '../../icons'
 import { toast } from 'sonner'
@@ -214,10 +214,8 @@ export default function AccountPage() {
         return toast.error('Only the gateway authority can execute payments')
       }
       setExecutingPayments((prev) => new Set(prev).add(policyPublicKey.toString()))
-      const tx = new Transaction()
       const executeIxs = await sdk.executePayment(policyPublicKey)
-      executeIxs.map((instruction) => tx.add(instruction))
-      const txid = await sdk.provider.sendAndConfirm(tx)
+      const txid = await createAndSendTransaction(executeIxs, wallet, connection)
       toast.success(`Payment executed! TX: ${txid}`)
       setLoaded(false)
     } catch (err) {
@@ -242,10 +240,8 @@ export default function AccountPage() {
       const currentStatus = policy.status as Record<string, unknown>
       const isCurrentlyActive = currentStatus.active
       const newStatus = isCurrentlyActive ? { paused: {} } : { active: {} }
-      const tx = new Transaction()
       const toggleIx = await sdk.changePaymentPolicyStatus(userPayment.tokenMint, policy.policyId, newStatus)
-      tx.add(toggleIx)
-      await sdk.provider.sendAndConfirm(tx)
+      await createAndSendTransaction([toggleIx], wallet, connection)
       toast.success(`Payment policy ${isCurrentlyActive ? 'paused' : 'resumed'}!`)
       setLoaded(false)
     } catch (err) {
@@ -268,10 +264,8 @@ export default function AccountPage() {
     if (!confirm('Delete this payment policy? This cannot be undone.')) return
     try {
       setDeletingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
-      const tx = new Transaction()
       const deleteIx = await sdk.deletePaymentPolicy(userPayment.tokenMint, policy.policyId)
-      tx.add(deleteIx)
-      await sdk.provider.sendAndConfirm(tx)
+      await createAndSendTransaction([deleteIx], wallet, connection)
       toast.success('Payment policy deleted!')
       setLoaded(false)
     } catch (err) {
