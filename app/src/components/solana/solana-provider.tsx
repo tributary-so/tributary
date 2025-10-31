@@ -12,6 +12,7 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
   const endpoint = useMemo(() => cluster.endpoint, [cluster])
   const onError = useCallback((error: WalletError) => {
     console.error(error)
+    console.trace(error)
   }, [])
 
   return (
