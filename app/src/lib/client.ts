@@ -25,8 +25,7 @@ export async function createAndSendTransaction(
     throw new Error('Wallet not connected')
   }
 
-  console.log(wallet)
-  console.log(connection)
+  console.log(`Wallet:`, wallet)
   const transaction = new Transaction()
   instructions.forEach((ix) => transaction.add(ix))
   transaction.feePayer = wallet.publicKey
@@ -34,7 +33,7 @@ export async function createAndSendTransaction(
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
 
-  console.log(transaction)
+  console.log(`Unsigned Transaction`, transaction)
 
   // const txId = await wallet.sendTransaction(transaction, connection)
 
@@ -43,7 +42,7 @@ export async function createAndSendTransaction(
   }
 
   const signedTx = await wallet.signTransaction(transaction)
-  console.log(signedTx)
+  console.log(`Signed Transaction: `, signedTx)
 
   const txId = await connection.sendRawTransaction(signedTx.serialize())
 
