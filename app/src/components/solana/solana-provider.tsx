@@ -14,12 +14,10 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
     console.error(error)
   }, [])
 
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={[]} onError={onError} autoConnect={true}>
-        {isMobile ? children : <WalletModalProvider>{children}</WalletModalProvider>}
+        <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   )
