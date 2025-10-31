@@ -35,7 +35,17 @@ export async function createAndSendTransaction(
   transaction.recentBlockhash = blockhash
 
   console.log(transaction)
-  const txId = await wallet.sendTransaction(transaction, connection)
+
+  // const txId = await wallet.sendTransaction(transaction, connection)
+
+  if (!wallet.signTransaction) {
+    throw new Error('Missing wallet.signTransaction!')
+  }
+
+  const signedTx = await wallet.signTransaction(transaction)
+  console.log(signedTx)
+
+  const txId = await connection.sendRawTransaction(signedTx.serialize())
 
   await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
   return txId
