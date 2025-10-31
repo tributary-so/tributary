@@ -138,9 +138,15 @@ const slides = [
     title: 'GET STARTED',
     subtitle: 'Recurring payments & donations for Web3',
     imageUrl: '/proud.svg',
-    points: ['SDK for recurring payments integration', 'Badge for monthly donations via contribute.so'],
+    points: [
+      'SDK for recurring payments integration',
+      'Badge for monthly donations via contribute.so',
+      // starting at 31. Oct 2025
+      '🎉 50% off of protocol fees for the next 6 months 🎉',
+    ],
+    sideImage: '/demo-contribute.so-form.png',
     footer: 'tributary.so • Built on Solana',
-    qrCodes: ['https://contribute.so'],
+    qrCodes: [{ url: 'https://contribute.so', title: 'contribute.so' }],
   },
 ]
 
@@ -378,7 +384,7 @@ export default function PresentationFeature() {
             <div className="flex justify-center">
               {slide.qrCodes.map((item, i) => (
                 <div key={i}>
-                  <QRCodeGenerator text={item} size="180px" />
+                  <QRCodeGenerator url={item.url} text={item.title} size="180px" />
                 </div>
               ))}
             </div>
@@ -421,18 +427,26 @@ export default function PresentationFeature() {
             transition={{ duration: 0.25 }}
             className="w-full h-full"
           >
-            {slides[currentSlide].video ? (
+            {slides[currentSlide].video || slides[currentSlide].sideImage ? (
               <div className="grid grid-cols-2 gap-2">
                 {renderSlide(slides[currentSlide])}
-                <div className="flex items-start justify-center">
-                  <iframe
-                    src={slides[currentSlide].video}
-                    title="Demo Video"
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                </div>
+                {slides[currentSlide].video && (
+                  <div className="flex items-start justify-center">
+                    <iframe
+                      src={slides[currentSlide].video}
+                      title="Demo Video"
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                )}
+
+                {slides[currentSlide].sideImage && (
+                  <div className="flex items-center justify-center">
+                    <img className="h-100" src={slides[currentSlide].sideImage} />
+                  </div>
+                )}
               </div>
             ) : (
               <>{renderSlide(slides[currentSlide])}</>

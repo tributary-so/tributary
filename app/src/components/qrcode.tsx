@@ -3,17 +3,18 @@ import { generateQrCodeImage } from 'dfts-qrcode'
 
 export interface QRCodeProps {
   text: string
+  url: string
   size?: string
 }
 
-export default function QRCodeGenerator({ text = 'https://example.com', size = '128px' }: QRCodeProps) {
+export default function QRCodeGenerator({ text, url, size = '128px' }: QRCodeProps) {
   const qrRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!qrRef.current) return
 
     try {
-      const { image } = generateQrCodeImage(text)
+      const { image } = generateQrCodeImage(url)
 
       // Clear previous QR code
       qrRef.current.innerHTML = ''
@@ -25,12 +26,12 @@ export default function QRCodeGenerator({ text = 'https://example.com', size = '
     } catch (error) {
       console.error('Error generating QR code:', error)
     }
-  }, [text, size])
+  }, [text, url, size])
 
   return (
     <div>
       <div ref={qrRef} className="bg-white p-4 rounded-lg -m-5" />
-      <a href={text} className="text-xs italic text-gray-400 ml-5 underline underline-offset-4">
+      <a href={url} className="text-xl italic text-gray-400 ml-5 underline underline-offset-4">
         {text}
       </a>
     </div>
