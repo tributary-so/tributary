@@ -54,7 +54,7 @@ function App() {
           </nav>
           <a
             href="https://app.tributary.so"
-            className="bg-primary hover:bg-secondary text-white px-6 py-2 rounded-lg transition-all font-semibold shadow-md"
+            className="bg-primary hover:bg-secondary text-white px-4 py-2 md:px-6 md:py-2 rounded-lg transition-all font-semibold shadow-md text-sm md:text-base"
           >
             Open App
           </a>
@@ -64,7 +64,7 @@ function App() {
       {/* Hero Section */}
       <section className="relative overflow-hidden py-24 px-4 text-center bg-gradient-to-br from-white to-neutral-100">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-6xl md:text-7xl font-extrabold mb-6 leading-tight text-neutral-900">
+          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight text-neutral-900">
             Automated Recurring Payments for the{" "}
             <span className="bg-gradient-to-r from-[#9945FF] to-[#14F195] bg-clip-text text-transparent font-bold">
               Solana
@@ -225,18 +225,18 @@ function App() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center mb-16">
             <div>
               <div className="space-y-8">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md self-start sm:self-auto">
                     1
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold mb-2 text-neutral-900">
+                  <div className="w-full">
+                    <h3 className="text-xl md:text-2xl font-semibold mb-2 text-neutral-900">
                       User Approves Subscription
                     </h3>
-                    <p className="text-neutral-600 text-lg">
+                    <p className="text-neutral-600 text-base md:text-lg break-words">
                       User signs a single transaction granting delegate
                       permissions to Tributary's smart contract for a specific
                       token amount and payment schedule. Funds remain in their
@@ -244,30 +244,30 @@ function App() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-4">
-                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md self-start sm:self-auto">
                     2
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold mb-2 text-neutral-900">
+                  <div className="w-full">
+                    <h3 className="text-xl md:text-2xl font-semibold mb-2 text-neutral-900">
                       Tributary Executes Payment
                     </h3>
-                    <p className="text-neutral-600 text-lg">
+                    <p className="text-neutral-600 text-base md:text-lg break-words">
                       Our permissionless smart contract automatically processes
                       payments according to the agreed schedule (e.g., weekly,
                       monthly, custom intervals) when due.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-4">
-                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md self-start sm:self-auto">
                     3
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold mb-2 text-neutral-900">
+                  <div className="w-full">
+                    <h3 className="text-xl md:text-2xl font-semibold mb-2 text-neutral-900">
                       Funds Flow to Recipient
                     </h3>
-                    <p className="text-neutral-600 text-lg">
+                    <p className="text-neutral-600 text-base md:text-lg break-words">
                       Funds transfer directly from the user's token account to
                       the recipient's account. No escrow, no risk – just
                       reliable, automated payments with full transparency.
@@ -276,7 +276,7 @@ function App() {
                 </div>
               </div>
             </div>
-            <div className="m-3">
+            <div className="w-full max-w-full overflow-hidden">
               <CodeBlock
                 title="React SDK Integration Example"
                 language="ts"
@@ -306,10 +306,10 @@ import { BN } from '@coral-xyz/anchor'
 
           {/* Use Cases */}
           <div className="text-center mb-12">
-            <h3 className="text-4xl font-bold mb-8 text-neutral-900">
+            <h3 className="text-2xl md:text-4xl font-bold mb-8 text-neutral-900">
               Perfect for any recurring revenue model on Solana
             </h3>
-            <div className="grid md:grid-cols-4 gap-6">
+            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
               <div className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
                 <div className="text-primary mb-4 text-4xl">💡</div>{" "}
                 {/* Icon placeholder */}
