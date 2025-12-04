@@ -14,8 +14,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 import SubscriptionButtonExample from "./SubscriptionButtonExample";
 import "./index.css";
 
-const endpoint =
-  import.meta.env.VITE_SOLANA_API ?? clusterApiUrl("mainnet-beta");
+const endpoint = import.meta.env.VITE_SOLANA_API ?? clusterApiUrl("devnet");
 console.log(`Using endpoint: ${endpoint}`);
 const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
 
