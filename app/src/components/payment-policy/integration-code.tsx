@@ -115,7 +115,7 @@ import { BN } from '@coral-xyz/anchor'
         interval={interval}
         custom_interval={customInterval}
         memo={validated.memo}
-        label={`Subscribe for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
+        label={`➤ Wallet for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
         executeImmediately={true}
         className="bg-blue-600 hover:bg-blue-700 text-white"
         radius="md"
@@ -133,7 +133,7 @@ import { BN } from '@coral-xyz/anchor'
           interval={interval}
           custom_interval={customInterval}
           memo={validated.memo}
-          label={`Subscribe for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
+          label={`ılıılııl ActionCode for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
           executeImmediately={true}
           radius="md"
           size="md"
