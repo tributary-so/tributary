@@ -11,7 +11,7 @@ import {
 } from "../types";
 import { PaymentFrequency, createMemoBuffer } from "@tributary-so/sdk";
 
-function createPaymentFrequency(
+export function createPaymentFrequency(
   interval: PaymentInterval,
   seconds?: number
 ): PaymentFrequency {

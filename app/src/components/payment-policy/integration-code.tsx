@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SubscriptionButton, PaymentInterval } from '@tributary-so/sdk-react'
+import { SubscriptionButton, SubscriptionButtonWithCode, PaymentInterval } from '@tributary-so/sdk-react'
 import { Copy, Check } from '../../icons'
 import { PaymentPolicyFormData } from './payment-policy-form'
 import { getTokenPrecisionAtom } from '@/lib/token-store'
@@ -124,6 +124,21 @@ import { BN } from '@coral-xyz/anchor'
         // onError={handleError}
       />
 
+      <div className="flex justify-center">
+        <SubscriptionButtonWithCode
+          amount={validated.amount}
+          token={new PublicKey(validated.tokenMint)}
+          gateway={new PublicKey(validated.gateway)}
+          maxRenewals={12}
+          interval={interval}
+          custom_interval={customInterval}
+          memo={validated.memo}
+          label={`Subscribe for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
+          executeImmediately={true}
+          radius="md"
+          size="md"
+        />
+      </div>
       <div>
         <div className="flex justify-between items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-t">
           <span className="text-xs font-semibold uppercase text-gray-600">React Code</span>
