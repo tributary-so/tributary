@@ -8,6 +8,8 @@ import { BN } from '@coral-xyz/anchor'
 import { PublicKey } from '@solana/web3.js'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { ghcolors } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 
 interface IntegrationCodeProps {
   formData: PaymentPolicyFormData
@@ -71,6 +73,7 @@ function getPaymentInterval(
 export default function IntegrationCode({ formData }: IntegrationCodeProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
+  const { connected } = useWallet()
 
   const validated = getValidatedFormData(formData, getTokenPrecision)
   const { interval, customInterval } = getPaymentInterval(validated.frequency, validated.intervalSeconds)
@@ -106,25 +109,28 @@ import { BN } from '@coral-xyz/anchor'
     <div className="max-w-[500px] space-y-4">
       <p className="text-sm text-gray-600">Copy/Paste the react code below to get your own custom button!</p>
 
-      <SubscriptionButton
-        amount={validated.amount}
-        token={new PublicKey(validated.tokenMint)}
-        recipient={new PublicKey(validated.recipient)}
-        gateway={new PublicKey(validated.gateway)}
-        maxRenewals={12}
-        interval={interval}
-        custom_interval={customInterval}
-        memo={validated.memo}
-        label={`➤ Wallet for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
-        executeImmediately={true}
-        className="bg-blue-600 hover:bg-blue-700 text-white"
-        radius="md"
-        size="md"
-        // onSuccess={handleSuccess}
-        // onError={handleError}
-      />
-
-      <div className="flex justify-center">
+      <div className="flex gap-6 justify-center">
+        {connected ? (
+          <SubscriptionButton
+            amount={validated.amount}
+            token={new PublicKey(validated.tokenMint)}
+            recipient={new PublicKey(validated.recipient)}
+            gateway={new PublicKey(validated.gateway)}
+            maxRenewals={12}
+            interval={interval}
+            custom_interval={customInterval}
+            memo={validated.memo}
+            label={`➤ Wallet for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
+            executeImmediately={true}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            radius="md"
+            size="md"
+            // onSuccess={handleSuccess}
+            // onError={handleError}
+          />
+        ) : (
+          <WalletMultiButton />
+        )}
         <SubscriptionButtonWithCode
           amount={validated.amount}
           token={new PublicKey(validated.tokenMint)}
