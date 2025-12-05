@@ -74,7 +74,7 @@ export const useActionCode = () => {
       return undefined;
     };
 
-    const apiKey = getApiKey();
+    const apiKey = getApiKey() ?? "kfTLXFBGzWdqhqZVKD5P0EBJbWoAXlAEfhZguphX9aI";
 
     clientRef.current = new ActionCodesClient(environment, {
       adapters: {
