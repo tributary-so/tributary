@@ -8,7 +8,7 @@ import {
 } from "../";
 import { Loader2 } from "lucide-react";
 
-interface SubscriptionButtonProps {
+export interface SubscriptionButtonProps {
   amount: BN;
   token: PublicKey;
   recipient: PublicKey;
