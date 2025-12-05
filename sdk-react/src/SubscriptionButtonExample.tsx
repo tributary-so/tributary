@@ -5,6 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { SubscriptionButtonWithCode } from "./components/SubscriptionWithCodeButton";
 
 // Default configuration constants
 const DEFAULT_CONFIG = {
@@ -59,21 +60,36 @@ const SubscriptionButtonExample: React.FC = () => {
               Cancel anytime.
             </p>
             {connected ? (
-              <SubscriptionButton
-                amount={DEFAULT_CONFIG.AMOUNT}
-                token={DEFAULT_CONFIG.TOKEN}
-                recipient={DEFAULT_CONFIG.RECIPIENT}
-                gateway={DEFAULT_CONFIG.GATEWAY}
-                interval={PaymentInterval.Monthly}
-                maxRenewals={12}
-                memo="Example subscription - Landing page demo"
-                approvalAmount={DEFAULT_CONFIG.APPROVAL_AMOUNT}
-                executeImmediately={true}
-                label="Subscribe for $0.001/month"
-                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:-translate-y-1 hover:scale-105"
-                onSuccess={handleSuccess}
-                onError={handleError}
-              />
+              <div className="flex gap-6 justify-center">
+                <SubscriptionButton
+                  amount={DEFAULT_CONFIG.AMOUNT}
+                  token={DEFAULT_CONFIG.TOKEN}
+                  recipient={DEFAULT_CONFIG.RECIPIENT}
+                  gateway={DEFAULT_CONFIG.GATEWAY}
+                  interval={PaymentInterval.Monthly}
+                  maxRenewals={12}
+                  memo="Example subscription - Landing page demo"
+                  approvalAmount={DEFAULT_CONFIG.APPROVAL_AMOUNT}
+                  executeImmediately={true}
+                  label="Subscribe for $0.001/month"
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:-translate-y-1 hover:scale-105"
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                />
+                <SubscriptionButtonWithCode
+                  amount={DEFAULT_CONFIG.AMOUNT}
+                  token={DEFAULT_CONFIG.TOKEN}
+                  gateway={DEFAULT_CONFIG.GATEWAY}
+                  interval={PaymentInterval.Monthly}
+                  maxRenewals={12}
+                  memo="Example subscription - Landing page demo"
+                  approvalAmount={DEFAULT_CONFIG.APPROVAL_AMOUNT}
+                  executeImmediately={true}
+                  label="ActionCode for $0.001/month"
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                />
+              </div>
             ) : (
               <WalletMultiButton className="w-full bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:-translate-y-1 hover:scale-105" />
             )}

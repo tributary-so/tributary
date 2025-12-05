@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 // import tailwindcss from '@tailwindcss/vite'
 // import viteTsconfigPaths from 'vite-tsconfig-paths'
-// import { resolve } from "node:path";
+import { resolve } from "node:path";
 import inject from "@rollup/plugin-inject";
 
 // https://vite.dev/config/
@@ -13,6 +13,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@": resolve(__dirname, "src"),
       // https://stackoverflow.com/posts/75778243/revisions
       "node-fetch": "isomorphic-fetch",
     },
