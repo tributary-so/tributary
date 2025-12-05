@@ -66,9 +66,12 @@ export const useActionCode = () => {
         // Fallback for IIFE builds
       }
       // Fallback: try process.env (Node.js/CJS) or return undefined
-      return typeof process !== "undefined" && process.env
-        ? process.env.VITE_ACP_API_KEY
-        : undefined;
+      if (typeof process !== "undefined" && process.env) {
+        return (
+          process.env.VITE_ACP_API_KEY || process.env.NEXT_PUBLIC_ACP_API_KEY
+        );
+      }
+      return undefined;
     };
 
     const apiKey = getApiKey();
