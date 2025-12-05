@@ -14,6 +14,7 @@
     "@types/feather-icons": "^4.29.4",
     "aos": "3.0.0-beta.6",
     "feather-icons": "^4.29.2",
+    "framer-motion": "^12.23.22",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

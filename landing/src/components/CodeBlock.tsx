@@ -32,13 +32,13 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, title }) => {
   };
 
   return (
-    <div className="relative overflow-hidden shadow-lg bg-slate-900 rounded-lg border bg-white w-full max-w-full">
+    <div className="relative overflow-hidden shadow-lg rounded-lg border bg-white w-full max-w-full">
       {title && (
-        <div className="bg-neutral-700 px-4 py-2 text-neutral-300 text-sm font-semibold">
+        <div className="bg-neutral-700 px-4 py-2 text-neutral-300 text-sm font-semibold rounded-t-2xl">
           {title}
         </div>
       )}
-      <div className="p-2 overflow-x-auto text-sm max-w-full">
+      <div className="p-6 overflow-x-auto text-sm max-w-full">
         <div
           dangerouslySetInnerHTML={{ __html: highlightedCode }}
           className="max-w-full"
@@ -46,7 +46,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, title }) => {
       </div>
       <button
         onClick={handleCopy}
-        className="absolute bottom-2 right-2 bg-neutral-700 hover:bg-neutral-600 text-white text-xs px-3 py-1 rounded-md transition-colors"
+        className="absolute bottom-4 right-4 bg-electric hover:bg-primary text-white text-xs px-4 py-2 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
       >
         {copyButtonText}
       </button>
