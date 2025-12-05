@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 import logo from "./assets/logo.png";
 import CodeBlock from "./components/CodeBlock";
 
@@ -10,138 +11,213 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
       {/* Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-white shadow-sm py-4 px-4">
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="sticky top-0 z-50 glass py-4 px-4"
+      >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2 text-2xl font-bold text-primary">
-            <img src={logo} alt="Tributary Logo" className="h-8 w-8" />
-            <span className="bg-gradient-to-r from-[#9945FF] to-[#14F195] bg-clip-text text-transparent font-bold">
-              Tributary
-            </span>
-          </div>
+          <motion.div
+            className="flex items-center gap-3 text-2xl font-bold"
+            whileHover={{ scale: 1.05 }}
+          >
+            <img src={logo} alt="Tributary Logo" className="h-10 w-10" />
+            <span className="gradient-text font-bold text-2xl">Tributary</span>
+          </motion.div>
           <nav className="hidden md:flex space-x-8">
-            <a
+            <motion.a
               href="#features"
-              className="text-neutral-600 hover:text-primary transition-colors"
+              className="text-neutral-700 hover:text-primary transition-colors font-medium"
+              whileHover={{ scale: 1.1 }}
             >
               Features
-            </a>
-            <a
+            </motion.a>
+            <motion.a
               href="#how-it-works"
-              className="text-neutral-600 hover:text-primary transition-colors"
+              className="text-neutral-700 hover:text-primary transition-colors font-medium"
+              whileHover={{ scale: 1.1 }}
             >
               How It Works
-            </a>
-            <a
+            </motion.a>
+            <motion.a
               href="#pricing"
-              className="text-neutral-600 hover:text-primary transition-colors"
+              className="text-neutral-700 hover:text-primary transition-colors font-medium"
+              whileHover={{ scale: 1.1 }}
             >
               Pricing
-            </a>
-            <a
+            </motion.a>
+            <motion.a
               href="#testimonials"
-              className="text-neutral-600 hover:text-primary transition-colors"
+              className="text-neutral-700 hover:text-primary transition-colors font-medium"
+              whileHover={{ scale: 1.1 }}
             >
               Testimonials
-            </a>
-            <a
+            </motion.a>
+            <motion.a
               href="#faq"
-              className="text-neutral-600 hover:text-primary transition-colors"
+              className="text-neutral-700 hover:text-primary transition-colors font-medium"
+              whileHover={{ scale: 1.1 }}
             >
               FAQ
-            </a>
+            </motion.a>
           </nav>
-          <a
+          <motion.a
             href="https://app.tributary.so"
-            className="bg-primary hover:bg-secondary text-white px-4 py-2 md:px-6 md:py-2 rounded-lg transition-all font-semibold shadow-md text-sm md:text-base"
+            className="btn-primary text-sm md:text-base"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             Open App
-          </a>
+          </motion.a>
         </div>
-      </header>
+      </motion.header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-24 px-4 text-center bg-gradient-to-br from-white to-neutral-100">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight text-neutral-900">
+      <section className="relative overflow-hidden py-32 px-4 text-center bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-6xl mx-auto"
+        >
+          <motion.h1
+            className="text-6xl md:text-8xl font-extrabold mb-8 leading-tight"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.2 }}
+          >
             Automated Recurring Payments for the{" "}
-            <span className="bg-gradient-to-r from-[#9945FF] to-[#14F195] bg-clip-text text-transparent font-bold">
-              Solana
-            </span>{" "}
-            Ecosystem
-          </h1>
-          <p className="text-xl md:text-2xl text-neutral-600 mb-12 max-w-3xl mx-auto leading-relaxed">
+            <span className="gradient-text font-bold">Solana</span> Ecosystem
+          </motion.h1>
+          <motion.p
+            className="text-xl md:text-2xl text-neutral-600 mb-12 max-w-4xl mx-auto leading-relaxed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+          >
             Tributary brings Web2's subscription simplicity to Web3. Users
             approve once, payments flow seamlessly and securely, directly from
             their token accounts.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <a
+          </motion.p>
+          <motion.div
+            className="flex flex-col sm:flex-row gap-6 justify-center mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+          >
+            <motion.a
               href="https://docs.tributary.so/how"
-              className="bg-primary hover:bg-secondary text-white font-semibold py-4 px-10 rounded-full transition-all text-lg shadow-lg"
+              className="btn-primary text-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               Start Building
-            </a>
-            <a
+            </motion.a>
+            <motion.a
               href="https://docs.tributary.so"
-              className="border border-primary text-primary hover:bg-primary hover:text-white font-semibold py-4 px-10 rounded-full transition-all text-lg shadow-md"
+              className="btn-secondary text-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               View Documentation
-            </a>
-          </div>
-          {/* Product Showcase Placeholder */}
-          <div className="relative w-full max-w-4xl mx-auto bg-neutral-200 border-neutral-300">
+            </motion.a>
+          </motion.div>
+          {/* Product Showcase */}
+          <motion.div
+            className="relative w-full max-w-5xl mx-auto glass rounded-3xl p-8 shadow-2xl"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.8 }}
+          >
             <img
               src="/product-screenshot.png"
               alt="Product Screenshot"
-              className="w-full h-auto"
+              className="w-full h-auto rounded-2xl shadow-lg"
             />
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* Trust & Social Proof */}
-      <section className="py-16 px-4 bg-neutral-100">
+      <motion.section
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        className="py-20 px-4 bg-neutral-100"
+      >
         <div className="max-w-7xl mx-auto text-center">
-          <p className="text-neutral-500 text-lg mb-8">
+          <motion.p
+            className="text-neutral-600 text-xl mb-12"
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6 }}
+          >
             Trusted by innovative projects and developers on Solana
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-8 opacity-70">
-            {/* Replace with actual logos */}
-            <span className="text-neutral-700 font-semibold text-xl">
+          </motion.p>
+          <motion.div
+            className="flex flex-wrap justify-center items-center gap-x-20 gap-y-10"
+            initial={{ y: 30, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <motion.span
+              className="text-primary font-bold text-2xl"
+              whileHover={{ scale: 1.1 }}
+            >
               Solana
-            </span>
-            <span className="text-neutral-700 font-semibold text-xl">
+            </motion.span>
+            <motion.span
+              className="text-primary font-bold text-2xl"
+              whileHover={{ scale: 1.1 }}
+            >
               DeFi Protocols
-            </span>
-            <span className="text-neutral-700 font-semibold text-xl">
+            </motion.span>
+            <motion.span
+              className="text-primary font-bold text-2xl"
+              whileHover={{ scale: 1.1 }}
+            >
               SaaS Platforms
-            </span>
-            <span className="text-neutral-700 font-semibold text-xl">
+            </motion.span>
+            <motion.span
+              className="text-primary font-bold text-2xl"
+              whileHover={{ scale: 1.1 }}
+            >
               Content Creators
-            </span>
-          </div>
+            </motion.span>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Benefits Section */}
-      <section id="features" className="py-20 px-4 bg-white">
+      <section id="features" className="py-24 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold mb-6 text-neutral-900">
+          <motion.div
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-8 gradient-text">
               Built for the future of Web3 payments
             </h2>
-            <p className="text-xl text-neutral-600 max-w-3xl mx-auto">
+            <p className="text-xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
               Everything you need to implement subscription payments that users
               actually want to use, with unparalleled transparency and control.
             </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-sm text-center">
-              <div className="text-primary mb-6 text-5xl">⚡</div>{" "}
-              {/* Icon placeholder */}
-              <h3 className="text-2xl font-bold mb-4 text-neutral-900">
+          </motion.div>
+          <div className="grid md:grid-cols-3 gap-12">
+            <motion.div
+              className="card text-center"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="text-electric mb-8 text-6xl">⚡</div>
+              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
                 Truly Automated
               </h3>
               <p className="text-neutral-600 leading-relaxed">
@@ -149,11 +225,16 @@ function App() {
                 to smart contract rules users agreed to, without manual
                 intervention.
               </p>
-            </div>
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-sm text-center">
-              <div className="text-accent mb-6 text-5xl">🔒</div>{" "}
-              {/* Icon placeholder */}
-              <h3 className="text-2xl font-bold mb-4 text-neutral-900">
+            </motion.div>
+            <motion.div
+              className="card text-center"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="text-accent mb-8 text-6xl">🔒</div>
+              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
                 Non-Custodial & Secure
               </h3>
               <p className="text-neutral-600 leading-relaxed">
@@ -161,11 +242,16 @@ function App() {
                 full custody of their funds with transparent, auditable smart
                 contracts.
               </p>
-            </div>
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-sm text-center">
-              <div className="text-secondary mb-6 text-5xl">🚀</div>{" "}
-              {/* Icon placeholder */}
-              <h3 className="text-2xl font-bold mb-4 text-neutral-900">
+            </motion.div>
+            <motion.div
+              className="card text-center"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="text-primary mb-8 text-6xl">🚀</div>
+              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
                 Lightning Fast & Low Cost
               </h3>
               <p className="text-neutral-600 leading-relaxed">
@@ -173,11 +259,16 @@ function App() {
                 payment processing perfect for micro-subscriptions and global
                 reach.
               </p>
-            </div>
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-sm text-center">
-              <div className="text-primary mb-6 text-5xl">💻</div>{" "}
-              {/* Icon placeholder */}
-              <h3 className="text-2xl font-bold mb-4 text-neutral-900">
+            </motion.div>
+            <motion.div
+              className="card text-center"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="text-electric mb-8 text-6xl">💻</div>
+              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
                 Developer First
               </h3>
               <p className="text-neutral-600 leading-relaxed">
@@ -185,98 +276,146 @@ function App() {
                 detailed documentation. Integrate subscription payments in
                 minutes, not weeks.
               </p>
-            </div>
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-sm text-center">
-              <div className="text-accent mb-6 text-5xl">⚙️</div>{" "}
-              {/* Icon placeholder */}
-              <h3 className="text-2xl font-bold mb-4 text-neutral-900">
+            </motion.div>
+            <motion.div
+              className="card text-center"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="text-accent mb-8 text-6xl">⚙️</div>
+              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
                 Flexible Payment Policies
               </h3>
               <p className="text-neutral-600 leading-relaxed">
                 Support multiple payment types: subscriptions, installments,
                 usage-based billing, and more. Adapt to any Web3 business model.
               </p>
-            </div>
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-sm text-center">
-              <div className="text-secondary mb-6 text-5xl">🤝</div>{" "}
-              {/* Icon placeholder */}
-              <h3 className="text-2xl font-bold mb-4 text-neutral-900">
+            </motion.div>
+            <motion.div
+              className="card text-center"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="text-primary mb-8 text-6xl">🤝</div>
+              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
                 Full User Control
               </h3>
               <p className="text-neutral-600 leading-relaxed">
                 Users can pause, modify, or cancel subscriptions anytime.
                 Complete transparency with payment history and upcoming charges.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-4 bg-neutral-100">
+      <section id="how-it-works" className="py-24 px-4 bg-neutral-100">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold mb-6 text-neutral-900">
+          <motion.div
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-8 gradient-text">
               How Tributary Works
             </h2>
-            <p className="text-xl text-neutral-600 max-w-3xl mx-auto">
+            <p className="text-xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
               Leveraging Solana's native token delegation for seamless, secure,
               and truly automated recurring payments.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center mb-16">
-            <div>
-              <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
-                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md self-start sm:self-auto">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center mb-20">
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="space-y-10">
+                <motion.div
+                  className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                >
+                  <motion.div
+                    className="bg-electric text-white rounded-full w-14 h-14 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-lg"
+                    whileHover={{ scale: 1.1 }}
+                  >
                     1
-                  </div>
+                  </motion.div>
                   <div className="w-full">
-                    <h3 className="text-xl md:text-2xl font-semibold mb-2 text-neutral-900">
+                    <h3 className="text-2xl font-semibold mb-3 text-neutral-900">
                       User Approves Subscription
                     </h3>
-                    <p className="text-neutral-600 text-base md:text-lg break-words">
+                    <p className="text-neutral-600 text-lg leading-relaxed">
                       User signs a single transaction granting delegate
                       permissions to Tributary's smart contract for a specific
                       token amount and payment schedule. Funds remain in their
                       wallet.
                     </p>
                   </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
-                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md self-start sm:self-auto">
+                </motion.div>
+                <motion.div
+                  className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  <motion.div
+                    className="bg-electric text-white rounded-full w-14 h-14 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-lg"
+                    whileHover={{ scale: 1.1 }}
+                  >
                     2
-                  </div>
+                  </motion.div>
                   <div className="w-full">
-                    <h3 className="text-xl md:text-2xl font-semibold mb-2 text-neutral-900">
+                    <h3 className="text-2xl font-semibold mb-3 text-neutral-900">
                       Tributary Executes Payment
                     </h3>
-                    <p className="text-neutral-600 text-base md:text-lg break-words">
+                    <p className="text-neutral-600 text-lg leading-relaxed">
                       Our permissionless smart contract automatically processes
                       payments according to the agreed schedule (e.g., weekly,
                       monthly, custom intervals) when due.
                     </p>
                   </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
-                  <div className="bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-md self-start sm:self-auto">
+                </motion.div>
+                <motion.div
+                  className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <motion.div
+                    className="bg-electric text-white rounded-full w-14 h-14 flex items-center justify-center font-bold text-xl flex-shrink-0 shadow-lg"
+                    whileHover={{ scale: 1.1 }}
+                  >
                     3
-                  </div>
+                  </motion.div>
                   <div className="w-full">
-                    <h3 className="text-xl md:text-2xl font-semibold mb-2 text-neutral-900">
+                    <h3 className="text-2xl font-semibold mb-3 text-neutral-900">
                       Funds Flow to Recipient
                     </h3>
-                    <p className="text-neutral-600 text-base md:text-lg break-words">
+                    <p className="text-neutral-600 text-lg leading-relaxed">
                       Funds transfer directly from the user's token account to
                       the recipient's account. No escrow, no risk – just
                       reliable, automated payments with full transparency.
                     </p>
                   </div>
-                </div>
+                </motion.div>
               </div>
-            </div>
-            <div className="w-full max-w-full overflow-hidden">
+            </motion.div>
+            <motion.div
+              className="w-full max-w-full"
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
               <CodeBlock
                 title="React SDK Integration Example"
                 language="ts"
@@ -301,214 +440,292 @@ import { BN } from '@coral-xyz/anchor'
 
 // 🎉 That's it! Payments now flow automatically`}
               />
-            </div>
+            </motion.div>
           </div>
 
           {/* Use Cases */}
-          <div className="text-center mb-12">
-            <h3 className="text-2xl md:text-4xl font-bold mb-8 text-neutral-900">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h3 className="text-3xl md:text-5xl font-bold mb-12 gradient-text">
               Perfect for any recurring revenue model on Solana
             </h3>
-            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
-                <div className="text-primary mb-4 text-4xl">💡</div>{" "}
-                {/* Icon placeholder */}
-                <h4 className="font-semibold mb-2 text-neutral-900">
+            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8">
+              <motion.div
+                className="card text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                whileHover={{ y: -5 }}
+              >
+                <div className="text-electric mb-6 text-5xl">💡</div>
+                <h4 className="font-bold mb-4 text-neutral-900 text-lg">
                   SaaS Platforms
                 </h4>
-                <p className="text-sm text-neutral-600">
+                <p className="text-neutral-600 leading-relaxed">
                   Monthly/annual software subscriptions, API access fees.
                 </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
-                <div className="text-accent mb-4 text-4xl">🎨</div>{" "}
-                {/* Icon placeholder */}
-                <h4 className="font-semibold mb-2 text-neutral-900">
+              </motion.div>
+              <motion.div
+                className="card text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                whileHover={{ y: -5 }}
+              >
+                <div className="text-accent mb-6 text-5xl">🎨</div>
+                <h4 className="font-bold mb-4 text-neutral-900 text-lg">
                   Content Creators
                 </h4>
-                <p className="text-sm text-neutral-600">
+                <p className="text-neutral-600 leading-relaxed">
                   Fan subscriptions, premium content access, recurring
                   donations.
                 </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
-                <div className="text-secondary mb-4 text-4xl">📈</div>{" "}
-                {/* Icon placeholder */}
-                <h4 className="font-semibold mb-2 text-neutral-900">
+              </motion.div>
+              <motion.div
+                className="card text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                whileHover={{ y: -5 }}
+              >
+                <div className="text-primary mb-6 text-5xl">📈</div>
+                <h4 className="font-bold mb-4 text-neutral-900 text-lg">
                   DeFi Protocols
                 </h4>
-                <p className="text-sm text-neutral-600">
+                <p className="text-neutral-600 leading-relaxed">
                   Strategy fees, premium feature access, protocol subscriptions.
                 </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
-                <div className="text-primary mb-4 text-4xl">🛒</div>{" "}
-                {/* Icon placeholder */}
-                <h4 className="font-semibold mb-2 text-neutral-900">
+              </motion.div>
+              <motion.div
+                className="card text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                whileHover={{ y: -5 }}
+              >
+                <div className="text-electric mb-6 text-5xl">🛒</div>
+                <h4 className="font-bold mb-4 text-neutral-900 text-lg">
                   E-commerce & Memberships
                 </h4>
-                <p className="text-sm text-neutral-600">
+                <p className="text-neutral-600 leading-relaxed">
                   Product subscriptions, DAO memberships, exclusive access.
                 </p>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 bg-white">
+      <section id="pricing" className="py-24 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold mb-6 text-neutral-900">
+          <motion.div
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-8 gradient-text">
               Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-neutral-600 max-w-3xl mx-auto">
+            <p className="text-xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
               Tributary is a fundamental infrastructure protocol, charging a 1%
               protocol fee to operate and improve the ecosystem. Businesses
               built on top of Tributary may charge their own separate fees.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-10">
             {/* Starter Plan */}
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-lg flex flex-col">
+            <motion.div
+              className="card flex flex-col"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              whileHover={{ y: -10 }}
+            >
               <h3 className="text-3xl font-bold mb-4 text-neutral-900">
                 Starter
               </h3>
-              <p className="text-neutral-600 mb-6">
+              <p className="text-neutral-600 mb-8">
                 Ideal for individuals and small projects getting started.
               </p>
-              <div className="text-5xl font-bold text-primary mb-6">
-                $0<span className="text-xl text-neutral-500">/month</span>
+              <div className="text-6xl font-bold gradient-text mb-8">
+                $0<span className="text-2xl text-neutral-500">/month</span>
               </div>
-              <ul className="space-y-3 text-neutral-700 mb-8 flex-grow">
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Any number of
+              <ul className="space-y-4 text-neutral-700 mb-10 flex-grow">
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Any number of
                   subscriptions
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> 1% protocol fee
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> 1% protocol fee
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Basic dashboard
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Basic dashboard
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Any SPL token
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Any SPL token
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Community support
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Community
+                  support
                 </li>
               </ul>
-              <a
+              <motion.a
                 href="#"
-                className="block text-center bg-primary hover:bg-secondary text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-md"
+                className="btn-primary text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 Get Started Free
-              </a>
-            </div>
+              </motion.a>
+            </motion.div>
 
             {/* Pro Plan */}
-            <div className="bg-white p-8 rounded-xl border-2 border-primary shadow-xl flex flex-col relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase text-center">
+            <motion.div
+              className="card flex flex-col relative border-2 border-electric"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              whileHover={{ y: -10 }}
+            >
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-electric text-white text-sm font-bold px-4 py-2 rounded-full uppercase shadow-lg">
                 Reference Implementation
               </div>
-              <h3 className="text-3xl font-bold mb-4 text-neutral-900">
+              <h3 className="text-3xl font-bold mb-4 text-neutral-900 mt-4">
                 Contribute.so
               </h3>
-              <p className="text-neutral-600 mb-6">
+              <p className="text-neutral-600 mb-8">
                 A ready-to-use platform built on Tributary for{" "}
-                <span className="font-semibold">creators and communities</span>.
+                <span className="font-semibold text-primary">
+                  creators and communities
+                </span>
+                .
               </p>
-              <div className="text-5xl font-bold text-primary mb-6">
+              <div className="text-6xl font-bold gradient-text mb-8">
                 2.5%
-                <span className="text-xl text-neutral-500">
+                <span className="text-2xl text-neutral-500">
                   {" "}
                   (business fee)
                 </span>
               </div>
-              <ul className="space-y-3 text-neutral-700 mb-8 flex-grow">
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> One click setup for
-                  recurring donations
+              <ul className="space-y-4 text-neutral-700 mb-10 flex-grow">
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> One click setup
+                  for recurring donations
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Creator dashboards &
-                  analytics
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Creator
+                  dashboards & analytics
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Quickest onboarding
-                  on the internet
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Quickest
+                  onboarding on the internet
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Integrated with
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Integrated with
                   Tributary protocol
                 </li>
               </ul>
-              <a
+              <motion.a
                 href="https://contribute.so"
-                className="block text-center bg-primary hover:bg-secondary text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-md"
+                className="btn-primary text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 Visit Contribute.so
-              </a>
-            </div>
+              </motion.a>
+            </motion.div>
 
             {/* Enterprise Plan */}
-            <div className="bg-neutral-50 p-8 rounded-xl border border-neutral-200 shadow-lg flex flex-col">
+            <motion.div
+              className="card flex flex-col"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              whileHover={{ y: -10 }}
+            >
               <h3 className="text-3xl font-bold mb-4 text-neutral-900">
                 Business Solutions
               </h3>
-              <p className="text-neutral-600 mb-6">
+              <p className="text-neutral-600 mb-8">
                 Custom solutions for businesses building on Tributary.
               </p>
-              <div className="text-5xl font-bold text-primary mb-6">Custom</div>
-              <ul className="space-y-3 text-neutral-700 mb-8 flex-grow">
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Dedicated Software,
-                  Deployment & Support
+              <div className="text-6xl font-bold gradient-text mb-8">
+                Custom
+              </div>
+              <ul className="space-y-4 text-neutral-700 mb-10 flex-grow">
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Dedicated
+                  Software, Deployment & Support
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Custom business fee
-                  structures
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Custom business
+                  fee structures
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> White-label & API
-                  integrations
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> White-label &
+                  API integrations
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Strategic
+                <li className="flex items-center gap-3">
+                  <span className="text-accent text-xl">✓</span> Strategic
                   partnership opportunities
                 </li>
               </ul>
-              <a
+              <motion.a
                 href="mailto:hello@tributary.so"
-                className="block text-center bg-neutral-200 hover:bg-neutral-300 text-neutral-800 font-semibold py-3 px-6 rounded-lg transition-all shadow-md"
+                className="btn-secondary text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 Contact Sales
-              </a>
-            </div>
+              </motion.a>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-20 px-4 bg-neutral-100">
+      <section id="testimonials" className="py-24 px-4 bg-neutral-100">
         <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-5xl font-bold mb-6 text-neutral-900">
+          <motion.h2
+            className="text-5xl md:text-6xl font-bold mb-8 gradient-text"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
             Loved by developers worldwide
-          </h2>
-          <p className="text-xl text-neutral-600 max-w-3xl mx-auto mb-16">
+          </motion.h2>
+          <motion.p
+            className="text-xl text-neutral-600 max-w-4xl mx-auto mb-20 leading-relaxed"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
             Hear what our community and partners are saying about Tributary.
-          </p>
+          </motion.p>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
             {/* Testimonial 1 */}
-            <div className="bg-white p-8 rounded-xl border border-neutral-200 shadow-md text-left">
-              <div className="flex items-center mb-4">
-                <div className="text-yellow-400 text-xl">★★★★★</div>
-                <span className="ml-2 text-neutral-500 text-sm">5/5 stars</span>
+            <motion.div
+              className="card text-left"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex items-center mb-6">
+                <div className="text-accent text-2xl">★★★★★</div>
+                <span className="ml-3 text-neutral-500 text-sm font-medium">
+                  5/5 stars
+                </span>
               </div>
-              <p className="text-neutral-700 italic mb-6">
+              <p className="text-neutral-700 italic mb-8 text-lg leading-relaxed">
                 "Tributary has revolutionized how we handle subscriptions on
                 Solana. The non-custodial approach and ease of integration are
                 game-changers."
@@ -517,24 +734,32 @@ import { BN } from '@coral-xyz/anchor'
                 <img
                   src="testimony/contributeso.png"
                   alt="Fabian Schuh"
-                  className="w-12 h-12 rounded-full mr-4"
+                  className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
-                  <p className="font-semibold text-neutral-900">
+                  <p className="font-bold text-neutral-900">
                     Dr.-Ing. Fabian Schuh
                   </p>
                   <p className="text-sm text-neutral-600">CTO, Contribute.so</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Testimonial 2 */}
-            <div className="bg-white p-8 rounded-xl border border-neutral-200 shadow-md text-left">
-              <div className="flex items-center mb-4">
-                <div className="text-yellow-400 text-xl">★★★★★</div>
-                <span className="ml-2 text-neutral-500 text-sm">5/5 stars</span>
+            <motion.div
+              className="card text-left"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex items-center mb-6">
+                <div className="text-accent text-2xl">★★★★★</div>
+                <span className="ml-3 text-neutral-500 text-sm font-medium">
+                  5/5 stars
+                </span>
               </div>
-              <p className="text-neutral-700 italic mb-6">
+              <p className="text-neutral-700 italic mb-8 text-lg leading-relaxed">
                 "Finally, a robust solution for recurring payments on Solana
                 that doesn't compromise on security or user experience. Highly
                 recommend!"
@@ -542,27 +767,33 @@ import { BN } from '@coral-xyz/anchor'
               <div className="flex items-center">
                 <img
                   src="testimony/1.png"
-                  alt="Jane Smith"
-                  className="w-12 h-12 rounded-full mr-4"
+                  alt="Alice Johnson"
+                  className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
-                  <p className="font-semibold text-neutral-900">
-                    Alice Johnson
-                  </p>
+                  <p className="font-bold text-neutral-900">Alice Johnson</p>
                   <p className="text-sm text-neutral-600">
                     Founder, Solana SaaS
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Testimonial 3 */}
-            <div className="bg-white p-8 rounded-xl border border-neutral-200 shadow-md text-left">
-              <div className="flex items-center mb-4">
-                <div className="text-yellow-400 text-xl">★★★★★</div>
-                <span className="ml-2 text-neutral-500 text-sm">5/5 stars</span>
+            <motion.div
+              className="card text-left"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex items-center mb-6">
+                <div className="text-accent text-2xl">★★★★★</div>
+                <span className="ml-3 text-neutral-500 text-sm font-medium">
+                  5/5 stars
+                </span>
               </div>
-              <p className="text-neutral-700 italic mb-6">
+              <p className="text-neutral-700 italic mb-8 text-lg leading-relaxed">
                 "The developer experience with Tributary's SDK is fantastic. We
                 integrated our subscription model in a fraction of the time we
                 expected."
@@ -571,42 +802,50 @@ import { BN } from '@coral-xyz/anchor'
                 <img
                   src="testimony/2.png"
                   alt="Michael Scott"
-                  className="w-12 h-12 rounded-full mr-4"
+                  className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
-                  <p className="font-semibold text-neutral-900">
-                    Michael Scott
-                  </p>
+                  <p className="font-bold text-neutral-900">Michael Scott</p>
                   <p className="text-sm text-neutral-600">
                     Lead Dev, DeFi Protocol
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-20 px-4 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold mb-6 text-neutral-900">
+      <section id="faq" className="py-24 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-8 gradient-text">
               Frequently Asked Questions
             </h2>
-            <p className="text-xl text-neutral-600">
+            <p className="text-xl text-neutral-600 leading-relaxed">
               Find answers to the most common questions about Tributary.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* FAQ Item 1 */}
-            <details className="group bg-neutral-50 p-6 rounded-lg border border-neutral-200 cursor-pointer">
-              <summary className="flex justify-between items-center font-semibold text-lg text-neutral-800">
+            <motion.details
+              className="group card cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <summary className="flex justify-between items-center font-bold text-xl text-neutral-900 hover:text-primary transition-colors">
                 What is Tributary?
-                <span className="group-open:rotate-180 transition-transform">
+                <span className="group-open:rotate-180 transition-transform duration-300">
                   <svg
-                    className="w-5 h-5 text-neutral-500"
+                    className="w-6 h-6 text-neutral-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -621,21 +860,26 @@ import { BN } from '@coral-xyz/anchor'
                   </svg>
                 </span>
               </summary>
-              <p className="mt-4 text-neutral-600">
+              <p className="mt-6 text-neutral-600 text-lg leading-relaxed">
                 Tributary is a Solana-native protocol enabling automated,
                 non-custodial recurring payments through token delegation. It
                 provides the foundational infrastructure for Web3 subscription
                 services.
               </p>
-            </details>
+            </motion.details>
 
             {/* FAQ Item 2 */}
-            <details className="group bg-neutral-50 p-6 rounded-lg border border-neutral-200 cursor-pointer">
-              <summary className="flex justify-between items-center font-semibold text-lg text-neutral-800">
+            <motion.details
+              className="group card cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <summary className="flex justify-between items-center font-bold text-xl text-neutral-900 hover:text-primary transition-colors">
                 How does token delegation work?
-                <span className="group-open:rotate-180 transition-transform">
+                <span className="group-open:rotate-180 transition-transform duration-300">
                   <svg
-                    className="w-5 h-5 text-neutral-500"
+                    className="w-6 h-6 text-neutral-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -650,21 +894,26 @@ import { BN } from '@coral-xyz/anchor'
                   </svg>
                 </span>
               </summary>
-              <p className="mt-4 text-neutral-600">
+              <p className="mt-6 text-neutral-600 text-lg leading-relaxed">
                 Users sign a single transaction to delegate a specific amount of
                 tokens for a defined period to Tributary's smart contract. This
                 allows the protocol to execute payments automatically without
                 locking up funds in an escrow.
               </p>
-            </details>
+            </motion.details>
 
             {/* FAQ Item 3 */}
-            <details className="group bg-neutral-50 p-6 rounded-lg border border-neutral-200 cursor-pointer">
-              <summary className="flex justify-between items-center font-semibold text-lg text-neutral-800">
+            <motion.details
+              className="group card cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <summary className="flex justify-between items-center font-bold text-xl text-neutral-900 hover:text-primary transition-colors">
                 Is Tributary secure?
-                <span className="group-open:rotate-180 transition-transform">
+                <span className="group-open:rotate-180 transition-transform duration-300">
                   <svg
-                    className="w-5 h-5 text-neutral-500"
+                    className="w-6 h-6 text-neutral-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -679,22 +928,27 @@ import { BN } from '@coral-xyz/anchor'
                   </svg>
                 </span>
               </summary>
-              <p className="mt-4 text-neutral-600">
+              <p className="mt-6 text-neutral-600 text-lg leading-relaxed">
                 Yes, Tributary is designed to be non-custodial and secure. Funds
                 remain in your wallet, and the protocol only has delegated
                 authority to transfer specific amounts for defined subscription
                 periods. It's open-source, will undergo professional security
                 audits, and allows you to revoke delegation anytime.
               </p>
-            </details>
+            </motion.details>
 
             {/* FAQ Item 4 */}
-            <details className="group bg-neutral-50 p-6 rounded-lg border border-neutral-200 cursor-pointer">
-              <summary className="flex justify-between items-center font-semibold text-lg text-neutral-800">
+            <motion.details
+              className="group card cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <summary className="flex justify-between items-center font-bold text-xl text-neutral-900 hover:text-primary transition-colors">
                 Can users cancel or modify subscriptions?
-                <span className="group-open:rotate-180 transition-transform">
+                <span className="group-open:rotate-180 transition-transform duration-300">
                   <svg
-                    className="w-5 h-5 text-neutral-500"
+                    className="w-6 h-6 text-neutral-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -709,20 +963,25 @@ import { BN } from '@coral-xyz/anchor'
                   </svg>
                 </span>
               </summary>
-              <p className="mt-4 text-neutral-600">
+              <p className="mt-6 text-neutral-600 text-lg leading-relaxed">
                 Absolutely. Users have full control over their subscriptions and
                 can pause, resume, or cancel them at any time through their
                 wallet interface or a dApp built on Tributary.
               </p>
-            </details>
+            </motion.details>
 
             {/* FAQ Item 5 */}
-            <details className="group bg-neutral-50 p-6 rounded-lg border border-neutral-200 cursor-pointer">
-              <summary className="flex justify-between items-center font-semibold text-lg text-neutral-800">
+            <motion.details
+              className="group card cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              <summary className="flex justify-between items-center font-bold text-xl text-neutral-900 hover:text-primary transition-colors">
                 How does Tributary's security compare to other protocols?
-                <span className="group-open:rotate-180 transition-transform">
+                <span className="group-open:rotate-180 transition-transform duration-300">
                   <svg
-                    className="w-5 h-5 text-neutral-500"
+                    className="w-6 h-6 text-neutral-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -737,7 +996,7 @@ import { BN } from '@coral-xyz/anchor'
                   </svg>
                 </span>
               </summary>
-              <p className="mt-4 text-neutral-600">
+              <p className="mt-6 text-neutral-600 text-lg leading-relaxed">
                 Unlike protocols like x402 where private keys must be accessible
                 to AI agents or bots—granting access to your entire wallet and
                 all assets—Tributary limits delegation to a specific token
@@ -745,63 +1004,109 @@ import { BN } from '@coral-xyz/anchor'
                 radius of any potential compromise, allowing private keys to
                 remain cold and secure.
               </p>
-            </details>
+            </motion.details>
           </div>
         </div>
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-24 px-4 bg-gradient-to-r from-primary to-secondary text-white text-center">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+      <section className="py-32 px-4 bg-gradient-to-r from-primary via-secondary to-electric text-white text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-10"></div>
+        <motion.div
+          className="relative z-10 max-w-5xl mx-auto"
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <h2 className="text-6xl md:text-7xl font-bold mb-8 leading-tight">
             Ready to revolutionize your recurring payments?
           </h2>
-          <p className="text-xl md:text-2xl mb-10 opacity-90">
+          <p className="text-xl md:text-2xl mb-12 opacity-90 leading-relaxed">
             Join the future of Web3 subscriptions. Give your users the seamless
             payment experience they expect, with the transparency and control
             they deserve.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
+          <motion.div
+            className="flex flex-col sm:flex-row gap-6 justify-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <motion.a
               href="https://docs.tributary.so/how"
-              className="bg-white text-primary font-bold py-4 px-10 rounded-full hover:bg-neutral-100 transition-all text-lg shadow-lg"
+              className="bg-white text-primary font-bold py-4 px-12 rounded-full hover:bg-neutral-100 transition-all text-lg shadow-2xl"
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              }}
+              whileTap={{ scale: 0.95 }}
             >
               Get Started Now
-            </a>
-            <a
+            </motion.a>
+            <motion.a
               href="https://docs.tributary.so"
-              className="border border-white text-white font-bold py-4 px-10 rounded-full hover:bg-white hover:text-primary transition-all text-lg shadow-lg"
+              className="border-2 border-white text-white font-bold py-4 px-12 rounded-full hover:bg-white hover:text-primary transition-all text-lg shadow-2xl"
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              }}
+              whileTap={{ scale: 0.95 }}
             >
               Read Documentation
-            </a>
-          </div>
-          <p className="text-sm mt-8 opacity-80">
+            </motion.a>
+          </motion.div>
+          <motion.p
+            className="text-lg opacity-80 font-medium"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+          >
             Free to use • Open source • Built on Solana
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
+        <motion.div
+          className="absolute top-10 left-10 w-32 h-32 bg-accent rounded-full opacity-10 animate-float"
+          initial={{ scale: 0 }}
+          whileInView={{ scale: 1 }}
+          transition={{ duration: 1, delay: 0.5 }}
+        ></motion.div>
+        <motion.div
+          className="absolute bottom-10 right-10 w-24 h-24 bg-electric rounded-full opacity-15 animate-float"
+          initial={{ scale: 0 }}
+          whileInView={{ scale: 1 }}
+          transition={{ duration: 1, delay: 0.7 }}
+        ></motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 bg-neutral-900 text-neutral-300 border-t border-neutral-800">
+      <footer className="py-16 px-4 bg-neutral-900 text-neutral-300 border-t border-neutral-800">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="text-2xl font-bold text-white mb-4">
+          <div className="grid md:grid-cols-4 gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="text-3xl font-bold gradient-text mb-6">
                 Tributary
               </div>
-              <p className="text-sm leading-relaxed">
+              <p className="text-base leading-relaxed text-neutral-400">
                 Bringing Web2's subscription simplicity to Web3 with truly
                 automated recurring payments on Solana.
               </p>
-            </div>
+            </motion.div>
             <div></div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Product</h4>
-              <ul className="space-y-2 text-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <h4 className="font-bold text-white mb-6 text-lg">Product</h4>
+              <ul className="space-y-3 text-base">
                 <li>
                   <a
                     href="#features"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     Features
                   </a>
@@ -809,7 +1114,7 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="https://docs.tributary.so"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     Documentation
                   </a>
@@ -817,7 +1122,7 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="https://github.com/tributary-so/tributary/tree/main/sdk"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     SDK
                   </a>
@@ -825,20 +1130,24 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="https://app.tributary.so"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     Dashboard
                   </a>
                 </li>
               </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm">
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <h4 className="font-bold text-white mb-6 text-lg">Resources</h4>
+              <ul className="space-y-3 text-base">
                 <li>
                   <a
                     href="https://github.com/tributary-so"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     GitHub
                   </a>
@@ -846,7 +1155,7 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="https://t.me/tributaryso"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     Community
                   </a>
@@ -854,7 +1163,7 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="https://x.com/tributaryso"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     X (Twitter)
                   </a>
@@ -862,7 +1171,7 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="https://t.me/tributaryso"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     Support
                   </a>
@@ -870,17 +1179,22 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="mailto:hello@tributary.so"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-electric transition-colors"
                   >
                     Contact
                   </a>
                 </li>
               </ul>
-            </div>
+            </motion.div>
           </div>
-          <div className="border-t border-neutral-800 mt-12 pt-8 text-center text-sm text-neutral-500">
+          <motion.div
+            className="border-t border-neutral-800 mt-16 pt-8 text-center text-base text-neutral-500"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
             © 2024 Tributary. All rights reserved.
-          </div>
+          </motion.div>
         </div>
       </footer>
     </div>
