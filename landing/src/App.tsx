@@ -1106,33 +1106,34 @@ import { BN } from '@coral-xyz/anchor'
                 <li>
                   <a
                     href="#features"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
-                    Features
+                    <span className="grayscale opacity-60">✨</span> Features
                   </a>
                 </li>
                 <li>
                   <a
                     href="https://docs.tributary.so"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
+                    <span className="grayscale opacity-60">📚</span>{" "}
                     Documentation
                   </a>
                 </li>
                 <li>
                   <a
                     href="https://github.com/tributary-so/tributary/tree/main/sdk"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
-                    SDK
+                    <span className="grayscale opacity-60">🛠️</span> SDK
                   </a>
                 </li>
                 <li>
                   <a
                     href="https://app.tributary.so"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
-                    Dashboard
+                    <span className="grayscale opacity-60">📊</span> Dashboard
                   </a>
                 </li>
               </ul>
@@ -1146,42 +1147,52 @@ import { BN } from '@coral-xyz/anchor'
               <ul className="space-y-3 text-base">
                 <li>
                   <a
-                    href="https://github.com/tributary-so"
-                    className="hover:text-electric transition-colors"
+                    href="https://tributary.so"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
-                    GitHub
+                    <span className="grayscale opacity-60">🏠</span> Website
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://docs.tributary.so"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
+                  >
+                    <span className="grayscale opacity-60">📚</span>{" "}
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/tributary-so"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
+                  >
+                    <span className="grayscale opacity-60">💻</span> GitHub
                   </a>
                 </li>
                 <li>
                   <a
                     href="https://t.me/tributaryso"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
+                    <span className="grayscale opacity-60">💬</span> Telegram
                     Community
                   </a>
                 </li>
                 <li>
                   <a
                     href="https://x.com/tributaryso"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
-                    X (Twitter)
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://t.me/tributaryso"
-                    className="hover:text-electric transition-colors"
-                  >
-                    Support
+                    <span className="grayscale opacity-60">🐦</span> X (Twitter)
                   </a>
                 </li>
                 <li>
                   <a
                     href="mailto:hello@tributary.so"
-                    className="hover:text-electric transition-colors"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
                   >
-                    Contact
+                    <span className="grayscale opacity-60">📧</span> Contact
                   </a>
                 </li>
               </ul>
