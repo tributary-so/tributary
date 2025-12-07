@@ -38,15 +38,15 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, title }) => {
           {title}
         </div>
       )}
-      <div className="p-6 overflow-x-auto text-sm max-w-full">
+      <div className="p-4 md:p-6 overflow-x-auto text-xs md:text-sm max-w-full">
         <div
           dangerouslySetInnerHTML={{ __html: highlightedCode }}
-          className="max-w-full"
+          className="max-w-full break-words"
         />
       </div>
       <button
         onClick={handleCopy}
-        className="absolute bottom-4 right-4 bg-electric hover:bg-primary text-white text-xs px-4 py-2 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
+        className="absolute bottom-2 right-2 md:bottom-4 md:right-4 bg-electric hover:bg-primary text-white text-xs px-3 py-1 md:px-4 md:py-2 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
       >
         {copyButtonText}
       </button>

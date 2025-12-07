@@ -331,7 +331,7 @@ function App() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center mb-20">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center mb-20">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -354,7 +354,7 @@ function App() {
                     <h3 className="text-2xl font-semibold mb-3 text-neutral-900">
                       User Approves Subscription
                     </h3>
-                    <p className="text-neutral-600 text-lg leading-relaxed">
+                    <p className="text-neutral-600 text-lg leading-relaxed max-w-full break-words">
                       User signs a single transaction granting delegate
                       permissions to Tributary's smart contract for a specific
                       token amount and payment schedule. Funds remain in their
@@ -378,7 +378,7 @@ function App() {
                     <h3 className="text-2xl font-semibold mb-3 text-neutral-900">
                       Tributary Executes Payment
                     </h3>
-                    <p className="text-neutral-600 text-lg leading-relaxed">
+                    <p className="text-neutral-600 text-lg leading-relaxed max-w-full break-words">
                       Our permissionless smart contract automatically processes
                       payments according to the agreed schedule (e.g., weekly,
                       monthly, custom intervals) when due.
@@ -401,7 +401,7 @@ function App() {
                     <h3 className="text-2xl font-semibold mb-3 text-neutral-900">
                       Funds Flow to Recipient
                     </h3>
-                    <p className="text-neutral-600 text-lg leading-relaxed">
+                    <p className="text-neutral-600 text-lg leading-relaxed max-w-full break-words">
                       Funds transfer directly from the user's token account to
                       the recipient's account. No escrow, no risk – just
                       reliable, automated payments with full transparency.
@@ -411,8 +411,8 @@ function App() {
               </div>
             </motion.div>
             <motion.div
-              className="w-full max-w-full"
-              initial={{ opacity: 0, x: 50 }}
+              className="w-full max-w-full overflow-hidden mx-auto md:max-w-none md:mx-0"
+              initial={{ opacity: 50, x: 0 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
