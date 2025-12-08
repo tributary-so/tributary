@@ -71,3 +71,29 @@ export function getPaymentFrequency(
       return { daily: {} };
   }
 }
+
+/**
+ * Calculates the number of payments per year for a given payment frequency.
+ * @param frequency - The payment frequency
+ * @returns Number of payments per year
+ */
+export function computePaymentsPerYear(frequency: PaymentFrequency): number {
+  if ("daily" in frequency) {
+    return 365;
+  } else if ("weekly" in frequency) {
+    return 52;
+  } else if ("monthly" in frequency) {
+    return 12;
+  } else if ("quarterly" in frequency) {
+    return 4;
+  } else if ("semiAnnually" in frequency) {
+    return 2;
+  } else if ("annually" in frequency) {
+    return 1;
+  } else if ("custom" in frequency) {
+    // Custom frequency is in seconds, calculate payments per year
+    const secondsPerYear = 365 * 24 * 60 * 60; // Approximate
+    return Math.floor(secondsPerYear / frequency.custom[0].toNumber());
+  }
+  return 12; // Default to monthly
+}

@@ -28,6 +28,7 @@ import type {
   PaymentGateway,
   ProgramConfig,
 } from "./types.js";
+import { computePaymentsPerYear } from "./utils.js";
 import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
 
@@ -250,6 +251,8 @@ export class Tributary {
    * Creates a complete set of instructions for setting up a subscription.
    * This includes creating user payment account (if needed), payment policy,
    * token approval, and optionally executing the first payment.
+   * If approvalAmount is not provided, it is calculated automatically as the sum of all existing subscriptions
+   * plus the new one, using maxRenewals or defaulting to 1 year of payments per subscription.
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
@@ -259,7 +262,7 @@ export class Tributary {
    * @param paymentFrequency - How often payments should occur
    * @param memo - Memo bytes to include with payments (max 64 bytes)
    * @param startTime - When the first payment should occur (defaults to now)
-   * @param approvalAmount - Amount to approve for token delegation (required for execution)
+   * @param approvalAmount - Amount to approve for token delegation (calculated automatically if not provided)
    * @param executeImmediately - Whether to execute the first payment immediately
    * @returns Array of transaction instructions for the complete subscription setup
    */
@@ -346,42 +349,76 @@ export class Tributary {
 
     instructions.push(createPaymentPolicyIx);
 
+    // Calculate or use provided approval amount
+    let finalApprovalAmount: BN;
     if (approvalAmount) {
-      const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
-      let needsApproval = false;
+      finalApprovalAmount = approvalAmount;
+    } else {
+      // Calculate total approval amount needed for all subscriptions
+      let totalApprovalAmount = new BN(0);
 
-      const tokenAccountInfo = await this.connection.getParsedAccountInfo(
-        ownerTokenAccount
+      // Add existing subscriptions
+      const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+        userPaymentPda
       );
-
-      if (tokenAccountInfo.value?.data) {
-        const parsedData = tokenAccountInfo.value.data as any;
-        const currentDelegate = parsedData.parsed?.info?.delegate;
-        const currentDelegatedAmount =
-          parsedData.parsed?.info?.delegatedAmount?.amount;
-
-        if (!currentDelegate) {
-          needsApproval = true;
-        } else if (currentDelegate !== paymentsDelegatePda.toString()) {
-          needsApproval = true;
-        } else if (currentDelegatedAmount !== approvalAmount.toString()) {
-          needsApproval = true;
+      for (const { account: policy } of existingPolicies) {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription;
+          const policyApproval = this.calculateSubscriptionApprovalAmount(
+            sub.amount,
+            sub.paymentFrequency,
+            sub.maxRenewals
+          );
+          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
         }
-      } else {
+      }
+
+      // Add new subscription
+      const newSubscriptionApproval = this.calculateSubscriptionApprovalAmount(
+        amount,
+        paymentFrequency,
+        maxRenewals
+      );
+      totalApprovalAmount = totalApprovalAmount.add(newSubscriptionApproval);
+
+      finalApprovalAmount = totalApprovalAmount;
+    }
+
+    // Set up approval if needed
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      } else if (currentDelegatedAmount !== finalApprovalAmount.toString()) {
         needsApproval = true;
       }
+    } else {
+      needsApproval = true;
+    }
 
-      if (needsApproval) {
-        const approveIx = createApproveInstruction(
-          ownerTokenAccount,
-          paymentsDelegatePda,
-          user,
-          BigInt(approvalAmount.toString()),
-          [],
-          TOKEN_PROGRAM_ID
-        );
-        instructions.push(approveIx);
-      }
+    if (needsApproval) {
+      const approveIx = createApproveInstruction(
+        ownerTokenAccount,
+        paymentsDelegatePda,
+        user,
+        BigInt(finalApprovalAmount.toString()),
+        [],
+        TOKEN_PROGRAM_ID
+      );
+      instructions.push(approveIx);
     }
 
     if (executeImmediately) {
@@ -602,6 +639,25 @@ export class Tributary {
    */
   getPaymentPolicyPda(userPayment: PublicKey, policyId: number) {
     return getPaymentPolicyPda(userPayment, policyId, this.programId);
+  }
+
+  /**
+   * Calculates the total approval amount needed for a subscription.
+   * Uses maxRenewals if provided, otherwise defaults to 1 year of payments.
+   * @param amount - Payment amount per interval
+   * @param frequency - Payment frequency
+   * @param maxRenewals - Maximum number of renewals (null for unlimited)
+   * @returns Total approval amount needed
+   */
+  private calculateSubscriptionApprovalAmount(
+    amount: BN,
+    frequency: PaymentFrequency,
+    maxRenewals: number | null
+  ): BN {
+    const paymentsPerYear = computePaymentsPerYear(frequency);
+    const effectiveRenewals =
+      maxRenewals !== null ? maxRenewals : paymentsPerYear;
+    return amount.mul(new BN(effectiveRenewals));
   }
 
   /**
@@ -887,6 +943,27 @@ export class Tributary {
         memcmp: {
           offset: 8 + 32 + 32, // Skip discriminator + user_payment + recipient
           bytes: gateway.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Retrieves all payment policies belonging to the specified user payment account.
+   * @param userPayment - Public key of the user payment PDA
+   * @returns Array of payment policies for the user payment account
+   */
+  async getPaymentPoliciesByUserPayment(
+    userPayment: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    return await this.program.account.paymentPolicy.all([
+      {
+        dataSize: 586,
+      },
+      {
+        memcmp: {
+          offset: 8, // Skip discriminator
+          bytes: userPayment.toBase58(),
         },
       },
     ]);
