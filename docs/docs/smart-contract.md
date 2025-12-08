@@ -32,15 +32,47 @@ pub enum PolicyType {
         next_payment_due: i64,
         padding: [u8; 97],
     },
-    // Future variants like:
-    // OneTime { amount: u64, due_date: i64, ... },
-    // Milestone { milestones: [u64; 8], intervals: [u64; 8], ... },
+    Milestone {
+        milestone_amounts: [u64; 4],         // Amount for each milestone
+        milestone_timestamps: [i64; 4],      // Absolute timestamps for each milestone
+        current_milestone: u8,               // Which milestone is next (0-3)
+        release_condition: u8,               // 0=time-based, 1=manual approval, 2=automatic
+        total_milestones: u8,                // How many milestones are configured (1-4)
+        escrow_amount: u64,                  // Total amount held in escrow
+        padding: [u8; 53],                   // Padding for 128-byte alignment
+    },
 }
 ```
 
-Each variant is exactly 128 bytes for consistent account sizing, enabling seamless upgrades without breaking existing policies. This allows implementing:
+Each variant is exactly 128 bytes for consistent account sizing, enabling seamless upgrades without breaking existing policies.
 
-- **Installments:** Scheduled partial payments (e.g., buy-now-pay-later)
-- **Milestones:** Variable amounts based on project completion
+## Supported Payment Types
+
+### Subscriptions
+
+Recurring payments at fixed intervals (daily, weekly, monthly, etc.) with optional auto-renewal and maximum renewal limits.
+
+### Milestones
+
+Project-based payments with up to 4 configurable milestones. Each milestone has:
+
+- **Amount:** Specific payment amount for that milestone
+- **Timestamp:** When the milestone becomes payable
+- **Release Conditions:** Time-based, manual approval, or automatic
+- **Progress Tracking:** Current milestone and completion status
+
+Perfect for:
+
+- **Freelance work:** Pay as project phases complete
+- **Development contracts:** Milestone-based software delivery
+- **Consulting engagements:** Deliverable-based compensation
+- **Content creation:** Episode/release-based payments
+
+## Future Payment Types
+
+The extensible design allows for additional payment schemes:
+
+- **Installments:** Scheduled partial payments (buy-now-pay-later)
 - **Usage-based:** Payments tied to consumption metrics
-- **Donations:** Ongoing creator support with flexible terms
+- **Revenue sharing:** Percentage-based payments from revenue
+- **Escrow services:** Conditional fund releases

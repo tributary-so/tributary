@@ -39,18 +39,22 @@ const provider = new AnchorProvider(connection, wallet, {
 const tributary = new Tributary(connection, wallet);
 ```
 
-## Step 3: Create a Subscription
+## Step 3: Create Payments
+
+Tributary supports multiple payment types. Choose the one that fits your use case:
+
+### Creating a Subscription
 
 To create a recurring payment subscription, use the `createSubscriptionInstruction` method:
 
 ```typescript
-import { BN } from '@coral-xyz/anchor';
-import { PaymentFrequency } from '@tributary-so/sdk';
+import { BN } from "@coral-xyz/anchor";
+import { PaymentFrequency } from "@tributary-so/sdk";
 
 // Define subscription parameters
-const tokenMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC
-const recipient = new PublicKey('...'); // Recipient's public key
-const gateway = new PublicKey('...'); // Payment gateway's public key
+const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
+const recipient = new PublicKey("..."); // Recipient's public key
+const gateway = new PublicKey("..."); // Payment gateway's public key
 const amount = new BN(1000000); // 1 USDC (6 decimals)
 const paymentFrequency = { monthly: {} } as PaymentFrequency;
 const memo = [72, 101, 108, 108, 111]; // "Hello" as byte array
@@ -73,7 +77,43 @@ const instructions = await tributary.createSubscriptionInstruction(
 // Send the transaction
 const tx = new Transaction().add(...instructions);
 const signature = await provider.sendAndConfirm(tx);
-console.log('Subscription created:', signature);
+console.log("Subscription created:", signature);
+```
+
+### Creating Milestone Payments
+
+For project-based payments with multiple deliverables, use milestone payments:
+
+```typescript
+import { BN } from "@coral-xyz/anchor";
+
+// Define project milestones
+const milestoneAmounts = [
+  new BN(25000000), // $25 - Planning & design
+  new BN(50000000), // $50 - Development
+  new BN(25000000), // $25 - Testing & delivery
+];
+const milestoneTimestamps = [
+  new BN(Math.floor(Date.now() / 1000) + 86400 * 7), // 1 week from now
+  new BN(Math.floor(Date.now() / 1000) + 86400 * 21), // 3 weeks from now
+  new BN(Math.floor(Date.now() / 1000) + 86400 * 35), // 5 weeks from now
+];
+
+// Create milestone payment policy
+const milestoneInstructions = await tributary.createMilestonePaymentPolicy(
+  tokenMint,
+  recipient,
+  gateway,
+  milestoneAmounts,
+  milestoneTimestamps,
+  0, // Release condition: 0=time-based, 1=manual approval, 2=automatic
+  createMemoBuffer("Website redesign project", 64)
+);
+
+// Send the transaction
+const milestoneTx = new Transaction().add(...milestoneInstructions);
+const milestoneSignature = await provider.sendAndConfirm(milestoneTx);
+console.log("Milestone payment created:", milestoneSignature);
 ```
 
 ## Step 4: Execute a Payment
@@ -96,7 +136,7 @@ const executeInstructions = await tributary.executePayment(
 // Send the transaction
 const executeTx = new Transaction().add(...executeInstructions);
 const executeSignature = await provider.sendAndConfirm(executeTx);
-console.log('Payment executed:', executeSignature);
+console.log("Payment executed:", executeSignature);
 ```
 
 ## Step 5: Query Subscription Data
@@ -105,23 +145,26 @@ The SDK provides methods to query existing subscriptions and payments:
 
 ```typescript
 // Get all user payments for the current user
-const userPayments = await tributary.getAllUserPaymentsByOwner(wallet.publicKey);
-console.log('User payments:', userPayments);
+const userPayments = await tributary.getAllUserPaymentsByOwner(
+  wallet.publicKey
+);
+console.log("User payments:", userPayments);
 
 // Get payment policies for the current user
 const policies = await tributary.getPaymentPoliciesByUser(wallet.publicKey);
-console.log('Payment policies:', policies);
+console.log("Payment policies:", policies);
 
 // Get details of a specific payment policy
 const policyDetails = await tributary.getPaymentPolicy(policyPda.address);
-console.log('Policy details:', policyDetails);
+console.log("Policy details:", policyDetails);
 ```
 
 ## Key SDK Methods
 
-### Subscription Management
+### Payment Management
 
 - `createSubscriptionInstruction()`: Create a new subscription with all necessary instructions
+- `createMilestonePaymentPolicy()`: Create a milestone-based payment policy
 - `createUserPayment()`: Initialize user payment account for a token
 - `createPaymentPolicy()`: Create a payment policy for recurring payments
 
@@ -147,10 +190,11 @@ Always wrap SDK calls in try-catch blocks:
 
 ```typescript
 try {
-  const instructions = await tributary.createSubscriptionInstruction(/* params */);
+  const instructions =
+    await tributary.createSubscriptionInstruction(/* params */);
   // Process instructions
 } catch (error) {
-  console.error('Failed to create subscription:', error);
+  console.error("Failed to create subscription:", error);
   // Handle error appropriately
 }
 ```

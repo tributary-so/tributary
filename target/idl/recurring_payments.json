@@ -1761,6 +1761,54 @@
                 }
               }
             ]
+          },
+          {
+            "name": "Milestone",
+            "fields": [
+              {
+                "name": "milestone_amounts",
+                "type": {
+                  "array": [
+                    "u64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "milestone_timestamps",
+                "type": {
+                  "array": [
+                    "i64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "current_milestone",
+                "type": "u8"
+              },
+              {
+                "name": "release_condition",
+                "type": "u8"
+              },
+              {
+                "name": "total_milestones",
+                "type": "u8"
+              },
+              {
+                "name": "escrow_amount",
+                "type": "u64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    53
+                  ]
+                }
+              }
+            ]
           }
         ]
       }

@@ -45,13 +45,14 @@ nav:
           - Integration: integration.md
           - Network Effect: networkeffect.md
   - Use Cases: use-cases.md
-  - FAQ: faq.md
-  - Payment Providers: providers.md
-  - Developer Guide:
-      - Basics: how.md
-      - Button Integration: quickstart/button.md
-      - SDK Integration: quickstart/integration.md
-      - Contributions: contributions.md
+   - FAQ: faq.md
+   - Payment Providers: providers.md
+   - Developer Guide:
+       - Basics: how.md
+       - Button Integration: quickstart/button.md
+       - SDK Integration: quickstart/integration.md
+       - Milestone Payments: milestone-payments.md
+       - Contributions: contributions.md
 
 plugins:
   - search

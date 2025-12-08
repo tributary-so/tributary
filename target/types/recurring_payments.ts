@@ -1767,6 +1767,54 @@ export type RecurringPayments = {
                 }
               }
             ]
+          },
+          {
+            "name": "milestone",
+            "fields": [
+              {
+                "name": "milestoneAmounts",
+                "type": {
+                  "array": [
+                    "u64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "milestoneTimestamps",
+                "type": {
+                  "array": [
+                    "i64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "currentMilestone",
+                "type": "u8"
+              },
+              {
+                "name": "releaseCondition",
+                "type": "u8"
+              },
+              {
+                "name": "totalMilestones",
+                "type": "u8"
+              },
+              {
+                "name": "escrowAmount",
+                "type": "u64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    53
+                  ]
+                }
+              }
+            ]
           }
         ]
       }

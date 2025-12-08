@@ -8,6 +8,8 @@
 - Token delegation utilities for SPL integration
 - Error handling, validation, and payment frequency mapping
 
+### Creating Subscriptions
+
 ```typescript
 const instructions = await sdk.createSubscriptionInstruction(
   params.token,
@@ -29,6 +31,47 @@ instructions.forEach((ix) => transaction.add(ix));
 transaction.feePayer = wallet.publicKey;
 const { blockhash, lastValidBlockHeight } =
   await connection.getLatestBlockhash();
+transaction.recentBlockhash = blockhash;
+const signedTx = await wallet.signTransaction(transaction);
+const txId = await connection.sendRawTransaction(signedTx.serialize());
+```
+
+### Creating Milestone Payments
+
+```typescript
+import { BN } from "@coral-xyz/anchor";
+
+// Define milestone parameters
+const milestoneAmounts = [
+  new BN(50000000), // $50 - Initial setup
+  new BN(75000000), // $75 - Core development
+  new BN(100000000), // $100 - Final delivery
+];
+const milestoneTimestamps = [
+  new BN(Math.floor(Date.now() / 1000) + 86400 * 7), // 1 week
+  new BN(Math.floor(Date.now() / 1000) + 86400 * 21), // 3 weeks
+  new BN(Math.floor(Date.now() / 1000) + 86400 * 35), // 5 weeks
+];
+
+// Create milestone payment policy
+const milestoneIx = await sdk.createMilestonePaymentPolicy(
+  tokenMint,
+  recipient,
+  gateway,
+  milestoneAmounts,
+  milestoneTimestamps,
+  0, // Time-based release condition
+  createMemoBuffer("Website development project", 64)
+);
+
+// Create user payment account if needed
+const userPaymentIx = await sdk.createUserPayment(tokenMint);
+
+// Build transaction
+const transaction = new Transaction().add(userPaymentIx).add(milestoneIx);
+
+transaction.feePayer = wallet.publicKey;
+const { blockhash } = await connection.getLatestBlockhash();
 transaction.recentBlockhash = blockhash;
 const signedTx = await wallet.signTransaction(transaction);
 const txId = await connection.sendRawTransaction(signedTx.serialize());

@@ -72,6 +72,10 @@ pub fn handler_create_payment_policy(
                 *next_payment_due = clock.unix_timestamp;
             }
         }
+        PolicyType::Milestone { .. } => {
+            // Milestone timestamps are absolute and should be validated to be in the future
+            // No adjustment needed here as milestones don't have a "next due" concept
+        }
     }
 
     let payment_policy = &mut ctx.accounts.payment_policy;

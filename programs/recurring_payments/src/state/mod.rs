@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::clock::Clock;
 
 /// The PolicyType enum implements the payment schemes. The initial policy
 /// will be a subscription payment that enables the regular payment according to
@@ -16,6 +17,15 @@ pub enum PolicyType {
         next_payment_due: i64,               // 8 bytes
         padding: [u8; 97],                   // 97 bytes padding
     },
+    Milestone {
+        milestone_amounts: [u64; 4],         // 32 bytes - Amount for each milestone
+        milestone_timestamps: [i64; 4],      // 32 bytes - Absolute timestamps for each milestone
+        current_milestone: u8,               // 1 byte - Which milestone is next (0-3)
+        release_condition: u8,               // 1 byte - 0=time-based, 1=manual approval, 2=automatic
+        total_milestones: u8,                // 1 byte - How many milestones are configured (1-4)
+        escrow_amount: u64,                  // 8 bytes - Total amount held in escrow
+        padding: [u8; 53],                   // 53 bytes padding
+    },
     // Future variants can be added like this:
     // Installment {
     //     total_amount: u64,              // 8 bytes - Maximum amount that can be withdrawn (X$)
@@ -32,11 +42,6 @@ pub enum PolicyType {
     //     due_date: i64,              // 8 bytes
     //     grace_period_seconds: u64,  // 8 bytes
     //     padding: [u8; 104],        // 104 bytes padding
-    // },
-    // Milestone {
-    //     milestones: [u64; 8],       // 64 bytes (8 payments)
-    //     intervals: [u64; 8],        // 64 bytes (time intervals)
-    //     padding: [u8; 0],          // 0 bytes padding (exactly 128 bytes used)
     // },
 }
 
@@ -72,6 +77,56 @@ impl PolicyType {
                         crate::error::RecurringPaymentsError::InvalidInterval
                     );
                 }
+            }
+            PolicyType::Milestone {
+                milestone_amounts,
+                milestone_timestamps,
+                current_milestone,
+                release_condition,
+                total_milestones,
+                escrow_amount,
+                ..
+            } => {
+                // Validate total_milestones is between 1 and 4
+                require!(
+                    *total_milestones >= 1 && *total_milestones <= 4,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate current_milestone is within bounds
+                require!(
+                    *current_milestone < *total_milestones,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate escrow_amount is greater than zero
+                require!(
+                    *escrow_amount > 0,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate milestone amounts are greater than zero
+                for i in 0..*total_milestones as usize {
+                    require!(
+                        milestone_amounts[i] > 0,
+                        crate::error::RecurringPaymentsError::InvalidAmount
+                    );
+                }
+
+                // Validate timestamps are in the future (basic check)
+                let current_time = Clock::get()?.unix_timestamp;
+                for i in 0..*total_milestones as usize {
+                    require!(
+                        milestone_timestamps[i] > current_time,
+                        crate::error::RecurringPaymentsError::InvalidInterval
+                    );
+                }
+
+                // Validate release_condition is valid (0, 1, or 2)
+                require!(
+                    *release_condition <= 2,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
             }
         }
         Ok(())

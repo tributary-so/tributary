@@ -99,26 +99,77 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
     let config = &ctx.accounts.config;
     let clock = Clock::get()?;
 
-    // Get payment details from policy
-    let (payment_amount, current_next_due, payment_frequency) = match &payment_policy.policy_type {
+    // Update policy based on type and get payment details
+    // This also updates next_payment_due for subscriptions and current_milestone for milestones
+    let payment_amount = match &mut payment_policy.policy_type {
         PolicyType::Subscription {
             amount,
             next_payment_due,
             payment_frequency,
             ..
-        } => (*amount, *next_payment_due, payment_frequency),
+        } => {
+            // Validate payment timing for subscriptions
+            require!(
+                clock.unix_timestamp >= *next_payment_due,
+                crate::error::RecurringPaymentsError::PaymentNotDue
+            );
+
+            // Calculate next payment due time based on payment frequency
+            let new_next_due = calculate_next_payment_due(
+                *next_payment_due,
+                payment_frequency,
+                clock.unix_timestamp,
+            )?;
+            *next_payment_due = new_next_due;
+
+            *amount
+        }
+        PolicyType::Milestone {
+            milestone_amounts,
+            milestone_timestamps,
+            current_milestone,
+            release_condition,
+            total_milestones,
+            ..
+        } => {
+            let milestone_idx = *current_milestone as usize;
+            let amount = milestone_amounts[milestone_idx];
+            let next_due = milestone_timestamps[milestone_idx];
+
+            // Validate payment timing for milestones
+            match release_condition {
+                0 => {
+                    // Time-based
+                    require!(
+                        clock.unix_timestamp >= next_due,
+                        crate::error::RecurringPaymentsError::PaymentNotDue
+                    );
+                }
+                1 => { // Manual approval - always allow (checked by signer)
+                     // Manual approval requires specific signer permission
+                }
+                2 => { // Automatic - always allow
+                     // Automatic releases don't check timing
+                }
+                _ => return err!(crate::error::RecurringPaymentsError::InvalidAmount),
+            }
+
+            // Move to next milestone
+            *current_milestone += 1;
+
+            // If we've completed all milestones, pause the policy
+            if *current_milestone >= *total_milestones {
+                payment_policy.status = PaymentStatus::Paused;
+            }
+
+            amount
+        }
     };
 
     // Validate delegated amount is sufficient
     require!(
         ctx.accounts.user_token_account.delegated_amount >= payment_amount,
         RecurringPaymentsError::InsufficientDelegatedAmount
-    );
-
-    // Validate payment timing
-    require!(
-        clock.unix_timestamp >= current_next_due,
-        crate::error::RecurringPaymentsError::PaymentNotDue
     );
 
     // Check if user has sufficient balance
@@ -188,19 +239,6 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
         token::transfer(cpi_ctx, protocol_fee)?;
     }
 
-    // Calculate next payment due time based on payment frequency
-    let new_next_due =
-        calculate_next_payment_due(current_next_due, payment_frequency, clock.unix_timestamp)?;
-
-    // Update next_payment_due in policy_type
-    match &mut payment_policy.policy_type {
-        PolicyType::Subscription {
-            next_payment_due, ..
-        } => {
-            *next_payment_due = new_next_due;
-        }
-    }
-
     // Update payment policy
     payment_policy.total_paid = payment_policy
         .total_paid
@@ -209,7 +247,7 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
     payment_policy.payment_count = payment_policy.payment_count.checked_add(1).unwrap();
     payment_policy.updated_at = clock.unix_timestamp;
 
-    // Check if payment count has reached max renewals and set status to Paused
+    // Check if payment should be paused based on policy type
     match &payment_policy.policy_type {
         PolicyType::Subscription { max_renewals, .. } => {
             if let Some(max_renewal) = max_renewals {
@@ -217,6 +255,9 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
                     payment_policy.status = PaymentStatus::Paused;
                 }
             }
+        }
+        PolicyType::Milestone { .. } => {
+            // Milestone completion check is handled above when updating current_milestone
         }
     }
 

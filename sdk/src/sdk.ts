@@ -28,7 +28,7 @@ import type {
   PaymentGateway,
   ProgramConfig,
 } from "./types.js";
-import { computePaymentsPerYear } from "./utils.js";
+import { computePaymentsPerYear } from "./utils";
 import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
 
@@ -248,6 +248,98 @@ export class Tributary {
   }
 
   /**
+   * Creates a payment policy for milestone-based payments.
+   * Milestones define conditional payments released based on time or manual approval.
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payments
+   * @param gateway - Public key of the gateway that will execute payments
+   * @param milestoneAmounts - Array of amounts for each milestone (up to 4)
+   * @param milestoneTimestamps - Array of timestamps when each milestone is due
+   * @param releaseCondition - How milestones are released: 0=time-based, 1=manual approval, 2=automatic
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @returns Transaction instruction to create the milestone payment policy
+   */
+  async createMilestonePaymentPolicy(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    milestoneAmounts: BN[],
+    milestoneTimestamps: BN[],
+    releaseCondition: number,
+    memo: number[]
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+
+    // Validate inputs
+    if (milestoneAmounts.length === 0 || milestoneAmounts.length > 4) {
+      throw new Error("Milestone payments must have 1-4 milestones");
+    }
+    if (milestoneAmounts.length !== milestoneTimestamps.length) {
+      throw new Error(
+        "Milestone amounts and timestamps arrays must have the same length"
+      );
+    }
+    if (releaseCondition < 0 || releaseCondition > 2) {
+      throw new Error(
+        "Release condition must be 0 (time-based), 1 (manual), or 2 (automatic)"
+      );
+    }
+
+    // Calculate total escrow amount
+    const escrowAmount = milestoneAmounts.reduce(
+      (sum, amount) => sum.add(amount),
+      new BN(0)
+    );
+
+    // Pad arrays to fixed size
+    const paddedAmounts = [
+      ...milestoneAmounts,
+      ...Array(4 - milestoneAmounts.length).fill(new BN(0)),
+    ];
+    const paddedTimestamps = [
+      ...milestoneTimestamps,
+      ...Array(4 - milestoneTimestamps.length).fill(new BN(0)),
+    ];
+
+    const policyType: PolicyType = {
+      milestone: {
+        milestoneAmounts: paddedAmounts,
+        milestoneTimestamps: paddedTimestamps,
+        currentMilestone: 0,
+        releaseCondition: releaseCondition,
+        totalMilestones: milestoneAmounts.length,
+        escrowAmount: escrowAmount,
+        padding: new Array(53).fill(0),
+      },
+    };
+
+    const accounts = {
+      user: user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    return await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Creates a complete set of instructions for setting up a subscription.
    * This includes creating user payment account (if needed), payment policy,
    * token approval, and optionally executing the first payment.
@@ -363,17 +455,23 @@ export class Tributary {
       );
       for (const { account: policy } of existingPolicies) {
         if ("subscription" in policy.policyType) {
-          const sub = policy.policyType.subscription;
+          const sub = policy.policyType.subscription!;
           const policyApproval = this.calculateSubscriptionApprovalAmount(
             sub.amount,
             sub.paymentFrequency,
             sub.maxRenewals
           );
           totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+        } else if ("milestone" in policy.policyType) {
+          const milestone = policy.policyType.milestone!;
+          const policyApproval = this.calculateMilestoneApprovalAmount(
+            milestone.milestoneAmounts.filter((amount) => !amount.isZero())
+          );
+          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
         }
       }
 
-      // Add new subscription
+      // Add new subscription (assuming it's a subscription for now)
       const newSubscriptionApproval = this.calculateSubscriptionApprovalAmount(
         amount,
         paymentFrequency,
@@ -658,6 +756,15 @@ export class Tributary {
     const effectiveRenewals =
       maxRenewals !== null ? maxRenewals : paymentsPerYear;
     return amount.mul(new BN(effectiveRenewals));
+  }
+
+  /**
+   * Calculates the total approval amount needed for a milestone payment.
+   * @param milestoneAmounts - Array of milestone amounts
+   * @returns Total approval amount needed
+   */
+  private calculateMilestoneApprovalAmount(milestoneAmounts: BN[]): BN {
+    return milestoneAmounts.reduce((sum, amount) => sum.add(amount), new BN(0));
   }
 
   /**
