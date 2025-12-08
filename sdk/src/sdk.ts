@@ -31,14 +31,40 @@ import type {
 import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
 import { RecurringPayments } from "../../target/types/recurring_payments.js";
 
+/**
+ * Anchor Program type for the Recurring Payments smart contract.
+ */
 export type Program = anchor.Program<RecurringPayments>;
 
+/**
+ * Main SDK class for interacting with the Tributary recurring payments protocol on Solana.
+ * Provides methods to create payment gateways, user accounts, payment policies, and execute payments.
+ *
+ * @example
+ * ```typescript
+ * const connection = new Connection("https://api.mainnet-beta.solana.com");
+ * const wallet = new Wallet(Keypair.generate());
+ * const sdk = new Tributary(connection, wallet);
+ *
+ * // Initialize the protocol (admin only)
+ * const initIx = await sdk.initialize(adminPublicKey);
+ * ```
+ */
 export class Tributary {
+  /** Anchor program instance for the Recurring Payments contract */
   program: anchor.Program<RecurringPayments>;
+  /** Public key of the deployed program */
   programId: PublicKey;
+  /** Solana RPC connection */
   connection: Connection;
+  /** Anchor provider with wallet and connection */
   provider: anchor.AnchorProvider;
 
+  /**
+   * Creates a new Tributary SDK instance.
+   * @param connection - Solana RPC connection to use for all operations
+   * @param wallet - Wallet containing the keypair for signing transactions
+   */
   constructor(connection: Connection, wallet: anchor.Wallet) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
@@ -49,6 +75,11 @@ export class Tributary {
     this.program = new anchor.Program(IDL as RecurringPayments, this.provider);
   }
 
+  /**
+   * Updates the wallet used by the SDK instance.
+   * Useful for changing the signer without creating a new SDK instance.
+   * @param wallet - New wallet to use for signing transactions
+   */
   async updateWallet(wallet: any) {
     this.provider = new anchor.AnchorProvider(this.connection, wallet, {
       preflightCommitment: "confirmed",
@@ -56,6 +87,12 @@ export class Tributary {
     this.program = new anchor.Program(IDL as RecurringPayments, this.provider);
   }
 
+  /**
+   * Initializes the Tributary protocol by creating the program configuration account.
+   * This is a one-time setup that must be performed by the protocol admin.
+   * @param admin - Public key of the protocol administrator
+   * @returns Transaction instruction to initialize the protocol
+   */
   async initialize(admin: PublicKey): Promise<TransactionInstruction> {
     const { address: configPda } = getConfigPda(this.programId);
 
@@ -69,6 +106,12 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Creates a user payment account for tracking payments in a specific token.
+   * Each user needs one account per token mint they want to use for payments.
+   * @param tokenMint - Public key of the token mint for payments
+   * @returns Transaction instruction to create the user payment account
+   */
   async createUserPayment(
     tokenMint: PublicKey
   ): Promise<TransactionInstruction> {
@@ -93,6 +136,16 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Creates a new payment gateway for processing recurring payments.
+   * Gateways can charge fees and execute payments on behalf of users.
+   * @param authority - Public key that controls the gateway
+   * @param gatewayFeeBps - Fee in basis points (100 bps = 1%) charged by the gateway
+   * @param gatewayFeeRecipient - Public key that receives gateway fees
+   * @param name - Display name for the gateway (max 32 characters)
+   * @param url - Website URL for the gateway (max 64 characters)
+   * @returns Transaction instruction to create the payment gateway
+   */
   async createPaymentGateway(
     authority: PublicKey,
     gatewayFeeBps: number,
@@ -131,6 +184,20 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Creates a payment policy defining the terms of a recurring payment.
+   * Policies specify amount, frequency, recipient, and renewal conditions.
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payments
+   * @param gateway - Public key of the gateway that will execute payments
+   * @param amount - Amount to pay per interval (in smallest token units)
+   * @param autoRenew - Whether the subscription should auto-renew
+   * @param maxRenewals - Maximum number of renewals allowed (null for unlimited)
+   * @param paymentFrequency - How often payments should occur
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param startTime - When the first payment should occur (defaults to now)
+   * @returns Transaction instruction to create the payment policy
+   */
   async createPaymentPolicy(
     tokenMint: PublicKey,
     recipient: PublicKey,
@@ -179,6 +246,23 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Creates a complete set of instructions for setting up a subscription.
+   * This includes creating user payment account (if needed), payment policy,
+   * token approval, and optionally executing the first payment.
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payments
+   * @param gateway - Public key of the gateway that will execute payments
+   * @param amount - Amount to pay per interval (in smallest token units)
+   * @param autoRenew - Whether the subscription should auto-renew
+   * @param maxRenewals - Maximum number of renewals allowed (null for unlimited)
+   * @param paymentFrequency - How often payments should occur
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param startTime - When the first payment should occur (defaults to now)
+   * @param approvalAmount - Amount to approve for token delegation (required for execution)
+   * @param executeImmediately - Whether to execute the first payment immediately
+   * @returns Array of transaction instructions for the complete subscription setup
+   */
   async createSubscriptionInstruction(
     tokenMint: PublicKey,
     recipient: PublicKey,
@@ -314,6 +398,17 @@ export class Tributary {
     return instructions;
   }
 
+  /**
+   * Executes a payment according to the specified payment policy.
+   * Transfers tokens from user to recipient, deducts protocol and gateway fees.
+   * Can be called by anyone, but typically called by the gateway authority.
+   * @param paymentPolicyPda - Public key of the payment policy to execute
+   * @param recipient - Public key of the payment recipient (optional if in policy)
+   * @param tokenMint - Public key of the token mint (optional if in policy)
+   * @param gateway - Public key of the payment gateway (optional if in policy)
+   * @param user - Public key of the payment user (optional if in policy)
+   * @returns Array of transaction instructions including ATA creation and payment execution
+   */
   async executePayment(
     paymentPolicyPda: PublicKey,
     recipient?: PublicKey,
@@ -471,30 +566,60 @@ export class Tributary {
   }
 
   // Helper methods to get PDAs
+
+  /**
+   * Gets the Program Configuration PDA.
+   * @returns PdaResult containing the PDA address and bump
+   */
   getConfigPda() {
     return getConfigPda(this.programId);
   }
 
+  /**
+   * Gets a Payment Gateway PDA for the specified authority.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @returns PdaResult containing the PDA address and bump
+   */
   getGatewayPda(gatewayAuthority: PublicKey) {
     return getGatewayPda(gatewayAuthority, this.programId);
   }
 
+  /**
+   * Gets a User Payment PDA for the specified user and token mint.
+   * @param user - Public key of the user
+   * @param tokenMint - Public key of the token mint
+   * @returns PdaResult containing the PDA address and bump
+   */
   getUserPaymentPda(user: PublicKey, tokenMint: PublicKey) {
     return getUserPaymentPda(user, tokenMint, this.programId);
   }
 
+  /**
+   * Gets a Payment Policy PDA for the specified user payment and policy ID.
+   * @param userPayment - Public key of the user's payment PDA
+   * @param policyId - Unique identifier for the policy within the user's account
+   * @returns PdaResult containing the PDA address and bump
+   */
   getPaymentPolicyPda(userPayment: PublicKey, policyId: number) {
     return getPaymentPolicyPda(userPayment, policyId, this.programId);
   }
 
   /**
-   * Helper method to get the Payments Delegate PDA.
-   * @returns The PdaResult for the Payments Delegate PDA.
+   * Gets the Payments Delegate PDA used for token delegation.
+   * @returns PdaResult containing the PDA address and bump
    */
   getPaymentsDelegatePda() {
     return getPaymentsDelegatePda(this.programId);
   }
 
+  /**
+   * Changes the status of a payment policy (active or paused).
+   * Only the policy owner can change the status.
+   * @param tokenMint - Public key of the token mint
+   * @param policyId - ID of the policy to modify
+   * @param newStatus - New status for the policy
+   * @returns Transaction instruction to change the policy status
+   */
   async changePaymentPolicyStatus(
     tokenMint: PublicKey,
     policyId: number,
@@ -525,6 +650,13 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Deletes a payment policy permanently.
+   * Only the policy owner can delete their policies.
+   * @param tokenMint - Public key of the token mint
+   * @param policyId - ID of the policy to delete
+   * @returns Transaction instruction to delete the payment policy
+   */
   async deletePaymentPolicy(
     tokenMint: PublicKey,
     policyId: number
@@ -554,6 +686,12 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Deletes a payment gateway.
+   * Only the protocol admin can delete gateways.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @returns Transaction instruction to delete the payment gateway
+   */
   async deletePaymentGateway(
     gatewayAuthority: PublicKey
   ): Promise<TransactionInstruction> {
@@ -574,6 +712,13 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Changes the signer authorized to execute payments for a gateway.
+   * Only the gateway authority can change the signer.
+   * @param gatewayAuthority - Public key of the current gateway authority
+   * @param newSigner - Public key of the new signer
+   * @returns Transaction instruction to change the gateway signer
+   */
   async changeGatewaySigner(
     gatewayAuthority: PublicKey,
     newSigner: PublicKey
@@ -595,6 +740,13 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Changes the fee recipient for a payment gateway.
+   * Only the gateway authority can change the fee recipient.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param newFeeRecipient - Public key of the new fee recipient
+   * @returns Transaction instruction to change the gateway fee recipient
+   */
   async changeGatewayFeeRecipient(
     gatewayAuthority: PublicKey,
     newFeeRecipient: PublicKey
@@ -617,12 +769,21 @@ export class Tributary {
   }
 
   // Query methods
+
+  /**
+   * Retrieves all payment gateways in the protocol.
+   * @returns Array of payment gateway accounts with their public keys
+   */
   async getAllPaymentGateway(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentGateway }>
   > {
     return await this.program.account.paymentGateway.all();
   }
 
+  /**
+   * Retrieves all payment policies in the protocol.
+   * @returns Array of payment policy accounts with their public keys
+   */
   async getAllPaymentPolicies(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentPolicy }>
   > {
@@ -633,6 +794,10 @@ export class Tributary {
     ]);
   }
 
+  /**
+   * Retrieves all user payment accounts in the protocol.
+   * @returns Array of user payment accounts with their public keys
+   */
   async getAllUserPayments(): Promise<
     Array<{ publicKey: PublicKey; account: UserPayment }>
   > {
@@ -643,6 +808,11 @@ export class Tributary {
     ]);
   }
 
+  /**
+   * Retrieves all user payment accounts owned by a specific user.
+   * @param owner - Public key of the user
+   * @returns Array of user payment accounts owned by the specified user
+   */
   async getAllUserPaymentsByOwner(
     owner: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: UserPayment }>> {
@@ -659,6 +829,11 @@ export class Tributary {
     ]);
   }
 
+  /**
+   * Retrieves all payment policies where the specified user is the payer.
+   * @param user - Public key of the payment user
+   * @returns Array of payment policies where the user is the payer
+   */
   async getPaymentPoliciesByUser(
     user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
@@ -675,6 +850,11 @@ export class Tributary {
     ]);
   }
 
+  /**
+   * Retrieves all payment policies where the specified user is the recipient.
+   * @param user - Public key of the payment recipient
+   * @returns Array of payment policies where the user is the recipient
+   */
   async getPaymentPoliciesByRecipient(
     user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
@@ -691,6 +871,11 @@ export class Tributary {
     ]);
   }
 
+  /**
+   * Retrieves all payment policies executed by the specified gateway.
+   * @param gateway - Public key of the payment gateway
+   * @returns Array of payment policies executed by the gateway
+   */
   async getPaymentPoliciesByGateway(
     gateway: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
@@ -707,6 +892,11 @@ export class Tributary {
     ]);
   }
 
+  /**
+   * Fetches a specific user payment account by its address.
+   * @param userPaymentAddress - Public key of the user payment account
+   * @returns The user payment account data or null if not found
+   */
   async getUserPayment(
     userPaymentAddress: PublicKey
   ): Promise<UserPayment | null> {
@@ -715,6 +905,11 @@ export class Tributary {
     );
   }
 
+  /**
+   * Fetches the program configuration account.
+   * @param configAddress - Public key of the program config account
+   * @returns The program configuration data or null if not found
+   */
   async getProgramConfig(
     configAddress: PublicKey
   ): Promise<ProgramConfig | null> {
@@ -723,6 +918,11 @@ export class Tributary {
     );
   }
 
+  /**
+   * Fetches a specific payment gateway account by its address.
+   * @param gatewayAddress - Public key of the payment gateway account
+   * @returns The payment gateway account data or null if not found
+   */
   async getPaymentGateway(
     gatewayAddress: PublicKey
   ): Promise<PaymentGateway | null> {
@@ -731,6 +931,11 @@ export class Tributary {
     );
   }
 
+  /**
+   * Fetches a specific payment policy account by its address.
+   * @param policyAddress - Public key of the payment policy account
+   * @returns The payment policy account data or null if not found
+   */
   async getPaymentPolicy(
     policyAddress: PublicKey
   ): Promise<PaymentPolicy | null> {
@@ -740,5 +945,8 @@ export class Tributary {
   }
 }
 
-// legacy name
+// Legacy export for backward compatibility
+/**
+ * @deprecated Use Tributary instead. This export is maintained for backward compatibility.
+ */
 export { Tributary as RecurringPaymentsSDK };

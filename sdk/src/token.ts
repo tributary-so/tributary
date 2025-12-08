@@ -7,37 +7,62 @@ import {
 import { publicKey } from "@metaplex-foundation/umi";
 
 // Re-export types for backward compatibility
+
+/**
+ * Represents a creator of a token, including their address, verification status, and royalty share.
+ */
 export interface Creator {
+  /** The public key of the creator */
   address: PublicKey;
+  /** Whether this creator's signature is verified on the metadata */
   verified: boolean;
+  /** The percentage share of royalties this creator receives (0-100) */
   share: number;
 }
 
+/**
+ * Represents a collection that a token belongs to.
+ */
 export interface Collection {
+  /** Whether the collection membership is verified */
   verified: boolean;
+  /** The public key of the collection mint */
   key: PublicKey;
 }
 
-// Simplified metadata structure for easier consumption
 /**
- * Simplified metadata structure for easier consumption.
+ * Simplified metadata structure for token information.
+ * Provides essential token metadata in a consistent format, derived from Metaplex Token Metadata.
  */
 export interface Metadata {
+  /** The public key of the token mint */
   mint: PublicKey;
+  /** Core token data */
   data: {
+    /** Token name */
     name: string;
+    /** Token symbol/ticker */
     symbol: string;
+    /** URI pointing to off-chain metadata (JSON) */
     uri: string;
+    /** Seller fee basis points (royalty percentage * 100) */
     sellerFeeBasisPoints: number;
+    /** Array of creators or null if none */
     creators: Creator[] | null;
   };
+  /** Whether the primary sale has occurred (affects royalties) */
   primarySaleHappened: boolean;
+  /** Whether the metadata can still be modified */
   isMutable: boolean;
+  /** Collection information or null if not part of a collection */
   collection: Collection | null;
 }
 
 /**
- * Derives the metadata PDA for a given mint address
+ * Derives the Metaplex Token Metadata PDA for a given mint address.
+ * This PDA stores the token's metadata account on-chain.
+ * @param mint - The public key of the token mint
+ * @returns The public key of the metadata PDA
  */
 export function getMetadataPDA(mint: PublicKey): PublicKey {
   const umi = createUmi("");
@@ -48,10 +73,11 @@ export function getMetadataPDA(mint: PublicKey): PublicKey {
 }
 
 /**
- * Retrieves token metadata for a given mint address using the Metaplex Token Metadata program
- * @param connection - Solana RPC connection
- * @param mint - PublicKey of the token mint
- * @returns Promise<Metadata | null> - The metadata object or null if not found
+ * Retrieves token metadata for a given mint address using the Metaplex Token Metadata program.
+ * Fetches on-chain metadata and converts it to a simplified format for easier consumption.
+ * @param connection - Solana RPC connection to use for fetching
+ * @param mint - Public key of the token mint to fetch metadata for
+ * @returns Promise resolving to Metadata object or null if metadata not found or invalid
  */
 export async function getTokenInfo(
   connection: Connection,

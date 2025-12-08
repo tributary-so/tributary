@@ -15,16 +15,37 @@ export function encodeMemo(memo: string, size: number = 64): number[] {
   return Array.from(buffer);
 }
 
+/**
+ * Creates a memo buffer from a string (alias for encodeMemo).
+ * Encodes a string memo into a fixed-size number array for use in transaction memos.
+ * @param memo - The string memo to encode
+ * @param size - The desired size of the output array (default: 64)
+ * @returns A number array representing the encoded memo, padded with zeros
+ */
 export function createMemoBuffer(memo: string, size: number = 64): number[] {
   return encodeMemo(memo, size);
 }
 
+/**
+ * Decodes a memo buffer back to a string.
+ * Converts a number array back to the original string, trimming any trailing null bytes.
+ * @param buffer - The number array containing the encoded memo
+ * @returns The decoded string with trailing null bytes removed
+ */
 export function decodeMemo(buffer: number[]): string {
   const uint8Array = new Uint8Array(buffer);
   const decoder = new TextDecoder();
   return decoder.decode(uint8Array).replace(/\0+$/, "");
 }
 
+/**
+ * Converts a payment frequency string to the corresponding PaymentFrequency enum variant.
+ * Used to create payment policies with different recurring intervals.
+ * @param frequency - The string representation of the payment frequency
+ * @param customIntervalSeconds - Required when frequency is "custom", specifies interval in seconds
+ * @returns The PaymentFrequency enum variant for the smart contract
+ * @throws Error if customIntervalSeconds is not provided for custom frequency
+ */
 export function getPaymentFrequency(
   frequency: PaymentFrequencyString,
   customIntervalSeconds?: number
