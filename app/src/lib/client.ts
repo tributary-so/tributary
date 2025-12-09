@@ -1,6 +1,6 @@
 import { Connection, TransactionInstruction, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import { WalletContextState } from '@solana/wallet-adapter-react'
-import { RecurringPaymentsSDK } from '@tributary-so/sdk'
+import { Tributary } from '@tributary-so/sdk'
 import { Wallet } from '@coral-xyz/anchor'
 
 /**
@@ -9,7 +9,7 @@ import { Wallet } from '@coral-xyz/anchor'
  */
 export function useSDK(wallet: WalletContextState, connection: Connection) {
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  return new RecurringPaymentsSDK(connection, wallet as any as Wallet)
+  return new Tributary(connection, wallet as any as Wallet)
 }
 
 /**

@@ -124,7 +124,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         approvalAmount = new anchor.BN(formData.approvalAmount)
       }
       const amountBn = parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
-      const instructions = await sdk.createSubscriptionInstruction(
+      const instructions = await sdk.createSubscription(
         new PublicKey(formData.tokenMint),
         new PublicKey(formData.recipient),
         new PublicKey(formData.gateway),

@@ -141,9 +141,28 @@ export default function AccountPage() {
   }
 
   const getNextPaymentDue = (policy: PaymentPolicy) => {
-    if (!policy.policyType.subscription.nextPaymentDue) return 'N/A'
-    const nextPaymentDate = new Date(policy.policyType.subscription.nextPaymentDue.toNumber() * 1000)
-    return nextPaymentDate < new Date() ? 'Overdue' : formatDistanceToNow(nextPaymentDate, { addSuffix: true })
+    if ('subscription' in policy.policyType) {
+      const subscription = policy.policyType.subscription
+      if (subscription && subscription.nextPaymentDue) {
+        const nextPaymentDate = new Date(subscription.nextPaymentDue.toNumber() * 1000)
+        return nextPaymentDate < new Date() ? 'Overdue' : formatDistanceToNow(nextPaymentDate, { addSuffix: true })
+      }
+    }
+    if ('milestone' in policy.policyType) {
+      const milestone = policy.policyType.milestone
+      if (milestone && milestone.currentMilestone < milestone.totalMilestones) {
+        const nextTimestamp = milestone.milestoneTimestamps[milestone.currentMilestone]
+        if (nextTimestamp && nextTimestamp.toNumber() > 0) {
+          const nextPaymentDate = new Date(nextTimestamp.toNumber() * 1000)
+          return nextPaymentDate < new Date() ? 'Overdue' : formatDistanceToNow(nextPaymentDate, { addSuffix: true })
+        }
+      }
+      return 'Completed'
+    }
+    if ('payAsYouGo' in policy.policyType) {
+      return 'On-demand'
+    }
+    return 'N/A'
   }
 
   const getStatus = (policy: PaymentPolicy) => {
@@ -156,10 +175,9 @@ export default function AccountPage() {
   }
 
   const getPolicyType = (policy: PaymentPolicy) => {
-    const policyType = policy.policyType as Record<string, unknown>
-    if (policyType.subscription) return 'Subscription'
-    if (policyType.oneTime) return 'One Time'
-    if (policyType.installment) return 'Installment'
+    if ('subscription' in policy.policyType) return 'Subscription'
+    if ('milestone' in policy.policyType) return 'Milestone'
+    if ('payAsYouGo' in policy.policyType) return 'Pay-as-you-go'
     return 'Unknown'
   }
 
@@ -170,8 +188,22 @@ export default function AccountPage() {
   }
 
   const isPaymentDue = (policy: PaymentPolicy): boolean => {
-    if (!policy.policyType.subscription.nextPaymentDue) return false
-    return new Date(policy.policyType.subscription.nextPaymentDue.toNumber() * 1000) <= new Date()
+    if ('subscription' in policy.policyType) {
+      const subscription = policy.policyType.subscription
+      if (subscription && subscription.nextPaymentDue) {
+        return new Date(subscription.nextPaymentDue.toNumber() * 1000) <= new Date()
+      }
+    }
+    if ('milestone' in policy.policyType) {
+      const milestone = policy.policyType.milestone
+      if (milestone && milestone.currentMilestone < milestone.totalMilestones) {
+        const nextTimestamp = milestone.milestoneTimestamps[milestone.currentMilestone]
+        if (nextTimestamp && nextTimestamp.toNumber() > 0) {
+          return new Date(nextTimestamp.toNumber() * 1000) <= new Date()
+        }
+      }
+    }
+    return false
   }
 
   const copyToClipboard = (text: string, type: string) => {
