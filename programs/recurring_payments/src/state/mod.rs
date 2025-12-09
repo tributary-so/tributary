@@ -18,13 +18,24 @@ pub enum PolicyType {
         padding: [u8; 97],                   // 97 bytes padding
     },
     Milestone {
-        milestone_amounts: [u64; 4],         // 32 bytes - Amount for each milestone
-        milestone_timestamps: [i64; 4],      // 32 bytes - Absolute timestamps for each milestone
-        current_milestone: u8,               // 1 byte - Which milestone is next (0-3)
-        release_condition: u8,               // 1 byte - 0=time-based, 1=manual approval, 2=automatic
-        total_milestones: u8,                // 1 byte - How many milestones are configured (1-4)
-        escrow_amount: u64,                  // 8 bytes - Total amount held in escrow
-        padding: [u8; 53],                   // 53 bytes padding
+        milestone_amounts: [u64; 4],    // 32 bytes - Amount for each milestone
+        milestone_timestamps: [i64; 4], // 32 bytes - Absolute timestamps for each milestone
+        current_milestone: u8,          // 1 byte - Which milestone is next (0-3)
+        release_condition: u8,          // 1 byte - 0=time-based, 1=manual approval, 2=automatic
+        total_milestones: u8,           // 1 byte - How many milestones are configured (1-4)
+        escrow_amount: u64,             // 8 bytes - Total amount held in escrow
+        padding: [u8; 53],              // 53 bytes padding
+    },
+    /// Pay-as-you-go payment model for AI agents and service providers.
+    /// Providers can claim up to max_chunk_amount when they hit usage thresholds,
+    /// with a maximum of max_amount_per_period per period. Period resets automatically.
+    PayAsYouGo {
+        max_amount_per_period: u64, // 8 bytes - Total amount allowed per period
+        max_chunk_amount: u64,      // 8 bytes - Max amount provider can claim in one go
+        period_length_seconds: u64, // 8 bytes - Length of each period in seconds
+        current_period_start: i64,  // 8 bytes - When current period started (unix timestamp)
+        current_period_total: u64,  // 8 bytes - Amount claimed in current period so far
+        padding: [u8; 88],          // 88 bytes padding
     },
     // Future variants can be added like this:
     // Installment {
@@ -126,6 +137,36 @@ impl PolicyType {
                 require!(
                     *release_condition <= 2,
                     crate::error::RecurringPaymentsError::InvalidAmount
+                );
+            }
+            PolicyType::PayAsYouGo {
+                max_amount_per_period,
+                max_chunk_amount,
+                period_length_seconds,
+                ..
+            } => {
+                // Validate max_amount_per_period is greater than zero
+                require!(
+                    *max_amount_per_period > 0,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate max_chunk_amount is greater than zero
+                require!(
+                    *max_chunk_amount > 0,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate max_chunk_amount is not greater than max_amount_per_period
+                require!(
+                    *max_chunk_amount <= *max_amount_per_period,
+                    crate::error::RecurringPaymentsError::InvalidAmount
+                );
+
+                // Validate period_length_seconds is greater than zero
+                require!(
+                    *period_length_seconds > 0,
+                    crate::error::RecurringPaymentsError::InvalidInterval
                 );
             }
         }
@@ -254,7 +295,7 @@ pub struct PaymentPolicy {
     pub updated_at: i64,
     pub policy_id: u32,
     pub bump: u8,
-    pub padding: [u8; 256],
+    pub padding: [u8; 255],
 }
 
 impl PaymentPolicy {
@@ -262,7 +303,7 @@ impl PaymentPolicy {
         32 + // user_payment: Pubkey
         32 + // recipient: Pubkey
         32 + // gateway: Pubkey
-        PolicyType::VARIANT_SIZE + // policy type size
+        PolicyType::TOTAL_SIZE + // policy type size (includes enum discriminator)
         1 + // status: PaymentStatus
         64 + // memo: [u8; 64]
         8 + // total_paid: u64
@@ -271,7 +312,7 @@ impl PaymentPolicy {
         8 + // updated_at: i64
         4 + // policy_id: u32
         1 + // bump: u8
-        256; // padding: [u8; 256]
+        255; // padding: [u8; 255]
 }
 
 /// This is a unique global program configuration managed by an admin that

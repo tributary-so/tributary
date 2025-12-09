@@ -42,7 +42,7 @@ pub struct CreatePaymentPolicy<'info> {
         seeds = [
             PAYMENT_POLICY_SEED,
             user_payment.key().as_ref(),
-            (user_payment.active_policies_count+1).to_le_bytes().as_ref()
+            (user_payment.active_policies_count + 1).to_le_bytes().as_ref()
         ],
         bump
     )]
@@ -76,11 +76,26 @@ pub fn handler_create_payment_policy(
             // Milestone timestamps are absolute and should be validated to be in the future
             // No adjustment needed here as milestones don't have a "next due" concept
         }
+        PolicyType::PayAsYouGo {
+            current_period_start,
+            ..
+        } => {
+            // Initialize the current period start time
+            *current_period_start = clock.unix_timestamp;
+        }
     }
 
     let payment_policy = &mut ctx.accounts.payment_policy;
     let user_payment = &mut ctx.accounts.user_payment;
-    let policy_id = user_payment.active_policies_count + 1;
+
+    // Enforce maximum policies per user limit
+    require!(
+        user_payment.active_policies_count < u32::MAX
+            && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
+        RecurringPaymentsError::MaxPoliciesReached
+    );
+
+    let policy_id = user_payment.active_policies_count.saturating_add(1);
 
     payment_policy.user_payment = user_payment.key();
     payment_policy.recipient = ctx.accounts.recipient.key();
@@ -105,13 +120,7 @@ pub fn handler_create_payment_policy(
     });
 
     // Update user payment account
-    // Enforce maximum policies per user limit
-    require!(
-        user_payment.active_policies_count < u32::MAX
-            && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
-        RecurringPaymentsError::MaxPoliciesReached
-    );
-    user_payment.active_policies_count = user_payment.active_policies_count.saturating_add(1);
+    user_payment.active_policies_count = policy_id;
     user_payment.updated_at = clock.unix_timestamp;
 
     msg!(

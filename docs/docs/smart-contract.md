@@ -41,6 +41,14 @@ pub enum PolicyType {
         escrow_amount: u64,                  // Total amount held in escrow
         padding: [u8; 53],                   // Padding for 128-byte alignment
     },
+    PayAsYouGo {
+        max_amount_per_period: u64,          // Total amount allowed per period
+        max_chunk_amount: u64,               // Max amount provider can claim in one go
+        period_length_seconds: u64,          // Length of each period in seconds
+        current_period_start: i64,           // When current period started (unix timestamp)
+        current_period_total: u64,           // Amount claimed in current period so far
+        padding: [u8; 88],                   // Padding for 128-byte alignment
+    },
 }
 ```
 
@@ -67,6 +75,22 @@ Perfect for:
 - **Development contracts:** Milestone-based software delivery
 - **Consulting engagements:** Deliverable-based compensation
 - **Content creation:** Episode/release-based payments
+
+### Pay-as-you-go
+
+Flexible usage-based payments where service providers can claim funds up to a maximum chunk amount within each billing period. Period totals automatically reset, enabling just-in-time funding for variable usage patterns.
+
+- **Period Limits:** Maximum amount allowed per billing period
+- **Chunk Claims:** Configurable maximum per individual payment
+- **Automatic Resets:** Period counters reset when time expires
+- **Usage Tracking:** Current period total and remaining allowance
+
+Perfect for:
+
+- **AI Agents:** LLM providers claiming based on token usage
+- **API Services:** Pay-per-call with periodic limits
+- **Cloud Resources:** Usage-based infrastructure costs
+- **SaaS Platforms:** Flexible billing for variable consumption
 
 ## Future Payment Types
 

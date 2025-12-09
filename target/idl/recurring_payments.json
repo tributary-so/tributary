@@ -924,7 +924,14 @@
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "payment_amount",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
     },
     {
       "name": "initialize",
@@ -1547,7 +1554,7 @@
             "type": {
               "array": [
                 "u8",
-                256
+                255
               ]
             }
           }
@@ -1805,6 +1812,40 @@
                   "array": [
                     "u8",
                     53
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "PayAsYouGo",
+            "fields": [
+              {
+                "name": "max_amount_per_period",
+                "type": "u64"
+              },
+              {
+                "name": "max_chunk_amount",
+                "type": "u64"
+              },
+              {
+                "name": "period_length_seconds",
+                "type": "u64"
+              },
+              {
+                "name": "current_period_start",
+                "type": "i64"
+              },
+              {
+                "name": "current_period_total",
+                "type": "u64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    88
                   ]
                 }
               }

@@ -92,7 +92,10 @@ pub struct ExecutePayment<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
+pub fn handler_execute_payment(
+    ctx: Context<ExecutePayment>,
+    payment_amount: Option<u64>,
+) -> Result<()> {
     let payment_policy = &mut ctx.accounts.payment_policy;
     let user_payment = &mut ctx.accounts.user_payment;
     let gateway = &mut ctx.accounts.gateway;
@@ -163,6 +166,42 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
             }
 
             amount
+        }
+        PolicyType::PayAsYouGo {
+            max_amount_per_period,
+            max_chunk_amount,
+            period_length_seconds,
+            current_period_start,
+            current_period_total,
+            ..
+        } => {
+            // Check if we need to reset the period
+            let period_end = *current_period_start + *period_length_seconds as i64;
+            if clock.unix_timestamp >= period_end {
+                // Reset period
+                *current_period_start = clock.unix_timestamp;
+                *current_period_total = 0;
+            }
+
+            // For pay-as-you-go, payment amount is specified by the gateway/provider
+            let payment_amount = payment_amount.unwrap_or(*max_chunk_amount);
+
+            // Validate chunk amount doesn't exceed max_chunk_amount
+            require!(
+                payment_amount <= *max_chunk_amount,
+                crate::error::RecurringPaymentsError::InvalidAmount
+            );
+
+            // Validate period limit won't be exceeded
+            require!(
+                *current_period_total + payment_amount <= *max_amount_per_period,
+                crate::error::RecurringPaymentsError::InvalidAmount
+            );
+
+            // Update period total
+            *current_period_total += payment_amount;
+
+            payment_amount
         }
     };
 
@@ -258,6 +297,10 @@ pub fn handler_execute_payment(ctx: Context<ExecutePayment>) -> Result<()> {
         }
         PolicyType::Milestone { .. } => {
             // Milestone completion check is handled above when updating current_milestone
+        }
+        PolicyType::PayAsYouGo { .. } => {
+            // Pay-as-you-go policies don't pause based on payment count
+            // They continue until manually paused or period limits are reached
         }
     }
 

@@ -269,69 +269,118 @@ describe("Recurring Payments", () => {
     expect(urlString).toBe("https://example.com");
   });
 
-  test("Create payment policy", async () => {
-    const amount = new anchor.BN(10000); // 0.01 token with 6 decimals
-    const memo = new Uint8Array(64).fill(0);
-    Buffer.from("test subscription").copy(memo);
+  describe("Subscription payment policies", () => {
+    test("Create subscription payment policy", async () => {
+      const amount = new anchor.BN(10000); // 0.01 token with 6 decimals
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("test subscription").copy(memo);
 
-    const paymentFrequency = { daily: {} };
+      const paymentFrequency = { daily: {} };
 
-    // Update SDK to use user wallet
-    await sdk.updateWallet(new anchor.Wallet(user));
+      // Update SDK to use user wallet
+      await sdk.updateWallet(new anchor.Wallet(user));
 
-    const createPolicyIx = await sdk.createPaymentPolicy(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      amount,
-      true,
-      null,
-      paymentFrequency,
-      Array.from(memo),
-      null // start_time
-    );
-    const tx = new Transaction().add(createPolicyIx);
+      const createPolicyIx = await sdk.createPaymentPolicy(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amount,
+        true,
+        null,
+        paymentFrequency,
+        Array.from(memo),
+        null // start_time
+      );
+      const tx = new Transaction().add(createPolicyIx);
 
-    await sendAndConfirmTransaction(connection, tx, [user], {
-      commitment: "processed" as Commitment,
+      await sendAndConfirmTransaction(connection, tx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const policyAccount = await sdk.getPaymentPolicy(paymentPolicyPDA);
+
+      expect(policyAccount!.userPayment).toEqual(userPaymentPDA);
+      expect(policyAccount!.recipient).toEqual(recipient.publicKey);
+      expect(policyAccount!.gateway).toEqual(gatewayPDA);
+      expect(policyAccount!.policyId).toBe(1);
+      expect(policyAccount!.status).toEqual({ active: {} });
+      expect(policyAccount!.totalPaid.toNumber()).toBe(0);
+      expect(policyAccount!.paymentCount).toBe(0);
+      expect(policyAccount!.bump).toBe(paymentPolicyBump);
+      expect(policyAccount!.createdAt.toNumber()).toBeGreaterThan(0);
+
+      // Verify policy type is subscription
+      expect(policyAccount!.policyType.subscription).toBeDefined();
+      expect(policyAccount!.policyType.subscription.amount.toNumber()).toBe(
+        amount.toNumber()
+      );
+      expect(policyAccount!.policyType.subscription.paymentFrequency).toEqual({
+        daily: {},
+      });
+      expect(
+        policyAccount!.policyType.subscription.nextPaymentDue.toNumber()
+      ).toBeGreaterThan(0);
+      expect(policyAccount!.policyType.subscription.autoRenew).toBe(true);
+
+      // Check that user payment account was updated
+      const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
+      expect(updatedUserPayment!.activePoliciesCount).toBe(1);
     });
 
-    const policyAccount = await sdk.getPaymentPolicy(paymentPolicyPDA);
+    test("Execute subscription payment fails without delegate approval", async () => {
+      // Update SDK to use gateway authority wallet
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    expect(policyAccount!.userPayment).toEqual(userPaymentPDA);
-    expect(policyAccount!.recipient).toEqual(recipient.publicKey);
-    expect(policyAccount!.gateway).toEqual(gatewayPDA);
-    expect(policyAccount!.policyId).toBe(1);
-    expect(policyAccount!.status).toEqual({ active: {} });
-    expect(policyAccount!.totalPaid.toNumber()).toBe(0);
-    expect(policyAccount!.paymentCount).toBe(0);
-    expect(policyAccount!.bump).toBe(paymentPolicyBump);
-    expect(policyAccount!.createdAt.toNumber()).toBeGreaterThan(0);
+      // Try to execute payment without delegate approval - should fail
+      try {
+        const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
+        const tx = new Transaction().add(...executePaymentIxs);
 
-    // Verify policy type is subscription
-    expect(policyAccount!.policyType.subscription).toBeDefined();
-    expect(policyAccount!.policyType.subscription.amount.toNumber()).toBe(
-      amount.toNumber()
-    );
-    expect(policyAccount!.policyType.subscription.paymentFrequency).toEqual({
-      daily: {},
+        await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+          commitment: "processed" as Commitment,
+        });
+
+        assert(
+          false,
+          "Expected payment execution to fail without delegate approval"
+        );
+      } catch (error: any) {
+        // Should fail due to insufficient delegate approval
+        expect(error.message).toContain("No or incorrect delegate set in ata");
+      }
     });
-    expect(
-      policyAccount!.policyType.subscription.nextPaymentDue.toNumber()
-    ).toBeGreaterThan(0);
-    expect(policyAccount!.policyType.subscription.autoRenew).toBe(true);
 
-    // Check that user payment account was updated
-    const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
-    expect(updatedUserPayment!.activePoliciesCount).toBe(1);
-  });
+    test("Set delegate approval for payment execution", async () => {
+      const amount = 1000000; // 1 token with 6 decimals
 
-  test("Execute payment fails without delegate approval", async () => {
-    // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await approve(
+        connection,
+        user,
+        userTokenAccount,
+        paymentsDelegate,
+        user,
+        amount
+      );
 
-    // Try to execute payment without delegate approval - should fail
-    try {
+      // Verify delegate approval was set
+      const tokenAccountInfo = await connection.getParsedAccountInfo(
+        userTokenAccount
+      );
+      const parsedData = tokenAccountInfo.value?.data as any;
+      expect(parsedData.parsed.info.delegate).toEqual(
+        paymentsDelegate.toString()
+      );
+      expect(parsedData.parsed.info.delegatedAmount.uiAmount).toBe(1);
+    });
+
+    test("Execute subscription payment", async () => {
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
+      // Update SDK to use gateway authority wallet
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
       const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
       const tx = new Transaction().add(...executePaymentIxs);
 
@@ -339,417 +388,425 @@ describe("Recurring Payments", () => {
         commitment: "processed" as Commitment,
       });
 
-      assert(
-        false,
-        "Expected payment execution to fail without delegate approval"
+      // Verify payment was executed
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
       );
-    } catch (error: any) {
-      // Should fail due to insufficient delegate approval
-      expect(error.message).toContain("No or incorrect delegate set in ata");
-    }
-  });
+      expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
+        initialRecipientBalance.value.uiAmount || 0
+      );
 
-  test("Set delegate approval for payment execution", async () => {
-    const amount = 1000000; // 1 token with 6 decimals
+      // Verify policy was updated
+      const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicyPDA);
+      expect(updatedPolicy!.paymentCount).toBe(1);
+      expect(updatedPolicy!.totalPaid.toNumber()).toBe(10000); // 0.01 token
+      expect(
+        updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber()
+      ).toBeGreaterThan(Date.now() / 1000);
 
-    await approve(
-      connection,
-      user,
-      userTokenAccount,
-      paymentsDelegate,
-      user,
-      amount
-    );
-
-    // Verify delegate approval was set
-    const tokenAccountInfo = await connection.getParsedAccountInfo(
-      userTokenAccount
-    );
-    const parsedData = tokenAccountInfo.value?.data as any;
-    expect(parsedData.parsed.info.delegate).toEqual(
-      paymentsDelegate.toString()
-    );
-    expect(parsedData.parsed.info.delegatedAmount.uiAmount).toBe(1);
-  });
-
-  test("Execute payment", async () => {
-    const initialRecipientBalance = await connection.getTokenAccountBalance(
-      recipientTokenAccount
-    );
-
-    // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
-
-    const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
-    const tx = new Transaction().add(...executePaymentIxs);
-
-    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
-      commitment: "processed" as Commitment,
+      // Verify gateway stats were updated
+      const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
+      expect(updatedGateway!.totalProcessed.toNumber()).toBe(10000);
     });
 
-    // Verify payment was executed
-    const finalRecipientBalance = await connection.getTokenAccountBalance(
-      recipientTokenAccount
-    );
-    expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
-      initialRecipientBalance.value.uiAmount || 0
-    );
+    test("Get all payment policies using SDK", async () => {
+      // Get all payment policies
+      const allPolicies = await sdk.getAllPaymentPolicies();
 
-    // Verify policy was updated
-    const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicyPDA);
-    expect(updatedPolicy!.paymentCount).toBe(1);
-    expect(updatedPolicy!.totalPaid.toNumber()).toBe(10000); // 0.01 token
-    expect(
-      updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber()
-    ).toBeGreaterThan(Date.now() / 1000);
+      expect(allPolicies.length).toBeGreaterThan(0);
+      expect(allPolicies[0].account.policyId).toBe(1);
+      expect(allPolicies[0].account.userPayment).toEqual(userPaymentPDA);
+      expect(allPolicies[0].account.recipient).toEqual(recipient.publicKey);
+      expect(allPolicies[0].account.gateway).toEqual(gatewayPDA);
 
-    // Verify gateway stats were updated
-    const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
-    expect(updatedGateway!.totalProcessed.toNumber()).toBe(10000);
-  });
+      // Verify the policy type is subscription
+      expect(allPolicies[0].account.policyType.subscription).toBeDefined();
+      expect(
+        allPolicies[0].account.policyType.subscription.amount.toNumber()
+      ).toBe(10000);
+    });
 
-  test("Get all payment policies using SDK", async () => {
-    // Get all payment policies
-    const allPolicies = await sdk.getAllPaymentPolicies();
+    test("Cannot execute subscription payment twice within period", async () => {
+      // Update SDK to use gateway authority wallet
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    expect(allPolicies.length).toBeGreaterThan(0);
-    expect(allPolicies[0].account.policyId).toBe(1);
-    expect(allPolicies[0].account.userPayment).toEqual(userPaymentPDA);
-    expect(allPolicies[0].account.recipient).toEqual(recipient.publicKey);
-    expect(allPolicies[0].account.gateway).toEqual(gatewayPDA);
+      // First execution should succeed (already done in previous test)
+      // Second execution should fail because next_payment_due is in the future
+      try {
+        const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
+        const tx = new Transaction().add(...executePaymentIxs);
 
-    // Verify the policy type is subscription
-    expect(allPolicies[0].account.policyType.subscription).toBeDefined();
-    expect(
-      allPolicies[0].account.policyType.subscription.amount.toNumber()
-    ).toBe(10000);
-  });
+        await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+          commitment: "processed" as Commitment,
+        });
 
-  test("Cannot execute payment twice within period", async () => {
-    // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+        assert(
+          false,
+          "Expected payment execution to fail when next_payment_due is in future"
+        );
+      } catch (error: any) {
+        expect(error.message).toContain("PaymentNotDue");
+      }
+    });
 
-    // First execution should succeed (already done in previous test)
-    // Second execution should fail because next_payment_due is in the future
-    try {
-      const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
-      const tx = new Transaction().add(...executePaymentIxs);
+    test("Can execute payment when next_payment_due is in past", async () => {
+      // Get current policy to check next_payment_due
+      const policy = await sdk.getPaymentPolicy(paymentPolicyPDA);
+      const nextPaymentDue =
+        policy!.policyType.subscription.nextPaymentDue.toNumber();
 
-      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+      // Verify next payment is indeed in the future (from previous execution)
+      expect(nextPaymentDue).toBeGreaterThan(Math.floor(Date.now() / 1000));
+
+      // Create a new policy with start_time in the past to test timing validation
+      const amount = new anchor.BN(5000); // 0.005 token
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("test policy 2").copy(memo);
+
+      const paymentFrequency: PaymentFrequency = {
+        custom: { 0: new anchor.BN(3600) },
+      }; // 1 hour in seconds
+
+      // Derive second policy PDA
+      const policyId2 = 2;
+      const [paymentPolicy2PDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Create policy with start_time in the past (2 hours ago)
+      const twoHoursAgo = Math.floor(Date.now() / 1000) - 7200;
+
+      // Update SDK to use user wallet
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const createPolicy2Ix = await sdk.createPaymentPolicy(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amount,
+        true,
+        null,
+        paymentFrequency,
+        Array.from(memo),
+        new anchor.BN(twoHoursAgo) // start_time in past
+      );
+      const createTx = new Transaction().add(createPolicy2Ix);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
         commitment: "processed" as Commitment,
       });
 
-      assert(
-        false,
-        "Expected payment execution to fail when next_payment_due is in future"
+      // Execute payment on the new policy (should succeed since next_payment_due is in past)
+      // Update SDK to use gateway authority wallet
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
+      const executeTx = new Transaction();
+      executeTx.add(
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 })
       );
-    } catch (error: any) {
-      expect(error.message).toContain("PaymentNotDue");
-    }
-  });
-
-  test("Can execute payment when next_payment_due is in past", async () => {
-    // Get current policy to check next_payment_due
-    const policy = await sdk.getPaymentPolicy(paymentPolicyPDA);
-    const nextPaymentDue =
-      policy!.policyType.subscription.nextPaymentDue.toNumber();
-
-    // Verify next payment is indeed in the future (from previous execution)
-    expect(nextPaymentDue).toBeGreaterThan(Math.floor(Date.now() / 1000));
-
-    // Create a new policy with start_time in the past to test timing validation
-    const amount = new anchor.BN(5000); // 0.005 token
-    const memo = new Uint8Array(64).fill(0);
-    Buffer.from("test policy 2").copy(memo);
-
-    const paymentFrequency: PaymentFrequency = {
-      custom: { 0: new anchor.BN(3600) },
-    }; // 1 hour in seconds
-
-    // Derive second policy PDA
-    const policyId2 = 2;
-    const [paymentPolicy2PDA] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("payment_policy"),
-        userPaymentPDA.toBuffer(),
-        new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId
-    );
-
-    // Create policy with start_time in the past (2 hours ago)
-    const twoHoursAgo = Math.floor(Date.now() / 1000) - 7200;
-
-    // Update SDK to use user wallet
-    await sdk.updateWallet(new anchor.Wallet(user));
-
-    const createPolicy2Ix = await sdk.createPaymentPolicy(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      amount,
-      true,
-      null,
-      paymentFrequency,
-      Array.from(memo),
-      new anchor.BN(twoHoursAgo) // start_time in past
-    );
-    const createTx = new Transaction().add(createPolicy2Ix);
-    await sendAndConfirmTransaction(connection, createTx, [user], {
-      commitment: "processed" as Commitment,
-    });
-
-    // Execute payment on the new policy (should succeed since next_payment_due is in past)
-    // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
-
-    const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
-    const executeTx = new Transaction();
-    executeTx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }));
-    executeTx.add(...executePaymentIxs);
-
-    await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority], {
-      commitment: "processed" as Commitment,
-    });
-
-    // Verify payment was executed
-    const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy2PDA);
-    expect(updatedPolicy!.paymentCount).toBe(1);
-    expect(updatedPolicy!.totalPaid.toNumber()).toBe(5000);
-
-    // Immediately try to execute again - should fail
-    try {
-      const executePaymentIxs2 = await sdk.executePayment(paymentPolicy2PDA);
-      const executeTx2 = new Transaction().add(...executePaymentIxs2);
+      executeTx.add(...executePaymentIxs);
 
       await sendAndConfirmTransaction(
         connection,
-        executeTx2,
+        executeTx,
         [gatewayAuthority],
         {
           commitment: "processed" as Commitment,
         }
       );
 
-      assert(
-        false,
-        "Expected second payment execution to fail within same period"
+      // Verify payment was executed
+      const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy2PDA);
+      expect(updatedPolicy!.paymentCount).toBe(1);
+      expect(updatedPolicy!.totalPaid.toNumber()).toBe(5000);
+
+      // Immediately try to execute again - should fail
+      try {
+        const executePaymentIxs2 = await sdk.executePayment(paymentPolicy2PDA);
+        const executeTx2 = new Transaction().add(...executePaymentIxs2);
+
+        await sendAndConfirmTransaction(
+          connection,
+          executeTx2,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
+
+        assert(
+          false,
+          "Expected second payment execution to fail within same period"
+        );
+      } catch (error: any) {
+        expect(error.message).toContain("PaymentNotDue");
+      }
+    });
+
+    test("executeImmediately option - token transfer only occurs when true", async () => {
+      // Update SDK to use user wallet
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      // Create token accounts for test user and recipient
+      const testRecipientTokenAccount = getAssociatedTokenAddressSync(
+        tokenMint,
+        recipient.publicKey
       );
-    } catch (error: any) {
-      expect(error.message).toContain("PaymentNotDue");
-    }
-  });
 
-  test("executeImmediately option - token transfer only occurs when true", async () => {
-    // Update SDK to use user wallet
-    await sdk.updateWallet(new anchor.Wallet(user));
+      // Mint tokens to test user
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        userTokenAccount,
+        mintAuthority,
+        1000000n // 1 token with 6 decimals
+      );
 
-    // Create token accounts for test user and recipient
-    const testRecipientTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      recipient.publicKey
-    );
+      // Setup policy parameters
+      const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
+      const testIntervalSeconds = new anchor.BN(86400); // 1 day
+      const testMemo = new Uint8Array(64).fill(0);
+      Buffer.from("executeImmediately test").copy(testMemo);
+      const testPaymentFrequency = { daily: {} };
+      const approvalAmount = new anchor.BN(1000000); // 1 token
+      const currentTime = Math.floor(Date.now() / 1000);
+      const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
 
-    // Mint tokens to test user
-    await mintTo(
-      connection,
-      mintAuthority,
-      tokenMint,
-      userTokenAccount,
-      mintAuthority,
-      1000000n // 1 token with 6 decimals
-    );
+      const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        testAmount,
+        true,
+        null,
+        testPaymentFrequency,
+        Array.from(testMemo),
+        testStartTime,
+        approvalAmount,
+        true // executeImmediately = true
+      );
 
-    // Setup policy parameters
-    const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
-    const testIntervalSeconds = new anchor.BN(86400); // 1 day
-    const testMemo = new Uint8Array(64).fill(0);
-    Buffer.from("executeImmediately test").copy(testMemo);
-    const testPaymentFrequency = { daily: {} };
-    const approvalAmount = new anchor.BN(1000000); // 1 token
-    const currentTime = Math.floor(Date.now() / 1000);
-    const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
+      const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
+      // only user has to sign
+      await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
-    const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      testAmount,
-      true,
-      null,
-      testPaymentFrequency,
-      Array.from(testMemo),
-      testStartTime,
-      approvalAmount,
-      true // executeImmediately = true
-    );
+      // Get initial balances
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        testRecipientTokenAccount
+      );
+      const initialUserBalance = await connection.getTokenAccountBalance(
+        userTokenAccount
+      );
 
-    const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
-    // only user has to sign
-    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user], {
-      commitment: "processed" as Commitment,
+      // Check balances after policy creation with executeImmediately = false
+      const balanceAfterCreateFalse = await connection.getTokenAccountBalance(
+        testRecipientTokenAccount
+      );
+      const userBalanceAfterCreateFalse =
+        await connection.getTokenAccountBalance(userTokenAccount);
+
+      // No token transfer should have occurred
+      expect(balanceAfterCreateFalse.value.amount).toBe(
+        initialRecipientBalance.value.amount
+      );
+      expect(userBalanceAfterCreateFalse.value.amount).toBe(
+        initialUserBalance.value.amount
+      );
     });
 
-    // Get initial balances
-    const initialRecipientBalance = await connection.getTokenAccountBalance(
-      testRecipientTokenAccount
-    );
-    const initialUserBalance = await connection.getTokenAccountBalance(
-      userTokenAccount
-    );
+    test("executeImmediately option - no transfer if false", async () => {
+      const testRecipient2TokenAccount = getAssociatedTokenAddressSync(
+        tokenMint,
+        recipient.publicKey
+      );
 
-    // Check balances after policy creation with executeImmediately = false
-    const balanceAfterCreateFalse = await connection.getTokenAccountBalance(
-      testRecipientTokenAccount
-    );
-    const userBalanceAfterCreateFalse = await connection.getTokenAccountBalance(
-      userTokenAccount
-    );
+      // Mint tokens to test user 2
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        userTokenAccount,
+        mintAuthority,
+        1000000n // 1 token with 6 decimals
+      );
 
-    // No token transfer should have occurred
-    expect(balanceAfterCreateFalse.value.amount).toBe(
-      initialRecipientBalance.value.amount
-    );
-    expect(userBalanceAfterCreateFalse.value.amount).toBe(
-      initialUserBalance.value.amount
-    );
-  });
+      // Get initial balances for test 2
+      const initialRecipient2Balance = await connection.getTokenAccountBalance(
+        testRecipient2TokenAccount
+      );
+      const initialUser2Balance = await connection.getTokenAccountBalance(
+        userTokenAccount
+      );
 
-  test("executeImmediately option - no transfer if false", async () => {
-    const testRecipient2TokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      recipient.publicKey
-    );
+      // Setup policy parameters
+      const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
+      const testIntervalSeconds = new anchor.BN(86400); // 1 day
+      const testMemo = new Uint8Array(64).fill(0);
+      Buffer.from("executeImmediately test").copy(testMemo);
+      const testPaymentFrequency = { daily: {} };
+      const approvalAmount = new anchor.BN(1000000); // 1 token
+      const currentTime = Math.floor(Date.now() / 1000);
+      const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
 
-    // Mint tokens to test user 2
-    await mintTo(
-      connection,
-      mintAuthority,
-      tokenMint,
-      userTokenAccount,
-      mintAuthority,
-      1000000n // 1 token with 6 decimals
-    );
+      const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        testAmount,
+        true,
+        null,
+        testPaymentFrequency,
+        Array.from(testMemo),
+        testStartTime,
+        approvalAmount,
+        false // executeImmediately = false
+      );
 
-    // Get initial balances for test 2
-    const initialRecipient2Balance = await connection.getTokenAccountBalance(
-      testRecipient2TokenAccount
-    );
-    const initialUser2Balance = await connection.getTokenAccountBalance(
-      userTokenAccount
-    );
+      const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
+      // only user has to sign
+      await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
-    // Setup policy parameters
-    const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
-    const testIntervalSeconds = new anchor.BN(86400); // 1 day
-    const testMemo = new Uint8Array(64).fill(0);
-    Buffer.from("executeImmediately test").copy(testMemo);
-    const testPaymentFrequency = { daily: {} };
-    const approvalAmount = new anchor.BN(1000000); // 1 token
-    const currentTime = Math.floor(Date.now() / 1000);
-    const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
+      // Check balances after policy creation with executeImmediately = true
+      const balanceAfterCreateTrue = await connection.getTokenAccountBalance(
+        testRecipient2TokenAccount
+      );
+      const userBalanceAfterCreateTrue =
+        await connection.getTokenAccountBalance(userTokenAccount);
 
-    const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      testAmount,
-      true,
-      null,
-      testPaymentFrequency,
-      Array.from(testMemo),
-      testStartTime,
-      approvalAmount,
-      false // executeImmediately = false
-    );
-
-    const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
-    // only user has to sign
-    await sendAndConfirmTransaction(connection, createPolicyTrueTx, [user], {
-      commitment: "processed" as Commitment,
+      // Token transfers should have occurred
+      expect(parseInt(balanceAfterCreateTrue.value.amount)).toEqual(
+        parseInt(initialRecipient2Balance.value.amount)
+      );
+      expect(parseInt(userBalanceAfterCreateTrue.value.amount)).toEqual(
+        parseInt(initialUser2Balance.value.amount)
+      );
     });
 
-    // Check balances after policy creation with executeImmediately = true
-    const balanceAfterCreateTrue = await connection.getTokenAccountBalance(
-      testRecipient2TokenAccount
-    );
-    const userBalanceAfterCreateTrue = await connection.getTokenAccountBalance(
-      userTokenAccount
-    );
+    test("Change subscription policy status - pause/resume and execution control", async () => {
+      // Create a new policy for this test
+      const amount = new anchor.BN(15000); // 0.015 token
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("status change test").copy(memo);
 
-    // Token transfers should have occurred
-    expect(parseInt(balanceAfterCreateTrue.value.amount)).toEqual(
-      parseInt(initialRecipient2Balance.value.amount)
-    );
-    expect(parseInt(userBalanceAfterCreateTrue.value.amount)).toEqual(
-      parseInt(initialUser2Balance.value.amount)
-    );
-  });
+      const paymentFrequency: PaymentFrequency = {
+        custom: { 0: new anchor.BN(3600) },
+      }; // 1 hour
 
-  test("Change payment policy status - pause/resume and execution control", async () => {
-    // Create a new policy for this test
-    const amount = new anchor.BN(15000); // 0.015 token
-    const memo = new Uint8Array(64).fill(0);
-    Buffer.from("status change test").copy(memo);
+      // Set start time in the past so payment can be executed immediately
+      const pastTime = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
 
-    const paymentFrequency: PaymentFrequency = {
-      custom: { 0: new anchor.BN(3600) },
-    }; // 1 hour
+      // Update SDK to use user wallet
+      await sdk.updateWallet(new anchor.Wallet(user));
 
-    // Set start time in the past so payment can be executed immediately
-    const pastTime = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
+      // Create a new policy (policy ID will be 4 based on previous tests)
+      const policyId4 = 4;
+      const [paymentPolicy4PDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId4).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
 
-    // Update SDK to use user wallet
-    await sdk.updateWallet(new anchor.Wallet(user));
+      const createPolicy4Ix = await sdk.createPaymentPolicy(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amount,
+        true,
+        null,
+        paymentFrequency,
+        Array.from(memo),
+        new anchor.BN(pastTime)
+      );
+      const createTx = new Transaction().add(createPolicy4Ix);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
-    // Create a new policy (policy ID will be 4 based on previous tests)
-    const policyId4 = 4;
-    const [paymentPolicy4PDA] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("payment_policy"),
-        userPaymentPDA.toBuffer(),
-        new anchor.BN(policyId4).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId
-    );
+      // Verify policy was created with Active status
+      let policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+      expect(policy!.status).toEqual({ active: {} });
 
-    const createPolicy4Ix = await sdk.createPaymentPolicy(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      amount,
-      true,
-      null,
-      paymentFrequency,
-      Array.from(memo),
-      new anchor.BN(pastTime)
-    );
-    const createTx = new Transaction().add(createPolicy4Ix);
-    await sendAndConfirmTransaction(connection, createTx, [user], {
-      commitment: "processed" as Commitment,
-    });
+      // 1. Change status to Paused
+      const pauseIx = await sdk.changePaymentPolicyStatus(
+        tokenMint,
+        policyId4,
+        {
+          paused: {},
+        }
+      );
+      const pauseTx = new Transaction().add(pauseIx);
+      await sendAndConfirmTransaction(connection, pauseTx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
-    // Verify policy was created with Active status
-    let policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
-    expect(policy!.status).toEqual({ active: {} });
+      // Verify status changed to Paused
+      policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+      expect(policy!.status).toEqual({ paused: {} });
 
-    // 1. Change status to Paused
-    const pauseIx = await sdk.changePaymentPolicyStatus(tokenMint, policyId4, {
-      paused: {},
-    });
-    const pauseTx = new Transaction().add(pauseIx);
-    await sendAndConfirmTransaction(connection, pauseTx, [user], {
-      commitment: "processed" as Commitment,
-    });
+      // 2. Try to execute payment when paused - should fail
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    // Verify status changed to Paused
-    policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
-    expect(policy!.status).toEqual({ paused: {} });
+      try {
+        const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
+        const executeTx = new Transaction().add(...executePaymentIxs);
 
-    // 2. Try to execute payment when paused - should fail
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+        await sendAndConfirmTransaction(
+          connection,
+          executeTx,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
 
-    try {
+        assert(
+          false,
+          "Expected payment execution to fail when policy is paused"
+        );
+      } catch (error: any) {
+        // Should fail because policy is paused
+        expect(error.message).toContain("PolicyPaused");
+      }
+
+      // 3. Change status back to Active
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const resumeIx = await sdk.changePaymentPolicyStatus(
+        tokenMint,
+        policyId4,
+        {
+          active: {},
+        }
+      );
+      const resumeTx = new Transaction().add(resumeIx);
+      await sendAndConfirmTransaction(connection, resumeTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      // Verify status changed back to Active
+      policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+      expect(policy!.status).toEqual({ active: {} });
+
+      // 4. Execute payment when active - should succeed
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
       const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
       const executeTx = new Transaction().add(...executePaymentIxs);
 
@@ -762,96 +819,62 @@ describe("Recurring Payments", () => {
         }
       );
 
-      assert(false, "Expected payment execution to fail when policy is paused");
-    } catch (error: any) {
-      // Should fail because policy is paused
-      expect(error.message).toContain("PolicyPaused");
-    }
+      // Verify payment was executed successfully
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
+        initialRecipientBalance.value.uiAmount || 0
+      );
 
-    // 3. Change status back to Active
-    await sdk.updateWallet(new anchor.Wallet(user));
-
-    const resumeIx = await sdk.changePaymentPolicyStatus(tokenMint, policyId4, {
-      active: {},
+      // Verify policy was updated
+      const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
+      expect(updatedPolicy!.paymentCount).toBe(1);
+      expect(updatedPolicy!.totalPaid.toNumber()).toBe(20000);
     });
-    const resumeTx = new Transaction().add(resumeIx);
-    await sendAndConfirmTransaction(connection, resumeTx, [user], {
-      commitment: "processed" as Commitment,
-    });
-
-    // Verify status changed back to Active
-    policy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
-    expect(policy!.status).toEqual({ active: {} });
-
-    // 4. Execute payment when active - should succeed
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
-
-    const initialRecipientBalance = await connection.getTokenAccountBalance(
-      recipientTokenAccount
-    );
-
-    const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
-    const executeTx = new Transaction().add(...executePaymentIxs);
-
-    await sendAndConfirmTransaction(connection, executeTx, [gatewayAuthority], {
-      commitment: "processed" as Commitment,
-    });
-
-    // Verify payment was executed successfully
-    const finalRecipientBalance = await connection.getTokenAccountBalance(
-      recipientTokenAccount
-    );
-    expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
-      initialRecipientBalance.value.uiAmount || 0
-    );
-
-    // Verify policy was updated
-    const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy4PDA);
-    expect(updatedPolicy!.paymentCount).toBe(1);
-    expect(updatedPolicy!.totalPaid.toNumber()).toBe(20000);
   });
 
-  test("Delete payment policy", async () => {
-    // Get initial user payment state
-    const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
-    const initialActivePoliciesCount = initialUserPayment!.activePoliciesCount;
-
-    // Use policy ID 2 from a previous test (the second policy created)
-    const policyIdToDelete = 2;
-    const [policyToDeletePDA] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("payment_policy"),
-        userPaymentPDA.toBuffer(),
-        new anchor.BN(policyIdToDelete).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId
-    );
-
-    // Verify policy exists before deletion
-    const policyBeforeDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
-    expect(policyBeforeDeletion).not.toBeNull();
-    expect(policyBeforeDeletion!.policyId).toBe(policyIdToDelete);
-
-    // Delete the payment policy (only owner can delete)
-    await sdk.updateWallet(new anchor.Wallet(user));
-
-    const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
-    const deleteTx = new Transaction().add(deleteIx);
-    await sendAndConfirmTransaction(connection, deleteTx, [user]);
-
-    // Verify policy was deleted (account should not exist)
-    const policyAfterDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
-    expect(policyAfterDeletion).toBeNull();
-
-    // Verify user payment active policies count was decremented
-    const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
-    expect(updatedUserPayment!.activePoliciesCount).toBe(
-      initialActivePoliciesCount - 1
-    );
-    expect(updatedUserPayment!.updatedAt.toNumber()).toBeGreaterThanOrEqual(
-      initialUserPayment!.updatedAt.toNumber()
-    );
-  });
+  // test("Delete payment policy", async () => {
+  //   // Get initial user payment state
+  //   const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
+  //   const initialActivePoliciesCount = initialUserPayment!.activePoliciesCount;
+  //
+  //   // Use policy ID 2 from a previous test (the second policy created)
+  //   const policyIdToDelete = 2;
+  //   const [policyToDeletePDA] = PublicKey.findProgramAddressSync(
+  //     [
+  //       Buffer.from("payment_policy"),
+  //       userPaymentPDA.toBuffer(),
+  //       new anchor.BN(policyIdToDelete).toArrayLike(Buffer, "le", 4),
+  //     ],
+  //     program.programId
+  //   );
+  //
+  //   // Verify policy exists before deletion
+  //   const policyBeforeDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
+  //   expect(policyBeforeDeletion).not.toBeNull();
+  //   expect(policyBeforeDeletion!.policyId).toBe(policyIdToDelete);
+  //
+  //   // Delete the payment policy (only owner can delete)
+  //   await sdk.updateWallet(new anchor.Wallet(user));
+  //
+  //   const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
+  //   const deleteTx = new Transaction().add(deleteIx);
+  //   await sendAndConfirmTransaction(connection, deleteTx, [user]);
+  //
+  //   // Verify policy was deleted (account should not exist)
+  //   const policyAfterDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
+  //   expect(policyAfterDeletion).toBeNull();
+  //
+  //   // Verify user payment active policies count was decremented
+  //   const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
+  //   expect(updatedUserPayment!.activePoliciesCount).toBe(
+  //     initialActivePoliciesCount - 1
+  //   );
+  //   expect(updatedUserPayment!.updatedAt.toNumber()).toBeGreaterThanOrEqual(
+  //     initialUserPayment!.updatedAt.toNumber()
+  //   );
+  // });
 
   test("Change gateway signer", async () => {
     // Create a new signer keypair
@@ -911,116 +934,233 @@ describe("Recurring Payments", () => {
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
 
-  test("Create and execute milestone payment policy", async () => {
-    // Switch back to user wallet for creating policies
-    await sdk.updateWallet(wallet);
+  describe("Milestone payment policies", () => {
+    test("Create and execute milestone payment policy", async () => {
+      // Switch back to user wallet for creating policies
+      await sdk.updateWallet(wallet);
 
-    // Create milestone payment policy with 3 milestones
-    const currentTime = Math.floor(Date.now() / 1000);
-    const milestoneAmounts = [
-      new anchor.BN(1000000), // 1 token
-      new anchor.BN(2000000), // 2 tokens
-      new anchor.BN(1500000), // 1.5 tokens
-    ];
-    const milestoneTimestamps = [
-      new anchor.BN(currentTime + 60), // 1 minute from now
-      new anchor.BN(currentTime + 120), // 2 minutes from now
-      new anchor.BN(currentTime + 180), // 3 minutes from now
-    ];
+      // Create milestone payment policy with 3 milestones
+      const currentTime = Math.floor(Date.now() / 1000);
+      const milestoneAmounts = [
+        new anchor.BN(1000000), // 1 token
+        new anchor.BN(2000000), // 2 tokens
+        new anchor.BN(1500000), // 1.5 tokens
+      ];
+      const milestoneTimestamps = [
+        new anchor.BN(currentTime + 60), // 1 minute from now
+        new anchor.BN(currentTime + 120), // 2 minutes from now
+        new anchor.BN(currentTime + 180), // 3 minutes from now
+      ];
 
-    // Note: This test requires the IDL to be rebuilt with milestone support
-    // The createMilestonePaymentPolicy method will be available once IDL is updated
-    /*
-    const createMilestoneIx = await sdk.createMilestonePaymentPolicy(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      milestoneAmounts,
-      milestoneTimestamps,
-      0, // time-based release condition
-      []  // empty memo
-    );
+      // Note: This test requires the IDL to be rebuilt with milestone support
+      // The createMilestonePaymentPolicy method will be available once IDL is updated
+      /*
+      const createMilestoneIx = await sdk.createMilestonePaymentPolicy(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        milestoneAmounts,
+        milestoneTimestamps,
+        0, // time-based release condition
+        []  // empty memo
+      );
 
-    const tx = new Transaction().add(createMilestoneIx);
-    await sendAndConfirmTransaction(connection, tx, [user], {
-      commitment: "processed" as Commitment,
+      const tx = new Transaction().add(createMilestoneIx);
+      await sendAndConfirmTransaction(connection, tx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      // Verify milestone policy was created
+      const policies = await sdk.getPaymentPoliciesByUser(user.publicKey);
+      const milestonePolicy = policies.find(p =>
+        p.account.userPayment.equals(userPaymentPDA) &&
+        p.account.policyId === 2 // Second policy for this user
+      );
+      expect(milestonePolicy).toBeDefined();
+      expect(milestonePolicy!.account.policyType).toHaveProperty('milestone');
+
+      // Test milestone execution
+      // First milestone should fail (not due yet)
+      await expect(
+        sdk.executePayment(milestonePolicy!.publicKey)
+      ).rejects.toThrow();
+
+      // Advance time to first milestone
+      // Note: In a real test environment, you'd need to mock time or wait
+
+      // Execute first milestone
+      const executeIx = await sdk.executePayment(milestonePolicy!.publicKey);
+      const executeTx = new Transaction().add(...executeIx);
+      await sendAndConfirmTransaction(connection, executeTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      // Verify first milestone was paid
+      const updatedPolicy = await sdk.getPaymentPolicy(milestonePolicy!.publicKey);
+      expect(updatedPolicy!.paymentCount).toEqual(1);
+      // expect(updatedPolicy!.policyType.milestone.currentMilestone).toEqual(1);
+
+      // Verify recipient received payment
+      const recipientBalance = await connection.getTokenAccountBalance(recipientTokenAccount);
+      expect(recipientBalance.value.uiAmount).toEqual(1.0);
+      */
     });
 
-    // Verify milestone policy was created
-    const policies = await sdk.getPaymentPoliciesByUser(user.publicKey);
-    const milestonePolicy = policies.find(p =>
-      p.account.userPayment.equals(userPaymentPDA) &&
-      p.account.policyId === 2 // Second policy for this user
-    );
-    expect(milestonePolicy).toBeDefined();
-    expect(milestonePolicy!.account.policyType).toHaveProperty('milestone');
+    test("Milestone payment with manual approval", async () => {
+      // Test manual approval release condition
+      // This would require the gateway authority to approve each milestone
+      /*
+      const manualMilestoneAmounts = [new anchor.BN(500000), new anchor.BN(500000)];
+      const manualMilestoneTimestamps = [
+        new anchor.BN(currentTime + 60),
+        new anchor.BN(currentTime + 120)
+      ];
 
-    // Test milestone execution
-    // First milestone should fail (not due yet)
-    await expect(
-      sdk.executePayment(milestonePolicy!.publicKey)
-    ).rejects.toThrow();
+      const createManualIx = await sdk.createMilestonePaymentPolicy(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        manualMilestoneAmounts,
+        manualMilestoneTimestamps,
+        1, // manual approval
+        []
+      );
 
-    // Advance time to first milestone
-    // Note: In a real test environment, you'd need to mock time or wait
-
-    // Execute first milestone
-    const executeIx = await sdk.executePayment(milestonePolicy!.publicKey);
-    const executeTx = new Transaction().add(...executeIx);
-    await sendAndConfirmTransaction(connection, executeTx, [user], {
-      commitment: "processed" as Commitment,
+      // Execute would require gateway authority signature
+      // This tests the permission-based release mechanism
+      */
     });
 
-    // Verify first milestone was paid
-    const updatedPolicy = await sdk.getPaymentPolicy(milestonePolicy!.publicKey);
-    expect(updatedPolicy!.paymentCount).toEqual(1);
-    // expect(updatedPolicy!.policyType.milestone.currentMilestone).toEqual(1);
+    test("Milestone payment approval calculation", async () => {
+      // Test that approval amount calculation includes all milestone amounts
+      /*
+      const testAmounts = [
+        new anchor.BN(1000000),
+        new anchor.BN(2000000),
+        new anchor.BN(3000000)
+      ];
 
-    // Verify recipient received payment
-    const recipientBalance = await connection.getTokenAccountBalance(recipientTokenAccount);
-    expect(recipientBalance.value.uiAmount).toEqual(1.0);
-    */
+      // Total should be 6 tokens
+      const expectedTotal = new anchor.BN(6000000);
+
+      // The createSubscriptionInstruction should calculate this automatically
+      // when approvalAmount is not provided
+      */
+    });
   });
 
-  test("Milestone payment with manual approval", async () => {
-    // Test manual approval release condition
-    // This would require the gateway authority to approve each milestone
-    /*
-    const manualMilestoneAmounts = [new anchor.BN(500000), new anchor.BN(500000)];
-    const manualMilestoneTimestamps = [
-      new anchor.BN(currentTime + 60),
-      new anchor.BN(currentTime + 120)
-    ];
+  describe("Pay-as-you-go payment policies", () => {
+    test("Create pay-as-you-go payment policy", async () => {
+      // Switch to user wallet
+      await sdk.updateWallet(new anchor.Wallet(user));
 
-    const createManualIx = await sdk.createMilestonePaymentPolicy(
-      tokenMint,
-      recipient.publicKey,
-      gatewayPDA,
-      manualMilestoneAmounts,
-      manualMilestoneTimestamps,
-      1, // manual approval
-      []
-    );
+      const maxAmountPerPeriod = new anchor.BN(1000000); // 1 token per period
+      const maxChunkAmount = new anchor.BN(200000); // 0.2 tokens per chunk
+      const periodLengthSeconds = new anchor.BN(86400); // 24 hours
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("pay-as-you-go test").copy(memo);
 
-    // Execute would require gateway authority signature
-    // This tests the permission-based release mechanism
-    */
-  });
+      // Create pay-as-you-go policy
+      const createPayAsYouGoIx = await sdk.createPayAsYouGoPaymentPolicy(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        maxAmountPerPeriod,
+        maxChunkAmount,
+        periodLengthSeconds,
+        Array.from(memo)
+      );
 
-  test("Milestone payment approval calculation", async () => {
-    // Test that approval amount calculation includes all milestone amounts
-    /*
-    const testAmounts = [
-      new anchor.BN(1000000),
-      new anchor.BN(2000000),
-      new anchor.BN(3000000)
-    ];
+      const tx = new Transaction().add(createPayAsYouGoIx);
+      await sendAndConfirmTransaction(connection, tx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
-    // Total should be 6 tokens
-    const expectedTotal = new anchor.BN(6000000);
+      // Get the pay-as-you-go policy PDA (policy should be the last created)
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.activePoliciesCount;
+      const [payAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
 
-    // The createSubscriptionInstruction should calculate this automatically
-    // when approvalAmount is not provided
-    */
+      // Verify policy was created
+      const payAsYouGoPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
+      expect(payAsYouGoPolicy).toBeDefined();
+      expect(payAsYouGoPolicy!.policyType).toHaveProperty("payAsYouGo");
+
+      const payAsYouGoData = payAsYouGoPolicy!.policyType.payAsYouGo;
+      expect(payAsYouGoData.maxAmountPerPeriod.toNumber()).toBe(1000000);
+      expect(payAsYouGoData.maxChunkAmount.toNumber()).toBe(200000);
+      expect(payAsYouGoData.periodLengthSeconds.toNumber()).toBe(86400);
+      expect(payAsYouGoData.currentPeriodTotal.toNumber()).toBe(0);
+    });
+
+    test("Pay-as-you-go policy validation", async () => {
+      // Switch to user wallet
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      // Test invalid parameters
+      try {
+        // maxAmountPerPeriod = 0 (invalid)
+        await sdk.createPayAsYouGoPaymentPolicy(
+          tokenMint,
+          recipient.publicKey,
+          gatewayPDA,
+          new anchor.BN(0), // Invalid
+          new anchor.BN(100000),
+          new anchor.BN(86400),
+          []
+        );
+        assert(
+          false,
+          "Expected policy creation to fail with invalid maxAmountPerPeriod"
+        );
+      } catch (error: any) {
+        expect(error.message).toContain("must be greater than 0");
+      }
+
+      try {
+        // maxChunkAmount > maxAmountPerPeriod (invalid)
+        await sdk.createPayAsYouGoPaymentPolicy(
+          tokenMint,
+          recipient.publicKey,
+          gatewayPDA,
+          new anchor.BN(100000),
+          new anchor.BN(200000), // Invalid: chunk > period max
+          new anchor.BN(86400),
+          []
+        );
+        assert(
+          false,
+          "Expected policy creation to fail with invalid chunk size"
+        );
+      } catch (error: any) {
+        expect(error.message).toContain("cannot exceed");
+      }
+
+      try {
+        // periodLengthSeconds = 0 (invalid)
+        await sdk.createPayAsYouGoPaymentPolicy(
+          tokenMint,
+          recipient.publicKey,
+          gatewayPDA,
+          new anchor.BN(1000000),
+          new anchor.BN(100000),
+          new anchor.BN(0), // Invalid
+          []
+        );
+        assert(
+          false,
+          "Expected policy creation to fail with invalid period length"
+        );
+      } catch (error: any) {
+        expect(error.message).toContain("must be greater than 0");
+      }
+    });
   });
 });

@@ -930,7 +930,14 @@ export type RecurringPayments = {
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "paymentAmount",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
     },
     {
       "name": "initialize",
@@ -1553,7 +1560,7 @@ export type RecurringPayments = {
             "type": {
               "array": [
                 "u8",
-                256
+                255
               ]
             }
           }
@@ -1811,6 +1818,40 @@ export type RecurringPayments = {
                   "array": [
                     "u8",
                     53
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "payAsYouGo",
+            "fields": [
+              {
+                "name": "maxAmountPerPeriod",
+                "type": "u64"
+              },
+              {
+                "name": "maxChunkAmount",
+                "type": "u64"
+              },
+              {
+                "name": "periodLengthSeconds",
+                "type": "u64"
+              },
+              {
+                "name": "currentPeriodStart",
+                "type": "i64"
+              },
+              {
+                "name": "currentPeriodTotal",
+                "type": "u64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    88
                   ]
                 }
               }

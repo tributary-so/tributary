@@ -248,6 +248,79 @@ export class Tributary {
   }
 
   /**
+   * Creates a payment policy for pay-as-you-go payments.
+   * Providers can claim up to maxChunkAmount when hitting usage thresholds,
+   * with a maximum of maxAmountPerPeriod per period. Period resets automatically.
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payments
+   * @param gateway - Public key of the gateway that will execute payments
+   * @param maxAmountPerPeriod - Maximum amount allowed per period
+   * @param maxChunkAmount - Maximum amount that can be claimed in a single payment
+   * @param periodLengthSeconds - Length of each period in seconds
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @returns Transaction instruction to create the pay-as-you-go payment policy
+   */
+  async createPayAsYouGoPaymentPolicy(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmountPerPeriod: BN,
+    maxChunkAmount: BN,
+    periodLengthSeconds: BN,
+    memo: number[]
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+
+    // Validate inputs
+    if (maxAmountPerPeriod.lte(new BN(0))) {
+      throw new Error("maxAmountPerPeriod must be greater than 0");
+    }
+    if (maxChunkAmount.lte(new BN(0))) {
+      throw new Error("maxChunkAmount must be greater than 0");
+    }
+    if (maxChunkAmount.gt(maxAmountPerPeriod)) {
+      throw new Error("maxChunkAmount cannot exceed maxAmountPerPeriod");
+    }
+    if (periodLengthSeconds.lte(new BN(0))) {
+      throw new Error("periodLengthSeconds must be greater than 0");
+    }
+
+    const policyType: PolicyType = {
+      payAsYouGo: {
+        maxAmountPerPeriod: maxAmountPerPeriod,
+        maxChunkAmount: maxChunkAmount,
+        periodLengthSeconds: periodLengthSeconds,
+        currentPeriodStart: new BN(Math.floor(Date.now() / 1000)), // Initialize to current time
+        currentPeriodTotal: new BN(0), // Initialize to 0
+        padding: new Array(88).fill(0),
+      },
+    };
+    const accounts = {
+      user: user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+    return await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Creates a payment policy for milestone-based payments.
    * Milestones define conditional payments released based on time or manual approval.
    * @param tokenMint - Public key of the token to be paid
@@ -401,12 +474,6 @@ export class Tributary {
       instructions.push(createUserPaymentIx);
     }
 
-    // Determine policy ID
-    let policyId: number = 1;
-    if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
-    }
-
     // Build policy type
     const nextPaymentDue = startTime || new BN(Math.floor(Date.now() / 1000));
     const policyType: PolicyType = {
@@ -420,7 +487,11 @@ export class Tributary {
       },
     };
 
-    // Create payment policy instruction
+    // Determine policy ID
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
     const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
@@ -434,6 +505,7 @@ export class Tributary {
       systemProgram: SystemProgram.programId,
     };
 
+    // Create payment policy instruction
     const createPaymentPolicyIx = await this.program.methods
       .createPaymentPolicy(policyType, memo)
       .accountsStrict(accounts)
@@ -522,6 +594,7 @@ export class Tributary {
     if (executeImmediately) {
       const executePaymentIxs = await this.executePayment(
         paymentPolicyPda.address,
+        undefined, // paymentAmount - will be determined by policy type
         recipient,
         tokenMint,
         gateway,
@@ -534,10 +607,10 @@ export class Tributary {
   }
 
   /**
-   * Executes a payment according to the specified payment policy.
-   * Transfers tokens from user to recipient, deducts protocol and gateway fees.
-   * Can be called by anyone, but typically called by the gateway authority.
-   * @param paymentPolicyPda - Public key of the payment policy to execute
+   * Executes a payment for a given payment policy.
+   * This method handles the complete payment execution flow including fee calculations and token transfers.
+   * @param paymentPolicyPda - Public key of the payment policy account
+   * @param paymentAmount - Amount to pay (optional for subscription/milestone, required for pay-as-you-go)
    * @param recipient - Public key of the payment recipient (optional if in policy)
    * @param tokenMint - Public key of the token mint (optional if in policy)
    * @param gateway - Public key of the payment gateway (optional if in policy)
@@ -546,6 +619,7 @@ export class Tributary {
    */
   async executePayment(
     paymentPolicyPda: PublicKey,
+    paymentAmount?: BN,
     recipient?: PublicKey,
     tokenMint?: PublicKey,
     gateway?: PublicKey,
@@ -692,7 +766,7 @@ export class Tributary {
     };
     instructions.push(
       await this.program.methods
-        .executePayment()
+        .executePayment(paymentAmount || null)
         .accountsStrict(accounts)
         .instruction()
     );

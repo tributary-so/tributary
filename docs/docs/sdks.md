@@ -77,6 +77,46 @@ const signedTx = await wallet.signTransaction(transaction);
 const txId = await connection.sendRawTransaction(signedTx.serialize());
 ```
 
+### Creating Pay-as-you-go Payments
+
+```typescript
+import { BN } from "@coral-xyz/anchor";
+
+// Define pay-as-you-go parameters
+const maxAmountPerPeriod = new BN(100000000); // $100 per period
+const maxChunkAmount = new BN(10000000); // $10 max per claim
+const periodLengthSeconds = new BN(86400 * 30); // 30 days
+
+// Create pay-as-you-go payment policy
+const payAsYouGoIx = await sdk.createPayAsYouGoPaymentPolicy(
+  tokenMint,
+  recipient,
+  gateway,
+  maxAmountPerPeriod,
+  maxChunkAmount,
+  periodLengthSeconds,
+  createMemoBuffer("AI API usage billing", 64)
+);
+
+// Create user payment account if needed
+const userPaymentIx = await sdk.createUserPayment(tokenMint);
+
+// Build transaction
+const transaction = new Transaction().add(userPaymentIx).add(payAsYouGoIx);
+
+transaction.feePayer = wallet.publicKey;
+const { blockhash } = await connection.getLatestBlockhash();
+transaction.recentBlockhash = blockhash;
+const signedTx = await wallet.signTransaction(transaction);
+const txId = await connection.sendRawTransaction(signedTx.serialize());
+
+// Execute payments (called by service provider when usage thresholds are met)
+const executeIx = await sdk.executePayment(
+  paymentPolicyPDA,
+  new BN(5000000) // $5 payment amount
+);
+```
+
 ## **React SDK** (`sdk-react/`)
 
 - Pre-built payment components
