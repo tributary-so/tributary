@@ -40,6 +40,6 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: ./pnpm-lock.yaml
 
-      - uses: solana-developers/github-workflows/.github/workflows/test.yaml@v0.2.9
+      - uses: ./anchor-test.yml
         with:
           program: ${{ 'recurring_payments' }}
