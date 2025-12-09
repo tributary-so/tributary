@@ -5,7 +5,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
 import {
-  RecurringPaymentsSDK,
+  TributarySDK,
   type PolicyType,
   type PaymentFrequency,
   createMemoBuffer,
@@ -28,14 +28,11 @@ function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
   }
 }
 
-function createSDK(
-  connectionUrl: string,
-  keypath: string
-): RecurringPaymentsSDK {
+function createSDK(connectionUrl: string, keypath: string): TributarySDK {
   const connection = new Connection(connectionUrl);
   const keypair = readKeypairFromFile(keypath);
   const wallet = new anchor.Wallet(keypair);
-  return new RecurringPaymentsSDK(connection, wallet);
+  return new TributarySDK(connection, wallet);
 }
 
 const program = new Command();
@@ -124,10 +121,7 @@ program
         adminKeypair = readKeypairFromFile(options.adminKeypath);
       }
 
-      const sdk = new RecurringPaymentsSDK(
-        connection,
-        new anchor.Wallet(adminKeypair)
-      );
+      const sdk = new TributarySDK(connection, new anchor.Wallet(adminKeypair));
 
       const instruction = await sdk.createPaymentGateway(
         authority,

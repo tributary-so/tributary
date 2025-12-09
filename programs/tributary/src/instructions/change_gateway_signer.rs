@@ -1,4 +1,4 @@
-use crate::{constants::*, error::RecurringPaymentsError, state::*};
+use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -20,7 +20,7 @@ pub struct ChangeGatewaySigner<'info> {
     #[account(
         seeds = [CONFIG_SEED],
         bump = config.bump,
-        constraint = !config.emergency_pause @ RecurringPaymentsError::ProgramPaused,
+        constraint = !config.emergency_pause @ TributaryError::ProgramPaused,
     )]
     pub config: Account<'info, ProgramConfig>,
 }

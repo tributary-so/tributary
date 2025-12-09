@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum RecurringPaymentsError {
+pub enum TributaryError {
     #[msg("Program is paused")]
     ProgramPaused,
     #[msg("Amount must be greater than zero")]

@@ -22,7 +22,7 @@ devnet_deploy:
 
 devnet_deploy_buffer:
 	solana balance
-	solana program write-buffer --buffer $(BUFFER) ./target/deploy/recurring_payments.so
+	solana program write-buffer --buffer $(BUFFER) ./target/deploy/tributary.so
 	solana program deploy --program-id $(PROGRAM_ID_PATH) --buffer $(BUFFER)
 	solana balance
 
@@ -31,33 +31,33 @@ mainnet_expand:
 	solana program extend -k $(DEPLOY_KEY_PATH) $(PROGRAM_ID) 20480
 
 mainnet_build:
-	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p recurring_payments -- --features mainnet
+	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p tributary -- --features mainnet
 
 mainnet_deploy_buffer:
 	solana -k ${DEPLOY_KEY_PATH} balance
-	solana program write-buffer $(SOL_ARGS) --buffer $(BUFFER) ./target/deploy/recurring_payments.so
+	solana program write-buffer $(SOL_ARGS) --buffer $(BUFFER) ./target/deploy/tributary.so
 	solana program deploy --ws $(SOLANA_API) --keypair $(DEPLOY_KEY_PATH) --program-id $(PROGRAM_ID_PATH) --buffer $(BUFFER)
 	solana -k ${DEPLOY_KEY_PATH} balance
 
 mainnet_deploy:
 	solana -k ${DEPLOY_KEY_PATH} balance
-	solana program deploy $(SOL_ARGS) --program-id $(PROGRAM_ID_PATH) ./target/deploy/recurring_payments.so
+	solana program deploy $(SOL_ARGS) --program-id $(PROGRAM_ID_PATH) ./target/deploy/tributary.so
 	solana -k ${DEPLOY_KEY_PATH} balance
 
 publish_idl:
-	anchor idl upgrade -f target/idl/recurring_payments.json --provider.cluster mainnet --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
+	anchor idl upgrade -f target/idl/tributary.json --provider.cluster mainnet --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
 
 submit-verifable-build:
 	yes | solana-verify verify-from-repo --remote \
 	--url  $(SOLANA_API) \
 	--program-id $(PROGRAM_ID) \
 	https://github.com/tributary-so/tributary \
-	--library-name recurring_payments \
+	--library-name tributary \
 	--commit-hash $(shell git show-ref -s origin/main) \
 	--keypair $(DEPLOY_KEY_PATH)
 
 verifiable_build:
 	solana-verify build
-	solana-verify get-executable-hash ./target/deploy/recurring_payments.so
+	solana-verify get-executable-hash ./target/deploy/tributary.so
 	make mainnet_deploy
 	solana-verify get-program-hash -u $(SOLANA_API) $(PROGRAM_ID)

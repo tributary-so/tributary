@@ -81,7 +81,7 @@ impl PolicyType {
                 // Validate amount is greater than zero
                 require!(
                     *amount > 0,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate payment frequency
@@ -91,7 +91,7 @@ impl PolicyType {
                 if let Some(renewals) = max_renewals {
                     require!(
                         *renewals > 0,
-                        crate::error::RecurringPaymentsError::InvalidInterval
+                        crate::error::TributaryError::InvalidInterval
                     );
                 }
             }
@@ -107,26 +107,26 @@ impl PolicyType {
                 // Validate total_milestones is between 1 and 4
                 require!(
                     *total_milestones >= 1 && *total_milestones <= 4,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate current_milestone is within bounds
                 require!(
                     *current_milestone < *total_milestones,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate escrow_amount is greater than zero
                 require!(
                     *escrow_amount > 0,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate milestone amounts are greater than zero
                 for i in 0..*total_milestones as usize {
                     require!(
                         milestone_amounts[i] > 0,
-                        crate::error::RecurringPaymentsError::InvalidAmount
+                        crate::error::TributaryError::InvalidAmount
                     );
                 }
 
@@ -138,7 +138,7 @@ impl PolicyType {
                     for i in 0..*total_milestones as usize {
                         require!(
                             milestone_timestamps[i] > current_time,
-                            crate::error::RecurringPaymentsError::InvalidInterval
+                            crate::error::TributaryError::InvalidInterval
                         );
                     }
                 }
@@ -146,7 +146,7 @@ impl PolicyType {
                 // Validate release_condition is valid (0, 1, or 2)
                 require!(
                     *release_condition <= 2,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
             }
             PolicyType::PayAsYouGo {
@@ -158,25 +158,25 @@ impl PolicyType {
                 // Validate max_amount_per_period is greater than zero
                 require!(
                     *max_amount_per_period > 0,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate max_chunk_amount is greater than zero
                 require!(
                     *max_chunk_amount > 0,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate max_chunk_amount is not greater than max_amount_per_period
                 require!(
                     *max_chunk_amount <= *max_amount_per_period,
-                    crate::error::RecurringPaymentsError::InvalidAmount
+                    crate::error::TributaryError::InvalidAmount
                 );
 
                 // Validate period_length_seconds is greater than zero
                 require!(
                     *period_length_seconds > 0,
-                    crate::error::RecurringPaymentsError::InvalidInterval
+                    crate::error::TributaryError::InvalidInterval
                 );
             }
         }
@@ -223,7 +223,7 @@ impl PaymentFrequency {
             PaymentFrequency::Custom(interval) => {
                 require!(
                     *interval > 0,
-                    crate::error::RecurringPaymentsError::InvalidFrequency
+                    crate::error::TributaryError::InvalidFrequency
                 );
             }
             _ => {}
@@ -249,6 +249,9 @@ pub struct UserPayment {
     pub token_mint: Pubkey,
     /// Number of active payment policies for this user/mint combination
     pub active_policies_count: u32,
+    /// Total number of policies ever created for this user/mint combination
+    /// This field only increases and is used to prevent policy ID reuse
+    pub created_policies_count: u32,
     /// Unix timestamp when account was created
     pub created_at: i64,
     /// Unix timestamp when account was last updated
@@ -258,7 +261,7 @@ pub struct UserPayment {
     /// PDA bump seed for address derivation
     pub bump: u8,
     /// Reserved space for future extensions
-    pub padding: [u8; 256],
+    pub padding: [u8; 252],
 }
 
 impl UserPayment {
@@ -267,11 +270,12 @@ impl UserPayment {
         32 + // token_account: Pubkey
         32 + // token_mint: Pubkey
         4 + // active_policies_count: u32
+        4 + // created_policies_count: u32
         8 + // created_at: i64
         8 + // updated_at: i64
         1 + // is_active: bool
         1 + // bump: u8
-        256; // padding: [u8; 256]
+        252; // padding: [u8; 252]
 }
 
 /// A payment gateway operated by a service provider that executes recurring payments.
@@ -446,6 +450,7 @@ pub struct PaymentPolicyCreated {
     pub policy_id: u32,
     pub policy_type: PolicyType,
     pub memo: [u8; 64],
+    pub created_policies_count: u32,
 }
 
 /// An event that is thrown when a gateway signer is changed

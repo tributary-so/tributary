@@ -22,7 +22,7 @@ pub use state::*;
 declare_id!("TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ");
 
 #[program]
-pub mod recurring_payments {
+pub mod tributary {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {

@@ -1,4 +1,4 @@
-use crate::{constants::*, error::RecurringPaymentsError, state::*};
+use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -22,7 +22,7 @@ pub struct CreatePaymentGateway<'info> {
         seeds = [CONFIG_SEED],
         bump = config.bump,
         constraint = config.admin == admin.key(),
-        constraint = !config.emergency_pause @ RecurringPaymentsError::ProgramPaused
+        constraint = !config.emergency_pause @ TributaryError::ProgramPaused
     )]
     pub config: Account<'info, ProgramConfig>,
 
@@ -41,7 +41,7 @@ pub fn handler_create_payment_gateway(
     // Validate fee basis points
     require!(
         gateway_fee_bps <= 10000,
-        RecurringPaymentsError::InvalidFeeBps
+        TributaryError::InvalidFeeBps
     );
 
     let gateway = &mut ctx.accounts.gateway;

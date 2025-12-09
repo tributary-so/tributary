@@ -2,12 +2,12 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/recurring_payments.json`.
+ * IDL can be found at `target/idl/tributary.json`.
  */
-export type RecurringPayments = {
+export type Tributary = {
   "address": "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
   "metadata": {
-    "name": "recurringPayments",
+    "name": "tributary",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
@@ -1670,6 +1670,10 @@ export type RecurringPayments = {
                 64
               ]
             }
+          },
+          {
+            "name": "createdPoliciesCount",
+            "type": "u32"
           }
         ]
       }
@@ -2061,6 +2065,14 @@ export type RecurringPayments = {
             "type": "u32"
           },
           {
+            "name": "createdPoliciesCount",
+            "docs": [
+              "Total number of policies ever created for this user/mint combination",
+              "This field only increases and is used to prevent policy ID reuse"
+            ],
+            "type": "u32"
+          },
+          {
             "name": "createdAt",
             "docs": [
               "Unix timestamp when account was created"
@@ -2096,7 +2108,7 @@ export type RecurringPayments = {
             "type": {
               "array": [
                 "u8",
-                256
+                252
               ]
             }
           }

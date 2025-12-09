@@ -1,4 +1,4 @@
-use crate::{error::RecurringPaymentsError, state::*, USER_PAYMENT_SEED};
+use crate::{error::TributaryError, state::*, USER_PAYMENT_SEED};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
@@ -26,7 +26,7 @@ pub struct CreateUserPayment<'info> {
     #[account(
         seeds = [b"config"],
         bump = config.bump,
-        constraint = !config.emergency_pause @ RecurringPaymentsError::ProgramPaused
+        constraint = !config.emergency_pause @ TributaryError::ProgramPaused
     )]
     pub config: Account<'info, ProgramConfig>,
 
@@ -41,6 +41,7 @@ pub fn handler_create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()
     user_payment.token_account = ctx.accounts.token_account.key();
     user_payment.token_mint = ctx.accounts.token_mint.key();
     user_payment.active_policies_count = 0;
+    user_payment.created_policies_count = 0;
     user_payment.created_at = clock.unix_timestamp;
     user_payment.updated_at = clock.unix_timestamp;
     user_payment.is_active = true;

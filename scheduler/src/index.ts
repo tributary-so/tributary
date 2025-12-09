@@ -4,7 +4,7 @@ import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
-import { getGatewayPda, RecurringPaymentsSDK } from "@tributary-so/sdk";
+import { getGatewayPda, TributarySDK } from "@tributary-so/sdk";
 import { exit } from "process";
 
 interface SchedulerConfig {
@@ -15,7 +15,7 @@ interface SchedulerConfig {
 }
 
 class PaymentScheduler {
-  private sdk: RecurringPaymentsSDK;
+  private sdk: TributarySDK;
   private gatewayKeypair: Keypair;
   private config: SchedulerConfig;
 
@@ -35,7 +35,7 @@ class PaymentScheduler {
     // Initialize SDK
     const connection = new Connection(config.connectionUrl, "confirmed");
     const wallet = new anchor.Wallet(this.gatewayKeypair);
-    this.sdk = new RecurringPaymentsSDK(connection, wallet);
+    this.sdk = new TributarySDK(connection, wallet);
   }
 
   private loadKeypair(data: string) {

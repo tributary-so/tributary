@@ -8,13 +8,13 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-recurring_payments = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+tributary = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
 
 [programs.mainnet]
-recurring_payments = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+tributary = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
 
 [programs.localnet]
-recurring_payments = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+tributary = "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
 
 [registry]
 url = "https://api.apr.dev"

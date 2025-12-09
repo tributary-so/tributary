@@ -1,5 +1,5 @@
 use crate::{
-    constants::*, error::RecurringPaymentsError, state::*, utils::calculate_next_payment_due,
+    constants::*, error::TributaryError, state::*, utils::calculate_next_payment_due,
 };
 use anchor_lang::{prelude::*, solana_program::program_option::COption};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
@@ -31,7 +31,7 @@ pub struct ExecutePayment<'info> {
         mut,
         seeds = [PAYMENT_POLICY_SEED, payment_policy.user_payment.as_ref(), payment_policy.policy_id.to_le_bytes().as_ref()],
         bump = payment_policy.bump,
-        constraint = payment_policy.status == PaymentStatus::Active @ crate::error::RecurringPaymentsError::PolicyPaused,
+        constraint = payment_policy.status == PaymentStatus::Active @ crate::error::TributaryError::PolicyPaused,
     )]
     pub payment_policy: Box<Account<'info, PaymentPolicy>>,
 
@@ -64,7 +64,7 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
-        constraint = token_account_has_delegate(&user_token_account, &payments_delegate.key()) @ crate::error::RecurringPaymentsError::NoDelegateSet,
+        constraint = token_account_has_delegate(&user_token_account, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
     )]
     pub user_token_account: Account<'info, TokenAccount>,
 
@@ -114,7 +114,7 @@ pub fn handler_execute_payment(
             // Validate payment timing for subscriptions
             require!(
                 clock.unix_timestamp >= *next_payment_due,
-                crate::error::RecurringPaymentsError::PaymentNotDue
+                crate::error::TributaryError::PaymentNotDue
             );
 
             // Calculate next payment due time based on payment frequency
@@ -145,7 +145,7 @@ pub fn handler_execute_payment(
                     // Time-based
                     require!(
                         clock.unix_timestamp >= next_due,
-                        crate::error::RecurringPaymentsError::PaymentNotDue
+                        crate::error::TributaryError::PaymentNotDue
                     );
                 }
                 1 => { // Manual approval - always allow (checked by signer)
@@ -154,7 +154,7 @@ pub fn handler_execute_payment(
                 2 => { // Automatic - always allow
                      // Automatic releases don't check timing
                 }
-                _ => return err!(crate::error::RecurringPaymentsError::InvalidAmount),
+                _ => return err!(crate::error::TributaryError::InvalidAmount),
             }
 
             // Move to next milestone
@@ -189,13 +189,13 @@ pub fn handler_execute_payment(
             // Validate chunk amount doesn't exceed max_chunk_amount
             require!(
                 payment_amount <= *max_chunk_amount,
-                crate::error::RecurringPaymentsError::InvalidAmount
+                crate::error::TributaryError::InvalidAmount
             );
 
             // Validate period limit won't be exceeded
             require!(
                 *current_period_total + payment_amount <= *max_amount_per_period,
-                crate::error::RecurringPaymentsError::InvalidAmount
+                crate::error::TributaryError::InvalidAmount
             );
 
             // Update period total
@@ -208,13 +208,13 @@ pub fn handler_execute_payment(
     // Validate delegated amount is sufficient
     require!(
         ctx.accounts.user_token_account.delegated_amount >= payment_amount,
-        RecurringPaymentsError::InsufficientDelegatedAmount
+        TributaryError::InsufficientDelegatedAmount
     );
 
     // Check if user has sufficient balance
     require!(
         ctx.accounts.user_token_account.amount >= payment_amount,
-        crate::error::RecurringPaymentsError::InsufficientBalance
+        crate::error::TributaryError::InsufficientBalance
     );
 
     // Calculate fees

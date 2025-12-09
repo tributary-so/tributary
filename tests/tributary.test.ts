@@ -16,16 +16,15 @@ import {
   approve,
 } from "@solana/spl-token";
 import { ComputeBudgetProgram } from "@solana/web3.js";
-import { RecurringPayments } from "../target/types/recurring_payments";
-import { PaymentFrequency, RecurringPaymentsSDK } from "../sdk/src";
+import { Tributary } from "../target/types/tributary";
+import { PaymentFrequency, TributarySDK } from "../sdk/src";
 import assert from "assert";
 
-describe("Recurring Payments", () => {
+describe("Tributary", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace
-    .RecurringPayments as anchor.Program<RecurringPayments>;
+  const program = anchor.workspace.tributary as anchor.Program<Tributary>;
   const wallet = provider.wallet as anchor.Wallet;
 
   let connection: any;
@@ -50,7 +49,7 @@ describe("Recurring Payments", () => {
   let paymentPolicyBump: number;
   let paymentsDelegate: PublicKey;
   let newSigner: Keypair;
-  let sdk: RecurringPaymentsSDK;
+  let sdk: TributarySDK;
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
     const transaction = new anchor.web3.Transaction().add(
@@ -58,7 +57,7 @@ describe("Recurring Payments", () => {
         fromPubkey: provider.wallet.publicKey,
         toPubkey: account,
         lamports: amount * LAMPORTS_PER_SOL,
-      })
+      }),
     );
     const signature = await provider.sendAndConfirm(transaction, null, {
       commitment: "processed" as Commitment,
@@ -68,7 +67,7 @@ describe("Recurring Payments", () => {
   beforeAll(async () => {
     // Create Solana Kite connection
     connection = provider.connection;
-    sdk = new RecurringPaymentsSDK(connection, wallet);
+    sdk = new TributarySDK(connection, wallet);
 
     // Create wallets
     admin = Keypair.generate();
@@ -82,7 +81,7 @@ describe("Recurring Payments", () => {
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
-      program.programId
+      program.programId,
     );
 
     await Promise.all([
@@ -101,7 +100,7 @@ describe("Recurring Payments", () => {
       mintAuthority,
       mintAuthority.publicKey,
       null,
-      6
+      6,
     );
 
     // Get associated token account address for the user
@@ -112,7 +111,7 @@ describe("Recurring Payments", () => {
       connection,
       admin,
       tokenMint,
-      user.publicKey
+      user.publicKey,
     );
 
     // Mint tokens to the user's account
@@ -122,13 +121,13 @@ describe("Recurring Payments", () => {
       tokenMint,
       userTokenAccount,
       mintAuthority,
-      1000000n // 1 token with 6 decimals
+      1000000n, // 1 token with 6 decimals
     );
 
     // Derive gateway PDA
     [gatewayPDA, gatewayBump] = PublicKey.findProgramAddressSync(
       [Buffer.from("gateway"), gatewayAuthority.publicKey.toBuffer()],
-      program.programId
+      program.programId,
     );
 
     // Derive user payment PDA
@@ -138,7 +137,7 @@ describe("Recurring Payments", () => {
         user.publicKey.toBuffer(),
         tokenMint.toBuffer(),
       ],
-      program.programId
+      program.programId,
     );
 
     // Derive payment policy PDA
@@ -149,13 +148,13 @@ describe("Recurring Payments", () => {
         userPaymentPDA.toBuffer(),
         new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
       ],
-      program.programId
+      program.programId,
     );
 
     // Derive payments delegate PDA
     [paymentsDelegate] = PublicKey.findProgramAddressSync(
       [Buffer.from("payments")],
-      program.programId
+      program.programId,
     );
 
     // Create recipient token account
@@ -163,7 +162,7 @@ describe("Recurring Payments", () => {
       connection,
       admin,
       tokenMint,
-      recipient.publicKey
+      recipient.publicKey,
     );
 
     // Create fee recipient token accounts (SDK will handle ATA creation automatically)
@@ -171,18 +170,18 @@ describe("Recurring Payments", () => {
       connection,
       admin,
       tokenMint,
-      feeRecipient.publicKey
+      feeRecipient.publicKey,
     );
 
     await createAssociatedTokenAccount(
       connection,
       admin,
       tokenMint,
-      admin.publicKey // config.fee_recipient
+      admin.publicKey, // config.fee_recipient
     );
 
     expect(program.programId.toString()).toEqual(
-      "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+      "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
     );
   });
 
@@ -223,7 +222,7 @@ describe("Recurring Payments", () => {
     expect(userPayment!.owner).toEqual(user.publicKey);
     expect(userPayment!.tokenAccount).toEqual(userTokenAccount);
     expect(userPayment!.tokenMint).toEqual(tokenMint);
-    expect(userPayment!.activePoliciesCount).toBe(0);
+    expect(userPayment!.createdPoliciesCount).toBe(0);
     expect(userPayment!.isActive).toBe(true);
     expect(userPayment!.bump).toBe(userPaymentBump);
   });
@@ -239,7 +238,7 @@ describe("Recurring Payments", () => {
       gatewayFeeBps,
       feeRecipient.publicKey,
       "custom gateway",
-      "https://example.com"
+      "https://example.com",
     );
     const tx = new Transaction().add(createGatewayIx);
 
@@ -291,7 +290,7 @@ describe("Recurring Payments", () => {
         null,
         paymentFrequency,
         Array.from(memo),
-        null // start_time
+        null, // start_time
       );
       const tx = new Transaction().add(createPolicyIx);
 
@@ -314,19 +313,19 @@ describe("Recurring Payments", () => {
       // Verify policy type is subscription
       expect(policyAccount!.policyType.subscription).toBeDefined();
       expect(policyAccount!.policyType.subscription.amount.toNumber()).toBe(
-        amount.toNumber()
+        amount.toNumber(),
       );
       expect(policyAccount!.policyType.subscription.paymentFrequency).toEqual({
         daily: {},
       });
       expect(
-        policyAccount!.policyType.subscription.nextPaymentDue.toNumber()
+        policyAccount!.policyType.subscription.nextPaymentDue.toNumber(),
       ).toBeGreaterThan(0);
       expect(policyAccount!.policyType.subscription.autoRenew).toBe(true);
 
       // Check that user payment account was updated
       const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
-      expect(updatedUserPayment!.activePoliciesCount).toBe(1);
+      expect(updatedUserPayment!.createdPoliciesCount).toBe(1);
     });
 
     test("Execute subscription payment fails without delegate approval", async () => {
@@ -344,7 +343,7 @@ describe("Recurring Payments", () => {
 
         assert(
           false,
-          "Expected payment execution to fail without delegate approval"
+          "Expected payment execution to fail without delegate approval",
         );
       } catch (error: any) {
         // Should fail due to insufficient delegate approval
@@ -361,23 +360,22 @@ describe("Recurring Payments", () => {
         userTokenAccount,
         paymentsDelegate,
         user,
-        amount
+        amount,
       );
 
       // Verify delegate approval was set
-      const tokenAccountInfo = await connection.getParsedAccountInfo(
-        userTokenAccount
-      );
+      const tokenAccountInfo =
+        await connection.getParsedAccountInfo(userTokenAccount);
       const parsedData = tokenAccountInfo.value?.data as any;
       expect(parsedData.parsed.info.delegate).toEqual(
-        paymentsDelegate.toString()
+        paymentsDelegate.toString(),
       );
       expect(parsedData.parsed.info.delegatedAmount.uiAmount).toBe(1);
     });
 
     test("Execute subscription payment", async () => {
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
 
       // Update SDK to use gateway authority wallet
@@ -392,10 +390,10 @@ describe("Recurring Payments", () => {
 
       // Verify payment was executed
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
       expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
-        initialRecipientBalance.value.uiAmount || 0
+        initialRecipientBalance.value.uiAmount || 0,
       );
 
       // Verify policy was updated
@@ -403,7 +401,7 @@ describe("Recurring Payments", () => {
       expect(updatedPolicy!.paymentCount).toBe(1);
       expect(updatedPolicy!.totalPaid.toNumber()).toBe(10000); // 0.01 token
       expect(
-        updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber()
+        updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber(),
       ).toBeGreaterThan(Date.now() / 1000);
 
       // Verify gateway stats were updated
@@ -424,7 +422,7 @@ describe("Recurring Payments", () => {
       // Verify the policy type is subscription
       expect(allPolicies[0].account.policyType.subscription).toBeDefined();
       expect(
-        allPolicies[0].account.policyType.subscription.amount.toNumber()
+        allPolicies[0].account.policyType.subscription.amount.toNumber(),
       ).toBe(10000);
     });
 
@@ -444,7 +442,7 @@ describe("Recurring Payments", () => {
 
         assert(
           false,
-          "Expected payment execution to fail when next_payment_due is in future"
+          "Expected payment execution to fail when next_payment_due is in future",
         );
       } catch (error: any) {
         expect(error.message).toContain("PaymentNotDue");
@@ -477,7 +475,7 @@ describe("Recurring Payments", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       // Create policy with start_time in the past (2 hours ago)
@@ -495,7 +493,7 @@ describe("Recurring Payments", () => {
         null,
         paymentFrequency,
         Array.from(memo),
-        new anchor.BN(twoHoursAgo) // start_time in past
+        new anchor.BN(twoHoursAgo), // start_time in past
       );
       const createTx = new Transaction().add(createPolicy2Ix);
       await sendAndConfirmTransaction(connection, createTx, [user], {
@@ -509,7 +507,7 @@ describe("Recurring Payments", () => {
       const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
       const executeTx = new Transaction();
       executeTx.add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 })
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }),
       );
       executeTx.add(...executePaymentIxs);
 
@@ -519,7 +517,7 @@ describe("Recurring Payments", () => {
         [gatewayAuthority],
         {
           commitment: "processed" as Commitment,
-        }
+        },
       );
 
       // Verify payment was executed
@@ -538,12 +536,12 @@ describe("Recurring Payments", () => {
           [gatewayAuthority],
           {
             commitment: "processed" as Commitment,
-          }
+          },
         );
 
         assert(
           false,
-          "Expected second payment execution to fail within same period"
+          "Expected second payment execution to fail within same period",
         );
       } catch (error: any) {
         expect(error.message).toContain("PaymentNotDue");
@@ -557,7 +555,7 @@ describe("Recurring Payments", () => {
       // Create token accounts for test user and recipient
       const testRecipientTokenAccount = getAssociatedTokenAddressSync(
         tokenMint,
-        recipient.publicKey
+        recipient.publicKey,
       );
 
       // Mint tokens to test user
@@ -567,7 +565,7 @@ describe("Recurring Payments", () => {
         tokenMint,
         userTokenAccount,
         mintAuthority,
-        1000000n // 1 token with 6 decimals
+        1000000n, // 1 token with 6 decimals
       );
 
       // Setup policy parameters
@@ -591,7 +589,7 @@ describe("Recurring Payments", () => {
         Array.from(testMemo),
         testStartTime,
         approvalAmount,
-        true // executeImmediately = true
+        true, // executeImmediately = true
       );
 
       const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
@@ -602,32 +600,31 @@ describe("Recurring Payments", () => {
 
       // Get initial balances
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        testRecipientTokenAccount
+        testRecipientTokenAccount,
       );
-      const initialUserBalance = await connection.getTokenAccountBalance(
-        userTokenAccount
-      );
+      const initialUserBalance =
+        await connection.getTokenAccountBalance(userTokenAccount);
 
       // Check balances after policy creation with executeImmediately = false
       const balanceAfterCreateFalse = await connection.getTokenAccountBalance(
-        testRecipientTokenAccount
+        testRecipientTokenAccount,
       );
       const userBalanceAfterCreateFalse =
         await connection.getTokenAccountBalance(userTokenAccount);
 
       // No token transfer should have occurred
       expect(balanceAfterCreateFalse.value.amount).toBe(
-        initialRecipientBalance.value.amount
+        initialRecipientBalance.value.amount,
       );
       expect(userBalanceAfterCreateFalse.value.amount).toBe(
-        initialUserBalance.value.amount
+        initialUserBalance.value.amount,
       );
     });
 
     test("executeImmediately option - no transfer if false", async () => {
       const testRecipient2TokenAccount = getAssociatedTokenAddressSync(
         tokenMint,
-        recipient.publicKey
+        recipient.publicKey,
       );
 
       // Mint tokens to test user 2
@@ -637,16 +634,15 @@ describe("Recurring Payments", () => {
         tokenMint,
         userTokenAccount,
         mintAuthority,
-        1000000n // 1 token with 6 decimals
+        1000000n, // 1 token with 6 decimals
       );
 
       // Get initial balances for test 2
       const initialRecipient2Balance = await connection.getTokenAccountBalance(
-        testRecipient2TokenAccount
+        testRecipient2TokenAccount,
       );
-      const initialUser2Balance = await connection.getTokenAccountBalance(
-        userTokenAccount
-      );
+      const initialUser2Balance =
+        await connection.getTokenAccountBalance(userTokenAccount);
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
@@ -669,7 +665,7 @@ describe("Recurring Payments", () => {
         Array.from(testMemo),
         testStartTime,
         approvalAmount,
-        false // executeImmediately = false
+        false, // executeImmediately = false
       );
 
       const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
@@ -680,17 +676,17 @@ describe("Recurring Payments", () => {
 
       // Check balances after policy creation with executeImmediately = true
       const balanceAfterCreateTrue = await connection.getTokenAccountBalance(
-        testRecipient2TokenAccount
+        testRecipient2TokenAccount,
       );
       const userBalanceAfterCreateTrue =
         await connection.getTokenAccountBalance(userTokenAccount);
 
       // Token transfers should have occurred
       expect(parseInt(balanceAfterCreateTrue.value.amount)).toEqual(
-        parseInt(initialRecipient2Balance.value.amount)
+        parseInt(initialRecipient2Balance.value.amount),
       );
       expect(parseInt(userBalanceAfterCreateTrue.value.amount)).toEqual(
-        parseInt(initialUser2Balance.value.amount)
+        parseInt(initialUser2Balance.value.amount),
       );
     });
 
@@ -718,7 +714,7 @@ describe("Recurring Payments", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId4).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       const createPolicy4Ix = await sdk.getCreateSubscriptionPolicyInstruction(
@@ -730,7 +726,7 @@ describe("Recurring Payments", () => {
         null,
         paymentFrequency,
         Array.from(memo),
-        new anchor.BN(pastTime)
+        new anchor.BN(pastTime),
       );
       const createTx = new Transaction().add(createPolicy4Ix);
       await sendAndConfirmTransaction(connection, createTx, [user], {
@@ -747,7 +743,7 @@ describe("Recurring Payments", () => {
         policyId4,
         {
           paused: {},
-        }
+        },
       );
       const pauseTx = new Transaction().add(pauseIx);
       await sendAndConfirmTransaction(connection, pauseTx, [user], {
@@ -771,12 +767,12 @@ describe("Recurring Payments", () => {
           [gatewayAuthority],
           {
             commitment: "processed" as Commitment,
-          }
+          },
         );
 
         assert(
           false,
-          "Expected payment execution to fail when policy is paused"
+          "Expected payment execution to fail when policy is paused",
         );
       } catch (error: any) {
         // Should fail because policy is paused
@@ -791,7 +787,7 @@ describe("Recurring Payments", () => {
         policyId4,
         {
           active: {},
-        }
+        },
       );
       const resumeTx = new Transaction().add(resumeIx);
       await sendAndConfirmTransaction(connection, resumeTx, [user], {
@@ -806,7 +802,7 @@ describe("Recurring Payments", () => {
       await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
 
       const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
@@ -818,15 +814,15 @@ describe("Recurring Payments", () => {
         [gatewayAuthority],
         {
           commitment: "processed" as Commitment,
-        }
+        },
       );
 
       // Verify payment was executed successfully
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
       expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
-        initialRecipientBalance.value.uiAmount || 0
+        initialRecipientBalance.value.uiAmount || 0,
       );
 
       // Verify policy was updated
@@ -840,7 +836,7 @@ describe("Recurring Payments", () => {
   // test("Delete payment policy", async () => {
   //   // Get initial user payment state
   //   const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
-  //   const initialActivePoliciesCount = initialUserPayment!.activePoliciesCount;
+  //   const initialActivePoliciesCount = initialUserPayment!.createdPoliciesCount;
   //
   //   // Use policy ID 2 from a previous test (the second policy created)
   //   const policyIdToDelete = 2;
@@ -871,7 +867,7 @@ describe("Recurring Payments", () => {
   //
   //   // Verify user payment active policies count was decremented
   //   const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
-  //   expect(updatedUserPayment!.activePoliciesCount).toBe(
+  //   expect(updatedUserPayment!.createdPoliciesCount).toBe(
   //     initialActivePoliciesCount - 1
   //   );
   //   expect(updatedUserPayment!.updatedAt.toNumber()).toBeGreaterThanOrEqual(
@@ -890,7 +886,7 @@ describe("Recurring Payments", () => {
     // Change the gateway signer
     const changeSignerIx = await sdk.changeGatewaySigner(
       gatewayAuthority.publicKey,
-      newSigner.publicKey
+      newSigner.publicKey,
     );
     const tx = new Transaction().add(changeSignerIx);
 
@@ -919,7 +915,7 @@ describe("Recurring Payments", () => {
     // Change the gateway fee recipient
     const changeFeeRecipientIx = await sdk.changeGatewayFeeRecipient(
       gatewayAuthority.publicKey,
-      newFeeRecipient.publicKey
+      newFeeRecipient.publicKey,
     );
     const tx = new Transaction().add(changeFeeRecipientIx);
 
@@ -961,7 +957,7 @@ describe("Recurring Payments", () => {
         milestoneAmounts,
         milestoneTimestamps,
         0, // time-based release condition
-        Array.from(memo)
+        Array.from(memo),
       );
 
       const tx = new Transaction().add(...createMilestoneIxs);
@@ -976,11 +972,10 @@ describe("Recurring Payments", () => {
       }
 
       // Verify milestone policy was created
-      const policies = await sdk.getPaymentPoliciesByUserPayment(
-        userPaymentPDA
-      );
+      const policies =
+        await sdk.getPaymentPoliciesByUserPayment(userPaymentPDA);
       const milestonePolicy = policies.find(
-        (p) => "milestone" in p.account.policyType
+        (p) => "milestone" in p.account.policyType,
       );
       expect(milestonePolicy).toBeDefined();
       expect(milestonePolicy!.account.policyType).toHaveProperty("milestone");
@@ -994,11 +989,10 @@ describe("Recurring Payments", () => {
 
     test("Execute milestone payments sequentially", async () => {
       // Get the milestone policy we just created
-      const policies = await sdk.getPaymentPoliciesByUserPayment(
-        userPaymentPDA
-      );
+      const policies =
+        await sdk.getPaymentPoliciesByUserPayment(userPaymentPDA);
       const milestonePolicy = policies.find(
-        (p) => "milestone" in p.account.policyType
+        (p) => "milestone" in p.account.policyType,
       );
       expect(milestonePolicy).toBeDefined();
 
@@ -1042,7 +1036,7 @@ describe("Recurring Payments", () => {
         pastMilestoneAmounts,
         pastMilestoneTimestamps,
         0, // time-based
-        Array.from(memo2)
+        Array.from(memo2),
       );
 
       const createTx = new Transaction().add(...createPastMilestoneIxs);
@@ -1052,7 +1046,7 @@ describe("Recurring Payments", () => {
 
       // Get the new milestone policy (policy ID 6)
       const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
-      const policyId = userPaymentAfter!.activePoliciesCount;
+      const policyId = userPaymentAfter!.createdPoliciesCount;
 
       expect(policyId).toBe(7);
       const [pastPolicyPda] = PublicKey.findProgramAddressSync(
@@ -1061,14 +1055,14 @@ describe("Recurring Payments", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       // Execute first milestone
       await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
 
       const executeFirstIxs = await sdk.executePayment(pastPolicyPda);
@@ -1079,7 +1073,7 @@ describe("Recurring Payments", () => {
 
       // Verify first milestone was executed
       const afterFirstBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
       const firstMilestoneAmount = 500000; // 0.5 tokens in smallest units
       expect(afterFirstBalance.value.amount).toBe(
@@ -1087,7 +1081,7 @@ describe("Recurring Payments", () => {
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(firstMilestoneAmount) -
           BigInt(17500 /* fee */)
-        ).toString()
+        ).toString(),
       );
 
       let updatedPolicy = await sdk.getPaymentPolicy(pastPolicyPda);
@@ -1103,12 +1097,12 @@ describe("Recurring Payments", () => {
         [newSigner],
         {
           commitment: "processed" as Commitment,
-        }
+        },
       );
 
       // Verify second milestone was executed
       const afterSecondBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
       const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
       const totalExpected =
@@ -1116,7 +1110,7 @@ describe("Recurring Payments", () => {
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
-        ).toString()
+        ).toString(),
       );
 
       updatedPolicy = await sdk.getPaymentPolicy(pastPolicyPda);
@@ -1133,11 +1127,11 @@ describe("Recurring Payments", () => {
           [newSigner],
           {
             commitment: "processed" as Commitment,
-          }
+          },
         );
         assert(
           false,
-          "Expected execution to fail when all milestones completed"
+          "Expected execution to fail when all milestones completed",
         );
       } catch (error: any) {
         expect(error.message).toContain("PolicyPaused.");
@@ -1168,7 +1162,7 @@ describe("Recurring Payments", () => {
         manualMilestoneAmounts,
         manualMilestoneTimestamps,
         1, // manual approval release condition
-        Array.from(memo3)
+        Array.from(memo3),
       );
 
       const createTx = new Transaction().add(...createManualIxs);
@@ -1177,13 +1171,12 @@ describe("Recurring Payments", () => {
       });
 
       // Get the manual milestone policy
-      const policies = await sdk.getPaymentPoliciesByUserPayment(
-        userPaymentPDA
-      );
+      const policies =
+        await sdk.getPaymentPoliciesByUserPayment(userPaymentPDA);
       const manualMilestonePolicy = policies.find(
         (p) =>
           "milestone" in p.account.policyType &&
-          p.account.policyType.milestone!.releaseCondition === 1
+          p.account.policyType.milestone!.releaseCondition === 1,
       );
       expect(manualMilestonePolicy).toBeDefined();
 
@@ -1220,7 +1213,7 @@ describe("Recurring Payments", () => {
         maxAmountPerPeriod,
         maxChunkAmount,
         periodLengthSeconds,
-        Array.from(memo)
+        Array.from(memo),
       );
 
       const tx = new Transaction().add(...createPayAsYouGoIxs);
@@ -1230,14 +1223,14 @@ describe("Recurring Payments", () => {
 
       // Get the pay-as-you-go policy PDA (policy should be the last created)
       const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
-      const policyId = userPaymentAfter!.activePoliciesCount;
+      const policyId = userPaymentAfter!.createdPoliciesCount;
       const [payAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("payment_policy"),
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       // Verify policy was created
@@ -1255,28 +1248,28 @@ describe("Recurring Payments", () => {
     test("Execute pay-as-you-go payments within period limits", async () => {
       // Get the pay-as-you-go policy (created in previous test)
       const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
-      const policyId = userPaymentAfter!.activePoliciesCount;
+      const policyId = userPaymentAfter!.createdPoliciesCount;
       const [payAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("payment_policy"),
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       // Update SDK to use gateway signer wallet for execution
       await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
 
       // Execute first payment (0.1 tokens)
       const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
       const executeFirstIxs = await sdk.executePayment(
         payAsYouGoPolicyPDA,
-        paymentAmount1
+        paymentAmount1,
       );
       const executeFirstTx = new Transaction().add(...executeFirstIxs);
       await sendAndConfirmTransaction(connection, executeFirstTx, [newSigner], {
@@ -1285,7 +1278,7 @@ describe("Recurring Payments", () => {
 
       // Verify first payment
       const afterFirstBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
       // Account for protocol fees (100 bps = 1%) and gateway fees (250 bps = 2.5%)
       // Total fees = 3.5% = 3500 on 100000 amount, net transfer = 96500
@@ -1294,20 +1287,20 @@ describe("Recurring Payments", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(expectedNetAmount)
-        ).toString()
+        ).toString(),
       );
 
       let updatedPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
       expect(updatedPolicy!.paymentCount).toBe(1);
       expect(
-        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber()
+        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber(),
       ).toBe(100000);
 
       // Execute second payment (0.15 tokens)
       const paymentAmount2 = new anchor.BN(150000); // 0.15 tokens
       const executeSecondIxs = await sdk.executePayment(
         payAsYouGoPolicyPDA,
-        paymentAmount2
+        paymentAmount2,
       );
       const executeSecondTx = new Transaction().add(...executeSecondIxs);
       await sendAndConfirmTransaction(
@@ -1316,12 +1309,12 @@ describe("Recurring Payments", () => {
         [newSigner],
         {
           commitment: "processed" as Commitment,
-        }
+        },
       );
 
       // Verify second payment
       const afterSecondBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
+        recipientTokenAccount,
       );
       // Account for fees on both payments (3.5% total = 8750 on 250000 total)
       const expectedSecondNetAmount =
@@ -1330,27 +1323,27 @@ describe("Recurring Payments", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(expectedSecondNetAmount)
-        ).toString()
+        ).toString(),
       );
 
       updatedPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
       expect(updatedPolicy!.paymentCount).toBe(2);
       expect(
-        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber()
+        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber(),
       ).toBe(250000);
     });
 
     test("Pay-as-you-go payment exceeds chunk limit", async () => {
       // Get the pay-as-you-go policy
       const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
-      const policyId = userPaymentAfter!.activePoliciesCount;
+      const policyId = userPaymentAfter!.createdPoliciesCount;
       const [payAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("payment_policy"),
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       // Update SDK to use gateway signer wallet (newSigner, not gatewayAuthority)
@@ -1362,10 +1355,10 @@ describe("Recurring Payments", () => {
       try {
         const executeExcessiveIxs = await sdk.executePayment(
           payAsYouGoPolicyPDA,
-          excessiveAmount
+          excessiveAmount,
         );
         const executeExcessiveTx = new Transaction().add(
-          ...executeExcessiveIxs
+          ...executeExcessiveIxs,
         );
         await sendAndConfirmTransaction(
           connection,
@@ -1373,7 +1366,7 @@ describe("Recurring Payments", () => {
           [newSigner],
           {
             commitment: "processed" as Commitment,
-          }
+          },
         );
         assert(false, "Expected payment to fail due to chunk size limit");
       } catch (error: any) {
@@ -1399,7 +1392,7 @@ describe("Recurring Payments", () => {
         smallMaxAmountPerPeriod,
         smallMaxChunkAmount,
         periodLengthSeconds,
-        Array.from(memo2)
+        Array.from(memo2),
       );
 
       const createTx = new Transaction().add(...createSmallPayAsYouGoIxs);
@@ -1409,14 +1402,14 @@ describe("Recurring Payments", () => {
 
       // Get the new pay-as-you-go policy (next policy ID)
       const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
-      const newPolicyId = userPaymentAfter!.activePoliciesCount;
+      const newPolicyId = userPaymentAfter!.createdPoliciesCount;
       const [smallPayAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("payment_policy"),
           userPaymentPDA.toBuffer(),
           new anchor.BN(newPolicyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId
+        program.programId,
       );
 
       // Update SDK to use gateway signer wallet (newSigner)
@@ -1426,7 +1419,7 @@ describe("Recurring Payments", () => {
       const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
       const executeFirstIxs = await sdk.executePayment(
         smallPayAsYouGoPolicyPDA,
-        paymentAmount1
+        paymentAmount1,
       );
       const executeFirstTx = new Transaction().add(...executeFirstIxs);
       await sendAndConfirmTransaction(connection, executeFirstTx, [newSigner], {
@@ -1437,7 +1430,7 @@ describe("Recurring Payments", () => {
       const paymentAmount2 = new anchor.BN(150000);
       const executeSecondIxs = await sdk.executePayment(
         smallPayAsYouGoPolicyPDA,
-        paymentAmount2
+        paymentAmount2,
       );
       const executeSecondTx = new Transaction().add(...executeSecondIxs);
       await sendAndConfirmTransaction(
@@ -1446,7 +1439,7 @@ describe("Recurring Payments", () => {
         [newSigner],
         {
           commitment: "processed" as Commitment,
-        }
+        },
       );
 
       // Try third payment that would exceed period limit (0.06 tokens, total would be 0.31 > 0.3)
@@ -1454,7 +1447,7 @@ describe("Recurring Payments", () => {
       try {
         const executeThirdIxs = await sdk.executePayment(
           smallPayAsYouGoPolicyPDA,
-          paymentAmount3
+          paymentAmount3,
         );
         const executeThirdTx = new Transaction().add(...executeThirdIxs);
         await sendAndConfirmTransaction(
@@ -1463,7 +1456,7 @@ describe("Recurring Payments", () => {
           [newSigner],
           {
             commitment: "processed" as Commitment,
-          }
+          },
         );
         assert(false, "Expected payment to fail due to period limit");
       } catch (error: any) {
@@ -1485,7 +1478,7 @@ describe("Recurring Payments", () => {
           new anchor.BN(0), // Invalid
           new anchor.BN(100000),
           new anchor.BN(86400),
-          Array.from(new Uint8Array(64).fill(0))
+          Array.from(new Uint8Array(64).fill(0)),
         );
         const invalidTx = new Transaction().add(...invalidIxs);
         await sendAndConfirmTransaction(connection, invalidTx, [user], {
@@ -1493,7 +1486,7 @@ describe("Recurring Payments", () => {
         });
         assert(
           false,
-          "Expected policy creation to fail with invalid maxAmountPerPeriod"
+          "Expected policy creation to fail with invalid maxAmountPerPeriod",
         );
       } catch (error: any) {
         expect(error.message).toContain("InvalidAmount");
@@ -1508,7 +1501,7 @@ describe("Recurring Payments", () => {
           new anchor.BN(100000),
           new anchor.BN(200000), // Invalid: chunk > period max
           new anchor.BN(86400),
-          Array.from(new Uint8Array(64).fill(0))
+          Array.from(new Uint8Array(64).fill(0)),
         );
         const invalidTx2 = new Transaction().add(...invalidIxs2);
         await sendAndConfirmTransaction(connection, invalidTx2, [user], {
@@ -1516,7 +1509,7 @@ describe("Recurring Payments", () => {
         });
         assert(
           false,
-          "Expected policy creation to fail with invalid chunk size"
+          "Expected policy creation to fail with invalid chunk size",
         );
       } catch (error: any) {
         expect(error.message).toContain("InvalidAmount");
@@ -1531,7 +1524,7 @@ describe("Recurring Payments", () => {
           new anchor.BN(1000000),
           new anchor.BN(100000),
           new anchor.BN(0), // Invalid
-          Array.from(new Uint8Array(64).fill(0))
+          Array.from(new Uint8Array(64).fill(0)),
         );
         const invalidTx3 = new Transaction().add(...invalidIxs3);
         await sendAndConfirmTransaction(connection, invalidTx3, [user], {
@@ -1539,7 +1532,7 @@ describe("Recurring Payments", () => {
         });
         assert(
           false,
-          "Expected policy creation to fail with invalid period length"
+          "Expected policy creation to fail with invalid period length",
         );
       } catch (error: any) {
         expect(error.message).toContain("Invalid Interval");

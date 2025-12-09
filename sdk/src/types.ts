@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { type RecurringPayments } from "../../target/types/recurring_payments.js";
+import { type Tributary } from "../../target/types/tributary.js";
 import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
 
 /**
@@ -33,25 +33,25 @@ export type PaymentFrequencyString =
  * Program configuration account structure.
  * Contains global protocol settings including emergency pause state and admin authority.
  */
-export type ProgramConfig = IdlAccounts<RecurringPayments>["programConfig"];
+export type ProgramConfig = IdlAccounts<Tributary>["programConfig"];
 
 /**
  * Payment gateway account structure.
  * Represents a payment gateway that can execute recurring payments with configurable fees.
  */
-export type PaymentGateway = IdlAccounts<RecurringPayments>["paymentGateway"];
+export type PaymentGateway = IdlAccounts<Tributary>["paymentGateway"];
 
 /**
  * User payment account structure.
  * Tracks a user's payment activity across multiple policies for a specific token mint.
  */
-export type UserPayment = IdlAccounts<RecurringPayments>["userPayment"];
+export type UserPayment = IdlAccounts<Tributary>["userPayment"];
 
 /**
  * Payment policy account structure.
  * Defines the terms of a recurring payment including amount, frequency, and recipients.
  */
-export type PaymentPolicy = IdlAccounts<RecurringPayments>["paymentPolicy"];
+export type PaymentPolicy = IdlAccounts<Tributary>["paymentPolicy"];
 
 // IDL-derived types - These types are automatically generated from the Anchor IDL
 // and represent enums and structs used within the Tributary program.
@@ -60,22 +60,22 @@ export type PaymentPolicy = IdlAccounts<RecurringPayments>["paymentPolicy"];
  * Type of payment policy (fixed amount vs percentage-based).
  * Determines how payment amounts are calculated and distributed.
  */
-export type PolicyType = IdlTypes<RecurringPayments>["policyType"];
+export type PolicyType = IdlTypes<Tributary>["policyType"];
 
 /**
  * Payment frequency configuration.
  * Defines when payments should occur, either as predefined intervals or custom seconds.
  */
-export type PaymentFrequency = IdlTypes<RecurringPayments>["paymentFrequency"];
+export type PaymentFrequency = IdlTypes<Tributary>["paymentFrequency"];
 
 /**
  * Status of a payment execution.
  * Tracks whether payments were successful, failed, or are pending.
  */
-export type PaymentStatus = IdlTypes<RecurringPayments>["paymentStatus"];
+export type PaymentStatus = IdlTypes<Tributary>["paymentStatus"];
 
 /**
  * Record of a completed payment.
  * Contains details about the payment execution including amount, timestamp, and fees.
  */
-export type PaymentRecord = IdlTypes<RecurringPayments>["paymentRecord"];
+export type PaymentRecord = IdlTypes<Tributary>["paymentRecord"];

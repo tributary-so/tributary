@@ -1,4 +1,4 @@
-use crate::{constants::*, error::RecurringPaymentsError, state::*};
+use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -31,7 +31,7 @@ pub struct CreatePaymentPolicy<'info> {
     #[account(
         seeds = [CONFIG_SEED],
         bump = config.bump,
-        constraint = !config.emergency_pause @ RecurringPaymentsError::ProgramPaused,
+        constraint = !config.emergency_pause @ TributaryError::ProgramPaused,
     )]
     pub config: Box<Account<'info, ProgramConfig>>,
 
@@ -42,7 +42,7 @@ pub struct CreatePaymentPolicy<'info> {
         seeds = [
             PAYMENT_POLICY_SEED,
             user_payment.key().as_ref(),
-            (user_payment.active_policies_count + 1).to_le_bytes().as_ref()
+            (user_payment.created_policies_count + 1).to_le_bytes().as_ref()
         ],
         bump
     )]
@@ -88,14 +88,14 @@ pub fn handler_create_payment_policy(
     let payment_policy = &mut ctx.accounts.payment_policy;
     let user_payment = &mut ctx.accounts.user_payment;
 
-    // Enforce maximum policies per user limit
+    // Enforce maximum policies per user limit (check active policies count)
     require!(
         user_payment.active_policies_count < u32::MAX
             && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
-        RecurringPaymentsError::MaxPoliciesReached
+        TributaryError::MaxPoliciesReached
     );
 
-    let policy_id = user_payment.active_policies_count.saturating_add(1);
+    let policy_id = user_payment.created_policies_count.saturating_add(1);
 
     payment_policy.user_payment = user_payment.key();
     payment_policy.recipient = ctx.accounts.recipient.key();
@@ -117,16 +117,20 @@ pub fn handler_create_payment_policy(
         policy_id: payment_policy.policy_id,
         policy_type: payment_policy.policy_type.clone(),
         memo: payment_policy.memo,
+        created_policies_count: user_payment.created_policies_count,
     });
 
     // Update user payment account
-    user_payment.active_policies_count = policy_id;
+    user_payment.active_policies_count = user_payment.active_policies_count.saturating_add(1);
+    user_payment.created_policies_count = policy_id;
     user_payment.updated_at = clock.unix_timestamp;
 
     msg!(
-        "Payment policy created with ID: {}, recipient: {:?}",
+        "Payment policy created with ID: {}, recipient: {:?}, active_count: {}, total_created: {}",
         policy_id,
         payment_policy.recipient,
+        user_payment.active_policies_count,
+        user_payment.created_policies_count,
     );
 
     Ok(())

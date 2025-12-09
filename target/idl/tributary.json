@@ -1,7 +1,7 @@
 {
   "address": "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
   "metadata": {
-    "name": "recurring_payments",
+    "name": "tributary",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
@@ -1664,6 +1664,10 @@
                 64
               ]
             }
+          },
+          {
+            "name": "created_policies_count",
+            "type": "u32"
           }
         ]
       }
@@ -2055,6 +2059,14 @@
             "type": "u32"
           },
           {
+            "name": "created_policies_count",
+            "docs": [
+              "Total number of policies ever created for this user/mint combination",
+              "This field only increases and is used to prevent policy ID reuse"
+            ],
+            "type": "u32"
+          },
+          {
             "name": "created_at",
             "docs": [
               "Unix timestamp when account was created"
@@ -2090,7 +2102,7 @@
             "type": {
               "array": [
                 "u8",
-                256
+                252
               ]
             }
           }

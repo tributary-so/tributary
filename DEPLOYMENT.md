@@ -25,7 +25,7 @@ yes | solana-verify verify-from-repo --remote \
   --url https://api.mainnet-beta.solana.com \
   --program-id <PROGRAM_ID> \
   https://github.com/tributary-so/tributary \
-  --library-name recurring_payments \
+  --library-name tributary \
   --commit-hash <COMMIT> \
   --keypair ~/.config/solana/deployer.json
 ```

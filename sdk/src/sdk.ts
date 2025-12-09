@@ -29,13 +29,13 @@ import type {
   ProgramConfig,
 } from "./types.js";
 import { computePaymentsPerYear } from "./utils";
-import IDL from "../../target/idl/recurring_payments.json"; // with { type: "json" };
-import { RecurringPayments } from "../../target/types/recurring_payments.js";
+import IDL from "../../target/idl/tributary.json"; // with { type: "json" };
+import { Tributary as TributaryIdl } from "../../target/types/tributary.js";
 
 /**
  * Anchor Program type for the Recurring Payments smart contract.
  */
-export type Program = anchor.Program<RecurringPayments>;
+export type Program = anchor.Program<TributaryIdl>;
 
 /**
  * Main SDK class for interacting with the Tributary recurring payments protocol on Solana.
@@ -53,7 +53,7 @@ export type Program = anchor.Program<RecurringPayments>;
  */
 export class Tributary {
   /** Anchor program instance for the Recurring Payments contract */
-  program: anchor.Program<RecurringPayments>;
+  program: anchor.Program<TributaryIdl>;
   /** Public key of the deployed program */
   programId: PublicKey;
   /** Solana RPC connection */
@@ -73,7 +73,7 @@ export class Tributary {
     this.provider = new anchor.AnchorProvider(this.connection, wallet, {
       preflightCommitment: "confirmed",
     });
-    this.program = new anchor.Program(IDL as RecurringPayments, this.provider);
+    this.program = new anchor.Program(IDL as TributaryIdl, this.provider);
   }
 
   /**
@@ -85,7 +85,7 @@ export class Tributary {
     this.provider = new anchor.AnchorProvider(this.connection, wallet, {
       preflightCommitment: "confirmed",
     });
-    this.program = new anchor.Program(IDL as RecurringPayments, this.provider);
+    this.program = new anchor.Program(IDL as TributaryIdl, this.provider);
   }
 
   /**
@@ -218,7 +218,7 @@ export class Tributary {
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
     let policyId: number = 1;
     if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
+      policyId = userPayment.createdPoliciesCount + 1;
     }
     const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const nextPaymentDue = startTime || new BN(Math.floor(Date.now() / 1000));
@@ -277,7 +277,7 @@ export class Tributary {
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
     let policyId: number = 1;
     if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
+      policyId = userPayment.createdPoliciesCount + 1;
     }
     const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
 
@@ -350,7 +350,7 @@ export class Tributary {
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
     let policyId: number = 1;
     if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
+      policyId = userPayment.createdPoliciesCount + 1;
     }
     const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
 
@@ -489,7 +489,7 @@ export class Tributary {
     // Determine policy ID
     let policyId: number = 1;
     if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
+      policyId = userPayment.createdPoliciesCount + 1;
     }
     const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const { address: configPda } = getConfigPda(this.programId);
@@ -689,7 +689,7 @@ export class Tributary {
     // Determine policy ID
     let policyId: number = 1;
     if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
+      policyId = userPayment.createdPoliciesCount + 1;
     }
     const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const { address: configPda } = getConfigPda(this.programId);
@@ -871,7 +871,7 @@ export class Tributary {
     // Determine policy ID
     let policyId: number = 1;
     if (userPayment) {
-      policyId = userPayment.activePoliciesCount + 1;
+      policyId = userPayment.createdPoliciesCount + 1;
     }
     const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
     const { address: configPda } = getConfigPda(this.programId);
@@ -1571,4 +1571,4 @@ export class Tributary {
 /**
  * @deprecated Use Tributary instead. This export is maintained for backward compatibility.
  */
-export { Tributary as RecurringPaymentsSDK };
+export { Tributary as TributarySDK };

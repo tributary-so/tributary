@@ -29,7 +29,7 @@
 
 ### Core Architecture
 
-- **Program** (`programs/recurring_payments/`): Rust smart contract with 5 instructions: initialize, create_user_payment, create_payment_gateway, create_payment_policy, execute_payment
+- **Program** (`programs/tributary/`): Rust smart contract with 5 instructions: initialize, create_user_payment, create_payment_gateway, create_payment_policy, execute_payment
 - **SDK** (`sdk/`): TypeScript SDK with manager CLI (`manager.ts`) for all program operations
 - **Tests** (`tests/`): Full integration test suite covering entire payment flow
 - **Landing** (`landing/`): React/Tailwind marketing site with developer examples
@@ -39,13 +39,13 @@
 
 - **PDAs**: config, gateway, user_payment, payment_policy, payments_delegate
 - **State Accounts**: ProgramConfig, PaymentGateway, UserPayment, PaymentPolicy with PolicyType enum
-- **Payment Flow**: User approves delegate → Policy created → Gateway executes recurring payments
+- **Payment Flow**: User approves delegate → Policy created → Gateway executes tributary payments
 - **Fees**: Protocol fees (100 bps) + Gateway fees (configurable) split between recipients
 - **CLI Manager**: Full-featured CLI in `sdk/manager.ts` for all operations and PDA utilities
 
 ### Test Structure
 
-Tests in `tests/recurring_payments.test.ts` cover: program initialization, user payment creation, gateway setup, policy creation, delegate approval, and payment execution with fee distribution verification.
+Tests in `tests/tributary.test.ts` cover: program initialization, user payment creation, gateway setup, policy creation, delegate approval, and payment execution with fee distribution verification.
 
 ## Program Details
 

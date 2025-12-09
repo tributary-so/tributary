@@ -1,4 +1,4 @@
-use crate::{error::RecurringPaymentsError, PaymentFrequency};
+use crate::{error::TributaryError, PaymentFrequency};
 use anchor_lang::prelude::*;
 
 /// Calculate the next payment due date based on payment frequency
@@ -15,7 +15,7 @@ pub fn calculate_next_payment_due(
             while next_due <= current_timestamp {
                 next_due = next_due
                     .checked_add(86400)
-                    .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
             }
         }
         PaymentFrequency::Weekly => {
@@ -23,7 +23,7 @@ pub fn calculate_next_payment_due(
             while next_due <= current_timestamp {
                 next_due = next_due
                     .checked_add(604800)
-                    .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
             }
         }
         PaymentFrequency::Monthly => {
@@ -55,7 +55,7 @@ pub fn calculate_next_payment_due(
             while next_due <= current_timestamp {
                 next_due = next_due
                     .checked_add(*interval_seconds as i64)
-                    .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
             }
         }
     }
@@ -71,7 +71,7 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
 
     // Check for overflow in cast
     if days_since_epoch > i32::MAX as i64 || days_since_epoch < i32::MIN as i64 {
-        return err!(RecurringPaymentsError::ArithmeticOverflow);
+        return err!(TributaryError::ArithmeticOverflow);
     }
 
     // Calculate year, month, day from days since epoch (1970-01-01)
@@ -84,10 +84,10 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
         if remaining_days >= days_in_year {
             remaining_days = remaining_days
                 .checked_sub(days_in_year)
-                .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                .ok_or(TributaryError::ArithmeticOverflow)?;
             year = year
                 .checked_add(1)
-                .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                .ok_or(TributaryError::ArithmeticOverflow)?;
         } else {
             break;
         }
@@ -100,10 +100,10 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
         if remaining_days >= days_in_month {
             remaining_days = remaining_days
                 .checked_sub(days_in_month)
-                .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                .ok_or(TributaryError::ArithmeticOverflow)?;
             month = month
                 .checked_add(1)
-                .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+                .ok_or(TributaryError::ArithmeticOverflow)?;
         } else {
             break;
         }
@@ -111,30 +111,30 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
 
     let day = remaining_days
         .checked_add(1)
-        .ok_or(RecurringPaymentsError::ArithmeticOverflow)?; // Days are 1-indexed
+        .ok_or(TributaryError::ArithmeticOverflow)?; // Days are 1-indexed
 
     // Add the requested months
     let mut new_month = month
         .checked_add(months)
-        .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+        .ok_or(TributaryError::ArithmeticOverflow)?;
     let mut new_year = year;
 
     // Handle month overflow/underflow
     while new_month > 12 {
         new_month = new_month
             .checked_sub(12)
-            .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+            .ok_or(TributaryError::ArithmeticOverflow)?;
         new_year = new_year
             .checked_add(1)
-            .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+            .ok_or(TributaryError::ArithmeticOverflow)?;
     }
     while new_month < 1 {
         new_month = new_month
             .checked_add(12)
-            .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+            .ok_or(TributaryError::ArithmeticOverflow)?;
         new_year = new_year
             .checked_sub(1)
-            .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+            .ok_or(TributaryError::ArithmeticOverflow)?;
     }
 
     // Handle day overflow (e.g., Jan 31 + 1 month = Feb 28/29)
@@ -153,7 +153,7 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
         let days = if is_leap_year(y) { 366i64 } else { 365i64 };
         new_days_since_epoch = new_days_since_epoch
             .checked_add(days)
-            .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+            .ok_or(TributaryError::ArithmeticOverflow)?;
     }
 
     // Add days for complete months in the target year
@@ -161,20 +161,20 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
         let days = get_days_in_month(new_year, m) as i64;
         new_days_since_epoch = new_days_since_epoch
             .checked_add(days)
-            .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+            .ok_or(TributaryError::ArithmeticOverflow)?;
     }
 
     // Add remaining days
     new_days_since_epoch = new_days_since_epoch
         .checked_add((new_day - 1) as i64)
-        .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+        .ok_or(TributaryError::ArithmeticOverflow)?;
 
     // Convert to timestamp
     let new_timestamp = new_days_since_epoch
         .checked_mul(86400)
-        .ok_or(RecurringPaymentsError::ArithmeticOverflow)?
+        .ok_or(TributaryError::ArithmeticOverflow)?
         .checked_add(seconds_in_day)
-        .ok_or(RecurringPaymentsError::ArithmeticOverflow)?;
+        .ok_or(TributaryError::ArithmeticOverflow)?;
 
     Ok(new_timestamp)
 }
