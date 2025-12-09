@@ -1302,8 +1302,9 @@ export type RecurringPayments = {
     {
       "name": "paymentFrequency",
       "docs": [
-        "Simplify the payment frequency while also allowing a custom period as well,",
-        "defined in seconds."
+        "Defines the frequency at which recurring payments should occur.",
+        "Predefined intervals are provided for common use cases, with Custom",
+        "allowing arbitrary intervals defined in seconds."
       ],
       "type": {
         "kind": "enum",
@@ -1338,8 +1339,10 @@ export type RecurringPayments = {
     {
       "name": "paymentGateway",
       "docs": [
-        "A gateway operator runs the service that triggers payment.",
-        "Hence, the gateway can take a cut of the fees payed by the users"
+        "A payment gateway operated by a service provider that executes recurring payments.",
+        "Gateway operators can charge fees for their service and are responsible for",
+        "triggering payment execution. Each gateway has an authority (owner), fee recipient,",
+        "and signer key used to execute payments on behalf of users."
       ],
       "type": {
         "kind": "struct",
@@ -1347,39 +1350,57 @@ export type RecurringPayments = {
           {
             "name": "authority",
             "docs": [
-              "this key is considered the owner. It cannot be changed"
+              "Authority key that owns this gateway. Cannot be changed after creation."
             ],
             "type": "pubkey"
           },
           {
             "name": "feeRecipient",
             "docs": [
-              "Which key recevies the fees"
+              "Key that receives gateway fees from processed payments"
             ],
             "type": "pubkey"
           },
           {
             "name": "gatewayFeeBps",
+            "docs": [
+              "Gateway fee in basis points (bps). Max 10,000 (100%)"
+            ],
             "type": "u16"
           },
           {
             "name": "isActive",
+            "docs": [
+              "Whether this gateway is active and can process payments"
+            ],
             "type": "bool"
           },
           {
             "name": "totalProcessed",
+            "docs": [
+              "Total amount processed by this gateway (cumulative)"
+            ],
             "type": "u64"
           },
           {
             "name": "createdAt",
+            "docs": [
+              "Unix timestamp when gateway was created"
+            ],
             "type": "i64"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for address derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "name",
+            "docs": [
+              "Human-readable gateway name (32 bytes max)"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -1389,6 +1410,9 @@ export type RecurringPayments = {
           },
           {
             "name": "url",
+            "docs": [
+              "Gateway service URL (64 bytes max)"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -1399,7 +1423,7 @@ export type RecurringPayments = {
           {
             "name": "signer",
             "docs": [
-              "This signer key is to execute payments"
+              "Signer key authorized to execute payments for this gateway"
             ],
             "type": "pubkey"
           },
@@ -1496,18 +1520,30 @@ export type RecurringPayments = {
         "fields": [
           {
             "name": "userPayment",
+            "docs": [
+              "Reference to the UserPayment account this policy belongs to"
+            ],
             "type": "pubkey"
           },
           {
             "name": "recipient",
+            "docs": [
+              "Recipient who receives the payments"
+            ],
             "type": "pubkey"
           },
           {
             "name": "gateway",
+            "docs": [
+              "Payment gateway responsible for executing this policy"
+            ],
             "type": "pubkey"
           },
           {
             "name": "policyType",
+            "docs": [
+              "Type and parameters of this payment policy"
+            ],
             "type": {
               "defined": {
                 "name": "policyType"
@@ -1516,6 +1552,9 @@ export type RecurringPayments = {
           },
           {
             "name": "status",
+            "docs": [
+              "Current status of this payment policy"
+            ],
             "type": {
               "defined": {
                 "name": "paymentStatus"
@@ -1524,6 +1563,9 @@ export type RecurringPayments = {
           },
           {
             "name": "memo",
+            "docs": [
+              "Human-readable memo/description (64 bytes max)"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -1533,30 +1575,51 @@ export type RecurringPayments = {
           },
           {
             "name": "totalPaid",
+            "docs": [
+              "Total amount paid out under this policy (cumulative)"
+            ],
             "type": "u64"
           },
           {
             "name": "paymentCount",
+            "docs": [
+              "Number of payments executed under this policy"
+            ],
             "type": "u32"
           },
           {
             "name": "createdAt",
+            "docs": [
+              "Unix timestamp when policy was created"
+            ],
             "type": "i64"
           },
           {
             "name": "updatedAt",
+            "docs": [
+              "Unix timestamp when policy was last updated"
+            ],
             "type": "i64"
           },
           {
             "name": "policyId",
+            "docs": [
+              "Unique identifier for this policy within the user_payment scope"
+            ],
             "type": "u32"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for address derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "padding",
+            "docs": [
+              "Reserved space for future extensions"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -1708,7 +1771,9 @@ export type RecurringPayments = {
     {
       "name": "paymentStatus",
       "docs": [
-        "A status enum for installed payment policies indicating if payment can be made"
+        "Status enum for payment policies indicating whether payments can be executed.",
+        "Active policies allow payment execution, while Paused policies prevent",
+        "automatic payment processing until reactivated."
       ],
       "type": {
         "kind": "enum",
@@ -1871,30 +1936,51 @@ export type RecurringPayments = {
         "fields": [
           {
             "name": "admin",
+            "docs": [
+              "Admin authority that can update protocol configuration"
+            ],
             "type": "pubkey"
           },
           {
             "name": "feeRecipient",
+            "docs": [
+              "Key that receives protocol fees from all payments"
+            ],
             "type": "pubkey"
           },
           {
             "name": "protocolFeeBps",
+            "docs": [
+              "Protocol fee in basis points (bps). Max 10,000 (100%)"
+            ],
             "type": "u16"
           },
           {
             "name": "maxPoliciesPerUser",
+            "docs": [
+              "Maximum number of active policies allowed per user"
+            ],
             "type": "u32"
           },
           {
             "name": "emergencyPause",
+            "docs": [
+              "Emergency pause flag - when true, all payments are blocked"
+            ],
             "type": "bool"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for address derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "padding",
+            "docs": [
+              "Reserved space for future extensions"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -1948,38 +2034,65 @@ export type RecurringPayments = {
         "fields": [
           {
             "name": "owner",
+            "docs": [
+              "Owner of this payment account (the user)"
+            ],
             "type": "pubkey"
           },
           {
             "name": "tokenAccount",
+            "docs": [
+              "Associated token account for the payment token"
+            ],
             "type": "pubkey"
           },
           {
             "name": "tokenMint",
+            "docs": [
+              "Mint address of the token used for payments"
+            ],
             "type": "pubkey"
           },
           {
             "name": "activePoliciesCount",
+            "docs": [
+              "Number of active payment policies for this user/mint combination"
+            ],
             "type": "u32"
           },
           {
             "name": "createdAt",
+            "docs": [
+              "Unix timestamp when account was created"
+            ],
             "type": "i64"
           },
           {
             "name": "updatedAt",
+            "docs": [
+              "Unix timestamp when account was last updated"
+            ],
             "type": "i64"
           },
           {
             "name": "isActive",
+            "docs": [
+              "Whether this payment account is active"
+            ],
             "type": "bool"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for address derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "padding",
+            "docs": [
+              "Reserved space for future extensions"
+            ],
             "type": {
               "array": [
                 "u8",
