@@ -84,10 +84,10 @@ import { BN } from '@coral-xyz/anchor'
           <p className="text-neutral-600 mb-8">
             Ready to dive deeper? Check out our comprehensive documentation.
           </p>
-          <div className="flex justify-center gap-x-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a
               href="https://github.com/tributary-so/tributary/blob/main/sdk-react/src/main.tsx"
-              className="btn-primary text-lg flex items-center gap-2"
+              className="btn-primary text-lg flex items-center gap-2 justify-center"
             >
               <svg
                 className="w-5 h-5"
@@ -106,7 +106,7 @@ import { BN } from '@coral-xyz/anchor'
             </a>
             <a
               href="https://docs.tributary.so"
-              className="btn-primary text-lg flex items-center gap-2"
+              className="btn-primary text-lg flex items-center gap-2 justify-center"
             >
               <svg
                 className="w-5 h-5"
