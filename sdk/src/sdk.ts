@@ -186,8 +186,9 @@ export class Tributary {
   }
 
   /**
-   * Creates a payment policy defining the terms of a recurring payment.
-   * Policies specify amount, frequency, recipient, and renewal conditions.
+   * Gets a transaction instruction to create a subscription payment policy.
+   * This is a low-level method that returns only the instruction.
+   * Use createSubscription() for the full setup including ATAs and approvals.
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
@@ -197,9 +198,9 @@ export class Tributary {
    * @param paymentFrequency - How often payments should occur
    * @param memo - Memo bytes to include with payments (max 64 bytes)
    * @param startTime - When the first payment should occur (defaults to now)
-   * @returns Transaction instruction to create the payment policy
+   * @returns Transaction instruction to create the subscription payment policy
    */
-  async createPaymentPolicy(
+  async getCreateSubscriptionPolicyInstruction(
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
@@ -248,9 +249,9 @@ export class Tributary {
   }
 
   /**
-   * Creates a payment policy for pay-as-you-go payments.
-   * Providers can claim up to maxChunkAmount when hitting usage thresholds,
-   * with a maximum of maxAmountPerPeriod per period. Period resets automatically.
+   * Gets a transaction instruction to create a pay-as-you-go payment policy.
+   * This is a low-level method that returns only the instruction.
+   * Use createPayAsYouGoPayment() for the full setup including ATAs and approvals.
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
@@ -260,7 +261,7 @@ export class Tributary {
    * @param memo - Memo bytes to include with payments (max 64 bytes)
    * @returns Transaction instruction to create the pay-as-you-go payment policy
    */
-  async createPayAsYouGoPaymentPolicy(
+  async getCreatePayAsYouGoPolicyInstruction(
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
@@ -321,8 +322,9 @@ export class Tributary {
   }
 
   /**
-   * Creates a payment policy for milestone-based payments.
-   * Milestones define conditional payments released based on time or manual approval.
+   * Gets a transaction instruction to create a milestone payment policy.
+   * This is a low-level method that returns only the instruction.
+   * Use createMilestonePayment() for the full setup including ATAs and approvals.
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
@@ -332,7 +334,7 @@ export class Tributary {
    * @param memo - Memo bytes to include with payments (max 64 bytes)
    * @returns Transaction instruction to create the milestone payment policy
    */
-  async createMilestonePaymentPolicy(
+  async getCreateMilestonePolicyInstruction(
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
@@ -413,11 +415,8 @@ export class Tributary {
   }
 
   /**
-   * Creates a complete set of instructions for setting up a subscription.
-   * This includes creating user payment account (if needed), payment policy,
-   * token approval, and optionally executing the first payment.
-   * If approvalAmount is not provided, it is calculated automatically as the sum of all existing subscriptions
-   * plus the new one, using maxRenewals or defaulting to 1 year of payments per subscription.
+   * Creates a complete subscription setup including ATAs, user payment account, policy, and token approvals.
+   * This is the high-level method for creating subscriptions that handles all the setup automatically.
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
@@ -431,7 +430,7 @@ export class Tributary {
    * @param executeImmediately - Whether to execute the first payment immediately
    * @returns Array of transaction instructions for the complete subscription setup
    */
-  async createSubscriptionInstruction(
+  async createSubscription(
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,

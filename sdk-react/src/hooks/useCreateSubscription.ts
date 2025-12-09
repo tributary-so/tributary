@@ -68,7 +68,7 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         : null;
 
       // Get instructions
-      const instructions = await sdk.createSubscriptionInstruction(
+      const instructions = await sdk.createSubscription(
         params.token,
         params.recipient,
         params.gateway,

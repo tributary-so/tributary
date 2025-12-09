@@ -280,7 +280,7 @@ describe("Recurring Payments", () => {
       // Update SDK to use user wallet
       await sdk.updateWallet(new anchor.Wallet(user));
 
-      const createPolicyIx = await sdk.createPaymentPolicy(
+      const createPolicyIx = await sdk.getCreateSubscriptionPolicyInstruction(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -484,7 +484,7 @@ describe("Recurring Payments", () => {
       // Update SDK to use user wallet
       await sdk.updateWallet(new anchor.Wallet(user));
 
-      const createPolicy2Ix = await sdk.createPaymentPolicy(
+      const createPolicy2Ix = await sdk.getCreateSubscriptionPolicyInstruction(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -578,7 +578,7 @@ describe("Recurring Payments", () => {
       const currentTime = Math.floor(Date.now() / 1000);
       const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
 
-      const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
+      const createPolicyTrueIxs = await sdk.createSubscription(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -656,7 +656,7 @@ describe("Recurring Payments", () => {
       const currentTime = Math.floor(Date.now() / 1000);
       const testStartTime = new anchor.BN(currentTime - 3600); // 1 hour ago (eligible for immediate execution)
 
-      const createPolicyTrueIxs = await sdk.createSubscriptionInstruction(
+      const createPolicyTrueIxs = await sdk.createSubscription(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -719,7 +719,7 @@ describe("Recurring Payments", () => {
         program.programId
       );
 
-      const createPolicy4Ix = await sdk.createPaymentPolicy(
+      const createPolicy4Ix = await sdk.getCreateSubscriptionPolicyInstruction(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -1061,7 +1061,7 @@ describe("Recurring Payments", () => {
       Buffer.from("pay-as-you-go test").copy(memo);
 
       // Create pay-as-you-go policy
-      const createPayAsYouGoIx = await sdk.createPayAsYouGoPaymentPolicy(
+      const createPayAsYouGoIx = await sdk.getCreatePayAsYouGoPolicyInstruction(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -1107,7 +1107,7 @@ describe("Recurring Payments", () => {
       // Test invalid parameters
       try {
         // maxAmountPerPeriod = 0 (invalid)
-        await sdk.createPayAsYouGoPaymentPolicy(
+        await sdk.getCreatePayAsYouGoPolicyInstruction(
           tokenMint,
           recipient.publicKey,
           gatewayPDA,
@@ -1126,7 +1126,7 @@ describe("Recurring Payments", () => {
 
       try {
         // maxChunkAmount > maxAmountPerPeriod (invalid)
-        await sdk.createPayAsYouGoPaymentPolicy(
+        await sdk.getCreatePayAsYouGoPolicyInstruction(
           tokenMint,
           recipient.publicKey,
           gatewayPDA,
@@ -1145,7 +1145,7 @@ describe("Recurring Payments", () => {
 
       try {
         // periodLengthSeconds = 0 (invalid)
-        await sdk.createPayAsYouGoPaymentPolicy(
+        await sdk.getCreatePayAsYouGoPolicyInstruction(
           tokenMint,
           recipient.publicKey,
           gatewayPDA,
