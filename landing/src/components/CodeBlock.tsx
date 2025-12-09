@@ -33,33 +33,10 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     const highlightAll = async () => {
       const highlighted = await Promise.all(
         examples.map(async (example) => {
-          let html = await codeToHtml(example.code, {
+          return await codeToHtml(example.code, {
             lang: example.language,
             theme: "github-light",
           });
-
-          if (showLineNumbers) {
-            // Add line numbers by wrapping each line
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, "text/html");
-            const preElement = doc.querySelector("pre");
-            if (preElement) {
-              const codeLines = example.code.split("\n");
-              let lineNumber = 1;
-
-              // Create new HTML with line numbers
-              const linesWithNumbers = codeLines
-                .map((line) => {
-                  const lineHtml = line || "\u00A0"; // Use non-breaking space for empty lines
-                  return `<div class="code-line"><span class="line-number">${lineNumber++}</span><span class="line-content">${lineHtml}</span></div>`;
-                })
-                .join("");
-
-              html = `<pre class="shiki github-light">${linesWithNumbers}</pre>`;
-            }
-          }
-
-          return html;
         })
       );
       setHighlightedCodes(highlighted);
@@ -121,15 +98,28 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
         {highlightedCodes[activeTab] && (
           <div
             dangerouslySetInnerHTML={{ __html: highlightedCodes[activeTab] }}
-            className="max-w-full break-words font-mono"
+            className="max-w-full break-words font-mono code-with-line-numbers"
           />
         )}
       </div>
 
       <button
         onClick={handleCopy}
-        className="absolute bottom-4 right-4 bg-electric hover:bg-primary text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+        className="absolute bottom-4 right-4 bg-electric hover:bg-primary text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
       >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
         {copyButtonText}
       </button>
     </div>

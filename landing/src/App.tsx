@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import logo from "./assets/logo.png";
 import GetStartedSection from "./components/GetStartedSection";
+import ProductScreenshotSection from "./components/ProductScreenshotSection";
 
 function App() {
   useEffect(() => {
@@ -98,9 +99,9 @@ function App() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Tributary brings Web2's subscription simplicity to Web3. Users
-            approve once, payments flow seamlessly and securely, directly from
-            their token accounts.
+            Tributary brings Web2's payment simplicity to Web3. Users approve
+            once, then subscriptions, milestones, and pay-as-you-go flow
+            seamlessly and securely directly from their token accounts.
           </motion.p>
           <motion.div
             className="flex flex-col sm:flex-row gap-6 justify-center mb-20"
@@ -125,24 +126,14 @@ function App() {
               View Documentation
             </motion.a>
           </motion.div>
-          {/* Product Showcase */}
-          <motion.div
-            className="relative w-full max-w-5xl mx-auto glass rounded-3xl p-8 shadow-2xl"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.8 }}
-          >
-            <img
-              src="/product-screenshot.png"
-              alt="Product Screenshot"
-              className="w-full h-auto rounded-2xl shadow-lg"
-            />
-          </motion.div>
         </motion.div>
       </section>
 
       {/* Get Started Section */}
       <GetStartedSection />
+
+      {/* Product Screenshot Section */}
+      <ProductScreenshotSection />
 
       {/* Trust & Social Proof */}
       <motion.section
