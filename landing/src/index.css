@@ -61,4 +61,17 @@
   .card {
     @apply bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 transition-all duration-300 hover:shadow-xl hover:-translate-y-2;
   }
+
+  /* Code block line numbers */
+  .code-line {
+    @apply flex;
+  }
+
+  .line-number {
+    @apply text-neutral-400 text-xs mr-4 select-none min-w-[2rem] inline-block text-right flex-shrink-0;
+  }
+
+  .line-content {
+    @apply flex-1;
+  }
 }

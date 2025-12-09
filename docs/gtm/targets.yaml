@@ -1,0 +1,746 @@
+projects:
+  - additionalInfo:
+      "You can fully test our demo here on Devnet: https://cypherpunk-tipjar-web-production.up.railway.app/\n\
+      Arcium is on testnet and we can roll out to mainnet with Acriums roll out and\
+      \ embed it on our exisiting site. https://fundraisely.ie/\n\nWe took some time\
+      \ out from our regular build to focus on this hackathon, however we discovered\
+      \ there is a need for this and we plan to use it moving forward.  What we achieve\
+      \ with Arcium in such as short time is amazing, however we opted out of full zk\
+      \ or realay, due to complance and the fact we are working with club, community\
+      \ groups and chairitys.  This can be added later when we have full KYC in place.\n\
+      \nBeyond this prototype, FundRaisely powers real-world fundraising through interactive\
+      \ quiz nights, prize management, and impact reporting. We\u2019re launching the\
+      \ FundRaisely's We3 Impact Campaign in November 2025, with dozens of Web3 communities\
+      \ already committed to hosting quiz fundraisers that channel funds to real causes.\
+      \  We have partnered with The Giving Block and Glo Dollar for this.   FundRaisely\
+      \ brings together privacy, transparency, and community to make fundraising safer,\
+      \ fairer, and more effective.  https://fundraisely.ie/web3/impact-campaign/\n\n\
+      The Impact Campaign is a multichain campaign with the aim of uniting web3 for\
+      \ the greater good, however our long term goal of verifiable impact statements\
+      \ and transparency reports wiill have their core contract on Solana.\n\nYou can\
+      \ see our full features list on our founding partners offer under whats comming\
+      \ next . We are going live in Nov 25 and we will be slowly bring club, charities\
+      \ and community groups to Solana, starting with our Web2 offerings, and showing\
+      \ them the benefits of Crypto and Web3 from campaigns like our Impact Campaign\
+      \ and Subscription Donations via our new privacy preserving donations we have\
+      \ built for this hackathon.  https://fundraisely.ie/founding-partners\n\nOur founder\
+      \ Paula has experience in creating viral products having grow an online education\
+      \ business to over 250K global students. Involved in web3 since 2016, Paula is\
+      \ well respected in the Irish web3 circle and is a proud and active member of\
+      \ Superteam Ireland and was selected to present FundRaisely at Irelands Hottest\
+      \ Startups Dinner.  https://www.linkedin.com/in/paulaguilfoyle/\n\nPaula and Simon\
+      \ have been hosting weekly educational web3 meetups together since 2020 and have\
+      \ sucessfully grown A Block of Crypto to over 12000 members across the globe.\
+      \ https://www.ablockofcrypto.com/.  This is being passed on to community members\
+      \ as Paula and Simon focus on FundRaisely.\n\nJoin us an we bridge web3, web2,\
+      \ donations and philantrophy.  This is the start of our Journey, we go live next\
+      \ month and have bootstrapped the journey with some hackathon winnings along the\
+      \ way.\n\nSupported by Superteam Ireland"
+    comments: 0
+    country: Ireland {Republic}
+    description:
+      "FundRaisely is building the modern toolkit for community fundraising,
+      designed for clubs, schools, charities, and community group, with a core privacy-preserving
+      donations portal that brings cash-like privacy to digital giving. Supporters contribute
+      without exposing wallet identity or amounts, yet still unlock real utility: tiered
+      perks, votes, gated access, and acknowledgments, all provable without disclosure.
+
+
+      Under the hood, FundRaisely integrates Arcium for secure off-chain computation
+      (MPC). Each donation produces a verifiable, privacy-preserving receipt that charities
+      can audit for compliance and impact, while donors retain anonymity. This delivers
+      simple UX for donors, cryptographic assurance for charities, and a practical balance
+      of utility with privacy, proving support and granting benefits without revealing
+      sensitive donor data.
+
+
+      This privacy perserving donation tool adds to our product suite aimed at ensuring
+      we deliver Frictionless Fundraising built for Impact."
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 6460
+    image:
+      id: 32295
+      mimetype: image/png
+      name: Aug 6, 2025, 03_31_18 PM.png
+      size: 47811
+      uid: Cxjp2-CC40Id9ia00nKSD
+      url: https://static.narrative-violation.com/Cxjp2-CC40Id9ia00nKSD
+    isSolanaMobile: true
+    isUniversityProject: false
+    name: "FundRaisely Privacy Preserving Donations "
+    ownerId: 55849
+    presentationLink: https://youtu.be/1YbdMySUy2g
+    prize: null
+    repoLink: https://github.com/Paulagot/donor-private-fundraising
+    slug: fundraisely-privacy-preserving-donations
+    submittedAt: "2025-10-30T19:11:13.955Z"
+    teamMembers:
+      - aboutYou:
+          "Founder:  Paula Guilfoyle FCPA\n\nPassionate about the greater good,\
+          \ Web3 Educator, Serial Entrepreneur.  Creator of 2 viral products.\n\nAchievements\
+          \ :\nAwarded Microsoft Excel and Data MVP in 2019 and 2020.   Raised for GAOL\u2019\
+          s Covid Relief in 2020.  Grew A Block of Crypto to over 10K peeps."
+        avatarUrl: ""
+        displayName: Paula
+        id: 55849
+        isEditor: true
+        username: paulag
+      - aboutYou:
+          "Entrepreneur, educator, and blockchain advocate. Co-Founder of FundRaisely,\
+          \ a platform making fundraising fair, transparent, and fun. With 25+ years in\
+          \ finance and a background in crypto education. I\u2019m passionate about decentralised\
+          \ technology and create lasting social impact."
+        avatarUrl: https://static.narrative-violation.com/Omcz1dGWVR_niy3O69tw5
+        displayName: Simon Dyer
+        id: 76256
+        isEditor: true
+        username: Sidyr
+    technicalDemoLink: https://youtu.be/FHo_gStmrVk
+    tracks:
+      - DeFi
+      - Consumer Apps
+      - Infrastructure
+    twitterHandle: Fundraisely
+    universityName: null
+  - additionalInfo:
+      "https://www.canva.com/design/DAGy1naOzJw/sD4dgcWYOvJ41bErFhapAQ/view?utm_content=DAGy1naOzJw&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd33d336d4f\n\
+      \n\npitchDeck"
+    comments: 0
+    country: United States
+    description:
+      "VAMANO is an end-to-end event ticket platform for venues and event
+      organizers to create/mint customizable NFT tickets in a frictionless way and attendees
+      to purchase those tickets, onboarding with fiat/credit via on-ramp, and storing
+      their ticket in Apple/Google Wallets. We remove the middleman, and save venues
+      time, while also enabling venues and talent to decide the royalty splits--themselves."
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 5878
+    image:
+      id: 34372
+      mimetype: image/png
+      name: VAMANO_small_logo.png
+      size: 172162
+      uid: FtoUc_kPlWYNf4_jIzjRF
+      url: https://static.narrative-violation.com/FtoUc_kPlWYNf4_jIzjRF
+    isSolanaMobile: false
+    isUniversityProject: false
+    name: Vamano ETP
+    ownerId: 30293
+    presentationLink: https://www.loom.com/share/3b1e771854e6489db01f7a348d766193
+    prize: null
+    repoLink: https://github.com/christopher-cialone/VAMANO
+    slug: vamano-etp
+    submittedAt: "2025-10-31T06:57:25.142Z"
+    teamMembers:
+      - aboutYou: "Technical Founder | Dev | Tech Consultant |
+
+          New Yorker"
+        avatarUrl: https://static.narrative-violation.com/ex2-fcDD2heSfD2INzFaG
+        displayName: chris
+        id: 30293
+        isEditor: true
+        username: rosalonelabs
+      - aboutYou:
+          UX & Digital Product Designer with 10+ years experience creating engaging
+          experiences that delight users that aim to achieve real business results.
+        avatarUrl: ""
+        displayName: Dan
+        id: 72188
+        isEditor: true
+        username: starduster
+    technicalDemoLink: https://www.loom.com/share/51bb0aa63c674f2d9feae387a280dc7e
+    tracks:
+      - Consumer Apps
+      - Undefined
+    twitterHandle: vamano_etp
+    universityName: null
+  - additionalInfo:
+      "https://www.canva.com/design/DAG2-Wg-pp0/0dFNnW7mbwhiCH-FLwfmiQ/edit?utm_content=DAG2-Wg-pp0&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton\n\
+      \n\n"
+    comments: 0
+    country: Korea South
+    description:
+      AirVent team, developing a Solana-based decentralized air-quality DePIN
+      service.
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 6472
+    image:
+      id: 32098
+      mimetype: image/png
+      name:
+        "\xE1\x84\x8B\xE1\N\xA6\xE1\x84\x8B\xE1\N\xA5\xE1\x84\x87\xE1\N\xA6\xE1\x86\
+        \xAB\xE1\x84\x90\xE1\N\xB3.png"
+      size: 22865
+      uid: ETZBiPLEt-LAIWLn7Iw3N
+      url: https://static.narrative-violation.com/ETZBiPLEt-LAIWLn7Iw3N
+    isSolanaMobile: true
+    isUniversityProject: false
+    name: AirVent Depin
+    ownerId: 52373
+    presentationLink: https://www.loom.com/share/194d6cdc17654865a31ed004784e43f2
+    prize: null
+    repoLink: https://github.com/airvent-team/solana-contract
+    slug: airvent-depin
+    submittedAt: "2025-10-31T04:07:47.706Z"
+    teamMembers:
+      - aboutYou:
+          I am Daewon Kim, the leader of Airvent. We are building an AIoT platform
+          for air quality management based on Solana.
+        avatarUrl: https://static.narrative-violation.com/vHmHK-w_wnfB6L8VZZyaD
+        displayName: DAEWON KIM
+        id: 52373
+        isEditor: true
+        username: airvent
+      - aboutYou:
+          "Backend engineer at OnBloc, passionate about Web3 infra.\n\nLed ForestPad,\
+          \ an LST launchpad on Sanctum, to win \U0001F9471st place at Seoulana 2025.\n\
+          \nex TBU.inc Backend Developer\nex.THE SWING Backend Developer\nMaintainer of\
+          \ Spring Data Meilisearch.\n\nLet\u2019s build the future on Solana."
+        avatarUrl: ""
+        displayName: JUNGHOON BAN
+        id: 56423
+        isEditor: true
+        username: junghoon
+      - aboutYou: Hi i'm Builder on Web3
+        avatarUrl: https://static.narrative-violation.com/W2pq8PGFFUrHvxwP6AX2-
+        displayName: dulgi
+        id: 76209
+        isEditor: true
+        username: dulgi
+      - aboutYou: ""
+        avatarUrl: ""
+        displayName: huni
+        id: 78098
+        isEditor: true
+        username: KeehunSong
+    technicalDemoLink: https://youtu.be/Ga447YOjb10
+    tracks:
+      - Consumer Apps
+      - Infrastructure
+      - Undefined
+    twitterHandle: airventinccokr
+    universityName: null
+  - additionalInfo:
+      "This is the formula derivation and the origin of the AMM. The draft\
+      \ only keeps the rational-form AMM\u2014the Resistant AMM model\u2014which is\
+      \ our first version. The second version is the one incorporating a bit of the\
+      \ Landau formulation; that AMM shows up in the third and fourth conversation threads.\
+      \ So what we\u2019ve shared here is just version one. Items 3 and 4 are where\
+      \ the formula evolves further. Our MVP is built on that first version: it tells\
+      \ the full story, but the implementation trims anything unnecessary. Version one\
+      \ already delivers a lot because its math is comparatively simple.\n"
+    comments: 0
+    country: China
+    description:
+      "\u201COptimizing Uniswap v3 with physics-inspired mechanics, Landauswap\
+      \ protects LP earnings, flattens slippage for small traders, and shields pools\
+      \ from whale shocks. By steering liquidity toward equilibrium states, we move\
+      \ decentralized stablecoin markets toward fairer, more resilient outcomes.\u201D"
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 5264
+    image:
+      id: 33857
+      mimetype: image/png
+      name: 97dba9e7e068a758e641eb08ee89e320.png
+      size: 184422
+      uid: W7IoDh3d639upIMUeutfw
+      url: https://static.narrative-violation.com/W7IoDh3d639upIMUeutfw
+    isSolanaMobile: false
+    isUniversityProject: false
+    name: Landauswap V3
+    ownerId: 70695
+    presentationLink: https://www.loom.com/share/c54a55390a744746b7813ebe89ceb020
+    prize: null
+    repoLink: https://github.com/Hops-singleMalt/LandauSwap-V3
+    slug: landauswap-v3
+    submittedAt: "2025-10-30T21:34:19.144Z"
+    teamMembers:
+      - aboutYou: "braindamaged
+
+          PhD candidate in computational physics and complex systems."
+        avatarUrl: ""
+        displayName: Hops
+        id: 70695
+        isEditor: true
+        username: Hops
+      - aboutYou: Solana learner (currently)
+        avatarUrl: https://static.narrative-violation.com/Nfq2aL0O9CYExJzWehkko
+        displayName: Ivena
+        id: 70680
+        isEditor: true
+        username: huangzhy77
+    technicalDemoLink: https://www.loom.com/share/d5cf04862f964c1c8c7d0fae63627f6f
+    tracks:
+      - DeFi
+      - Infrastructure
+    twitterHandle: null
+    universityName: null
+  - additionalInfo:
+      "https://www.canva.com/design/DAG3U2Ht8po/ASedRwWAmUbfbYsQadIFbw/edit?utm_content=DAG3U2Ht8po&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton\n\
+      \n\n"
+    comments: 0
+    country: Mexico
+    description:
+      "Mnemosine ensures that your family memories are preserved safely,\
+      \ protected from hacking, and guarantees that your information will not be sold,\
+      \ as it belongs to you\u2014not to a company that could profit from it. It keeps\
+      \ your personal and family memories secure so that future generations can access\
+      \ them. Additionally, the information you provide allows you to identify patterns\
+      \ that repeat throughout your family history and helps future generations make\
+      \ important decisions. Mnemosine is a digital vault that safeguards what is most\
+      \ valuable: your story."
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 7550
+    image:
+      id: 34158
+      mimetype: image/jpeg
+      name: Logo 1 Mnemosine.jpeg
+      size: 7800
+      uid: UjJDZoDHCJvP1UK9O4zHR
+      url: https://static.narrative-violation.com/UjJDZoDHCJvP1UK9O4zHR
+    isSolanaMobile: false
+    isUniversityProject: false
+    name: Mnemosine
+    ownerId: 77729
+    presentationLink: https://youtu.be/LpPGeAbOUF4?si=L-BQJSj9jlyxbW2n
+    prize: null
+    repoLink: https://github.com/Ladycripto/mnemosine
+    slug: mnemosine
+    submittedAt: "2025-10-31T04:15:59.946Z"
+    teamMembers:
+      - aboutYou:
+          I have a bachelor's degree in International Relations and a master's
+          degree in criminal policy and public security. I've worked in law enforcement
+          for almost 10 years. I've participated in hackathons and web3 communities. I
+          collaborate on the YT channel Hablando Claro con Mark Staroselsky.
+        avatarUrl: ""
+        displayName: Aime
+        id: 77729
+        isEditor: true
+        username: ladycripto
+      - aboutYou: developer web3
+        avatarUrl: ""
+        displayName: SergioAguilar
+        id: 72191
+        isEditor: true
+        username: SergioFenix10
+      - aboutYou:
+          Creative Art Director, 15+ years driving brand value through strategic
+          design. Expert in conceptualization & execution of print/digital projects, leading
+          teams or freelance. Passionate about innovation & Web3; I merge art & technology
+          to create solutions that prepare brands for the future.
+        avatarUrl: ""
+        displayName: "Jazm\xEDn"
+        id: 78831
+        isEditor: true
+        username: Jazmin
+    technicalDemoLink: https://youtu.be/LpPGeAbOUF4?si=L-BQJSj9jlyxbW2n
+    tracks:
+      - RWAs
+      - Stablecoins
+      - Undefined
+    twitterHandle: null
+    universityName: null
+  - additionalInfo:
+      "https://www.figma.com/proto/7NcU42KaDMl9XScTX8L3bq/Mnemosine?node-id=1-182&p=f&t=uh90heyzzatFzOWi-1&scaling=contain&content-scaling=fixed&page-id=0%3A1\n\
+      \n\nhttps://www.figma.com/design/7NcU42KaDMl9XScTX8L3bq/Mnemosine?node-id=0-1&t=PAcCohNSJs0iJEX9-1\
+      \ \n\n"
+    comments: 0
+    country: Mexico
+    description:
+      "Mnemosine ensures that your family memories are preserved safely,\
+      \ protected from hacking, and guarantees that your information will not be sold,\
+      \ as it belongs to you\u2014not to a company that could profit from it. It keeps\
+      \ your personal and family memories secure so that future generations can access\
+      \ them. Additionally, the information you provide allows you to identify patterns\
+      \ that repeat throughout your family history and helps future generations make\
+      \ important decisions. Mnemosine is a digital vault that safeguards what is most\
+      \ valuable: your story."
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 7550
+    image:
+      id: 34158
+      mimetype: image/jpeg
+      name: Logo 1 Mnemosine.jpeg
+      size: 7800
+      uid: UjJDZoDHCJvP1UK9O4zHR
+      url: https://static.narrative-violation.com/UjJDZoDHCJvP1UK9O4zHR
+    isSolanaMobile: false
+    isUniversityProject: false
+    name: Mnemosine
+    ownerId: 77729
+    presentationLink: https://youtu.be/LpPGeAbOUF4?si=L-BQJSj9jlyxbW2n
+    prize: null
+    repoLink: https://github.com/Ladycripto/mnemosine
+    slug: mnemosine
+    submittedAt: "2025-10-31T04:15:59.946Z"
+    teamMembers:
+      - aboutYou:
+          I have a bachelor's degree in International Relations and a master's
+          degree in criminal policy and public security. I've worked in law enforcement
+          for almost 10 years. I've participated in hackathons and web3 communities. I
+          collaborate on the YT channel Hablando Claro con Mark Staroselsky.
+        avatarUrl: ""
+        displayName: Aime
+        id: 77729
+        isEditor: true
+        username: ladycripto
+      - aboutYou: developer web3
+        avatarUrl: ""
+        displayName: SergioAguilar
+        id: 72191
+        isEditor: true
+        username: SergioFenix10
+      - aboutYou:
+          Creative Art Director, 15+ years driving brand value through strategic
+          design. Expert in conceptualization & execution of print/digital projects, leading
+          teams or freelance. Passionate about innovation & Web3; I merge art & technology
+          to create solutions that prepare brands for the future.
+        avatarUrl: ""
+        displayName: "Jazm\xEDn"
+        id: 78831
+        isEditor: true
+        username: Jazmin
+    technicalDemoLink: https://youtu.be/LpPGeAbOUF4?si=L-BQJSj9jlyxbW2n
+    tracks:
+      - RWAs
+      - Stablecoins
+      - Undefined
+    twitterHandle: null
+    universityName: null
+  - additionalInfo:
+      "https://www.canva.com/design/DAG2-Wg-pp0/0dFNnW7mbwhiCH-FLwfmiQ/edit?utm_content=DAG2-Wg-pp0&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton\n\
+      \n\n"
+    comments: 0
+    country: Korea South
+    description:
+      AirVent team, developing a Solana-based decentralized air-quality DePIN
+      service.
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 6472
+    image:
+      id: 32098
+      mimetype: image/png
+      name:
+        "\xE1\x84\x8B\xE1\N\xA6\xE1\x84\x8B\xE1\N\xA5\xE1\x84\x87\xE1\N\xA6\xE1\x86\
+        \xAB\xE1\x84\x90\xE1\N\xB3.png"
+      size: 22865
+      uid: ETZBiPLEt-LAIWLn7Iw3N
+      url: https://static.narrative-violation.com/ETZBiPLEt-LAIWLn7Iw3N
+    isSolanaMobile: true
+    isUniversityProject: false
+    name: AirVent Depin
+    ownerId: 52373
+    presentationLink: https://www.loom.com/share/194d6cdc17654865a31ed004784e43f2
+    prize: null
+    repoLink: https://github.com/airvent-team/solana-contract
+    slug: airvent-depin
+    submittedAt: "2025-10-31T04:07:47.706Z"
+    teamMembers:
+      - aboutYou:
+          I am Daewon Kim, the leader of Airvent. We are building an AIoT platform
+          for air quality management based on Solana.
+        avatarUrl: https://static.narrative-violation.com/vHmHK-w_wnfB6L8VZZyaD
+        displayName: DAEWON KIM
+        id: 52373
+        isEditor: true
+        username: airvent
+      - aboutYou:
+          "Backend engineer at OnBloc, passionate about Web3 infra.\n\nLed ForestPad,\
+          \ an LST launchpad on Sanctum, to win \U0001F9471st place at Seoulana 2025.\n\
+          \nex TBU.inc Backend Developer\nex.THE SWING Backend Developer\nMaintainer of\
+          \ Spring Data Meilisearch.\n\nLet\u2019s build the future on Solana."
+        avatarUrl: ""
+        displayName: JUNGHOON BAN
+        id: 56423
+        isEditor: true
+        username: junghoon
+      - aboutYou: Hi i'm Builder on Web3
+        avatarUrl: https://static.narrative-violation.com/W2pq8PGFFUrHvxwP6AX2-
+        displayName: dulgi
+        id: 76209
+        isEditor: true
+        username: dulgi
+      - aboutYou: ""
+        avatarUrl: ""
+        displayName: huni
+        id: 78098
+        isEditor: true
+        username: KeehunSong
+    technicalDemoLink: https://youtu.be/Ga447YOjb10
+    tracks:
+      - Consumer Apps
+      - Infrastructure
+      - Undefined
+    twitterHandle: airventinccokr
+    universityName: null
+  - additionalInfo:
+      "https://www.canva.com/design/DAGy1naOzJw/sD4dgcWYOvJ41bErFhapAQ/view?utm_content=DAGy1naOzJw&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton\n\
+      \n\npitchDeck"
+    comments: 0
+    country: United States
+    description:
+      "VAMANO is an end-to-end event ticket platform for venues and event
+      organizers to create/mint customizable NFT tickets in a frictionless way and attendees
+      to purchase those tickets, onboarding with fiat/credit via on-ramp, and storing
+      their ticket in Apple/Google Wallets. We remove the middleman, and save venues
+      time, while also enabling venues and talent to decide the royalty splits--themselves."
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 5878
+    image:
+      id: 34372
+      mimetype: image/png
+      name: VAMANO_small_logo.png
+      size: 172162
+      uid: FtoUc_kPlWYNf4_jIzjRF
+      url: https://static.narrative-violation.com/FtoUc_kPlWYNf4_jIzjRF
+    isSolanaMobile: false
+    isUniversityProject: false
+    name: Vamano ETP
+    ownerId: 30293
+    presentationLink: https://www.loom.com/share/3b1e771854e6489db01f7a348d766193
+    prize: null
+    repoLink: https://github.com/christopher-cialone/VAMANO
+    slug: vamano-etp
+    submittedAt: "2025-10-31T06:57:25.142Z"
+    teamMembers:
+      - aboutYou: "Technical Founder | Dev | Tech Consultant |
+
+          New Yorker"
+        avatarUrl: https://static.narrative-violation.com/ex2-fcDD2heSfD2INzFaG
+        displayName: chris
+        id: 30293
+        isEditor: true
+        username: rosalonelabs
+      - aboutYou:
+          UX & Digital Product Designer with 10+ years experience creating engaging
+          experiences that delight users that aim to achieve real business results.
+        avatarUrl: ""
+        displayName: Dan
+        id: 72188
+        isEditor: true
+        username: starduster
+    technicalDemoLink: https://www.loom.com/share/51bb0aa63c674f2d9feae387a280dc7e
+    tracks:
+      - Consumer Apps
+      - Undefined
+    twitterHandle: vamano_etp
+    universityName: null
+  - additionalInfo:
+      "This is the formula derivation and the origin of the AMM. The draft\
+      \ only keeps the rational-form AMM\u2014the Resistant AMM model\u2014which is\
+      \ our first version. The second version is the one incorporating a bit of the\
+      \ Landau formulation; that AMM shows up in the third and fourth conversation threads.\
+      \ So what we\u2019ve shared here is just version one. Items 3 and 4 are where\
+      \ the formula evolves further. Our MVP is built on that first version: it tells\
+      \ the full story, but the implementation trims anything unnecessary. Version one\
+      \ already delivers a lot because its math is comparatively simple.\n"
+    comments: 0
+    country: China
+    description:
+      "\u201COptimizing Uniswap v3 with physics-inspired mechanics, Landauswap\
+      \ protects LP earnings, flattens slippage for small traders, and shields pools\
+      \ from whale shocks. By steering liquidity toward equilibrium states, we move\
+      \ decentralized stablecoin markets toward fairer, more resilient outcomes.\u201D"
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 5264
+    image:
+      id: 33857
+      mimetype: image/png
+      name: 97dba9e7e068a758e641eb08ee89e320.png
+      size: 184422
+      uid: W7IoDh3d639upIMUeutfw
+      url: https://static.narrative-violation.com/W7IoDh3d639upIMUeutfw
+    isSolanaMobile: false
+    isUniversityProject: false
+    name: Landauswap V3
+    ownerId: 70695
+    presentationLink: https://www.loom.com/share/c54a55390a744746b7813ebe89ceb020
+    prize: null
+    repoLink: https://github.com/Hops-singleMalt/LandauSwap-V3
+    slug: landauswap-v3
+    submittedAt: "2025-10-30T21:34:19.144Z"
+    teamMembers:
+      - aboutYou: "braindamaged
+
+          PhD candidate in computational physics and complex systems."
+        avatarUrl: ""
+        displayName: Hops
+        id: 70695
+        isEditor: true
+        username: Hops
+      - aboutYou: Solana learner (currently)
+        avatarUrl: https://static.narrative-violation.com/Nfq2aL0O9CYExJzWehkko
+        displayName: Ivena
+        id: 70680
+        isEditor: true
+        username: huangzhy77
+    technicalDemoLink: https://www.loom.com/share/d5cf04862f964c1c8c7d0fae63627f6f
+    tracks:
+      - DeFi
+      - Infrastructure
+    twitterHandle: null
+    universityName: null
+  - additionalInfo:
+      "You can fully test our demo here on Devnet: https://cypherpunk-tipjar-web-production.up.railway.app/\n\
+      Arcium is on testnet and we can roll out to mainnet with Acriums roll out and\
+      \ embed it on our exisiting site. https://fundraisely.ie/\n\nWe took some time\
+      \ out from our regular build to focus on this hackathon, however we discovered\
+      \ there is a need for this and we plan to use it moving forward.  What we achieve\
+      \ with Arcium in such as short time is amazing, however we opted out of full zk\
+      \ or realay, due to complance and the fact we are working with club, community\
+      \ groups and chairitys.  This can be added later when we have full KYC in place.\n\
+      \nBeyond this prototype, FundRaisely powers real-world fundraising through interactive\
+      \ quiz nights, prize management, and impact reporting. We\u2019re launching the\
+      \ FundRaisely's We3 Impact Campaign in November 2025, with dozens of Web3 communities\
+      \ already committed to hosting quiz fundraisers that channel funds to real causes.\
+      \  We have partnered with The Giving Block and Glo Dollar for this.   FundRaisely\
+      \ brings together privacy, transparency, and community to make fundraising safer,\
+      \ fairer, and more effective.  https://fundraisely.ie/web3/impact-campaign/\n\n\
+      The Impact Campaign is a multichain campaign with the aim of uniting web3 for\
+      \ the greater good, however our long term goal of verifiable impact statements\
+      \ and transparency reports wiill have their core contract on Solana.\n\nYou can\
+      \ see our full features list on our founding partners offer under whats comming\
+      \ next . We are going live in Nov 25 and we will be slowly bring club, charities\
+      \ and community groups to Solana, starting with our Web2 offerings, and showing\
+      \ them the benefits of Crypto and Web3 from campaigns like our Impact Campaign\
+      \ and Subscription Donations via our new privacy preserving donations we have\
+      \ built for this hackathon.  https://fundraisely.ie/founding-partners\n\nOur founder\
+      \ Paula has experience in creating viral products having grow an online education\
+      \ business to over 250K global students. Involved in web3 since 2016, Paula is\
+      \ well respected in the Irish web3 circle and is a proud and active member of\
+      \ Superteam Ireland and was selected to present FundRaisely at Irelands Hottest\
+      \ Startups Dinner.  https://www.linkedin.com/in/paulaguilfoyle/\n\nPaula and Simon\
+      \ have been hosting weekly educational web3 meetups together since 2020 and have\
+      \ sucessfully grown A Block of Crypto to over 12000 members across the globe.\
+      \ https://www.ablockofcrypto.com/.  This is being passed on to community members\
+      \ as Paula and Simon focus on FundRaisely.\n\nJoin us an we bridge web3, web2,\
+      \ donations and philantrophy.  This is the start of our Journey, we go live next\
+      \ month and have bootstrapped the journey with some hackathon winnings along the\
+      \ way.\n\nSupported by Superteam Ireland"
+    comments: 0
+    country: Ireland {Republic}
+    description:
+      "FundRaisely is building the modern toolkit for community fundraising,
+      designed for clubs, schools, charities, and community group, with a core privacy-preserving
+      donations portal that brings cash-like privacy to digital giving. Supporters contribute
+      without exposing wallet identity or amounts, yet still unlock real utility: tiered
+      perks, votes, gated access, and acknowledgments, all provable without disclosure.
+
+
+      Under the hood, FundRaisely integrates Arcium for secure off-chain computation
+      (MPC). Each donation produces a verifiable, privacy-preserving receipt that charities
+      can audit for compliance and impact, while donors retain anonymity. This delivers
+      simple UX for donors, cryptographic assurance for charities, and a practical balance
+      of utility with privacy, proving support and granting benefits without revealing
+      sensitive donor data.
+
+
+      This privacy perserving donation tool adds to our product suite aimed at ensuring
+      we deliver Frictionless Fundraising built for Impact."
+    hackathon:
+      emoji: "\U0001F510"
+      id: 5
+      landingPageUrl: https://colosseum.com/cypherpunk
+      name: Cypherpunk
+      slug: cypherpunk
+    hackathonId: 5
+    id: 6460
+    image:
+      id: 32295
+      mimetype: image/png
+      name: Aug 6, 2025, 03_31_18 PM.png
+      size: 47811
+      uid: Cxjp2-CC40Id9ia00nKSD
+      url: https://static.narrative-violation.com/Cxjp2-CC40Id9ia00nKSD
+    isSolanaMobile: true
+    isUniversityProject: false
+    name: "FundRaisely Privacy Preserving Donations "
+    ownerId: 55849
+    presentationLink: https://youtu.be/1YbdMySUy2g
+    prize: null
+    repoLink: https://github.com/Paulagot/donor-private-fundraising
+    slug: fundraisely-privacy-preserving-donations
+    submittedAt: "2025-10-30T19:11:13.955Z"
+    teamMembers:
+      - aboutYou:
+          "Founder:  Paula Guilfoyle FCPA\n\nPassionate about the greater good,\
+          \ Web3 Educator, Serial Entrepreneur.  Creator of 2 viral products.\n\nAchievements\
+          \ :\nAwarded Microsoft Excel and Data MVP in 2019 and 2020.   Raised for GAOL\u2019\
+          s Covid Relief in 2020.  Grew A Block of Crypto to over 10K peeps."
+        avatarUrl: ""
+        displayName: Paula
+        id: 55849
+        isEditor: true
+        username: paulag
+      - aboutYou:
+          "Entrepreneur, educator, and blockchain advocate. Co-Founder of FundRaisely,\
+          \ a platform making fundraising fair, transparent, and fun. With 25+ years in\
+          \ finance and a background in crypto education. I\u2019m passionate about decentralised\
+          \ technology and create lasting social impact."
+        avatarUrl: https://static.narrative-violation.com/Omcz1dGWVR_niy3O69tw5
+        displayName: Simon Dyer
+        id: 76256
+        isEditor: true
+        username: Sidyr
+    technicalDemoLink: https://youtu.be/FHo_gStmrVk
+    tracks:
+      - DeFi
+      - Consumer Apps
+      - Infrastructure
+    twitterHandle: Fundraisely
+    universityName: null

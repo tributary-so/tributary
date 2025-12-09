@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import logo from "./assets/logo.png";
-import CodeBlock from "./components/CodeBlock";
+import GetStartedSection from "./components/GetStartedSection";
 
 function App() {
   useEffect(() => {
@@ -140,6 +140,9 @@ function App() {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Get Started Section */}
+      <GetStartedSection />
 
       {/* Trust & Social Proof */}
       <motion.section
@@ -411,35 +414,27 @@ function App() {
               </div>
             </motion.div>
             <motion.div
-              className="w-full max-w-full overflow-hidden mx-auto md:max-w-none md:mx-0"
-              initial={{ opacity: 50, x: 0 }}
+              className="w-full max-w-full overflow-hidden mx-auto md:max-w-none md:mx-0 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-12 text-center"
+              initial={{ opacity: 0, x: 0 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              <CodeBlock
-                title="React SDK Integration Example"
-                language="ts"
-                code={`import { SubscriptionButton, PaymentInterval } from '@tributary-so/sdk-react'
-import { PublicKey } from '@solana/web3.js'
-import { BN } from '@coral-xyz/anchor'
-
-<SubscriptionButton
-  amount={new BN(10_000_000)} // 10 USDC
-  token={new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU')}
-  recipient={PAYMENT_RECIPIENT_PUBLIC_KEY}
-  gateway={PAYMENT_GATEWAY_PUBLIC_KEY}
-  interval={PaymentInterval.Monthly}
-  maxRenewals={12}
-  memo="Premium subscription - Widget Demo"
-  label="Subscribe for $10/month"
-  executeImmediately={true}
-  className="bg-primary hover:bg-secondary text-white"
-  onSuccess={handleSuccess}
-  onError={handleError}
-/>
-
-// 🎉 That's it! Payments now flow automatically`}
-              />
+              <div className="text-6xl mb-6">⚡</div>
+              <h3 className="text-3xl font-bold mb-6 text-neutral-900">
+                Simple Integration
+              </h3>
+              <p className="text-xl text-neutral-600 leading-relaxed max-w-2xl mx-auto">
+                Drop our pre-built components into your app and start accepting
+                subscription payments immediately. No complex setup required.
+              </p>
+              <motion.a
+                href="#get-started"
+                className="inline-block mt-8 btn-primary"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                See Code Examples Above
+              </motion.a>
             </motion.div>
           </div>
 
