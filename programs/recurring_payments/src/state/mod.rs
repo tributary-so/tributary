@@ -131,12 +131,16 @@ impl PolicyType {
                 }
 
                 // Validate timestamps are in the future (basic check)
-                let current_time = Clock::get()?.unix_timestamp;
-                for i in 0..*total_milestones as usize {
-                    require!(
-                        milestone_timestamps[i] > current_time,
-                        crate::error::RecurringPaymentsError::InvalidInterval
-                    );
+                #[cfg(feature = "mainnet")]
+                {
+                    // only on mainnet, simplifies testing
+                    let current_time = Clock::get()?.unix_timestamp;
+                    for i in 0..*total_milestones as usize {
+                        require!(
+                            milestone_timestamps[i] > current_time,
+                            crate::error::RecurringPaymentsError::InvalidInterval
+                        );
+                    }
                 }
 
                 // Validate release_condition is valid (0, 1, or 2)

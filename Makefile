@@ -31,7 +31,7 @@ mainnet_expand:
 	solana program extend -k $(DEPLOY_KEY_PATH) $(PROGRAM_ID) 20480
 
 mainnet_build:
-	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p recurring_payments # -- --features mainnet
+	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p recurring_payments -- --features mainnet
 
 mainnet_deploy_buffer:
 	solana -k ${DEPLOY_KEY_PATH} balance

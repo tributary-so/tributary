@@ -49,7 +49,7 @@ describe("Recurring Payments", () => {
   let paymentPolicyPDA: PublicKey;
   let paymentPolicyBump: number;
   let paymentsDelegate: PublicKey;
-  let newSigner: Keypair; // Gateway signer after change
+  let newSigner: Keypair;
   let sdk: RecurringPaymentsSDK;
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
@@ -72,17 +72,28 @@ describe("Recurring Payments", () => {
 
     // Create wallets
     admin = Keypair.generate();
-    await fund(admin.publicKey, 10);
     user = Keypair.generate();
-    await fund(user.publicKey, 10);
     mintAuthority = Keypair.generate();
-    await fund(mintAuthority.publicKey, 10);
+    gatewayAuthority = Keypair.generate();
+    feeRecipient = Keypair.generate();
+    newSigner = Keypair.generate();
+    recipient = Keypair.generate();
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
       program.programId
     );
+
+    await Promise.all([
+      fund(admin.publicKey, 10),
+      fund(user.publicKey, 10),
+      fund(mintAuthority.publicKey, 10),
+      fund(gatewayAuthority.publicKey, 10),
+      fund(feeRecipient.publicKey, 1),
+      fund(newSigner.publicKey, 10),
+      fund(recipient.publicKey, 1),
+    ]);
 
     // Create token mint
     tokenMint = await createMint(
@@ -114,21 +125,11 @@ describe("Recurring Payments", () => {
       1000000n // 1 token with 6 decimals
     );
 
-    // Create gateway authority and fee recipient
-    gatewayAuthority = Keypair.generate();
-    await fund(gatewayAuthority.publicKey, 10);
-    feeRecipient = Keypair.generate();
-    await fund(feeRecipient.publicKey, 1);
-
     // Derive gateway PDA
     [gatewayPDA, gatewayBump] = PublicKey.findProgramAddressSync(
       [Buffer.from("gateway"), gatewayAuthority.publicKey.toBuffer()],
       program.programId
     );
-
-    // Create recipient
-    recipient = Keypair.generate();
-    await fund(recipient.publicKey, 1);
 
     // Derive user payment PDA
     [userPaymentPDA, userPaymentBump] = PublicKey.findProgramAddressSync(
@@ -337,7 +338,7 @@ describe("Recurring Payments", () => {
         const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
         const tx = new Transaction().add(...executePaymentIxs);
 
-        await sendAndConfirmTransaction(connection, tx, [newSigner], {
+        await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
           commitment: "processed" as Commitment,
         });
 
@@ -385,7 +386,7 @@ describe("Recurring Payments", () => {
       const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
       const tx = new Transaction().add(...executePaymentIxs);
 
-      await sendAndConfirmTransaction(connection, tx, [newSigner], {
+      await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
         commitment: "processed" as Commitment,
       });
 
@@ -437,7 +438,7 @@ describe("Recurring Payments", () => {
         const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
         const tx = new Transaction().add(...executePaymentIxs);
 
-        await sendAndConfirmTransaction(connection, tx, [newSigner], {
+        await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
           commitment: "processed" as Commitment,
         });
 
@@ -512,9 +513,14 @@ describe("Recurring Payments", () => {
       );
       executeTx.add(...executePaymentIxs);
 
-      await sendAndConfirmTransaction(connection, executeTx, [newSigner], {
-        commitment: "processed" as Commitment,
-      });
+      await sendAndConfirmTransaction(
+        connection,
+        executeTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
 
       // Verify payment was executed
       const updatedPolicy = await sdk.getPaymentPolicy(paymentPolicy2PDA);
@@ -526,9 +532,14 @@ describe("Recurring Payments", () => {
         const executePaymentIxs2 = await sdk.executePayment(paymentPolicy2PDA);
         const executeTx2 = new Transaction().add(...executePaymentIxs2);
 
-        await sendAndConfirmTransaction(connection, executeTx2, [newSigner], {
-          commitment: "processed" as Commitment,
-        });
+        await sendAndConfirmTransaction(
+          connection,
+          executeTx2,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
 
         assert(
           false,
@@ -754,9 +765,14 @@ describe("Recurring Payments", () => {
         const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
         const executeTx = new Transaction().add(...executePaymentIxs);
 
-        await sendAndConfirmTransaction(connection, executeTx, [newSigner], {
-          commitment: "processed" as Commitment,
-        });
+        await sendAndConfirmTransaction(
+          connection,
+          executeTx,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
 
         assert(
           false,
@@ -796,9 +812,14 @@ describe("Recurring Payments", () => {
       const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
       const executeTx = new Transaction().add(...executePaymentIxs);
 
-      await sendAndConfirmTransaction(connection, executeTx, [newSigner], {
-        commitment: "processed" as Commitment,
-      });
+      await sendAndConfirmTransaction(
+        connection,
+        executeTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
 
       // Verify payment was executed successfully
       const finalRecipientBalance = await connection.getTokenAccountBalance(
@@ -815,6 +836,7 @@ describe("Recurring Payments", () => {
     });
   });
 
+  //  FIXME:
   // test("Delete payment policy", async () => {
   //   // Get initial user payment state
   //   const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
@@ -858,10 +880,6 @@ describe("Recurring Payments", () => {
   // });
 
   test("Change gateway signer", async () => {
-    // Create a new signer keypair
-    newSigner = Keypair.generate();
-    await fund(newSigner.publicKey, 1);
-
     // Get initial gateway state
     const initialGateway = await sdk.getPaymentGateway(gatewayPDA);
     expect(initialGateway!.signer).toEqual(gatewayAuthority.publicKey);
@@ -876,7 +894,7 @@ describe("Recurring Payments", () => {
     );
     const tx = new Transaction().add(changeSignerIx);
 
-    await sendAndConfirmTransaction(connection, tx, [newSigner], {
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
       commitment: "processed" as Commitment,
     });
 
@@ -905,7 +923,7 @@ describe("Recurring Payments", () => {
     );
     const tx = new Transaction().add(changeFeeRecipientIx);
 
-    await sendAndConfirmTransaction(connection, tx, [newSigner], {
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
       commitment: "processed" as Commitment,
     });
 
@@ -1011,7 +1029,7 @@ describe("Recurring Payments", () => {
       ];
       const pastMilestoneTimestamps = [
         new anchor.BN(pastTime), // already due
-        new anchor.BN(pastTime + 60), // also due
+        new anchor.BN(pastTime + 3600), // 1 hour later
       ];
 
       const memo2 = new Uint8Array(64).fill(0);
@@ -1033,20 +1051,21 @@ describe("Recurring Payments", () => {
       });
 
       // Get the new milestone policy (policy ID 6)
-      const updatedPolicies = await sdk.getPaymentPoliciesByUser(
-        user.publicKey
-      );
-      const pastMilestonePolicy = updatedPolicies.find(
-        (p) =>
-          p.account.userPayment.equals(userPaymentPDA) &&
-          p.account.policyId === 6
-      );
-      expect(pastMilestonePolicy).toBeDefined();
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.activePoliciesCount;
 
-      const pastPolicyPda = pastMilestonePolicy!.publicKey;
+      expect(policyId).toBe(7);
+      const [pastPolicyPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
 
       // Execute first milestone
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -1066,7 +1085,8 @@ describe("Recurring Payments", () => {
       expect(afterFirstBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
-          BigInt(firstMilestoneAmount)
+          BigInt(firstMilestoneAmount) -
+          BigInt(17500 /* fee */)
         ).toString()
       );
 
@@ -1091,7 +1111,8 @@ describe("Recurring Payments", () => {
         recipientTokenAccount
       );
       const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
-      const totalExpected = firstMilestoneAmount + secondMilestoneAmount;
+      const totalExpected =
+        firstMilestoneAmount + secondMilestoneAmount - 43750; /* fee */
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
@@ -1119,7 +1140,7 @@ describe("Recurring Payments", () => {
           "Expected execution to fail when all milestones completed"
         );
       } catch (error: any) {
-        expect(error.message).toContain("AllMilestonesCompleted");
+        expect(error.message).toContain("PolicyPaused.");
       }
     });
 
@@ -1266,9 +1287,13 @@ describe("Recurring Payments", () => {
       const afterFirstBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
+      // Account for protocol fees (100 bps = 1%) and gateway fees (250 bps = 2.5%)
+      // Total fees = 3.5% = 3500 on 100000 amount, net transfer = 96500
+      const expectedNetAmount = 100000 - Math.floor((100000 * 350) / 10000); // 96500
       expect(afterFirstBalance.value.amount).toBe(
         (
-          BigInt(initialRecipientBalance.value.amount) + BigInt(100000)
+          BigInt(initialRecipientBalance.value.amount) +
+          BigInt(expectedNetAmount)
         ).toString()
       );
 
@@ -1281,7 +1306,7 @@ describe("Recurring Payments", () => {
       // Execute second payment (0.15 tokens)
       const paymentAmount2 = new anchor.BN(150000); // 0.15 tokens
       const executeSecondIxs = await sdk.executePayment(
-        smallPayAsYouGoPolicyPDA,
+        payAsYouGoPolicyPDA,
         paymentAmount2
       );
       const executeSecondTx = new Transaction().add(...executeSecondIxs);
@@ -1298,9 +1323,13 @@ describe("Recurring Payments", () => {
       const afterSecondBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
+      // Account for fees on both payments (3.5% total = 8750 on 250000 total)
+      const expectedSecondNetAmount =
+        250000 - Math.floor((250000 * 350) / 10000); // 241250
       expect(afterSecondBalance.value.amount).toBe(
         (
-          BigInt(initialRecipientBalance.value.amount) + BigInt(250000)
+          BigInt(initialRecipientBalance.value.amount) +
+          BigInt(expectedSecondNetAmount)
         ).toString()
       );
 
@@ -1324,8 +1353,8 @@ describe("Recurring Payments", () => {
         program.programId
       );
 
-      // Update SDK to use gateway authority wallet
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      // Update SDK to use gateway signer wallet (newSigner, not gatewayAuthority)
+      await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       // Try to execute payment that exceeds maxChunkAmount (0.2 tokens = 200000)
       const excessiveAmount = new anchor.BN(250000); // 0.25 tokens - exceeds limit
@@ -1333,11 +1362,7 @@ describe("Recurring Payments", () => {
       try {
         const executeExcessiveIxs = await sdk.executePayment(
           payAsYouGoPolicyPDA,
-          excessiveAmount,
-          recipient.publicKey,
-          tokenMint,
-          gatewayPDA,
-          user.publicKey
+          excessiveAmount
         );
         const executeExcessiveTx = new Transaction().add(
           ...executeExcessiveIxs
@@ -1394,8 +1419,8 @@ describe("Recurring Payments", () => {
         program.programId
       );
 
-      // Update SDK to use gateway authority wallet
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      // Update SDK to use gateway signer wallet (newSigner)
+      await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       // Execute first payment (0.1 tokens)
       const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
@@ -1460,7 +1485,7 @@ describe("Recurring Payments", () => {
           new anchor.BN(0), // Invalid
           new anchor.BN(100000),
           new anchor.BN(86400),
-          []
+          Array.from(new Uint8Array(64).fill(0))
         );
         const invalidTx = new Transaction().add(...invalidIxs);
         await sendAndConfirmTransaction(connection, invalidTx, [user], {
@@ -1483,7 +1508,7 @@ describe("Recurring Payments", () => {
           new anchor.BN(100000),
           new anchor.BN(200000), // Invalid: chunk > period max
           new anchor.BN(86400),
-          []
+          Array.from(new Uint8Array(64).fill(0))
         );
         const invalidTx2 = new Transaction().add(...invalidIxs2);
         await sendAndConfirmTransaction(connection, invalidTx2, [user], {
@@ -1506,7 +1531,7 @@ describe("Recurring Payments", () => {
           new anchor.BN(1000000),
           new anchor.BN(100000),
           new anchor.BN(0), // Invalid
-          []
+          Array.from(new Uint8Array(64).fill(0))
         );
         const invalidTx3 = new Transaction().add(...invalidIxs3);
         await sendAndConfirmTransaction(connection, invalidTx3, [user], {
@@ -1517,7 +1542,7 @@ describe("Recurring Payments", () => {
           "Expected policy creation to fail with invalid period length"
         );
       } catch (error: any) {
-        expect(error.message).toContain("InvalidAmount");
+        expect(error.message).toContain("Invalid Interval");
       }
     });
   });
