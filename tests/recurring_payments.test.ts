@@ -935,9 +935,9 @@ describe("Recurring Payments", () => {
   });
 
   describe("Milestone payment policies", () => {
-    test("Create and execute milestone payment policy", async () => {
+    test("Create milestone payment policy with time-based release", async () => {
       // Switch back to user wallet for creating policies
-      await sdk.updateWallet(wallet);
+      await sdk.updateWallet(new anchor.Wallet(user));
 
       // Create milestone payment policy with 3 milestones
       const currentTime = Math.floor(Date.now() / 1000);
@@ -952,100 +952,246 @@ describe("Recurring Payments", () => {
         new anchor.BN(currentTime + 180), // 3 minutes from now
       ];
 
-      // Note: This test requires the IDL to be rebuilt with milestone support
-      // The createMilestonePaymentPolicy method will be available once IDL is updated
-      /*
-      const createMilestoneIx = await sdk.createMilestonePaymentPolicy(
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("time-based milestone test").copy(memo);
+
+      const createMilestoneIxs = await sdk.createMilestone(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
         milestoneAmounts,
         milestoneTimestamps,
         0, // time-based release condition
-        []  // empty memo
+        Array.from(memo)
       );
 
-      const tx = new Transaction().add(createMilestoneIx);
+      const tx = new Transaction().add(...createMilestoneIxs);
       await sendAndConfirmTransaction(connection, tx, [user], {
         commitment: "processed" as Commitment,
       });
 
       // Verify milestone policy was created
       const policies = await sdk.getPaymentPoliciesByUser(user.publicKey);
-      const milestonePolicy = policies.find(p =>
-        p.account.userPayment.equals(userPaymentPDA) &&
-        p.account.policyId === 2 // Second policy for this user
+      const milestonePolicy = policies.find(
+        (p) =>
+          p.account.userPayment.equals(userPaymentPDA) &&
+          p.account.policyId === 5 // Policy ID based on previous tests
       );
       expect(milestonePolicy).toBeDefined();
-      expect(milestonePolicy!.account.policyType).toHaveProperty('milestone');
+      expect(milestonePolicy!.account.policyType).toHaveProperty("milestone");
 
-      // Test milestone execution
-      // First milestone should fail (not due yet)
-      await expect(
-        sdk.executePayment(milestonePolicy!.publicKey)
-      ).rejects.toThrow();
+      const milestoneData = milestonePolicy!.account.policyType.milestone!;
+      expect(milestoneData.totalMilestones).toBe(3);
+      expect(milestoneData.currentMilestone).toBe(0);
+      expect(milestoneData.releaseCondition).toBe(0); // time-based
+      expect(milestoneData.escrowAmount.toNumber()).toBe(4500000); // 1 + 2 + 1.5 tokens
+    });
 
-      // Advance time to first milestone
-      // Note: In a real test environment, you'd need to mock time or wait
+    test("Execute milestone payments sequentially", async () => {
+      // Get the milestone policy we just created
+      const policies = await sdk.getPaymentPoliciesByUser(user.publicKey);
+      const milestonePolicy = policies.find(
+        (p) =>
+          p.account.userPayment.equals(userPaymentPDA) &&
+          p.account.policyId === 5
+      );
+      expect(milestonePolicy).toBeDefined();
 
-      // Execute first milestone
-      const executeIx = await sdk.executePayment(milestonePolicy!.publicKey);
-      const executeTx = new Transaction().add(...executeIx);
-      await sendAndConfirmTransaction(connection, executeTx, [user], {
+      const policyPda = milestonePolicy!.publicKey;
+
+      // Update SDK to use gateway authority wallet for execution
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      // First milestone should fail (not due yet - timestamp is in future)
+      try {
+        const executePaymentIxs = await sdk.executePayment(policyPda);
+        const tx = new Transaction().add(...executePaymentIxs);
+        await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+          commitment: "processed" as Commitment,
+        });
+        assert(false, "Expected milestone execution to fail when not due");
+      } catch (error: any) {
+        expect(error.message).toContain("MilestoneNotDue");
+      }
+
+      // Create a new milestone policy with timestamps in the past for testing
+      await sdk.updateWallet(new anchor.Wallet(user));
+      const pastTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+      const pastMilestoneAmounts = [
+        new anchor.BN(500000), // 0.5 tokens
+        new anchor.BN(750000), // 0.75 tokens
+      ];
+      const pastMilestoneTimestamps = [
+        new anchor.BN(pastTime), // already due
+        new anchor.BN(pastTime + 60), // also due
+      ];
+
+      const memo2 = new Uint8Array(64).fill(0);
+      Buffer.from("past milestone test").copy(memo2);
+
+      const createPastMilestoneIxs = await sdk.createMilestone(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        pastMilestoneAmounts,
+        pastMilestoneTimestamps,
+        0, // time-based
+        Array.from(memo2)
+      );
+
+      const createTx = new Transaction().add(...createPastMilestoneIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
         commitment: "processed" as Commitment,
       });
 
-      // Verify first milestone was paid
-      const updatedPolicy = await sdk.getPaymentPolicy(milestonePolicy!.publicKey);
-      expect(updatedPolicy!.paymentCount).toEqual(1);
-      // expect(updatedPolicy!.policyType.milestone.currentMilestone).toEqual(1);
+      // Get the new milestone policy (policy ID 6)
+      const updatedPolicies = await sdk.getPaymentPoliciesByUser(
+        user.publicKey
+      );
+      const pastMilestonePolicy = updatedPolicies.find(
+        (p) =>
+          p.account.userPayment.equals(userPaymentPDA) &&
+          p.account.policyId === 6
+      );
+      expect(pastMilestonePolicy).toBeDefined();
 
-      // Verify recipient received payment
-      const recipientBalance = await connection.getTokenAccountBalance(recipientTokenAccount);
-      expect(recipientBalance.value.uiAmount).toEqual(1.0);
-      */
+      const pastPolicyPda = pastMilestonePolicy!.publicKey;
+
+      // Execute first milestone
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
+      const executeFirstIxs = await sdk.executePayment(pastPolicyPda);
+      const executeFirstTx = new Transaction().add(...executeFirstIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeFirstTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Verify first milestone was executed
+      const afterFirstBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      const firstMilestoneAmount = 500000; // 0.5 tokens in smallest units
+      expect(afterFirstBalance.value.amount).toBe(
+        (
+          BigInt(initialRecipientBalance.value.amount) +
+          BigInt(firstMilestoneAmount)
+        ).toString()
+      );
+
+      let updatedPolicy = await sdk.getPaymentPolicy(pastPolicyPda);
+      expect(updatedPolicy!.paymentCount).toBe(1);
+      expect(updatedPolicy!.policyType.milestone!.currentMilestone).toBe(1);
+
+      // Execute second milestone
+      const executeSecondIxs = await sdk.executePayment(pastPolicyPda);
+      const executeSecondTx = new Transaction().add(...executeSecondIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeSecondTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Verify second milestone was executed
+      const afterSecondBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
+      const totalExpected = firstMilestoneAmount + secondMilestoneAmount;
+      expect(afterSecondBalance.value.amount).toBe(
+        (
+          BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
+        ).toString()
+      );
+
+      updatedPolicy = await sdk.getPaymentPolicy(pastPolicyPda);
+      expect(updatedPolicy!.paymentCount).toBe(2);
+      expect(updatedPolicy!.policyType.milestone!.currentMilestone).toBe(2);
+
+      // Third execution should fail (no more milestones)
+      try {
+        const executeThirdIxs = await sdk.executePayment(pastPolicyPda);
+        const executeThirdTx = new Transaction().add(...executeThirdIxs);
+        await sendAndConfirmTransaction(
+          connection,
+          executeThirdTx,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
+        assert(
+          false,
+          "Expected execution to fail when all milestones completed"
+        );
+      } catch (error: any) {
+        expect(error.message).toContain("AllMilestonesCompleted");
+      }
     });
 
-    test("Milestone payment with manual approval", async () => {
-      // Test manual approval release condition
-      // This would require the gateway authority to approve each milestone
-      /*
-      const manualMilestoneAmounts = [new anchor.BN(500000), new anchor.BN(500000)];
+    test("Milestone payment with manual approval release condition", async () => {
+      // Create milestone policy with manual approval
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      const manualMilestoneAmounts = [
+        new anchor.BN(300000), // 0.3 tokens
+        new anchor.BN(400000), // 0.4 tokens
+      ];
       const manualMilestoneTimestamps = [
-        new anchor.BN(currentTime + 60),
-        new anchor.BN(currentTime + 120)
+        new anchor.BN(currentTime - 3600), // already due
+        new anchor.BN(currentTime - 1800), // already due
       ];
 
-      const createManualIx = await sdk.createMilestonePaymentPolicy(
+      const memo3 = new Uint8Array(64).fill(0);
+      Buffer.from("manual approval milestone").copy(memo3);
+
+      const createManualIxs = await sdk.createMilestone(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
         manualMilestoneAmounts,
         manualMilestoneTimestamps,
-        1, // manual approval
-        []
+        1, // manual approval release condition
+        Array.from(memo3)
       );
 
-      // Execute would require gateway authority signature
-      // This tests the permission-based release mechanism
-      */
-    });
+      const createTx = new Transaction().add(...createManualIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
-    test("Milestone payment approval calculation", async () => {
-      // Test that approval amount calculation includes all milestone amounts
-      /*
-      const testAmounts = [
-        new anchor.BN(1000000),
-        new anchor.BN(2000000),
-        new anchor.BN(3000000)
-      ];
+      // Get the manual milestone policy (policy ID 7)
+      const policies = await sdk.getPaymentPoliciesByUser(user.publicKey);
+      const manualMilestonePolicy = policies.find(
+        (p) =>
+          p.account.userPayment.equals(userPaymentPDA) &&
+          p.account.policyId === 7
+      );
+      expect(manualMilestonePolicy).toBeDefined();
 
-      // Total should be 6 tokens
-      const expectedTotal = new anchor.BN(6000000);
+      const manualPolicyPda = manualMilestonePolicy!.publicKey;
 
-      // The createSubscriptionInstruction should calculate this automatically
-      // when approvalAmount is not provided
-      */
+      // Verify manual approval is required
+      const policy = await sdk.getPaymentPolicy(manualPolicyPda);
+      expect(policy!.policyType.milestone!.releaseCondition).toBe(1);
+
+      // For manual approval, gateway authority would need to approve first
+      // This is a simplified test - in practice, there would be an approval step
+      // For now, we'll just verify the policy was created correctly
+      expect(policy!.policyType.milestone!.totalMilestones).toBe(2);
+      expect(policy!.policyType.milestone!.currentMilestone).toBe(0);
     });
   });
 
@@ -1060,8 +1206,8 @@ describe("Recurring Payments", () => {
       const memo = new Uint8Array(64).fill(0);
       Buffer.from("pay-as-you-go test").copy(memo);
 
-      // Create pay-as-you-go policy
-      const createPayAsYouGoIx = await sdk.getCreatePayAsYouGoPolicyInstruction(
+      // Create pay-as-you-go policy using high-level method
+      const createPayAsYouGoIxs = await sdk.createPayAsYouGo(
         tokenMint,
         recipient.publicKey,
         gatewayPDA,
@@ -1071,7 +1217,7 @@ describe("Recurring Payments", () => {
         Array.from(memo)
       );
 
-      const tx = new Transaction().add(createPayAsYouGoIx);
+      const tx = new Transaction().add(...createPayAsYouGoIxs);
       await sendAndConfirmTransaction(connection, tx, [user], {
         commitment: "processed" as Commitment,
       });
@@ -1100,14 +1246,235 @@ describe("Recurring Payments", () => {
       expect(payAsYouGoData.currentPeriodTotal.toNumber()).toBe(0);
     });
 
+    test("Execute pay-as-you-go payments within period limits", async () => {
+      // Get the pay-as-you-go policy we just created
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.activePoliciesCount;
+      const [payAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Update SDK to use gateway authority wallet for execution
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
+      // Execute first payment (0.1 tokens)
+      const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
+      const executeFirstIxs = await sdk.executePayment(
+        payAsYouGoPolicyPDA,
+        paymentAmount1
+      );
+      const executeFirstTx = new Transaction().add(...executeFirstIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeFirstTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Verify first payment
+      const afterFirstBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      expect(afterFirstBalance.value.amount).toBe(
+        (
+          BigInt(initialRecipientBalance.value.amount) + BigInt(100000)
+        ).toString()
+      );
+
+      let updatedPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
+      expect(updatedPolicy!.paymentCount).toBe(1);
+      expect(
+        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber()
+      ).toBe(100000);
+
+      // Execute second payment (0.15 tokens)
+      const paymentAmount2 = new anchor.BN(150000); // 0.15 tokens
+      const executeSecondIxs = await sdk.executePayment(
+        payAsYouGoPolicyPDA,
+        paymentAmount2
+      );
+      const executeSecondTx = new Transaction().add(...executeSecondIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeSecondTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Verify second payment
+      const afterSecondBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      expect(afterSecondBalance.value.amount).toBe(
+        (
+          BigInt(initialRecipientBalance.value.amount) + BigInt(250000)
+        ).toString()
+      );
+
+      updatedPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
+      expect(updatedPolicy!.paymentCount).toBe(2);
+      expect(
+        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber()
+      ).toBe(250000);
+    });
+
+    test("Pay-as-you-go payment exceeds chunk limit", async () => {
+      // Get the pay-as-you-go policy
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.activePoliciesCount;
+      const [payAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Update SDK to use gateway authority wallet
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      // Try to execute payment that exceeds maxChunkAmount (0.2 tokens = 200000)
+      const excessiveAmount = new anchor.BN(250000); // 0.25 tokens - exceeds limit
+
+      try {
+        const executeExcessiveIxs = await sdk.executePayment(
+          payAsYouGoPolicyPDA,
+          excessiveAmount
+        );
+        const executeExcessiveTx = new Transaction().add(
+          ...executeExcessiveIxs
+        );
+        await sendAndConfirmTransaction(
+          connection,
+          executeExcessiveTx,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
+        assert(false, "Expected payment to fail due to chunk size limit");
+      } catch (error: any) {
+        expect(error.message).toContain("InvalidAmount");
+      }
+    });
+
+    test("Pay-as-you-go payment exceeds period limit", async () => {
+      // Create a new pay-as-you-go policy with smaller limits for testing
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const smallMaxAmountPerPeriod = new anchor.BN(300000); // 0.3 tokens per period
+      const smallMaxChunkAmount = new anchor.BN(150000); // 0.15 tokens per chunk
+      const periodLengthSeconds = new anchor.BN(3600); // 1 hour
+
+      const memo2 = new Uint8Array(64).fill(0);
+      Buffer.from("small pay-as-you-go test").copy(memo2);
+
+      const createSmallPayAsYouGoIxs = await sdk.createPayAsYouGo(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        smallMaxAmountPerPeriod,
+        smallMaxChunkAmount,
+        periodLengthSeconds,
+        Array.from(memo2)
+      );
+
+      const createTx = new Transaction().add(...createSmallPayAsYouGoIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      // Get the new pay-as-you-go policy (next policy ID)
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const newPolicyId = userPaymentAfter!.activePoliciesCount;
+      const [smallPayAsYouGoPolicyPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(newPolicyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Update SDK to use gateway authority wallet
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      // Execute first payment (0.1 tokens)
+      const paymentAmount1 = new anchor.BN(100000);
+      const executeFirstIxs = await sdk.executePayment(
+        smallPayAsYouGoPolicyPDA,
+        paymentAmount1
+      );
+      const executeFirstTx = new Transaction().add(...executeFirstIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeFirstTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Execute second payment (0.15 tokens) - should succeed (total: 0.25 < 0.3)
+      const paymentAmount2 = new anchor.BN(150000);
+      const executeSecondIxs = await sdk.executePayment(
+        smallPayAsYouGoPolicyPDA,
+        paymentAmount2
+      );
+      const executeSecondTx = new Transaction().add(...executeSecondIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeSecondTx,
+        [gatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Try third payment that would exceed period limit (0.06 tokens, total would be 0.31 > 0.3)
+      const paymentAmount3 = new anchor.BN(60000);
+      try {
+        const executeThirdIxs = await sdk.executePayment(
+          smallPayAsYouGoPolicyPDA,
+          paymentAmount3
+        );
+        const executeThirdTx = new Transaction().add(...executeThirdIxs);
+        await sendAndConfirmTransaction(
+          connection,
+          executeThirdTx,
+          [gatewayAuthority],
+          {
+            commitment: "processed" as Commitment,
+          }
+        );
+        assert(false, "Expected payment to fail due to period limit");
+      } catch (error: any) {
+        expect(error.message).toContain("InvalidAmount");
+      }
+    });
+
     test("Pay-as-you-go policy validation", async () => {
       // Switch to user wallet
       await sdk.updateWallet(new anchor.Wallet(user));
 
-      // Test invalid parameters
+      // Test invalid parameters using high-level method
       try {
         // maxAmountPerPeriod = 0 (invalid)
-        await sdk.getCreatePayAsYouGoPolicyInstruction(
+        await sdk.createPayAsYouGo(
           tokenMint,
           recipient.publicKey,
           gatewayPDA,
@@ -1126,7 +1493,7 @@ describe("Recurring Payments", () => {
 
       try {
         // maxChunkAmount > maxAmountPerPeriod (invalid)
-        await sdk.getCreatePayAsYouGoPolicyInstruction(
+        await sdk.createPayAsYouGo(
           tokenMint,
           recipient.publicKey,
           gatewayPDA,
@@ -1145,7 +1512,7 @@ describe("Recurring Payments", () => {
 
       try {
         // periodLengthSeconds = 0 (invalid)
-        await sdk.getCreatePayAsYouGoPolicyInstruction(
+        await sdk.createPayAsYouGo(
           tokenMint,
           recipient.publicKey,
           gatewayPDA,

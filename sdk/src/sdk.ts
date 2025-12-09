@@ -606,6 +606,371 @@ export class Tributary {
   }
 
   /**
+   * Creates a milestone payment policy with full setup including ATAs, user payment account, and token approvals.
+   * Use getCreateMilestonePolicyInstruction() for just the instruction without setup.
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway
+   * @param milestoneAmounts - Array of amounts for each milestone (up to 4)
+   * @param milestoneTimestamps - Array of timestamps when each milestone is due
+   * @param releaseCondition - How milestones are released: 0=time-based, 1=manual approval, 2=automatic
+   * @param memo - Memo bytes for the payment policy
+   * @param approvalAmount - Optional specific approval amount (calculated automatically if not provided)
+   * @param executeImmediately - Whether to execute the first milestone immediately if due
+   * @returns Array of transaction instructions for complete setup
+   */
+  async createMilestone(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    milestoneAmounts: BN[],
+    milestoneTimestamps: BN[],
+    releaseCondition: number,
+    memo: number[],
+    approvalAmount?: BN,
+    executeImmediately?: boolean
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const instructions: TransactionInstruction[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    // If userPayment doesn't exist, create it first
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      instructions.push(createUserPaymentIx);
+    }
+
+    // Build policy type
+    const escrowAmount = milestoneAmounts.reduce(
+      (sum, amount) => sum.add(amount),
+      new BN(0)
+    );
+    const paddedAmounts = [
+      ...milestoneAmounts,
+      ...Array(4 - milestoneAmounts.length).fill(new BN(0)),
+    ];
+    const paddedTimestamps = [
+      ...milestoneTimestamps,
+      ...Array(4 - milestoneTimestamps.length).fill(new BN(0)),
+    ];
+
+    const policyType: PolicyType = {
+      milestone: {
+        milestoneAmounts: paddedAmounts,
+        milestoneTimestamps: paddedTimestamps,
+        currentMilestone: 0,
+        releaseCondition: releaseCondition,
+        totalMilestones: milestoneAmounts.length,
+        escrowAmount: escrowAmount,
+        padding: new Array(53).fill(0),
+      },
+    };
+
+    // Determine policy ID
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const { address: configPda } = getConfigPda(this.programId);
+    const accounts = {
+      user: user,
+      config: configPda,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    // Create payment policy instruction
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+
+    instructions.push(createPaymentPolicyIx);
+
+    // Calculate or use provided approval amount
+    let finalApprovalAmount: BN;
+    if (approvalAmount) {
+      finalApprovalAmount = approvalAmount;
+    } else {
+      // Calculate total approval amount needed for all policies
+      let totalApprovalAmount = new BN(0);
+
+      // Add existing policies
+      const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+        userPaymentPda
+      );
+      for (const { account: policy } of existingPolicies) {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription!;
+          const policyApproval = this.calculateSubscriptionApprovalAmount(
+            sub.amount,
+            sub.paymentFrequency,
+            sub.maxRenewals
+          );
+          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+        } else if ("milestone" in policy.policyType) {
+          const milestone = policy.policyType.milestone!;
+          const policyApproval = this.calculateMilestoneApprovalAmount(
+            milestone.milestoneAmounts.filter((amount) => !amount.isZero())
+          );
+          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+        }
+      }
+
+      // Add new milestone
+      const newMilestoneApproval =
+        this.calculateMilestoneApprovalAmount(milestoneAmounts);
+      totalApprovalAmount = totalApprovalAmount.add(newMilestoneApproval);
+
+      finalApprovalAmount = totalApprovalAmount;
+    }
+
+    // Set up approval if needed
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      } else if (currentDelegatedAmount !== finalApprovalAmount.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const approveIx = createApproveInstruction(
+        ownerTokenAccount,
+        paymentsDelegatePda,
+        user,
+        BigInt(finalApprovalAmount.toString()),
+        [],
+        TOKEN_PROGRAM_ID
+      );
+      instructions.push(approveIx);
+    }
+
+    if (executeImmediately) {
+      const executePaymentIxs = await this.executePayment(
+        paymentPolicyPda.address,
+        undefined, // paymentAmount - will be determined by policy type
+        recipient,
+        tokenMint,
+        gateway,
+        user
+      );
+      instructions.push(...executePaymentIxs);
+    }
+
+    return instructions;
+  }
+
+  /**
+   * Creates a pay-as-you-go payment policy with full setup including ATAs, user payment account, and token approvals.
+   * Use getCreatePayAsYouGoPolicyInstruction() for just the instruction without setup.
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway
+   * @param maxAmountPerPeriod - Maximum amount allowed per period
+   * @param maxChunkAmount - Maximum amount that can be claimed in one go
+   * @param periodLengthSeconds - Length of each period in seconds
+   * @param memo - Memo bytes for the payment policy
+   * @param approvalAmount - Optional specific approval amount (calculated automatically if not provided)
+   * @returns Array of transaction instructions for complete setup
+   */
+  async createPayAsYouGo(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmountPerPeriod: BN,
+    maxChunkAmount: BN,
+    periodLengthSeconds: BN,
+    memo: number[],
+    approvalAmount?: BN
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const instructions: TransactionInstruction[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    // If userPayment doesn't exist, create it first
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      instructions.push(createUserPaymentIx);
+    }
+
+    // Build policy type
+    const currentTime = Math.floor(Date.now() / 1000);
+    const policyType: PolicyType = {
+      payAsYouGo: {
+        maxAmountPerPeriod: maxAmountPerPeriod,
+        maxChunkAmount: maxChunkAmount,
+        periodLengthSeconds: periodLengthSeconds,
+        currentPeriodStart: new BN(currentTime),
+        currentPeriodTotal: new BN(0),
+        padding: new Array(88).fill(0),
+      },
+    };
+
+    // Determine policy ID
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.activePoliciesCount + 1;
+    }
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const { address: configPda } = getConfigPda(this.programId);
+    const accounts = {
+      user: user,
+      config: configPda,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    // Create payment policy instruction
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+
+    instructions.push(createPaymentPolicyIx);
+
+    // Calculate or use provided approval amount
+    let finalApprovalAmount: BN;
+    if (approvalAmount) {
+      finalApprovalAmount = approvalAmount;
+    } else {
+      // Calculate total approval amount needed for all policies
+      let totalApprovalAmount = new BN(0);
+
+      // Add existing policies
+      const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+        userPaymentPda
+      );
+      for (const { account: policy } of existingPolicies) {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription!;
+          const policyApproval = this.calculateSubscriptionApprovalAmount(
+            sub.amount,
+            sub.paymentFrequency,
+            sub.maxRenewals
+          );
+          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+        } else if ("milestone" in policy.policyType) {
+          const milestone = policy.policyType.milestone!;
+          const policyApproval = this.calculateMilestoneApprovalAmount(
+            milestone.milestoneAmounts.filter((amount) => !amount.isZero())
+          );
+          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+        }
+      }
+
+      // Add new pay-as-you-go (use maxAmountPerPeriod as approval amount)
+      totalApprovalAmount = totalApprovalAmount.add(maxAmountPerPeriod);
+
+      finalApprovalAmount = totalApprovalAmount;
+    }
+
+    // Set up approval if needed
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      } else if (currentDelegatedAmount !== finalApprovalAmount.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const approveIx = createApproveInstruction(
+        ownerTokenAccount,
+        paymentsDelegatePda,
+        user,
+        BigInt(finalApprovalAmount.toString()),
+        [],
+        TOKEN_PROGRAM_ID
+      );
+      instructions.push(approveIx);
+    }
+
+    return instructions;
+  }
+
+  /**
    * Executes a payment for a given payment policy.
    * This method handles the complete payment execution flow including fee calculations and token transfers.
    * @param paymentPolicyPda - Public key of the payment policy account
