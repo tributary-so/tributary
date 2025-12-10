@@ -40,6 +40,6 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: ./pnpm-lock.yaml
 
-      - uses: ./anchor-test.yml
+      - uses: ./.github/workflows/anchor-test.yml
         with:
-          program: ${{ 'recurring_payments' }}
+          program: "tributary"
