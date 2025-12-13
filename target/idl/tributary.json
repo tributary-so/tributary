@@ -1374,9 +1374,9 @@
             "type": "bool"
           },
           {
-            "name": "total_processed",
+            "name": "padding1",
             "docs": [
-              "Total amount processed by this gateway (cumulative)"
+              "No-longer-used, take care of tumbstone"
             ],
             "type": "u64"
           },

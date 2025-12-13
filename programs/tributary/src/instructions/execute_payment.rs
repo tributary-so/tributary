@@ -211,9 +211,6 @@ impl<'info> ExecutePayment<'info> {
             payment_policy.status = PaymentStatus::Paused;
         }
 
-        // Update gateway
-        gateway.total_processed = gateway.total_processed.checked_add(payment_amount).unwrap();
-
         // Update user payment account
         user_payment.updated_at = clock.unix_timestamp;
 

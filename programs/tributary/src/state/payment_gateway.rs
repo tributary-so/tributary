@@ -14,8 +14,8 @@ pub struct PaymentGateway {
     pub gateway_fee_bps: u16,
     /// Whether this gateway is active and can process payments
     pub is_active: bool,
-    /// Total amount processed by this gateway (cumulative)
-    pub total_processed: u64,
+    /// No-longer-used, take care of tumbstone
+    pub padding1: u64,
     /// Unix timestamp when gateway was created
     pub created_at: i64,
     /// PDA bump seed for address derivation
@@ -35,7 +35,7 @@ impl PaymentGateway {
         32 + // fee_recipient: Pubkey
         2 + // gateway_fee_bps: u16
         1 + // is_active: bool
-        8 + // total_processed: u64
+        8 + // padding1: u64
         8 + // created_at: i64
         1 + // bump: u8
         32 + // name: [u8; 32]

@@ -50,7 +50,6 @@ impl<'info> CreatePaymentGateway<'info> {
         gateway.fee_recipient = ctx.accounts.fee_recipient.key();
         gateway.gateway_fee_bps = gateway_fee_bps;
         gateway.is_active = true;
-        gateway.total_processed = 0;
         gateway.created_at = clock.unix_timestamp;
         gateway.bump = ctx.bumps.gateway;
         gateway.name = name;

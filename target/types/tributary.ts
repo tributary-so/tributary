@@ -1380,9 +1380,9 @@ export type Tributary = {
             "type": "bool"
           },
           {
-            "name": "totalProcessed",
+            "name": "padding1",
             "docs": [
-              "Total amount processed by this gateway (cumulative)"
+              "No-longer-used, take care of tumbstone"
             ],
             "type": "u64"
           },

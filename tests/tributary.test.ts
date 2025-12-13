@@ -252,7 +252,6 @@ describe("Tributary", () => {
     expect(gatewayAccount!.feeRecipient).toEqual(feeRecipient.publicKey);
     expect(gatewayAccount!.gatewayFeeBps).toBe(gatewayFeeBps);
     expect(gatewayAccount!.isActive).toBe(true);
-    expect(gatewayAccount!.totalProcessed.toNumber()).toBe(0);
     expect(gatewayAccount!.bump).toBe(gatewayBump);
     expect(gatewayAccount!.createdAt.toNumber()).toBeGreaterThan(0);
 
@@ -404,10 +403,6 @@ describe("Tributary", () => {
       expect(
         updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber()
       ).toBeGreaterThan(Date.now() / 1000);
-
-      // Verify gateway stats were updated
-      const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
-      expect(updatedGateway!.totalProcessed.toNumber()).toBe(10000);
     });
 
     test("Get all payment policies using SDK", async () => {
