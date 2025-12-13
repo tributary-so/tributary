@@ -140,21 +140,21 @@ impl<'info> ExecutePayment<'info> {
         // Calculate fees
         let gateway_fee = payment_amount
             .checked_mul(gateway.gateway_fee_bps as u64)
-            .unwrap()
+            .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
-            .unwrap();
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         let protocol_fee = payment_amount
             .checked_mul(config.protocol_fee_bps as u64)
-            .unwrap()
+            .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
-            .unwrap();
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         let recipient_amount = payment_amount
             .checked_sub(gateway_fee)
-            .unwrap()
+            .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_sub(protocol_fee)
-            .unwrap();
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         // Transfer to recipient
         if recipient_amount > 0 {
@@ -202,8 +202,8 @@ impl<'info> ExecutePayment<'info> {
         payment_policy.total_paid = payment_policy
             .total_paid
             .checked_add(payment_amount)
-            .unwrap();
-        payment_policy.payment_count = payment_policy.payment_count.checked_add(1).unwrap();
+            .ok_or(TributaryError::ArithmeticOverflow)?;
+        payment_policy.payment_count = payment_policy.payment_count.checked_add(1).ok_or(TributaryError::ArithmeticOverflow)?;
         payment_policy.updated_at = clock.unix_timestamp;
 
         // Pause policy if needed based on strategy recommendation
