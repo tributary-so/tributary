@@ -32,47 +32,47 @@ pub struct CreatePaymentGateway<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler_create_payment_gateway(
-    ctx: Context<CreatePaymentGateway>,
-    gateway_fee_bps: u16,
-    name: [u8; 32],
-    url: [u8; 64],
-) -> Result<()> {
-    // Validate fee basis points
-    require!(
-        gateway_fee_bps <= 10000,
-        TributaryError::InvalidFeeBps
-    );
+impl<'info> CreatePaymentGateway<'info> {
+    /// Create a new payment gateway with the specified fee structure and metadata.
+    pub fn handler_create_payment_gateway(
+        ctx: Context<CreatePaymentGateway>,
+        gateway_fee_bps: u16,
+        name: [u8; 32],
+        url: [u8; 64],
+    ) -> Result<()> {
+        // Validate fee basis points
+        require!(gateway_fee_bps <= 10000, TributaryError::InvalidFeeBps);
 
-    let gateway = &mut ctx.accounts.gateway;
-    let clock = Clock::get()?;
+        let gateway = &mut ctx.accounts.gateway;
+        let clock = Clock::get()?;
 
-    gateway.authority = ctx.accounts.authority.key();
-    gateway.fee_recipient = ctx.accounts.fee_recipient.key();
-    gateway.gateway_fee_bps = gateway_fee_bps;
-    gateway.is_active = true;
-    gateway.total_processed = 0;
-    gateway.created_at = clock.unix_timestamp;
-    gateway.bump = ctx.bumps.gateway;
-    gateway.name = name;
-    gateway.url = url;
-    gateway.signer = ctx.accounts.authority.key();
+        gateway.authority = ctx.accounts.authority.key();
+        gateway.fee_recipient = ctx.accounts.fee_recipient.key();
+        gateway.gateway_fee_bps = gateway_fee_bps;
+        gateway.is_active = true;
+        gateway.total_processed = 0;
+        gateway.created_at = clock.unix_timestamp;
+        gateway.bump = ctx.bumps.gateway;
+        gateway.name = name;
+        gateway.url = url;
+        gateway.signer = ctx.accounts.authority.key();
 
-    emit!(PaymentGatewayCreated {
-        authority: gateway.authority,
-        fee_recipient: gateway.fee_recipient,
-        gateway_fee_bps: gateway.gateway_fee_bps,
-        name: gateway.name,
-        url: gateway.url,
-    });
+        emit!(PaymentGatewayCreated {
+            authority: gateway.authority,
+            fee_recipient: gateway.fee_recipient,
+            gateway_fee_bps: gateway.gateway_fee_bps,
+            name: gateway.name,
+            url: gateway.url,
+        });
 
-    msg!(
-        "Payment gateway created with authority: {:?}, fee: {} bps, name: {:?}, url: {:?}",
-        gateway.authority,
-        gateway.gateway_fee_bps,
-        String::from_utf8_lossy(&name),
-        String::from_utf8_lossy(&url)
-    );
+        msg!(
+            "Payment gateway created with authority: {:?}, fee: {} bps, name: {:?}, url: {:?}",
+            gateway.authority,
+            gateway.gateway_fee_bps,
+            String::from_utf8_lossy(&name),
+            String::from_utf8_lossy(&url)
+        );
 
-    Ok(())
+        Ok(())
+    }
 }

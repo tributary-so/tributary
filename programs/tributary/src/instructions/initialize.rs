@@ -18,23 +18,27 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_initialize(ctx: Context<Initialize>) -> Result<()> {
-    let config = &mut ctx.accounts.config;
+impl<'info> Initialize<'info> {
+    /// Initialize program configuration with default settings.
+    pub fn handle_initialize(ctx: Context<Initialize>) -> Result<()> {
+        let config = &mut ctx.accounts.config;
 
-    config.admin = ctx.accounts.admin.key();
-    config.fee_recipient = ctx.accounts.admin.key();
-    config.protocol_fee_bps = 100; // 1%
-    config.max_policies_per_user = 10;
-    config.emergency_pause = false;
-    config.bump = ctx.bumps.config;
+        config.admin = ctx.accounts.admin.key();
+        config.fee_recipient = ctx.accounts.admin.key();
 
-    emit!(ProgramConfigCreated {
-        admin: config.admin,
-        fee_recipient: config.fee_recipient,
-        protocol_fee_bps: config.protocol_fee_bps,
-        max_policies_per_user: config.max_policies_per_user,
-    });
+        config.protocol_fee_bps = 100; // 1%
+        config.max_policies_per_user = 10;
+        config.emergency_pause = false;
+        config.bump = ctx.bumps.config;
 
-    msg!("Program initialized with admin: {:?}", config.admin);
-    Ok(())
+        emit!(ProgramConfigCreated {
+            admin: config.admin,
+            fee_recipient: config.fee_recipient,
+            protocol_fee_bps: config.protocol_fee_bps,
+            max_policies_per_user: config.max_policies_per_user,
+        });
+
+        msg!("Program initialized with admin: {:?}", config.admin);
+        Ok(())
+    }
 }

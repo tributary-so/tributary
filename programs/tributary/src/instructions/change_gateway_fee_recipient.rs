@@ -25,24 +25,29 @@ pub struct ChangeGatewayFeeRecipient<'info> {
     pub config: Account<'info, ProgramConfig>,
 }
 
-pub fn handler_change_gateway_fee_recipient(ctx: Context<ChangeGatewayFeeRecipient>) -> Result<()> {
-    let gateway = &mut ctx.accounts.gateway;
+impl<'info> ChangeGatewayFeeRecipient<'info> {
+    /// Change the fee recipient for a payment gateway.
+    pub fn handler_change_gateway_fee_recipient(
+        ctx: Context<ChangeGatewayFeeRecipient>,
+    ) -> Result<()> {
+        let gateway = &mut ctx.accounts.gateway;
 
-    let old_fee_recipient = gateway.fee_recipient;
-    gateway.fee_recipient = ctx.accounts.new_fee_recipient.key();
+        let old_fee_recipient = gateway.fee_recipient;
+        gateway.fee_recipient = ctx.accounts.new_fee_recipient.key();
 
-    emit!(GatewayFeeRecipientChanged {
-        gateway: gateway.key(),
-        old_fee_recipient,
-        new_fee_recipient: gateway.fee_recipient,
-    });
+        emit!(GatewayFeeRecipientChanged {
+            gateway: gateway.key(),
+            old_fee_recipient,
+            new_fee_recipient: gateway.fee_recipient,
+        });
 
-    msg!(
-        "Gateway fee recipient changed from {:?} to {:?} for gateway: {:?}",
-        old_fee_recipient,
-        gateway.fee_recipient,
-        gateway.key()
-    );
+        msg!(
+            "Gateway fee recipient changed from {:?} to {:?} for gateway: {:?}",
+            old_fee_recipient,
+            gateway.fee_recipient,
+            gateway.key()
+        );
 
-    Ok(())
+        Ok(())
+    }
 }

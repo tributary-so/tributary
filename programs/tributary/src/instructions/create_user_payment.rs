@@ -33,26 +33,29 @@ pub struct CreateUserPayment<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler_create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
-    let user_payment = &mut ctx.accounts.user_payment;
-    let clock = Clock::get()?;
+impl<'info> CreateUserPayment<'info> {
+    /// Create a new user payment account for given owner and token mint.
+    pub fn handler_create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
+        let user_payment = &mut ctx.accounts.user_payment;
+        let clock = Clock::get()?;
 
-    user_payment.owner = ctx.accounts.owner.key();
-    user_payment.token_account = ctx.accounts.token_account.key();
-    user_payment.token_mint = ctx.accounts.token_mint.key();
-    user_payment.active_policies_count = 0;
-    user_payment.created_policies_count = 0;
-    user_payment.created_at = clock.unix_timestamp;
-    user_payment.updated_at = clock.unix_timestamp;
-    user_payment.is_active = true;
-    user_payment.bump = ctx.bumps.user_payment;
+        user_payment.owner = ctx.accounts.owner.key();
+        user_payment.token_account = ctx.accounts.token_account.key();
+        user_payment.token_mint = ctx.accounts.token_mint.key();
+        user_payment.active_policies_count = 0;
+        user_payment.created_policies_count = 0;
+        user_payment.created_at = clock.unix_timestamp;
+        user_payment.updated_at = clock.unix_timestamp;
+        user_payment.is_active = true;
+        user_payment.bump = ctx.bumps.user_payment;
 
-    emit!(UserPaymentCreated {
-        owner: user_payment.owner,
-        token_account: user_payment.token_account,
-        token_mint: user_payment.token_mint,
-    });
+        emit!(UserPaymentCreated {
+            owner: user_payment.owner,
+            token_account: user_payment.token_account,
+            token_mint: user_payment.token_mint,
+        });
 
-    msg!("User payment account created for: {:?}", user_payment.owner);
-    Ok(())
+        msg!("User payment account created for: {:?}", user_payment.owner);
+        Ok(())
+    }
 }

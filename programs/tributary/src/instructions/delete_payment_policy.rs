@@ -38,32 +38,35 @@ pub struct DeletePaymentPolicy<'info> {
     pub config: Account<'info, ProgramConfig>,
 }
 
-pub fn handler_delete_payment_policy(
-    ctx: Context<DeletePaymentPolicy>,
-    _policy_id: u32,
-) -> Result<()> {
-    let payment_policy = &ctx.accounts.payment_policy;
-    let user_payment = &mut ctx.accounts.user_payment;
-    let clock = Clock::get()?;
+impl<'info> DeletePaymentPolicy<'info> {
+    /// Delete a payment policy and close account.
+    pub fn handler_delete_payment_policy(
+        ctx: Context<DeletePaymentPolicy>,
+        _policy_id: u32,
+    ) -> Result<()> {
+        let payment_policy = &ctx.accounts.payment_policy;
+        let user_payment = &mut ctx.accounts.user_payment;
+        let clock = Clock::get()?;
 
-    emit!(PaymentPolicyDeleted {
-        payment_policy: payment_policy.key(),
-        owner: user_payment.owner,
-        policy_id: payment_policy.policy_id,
-    });
+        emit!(PaymentPolicyDeleted {
+            payment_policy: payment_policy.key(),
+            owner: user_payment.owner,
+            policy_id: payment_policy.policy_id,
+        });
 
-    // Update user payment count (decrease active policies count)
-    user_payment.active_policies_count = user_payment
-        .active_policies_count
-        .checked_sub(1)
-        .unwrap_or(0);
-    user_payment.updated_at = clock.unix_timestamp;
+        // Update user payment count (decrease active policies count)
+        user_payment.active_policies_count = user_payment
+            .active_policies_count
+            .checked_sub(1)
+            .unwrap_or(0);
+        user_payment.updated_at = clock.unix_timestamp;
 
-    msg!(
-        "Payment policy deleted with ID: {} for user: {:?}",
-        payment_policy.policy_id,
-        user_payment.owner
-    );
+        msg!(
+            "Payment policy deleted with ID: {} for user: {:?}",
+            payment_policy.policy_id,
+            user_payment.owner
+        );
 
-    Ok(())
+        Ok(())
+    }
 }

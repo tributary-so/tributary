@@ -26,20 +26,23 @@ pub struct DeletePaymentGateway<'info> {
     pub config: Account<'info, ProgramConfig>,
 }
 
-pub fn handler_delete_payment_gateway(ctx: Context<DeletePaymentGateway>) -> Result<()> {
-    let gateway = &ctx.accounts.gateway;
+impl<'info> DeletePaymentGateway<'info> {
+    /// Delete a payment gateway and close account.
+    pub fn handler_delete_payment_gateway(ctx: Context<DeletePaymentGateway>) -> Result<()> {
+        let gateway = &mut ctx.accounts.gateway;
 
-    emit!(PaymentGatewayDeleted {
-        gateway: gateway.key(),
-        authority: gateway.authority,
-        name: gateway.name,
-    });
+        emit!(PaymentGatewayDeleted {
+            gateway: gateway.key(),
+            authority: gateway.authority,
+            name: gateway.name,
+        });
 
-    msg!(
-        "Payment gateway deleted with authority: {:?}, name: {:?}",
-        gateway.authority,
-        String::from_utf8_lossy(&gateway.name)
-    );
+        msg!(
+            "Payment gateway deleted with authority: {:?}, name: {:?}",
+            gateway.authority,
+            String::from_utf8_lossy(&gateway.name)
+        );
 
-    Ok(())
+        Ok(())
+    }
 }

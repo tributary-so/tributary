@@ -25,24 +25,27 @@ pub struct ChangeGatewaySigner<'info> {
     pub config: Account<'info, ProgramConfig>,
 }
 
-pub fn handler_change_gateway_signer(ctx: Context<ChangeGatewaySigner>) -> Result<()> {
-    let gateway = &mut ctx.accounts.gateway;
+impl<'info> ChangeGatewaySigner<'info> {
+    /// Change the signer authorized to execute payments for a gateway.
+    pub fn handler_change_gateway_signer(ctx: Context<ChangeGatewaySigner>) -> Result<()> {
+        let gateway = &mut ctx.accounts.gateway;
 
-    let old_signer = gateway.signer;
-    gateway.signer = ctx.accounts.new_signer.key();
+        let old_signer = gateway.signer;
+        gateway.signer = ctx.accounts.new_signer.key();
 
-    emit!(GatewaySignerChanged {
-        gateway: gateway.key(),
-        old_signer,
-        new_signer: gateway.signer,
-    });
+        emit!(GatewaySignerChanged {
+            gateway: gateway.key(),
+            old_signer,
+            new_signer: gateway.signer,
+        });
 
-    msg!(
-        "Gateway signer changed from {:?} to {:?} for gateway: {:?}",
-        old_signer,
-        gateway.signer,
-        gateway.key()
-    );
+        msg!(
+            "Gateway signer changed from {:?} to {:?} for gateway: {:?}",
+            old_signer,
+            gateway.signer,
+            gateway.key()
+        );
 
-    Ok(())
+        Ok(())
+    }
 }

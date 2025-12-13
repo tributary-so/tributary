@@ -26,11 +26,11 @@ pub mod tributary {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        instructions::initialize::handle_initialize(ctx)
+        Initialize::handle_initialize(ctx)
     }
 
     pub fn create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
-        instructions::create_user_payment::handler_create_user_payment(ctx)
+        CreateUserPayment::handler_create_user_payment(ctx)
     }
 
     pub fn create_payment_gateway(
@@ -39,12 +39,7 @@ pub mod tributary {
         name: [u8; 32],
         url: [u8; 64],
     ) -> Result<()> {
-        instructions::create_payment_gateway::handler_create_payment_gateway(
-            ctx,
-            gateway_fee_bps,
-            name,
-            url,
-        )
+        CreatePaymentGateway::handler_create_payment_gateway(ctx, gateway_fee_bps, name, url)
     }
 
     pub fn create_payment_policy(
@@ -52,14 +47,14 @@ pub mod tributary {
         policy_type: PolicyType,
         memo: [u8; 64],
     ) -> Result<()> {
-        instructions::create_payment_policy::handler_create_payment_policy(ctx, policy_type, memo)
+        CreatePaymentPolicy::handler_create_payment_policy(ctx, policy_type, memo)
     }
 
     pub fn execute_payment(
         ctx: Context<ExecutePayment>,
         payment_amount: Option<u64>,
     ) -> Result<()> {
-        instructions::execute_payment::handler_execute_payment(ctx, payment_amount)
+        ExecutePayment::handler_execute_payment(ctx, payment_amount)
     }
 
     pub fn change_payment_policy_status(
@@ -67,25 +62,23 @@ pub mod tributary {
         policy_id: u32,
         new_status: PaymentStatus,
     ) -> Result<()> {
-        instructions::change_payment_policy_status::handler_change_payment_policy_status(
-            ctx, policy_id, new_status,
-        )
+        ChangePaymentPolicyStatus::handler_change_payment_policy_status(ctx, policy_id, new_status)
     }
 
     pub fn delete_payment_policy(ctx: Context<DeletePaymentPolicy>, policy_id: u32) -> Result<()> {
-        instructions::delete_payment_policy::handler_delete_payment_policy(ctx, policy_id)
+        DeletePaymentPolicy::handler_delete_payment_policy(ctx, policy_id)
     }
 
     pub fn delete_payment_gateway(ctx: Context<DeletePaymentGateway>) -> Result<()> {
-        instructions::delete_payment_gateway::handler_delete_payment_gateway(ctx)
+        DeletePaymentGateway::handler_delete_payment_gateway(ctx)
     }
 
     pub fn change_gateway_signer(ctx: Context<ChangeGatewaySigner>) -> Result<()> {
-        instructions::change_gateway_signer::handler_change_gateway_signer(ctx)
+        ChangeGatewaySigner::handler_change_gateway_signer(ctx)
     }
 
     pub fn change_gateway_fee_recipient(ctx: Context<ChangeGatewayFeeRecipient>) -> Result<()> {
-        instructions::change_gateway_fee_recipient::handler_change_gateway_fee_recipient(ctx)
+        ChangeGatewayFeeRecipient::handler_change_gateway_fee_recipient(ctx)
     }
 }
 

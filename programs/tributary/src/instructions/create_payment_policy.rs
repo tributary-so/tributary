@@ -51,87 +51,90 @@ pub struct CreatePaymentPolicy<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler_create_payment_policy(
-    ctx: Context<CreatePaymentPolicy>,
-    policy_type: PolicyType,
-    memo: [u8; 64],
-) -> Result<()> {
-    // Validate the policy type and its parameters
-    policy_type.validate()?;
+impl<'info> CreatePaymentPolicy<'info> {
+    /// Create a new payment policy with the specified type and memo.
+    pub fn handler_create_payment_policy(
+        ctx: Context<CreatePaymentPolicy>,
+        policy_type: PolicyType,
+        memo: [u8; 64],
+    ) -> Result<()> {
+        // Validate the policy type and its parameters
+        policy_type.validate()?;
 
-    let clock = Clock::get()?;
+        let clock = Clock::get()?;
 
-    // Adjust next payment due date if in the past
-    let mut adjusted_policy_type = policy_type.clone();
-    match &mut adjusted_policy_type {
-        PolicyType::Subscription {
-            next_payment_due, ..
-        } => {
-            if *next_payment_due <= clock.unix_timestamp {
-                msg!("Next payment due date was in the past, adjusting to current timestamp for immediate execution");
-                *next_payment_due = clock.unix_timestamp;
+        // Adjust next payment due date if in the past
+        let mut adjusted_policy_type = policy_type.clone();
+        match &mut adjusted_policy_type {
+            PolicyType::Subscription {
+                next_payment_due, ..
+            } => {
+                if *next_payment_due <= clock.unix_timestamp {
+                    msg!("Next payment due date was in the past, adjusting to current timestamp for immediate execution");
+                    *next_payment_due = clock.unix_timestamp;
+                }
+            }
+            PolicyType::Milestone { .. } => {
+                // Milestone timestamps are absolute and should be validated to be in the future
+                // No adjustment needed here as milestones don't have a "next due" concept
+            }
+            PolicyType::PayAsYouGo {
+                current_period_start,
+                ..
+            } => {
+                // Initialize the current period start time
+                *current_period_start = clock.unix_timestamp;
             }
         }
-        PolicyType::Milestone { .. } => {
-            // Milestone timestamps are absolute and should be validated to be in the future
-            // No adjustment needed here as milestones don't have a "next due" concept
-        }
-        PolicyType::PayAsYouGo {
-            current_period_start,
-            ..
-        } => {
-            // Initialize the current period start time
-            *current_period_start = clock.unix_timestamp;
-        }
+
+        let payment_policy = &mut ctx.accounts.payment_policy;
+        let user_payment = &mut ctx.accounts.user_payment;
+
+        // Enforce maximum policies per user limit (check active policies count)
+        require!(
+            user_payment.active_policies_count < u32::MAX
+                && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
+            TributaryError::MaxPoliciesReached
+        );
+
+        let policy_id = user_payment.created_policies_count.saturating_add(1);
+
+        payment_policy.user_payment = user_payment.key();
+        payment_policy.recipient = ctx.accounts.recipient.key();
+        payment_policy.gateway = ctx.accounts.gateway.key();
+        payment_policy.policy_type = adjusted_policy_type;
+        payment_policy.status = PaymentStatus::Active;
+        payment_policy.memo = memo;
+        payment_policy.total_paid = 0;
+        payment_policy.payment_count = 0;
+        payment_policy.created_at = clock.unix_timestamp;
+        payment_policy.updated_at = clock.unix_timestamp;
+        payment_policy.policy_id = policy_id;
+        payment_policy.bump = ctx.bumps.payment_policy;
+
+        emit!(PaymentPolicyCreated {
+            user_payment: payment_policy.user_payment,
+            recipient: payment_policy.recipient,
+            gateway: payment_policy.gateway,
+            policy_id: payment_policy.policy_id,
+            policy_type: payment_policy.policy_type.clone(),
+            memo: payment_policy.memo,
+            created_policies_count: user_payment.created_policies_count,
+        });
+
+        // Update user payment account
+        user_payment.active_policies_count = user_payment.active_policies_count.saturating_add(1);
+        user_payment.created_policies_count = policy_id;
+        user_payment.updated_at = clock.unix_timestamp;
+
+        msg!(
+            "Payment policy created with ID: {}, recipient: {:?}, active_count: {}, total_created: {}",
+            policy_id,
+            payment_policy.recipient,
+            user_payment.active_policies_count,
+            user_payment.created_policies_count,
+        );
+
+        Ok(())
     }
-
-    let payment_policy = &mut ctx.accounts.payment_policy;
-    let user_payment = &mut ctx.accounts.user_payment;
-
-    // Enforce maximum policies per user limit (check active policies count)
-    require!(
-        user_payment.active_policies_count < u32::MAX
-            && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
-        TributaryError::MaxPoliciesReached
-    );
-
-    let policy_id = user_payment.created_policies_count.saturating_add(1);
-
-    payment_policy.user_payment = user_payment.key();
-    payment_policy.recipient = ctx.accounts.recipient.key();
-    payment_policy.gateway = ctx.accounts.gateway.key();
-    payment_policy.policy_type = adjusted_policy_type;
-    payment_policy.status = PaymentStatus::Active;
-    payment_policy.memo = memo;
-    payment_policy.total_paid = 0;
-    payment_policy.payment_count = 0;
-    payment_policy.created_at = clock.unix_timestamp;
-    payment_policy.updated_at = clock.unix_timestamp;
-    payment_policy.policy_id = policy_id;
-    payment_policy.bump = ctx.bumps.payment_policy;
-
-    emit!(PaymentPolicyCreated {
-        user_payment: payment_policy.user_payment,
-        recipient: payment_policy.recipient,
-        gateway: payment_policy.gateway,
-        policy_id: payment_policy.policy_id,
-        policy_type: payment_policy.policy_type.clone(),
-        memo: payment_policy.memo,
-        created_policies_count: user_payment.created_policies_count,
-    });
-
-    // Update user payment account
-    user_payment.active_policies_count = user_payment.active_policies_count.saturating_add(1);
-    user_payment.created_policies_count = policy_id;
-    user_payment.updated_at = clock.unix_timestamp;
-
-    msg!(
-        "Payment policy created with ID: {}, recipient: {:?}, active_count: {}, total_created: {}",
-        policy_id,
-        payment_policy.recipient,
-        user_payment.active_policies_count,
-        user_payment.created_policies_count,
-    );
-
-    Ok(())
 }

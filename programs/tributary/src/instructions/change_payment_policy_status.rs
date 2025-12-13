@@ -36,35 +36,38 @@ pub struct ChangePaymentPolicyStatus<'info> {
     pub config: Account<'info, ProgramConfig>,
 }
 
-pub fn handler_change_payment_policy_status(
-    ctx: Context<ChangePaymentPolicyStatus>,
-    _policy_id: u32,
-    new_status: PaymentStatus,
-) -> Result<()> {
-    let payment_policy = &mut ctx.accounts.payment_policy;
-    let user_payment = &mut ctx.accounts.user_payment;
-    let clock = Clock::get()?;
+impl<'info> ChangePaymentPolicyStatus<'info> {
+    /// Change the status of a payment policy (active/paused).
+    pub fn handler_change_payment_policy_status(
+        ctx: Context<ChangePaymentPolicyStatus>,
+        _policy_id: u32,
+        new_status: PaymentStatus,
+    ) -> Result<()> {
+        let payment_policy = &mut ctx.accounts.payment_policy;
+        let user_payment = &mut ctx.accounts.user_payment;
+        let clock = Clock::get()?;
 
-    // Update the policy status
-    let old_status = payment_policy.status.clone();
-    payment_policy.status = new_status.clone();
-    payment_policy.updated_at = clock.unix_timestamp;
+        // Update policy status
+        let old_status = payment_policy.status.clone();
+        payment_policy.status = new_status.clone();
+        payment_policy.updated_at = clock.unix_timestamp;
 
-    // Update user payment updated timestamp
-    user_payment.updated_at = clock.unix_timestamp;
+        // Update user payment updated timestamp
+        user_payment.updated_at = clock.unix_timestamp;
 
-    emit!(PaymentPolicyStatusChanged {
-        payment_policy: payment_policy.key(),
-        old_status: old_status.clone(),
-        new_status,
-    });
+        emit!(PaymentPolicyStatusChanged {
+            payment_policy: payment_policy.key(),
+            old_status: old_status.clone(),
+            new_status,
+        });
 
-    msg!(
-        "Payment policy status changed from {:?} to {:?} for policy ID: {}",
-        old_status,
-        payment_policy.status,
-        payment_policy.policy_id
-    );
+        msg!(
+            "Payment policy status changed from {:?} to {:?} for policy ID: {}",
+            old_status,
+            payment_policy.status,
+            payment_policy.policy_id
+        );
 
-    Ok(())
+        Ok(())
+    }
 }

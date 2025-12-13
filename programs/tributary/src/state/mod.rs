@@ -79,20 +79,14 @@ impl PolicyType {
                 ..
             } => {
                 // Validate amount is greater than zero
-                require!(
-                    *amount > 0,
-                    crate::error::TributaryError::InvalidAmount
-                );
+                require!(*amount > 0, crate::error::TributaryError::InvalidAmount);
 
                 // Validate payment frequency
                 payment_frequency.validate()?;
 
                 // Validate max_renewals if set (must be greater than 0)
                 if let Some(renewals) = max_renewals {
-                    require!(
-                        *renewals > 0,
-                        crate::error::TributaryError::InvalidInterval
-                    );
+                    require!(*renewals > 0, crate::error::TributaryError::InvalidInterval);
                 }
             }
             PolicyType::Milestone {
