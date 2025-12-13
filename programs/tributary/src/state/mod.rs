@@ -146,14 +146,11 @@ pub enum PaymentFrequency {
 impl PaymentFrequency {
     /// Validates the payment frequency
     pub fn validate(&self) -> Result<()> {
-        match self {
-            PaymentFrequency::Custom(interval) => {
-                require!(
-                    *interval > 0,
-                    crate::error::TributaryError::InvalidFrequency
-                );
-            }
-            _ => {}
+        if let PaymentFrequency::Custom(interval) = self {
+            require!(
+                *interval > 0,
+                crate::error::TributaryError::InvalidFrequency
+            );
         }
         Ok(())
     }

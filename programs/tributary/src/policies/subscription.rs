@@ -84,11 +84,7 @@ impl PolicyStrategy for SubscriptionStrategy {
     fn should_pause_policy(&self, payment_policy: &PaymentPolicy) -> bool {
         match &payment_policy.policy_type {
             PolicyType::Subscription { max_renewals, .. } => {
-                if let Some(max_renewal) = max_renewals {
-                    payment_policy.payment_count >= *max_renewal
-                } else {
-                    false
-                }
+                max_renewals.is_some_and(|max_renewal| payment_policy.payment_count >= max_renewal)
             }
             _ => false,
         }

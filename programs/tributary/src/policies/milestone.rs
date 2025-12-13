@@ -12,11 +12,11 @@ pub fn validate_milestone_policy(
     release_condition: u8,
     total_milestones: u8,
     escrow_amount: u64,
-    milestone_timestamps: &[i64; 4],
+    _milestone_timestamps: &[i64; 4],
 ) -> Result<()> {
     // Validate total_milestones is between 1 and 4
     require!(
-        total_milestones >= 1 && total_milestones <= 4,
+        (1..=4).contains(&total_milestones),
         TributaryError::InvalidAmount
     );
 
@@ -30,8 +30,8 @@ pub fn validate_milestone_policy(
     require!(escrow_amount > 0, TributaryError::InvalidAmount);
 
     // Validate milestone amounts are greater than zero
-    for i in 0..total_milestones as usize {
-        require!(milestone_amounts[i] > 0, TributaryError::InvalidAmount);
+    for amount in milestone_amounts.iter().take(total_milestones as usize) {
+        require!(*amount > 0, TributaryError::InvalidAmount);
     }
 
     // Validate timestamps are in the future (basic check)
@@ -39,9 +39,9 @@ pub fn validate_milestone_policy(
     {
         // only on mainnet, simplifies testing
         let current_time = Clock::get()?.unix_timestamp;
-        for i in 0..total_milestones as usize {
+        for timestamp in _milestone_timestamps.iter().take(total_milestones as usize) {
             require!(
-                milestone_timestamps[i] > current_time,
+                *timestamp > current_time,
                 TributaryError::InvalidInterval
             );
         }

@@ -55,10 +55,7 @@ impl<'info> DeletePaymentPolicy<'info> {
         });
 
         // Update user payment count (decrease active policies count)
-        user_payment.active_policies_count = user_payment
-            .active_policies_count
-            .checked_sub(1)
-            .unwrap_or(0);
+        user_payment.active_policies_count = user_payment.active_policies_count.saturating_sub(1);
         user_payment.updated_at = clock.unix_timestamp;
 
         msg!(
