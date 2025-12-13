@@ -1,4 +1,4 @@
-use crate::{constants::*, error::TributaryError, state::*, utils::calculate_next_payment_due};
+use crate::{constants::*, error::TributaryError, policies::*, state::*};
 use anchor_lang::{prelude::*, solana_program::program_option::COption};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
@@ -91,7 +91,7 @@ pub struct ExecutePayment<'info> {
 }
 
 impl<'info> ExecutePayment<'info> {
-    /// Initialize program configuration with default settings.
+    /// Execute payment using appropriate policy strategy
     pub fn handler_execute_payment(
         ctx: Context<ExecutePayment>,
         payment_amount: Option<u64>,
@@ -102,108 +102,28 @@ impl<'info> ExecutePayment<'info> {
         let config = &ctx.accounts.config;
         let clock = Clock::get()?;
 
-        // Update policy based on type and get payment details
-        // This also updates next_payment_due for subscriptions and current_milestone for milestones
-        let payment_amount = match &mut payment_policy.policy_type {
-            PolicyType::Subscription {
-                amount,
-                next_payment_due,
-                payment_frequency,
-                ..
-            } => {
-                // Validate payment timing for subscriptions
-                require!(
-                    clock.unix_timestamp >= *next_payment_due,
-                    crate::error::TributaryError::PaymentNotDue
-                );
+        // Get appropriate strategy for policy type
+        let mut strategy = crate::policies::get_policy_strategy(payment_policy)?;
 
-                // Calculate next payment due time based on payment frequency
-                let new_next_due = calculate_next_payment_due(
-                    *next_payment_due,
-                    payment_frequency,
-                    clock.unix_timestamp,
-                )?;
-                *next_payment_due = new_next_due;
+        // Execute policy-specific logic
+        let execution_result =
+            strategy.execute(payment_policy, payment_amount, clock.unix_timestamp)?;
+        let payment_amount = execution_result.payment_amount;
 
-                *amount
-            }
-            PolicyType::Milestone {
-                milestone_amounts,
-                milestone_timestamps,
-                current_milestone,
-                release_condition,
-                total_milestones,
-                ..
-            } => {
-                let milestone_idx = *current_milestone as usize;
-                let amount = milestone_amounts[milestone_idx];
-                let next_due = milestone_timestamps[milestone_idx];
-
-                // Validate payment timing for milestones
-                match release_condition {
-                    0 => {
-                        // Time-based
-                        require!(
-                            clock.unix_timestamp >= next_due,
-                            crate::error::TributaryError::PaymentNotDue
-                        );
-                    }
-                    1 => { // Manual approval - always allow (checked by signer)
-                         // Manual approval requires specific signer permission
-                    }
-                    2 => { // Automatic - always allow
-                         // Automatic releases don't check timing
-                    }
-                    _ => return err!(crate::error::TributaryError::InvalidAmount),
-                }
-
-                // Move to next milestone
-                *current_milestone += 1;
-
-                // If we've completed all milestones, pause the policy
-                if *current_milestone >= *total_milestones {
-                    payment_policy.status = PaymentStatus::Paused;
-                }
-
-                amount
-            }
-            PolicyType::PayAsYouGo {
-                max_amount_per_period,
-                max_chunk_amount,
-                period_length_seconds,
-                current_period_start,
-                current_period_total,
-                ..
-            } => {
-                // Check if we need to reset the period
-                let period_end = *current_period_start + *period_length_seconds as i64;
-                if clock.unix_timestamp >= period_end {
-                    // Reset period
-                    *current_period_start = clock.unix_timestamp;
-                    *current_period_total = 0;
-                }
-
-                // For pay-as-you-go, payment amount is specified by the gateway/provider
-                let payment_amount = payment_amount.unwrap_or(*max_chunk_amount);
-
-                // Validate chunk amount doesn't exceed max_chunk_amount
-                require!(
-                    payment_amount <= *max_chunk_amount,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate period limit won't be exceeded
-                require!(
-                    *current_period_total + payment_amount <= *max_amount_per_period,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Update period total
-                *current_period_total += payment_amount;
-
-                payment_amount
-            }
-        };
+        // Additional validation for pay-as-you-go policies
+        if let PolicyType::PayAsYouGo { .. } = &payment_policy.policy_type {
+            let mut payg_strategy = PayAsYouGoStrategy;
+            payg_strategy.validate_payment_constraints(
+                payment_policy,
+                payment_amount,
+                clock.unix_timestamp,
+            )?;
+            payg_strategy.update_period_total(
+                payment_policy,
+                payment_amount,
+                clock.unix_timestamp,
+            )?;
+        }
 
         // Validate delegated amount is sufficient
         require!(
@@ -286,22 +206,9 @@ impl<'info> ExecutePayment<'info> {
         payment_policy.payment_count = payment_policy.payment_count.checked_add(1).unwrap();
         payment_policy.updated_at = clock.unix_timestamp;
 
-        // Check if payment should be paused based on policy type
-        match &payment_policy.policy_type {
-            PolicyType::Subscription { max_renewals, .. } => {
-                if let Some(max_renewal) = max_renewals {
-                    if payment_policy.payment_count >= *max_renewal {
-                        payment_policy.status = PaymentStatus::Paused;
-                    }
-                }
-            }
-            PolicyType::Milestone { .. } => {
-                // Milestone completion check is handled above when updating current_milestone
-            }
-            PolicyType::PayAsYouGo { .. } => {
-                // Pay-as-you-go policies don't pause based on payment count
-                // They continue until manually paused or period limits are reached
-            }
+        // Pause policy if needed based on strategy recommendation
+        if execution_result.should_pause {
+            payment_policy.status = PaymentStatus::Paused;
         }
 
         // Update gateway

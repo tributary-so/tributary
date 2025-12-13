@@ -8,6 +8,7 @@
 pub mod constants;
 pub mod error;
 pub mod instructions;
+pub mod policies;
 pub mod state;
 pub mod utils;
 
@@ -17,6 +18,7 @@ use solana_security_txt::security_txt;
 
 pub use constants::*;
 pub use instructions::*;
+pub use policies::*;
 pub use state::*;
 
 declare_id!("TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ");

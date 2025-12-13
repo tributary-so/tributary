@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::clock::Clock;
 
 /// The PolicyType enum implements the payment schemes. The initial policy
 /// will be a subscription payment that enables the regular payment according to
@@ -77,104 +76,38 @@ impl PolicyType {
                 payment_frequency,
                 max_renewals,
                 ..
-            } => {
-                // Validate amount is greater than zero
-                require!(*amount > 0, crate::error::TributaryError::InvalidAmount);
-
-                // Validate payment frequency
-                payment_frequency.validate()?;
-
-                // Validate max_renewals if set (must be greater than 0)
-                if let Some(renewals) = max_renewals {
-                    require!(*renewals > 0, crate::error::TributaryError::InvalidInterval);
-                }
-            }
+            } => crate::policies::validate_subscription_policy(
+                *amount,
+                payment_frequency,
+                max_renewals,
+            ),
             PolicyType::Milestone {
                 milestone_amounts,
-                milestone_timestamps,
                 current_milestone,
                 release_condition,
                 total_milestones,
                 escrow_amount,
+                milestone_timestamps,
                 ..
-            } => {
-                // Validate total_milestones is between 1 and 4
-                require!(
-                    *total_milestones >= 1 && *total_milestones <= 4,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate current_milestone is within bounds
-                require!(
-                    *current_milestone < *total_milestones,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate escrow_amount is greater than zero
-                require!(
-                    *escrow_amount > 0,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate milestone amounts are greater than zero
-                for i in 0..*total_milestones as usize {
-                    require!(
-                        milestone_amounts[i] > 0,
-                        crate::error::TributaryError::InvalidAmount
-                    );
-                }
-
-                // Validate timestamps are in the future (basic check)
-                #[cfg(feature = "mainnet")]
-                {
-                    // only on mainnet, simplifies testing
-                    let current_time = Clock::get()?.unix_timestamp;
-                    for i in 0..*total_milestones as usize {
-                        require!(
-                            milestone_timestamps[i] > current_time,
-                            crate::error::TributaryError::InvalidInterval
-                        );
-                    }
-                }
-
-                // Validate release_condition is valid (0, 1, or 2)
-                require!(
-                    *release_condition <= 2,
-                    crate::error::TributaryError::InvalidAmount
-                );
-            }
+            } => crate::policies::validate_milestone_policy(
+                milestone_amounts,
+                *current_milestone,
+                *release_condition,
+                *total_milestones,
+                *escrow_amount,
+                milestone_timestamps,
+            ),
             PolicyType::PayAsYouGo {
                 max_amount_per_period,
                 max_chunk_amount,
                 period_length_seconds,
                 ..
-            } => {
-                // Validate max_amount_per_period is greater than zero
-                require!(
-                    *max_amount_per_period > 0,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate max_chunk_amount is greater than zero
-                require!(
-                    *max_chunk_amount > 0,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate max_chunk_amount is not greater than max_amount_per_period
-                require!(
-                    *max_chunk_amount <= *max_amount_per_period,
-                    crate::error::TributaryError::InvalidAmount
-                );
-
-                // Validate period_length_seconds is greater than zero
-                require!(
-                    *period_length_seconds > 0,
-                    crate::error::TributaryError::InvalidInterval
-                );
-            }
+            } => crate::policies::validate_payg_policy(
+                *max_amount_per_period,
+                *max_chunk_amount,
+                *period_length_seconds,
+            ),
         }
-        Ok(())
     }
 }
 
