@@ -57,7 +57,7 @@ describe("Tributary", () => {
         fromPubkey: provider.wallet.publicKey,
         toPubkey: account,
         lamports: amount * LAMPORTS_PER_SOL,
-      }),
+      })
     );
     const signature = await provider.sendAndConfirm(transaction, null, {
       commitment: "processed" as Commitment,
@@ -81,7 +81,7 @@ describe("Tributary", () => {
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
-      program.programId,
+      program.programId
     );
 
     await Promise.all([
@@ -100,7 +100,7 @@ describe("Tributary", () => {
       mintAuthority,
       mintAuthority.publicKey,
       null,
-      6,
+      6
     );
 
     // Get associated token account address for the user
@@ -111,7 +111,7 @@ describe("Tributary", () => {
       connection,
       admin,
       tokenMint,
-      user.publicKey,
+      user.publicKey
     );
 
     // Mint tokens to the user's account
@@ -121,13 +121,13 @@ describe("Tributary", () => {
       tokenMint,
       userTokenAccount,
       mintAuthority,
-      1000000n, // 1 token with 6 decimals
+      1000000n // 1 token with 6 decimals
     );
 
     // Derive gateway PDA
     [gatewayPDA, gatewayBump] = PublicKey.findProgramAddressSync(
       [Buffer.from("gateway"), gatewayAuthority.publicKey.toBuffer()],
-      program.programId,
+      program.programId
     );
 
     // Derive user payment PDA
@@ -137,7 +137,7 @@ describe("Tributary", () => {
         user.publicKey.toBuffer(),
         tokenMint.toBuffer(),
       ],
-      program.programId,
+      program.programId
     );
 
     // Derive payment policy PDA
@@ -148,13 +148,13 @@ describe("Tributary", () => {
         userPaymentPDA.toBuffer(),
         new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
       ],
-      program.programId,
+      program.programId
     );
 
     // Derive payments delegate PDA
     [paymentsDelegate] = PublicKey.findProgramAddressSync(
       [Buffer.from("payments")],
-      program.programId,
+      program.programId
     );
 
     // Create recipient token account
@@ -162,7 +162,7 @@ describe("Tributary", () => {
       connection,
       admin,
       tokenMint,
-      recipient.publicKey,
+      recipient.publicKey
     );
 
     // Create fee recipient token accounts (SDK will handle ATA creation automatically)
@@ -170,18 +170,18 @@ describe("Tributary", () => {
       connection,
       admin,
       tokenMint,
-      feeRecipient.publicKey,
+      feeRecipient.publicKey
     );
 
     await createAssociatedTokenAccount(
       connection,
       admin,
       tokenMint,
-      admin.publicKey, // config.fee_recipient
+      admin.publicKey // config.fee_recipient
     );
 
     expect(program.programId.toString()).toEqual(
-      "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
+      "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
     );
   });
 
@@ -238,7 +238,7 @@ describe("Tributary", () => {
       gatewayFeeBps,
       feeRecipient.publicKey,
       "custom gateway",
-      "https://example.com",
+      "https://example.com"
     );
     const tx = new Transaction().add(createGatewayIx);
 
@@ -290,7 +290,7 @@ describe("Tributary", () => {
         null,
         paymentFrequency,
         Array.from(memo),
-        null, // start_time
+        null // start_time
       );
       const tx = new Transaction().add(createPolicyIx);
 
@@ -313,13 +313,13 @@ describe("Tributary", () => {
       // Verify policy type is subscription
       expect(policyAccount!.policyType.subscription).toBeDefined();
       expect(policyAccount!.policyType.subscription.amount.toNumber()).toBe(
-        amount.toNumber(),
+        amount.toNumber()
       );
       expect(policyAccount!.policyType.subscription.paymentFrequency).toEqual({
         daily: {},
       });
       expect(
-        policyAccount!.policyType.subscription.nextPaymentDue.toNumber(),
+        policyAccount!.policyType.subscription.nextPaymentDue.toNumber()
       ).toBeGreaterThan(0);
       expect(policyAccount!.policyType.subscription.autoRenew).toBe(true);
 
@@ -343,7 +343,7 @@ describe("Tributary", () => {
 
         assert(
           false,
-          "Expected payment execution to fail without delegate approval",
+          "Expected payment execution to fail without delegate approval"
         );
       } catch (error: any) {
         // Should fail due to insufficient delegate approval
@@ -360,22 +360,23 @@ describe("Tributary", () => {
         userTokenAccount,
         paymentsDelegate,
         user,
-        amount,
+        amount
       );
 
       // Verify delegate approval was set
-      const tokenAccountInfo =
-        await connection.getParsedAccountInfo(userTokenAccount);
+      const tokenAccountInfo = await connection.getParsedAccountInfo(
+        userTokenAccount
+      );
       const parsedData = tokenAccountInfo.value?.data as any;
       expect(parsedData.parsed.info.delegate).toEqual(
-        paymentsDelegate.toString(),
+        paymentsDelegate.toString()
       );
       expect(parsedData.parsed.info.delegatedAmount.uiAmount).toBe(1);
     });
 
     test("Execute subscription payment", async () => {
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
 
       // Update SDK to use gateway authority wallet
@@ -390,10 +391,10 @@ describe("Tributary", () => {
 
       // Verify payment was executed
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
       expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
-        initialRecipientBalance.value.uiAmount || 0,
+        initialRecipientBalance.value.uiAmount || 0
       );
 
       // Verify policy was updated
@@ -401,7 +402,7 @@ describe("Tributary", () => {
       expect(updatedPolicy!.paymentCount).toBe(1);
       expect(updatedPolicy!.totalPaid.toNumber()).toBe(10000); // 0.01 token
       expect(
-        updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber(),
+        updatedPolicy!.policyType.subscription.nextPaymentDue.toNumber()
       ).toBeGreaterThan(Date.now() / 1000);
 
       // Verify gateway stats were updated
@@ -422,7 +423,7 @@ describe("Tributary", () => {
       // Verify the policy type is subscription
       expect(allPolicies[0].account.policyType.subscription).toBeDefined();
       expect(
-        allPolicies[0].account.policyType.subscription.amount.toNumber(),
+        allPolicies[0].account.policyType.subscription.amount.toNumber()
       ).toBe(10000);
     });
 
@@ -442,7 +443,7 @@ describe("Tributary", () => {
 
         assert(
           false,
-          "Expected payment execution to fail when next_payment_due is in future",
+          "Expected payment execution to fail when next_payment_due is in future"
         );
       } catch (error: any) {
         expect(error.message).toContain("PaymentNotDue");
@@ -475,7 +476,7 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId2).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       // Create policy with start_time in the past (2 hours ago)
@@ -493,7 +494,7 @@ describe("Tributary", () => {
         null,
         paymentFrequency,
         Array.from(memo),
-        new anchor.BN(twoHoursAgo), // start_time in past
+        new anchor.BN(twoHoursAgo) // start_time in past
       );
       const createTx = new Transaction().add(createPolicy2Ix);
       await sendAndConfirmTransaction(connection, createTx, [user], {
@@ -507,7 +508,7 @@ describe("Tributary", () => {
       const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
       const executeTx = new Transaction();
       executeTx.add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 })
       );
       executeTx.add(...executePaymentIxs);
 
@@ -517,7 +518,7 @@ describe("Tributary", () => {
         [gatewayAuthority],
         {
           commitment: "processed" as Commitment,
-        },
+        }
       );
 
       // Verify payment was executed
@@ -536,12 +537,12 @@ describe("Tributary", () => {
           [gatewayAuthority],
           {
             commitment: "processed" as Commitment,
-          },
+          }
         );
 
         assert(
           false,
-          "Expected second payment execution to fail within same period",
+          "Expected second payment execution to fail within same period"
         );
       } catch (error: any) {
         expect(error.message).toContain("PaymentNotDue");
@@ -555,7 +556,7 @@ describe("Tributary", () => {
       // Create token accounts for test user and recipient
       const testRecipientTokenAccount = getAssociatedTokenAddressSync(
         tokenMint,
-        recipient.publicKey,
+        recipient.publicKey
       );
 
       // Mint tokens to test user
@@ -565,7 +566,7 @@ describe("Tributary", () => {
         tokenMint,
         userTokenAccount,
         mintAuthority,
-        1000000n, // 1 token with 6 decimals
+        1000000n // 1 token with 6 decimals
       );
 
       // Setup policy parameters
@@ -589,7 +590,7 @@ describe("Tributary", () => {
         Array.from(testMemo),
         testStartTime,
         approvalAmount,
-        true, // executeImmediately = true
+        true // executeImmediately = true
       );
 
       const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
@@ -600,31 +601,32 @@ describe("Tributary", () => {
 
       // Get initial balances
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        testRecipientTokenAccount,
+        testRecipientTokenAccount
       );
-      const initialUserBalance =
-        await connection.getTokenAccountBalance(userTokenAccount);
+      const initialUserBalance = await connection.getTokenAccountBalance(
+        userTokenAccount
+      );
 
       // Check balances after policy creation with executeImmediately = false
       const balanceAfterCreateFalse = await connection.getTokenAccountBalance(
-        testRecipientTokenAccount,
+        testRecipientTokenAccount
       );
       const userBalanceAfterCreateFalse =
         await connection.getTokenAccountBalance(userTokenAccount);
 
       // No token transfer should have occurred
       expect(balanceAfterCreateFalse.value.amount).toBe(
-        initialRecipientBalance.value.amount,
+        initialRecipientBalance.value.amount
       );
       expect(userBalanceAfterCreateFalse.value.amount).toBe(
-        initialUserBalance.value.amount,
+        initialUserBalance.value.amount
       );
     });
 
     test("executeImmediately option - no transfer if false", async () => {
       const testRecipient2TokenAccount = getAssociatedTokenAddressSync(
         tokenMint,
-        recipient.publicKey,
+        recipient.publicKey
       );
 
       // Mint tokens to test user 2
@@ -634,15 +636,16 @@ describe("Tributary", () => {
         tokenMint,
         userTokenAccount,
         mintAuthority,
-        1000000n, // 1 token with 6 decimals
+        1000000n // 1 token with 6 decimals
       );
 
       // Get initial balances for test 2
       const initialRecipient2Balance = await connection.getTokenAccountBalance(
-        testRecipient2TokenAccount,
+        testRecipient2TokenAccount
       );
-      const initialUser2Balance =
-        await connection.getTokenAccountBalance(userTokenAccount);
+      const initialUser2Balance = await connection.getTokenAccountBalance(
+        userTokenAccount
+      );
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
@@ -665,7 +668,7 @@ describe("Tributary", () => {
         Array.from(testMemo),
         testStartTime,
         approvalAmount,
-        false, // executeImmediately = false
+        false // executeImmediately = false
       );
 
       const createPolicyTrueTx = new Transaction().add(...createPolicyTrueIxs);
@@ -676,17 +679,17 @@ describe("Tributary", () => {
 
       // Check balances after policy creation with executeImmediately = true
       const balanceAfterCreateTrue = await connection.getTokenAccountBalance(
-        testRecipient2TokenAccount,
+        testRecipient2TokenAccount
       );
       const userBalanceAfterCreateTrue =
         await connection.getTokenAccountBalance(userTokenAccount);
 
       // Token transfers should have occurred
       expect(parseInt(balanceAfterCreateTrue.value.amount)).toEqual(
-        parseInt(initialRecipient2Balance.value.amount),
+        parseInt(initialRecipient2Balance.value.amount)
       );
       expect(parseInt(userBalanceAfterCreateTrue.value.amount)).toEqual(
-        parseInt(initialUser2Balance.value.amount),
+        parseInt(initialUser2Balance.value.amount)
       );
     });
 
@@ -714,7 +717,7 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId4).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       const createPolicy4Ix = await sdk.getCreateSubscriptionPolicyInstruction(
@@ -726,7 +729,7 @@ describe("Tributary", () => {
         null,
         paymentFrequency,
         Array.from(memo),
-        new anchor.BN(pastTime),
+        new anchor.BN(pastTime)
       );
       const createTx = new Transaction().add(createPolicy4Ix);
       await sendAndConfirmTransaction(connection, createTx, [user], {
@@ -743,7 +746,7 @@ describe("Tributary", () => {
         policyId4,
         {
           paused: {},
-        },
+        }
       );
       const pauseTx = new Transaction().add(pauseIx);
       await sendAndConfirmTransaction(connection, pauseTx, [user], {
@@ -767,12 +770,12 @@ describe("Tributary", () => {
           [gatewayAuthority],
           {
             commitment: "processed" as Commitment,
-          },
+          }
         );
 
         assert(
           false,
-          "Expected payment execution to fail when policy is paused",
+          "Expected payment execution to fail when policy is paused"
         );
       } catch (error: any) {
         // Should fail because policy is paused
@@ -787,7 +790,7 @@ describe("Tributary", () => {
         policyId4,
         {
           active: {},
-        },
+        }
       );
       const resumeTx = new Transaction().add(resumeIx);
       await sendAndConfirmTransaction(connection, resumeTx, [user], {
@@ -802,7 +805,7 @@ describe("Tributary", () => {
       await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
 
       const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
@@ -814,15 +817,15 @@ describe("Tributary", () => {
         [gatewayAuthority],
         {
           commitment: "processed" as Commitment,
-        },
+        }
       );
 
       // Verify payment was executed successfully
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
       expect(finalRecipientBalance.value.uiAmount).toBeGreaterThan(
-        initialRecipientBalance.value.uiAmount || 0,
+        initialRecipientBalance.value.uiAmount || 0
       );
 
       // Verify policy was updated
@@ -832,48 +835,47 @@ describe("Tributary", () => {
     });
   });
 
-  //  FIXME:
-  // test("Delete payment policy", async () => {
-  //   // Get initial user payment state
-  //   const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
-  //   const initialActivePoliciesCount = initialUserPayment!.createdPoliciesCount;
-  //
-  //   // Use policy ID 2 from a previous test (the second policy created)
-  //   const policyIdToDelete = 2;
-  //   const [policyToDeletePDA] = PublicKey.findProgramAddressSync(
-  //     [
-  //       Buffer.from("payment_policy"),
-  //       userPaymentPDA.toBuffer(),
-  //       new anchor.BN(policyIdToDelete).toArrayLike(Buffer, "le", 4),
-  //     ],
-  //     program.programId
-  //   );
-  //
-  //   // Verify policy exists before deletion
-  //   const policyBeforeDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
-  //   expect(policyBeforeDeletion).not.toBeNull();
-  //   expect(policyBeforeDeletion!.policyId).toBe(policyIdToDelete);
-  //
-  //   // Delete the payment policy (only owner can delete)
-  //   await sdk.updateWallet(new anchor.Wallet(user));
-  //
-  //   const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
-  //   const deleteTx = new Transaction().add(deleteIx);
-  //   await sendAndConfirmTransaction(connection, deleteTx, [user]);
-  //
-  //   // Verify policy was deleted (account should not exist)
-  //   const policyAfterDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
-  //   expect(policyAfterDeletion).toBeNull();
-  //
-  //   // Verify user payment active policies count was decremented
-  //   const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
-  //   expect(updatedUserPayment!.createdPoliciesCount).toBe(
-  //     initialActivePoliciesCount - 1
-  //   );
-  //   expect(updatedUserPayment!.updatedAt.toNumber()).toBeGreaterThanOrEqual(
-  //     initialUserPayment!.updatedAt.toNumber()
-  //   );
-  // });
+  test("Delete payment policy", async () => {
+    // Get initial user payment state
+    const initialUserPayment = await sdk.getUserPayment(userPaymentPDA);
+    const initialActivePoliciesCount = initialUserPayment!.createdPoliciesCount;
+
+    // Use policy ID 2 from a previous test (the second policy created)
+    const policyIdToDelete = 2;
+    const [policyToDeletePDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("payment_policy"),
+        userPaymentPDA.toBuffer(),
+        new anchor.BN(policyIdToDelete).toArrayLike(Buffer, "le", 4),
+      ],
+      program.programId
+    );
+
+    // Verify policy exists before deletion
+    const policyBeforeDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
+    expect(policyBeforeDeletion).not.toBeNull();
+    expect(policyBeforeDeletion!.policyId).toBe(policyIdToDelete);
+
+    // Delete the payment policy (only owner can delete)
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
+    const deleteTx = new Transaction().add(deleteIx);
+    await sendAndConfirmTransaction(connection, deleteTx, [user]);
+
+    // Verify policy was deleted (account should not exist)
+    const policyAfterDeletion = await sdk.getPaymentPolicy(policyToDeletePDA);
+    expect(policyAfterDeletion).toBeNull();
+
+    // Verify user payment active policies count was decremented
+    const updatedUserPayment = await sdk.getUserPayment(userPaymentPDA);
+    expect(updatedUserPayment!.activePoliciesCount).toBe(
+      initialActivePoliciesCount - 1
+    );
+    expect(updatedUserPayment!.updatedAt.toNumber()).toBeGreaterThanOrEqual(
+      initialUserPayment!.updatedAt.toNumber()
+    );
+  });
 
   test("Change gateway signer", async () => {
     // Get initial gateway state
@@ -886,7 +888,7 @@ describe("Tributary", () => {
     // Change the gateway signer
     const changeSignerIx = await sdk.changeGatewaySigner(
       gatewayAuthority.publicKey,
-      newSigner.publicKey,
+      newSigner.publicKey
     );
     const tx = new Transaction().add(changeSignerIx);
 
@@ -915,7 +917,7 @@ describe("Tributary", () => {
     // Change the gateway fee recipient
     const changeFeeRecipientIx = await sdk.changeGatewayFeeRecipient(
       gatewayAuthority.publicKey,
-      newFeeRecipient.publicKey,
+      newFeeRecipient.publicKey
     );
     const tx = new Transaction().add(changeFeeRecipientIx);
 
@@ -957,7 +959,7 @@ describe("Tributary", () => {
         milestoneAmounts,
         milestoneTimestamps,
         0, // time-based release condition
-        Array.from(memo),
+        Array.from(memo)
       );
 
       const tx = new Transaction().add(...createMilestoneIxs);
@@ -972,10 +974,11 @@ describe("Tributary", () => {
       }
 
       // Verify milestone policy was created
-      const policies =
-        await sdk.getPaymentPoliciesByUserPayment(userPaymentPDA);
+      const policies = await sdk.getPaymentPoliciesByUserPayment(
+        userPaymentPDA
+      );
       const milestonePolicy = policies.find(
-        (p) => "milestone" in p.account.policyType,
+        (p) => "milestone" in p.account.policyType
       );
       expect(milestonePolicy).toBeDefined();
       expect(milestonePolicy!.account.policyType).toHaveProperty("milestone");
@@ -989,10 +992,11 @@ describe("Tributary", () => {
 
     test("Execute milestone payments sequentially", async () => {
       // Get the milestone policy we just created
-      const policies =
-        await sdk.getPaymentPoliciesByUserPayment(userPaymentPDA);
+      const policies = await sdk.getPaymentPoliciesByUserPayment(
+        userPaymentPDA
+      );
       const milestonePolicy = policies.find(
-        (p) => "milestone" in p.account.policyType,
+        (p) => "milestone" in p.account.policyType
       );
       expect(milestonePolicy).toBeDefined();
 
@@ -1036,7 +1040,7 @@ describe("Tributary", () => {
         pastMilestoneAmounts,
         pastMilestoneTimestamps,
         0, // time-based
-        Array.from(memo2),
+        Array.from(memo2)
       );
 
       const createTx = new Transaction().add(...createPastMilestoneIxs);
@@ -1055,14 +1059,14 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       // Execute first milestone
       await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
 
       const executeFirstIxs = await sdk.executePayment(pastPolicyPda);
@@ -1073,7 +1077,7 @@ describe("Tributary", () => {
 
       // Verify first milestone was executed
       const afterFirstBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
       const firstMilestoneAmount = 500000; // 0.5 tokens in smallest units
       expect(afterFirstBalance.value.amount).toBe(
@@ -1081,7 +1085,7 @@ describe("Tributary", () => {
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(firstMilestoneAmount) -
           BigInt(17500 /* fee */)
-        ).toString(),
+        ).toString()
       );
 
       let updatedPolicy = await sdk.getPaymentPolicy(pastPolicyPda);
@@ -1097,12 +1101,12 @@ describe("Tributary", () => {
         [newSigner],
         {
           commitment: "processed" as Commitment,
-        },
+        }
       );
 
       // Verify second milestone was executed
       const afterSecondBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
       const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
       const totalExpected =
@@ -1110,7 +1114,7 @@ describe("Tributary", () => {
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
-        ).toString(),
+        ).toString()
       );
 
       updatedPolicy = await sdk.getPaymentPolicy(pastPolicyPda);
@@ -1127,11 +1131,11 @@ describe("Tributary", () => {
           [newSigner],
           {
             commitment: "processed" as Commitment,
-          },
+          }
         );
         assert(
           false,
-          "Expected execution to fail when all milestones completed",
+          "Expected execution to fail when all milestones completed"
         );
       } catch (error: any) {
         expect(error.message).toContain("PolicyPaused.");
@@ -1162,7 +1166,7 @@ describe("Tributary", () => {
         manualMilestoneAmounts,
         manualMilestoneTimestamps,
         1, // manual approval release condition
-        Array.from(memo3),
+        Array.from(memo3)
       );
 
       const createTx = new Transaction().add(...createManualIxs);
@@ -1171,12 +1175,13 @@ describe("Tributary", () => {
       });
 
       // Get the manual milestone policy
-      const policies =
-        await sdk.getPaymentPoliciesByUserPayment(userPaymentPDA);
+      const policies = await sdk.getPaymentPoliciesByUserPayment(
+        userPaymentPDA
+      );
       const manualMilestonePolicy = policies.find(
         (p) =>
           "milestone" in p.account.policyType &&
-          p.account.policyType.milestone!.releaseCondition === 1,
+          p.account.policyType.milestone!.releaseCondition === 1
       );
       expect(manualMilestonePolicy).toBeDefined();
 
@@ -1213,7 +1218,7 @@ describe("Tributary", () => {
         maxAmountPerPeriod,
         maxChunkAmount,
         periodLengthSeconds,
-        Array.from(memo),
+        Array.from(memo)
       );
 
       const tx = new Transaction().add(...createPayAsYouGoIxs);
@@ -1230,7 +1235,7 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       // Verify policy was created
@@ -1255,21 +1260,21 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       // Update SDK to use gateway signer wallet for execution
       await sdk.updateWallet(new anchor.Wallet(newSigner));
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
 
       // Execute first payment (0.1 tokens)
       const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
       const executeFirstIxs = await sdk.executePayment(
         payAsYouGoPolicyPDA,
-        paymentAmount1,
+        paymentAmount1
       );
       const executeFirstTx = new Transaction().add(...executeFirstIxs);
       await sendAndConfirmTransaction(connection, executeFirstTx, [newSigner], {
@@ -1278,7 +1283,7 @@ describe("Tributary", () => {
 
       // Verify first payment
       const afterFirstBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
       // Account for protocol fees (100 bps = 1%) and gateway fees (250 bps = 2.5%)
       // Total fees = 3.5% = 3500 on 100000 amount, net transfer = 96500
@@ -1287,20 +1292,20 @@ describe("Tributary", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(expectedNetAmount)
-        ).toString(),
+        ).toString()
       );
 
       let updatedPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
       expect(updatedPolicy!.paymentCount).toBe(1);
       expect(
-        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber(),
+        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber()
       ).toBe(100000);
 
       // Execute second payment (0.15 tokens)
       const paymentAmount2 = new anchor.BN(150000); // 0.15 tokens
       const executeSecondIxs = await sdk.executePayment(
         payAsYouGoPolicyPDA,
-        paymentAmount2,
+        paymentAmount2
       );
       const executeSecondTx = new Transaction().add(...executeSecondIxs);
       await sendAndConfirmTransaction(
@@ -1309,12 +1314,12 @@ describe("Tributary", () => {
         [newSigner],
         {
           commitment: "processed" as Commitment,
-        },
+        }
       );
 
       // Verify second payment
       const afterSecondBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount,
+        recipientTokenAccount
       );
       // Account for fees on both payments (3.5% total = 8750 on 250000 total)
       const expectedSecondNetAmount =
@@ -1323,13 +1328,13 @@ describe("Tributary", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(expectedSecondNetAmount)
-        ).toString(),
+        ).toString()
       );
 
       updatedPolicy = await sdk.getPaymentPolicy(payAsYouGoPolicyPDA);
       expect(updatedPolicy!.paymentCount).toBe(2);
       expect(
-        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber(),
+        updatedPolicy!.policyType.payAsYouGo!.currentPeriodTotal.toNumber()
       ).toBe(250000);
     });
 
@@ -1343,7 +1348,7 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       // Update SDK to use gateway signer wallet (newSigner, not gatewayAuthority)
@@ -1355,10 +1360,10 @@ describe("Tributary", () => {
       try {
         const executeExcessiveIxs = await sdk.executePayment(
           payAsYouGoPolicyPDA,
-          excessiveAmount,
+          excessiveAmount
         );
         const executeExcessiveTx = new Transaction().add(
-          ...executeExcessiveIxs,
+          ...executeExcessiveIxs
         );
         await sendAndConfirmTransaction(
           connection,
@@ -1366,7 +1371,7 @@ describe("Tributary", () => {
           [newSigner],
           {
             commitment: "processed" as Commitment,
-          },
+          }
         );
         assert(false, "Expected payment to fail due to chunk size limit");
       } catch (error: any) {
@@ -1392,7 +1397,7 @@ describe("Tributary", () => {
         smallMaxAmountPerPeriod,
         smallMaxChunkAmount,
         periodLengthSeconds,
-        Array.from(memo2),
+        Array.from(memo2)
       );
 
       const createTx = new Transaction().add(...createSmallPayAsYouGoIxs);
@@ -1409,7 +1414,7 @@ describe("Tributary", () => {
           userPaymentPDA.toBuffer(),
           new anchor.BN(newPolicyId).toArrayLike(Buffer, "le", 4),
         ],
-        program.programId,
+        program.programId
       );
 
       // Update SDK to use gateway signer wallet (newSigner)
@@ -1419,7 +1424,7 @@ describe("Tributary", () => {
       const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
       const executeFirstIxs = await sdk.executePayment(
         smallPayAsYouGoPolicyPDA,
-        paymentAmount1,
+        paymentAmount1
       );
       const executeFirstTx = new Transaction().add(...executeFirstIxs);
       await sendAndConfirmTransaction(connection, executeFirstTx, [newSigner], {
@@ -1430,7 +1435,7 @@ describe("Tributary", () => {
       const paymentAmount2 = new anchor.BN(150000);
       const executeSecondIxs = await sdk.executePayment(
         smallPayAsYouGoPolicyPDA,
-        paymentAmount2,
+        paymentAmount2
       );
       const executeSecondTx = new Transaction().add(...executeSecondIxs);
       await sendAndConfirmTransaction(
@@ -1439,7 +1444,7 @@ describe("Tributary", () => {
         [newSigner],
         {
           commitment: "processed" as Commitment,
-        },
+        }
       );
 
       // Try third payment that would exceed period limit (0.06 tokens, total would be 0.31 > 0.3)
@@ -1447,7 +1452,7 @@ describe("Tributary", () => {
       try {
         const executeThirdIxs = await sdk.executePayment(
           smallPayAsYouGoPolicyPDA,
-          paymentAmount3,
+          paymentAmount3
         );
         const executeThirdTx = new Transaction().add(...executeThirdIxs);
         await sendAndConfirmTransaction(
@@ -1456,7 +1461,7 @@ describe("Tributary", () => {
           [newSigner],
           {
             commitment: "processed" as Commitment,
-          },
+          }
         );
         assert(false, "Expected payment to fail due to period limit");
       } catch (error: any) {
@@ -1478,7 +1483,7 @@ describe("Tributary", () => {
           new anchor.BN(0), // Invalid
           new anchor.BN(100000),
           new anchor.BN(86400),
-          Array.from(new Uint8Array(64).fill(0)),
+          Array.from(new Uint8Array(64).fill(0))
         );
         const invalidTx = new Transaction().add(...invalidIxs);
         await sendAndConfirmTransaction(connection, invalidTx, [user], {
@@ -1486,7 +1491,7 @@ describe("Tributary", () => {
         });
         assert(
           false,
-          "Expected policy creation to fail with invalid maxAmountPerPeriod",
+          "Expected policy creation to fail with invalid maxAmountPerPeriod"
         );
       } catch (error: any) {
         expect(error.message).toContain("InvalidAmount");
@@ -1501,7 +1506,7 @@ describe("Tributary", () => {
           new anchor.BN(100000),
           new anchor.BN(200000), // Invalid: chunk > period max
           new anchor.BN(86400),
-          Array.from(new Uint8Array(64).fill(0)),
+          Array.from(new Uint8Array(64).fill(0))
         );
         const invalidTx2 = new Transaction().add(...invalidIxs2);
         await sendAndConfirmTransaction(connection, invalidTx2, [user], {
@@ -1509,7 +1514,7 @@ describe("Tributary", () => {
         });
         assert(
           false,
-          "Expected policy creation to fail with invalid chunk size",
+          "Expected policy creation to fail with invalid chunk size"
         );
       } catch (error: any) {
         expect(error.message).toContain("InvalidAmount");
@@ -1524,7 +1529,7 @@ describe("Tributary", () => {
           new anchor.BN(1000000),
           new anchor.BN(100000),
           new anchor.BN(0), // Invalid
-          Array.from(new Uint8Array(64).fill(0)),
+          Array.from(new Uint8Array(64).fill(0))
         );
         const invalidTx3 = new Transaction().add(...invalidIxs3);
         await sendAndConfirmTransaction(connection, invalidTx3, [user], {
@@ -1532,7 +1537,7 @@ describe("Tributary", () => {
         });
         assert(
           false,
-          "Expected policy creation to fail with invalid period length",
+          "Expected policy creation to fail with invalid period length"
         );
       } catch (error: any) {
         expect(error.message).toContain("Invalid Interval");
