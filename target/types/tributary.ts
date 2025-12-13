@@ -56,7 +56,11 @@ export type Tributary = {
           }
         },
         {
-          "name": "newFeeRecipient"
+          "name": "newFeeRecipient",
+          "docs": [
+            "be used to derive the associated token account from. So we don't have to check anything",
+            "really, FIXME: do we?"
+          ]
         },
         {
           "name": "config",
@@ -1302,7 +1306,7 @@ export type Tributary = {
     {
       "name": "paymentFrequency",
       "docs": [
-        "Defines the frequency at which recurring payments should occur.",
+        "Defines frequency at which recurring payments should occur.",
         "Predefined intervals are provided for common use cases, with Custom",
         "allowing arbitrary intervals defined in seconds."
       ],
@@ -1512,7 +1516,7 @@ export type Tributary = {
       "name": "paymentPolicy",
       "docs": [
         "This structure connects a UserPayment (user/mint) with a Policy, a Gateway.",
-        "This is the structure that actually specifies the subscription payment as you would",
+        "This is structure that actually specifies subscription payment as you would",
         "expect from an invoice. The SDK would setup these PaymentPolicy"
       ],
       "type": {
@@ -1528,7 +1532,7 @@ export type Tributary = {
           {
             "name": "recipient",
             "docs": [
-              "Recipient who receives the payments"
+              "Recipient who receives payments"
             ],
             "type": "pubkey"
           },
@@ -1604,7 +1608,7 @@ export type Tributary = {
           {
             "name": "policyId",
             "docs": [
-              "Unique identifier for this policy within the user_payment scope"
+              "Unique identifier for this policy within user_payment scope"
             ],
             "type": "u32"
           },
@@ -1794,8 +1798,8 @@ export type Tributary = {
     {
       "name": "policyType",
       "docs": [
-        "The PolicyType enum implements the payment schemes. The initial policy",
-        "will be a subscription payment that enables the regular payment according to",
+        "The PolicyType enum implements different payment schemes. The initial policy",
+        "will be a subscription payment that enables regular payment according to",
         "a schedule.",
         "",
         "IMPORTANT: All variants MUST be exactly 128 bytes to ensure consistent account sizing",
@@ -1933,7 +1937,7 @@ export type Tributary = {
       "name": "programConfig",
       "docs": [
         "This is a unique global program configuration managed by an admin that",
-        "defines the protocol fees and potentially more."
+        "defines protocol fees and potentially more."
       ],
       "type": {
         "kind": "struct",
@@ -1998,7 +2002,7 @@ export type Tributary = {
     {
       "name": "programConfigCreated",
       "docs": [
-        "An event that is thrown when the program is initialized"
+        "An event that is thrown when program is initialized"
       ],
       "type": {
         "kind": "struct",
@@ -2028,10 +2032,7 @@ export type Tributary = {
         "Each owner/authority+mint has a unique UserPayment account.",
         "The purpose of this account is to be able to identify quickly",
         "some statistics that are valid across *all* payment policies",
-        "for an authority across a mint.",
-        "",
-        "IMPORTANT: All variants MUST be exactly 128 bytes to ensure consistent account sizing",
-        "and enable future enum variant additions without breaking existing accounts."
+        "for an authority across a mint."
       ],
       "type": {
         "kind": "struct",
@@ -2046,14 +2047,14 @@ export type Tributary = {
           {
             "name": "tokenAccount",
             "docs": [
-              "Associated token account for the payment token"
+              "Associated token account for payment token"
             ],
             "type": "pubkey"
           },
           {
             "name": "tokenMint",
             "docs": [
-              "Mint address of the token used for payments"
+              "Mint address of token used for payments"
             ],
             "type": "pubkey"
           },

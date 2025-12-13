@@ -14,7 +14,9 @@ pub struct ChangeGatewayFeeRecipient<'info> {
     )]
     pub gateway: Account<'info, PaymentGateway>,
 
-    /// CHECK: The new fee recipient that will receive gateway fees
+    /// CHECK: The new fee recipient that will receive gateway fees. This is a public key that will
+    /// be used to derive the associated token account from. So we don't have to check anything
+    /// really, FIXME: do we?
     pub new_fee_recipient: UncheckedAccount<'info>,
 
     #[account(
