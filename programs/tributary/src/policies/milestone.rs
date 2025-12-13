@@ -40,10 +40,7 @@ pub fn validate_milestone_policy(
         // only on mainnet, simplifies testing
         let current_time = Clock::get()?.unix_timestamp;
         for timestamp in _milestone_timestamps.iter().take(total_milestones as usize) {
-            require!(
-                *timestamp > current_time,
-                TributaryError::InvalidInterval
-            );
+            require!(*timestamp > current_time, TributaryError::InvalidInterval);
         }
     }
 

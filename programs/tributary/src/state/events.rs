@@ -90,4 +90,3 @@ pub struct PaymentGatewayDeleted {
     pub authority: Pubkey,
     pub name: [u8; 32],
 }
-
