@@ -963,15 +963,9 @@ describe("Tributary", () => {
       );
 
       const tx = new Transaction().add(...createMilestoneIxs);
-      try {
-        await sendAndConfirmTransaction(connection, tx, [user], {
-          commitment: "processed" as Commitment,
-        });
-        console.log("Milestone policy creation succeeded");
-      } catch (error) {
-        console.log("Milestone policy creation failed:", error);
-        throw error;
-      }
+      await sendAndConfirmTransaction(connection, tx, [user], {
+        commitment: "processed" as Commitment,
+      });
 
       // Verify milestone policy was created
       const policies = await sdk.getPaymentPoliciesByUserPayment(
@@ -1027,7 +1021,7 @@ describe("Tributary", () => {
       ];
       const pastMilestoneTimestamps = [
         new anchor.BN(pastTime), // already due
-        new anchor.BN(pastTime + 3600), // 1 hour later
+        new anchor.BN(pastTime + 3600 / 2), // 0.5 hours later
       ];
 
       const memo2 = new Uint8Array(64).fill(0);
