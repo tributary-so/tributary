@@ -11,11 +11,6 @@ on:
       - "Cargo.lock"
       - ".github/workflows/*program*"
   workflow_dispatch:
-    inputs:
-      program:
-        description: "Program to test"
-        required: true
-        default: "recurring_payments"
 
 jobs:
   test:
@@ -25,6 +20,13 @@ jobs:
       - name: Checkout source repository
         uses: actions/checkout@v4
 
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: ./pnpm-lock.yaml
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -33,13 +35,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Use Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: "pnpm"
-          cache-dependency-path: ./pnpm-lock.yaml
+      - name: Build SDK
+        working-directory: ./sdk
+        run: pnpm run build
 
-      - uses: ./.github/workflows/anchor-test.yml
+      - uses: solana-developers/github-actions/extract-versions@v0.2.5
+        id: versions
+
+      - uses: solana-developers/github-actions/setup-all@v0.2.5
         with:
-          program: "tributary"
+          solana_version: ${{ steps.versions.outputs.solana_version }}
+          anchor_version: ${{ steps.versions.outputs.anchor_version }}
+          node_version: 22
+
+      - uses: solana-developers/github-actions/run-tests@v0.2.5
+        with:
+          solana_version: ${{ steps.versions.outputs.solana_version }}
+          anchor_version: ${{ steps.versions.outputs.anchor_version }}
+          program: tributary
