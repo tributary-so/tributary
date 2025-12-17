@@ -275,12 +275,21 @@ class UsageBasedBilling {
 
 Track pay-as-you-go usage:
 
-````typescript
+```typescript
 const policy = await sdk.getPaymentPolicy(policyPDA);
 const payAsYouGo = policy!.policyType.payAsYouGo;
 
-console.log("Period remaining:", payAsYouGo.maxAmountPerPeriod.toNumber() - payAsYouGo.currentPeriodTotal.toNumber());
-console.log("Period ends:", new Date((payAsYouGo.currentPeriodStart.toNumber() + payAsYouGo.periodLengthSeconds.toNumber()) * 1000));
-```</content>
-<parameter name="filePath">docs/docs/pay-as-you-go.md
-````
+console.log(
+  "Period remaining:",
+  payAsYouGo.maxAmountPerPeriod.toNumber() -
+    payAsYouGo.currentPeriodTotal.toNumber()
+);
+console.log(
+  "Period ends:",
+  new Date(
+    (payAsYouGo.currentPeriodStart.toNumber() +
+      payAsYouGo.periodLengthSeconds.toNumber()) *
+      1000
+  )
+);
+```
