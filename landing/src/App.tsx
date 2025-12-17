@@ -1325,6 +1325,15 @@ function App() {
                 </li>
                 <li>
                   <a
+                    href="https://sdk.tributary.so"
+                    className="hover:text-electric transition-colors flex items-center gap-2"
+                  >
+                    <span className="grayscale opacity-60">📚 </span> SDK
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a
                     href="https://app.tributary.so"
                     className="hover:text-electric transition-colors flex items-center gap-2"
                   >
