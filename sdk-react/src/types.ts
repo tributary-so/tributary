@@ -30,6 +30,55 @@ export interface CreateSubscriptionResult {
   instructions: any[];
 }
 
+export interface CreateMilestoneParams {
+  milestoneAmounts: BN[];
+  milestoneTimestamps: BN[];
+  releaseCondition: number; // 0=time-based, 1=manual approval, 2=automatic
+  token: PublicKey;
+  recipient: PublicKey;
+  gateway: PublicKey;
+  memo?: string;
+  approvalAmount?: BN;
+  executeImmediately?: boolean;
+}
+
+export interface CreateMilestoneResult {
+  txId: string;
+  instructions: any[];
+}
+
+export interface UseCreateMilestoneReturn {
+  createMilestone: (
+    params: CreateMilestoneParams
+  ) => Promise<CreateMilestoneResult>;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface CreatePayAsYouGoParams {
+  maxAmountPerPeriod: BN;
+  maxChunkAmount: BN;
+  periodLengthSeconds: BN;
+  token: PublicKey;
+  recipient: PublicKey;
+  gateway: PublicKey;
+  memo?: string;
+  approvalAmount?: BN;
+}
+
+export interface CreatePayAsYouGoResult {
+  txId: string;
+  instructions: any[];
+}
+
+export interface UseCreatePayAsYouGoReturn {
+  createPayAsYouGo: (
+    params: CreatePayAsYouGoParams
+  ) => Promise<CreatePayAsYouGoResult>;
+  loading: boolean;
+  error: string | null;
+}
+
 export interface UseCreateSubscriptionReturn {
   createSubscription: (
     params: CreateSubscriptionParams
