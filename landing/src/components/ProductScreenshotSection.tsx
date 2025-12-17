@@ -124,40 +124,6 @@ const ProductScreenshotSection: React.FC = () => {
             </motion.div>
           </motion.div>
         </motion.div>
-
-        <motion.div
-          className="bg-neutral-50 rounded-2xl p-8 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
-        >
-          <h3 className="text-2xl font-bold mb-4">
-            Ready to explore the dashboard?
-          </h3>
-          <p className="text-neutral-600 mb-6 max-w-2xl mx-auto">
-            Visit the live Tributary app to see how recurring payments work on
-            Solana, or dive into the documentation to start building your own
-            integration.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <motion.a
-              href="https://app.tributary.so"
-              className="btn-primary"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Open Live Dashboard
-            </motion.a>
-            <motion.a
-              href="https://docs.tributary.so"
-              className="btn-secondary"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Read Documentation
-            </motion.a>
-          </div>
-        </motion.div>
       </div>
     </section>
   );

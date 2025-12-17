@@ -1,15 +1,29 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import logo from "./assets/logo.png";
 import GetStartedSection from "./components/GetStartedSection";
 import ProductScreenshotSection from "./components/ProductScreenshotSection";
 
 function App() {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   useEffect(() => {
     // No longer using feather icons or AOS, so these can be removed or replaced with modern alternatives
     // AOS.init();
     // feather.replace();
   }, []);
+
+  /**
+   * Scrolls smoothly to a section by ID
+   * @param id - The section ID to scroll to (without #)
+   */
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setIsDropdownOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -28,14 +42,68 @@ function App() {
             <img src={logo} alt="Tributary Logo" className="h-10 w-10" />
             <span className="gradient-text font-bold text-2xl">Tributary</span>
           </motion.div>
-          <nav className="hidden md:flex space-x-8">
-            <motion.a
-              href="#features"
-              className="text-neutral-700 hover:text-primary transition-colors font-medium"
-              whileHover={{ scale: 1.1 }}
+          <nav className="hidden md:flex space-x-8 items-center">
+            {/* Solutions Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setIsDropdownOpen(true)}
+              onMouseLeave={() => setIsDropdownOpen(false)}
             >
-              Features
-            </motion.a>
+              <motion.button
+                className="text-neutral-700 hover:text-primary transition-colors font-medium flex items-center gap-1"
+                whileHover={{ scale: 1.1 }}
+              >
+                Solutions
+                <span
+                  className={`text-xs transition-transform duration-200 ${
+                    isDropdownOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  ▼
+                </span>
+              </motion.button>
+
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-neutral-200 py-2 z-50"
+                  >
+                    <button
+                      onClick={() => scrollToSection("subscriptions")}
+                      className="w-full text-left px-5 py-3 hover:bg-neutral-50 transition-colors text-neutral-700 hover:text-primary font-medium"
+                    >
+                      <div className="text-base">🔄 Subscriptions</div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        Recurring payments
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => scrollToSection("milestones")}
+                      className="w-full text-left px-5 py-3 hover:bg-neutral-50 transition-colors text-neutral-700 hover:text-primary font-medium"
+                    >
+                      <div className="text-base">🎯 Milestone Payments</div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        Pay as work completes
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => scrollToSection("payasyougo")}
+                      className="w-full text-left px-5 py-3 hover:bg-neutral-50 transition-colors text-neutral-700 hover:text-primary font-medium"
+                    >
+                      <div className="text-base">📈 Pay-as-you-go</div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        Usage-based billing
+                      </div>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <motion.a
               href="#how-it-works"
               className="text-neutral-700 hover:text-primary transition-colors font-medium"
@@ -135,58 +203,42 @@ function App() {
       {/* Product Screenshot Section */}
       <ProductScreenshotSection />
 
-      {/* Trust & Social Proof */}
       <motion.section
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        className="py-20 px-4 bg-neutral-100"
+        className="bg-neutral-50 rounded-2xl p-8 text-center"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 1.2 }}
       >
-        <div className="max-w-7xl mx-auto text-center">
-          <motion.p
-            className="text-neutral-600 text-xl mb-12"
-            initial={{ y: 20, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
+        <h3 className="text-2xl font-bold mb-4">
+          Ready to explore the dashboard?
+        </h3>
+        <p className="text-neutral-600 mb-6 max-w-2xl mx-auto">
+          Visit the live Tributary app to see how recurring payments work on
+          Solana, or dive into the documentation to start building your own
+          integration.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.a
+            href="https://app.tributary.so"
+            className="btn-primary"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            Trusted by innovative projects and developers on Solana
-          </motion.p>
-          <motion.div
-            className="flex flex-wrap justify-center items-center gap-x-20 gap-y-10"
-            initial={{ y: 30, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            Open Live Dashboard
+          </motion.a>
+          <motion.a
+            href="https://docs.tributary.so"
+            className="btn-secondary"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <motion.span
-              className="text-primary font-bold text-2xl"
-              whileHover={{ scale: 1.1 }}
-            >
-              Solana
-            </motion.span>
-            <motion.span
-              className="text-primary font-bold text-2xl"
-              whileHover={{ scale: 1.1 }}
-            >
-              DeFi Protocols
-            </motion.span>
-            <motion.span
-              className="text-primary font-bold text-2xl"
-              whileHover={{ scale: 1.1 }}
-            >
-              SaaS Platforms
-            </motion.span>
-            <motion.span
-              className="text-primary font-bold text-2xl"
-              whileHover={{ scale: 1.1 }}
-            >
-              Content Creators
-            </motion.span>
-          </motion.div>
+            Read Documentation
+          </motion.a>
         </div>
       </motion.section>
 
-      {/* Benefits Section */}
-      <section id="features" className="py-24 px-4 bg-white">
+      {/* Payment Solutions Section */}
+      <section id="payment-solutions" className="py-24 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
           <motion.div
             className="text-center mb-20"
@@ -195,113 +247,220 @@ function App() {
             transition={{ duration: 0.8 }}
           >
             <h2 className="text-5xl md:text-6xl font-bold mb-8 gradient-text">
-              Built for the future of Web3 payments
+              Choose Your Payment Model
             </h2>
             <p className="text-xl text-neutral-600 max-w-4xl mx-auto leading-relaxed">
-              Everything you need to implement subscription payments that users
-              actually want to use, with unparalleled transparency and control.
+              Tributary supports three flexible payment types to fit any
+              business model
             </p>
           </motion.div>
+
           <div className="grid md:grid-cols-3 gap-12">
+            {/* Subscriptions */}
             <motion.div
-              className="card text-center"
+              id="subscriptions"
+              className="card"
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               whileHover={{ y: -10 }}
             >
-              <div className="text-electric mb-8 text-6xl">⚡</div>
-              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
-                Truly Automated
+              <div className="text-6xl mb-6 text-center">🔄</div>
+              <h3 className="text-3xl font-bold mb-4 text-neutral-900 text-center">
+                Subscriptions
               </h3>
-              <p className="text-neutral-600 leading-relaxed">
-                Set up once and forget. Payments execute automatically according
-                to smart contract rules users agreed to, without manual
-                intervention.
+              <p className="text-lg font-semibold text-primary mb-6 text-center">
+                Predictable recurring payments on autopilot
               </p>
+              <p className="text-neutral-600 mb-8 leading-relaxed">
+                Set it and forget it. Fixed payments automatically charge at
+                regular intervals—daily, weekly, monthly, or custom schedules.
+                Perfect for services with consistent pricing.
+              </p>
+
+              <div className="mb-8">
+                <h4 className="font-bold text-neutral-900 mb-4 text-lg">
+                  Key Benefits
+                </h4>
+                <ul className="space-y-2 text-neutral-700">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Automated recurring charges</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Flexible intervals (daily to yearly)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Optional renewal limits</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>One-time setup</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6 border-t border-neutral-200">
+                <h4 className="font-bold text-neutral-900 mb-3 text-sm uppercase tracking-wide">
+                  Use Cases
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    SaaS subscriptions
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Content memberships
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Recurring donations
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Software licenses
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    API Providers
+                  </span>
+                </div>
+              </div>
             </motion.div>
+
+            {/* Milestone Payments */}
             <motion.div
-              className="card text-center"
+              id="milestones"
+              className="card"
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               whileHover={{ y: -10 }}
             >
-              <div className="text-accent mb-8 text-6xl">🔒</div>
-              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
-                Non-Custodial & Secure
+              <div className="text-6xl mb-6 text-center">🎯</div>
+              <h3 className="text-3xl font-bold mb-4 text-neutral-900 text-center">
+                Milestone Payments
               </h3>
-              <p className="text-neutral-600 leading-relaxed">
-                Built on Solana with delegated token permissions. Users maintain
-                full custody of their funds with transparent, auditable smart
-                contracts.
+              <p className="text-lg font-semibold text-primary mb-6 text-center">
+                Pay as work gets done, not by the clock
               </p>
+              <p className="text-neutral-600 mb-8 leading-relaxed">
+                Break projects into up to 4 milestones with custom amounts and
+                release conditions. Payments unlock when deliverables are
+                complete—time-based, manual approval, or automatic.
+              </p>
+
+              <div className="mb-8">
+                <h4 className="font-bold text-neutral-900 mb-4 text-lg">
+                  Key Benefits
+                </h4>
+                <ul className="space-y-2 text-neutral-700">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Up to 4 project milestones</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Variable amounts per phase</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Flexible release conditions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Built-in escrow security</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6 border-t border-neutral-200">
+                <h4 className="font-bold text-neutral-900 mb-3 text-sm uppercase tracking-wide">
+                  Use Cases
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Freelance projects
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Software development
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Consulting engagements
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Content series
+                  </span>
+                </div>
+              </div>
             </motion.div>
+
+            {/* Pay-as-you-go */}
             <motion.div
-              className="card text-center"
+              id="payasyougo"
+              className="card"
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
               whileHover={{ y: -10 }}
             >
-              <div className="text-primary mb-8 text-6xl">🚀</div>
-              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
-                Lightning Fast & Low Cost
+              <div className="text-6xl mb-6 text-center">📈</div>
+              <h3 className="text-3xl font-bold mb-4 text-neutral-900 text-center">
+                Pay-as-you-go
               </h3>
-              <p className="text-neutral-600 leading-relaxed">
-                Leverage Solana's speed and sub-cent transaction costs. Instant
-                payment processing perfect for micro-subscriptions and global
-                reach.
+              <p className="text-lg font-semibold text-primary mb-6 text-center">
+                Only pay for what you actually use
               </p>
-            </motion.div>
-            <motion.div
-              className="card text-center"
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              whileHover={{ y: -10 }}
-            >
-              <div className="text-electric mb-8 text-6xl">💻</div>
-              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
-                Developer First
-              </h3>
-              <p className="text-neutral-600 leading-relaxed">
-                Simple APIs, comprehensive SDKs (TypeScript, React), and
-                detailed documentation. Integrate subscription payments in
-                minutes, not weeks.
+              <p className="text-neutral-600 mb-8 leading-relaxed">
+                Usage-based billing with smart limits. Providers claim funds as
+                services are consumed, within your predefined budget. Periods
+                reset automatically—no surprises.
               </p>
-            </motion.div>
-            <motion.div
-              className="card text-center"
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              whileHover={{ y: -10 }}
-            >
-              <div className="text-accent mb-8 text-6xl">⚙️</div>
-              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
-                Flexible Payment Policies
-              </h3>
-              <p className="text-neutral-600 leading-relaxed">
-                Support multiple payment types: subscriptions, installments,
-                usage-based billing, and more. Adapt to any Web3 business model.
-              </p>
-            </motion.div>
-            <motion.div
-              className="card text-center"
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              whileHover={{ y: -10 }}
-            >
-              <div className="text-primary mb-8 text-6xl">🤝</div>
-              <h3 className="text-2xl font-bold mb-6 text-neutral-900">
-                Full User Control
-              </h3>
-              <p className="text-neutral-600 leading-relaxed">
-                Users can pause, modify, or cancel subscriptions anytime.
-                Complete transparency with payment history and upcoming charges.
-              </p>
+
+              <div className="mb-8">
+                <h4 className="font-bold text-neutral-900 mb-4 text-lg">
+                  Key Benefits
+                </h4>
+                <ul className="space-y-2 text-neutral-700">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Usage-based charges</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Period and chunk limits</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Automatic resets</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent text-lg flex-shrink-0">✓</span>
+                    <span>Budget protection</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6 border-t border-neutral-200">
+                <h4 className="font-bold text-neutral-900 mb-3 text-sm uppercase tracking-wide">
+                  Use Cases
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    AI/LLM services
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    API consumption
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Cloud resources
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    Variable usage apps
+                  </span>
+                  <span className="text-xs bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">
+                    API Providers
+                  </span>
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -677,6 +836,7 @@ function App() {
       </section>
 
       {/* Testimonials Section */}
+      {/* Trust & Social Proof */}
       <section id="testimonials" className="py-24 px-4 bg-neutral-100">
         <div className="max-w-7xl mx-auto text-center">
           <motion.h2
@@ -799,6 +959,55 @@ function App() {
               </div>
             </motion.div>
           </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className="pt-20 px-4 bg-neutral-100"
+          >
+            <div className="max-w-7xl mx-auto text-center">
+              <motion.p
+                className="text-neutral-600 text-xl mb-12"
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6 }}
+              >
+                Trusted by innovative projects and developers on Solana
+              </motion.p>
+              <motion.div
+                className="flex flex-wrap justify-center items-center gap-x-20 gap-y-10"
+                initial={{ y: 30, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <motion.span
+                  className="text-primary font-bold text-2xl"
+                  whileHover={{ scale: 1.1 }}
+                >
+                  Solana
+                </motion.span>
+                <motion.span
+                  className="text-primary font-bold text-2xl"
+                  whileHover={{ scale: 1.1 }}
+                >
+                  DeFi Protocols
+                </motion.span>
+                <motion.span
+                  className="text-primary font-bold text-2xl"
+                  whileHover={{ scale: 1.1 }}
+                >
+                  SaaS Platforms
+                </motion.span>
+                <motion.span
+                  className="text-primary font-bold text-2xl"
+                  whileHover={{ scale: 1.1 }}
+                >
+                  Content Creators
+                </motion.span>
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
