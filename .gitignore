@@ -8,3 +8,6 @@ test-ledger
 
 */lib
 */dist
+
+# bv (beads viewer) local config and caches
+.bv/
