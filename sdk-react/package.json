@@ -1,6 +1,6 @@
 {
   "name": "@tributary-so/sdk-react",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "React hooks and utilities for Tributary recurring payments",
   "scripts": {
