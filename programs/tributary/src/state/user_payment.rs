@@ -14,9 +14,6 @@ pub struct UserPayment {
     pub token_mint: Pubkey,
     /// Number of active payment policies for this user/mint combination
     pub active_policies_count: u32,
-    /// Total number of policies ever created for this user/mint combination
-    /// This field only increases and is used to prevent policy ID reuse
-    pub created_policies_count: u32,
     /// Unix timestamp when account was created
     pub created_at: i64,
     /// Unix timestamp when account was last updated
@@ -25,6 +22,9 @@ pub struct UserPayment {
     pub is_active: bool,
     /// PDA bump seed for address derivation
     pub bump: u8,
+    /// Total number of policies ever created for this user/mint combination
+    /// This field only increases and is used to prevent policy ID reuse
+    pub created_policies_count: u32,
     /// Reserved space for future extensions
     pub padding: [u8; 252],
 }

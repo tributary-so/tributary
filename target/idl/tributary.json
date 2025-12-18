@@ -2060,14 +2060,6 @@
             "type": "u32"
           },
           {
-            "name": "created_policies_count",
-            "docs": [
-              "Total number of policies ever created for this user/mint combination",
-              "This field only increases and is used to prevent policy ID reuse"
-            ],
-            "type": "u32"
-          },
-          {
             "name": "created_at",
             "docs": [
               "Unix timestamp when account was created"
@@ -2094,6 +2086,14 @@
               "PDA bump seed for address derivation"
             ],
             "type": "u8"
+          },
+          {
+            "name": "created_policies_count",
+            "docs": [
+              "Total number of policies ever created for this user/mint combination",
+              "This field only increases and is used to prevent policy ID reuse"
+            ],
+            "type": "u32"
           },
           {
             "name": "padding",

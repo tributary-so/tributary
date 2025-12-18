@@ -2066,14 +2066,6 @@ export type Tributary = {
             "type": "u32"
           },
           {
-            "name": "createdPoliciesCount",
-            "docs": [
-              "Total number of policies ever created for this user/mint combination",
-              "This field only increases and is used to prevent policy ID reuse"
-            ],
-            "type": "u32"
-          },
-          {
             "name": "createdAt",
             "docs": [
               "Unix timestamp when account was created"
@@ -2100,6 +2092,14 @@ export type Tributary = {
               "PDA bump seed for address derivation"
             ],
             "type": "u8"
+          },
+          {
+            "name": "createdPoliciesCount",
+            "docs": [
+              "Total number of policies ever created for this user/mint combination",
+              "This field only increases and is used to prevent policy ID reuse"
+            ],
+            "type": "u32"
           },
           {
             "name": "padding",
