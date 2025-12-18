@@ -9,6 +9,7 @@ import {
   type PolicyType,
   type PaymentFrequency,
   createMemoBuffer,
+  UserPayment,
 } from "@tributary-so/sdk";
 
 function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
@@ -25,6 +26,49 @@ function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
   } catch (error) {
     console.error("Error reading keypair:", error);
     throw error;
+  }
+}
+
+async function dumpUserPayments(
+  sdk: TributarySDK,
+  userPayments: {
+    publicKey: PublicKey;
+    account: UserPayment;
+  }[]
+) {
+  for (const userPayment of userPayments) {
+    const policies = await sdk.getPaymentPoliciesByUser(userPayment.publicKey);
+
+    // Group by userPayment
+    const grouped: Record<
+      string,
+      Array<{ publicKey: PublicKey; account: any }>
+    > = {};
+    for (const policy of policies) {
+      const userPaymentStr = policy.account.userPayment.toString();
+      if (!grouped[userPaymentStr]) {
+        grouped[userPaymentStr] = [];
+      }
+      grouped[userPaymentStr].push(policy);
+    }
+
+    // Sort user payments
+    const sortedUserPayments = Object.keys(grouped).sort();
+
+    for (const userPaymentStr of sortedUserPayments) {
+      console.log(`User Payment: ${userPaymentStr}`);
+      console.log(` Created at ${userPayment.account.createdAt.toString()}`);
+      console.log(
+        ` Policies ${userPayment.account.activePoliciesCount.toString()}/${userPayment.account.createdPoliciesCount.toString()}`
+      );
+      for (const policy of grouped[userPaymentStr]) {
+        console.log(
+          `  Policy ${policy.account.policyId}: Status ${
+            Object.keys(policy.account.status)[0]
+          }, Recipient ${policy.account.recipient.toString()}, Gateway ${policy.account.gateway.toString()}`
+        );
+      }
+    }
   }
 }
 
@@ -384,6 +428,10 @@ program
       for (const user of users) {
         console.log(`User Payment: ${user.publicKey.toString()}`);
         console.log(`Owner ${user.account.owner.toString()}`);
+        console.log(
+          `Policies ${user.account.activePoliciesCount.toString()}/${user.account.createdPoliciesCount.toString()}`
+        );
+        console.log(`Created at ${user.account.createdAt.toString()}`);
       }
     } catch (error) {
       console.error("Error listing policies:", error);
@@ -451,38 +499,7 @@ program
 
       const owner = new PublicKey(options.owner);
       const userPayments = await sdk.getAllUserPaymentsByOwner(owner);
-      for (const userPayment of userPayments) {
-        const policies = await sdk.getPaymentPoliciesByUser(
-          userPayment.publicKey
-        );
-
-        // Group by userPayment
-        const grouped: Record<
-          string,
-          Array<{ publicKey: PublicKey; account: any }>
-        > = {};
-        for (const policy of policies) {
-          const userPaymentStr = policy.account.userPayment.toString();
-          if (!grouped[userPaymentStr]) {
-            grouped[userPaymentStr] = [];
-          }
-          grouped[userPaymentStr].push(policy);
-        }
-
-        // Sort user payments
-        const sortedUserPayments = Object.keys(grouped).sort();
-
-        for (const userPaymentStr of sortedUserPayments) {
-          console.log(`User Payment: ${userPaymentStr}`);
-          for (const policy of grouped[userPaymentStr]) {
-            console.log(
-              `  Policy ${policy.account.policyId}: Status ${
-                Object.keys(policy.account.status)[0]
-              }, Recipient ${policy.account.recipient.toString()}`
-            );
-          }
-        }
-      }
+      await dumpUserPayments(sdk, userPayments);
     } catch (error) {
       console.error("Error listing policies:", error);
       process.exit(1);
@@ -500,38 +517,7 @@ program
       );
 
       const userPayments = await sdk.getAllUserPayments();
-      for (const userPayment of userPayments) {
-        const policies = await sdk.getPaymentPoliciesByUser(
-          userPayment.publicKey
-        );
-
-        // Group by userPayment
-        const grouped: Record<
-          string,
-          Array<{ publicKey: PublicKey; account: any }>
-        > = {};
-        for (const policy of policies) {
-          const userPaymentStr = policy.account.userPayment.toString();
-          if (!grouped[userPaymentStr]) {
-            grouped[userPaymentStr] = [];
-          }
-          grouped[userPaymentStr].push(policy);
-        }
-
-        // Sort user payments
-        const sortedUserPayments = Object.keys(grouped).sort();
-
-        for (const userPaymentStr of sortedUserPayments) {
-          console.log(`User Payment: ${userPaymentStr}`);
-          for (const policy of grouped[userPaymentStr]) {
-            console.log(
-              `  Policy ${policy.account.policyId}: Status ${
-                Object.keys(policy.account.status)[0]
-              }, Recipient ${policy.account.recipient.toString()}, Gateway ${policy.account.gateway.toString()}`
-            );
-          }
-        }
-      }
+      await dumpUserPayments(sdk, userPayments);
     } catch (error) {
       console.error("Error listing policies:", error);
       process.exit(1);
