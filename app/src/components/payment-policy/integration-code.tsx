@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { SubscriptionButton, SubscriptionButtonWithCode, PaymentInterval } from '@tributary-so/sdk-react'
+import {
+  SubscriptionButton,
+  SubscriptionButtonWithCode,
+  PaymentInterval,
+  MilestoneButton,
+  PayAsYouGoButton,
+} from '@tributary-so/sdk-react'
 import { Copy, Check } from '../../icons'
 import { PaymentPolicyFormData } from './payment-policy-form'
 import { getTokenPrecisionAtom } from '@/lib/token-store'
@@ -44,7 +50,7 @@ function getValidatedFormData(formData: PaymentPolicyFormData, getTokenPrecision
   const frequency = formData.frequency || 'weekly'
   const intervalSeconds = parseInt(formData.intervalSeconds) || 604800 // 1 week default
 
-  return { tokenMint, recipient, gateway, amount, memo, frequency, intervalSeconds }
+  return { tokenMint, recipient, gateway, amount, memo, frequency, intervalSeconds, formData }
 }
 
 function getPaymentInterval(
@@ -78,7 +84,10 @@ export default function IntegrationCode({ formData }: IntegrationCodeProps) {
   const validated = getValidatedFormData(formData, getTokenPrecision)
   const { interval, customInterval } = getPaymentInterval(validated.frequency, validated.intervalSeconds)
 
-  const jsCode = `import { SubscriptionButton, PaymentInterval } from '@tributary-so/sdk-react'
+  const generateCode = () => {
+    switch (validated.formData.policyType) {
+      case 'subscription':
+        return `import { SubscriptionButton, PaymentInterval } from '@tributary-so/sdk-react'
 import { PaymentFrequency } from '@tributary-so/sdk'
 import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
@@ -88,17 +97,75 @@ import { BN } from '@coral-xyz/anchor'
   token={new PublicKey('${validated.tokenMint}')}
   recipient={new PublicKey('${validated.recipient}')}
   gateway={new PublicKey('${validated.gateway}')}
-  maxRenewals={12}
-  interval={PaymentInterval.${capitalizeFirst(formData.frequency)}}
-  ${formData.frequency == 'custom' ? `custom_interval={${validated.intervalSeconds}}\r\n  ` : ''}memo="${
-    validated.memo
-  }"
-  label="Subscribe for $${parseFloat(formData.amount) || 10}/${validated.frequency}"
+  maxRenewals={${validated.formData.maxRenewals || '12'}}
+  interval={PaymentInterval.${capitalizeFirst(validated.formData.frequency)}
+  ${validated.formData.frequency == 'custom' ? `custom_interval={${validated.intervalSeconds}}\r\n  ` : ''}memo="${
+          validated.memo
+        }"
+  label="Subscribe for $${parseFloat(validated.formData.amount) || 10}/${validated.formData.frequency}"
   executeImmediately={true}
   className="bg-blue-600 hover:bg-blue-700 text-white"
   onSuccess={handleSuccess}
   onError={handleError}
 />`
+
+      case 'milestone': {
+        const milestoneAmounts = validated.formData.milestoneAmounts
+          .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
+          .map((amount) => parseFloat(amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint)))
+        const milestoneTimestamps = validated.formData.milestoneTimestamps
+          .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
+          .map((ts) => parseInt(ts || Math.floor(Date.now() / 1000).toString()))
+
+        return `import { MilestoneButton } from '@tributary-so/sdk-react'
+import { PublicKey } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
+
+<MilestoneButton
+  milestoneAmounts={[${milestoneAmounts.map((a) => `new BN(${a})`).join(', ')}]}
+  milestoneTimestamps={[${milestoneTimestamps.map((ts) => `new BN(${ts})`).join(', ')}]}
+  releaseCondition={${validated.formData.releaseCondition}}
+  token={new PublicKey('${validated.tokenMint}')}
+  recipient={new PublicKey('${validated.recipient}')}
+  gateway={new PublicKey('${validated.gateway}')}
+  memo="${validated.memo}"
+  label="Create Milestone Payment"
+  executeImmediately={true}
+  className="bg-blue-600 hover:bg-blue-700 text-white"
+  onSuccess={handleSuccess}
+  onError={handleError}
+/>`
+      }
+
+      case 'payasyougo':
+        return `import { PayAsYouGoButton } from '@tributary-so/sdk-react'
+import { PublicKey } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
+
+<PayAsYouGoButton
+  maxAmountPerPeriod={new BN(${
+    parseFloat(validated.formData.maxAmountPerPeriod || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
+  })}
+  maxChunkAmount={new BN(${
+    parseFloat(validated.formData.maxChunkAmount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
+  })}
+  periodLengthSeconds={new BN(${validated.formData.periodLengthSeconds || '2592000'})}
+  token={new PublicKey('${validated.tokenMint}')}
+  recipient={new PublicKey('${validated.recipient}')}
+  gateway={new PublicKey('${validated.gateway}')}
+  memo="${validated.memo}"
+  label="Create Pay-as-you-go"
+  className="bg-blue-600 hover:bg-blue-700 text-white"
+  onSuccess={handleSuccess}
+  onError={handleError}
+/>`
+
+      default:
+        return '// Invalid policy type'
+    }
+  }
+
+  const jsCode = generateCode()
   const copyCode = (code: string, type: string) => {
     navigator.clipboard.writeText(code)
     setCopiedCode(type)
@@ -110,40 +177,116 @@ import { BN } from '@coral-xyz/anchor'
       <p className="text-sm text-gray-600">Copy/Paste the react code below to get your own custom button!</p>
 
       <div className="flex gap-6 justify-center">
-        {connected ? (
-          <SubscriptionButton
-            amount={validated.amount}
-            token={new PublicKey(validated.tokenMint)}
-            recipient={new PublicKey(validated.recipient)}
-            gateway={new PublicKey(validated.gateway)}
-            maxRenewals={12}
-            interval={interval}
-            custom_interval={customInterval}
-            memo={validated.memo}
-            label={`➤ Wallet for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
-            executeImmediately={true}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-            radius="md"
-            size="md"
-            // onSuccess={handleSuccess}
-            // onError={handleError}
-          />
-        ) : (
-          <WalletMultiButton />
-        )}
-        <SubscriptionButtonWithCode
-          amount={validated.amount}
-          token={new PublicKey(validated.tokenMint)}
-          gateway={new PublicKey(validated.gateway)}
-          maxRenewals={12}
-          interval={interval}
-          custom_interval={customInterval}
-          memo={validated.memo}
-          label={`ılıılııl ActionCode for ${parseFloat(formData.amount) || 10}/${validated.frequency}`}
-          executeImmediately={true}
-          radius="md"
-          size="md"
-        />
+        {connected &&
+          (() => {
+            switch (validated.formData.policyType) {
+              case 'subscription':
+                return (
+                  <>
+                    <SubscriptionButton
+                      amount={validated.amount}
+                      token={new PublicKey(validated.tokenMint)}
+                      recipient={new PublicKey(validated.recipient)}
+                      gateway={new PublicKey(validated.gateway)}
+                      maxRenewals={parseInt(validated.formData.maxRenewals) || 12}
+                      interval={interval}
+                      custom_interval={customInterval}
+                      memo={validated.memo}
+                      label={`➤ Subscribe for ${parseFloat(validated.formData.amount) || 10}/${
+                        validated.formData.frequency
+                      }`}
+                      executeImmediately={true}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      radius="md"
+                      size="md"
+                      // onSuccess={handleSuccess}
+                      // onError={handleError}
+                    />
+                    <SubscriptionButtonWithCode
+                      amount={validated.amount}
+                      token={new PublicKey(validated.tokenMint)}
+                      gateway={new PublicKey(validated.gateway)}
+                      maxRenewals={parseInt(validated.formData.maxRenewals) || 12}
+                      interval={interval}
+                      custom_interval={customInterval}
+                      memo={validated.memo}
+                      label={`ılıılııl ActionCode for ${parseFloat(validated.formData.amount) || 10}/${
+                        validated.formData.frequency
+                      }`}
+                      executeImmediately={true}
+                      radius="md"
+                      size="md"
+                    />
+                  </>
+                )
+
+              case 'milestone': {
+                const milestoneAmounts = validated.formData.milestoneAmounts
+                  .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
+                  .map(
+                    (amount) =>
+                      new BN(parseFloat(amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))),
+                  )
+                const milestoneTimestamps = validated.formData.milestoneTimestamps
+                  .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
+                  .map((ts) => new BN(parseInt(ts || Math.floor(Date.now() / 1000).toString())))
+
+                return (
+                  <>
+                    <MilestoneButton
+                      milestoneAmounts={milestoneAmounts}
+                      milestoneTimestamps={milestoneTimestamps}
+                      releaseCondition={parseInt(validated.formData.releaseCondition)}
+                      token={new PublicKey(validated.tokenMint)}
+                      recipient={new PublicKey(validated.recipient)}
+                      gateway={new PublicKey(validated.gateway)}
+                      memo={validated.memo}
+                      label="➤ Create Milestone Payment"
+                      executeImmediately={true}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      radius="md"
+                      size="md"
+                    />
+                    {/* TODO: Add MilestoneButtonWithCode when available */}
+                  </>
+                )
+              }
+
+              case 'payasyougo':
+                return (
+                  <>
+                    <PayAsYouGoButton
+                      maxAmountPerPeriod={
+                        new BN(
+                          parseFloat(validated.formData.maxAmountPerPeriod || '0') *
+                            Math.pow(10, getTokenPrecision(validated.tokenMint)),
+                        )
+                      }
+                      maxChunkAmount={
+                        new BN(
+                          parseFloat(validated.formData.maxChunkAmount || '0') *
+                            Math.pow(10, getTokenPrecision(validated.tokenMint)),
+                        )
+                      }
+                      periodLengthSeconds={new BN(parseInt(validated.formData.periodLengthSeconds || '2592000'))}
+                      token={new PublicKey(validated.tokenMint)}
+                      recipient={new PublicKey(validated.recipient)}
+                      gateway={new PublicKey(validated.gateway)}
+                      memo={validated.memo}
+                      label="➤ Create Pay-as-you-go"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      radius="md"
+                      size="md"
+                    />
+                    {/* TODO: Add PayAsYouGoButtonWithCode when available */}
+                  </>
+                )
+
+              default:
+                return null
+            }
+          })()}
+        {!connected && <WalletMultiButton />}
       </div>
       <div>
         <div className="flex justify-between items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-t">

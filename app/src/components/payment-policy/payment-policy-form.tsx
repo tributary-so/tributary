@@ -18,6 +18,7 @@ import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom } from '@/lib/token-store'
 
 export interface PaymentPolicyFormData {
+  policyType: 'subscription' | 'milestone' | 'payasyougo'
   tokenMint: string
   recipient: string
   gateway: string
@@ -25,9 +26,18 @@ export interface PaymentPolicyFormData {
   memo: string
   frequency: PaymentFrequencyString
   autoRenew: boolean
-  //maxRenewals: string
+  maxRenewals: string
   approvalAmount: string
   intervalSeconds: string
+  // Milestone specific fields
+  milestoneAmounts: string[]
+  milestoneTimestamps: string[]
+  releaseCondition: string // '0' | '1' | '2'
+  totalMilestones: string
+  // Pay-as-you-go specific fields
+  maxAmountPerPeriod: string
+  maxChunkAmount: string
+  periodLengthSeconds: string
 }
 export interface PaymentPolicyFormProps {
   formData: PaymentPolicyFormData
@@ -117,25 +127,95 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
     setLoading(true)
     try {
-      const paymentFrequency = getPaymentFrequency(formData.frequency, Number(formData.intervalSeconds))
       const memo = createMemoBuffer(formData.memo, 64)
-      let approvalAmount: anchor.BN | undefined = new anchor.BN(10_000_000_000) // 10k USDC
+      let approvalAmount: anchor.BN | undefined = undefined
       if (formData.approvalAmount) {
         approvalAmount = new anchor.BN(formData.approvalAmount)
       }
-      const amountBn = parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
-      const instructions = await sdk.createSubscription(
-        new PublicKey(formData.tokenMint),
-        new PublicKey(formData.recipient),
-        new PublicKey(formData.gateway),
-        new anchor.BN(amountBn),
-        false,
-        null,
-        paymentFrequency,
-        memo,
-        null,
-        approvalAmount,
-      )
+
+      const tokenMint = new PublicKey(formData.tokenMint)
+      const recipient = new PublicKey(formData.recipient)
+      const gateway = new PublicKey(formData.gateway)
+      let instructions: any[] = []
+
+      switch (formData.policyType) {
+        case 'subscription': {
+          const paymentFrequency = getPaymentFrequency(formData.frequency, Number(formData.intervalSeconds))
+          const amountBn = parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
+          instructions = await sdk.createSubscription(
+            tokenMint,
+            recipient,
+            gateway,
+            new anchor.BN(amountBn),
+            formData.autoRenew,
+            formData.maxRenewals ? parseInt(formData.maxRenewals) : null,
+            paymentFrequency,
+            memo,
+            undefined,
+            approvalAmount,
+          )
+          break
+        }
+        case 'milestone': {
+          const milestoneAmounts = formData.milestoneAmounts
+            .filter((amount) => amount && parseFloat(amount) > 0)
+            .map((amount) => new anchor.BN(parseFloat(amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))))
+          const milestoneTimestamps = formData.milestoneTimestamps
+            .filter((ts) => ts && parseInt(ts) > 0)
+            .map((ts) => new anchor.BN(parseInt(ts)))
+
+          if (milestoneAmounts.length === 0) {
+            throw new Error('At least one milestone amount is required')
+          }
+          if (milestoneAmounts.length !== milestoneTimestamps.length) {
+            throw new Error('Milestone amounts and timestamps must have the same count')
+          }
+
+          instructions = await sdk.createMilestone(
+            tokenMint,
+            recipient,
+            gateway,
+            milestoneAmounts,
+            milestoneTimestamps,
+            parseInt(formData.releaseCondition),
+            memo,
+            approvalAmount,
+          )
+          break
+        }
+        case 'payasyougo': {
+          const maxAmountPerPeriod =
+            parseFloat(formData.maxAmountPerPeriod) * Math.pow(10, getTokenPrecision(formData.tokenMint))
+          const maxChunkAmount =
+            parseFloat(formData.maxChunkAmount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
+          const periodLengthSeconds = parseInt(formData.periodLengthSeconds)
+
+          if (maxAmountPerPeriod <= 0) {
+            throw new Error('Max amount per period must be greater than 0')
+          }
+          if (maxChunkAmount <= 0) {
+            throw new Error('Max chunk amount must be greater than 0')
+          }
+          if (periodLengthSeconds <= 0) {
+            throw new Error('Period length must be greater than 0')
+          }
+
+          instructions = await sdk.createPayAsYouGo(
+            tokenMint,
+            recipient,
+            gateway,
+            new anchor.BN(maxAmountPerPeriod),
+            new anchor.BN(maxChunkAmount),
+            new anchor.BN(periodLengthSeconds),
+            memo,
+            approvalAmount,
+          )
+          break
+        }
+        default:
+          throw new Error('Invalid policy type selected')
+      }
+
       await createAndSendTransaction(instructions, wallet, connection)
       addToast({ title: 'Success', description: 'Payment policy created successfully!', color: 'success' })
       setTimeout(() => navigate('/account'), 3000)
@@ -163,6 +243,26 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       <p className="text-sm text-gray-600">Create a new recurring payment policy and get integration code.</p>
       <div className="items-center">
         <div className="max-w-3xl">
+          <div>
+            <label htmlFor="policyType" className={labelClass}>
+              Policy Type
+            </label>
+            <Select
+              id="policyType"
+              selectedKeys={formData.policyType ? [formData.policyType] : []}
+              onSelectionChange={(keys) => {
+                const selectedKey = Array.from(keys)[0] as 'subscription' | 'milestone' | 'payasyougo'
+                onFormDataChange({ ...formData, policyType: selectedKey })
+              }}
+              placeholder="Select policy type"
+              className="w-full"
+            >
+              <SelectItem key="subscription">Subscription</SelectItem>
+              <SelectItem key="milestone">Milestone</SelectItem>
+              <SelectItem key="payasyougo">Pay-as-you-go</SelectItem>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="tokenMint" className={labelClass}>
@@ -260,78 +360,226 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 }
               />
             </div>
-            <div>
-              <label htmlFor="frequency" className={labelClass}>
-                Frequency
-              </label>
-              <Select
-                id="frequency"
-                name="frequency"
-                selectedKeys={formData.frequency ? [formData.frequency] : []}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
-                  onFormDataChange({ ...formData, frequency: selectedKey })
-                }}
-                placeholder="Select frequency"
-                className="w-full"
-              >
-                <SelectItem key="daily">Daily</SelectItem>
-                <SelectItem key="weekly">Weekly</SelectItem>
-                <SelectItem key="monthly">Monthly</SelectItem>
-                <SelectItem key="quarterly">Quarterly</SelectItem>
-                <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
-                <SelectItem key="annually">Annually</SelectItem>
-                <SelectItem key="custom">Custom</SelectItem>
-              </Select>
-            </div>
-            <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
-              <label htmlFor="intervalSeconds" className={labelClass}>
-                Custom (seconds)
-              </label>
-              <Input
-                id="intervalSeconds"
-                name="intervalSeconds"
-                type="number"
-                value={formData.intervalSeconds}
-                onChange={handleInputChange}
-                placeholder="e.g., 2592000"
-                required
-                min="1"
-                className="w-full"
-                disabled={formData.frequency != 'custom'}
-              />
-            </div>
-            {/* <div> */}
-            {/*   <label htmlFor="maxRenewals" className={labelClass}> */}
-            {/*     Max Renewals */}
-            {/*   </label> */}
-            {/*   <input */}
-            {/*     id="maxRenewals" */}
-            {/*     name="maxRenewals" */}
-            {/*     type="number" */}
-            {/*     value={formData.maxRenewals} */}
-            {/*     onChange={handleInputChange} */}
-            {/*     placeholder="Leave empty for unlimited" */}
-            {/*     min="1" */}
-            {/*     className={inputClass} */}
-            {/*   /> */}
-            {/* </div> */}
-            {/* <div> */}
-            {/*   <label htmlFor="approvalAmount" className={labelClass}> */}
-            {/*     Approval Amount */}
-            {/*   </label> */}
-            {/*   <input */}
-            {/*     id="approvalAmount" */}
-            {/*     name="approvalAmount" */}
-            {/*     type="number" */}
-            {/*     value={formData.approvalAmount} */}
-            {/*     onChange={handleInputChange} */}
-            {/*     placeholder="Token approval amount" */}
-            {/*     min="1" */}
-            {/*     className={inputClass} */}
-            {/*   /> */}
-            {/* </div> */}
+            {/* Subscription-specific fields */}
+            {formData.policyType === 'subscription' && (
+              <>
+                <div>
+                  <label htmlFor="frequency" className={labelClass}>
+                    Frequency
+                  </label>
+                  <Select
+                    id="frequency"
+                    name="frequency"
+                    selectedKeys={formData.frequency ? [formData.frequency] : []}
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
+                      onFormDataChange({ ...formData, frequency: selectedKey })
+                    }}
+                    placeholder="Select frequency"
+                    className="w-full"
+                  >
+                    <SelectItem key="daily">Daily</SelectItem>
+                    <SelectItem key="weekly">Weekly</SelectItem>
+                    <SelectItem key="monthly">Monthly</SelectItem>
+                    <SelectItem key="quarterly">Quarterly</SelectItem>
+                    <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
+                    <SelectItem key="annually">Annually</SelectItem>
+                    <SelectItem key="custom">Custom</SelectItem>
+                  </Select>
+                </div>
+                <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
+                  <label htmlFor="intervalSeconds" className={labelClass}>
+                    Custom (seconds)
+                  </label>
+                  <Input
+                    id="intervalSeconds"
+                    name="intervalSeconds"
+                    type="number"
+                    value={formData.intervalSeconds}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 2592000"
+                    required
+                    min="1"
+                    className="w-full"
+                    disabled={formData.frequency != 'custom'}
+                  />
+                </div>
+              </>
+            )}
           </div>
+
+          {/* Milestone-specific fields */}
+          {formData.policyType === 'milestone' && (
+            <>
+              <div>
+                <label htmlFor="totalMilestones" className={labelClass}>
+                  Total Milestones
+                </label>
+                <Select
+                  id="totalMilestones"
+                  name="totalMilestones"
+                  selectedKeys={formData.totalMilestones ? [formData.totalMilestones] : []}
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string
+                    const count = parseInt(selectedKey)
+                    const newAmounts = formData.milestoneAmounts.slice(0, count).concat(Array(4 - count).fill(''))
+                    const newTimestamps = formData.milestoneTimestamps.slice(0, count).concat(Array(4 - count).fill(''))
+                    onFormDataChange({
+                      ...formData,
+                      totalMilestones: selectedKey,
+                      milestoneAmounts: newAmounts,
+                      milestoneTimestamps: newTimestamps,
+                    })
+                  }}
+                  className="w-full"
+                >
+                  <SelectItem key="1">1</SelectItem>
+                  <SelectItem key="2">2</SelectItem>
+                  <SelectItem key="3">3</SelectItem>
+                  <SelectItem key="4">4</SelectItem>
+                </Select>
+              </div>
+
+              {formData.milestoneAmounts.slice(0, parseInt(formData.totalMilestones)).map((amount, index) => (
+                <div key={index} className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label htmlFor={`milestoneAmount${index}`} className={labelClass}>
+                      Milestone {index + 1} Amount
+                    </label>
+                    <Input
+                      id={`milestoneAmount${index}`}
+                      type="number"
+                      value={amount}
+                      onChange={(e) => {
+                        const newAmounts = [...formData.milestoneAmounts]
+                        newAmounts[index] = e.target.value
+                        onFormDataChange({ ...formData, milestoneAmounts: newAmounts })
+                      }}
+                      placeholder="Amount"
+                      step="0.00000001"
+                      min="0"
+                      className="w-full"
+                      endContent={
+                        formData.tokenMint &&
+                        getTokenSymbol(formData.tokenMint) && (
+                          <div className="pointer-events-none flex items-center">
+                            <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                          </div>
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`milestoneTimestamp${index}`} className={labelClass}>
+                      Due Date (Unix Timestamp)
+                    </label>
+                    <Input
+                      id={`milestoneTimestamp${index}`}
+                      type="number"
+                      value={formData.milestoneTimestamps[index]}
+                      onChange={(e) => {
+                        const newTimestamps = [...formData.milestoneTimestamps]
+                        newTimestamps[index] = e.target.value
+                        onFormDataChange({ ...formData, milestoneTimestamps: newTimestamps })
+                      }}
+                      placeholder={Math.floor(Date.now() / 1000 + (index + 1) * 86400 * 7).toString()}
+                      min={Math.floor(Date.now() / 1000).toString()}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <div>
+                <label htmlFor="releaseCondition" className={labelClass}>
+                  Release Condition
+                </label>
+                <Select
+                  id="releaseCondition"
+                  name="releaseCondition"
+                  selectedKeys={formData.releaseCondition ? [formData.releaseCondition] : []}
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string
+                    onFormDataChange({ ...formData, releaseCondition: selectedKey })
+                  }}
+                  className="w-full"
+                >
+                  <SelectItem key="0">Time-based (automatic)</SelectItem>
+                  <SelectItem key="1">Manual Approval</SelectItem>
+                  <SelectItem key="2">Automatic on Completion</SelectItem>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {/* Pay-as-you-go specific fields */}
+          {formData.policyType === 'payasyougo' && (
+            <>
+              <div>
+                <label htmlFor="maxAmountPerPeriod" className={labelClass}>
+                  Max Amount Per Period
+                </label>
+                <Input
+                  id="maxAmountPerPeriod"
+                  name="maxAmountPerPeriod"
+                  type="number"
+                  value={formData.maxAmountPerPeriod}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 100"
+                  step="0.00000001"
+                  min="0"
+                  className="w-full"
+                  endContent={
+                    formData.tokenMint &&
+                    getTokenSymbol(formData.tokenMint) && (
+                      <div className="pointer-events-none flex items-center">
+                        <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                      </div>
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label htmlFor="maxChunkAmount" className={labelClass}>
+                  Max Chunk Amount
+                </label>
+                <Input
+                  id="maxChunkAmount"
+                  name="maxChunkAmount"
+                  type="number"
+                  value={formData.maxChunkAmount}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 10"
+                  step="0.00000001"
+                  min="0"
+                  className="w-full"
+                  endContent={
+                    formData.tokenMint &&
+                    getTokenSymbol(formData.tokenMint) && (
+                      <div className="pointer-events-none flex items-center">
+                        <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                      </div>
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label htmlFor="periodLengthSeconds" className={labelClass}>
+                  Period Length (seconds)
+                </label>
+                <Input
+                  id="periodLengthSeconds"
+                  name="periodLengthSeconds"
+                  type="number"
+                  value={formData.periodLengthSeconds}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 2592000 (30 days)"
+                  min="1"
+                  className="w-full"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label htmlFor="memo" className={labelClass}>
@@ -349,7 +597,20 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
           </div>
 
           <Button
-            isDisabled={loading || !wallet.connected || !isRecipientValid || !formData.amount}
+            isDisabled={
+              loading ||
+              !wallet.connected ||
+              !isRecipientValid ||
+              !formData.tokenMint ||
+              !formData.gateway ||
+              (formData.policyType === 'subscription' && !formData.amount) ||
+              (formData.policyType === 'milestone' &&
+                formData.milestoneAmounts
+                  .slice(0, parseInt(formData.totalMilestones))
+                  .every((a) => !a || parseFloat(a) <= 0)) ||
+              (formData.policyType === 'payasyougo' &&
+                (!formData.maxAmountPerPeriod || !formData.maxChunkAmount || !formData.periodLengthSeconds))
+            }
             className="w-full mt-6 text-sm uppercase text-white"
             color="primary"
             isLoading={loading}

@@ -4,6 +4,7 @@ import IntegrationCode from './integration-code'
 
 export default function PaymentPolicyFeature() {
   const [formData, setFormData] = useState<PaymentPolicyFormData>({
+    policyType: 'subscription',
     tokenMint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
     recipient: '',
     gateway: '',
@@ -12,7 +13,17 @@ export default function PaymentPolicyFeature() {
     memo: '',
     frequency: 'monthly',
     autoRenew: true,
+    maxRenewals: '',
     approvalAmount: '',
+    // Milestone fields
+    milestoneAmounts: ['', '', '', ''],
+    milestoneTimestamps: ['', '', '', ''],
+    releaseCondition: '0',
+    totalMilestones: '1',
+    // Pay-as-you-go fields
+    maxAmountPerPeriod: '',
+    maxChunkAmount: '',
+    periodLengthSeconds: '2592000', // 30 days default
   })
 
   const handleFormDataChange = (newFormData: typeof formData) => {
