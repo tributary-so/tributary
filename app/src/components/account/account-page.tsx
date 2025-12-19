@@ -395,7 +395,6 @@ interface PolicyCardProps {
 function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCardProps) {
   const policyType = getPolicyTypeKey(policy.account)
   const statusKey = getStatusKey(policy.account)
-  const typeConfig = POLICY_TYPE_CONFIG[policyType]
 
   const isOverdue = useMemo(() => {
     if ('subscription' in policy.account.policyType) {

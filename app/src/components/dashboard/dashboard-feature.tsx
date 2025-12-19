@@ -12,7 +12,7 @@ const actions = [
   {
     icon: BookOpen,
     title: 'Read Documentation',
-    description: 'Learn how to integrate subscriptions in your app',
+    description: 'Learn how to integrate recurring payments in your app',
     link: 'https://docs.tributary.so',
     color: 'bg-primary',
   },
@@ -52,7 +52,7 @@ export default function DashboardFeature() {
     <div className="flex w-full flex-col items-center justify-center">
       {/* Hero Text */}
       <div className="text-center max-w-md mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Accept and manage crypto subscriptions</h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Accept and manage recurring payments</h1>
         <p className="text-xl text-gray-600">in minutes</p>
       </div>
 
