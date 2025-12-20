@@ -143,13 +143,13 @@ function PolicyTypeBadge({ type }: { type: PolicyTypeKey }) {
 }
 
 function CircularProgress({ progress, size = 48 }: { progress: number; size?: number }) {
-  const strokeWidth = 4
+  const strokeWidth = size > 50 ? 4 : 3
   const radius = (size - strokeWidth) / 2
   const circumference = radius * 2 * Math.PI
   const offset = circumference - (progress / 100) * circumference
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg className="transform -rotate-90" width={size} height={size}>
         <circle
           className="text-gray-200"
@@ -174,7 +174,9 @@ function CircularProgress({ progress, size = 48 }: { progress: number; size?: nu
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-semibold text-gray-700">{Math.round(progress)}%</span>
+        <span className={`font-semibold text-gray-700 ${size > 50 ? 'text-xs' : 'text-[10px]'}`}>
+          {Math.round(progress)}%
+        </span>
       </div>
     </div>
   )
@@ -206,14 +208,65 @@ function MilestoneTracker({
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between text-xs sm:text-sm">
         <span className="text-gray-600">Progress</span>
         <span className="font-semibold text-amber-700">
           {currentMilestone} / {totalMilestones} completed
         </span>
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Mobile: Vertical list layout */}
+      <div className="flex flex-col gap-2 sm:hidden">
+        {Array.from({ length: totalMilestones }).map((_, i) => {
+          const isCompleted = i < currentMilestone
+          const isCurrent = i === currentMilestone
+          const amount = milestoneAmounts[i]
+          const timestamp = milestoneTimestamps[i]
+          const isDue = timestamp && timestamp.toNumber() > 0 && new Date(timestamp.toNumber() * 1000) <= new Date()
+
+          return (
+            <div
+              key={i}
+              className={`flex items-center gap-3 p-2 rounded-lg ${
+                isCurrent ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+                  ${
+                    isCompleted
+                      ? 'bg-amber-500 text-white'
+                      : isCurrent
+                      ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
+                      : 'bg-gray-100 text-gray-400'
+                  }
+                  ${isDue && !isCompleted ? 'ring-2 ring-red-400' : ''}`}
+              >
+                {isCompleted ? '✓' : i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`text-xs font-medium truncate ${
+                    isCompleted ? 'text-gray-500' : isCurrent ? 'text-amber-700' : 'text-gray-400'
+                  }`}
+                >
+                  {amount && !amount.isZero() ? formatAmount(amount.toString()) : 'No amount'}
+                </div>
+                {timestamp && timestamp.toNumber() > 0 && !isCompleted && (
+                  <div className={`text-[10px] ${isDue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                    {isDue
+                      ? 'Due now'
+                      : formatDistanceToNow(new Date(timestamp.toNumber() * 1000), { addSuffix: true })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop: Horizontal tracker layout */}
+      <div className="hidden sm:flex items-center gap-1">
         {Array.from({ length: totalMilestones }).map((_, i) => {
           const isCompleted = i < currentMilestone
           const isCurrent = i === currentMilestone
@@ -292,17 +345,17 @@ function UsageGauge({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-600">Usage this period</span>
-        <span className={`text-lg font-bold ${getColor()}`}>{percentage.toFixed(1)}%</span>
+        <span className="text-xs sm:text-sm text-gray-600">Usage this period</span>
+        <span className={`text-base sm:text-lg font-bold ${getColor()}`}>{percentage.toFixed(1)}%</span>
       </div>
 
       <ProgressBar progress={percentage} color={getBarColor()} />
 
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>Used: {formatAmount(used.toString())}</span>
-        <span>Limit: {formatAmount(limit.toString())}</span>
+      <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-gray-500">
+        <span className="truncate">Used: {formatAmount(used.toString())}</span>
+        <span className="truncate">Limit: {formatAmount(limit.toString())}</span>
       </div>
     </div>
   )
@@ -310,10 +363,10 @@ function UsageGauge({
 
 function StatCard({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-      <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</div>
-      <div className="text-lg font-semibold text-gray-900">{value}</div>
-      {sublabel && <div className="text-xs text-gray-400 mt-0.5">{sublabel}</div>}
+    <div className="bg-gray-50 rounded-lg p-2 sm:p-3 border border-gray-100">
+      <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide mb-0.5 sm:mb-1">{label}</div>
+      <div className="text-sm sm:text-lg font-semibold text-gray-900 truncate">{value}</div>
+      {sublabel && <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{sublabel}</div>}
     </div>
   )
 }
@@ -334,9 +387,9 @@ function ActionButton({
   title: string
 }) {
   const variants = {
-    primary: 'border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white',
-    warning: 'border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white',
-    danger: 'border-red-500 text-red-500 hover:bg-red-500 hover:text-white',
+    primary: 'border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white active:bg-indigo-700',
+    warning: 'border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white active:bg-orange-600',
+    danger: 'border-red-500 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600',
   }
 
   return (
@@ -344,7 +397,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className={`p-2.5 border-2 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]}`}
+      className={`p-2 sm:p-2.5 border-2 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation ${variants[variant]}`}
     >
       {loading ? (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -373,10 +426,10 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 
 function DetailRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
-    <div className="flex items-center py-2 border-b border-gray-50 last:border-0">
-      <span className="min-w-[140px] text-xs text-gray-500 uppercase tracking-wide">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center py-2 border-b border-gray-50 last:border-0 gap-0.5 sm:gap-0">
+      <span className="sm:min-w-[140px] text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide">{label}</span>
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className="text-sm text-gray-800 truncate">{value}</span>
+        <span className="text-xs sm:text-sm text-gray-800 truncate font-mono">{value}</span>
         {copyable && <CopyButton value={value} label={label} />}
       </div>
     </div>
@@ -421,8 +474,8 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
     <div
       onClick={onClick}
       className={`
-        relative p-4 cursor-pointer transition-all duration-200 border-b border-gray-100
-        hover:bg-gray-50 group
+        relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-gray-500
+        hover:bg-gray-50 group active:bg-gray-100
         ${
           isSelected
             ? 'bg-gradient-to-r from-indigo-50 to-white border-l-4 border-l-indigo-600'
@@ -430,34 +483,38 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
         }
       `}
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div>
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
             <PolicyTypeBadge type={policyType} />
-            <div className="text-[11px] text-gray-400 mt-0.5">ID: {policy.account.policyId}</div>
+            <div className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+              ID: {policy.account.policyId}
+            </div>
           </div>
         </div>
         <StatusBadge status={statusKey} isOverdue={isOverdue} />
       </div>
 
-      <div className="text-sm font-medium text-gray-800 mb-1 truncate">{memo || 'Untitled Policy'}</div>
+      <div className="text-xs sm:text-sm font-medium text-gray-800 mb-1 truncate">{memo || 'Untitled Policy'}</div>
 
-      <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-        <span>To:</span>
-        <PublicKeyComponent publicKey={policy.account.recipient} />
+      <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 mb-2 min-w-0">
+        <span className="shrink-0">To:</span>
+        <span className="truncate">
+          <PublicKeyComponent publicKey={policy.account.recipient} />
+        </span>
       </div>
 
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500">
+      <div className="flex items-center justify-between text-[10px] sm:text-xs gap-2">
+        <span className="text-gray-500 shrink-0">
           {policy.account.paymentCount} payment{policy.account.paymentCount !== 1 ? 's' : ''}
         </span>
-        <span className={`font-medium ${isOverdue ? 'text-red-600' : 'text-gray-600'}`}>
+        <span className={`font-medium truncate ${isOverdue ? 'text-red-600' : 'text-gray-600'}`}>
           {getNextPaymentDue(policy.account)}
         </span>
       </div>
 
       {isSelected && (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
           →
         </div>
       )}
@@ -551,20 +608,20 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
   const isOverdue = nextPaymentDate && nextPaymentDate < new Date()
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">🔄</span>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <span className="text-2xl sm:text-3xl">🔄</span>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Subscription</h2>
-              <p className="text-sm text-gray-500">Recurring payment policy</p>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subscription</h2>
+              <p className="text-xs sm:text-sm text-gray-500">Recurring payment policy</p>
             </div>
           </div>
           <StatusBadge status={status} isOverdue={!!isOverdue} />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start">
           <ActionButton
             onClick={onExecute}
             loading={executingPayments.has(policy.publicKey.toString())}
@@ -595,35 +652,37 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-5 border border-indigo-100">
-        <div className="text-sm text-indigo-600 font-medium mb-1">Payment Amount</div>
-        <div className="text-3xl font-bold text-indigo-900 mb-2">{formatAmount(sub.amount.toString(), tokenMint)}</div>
-        <div className="text-sm text-indigo-600">every {getInterval(policy.account)}</div>
+      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-4 sm:p-5 border border-indigo-100">
+        <div className="text-xs sm:text-sm text-indigo-600 font-medium mb-1">Payment Amount</div>
+        <div className="text-2xl sm:text-3xl font-bold text-indigo-900 mb-1 sm:mb-2 truncate">
+          {formatAmount(sub.amount.toString(), tokenMint)}
+        </div>
+        <div className="text-xs sm:text-sm text-indigo-600">every {getInterval(policy.account)}</div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
+      <div className="space-y-2 sm:space-y-3">
+        <div className="flex items-center justify-between text-xs sm:text-sm">
           <span className="text-gray-600">Time to next payment</span>
           <span className={`font-semibold ${isOverdue ? 'text-red-600' : 'text-indigo-700'}`}>
             {getNextPaymentDue(policy.account)}
           </span>
         </div>
         <ProgressBar progress={progressToNextPayment} color={isOverdue ? 'bg-red-500' : 'bg-indigo-600'} />
-        <div className="flex justify-between text-xs text-gray-400">
+        <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-gray-400">
           <span>Last: {lastPaymentDate ? formatDistanceToNow(lastPaymentDate, { addSuffix: true }) : 'Never'}</span>
           <span>Next: {nextPaymentDate ? nextPaymentDate.toLocaleDateString() : 'N/A'}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <StatCard label="Total Paid" value={formatAmount(policy.account.totalPaid.toString(), tokenMint)} />
         <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
         <StatCard label="Auto-Renew" value={sub.autoRenew ? 'Yes' : 'No'} />
       </div>
 
-      <div className="border-t border-gray-100 pt-4">
-        <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-3">Policy Details</h3>
-        <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+      <div className="border-t border-gray-100 pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 mb-2 sm:mb-3">Policy Details</h3>
+        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 space-y-1">
           <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
@@ -667,20 +726,20 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
   const releaseCondition = releaseConditions[milestone.releaseCondition] || 'Unknown'
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">🎯</span>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <span className="text-2xl sm:text-3xl">🎯</span>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Milestone Payment</h2>
-              <p className="text-sm text-gray-500">Stage-based payment policy</p>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Milestone Payment</h2>
+              <p className="text-xs sm:text-sm text-gray-500">Stage-based payment policy</p>
             </div>
           </div>
           <StatusBadge status={status} isOverdue={false} />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start">
           <ActionButton
             onClick={onExecute}
             loading={executingPayments.has(policy.publicKey.toString())}
@@ -711,15 +770,19 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-5 border border-amber-100">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-sm text-amber-600 font-medium mb-1">Total Value</div>
-            <div className="text-3xl font-bold text-amber-900">{formatAmount(totalAmount.toString(), tokenMint)}</div>
+      <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-4 sm:p-5 border border-amber-100">
+        <div className="flex items-center justify-between mb-2 sm:mb-3 gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs sm:text-sm text-amber-600 font-medium mb-1">Total Value</div>
+            <div className="text-xl sm:text-3xl font-bold text-amber-900 truncate">
+              {formatAmount(totalAmount.toString(), tokenMint)}
+            </div>
           </div>
-          <CircularProgress progress={progressPercent} size={64} />
+          <div className="shrink-0">
+            <CircularProgress progress={progressPercent} size={56} />
+          </div>
         </div>
-        <div className="text-sm text-amber-600">
+        <div className="text-xs sm:text-sm text-amber-600 truncate">
           {formatAmount(completedAmount.toString(), tokenMint)} released so far
         </div>
       </div>
@@ -732,15 +795,15 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
         formatAmount={(amt) => formatAmount(amt, tokenMint)}
       />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <StatCard label="Next Due" value={getNextPaymentDue(policy.account)} />
         <StatCard label="Release Type" value={releaseCondition} />
         <StatCard label="Payments Made" value={policy.account.paymentCount.toString()} />
       </div>
 
-      <div className="border-t border-gray-100 pt-4">
-        <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-3">Policy Details</h3>
-        <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+      <div className="border-t border-gray-100 pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 mb-2 sm:mb-3">Policy Details</h3>
+        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 space-y-1">
           <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
@@ -775,20 +838,20 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
       : null
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">⚡</span>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <span className="text-2xl sm:text-3xl">⚡</span>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Pay-as-you-go</h2>
-              <p className="text-sm text-gray-500">Usage-based payment policy</p>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Pay-as-you-go</h2>
+              <p className="text-xs sm:text-sm text-gray-500">Usage-based payment policy</p>
             </div>
           </div>
           <StatusBadge status={status} isOverdue={false} />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start">
           <ActionButton
             onClick={onExecute}
             loading={executingPayments.has(policy.publicKey.toString())}
@@ -819,7 +882,7 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-5 border border-emerald-100">
+      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 sm:p-5 border border-emerald-100">
         <UsageGauge
           used={payg.currentPeriodTotal}
           limit={payg.maxAmountPerPeriod}
@@ -827,30 +890,32 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Period Started</div>
-          <div className="text-sm font-medium text-gray-900">
+      <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-100">
+          <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide mb-0.5 sm:mb-1">
+            Period Started
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-gray-900">
             {periodStartDate ? periodStartDate.toLocaleDateString() : 'N/A'}
           </div>
         </div>
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Resets</div>
-          <div className="text-sm font-medium text-gray-900">
+        <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-100">
+          <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide mb-0.5 sm:mb-1">Resets</div>
+          <div className="text-xs sm:text-sm font-medium text-gray-900">
             {periodEndDate ? formatDistanceToNow(periodEndDate, { addSuffix: true }) : 'N/A'}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <StatCard label="Max per TX" value={formatAmount(payg.maxChunkAmount.toString(), tokenMint)} />
         <StatCard label="Total Paid" value={formatAmount(policy.account.totalPaid.toString(), tokenMint)} />
         <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
       </div>
 
-      <div className="border-t border-gray-100 pt-4">
-        <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-3">Policy Details</h3>
-        <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+      <div className="border-t border-gray-100 pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 mb-2 sm:mb-3">Policy Details</h3>
+        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 space-y-1">
           <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
@@ -863,14 +928,14 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
 
 function LoadingState() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] gap-6">
+    <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
       <div className="relative">
-        <div className="w-20 h-20 border-4 border-indigo-100 rounded-full" />
-        <div className="absolute inset-0 w-20 h-20 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-indigo-100 rounded-full" />
+        <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
       <div className="text-center">
-        <p className="text-lg font-semibold text-gray-800 mb-1">Loading your policies</p>
-        <p className="text-sm text-gray-500">Fetching payment data from Solana...</p>
+        <p className="text-base sm:text-lg font-semibold text-gray-800 mb-1">Loading your policies</p>
+        <p className="text-xs sm:text-sm text-gray-500">Fetching payment data from Solana...</p>
       </div>
     </div>
   )
@@ -878,24 +943,24 @@ function LoadingState() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] gap-6 px-4">
-      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
-        <span className="text-4xl">📭</span>
+    <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
+      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center">
+        <span className="text-3xl sm:text-4xl">📭</span>
       </div>
       <div className="text-center max-w-md">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">No Payment Policies Yet</h2>
-        <p className="text-gray-500 mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No Payment Policies Yet</h2>
+        <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
           You haven't set up any recurring payments. Create a subscription, milestone, or pay-as-you-go policy to get
           started.
         </p>
-        <div className="flex justify-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-600">
             <span>🔄</span> Subscriptions
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-600">
             <span>🎯</span> Milestones
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-600">
             <span>⚡</span> Pay-as-you-go
           </div>
         </div>
@@ -906,13 +971,15 @@ function EmptyState() {
 
 function WalletNotConnected() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] gap-6 px-4">
-      <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center">
-        <AlertCircle className="w-12 h-12 text-indigo-600" />
+    <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
+      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-indigo-50 rounded-full flex items-center justify-center">
+        <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-indigo-600" />
       </div>
       <div className="text-center max-w-md">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Connect Your Wallet</h2>
-        <p className="text-gray-500">Please connect your Solana wallet to view and manage your payment policies.</p>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Connect Your Wallet</h2>
+        <p className="text-sm sm:text-base text-gray-500">
+          Please connect your Solana wallet to view and manage your payment policies.
+        </p>
       </div>
     </div>
   )
@@ -1174,32 +1241,39 @@ export default function AccountPage() {
   const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length, 0)
 
   return (
-    <div className="flex flex-col md:flex-row min-h-[600px] bg-white">
-      <div className="w-full md:w-[380px] md:min-w-[380px] border-r border-gray-200 bg-gray-50/50 flex flex-col">
-        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 bg-white">
+    <div className="flex flex-col lg:flex-row min-h-[500px] w-full lg:min-w-[600px] lg:max-w-[1100px] bg-white">
+      <div
+        className={`
+          w-full lg:w-[320px] xl:w-[380px] lg:min-w-[320px] xl:min-w-[380px]
+          border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50/50
+          flex flex-col
+          ${selectedPolicy ? 'hidden lg:flex' : 'flex'}
+        `}
+      >
+        <div className="h-12 sm:h-14 flex items-center justify-between px-3 sm:px-4 border-b border-gray-200 bg-white">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-gray-900">My Policies</span>
-            <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+            <span className="text-base sm:text-lg font-bold text-gray-900">My Policies</span>
+            <span className="px-1.5 sm:px-2 py-0.5 bg-gray-100 rounded-full text-[10px] sm:text-xs font-medium text-gray-600">
               {totalPolicies}
             </span>
           </div>
           <button
             onClick={() => setLoaded(false)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation"
             title="Refresh policies"
           >
             <RefreshCw className="h-4 w-4 text-gray-500" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 max-h-full lg:max-h-none">
           {userPayments.map(({ policies, userPayment, userPaymentAddress }) => (
             <div key={userPaymentAddress.toString()}>
-              <div className="sticky top-0 z-10 h-10 flex items-center px-4 bg-gray-100/90 backdrop-blur-sm border-b border-gray-200">
-                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-gray-100/90 backdrop-blur-sm border-b border-gray-600">
+                <span className="text-[10px] sm:text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   {getTokenSymbol(userPayment.tokenMint.toString())}
                 </span>
-                <span className="ml-2 text-xs text-gray-400">
+                <span className="ml-2 text-[10px] sm:text-xs text-gray-400">
                   ({policies.length} {policies.length === 1 ? 'policy' : 'policies'})
                 </span>
               </div>
@@ -1220,9 +1294,16 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-white">
+      <div className={`flex-1 overflow-y-auto bg-white ${!selectedPolicy ? 'hidden lg:flex' : 'flex flex-col'}`}>
         {selectedPolicy && currentUserPayment ? (
           <>
+            <button
+              onClick={() => setSelectedPolicy(null)}
+              className="lg:hidden flex items-center gap-2 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 border-b border-gray-600 touch-manipulation"
+            >
+              <span>←</span>
+              <span>Back to policies</span>
+            </button>
             {'subscription' in selectedPolicy.account.policyType && (
               <SubscriptionDetailPanel
                 policy={selectedPolicy}
@@ -1291,10 +1372,9 @@ export default function AccountPage() {
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-gray-500 p-8">
             <div className="text-center">
-              <span className="text-4xl mb-4 block">👈</span>
-              <p>Select a policy to view details</p>
+              <p className="text-sm sm:text-base">Select a policy to view details</p>
             </div>
           </div>
         )}
