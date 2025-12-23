@@ -286,7 +286,35 @@ import { BN } from '@coral-xyz/anchor'
                 return null
             }
           })()}
-        {!connected && <WalletMultiButton />}
+        {!connected &&
+          (() => {
+            switch (validated.formData.policyType) {
+              case 'subscription':
+                return (
+                  <>
+                    <WalletMultiButton />
+                    <SubscriptionButtonWithCode
+                      amount={validated.amount}
+                      token={new PublicKey(validated.tokenMint)}
+                      gateway={new PublicKey(validated.gateway)}
+                      maxRenewals={parseInt(validated.formData.maxRenewals) || 12}
+                      interval={interval}
+                      custom_interval={customInterval}
+                      memo={validated.memo}
+                      label={`ılıılııl ActionCode for ${parseFloat(validated.formData.amount) || 10}/${
+                        validated.formData.frequency
+                      }`}
+                      executeImmediately={true}
+                      radius="md"
+                      size="md"
+                    />
+                  </>
+                )
+
+              default:
+                return <WalletMultiButton />
+            }
+          })()}
       </div>
       <div>
         <div className="flex justify-between items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-t">
