@@ -22,12 +22,14 @@ export interface PaymentPolicyFormData {
   tokenMint: string
   recipient: string
   gateway: string
-  amount: string
   memo: string
+  approvalAmount: string
+
+  // SUbscription specific fields
+  amount: string
   frequency: PaymentFrequencyString
   autoRenew: boolean
   maxRenewals: string
-  approvalAmount: string
   intervalSeconds: string
   // Milestone specific fields
   milestoneAmounts: string[]
@@ -243,24 +245,56 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       <p className="text-sm text-gray-600">Create a new recurring payment policy and get integration code.</p>
       <div className="items-center">
         <div className="max-w-3xl">
-          <div>
-            <label htmlFor="policyType" className={labelClass}>
-              Policy Type
-            </label>
-            <Select
-              id="policyType"
-              selectedKeys={formData.policyType ? [formData.policyType] : []}
-              onSelectionChange={(keys) => {
-                const selectedKey = Array.from(keys)[0] as 'subscription' | 'milestone' | 'payasyougo'
-                onFormDataChange({ ...formData, policyType: selectedKey })
-              }}
-              placeholder="Select policy type"
-              className="w-full"
-            >
-              <SelectItem key="subscription">Subscription</SelectItem>
-              <SelectItem key="milestone">Milestone</SelectItem>
-              <SelectItem key="payasyougo">Pay-as-you-go</SelectItem>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="policyType" className={labelClass}>
+                Policy Type
+              </label>
+              <Select
+                id="policyType"
+                selectedKeys={formData.policyType ? [formData.policyType] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as 'subscription' | 'milestone' | 'payasyougo'
+                  onFormDataChange({ ...formData, policyType: selectedKey })
+                }}
+                placeholder="Select policy type"
+                className="w-full"
+              >
+                <SelectItem key="subscription">Subscription</SelectItem>
+                <SelectItem key="milestone">Milestone</SelectItem>
+                <SelectItem key="payasyougo">Pay-as-you-go</SelectItem>
+              </Select>
+            </div>
+
+            <div>
+              <label htmlFor="gateway" className={labelClass}>
+                Processor
+              </label>
+              {gatewaysLoading ? (
+                <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
+                  <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <Select
+                  id="gateway"
+                  name="gateway"
+                  selectedKeys={formData.gateway ? [formData.gateway] : []}
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string
+                    onFormDataChange({ ...formData, gateway: selectedKey })
+                  }}
+                  placeholder="Select gateway"
+                  required
+                  className="w-full"
+                >
+                  {gateways.map((gateway) => (
+                    <SelectItem key={gateway.publicKey.toString()} description={`${decodeMemo(gateway.account.url)}`}>
+                      {decodeMemo(gateway.account.name)}
+                    </SelectItem>
+                  ))}
+                </Select>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -306,103 +340,78 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 errorMessage={!isRecipientValid ? 'Invalid Solana address' : undefined}
               />
             </div>
-            <div>
-              <label htmlFor="gateway" className={labelClass}>
-                Processor
-              </label>
-              {gatewaysLoading ? (
-                <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
-                  <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : (
-                <Select
-                  id="gateway"
-                  name="gateway"
-                  selectedKeys={formData.gateway ? [formData.gateway] : []}
-                  onSelectionChange={(keys) => {
-                    const selectedKey = Array.from(keys)[0] as string
-                    onFormDataChange({ ...formData, gateway: selectedKey })
-                  }}
-                  placeholder="Select gateway"
-                  required
-                  className="w-full"
-                >
-                  {gateways.map((gateway) => (
-                    <SelectItem key={gateway.publicKey.toString()} description={`${decodeMemo(gateway.account.url)}`}>
-                      {decodeMemo(gateway.account.name)}
-                    </SelectItem>
-                  ))}
-                </Select>
-              )}
-            </div>
-            <div>
-              <label htmlFor="amount" className={labelClass}>
-                Amount
-              </label>
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="e.g., 10"
-                required
-                step="0.00000001"
-                min="0.00000001"
-                className="w-full"
-                endContent={
-                  formData.tokenMint &&
-                  getTokenSymbol(formData.tokenMint) && (
-                    <div className="pointer-events-none flex items-center">
-                      <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
-                    </div>
-                  )
-                }
-              />
-            </div>
+          </div>
+          <div>
             {/* Subscription-specific fields */}
             {formData.policyType === 'subscription' && (
               <>
                 <div>
-                  <label htmlFor="frequency" className={labelClass}>
-                    Frequency
-                  </label>
-                  <Select
-                    id="frequency"
-                    name="frequency"
-                    selectedKeys={formData.frequency ? [formData.frequency] : []}
-                    onSelectionChange={(keys) => {
-                      const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
-                      onFormDataChange({ ...formData, frequency: selectedKey })
-                    }}
-                    placeholder="Select frequency"
-                    className="w-full"
-                  >
-                    <SelectItem key="daily">Daily</SelectItem>
-                    <SelectItem key="weekly">Weekly</SelectItem>
-                    <SelectItem key="monthly">Monthly</SelectItem>
-                    <SelectItem key="quarterly">Quarterly</SelectItem>
-                    <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
-                    <SelectItem key="annually">Annually</SelectItem>
-                    <SelectItem key="custom">Custom</SelectItem>
-                  </Select>
-                </div>
-                <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
-                  <label htmlFor="intervalSeconds" className={labelClass}>
-                    Custom (seconds)
+                  <label htmlFor="amount" className={labelClass}>
+                    Amount
                   </label>
                   <Input
-                    id="intervalSeconds"
-                    name="intervalSeconds"
+                    id="amount"
+                    name="amount"
                     type="number"
-                    value={formData.intervalSeconds}
+                    value={formData.amount}
                     onChange={handleInputChange}
-                    placeholder="e.g., 2592000"
+                    placeholder="e.g., 10"
                     required
-                    min="1"
+                    step="0.00000001"
+                    min="0.00000001"
                     className="w-full"
-                    disabled={formData.frequency != 'custom'}
+                    endContent={
+                      formData.tokenMint &&
+                      getTokenSymbol(formData.tokenMint) && (
+                        <div className="pointer-events-none flex items-center">
+                          <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                        </div>
+                      )
+                    }
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="frequency" className={labelClass}>
+                      Frequency
+                    </label>
+                    <Select
+                      id="frequency"
+                      name="frequency"
+                      selectedKeys={formData.frequency ? [formData.frequency] : []}
+                      onSelectionChange={(keys) => {
+                        const selectedKey = Array.from(keys)[0] as PaymentFrequencyString
+                        onFormDataChange({ ...formData, frequency: selectedKey })
+                      }}
+                      placeholder="Select frequency"
+                      className="w-full"
+                    >
+                      <SelectItem key="daily">Daily</SelectItem>
+                      <SelectItem key="weekly">Weekly</SelectItem>
+                      <SelectItem key="monthly">Monthly</SelectItem>
+                      <SelectItem key="quarterly">Quarterly</SelectItem>
+                      <SelectItem key="semiAnnually">Semi-Annually</SelectItem>
+                      <SelectItem key="annually">Annually</SelectItem>
+                      <SelectItem key="custom">Custom</SelectItem>
+                    </Select>
+                  </div>
+                  <div className={formData.frequency != 'custom' ? 'opacity-50' : ''}>
+                    <label htmlFor="intervalSeconds" className={labelClass}>
+                      Custom (seconds)
+                    </label>
+                    <Input
+                      id="intervalSeconds"
+                      name="intervalSeconds"
+                      type="number"
+                      value={formData.intervalSeconds}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 2592000"
+                      required
+                      min="1"
+                      className="w-full"
+                      disabled={formData.frequency != 'custom'}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -515,53 +524,55 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
           {/* Pay-as-you-go specific fields */}
           {formData.policyType === 'payasyougo' && (
             <>
-              <div>
-                <label htmlFor="maxAmountPerPeriod" className={labelClass}>
-                  Max Amount Per Period
-                </label>
-                <Input
-                  id="maxAmountPerPeriod"
-                  name="maxAmountPerPeriod"
-                  type="number"
-                  value={formData.maxAmountPerPeriod}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 100"
-                  step="0.00000001"
-                  min="0"
-                  className="w-full"
-                  endContent={
-                    formData.tokenMint &&
-                    getTokenSymbol(formData.tokenMint) && (
-                      <div className="pointer-events-none flex items-center">
-                        <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
-                      </div>
-                    )
-                  }
-                />
-              </div>
-              <div>
-                <label htmlFor="maxChunkAmount" className={labelClass}>
-                  Max Chunk Amount
-                </label>
-                <Input
-                  id="maxChunkAmount"
-                  name="maxChunkAmount"
-                  type="number"
-                  value={formData.maxChunkAmount}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 10"
-                  step="0.00000001"
-                  min="0"
-                  className="w-full"
-                  endContent={
-                    formData.tokenMint &&
-                    getTokenSymbol(formData.tokenMint) && (
-                      <div className="pointer-events-none flex items-center">
-                        <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
-                      </div>
-                    )
-                  }
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="maxAmountPerPeriod" className={labelClass}>
+                    Max Amount Per Period
+                  </label>
+                  <Input
+                    id="maxAmountPerPeriod"
+                    name="maxAmountPerPeriod"
+                    type="number"
+                    value={formData.maxAmountPerPeriod}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 100"
+                    step="0.00000001"
+                    min="0"
+                    className="w-full"
+                    endContent={
+                      formData.tokenMint &&
+                      getTokenSymbol(formData.tokenMint) && (
+                        <div className="pointer-events-none flex items-center">
+                          <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                        </div>
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <label htmlFor="maxChunkAmount" className={labelClass}>
+                    Max Chunk Amount
+                  </label>
+                  <Input
+                    id="maxChunkAmount"
+                    name="maxChunkAmount"
+                    type="number"
+                    value={formData.maxChunkAmount}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 10"
+                    step="0.00000001"
+                    min="0"
+                    className="w-full"
+                    endContent={
+                      formData.tokenMint &&
+                      getTokenSymbol(formData.tokenMint) && (
+                        <div className="pointer-events-none flex items-center">
+                          <span className="text-default-400 text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                        </div>
+                      )
+                    }
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="periodLengthSeconds" className={labelClass}>
