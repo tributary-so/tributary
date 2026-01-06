@@ -99,14 +99,14 @@
 - **Target Audience/Channel:** Developers on virtual platforms.
 - **Expected Impact/Goal:** Foster community, aiming for 50 attendees and feedback for improvements.
 
-## Day 14
+## Day 14 - 20260106
 
 - **Idea:** Develop a case study on a hypothetical SaaS use case.
 - **Content/Description:** Write a 500-word piece imagining how a SaaS app integrates Tributary for subscriptions. Include mock code and visuals. Share on the blog and LinkedIn.
 - **Target Audience/Channel:** SaaS founders on LinkedIn and the blog.
 - **Expected Impact/Goal:** Inspire integrations, targeting 300 reads and inquiries.
 
-## Day 15
+## Day 15 - 20260106
 
 - **Idea:** Write an article comparing Squads Smart Accounts (good product) with Tributary (simple product)
 - **Content/Description:**
@@ -119,7 +119,7 @@
 - **Target Audience/Channel:** Developers on medium
 - **Expected Impact/Goal:** Provide value and drive adoption, targeting 2,000 views per episode.
 
-## Day 17
+## Day 17 - IMPORTANT: commerce-kit integration
 
 - **Idea:** Partner with a Solana ecosystem tool for a cross-promotion. (commerce-kit)
 - **Content/Description:** Reach out to a complementary project (e.g., wallet or DEX) for a joint announcement or shared content. Propose co-hosting a webinar.
@@ -140,21 +140,21 @@
 - **Target Audience/Channel:** Web3 explorers on directories.
 - **Expected Impact/Goal:** Increase discoverability, aiming for listing and traffic boost.
 
-## Day 20
+## Day 20 - NOT DOING THIS
 
 - **Idea:** Host a hackathon challenge on Devpost.
 - **Content/Description:** Launch a mini-hackathon: "Build a Tributary-powered subscription app." Offer small prizes (e.g., Solana NFTs) and judge based on innovation.
 - **Target Audience/Channel:** Developers on Devpost and social media.
 - **Expected Impact/Goal:** Generate prototypes and buzz, targeting 50 submissions.
 
-## Day 21
+## Day 21 - Meh
 
 - **Idea:** Create a podcast episode pitch to Web3 shows.
 - **Content/Description:** Pitch a 20-minute segment on "Automating Payments with Token Delegation" to podcasts like "The Solana Podcast." Provide talking points and links.
 - **Target Audience/Channel:** Podcast listeners.
 - **Expected Impact/Goal:** Reach new audiences, aiming for 1 feature and 10,000 listens.
 
-## Day 22
+## Day 22 - Meh
 
 - **Idea:** Run a giveaway on Twitter for Tributary merch.
 - **Content/Description:** Tweet: "RT and follow for a chance to win Tributary swag! #SolanaPayments." Use digital items to keep costs low.
