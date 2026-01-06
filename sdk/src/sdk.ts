@@ -571,7 +571,7 @@ export class Tributary {
         needsApproval = true;
       } else if (currentDelegate !== paymentsDelegatePda.toString()) {
         needsApproval = true;
-      } else if (currentDelegatedAmount !== finalApprovalAmount.toString()) {
+      } else if (currentDelegatedAmount < finalApprovalAmount.toNumber()) {
         needsApproval = true;
       }
     } else {
