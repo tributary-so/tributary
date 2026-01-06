@@ -12,7 +12,7 @@ Enable viral user acquisition through a simplified referral system where rewards
 
 ## User Story
 
-> "As a user, I want to earn rewards for inviting others to Tributary, so I can get discounts and benefits while growing the protocol."
+> "As a user, I want to earn rewards for inviting others to Tributary, so I can benefit from referral earnings while growing the protocol."
 
 ## Table of Contents
 
@@ -44,13 +44,48 @@ This specification describes a Viral Referral System for Tributary with a simpli
 
 ## Core Mechanics
 
-### Referral Code Generation
+### Gateway-Specific Referral System
+
+**Key Design**: Each gateway operates as an **independent referral ecosystem** with its own isolated codes and referral accounts.
+
+#### Referral Code Generation
 
 - **Format**: 6-character alphanumeric string `[A-Z0-9]`
 - **Case-sensitive**: Code validation is case-sensitive
-- **Example**: `TRIB84`
+- **Example**: `TRIB84` (gateway-specific, not global)
 - **Generation**: Generated on-chain via new PDA account when user creates first subscription
-- **Uniqueness**: Guaranteed unique per user (derived from user public key)
+- **Uniqueness**: Unique per user **per gateway** (derived from user pubkey + gateway pubkey)
+
+#### Gateway-Specific PDA Derivation
+
+```rust
+// PDA seeds: ["referral", gateway_pubkey, user_pubkey]
+// NOT: ["referral", user_pubkey] (global)
+
+pub fn get_referral_pda(
+    owner: &Pubkey,
+    gateway: &Pubkey,
+    program_id: &Pubkey
+) -> (Pubkey, u8) {
+    let seeds = [
+        "referral".as_bytes(),
+        gateway.as_ref(),    // Gateway-scoped - NOT global
+        owner.as_ref(),     // User-scoped
+        program_id.as_ref(),
+    ];
+    Pubkey::find_program_address(seeds, program_id)
+}
+```
+
+#### Isolation Benefits
+
+| Feature             | Global System                            | Gateway-Specific System                                    |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| **Referral Codes**  | One code per user, works everywhere      | Different codes per gateway, isolated ecosystems           |
+| **Competition**     | Gateway A vs Gateway B compete for users | Gateway A has captive market, Gateway B has captive market |
+| **Business Model**  | Shared pool, diluted rewards             | Dedicated pool, controlled economics                       |
+| **Risk Management** | Protocol bears all risk                  | Gateway bears own referral program risk                    |
+| **Customization**   | Same settings for everyone               | Custom referral rates per gateway                          |
 
 ### Simplified Referral Fee Structure
 
@@ -161,6 +196,109 @@ match referral_chain.len() {
 - **Clean separation**: Referral logic doesn't clutter main instruction
 - **Backwards compatible**: Existing transactions continue working
 
+### Security: Circular Reference Protection
+
+#### Threat: Circular Referral Chains
+
+Without proper validation, a malicious user could create circular referral chains that break reward accounting and cause infinite loops in chain traversal.
+
+**Attack Scenario:**
+
+```
+1. User A has referrer: None
+2. User B has referrer: A
+3. User C has referrer: B
+4. User A updates referrer: C (CIRCULAR!)
+   Chain becomes: A → B → C → A → B → C → ... (infinite)
+```
+
+#### Solution: Chain Integrity Validation
+
+Add validation in `CreateReferralAccount` instruction:
+
+```rust
+/// Validate that setting a referrer won't create a circular chain
+pub fn validate_referral_chain(
+    new_referrer: Pubkey,
+    current_owner: Pubkey,
+    max_depth: u8
+) -> Result<()> {
+    let mut current = new_referrer;
+
+    for _ in 0..max_depth {
+        if current == current_owner {
+            return Err(TributaryError::CircularReferralChain.into());
+        }
+
+        // Load referral account and get its referrer
+        let referral_pda = get_referral_pda(&current, &gateway, &program_id)?;
+        if let Ok(referral_account) = ctx.accounts.referral_info.load() {
+            match referral_account.referrer {
+                Some(ref) => current = ref,
+                None => return Ok(()), // Chain ends safely
+            }
+        } else {
+            return Ok(()); // Referral account doesn't exist yet
+        }
+    }
+
+    Ok(())
+}
+```
+
+#### Additional Protection: Maximum Chain Depth
+
+The spec already limits depth to 3 levels, which provides natural protection against deep chains. However, the circular reference check ensures that even within 3 levels, no loops can form.
+
+**Example Safe Chain** (max 3 levels):
+
+```
+A → B → C (valid, max depth reached)
+```
+
+**Example Invalid Chain** (would fail validation):
+
+```
+A → B → C → A (circular within 3 levels)
+```
+
+#### Error Code Addition
+
+Add to `error.rs`:
+
+```rust
+#[error_code]
+pub enum TributaryError {
+    // ... existing errors ...
+    #[msg("Circular referral chain detected")]
+    CircularReferralChain,
+}
+```
+
+#### Implementation in CreateReferralAccount
+
+```rust
+pub fn create_referral_account(
+    ctx: Context<CreateReferralAccount>,
+    referrer: Option<Pubkey>,
+) -> Result<()> {
+    let referral = &mut ctx.accounts.referral_account;
+
+    // Validate no circular chain before setting referrer
+    if let Some(ref) = referrer {
+        validate_referral_chain(
+            ref,
+            ctx.accounts.owner.key(),
+            3, // max depth
+        )?;
+    }
+
+    // ... rest of creation logic
+    referral.referrer = referrer;
+    // ...
+}
+```
+
 ### Gateway Fee Integration
 
 #### Fee Distribution Flow
@@ -169,12 +307,11 @@ match referral_chain.len() {
 Payment Amount: $100
 Gateway Fee (2.5%): $2.50
 
-├── Gateway keeps: $2.50 × (10000 - referral_allocation_bps) / 10000
-├── Referral pool: $2.50 × referral_allocation_bps / 10000
+├── Gateway keeps: $2.50 × (100 - referral_allocation_bps) / 100
+├── Referral pool: $2.50 × referral_allocation_bps / 100
 │   ├── Level 1 referrer: X% of referral pool
 │   ├── Level 2 referrer: Y% of referral pool
 │   └── Level 3 referrer: Z% of referral pool
-└── Referee discount: Funded from referral pool remainder
 ```
 
 ### Referral Usage Flow
@@ -184,7 +321,6 @@ Gateway Fee (2.5%): $2.50
 3. **User B creates subscription** → Referral chain established (A→B)
 4. **User B refers User C** → Chain extends (A→B→C)
 5. **Payments execute** → Rewards distributed up the referral tree
-6. **Referee incentives** → User B gets discount on first payments
 
 ---
 
@@ -240,11 +376,11 @@ impl ReferralAccount {
 pub struct PaymentGateway {
     // ... existing fields ...
 
-    /// Referral program allocation in basis points of gateway fee
+    /// Gateway-scoped referral program allocation
     /// 0 = no referral program, 2500 = 25% of gateway fee
     pub referral_allocation_bps: u16,
 
-    /// Referral tier distribution in basis points (must sum to 10000 = 100%)
+    /// Gateway-scoped referral tier distribution (must sum to 10000 = 100%)
     pub level1_referral_bps: u16,  // Default: 6000 (60%)
     pub level2_referral_bps: u16,  // Default: 3000 (30%)
     pub level3_referral_bps: u16,  // Default: 1000 (10%)
@@ -255,17 +391,23 @@ pub struct PaymentGateway {
 
 ```rust
 impl PaymentGateway {
-    // ... existing methods ...
-
-    /// Validate that referral tier percentages sum to 100%
-    pub fn validate_referral_tiers(&self) -> Result<()> {
-        let total = self.level1_referral_bps as u32 +
-                   self.level2_referral_bps as u32 +
-                   self.level3_referral_bps as u32;
-
-        require!(total == 10000, TributaryError::InvalidReferralTierPercentages);
-        Ok(())
-    }
+    pub const SIZE: usize = 8 + // discriminator
+        32 + // authority: Pubkey
+        32 + // fee_recipient: Pubkey
+        2 + // gateway_fee_bps: u16
+        1 + // is_active: bool
+        8 + // padding1: u64
+        8 + // created_at: i64
+        1 + // bump: u8
+        32 + // name: [u8; 32]
+        64 + // url: [u8; 64]
+        32 + // signer: Pubkey
+        2 + // referral_allocation_bps: u16 (NEW)
+        2 + // level1_referral_bps: u16 (NEW)
+        2 + // level2_referral_bps: u16 (NEW)
+        2 + // level3_referral_bps: u16 (NEW)
+        120; // padding: [u8; 120] (reduced from 128 to accommodate referral fields)
+}
 }
 ```
 
@@ -290,9 +432,6 @@ pub struct ReferralRewardDistributed {
     pub level1_reward: u64,
     pub level2_reward: u64,
     pub level3_reward: u64,
-
-    /// Referee discount applied
-    pub referee_discount: u64,
 }
 ```
 
@@ -513,10 +652,11 @@ import BN from "bn.js";
  */
 export interface ReferralAccount {
   owner: PublicKey;
-  referralCode: string;
+  referralCode: Uint8Array; // [u8; 6] in Rust, Uint8Array in TypeScript
   referrer: PublicKey | null;
   createdAt: number;
   totalEarned: BN;
+  bump: number; // PDA bump seed - required for client-side PDA verification
 }
 
 /**
@@ -526,13 +666,12 @@ export function calculateReferralPool(
   paymentAmount: BN,
   gatewayReferralAllocationBps: number
 ): BN {
-  // Gateway fee: 2.5% of payment
+  // Gateway fee: 2.5% of payment (250 bps)
   const gatewayFee = paymentAmount.mul(new BN(250)).div(new BN(10000));
 
   // Referral pool: allocation percentage of gateway fee
-  return gatewayFee
-    .mul(new BN(gatewayReferralAllocationBps))
-    .div(new BN(10000));
+  // gatewayReferralAllocationBps is percentage (0-100) of gateway fee
+  return gatewayFee.mul(new BN(gatewayReferralAllocationBps)).div(new BN(100));
 }
 
 /**
@@ -565,109 +704,18 @@ export function calculateReferralRewards(
   };
 }
 
-/**
- * Calculate referral pool from gateway fee
- */
-export function calculateReferralPool(
-  paymentAmount: BN,
-  gatewayReferralAllocationBps: number
-): BN {
-  // Gateway fee: 2.5% of payment
-  const gatewayFee = paymentAmount.mul(new BN(250)).div(new BN(10000));
+// Level 1 gets full calculated reward
+const level1Reward = calculateLinearReferrerReward(
+  level1Referrals,
+  paymentAmount,
+  gatewayReferralAllocationBps
+);
 
-  // Referral pool: allocation percentage of gateway fee
-  return gatewayFee
-    .mul(new BN(gatewayReferralAllocationBps))
-    .div(new BN(10000));
-}
+// Level 2 gets 50% of level 1 reward
+const level2Reward = level1Reward.div(new BN(2));
 
-/**
- * Calculate multi-level reward distribution
- */
-export function calculateReferralChainRewards(
-  level1Referrals: number,
-  level2Referrals: number,
-  level3Referrals: number,
-  paymentAmount: BN,
-  gatewayReferralAllocationBps: number
-): {
-  level1Reward: BN;
-  level2Reward: BN;
-  level3Reward: BN;
-  refereeDiscount: BN;
-} {
-  // Level 1 gets full calculated reward
-  const level1Reward = calculateLinearReferrerReward(
-    level1Referrals,
-    paymentAmount,
-    gatewayReferralAllocationBps
-  );
-
-  // Level 2 gets 50% of level 1 reward
-  const level2Reward = level1Reward.div(new BN(2));
-
-  // Level 3 gets 25% of level 1 reward
-  const level3Reward = level1Reward.div(new BN(4));
-
-  // Calculate total referral pool from gateway fee
-  const gatewayFee = paymentAmount.mul(new BN(250)).div(new BN(10000)); // 2.5%
-  const referralPool = gatewayFee
-    .mul(new BN(gatewayReferralAllocationBps))
-    .div(new BN(10000));
-
-  // Referee discount = referral pool - distributed rewards
-  const totalDistributed = level1Reward.add(level2Reward).add(level3Reward);
-  const refereeDiscount = referralPool.sub(totalDistributed).max(new BN(0));
-
-  return {
-    level1Reward,
-    level2Reward,
-    level3Reward,
-    refereeDiscount,
-  };
-}
-
-/**
- * Validate referral chain and calculate rewards
- */
-export async function validateAndCalculateReferralRewards(
-  sdk: Tributary,
-  payer: PublicKey,
-  paymentAmount: BN,
-  gateway: PaymentGateway
-): Promise<{
-  chain: ReferralAccount[];
-  rewards: {
-    level1Reward: BN;
-    level2Reward: BN;
-    level3Reward: BN;
-    refereeDiscount: BN;
-  };
-}> {
-  const chain: ReferralAccount[] = [];
-
-  // Traverse referral chain (max 3 levels)
-  let currentReferrer: PublicKey | null = payer;
-
-  for (let level = 0; level < 3 && currentReferrer; level++) {
-    const referralAccount = await getReferralAccount(sdk, currentReferrer);
-    if (!referralAccount) break;
-
-    chain.push(referralAccount);
-    currentReferrer = referralAccount.referrer;
-  }
-
-  // Calculate rewards based on chain length
-  const rewards = calculateReferralChainRewards(
-    chain[0]?.totalReferrals || 0,
-    chain[1]?.totalReferrals || 0,
-    chain[2]?.totalReferrals || 0,
-    paymentAmount,
-    gateway.referralAllocationBps
-  );
-
-  return { chain, rewards };
-}
+// Level 3 gets 25% of level 1 reward
+const level3Reward = level1Reward.div(new BN(4));
 ```
 
 ### Modifications to `sdk/src/sdk.ts`
@@ -797,7 +845,7 @@ export default function ReferralDashboard() {
                 {gatewaySettings?.referralAllocationBps
                   ? (
                       (100 * 250 * gatewaySettings.referralAllocationBps) /
-                      (10000 * 10000)
+                      (10000 * 100)
                     ).toFixed(2)
                   : "0.00"}
               </p>
@@ -1134,19 +1182,18 @@ describe("Simplified Referral System", () => {
 - [ ] Update ReferralDashboard with simplified fee flow visualization
 - [ ] Add referral pool calculator component
 - [ ] Implement referral chain visualization
-- [ ] Remove referee discount display (simplified model)
 - [ ] Update mobile responsive design
 - [ ] Add error handling and loading states
 
 ### Phase 4: Testing & Deployment (Week 5)
 
+**Documentation:**
+
 - [ ] Add documentation to mkdocs in docs/
 - [ ] Ensure the SDK methods that have been added to the SDK contain proper documentation of their signatures
 - [ ] Ensure the new Rust code that has been added to the SDK contain proper documentation of their signatures
 
-### Phase 5: Testing & Deployment (Week 5)
-
-**Tasks:**
+**Testing:**
 
 - [ ] End-to-end integration testing
 - [ ] Load testing with complex referral chains
