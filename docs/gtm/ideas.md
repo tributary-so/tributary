@@ -168,14 +168,14 @@
 - **Target Audience/Channel:** Developers on the landing page and social.
 - **Expected Impact/Goal:** Showcase usability, aiming for 1,000 demo interactions.
 
-## Day 24
+## Day 24 - nop
 
 - **Idea:** Collaborate with a creator for a sponsored video.
 - **Content/Description:** Partner with a YouTuber to review Tributary's features. Provide them with access and talking points.
 - **Target Audience/Channel:** Creator's audience on YouTube.
 - **Expected Impact/Goal:** Authentic promotion, targeting 10,000 views.
 
-## Day 25
+## Day 25 - not yet
 
 - **Idea:** Launch a Discord server for Tributary community.
 - **Content/Description:** Set up channels for general chat, dev support, and announcements. Invite from Twitter and Reddit.
