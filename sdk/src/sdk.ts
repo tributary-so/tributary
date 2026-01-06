@@ -517,40 +517,15 @@ export class Tributary {
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
     } else {
-      // Calculate total approval amount needed for all subscriptions
-      let totalApprovalAmount = new BN(0);
-
-      // Add existing subscriptions
-      const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+      const existingApproval = await this.getTotalApprovalForExistingPolicies(
         userPaymentPda
       );
-      for (const { account: policy } of existingPolicies) {
-        if ("subscription" in policy.policyType) {
-          const sub = policy.policyType.subscription!;
-          const policyApproval = this.calculateSubscriptionApprovalAmount(
-            sub.amount,
-            sub.paymentFrequency,
-            sub.maxRenewals
-          );
-          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
-        } else if ("milestone" in policy.policyType) {
-          const milestone = policy.policyType.milestone!;
-          const policyApproval = this.calculateMilestoneApprovalAmount(
-            milestone.milestoneAmounts.filter((amount) => !amount.isZero())
-          );
-          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
-        }
-      }
-
-      // Add new subscription (assuming it's a subscription for now)
-      const newSubscriptionApproval = this.calculateSubscriptionApprovalAmount(
+      const newApproval = this.calculateSubscriptionApprovalAmount(
         amount,
         paymentFrequency,
         maxRenewals
       );
-      totalApprovalAmount = totalApprovalAmount.add(newSubscriptionApproval);
-
-      finalApprovalAmount = totalApprovalAmount;
+      finalApprovalAmount = existingApproval.add(newApproval);
     }
 
     // Set up approval if needed
@@ -579,13 +554,11 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const approveIx = createApproveInstruction(
+      const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         paymentsDelegatePda,
         user,
-        BigInt(finalApprovalAmount.toString()),
-        [],
-        TOKEN_PROGRAM_ID
+        finalApprovalAmount
       );
       instructions.push(approveIx);
     }
@@ -717,37 +690,12 @@ export class Tributary {
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
     } else {
-      // Calculate total approval amount needed for all policies
-      let totalApprovalAmount = new BN(0);
-
-      // Add existing policies
-      const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+      const existingApproval = await this.getTotalApprovalForExistingPolicies(
         userPaymentPda
       );
-      for (const { account: policy } of existingPolicies) {
-        if ("subscription" in policy.policyType) {
-          const sub = policy.policyType.subscription!;
-          const policyApproval = this.calculateSubscriptionApprovalAmount(
-            sub.amount,
-            sub.paymentFrequency,
-            sub.maxRenewals
-          );
-          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
-        } else if ("milestone" in policy.policyType) {
-          const milestone = policy.policyType.milestone!;
-          const policyApproval = this.calculateMilestoneApprovalAmount(
-            milestone.milestoneAmounts.filter((amount) => !amount.isZero())
-          );
-          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
-        }
-      }
-
-      // Add new milestone
-      const newMilestoneApproval =
+      const newApproval =
         this.calculateMilestoneApprovalAmount(milestoneAmounts);
-      totalApprovalAmount = totalApprovalAmount.add(newMilestoneApproval);
-
-      finalApprovalAmount = totalApprovalAmount;
+      finalApprovalAmount = existingApproval.add(newApproval);
     }
 
     // Set up approval if needed
@@ -776,13 +724,11 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const approveIx = createApproveInstruction(
+      const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         paymentsDelegatePda,
         user,
-        BigInt(finalApprovalAmount.toString()),
-        [],
-        TOKEN_PROGRAM_ID
+        finalApprovalAmount
       );
       instructions.push(approveIx);
     }
@@ -899,35 +845,14 @@ export class Tributary {
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
     } else {
-      // Calculate total approval amount needed for all policies
-      let totalApprovalAmount = new BN(0);
-
-      // Add existing policies
-      const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+      const existingApproval = await this.getTotalApprovalForExistingPolicies(
         userPaymentPda
       );
-      for (const { account: policy } of existingPolicies) {
-        if ("subscription" in policy.policyType) {
-          const sub = policy.policyType.subscription!;
-          const policyApproval = this.calculateSubscriptionApprovalAmount(
-            sub.amount,
-            sub.paymentFrequency,
-            sub.maxRenewals
-          );
-          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
-        } else if ("milestone" in policy.policyType) {
-          const milestone = policy.policyType.milestone!;
-          const policyApproval = this.calculateMilestoneApprovalAmount(
-            milestone.milestoneAmounts.filter((amount) => !amount.isZero())
-          );
-          totalApprovalAmount = totalApprovalAmount.add(policyApproval);
-        }
-      }
-
-      // Add new pay-as-you-go (use maxAmountPerPeriod as approval amount)
-      totalApprovalAmount = totalApprovalAmount.add(maxAmountPerPeriod);
-
-      finalApprovalAmount = totalApprovalAmount;
+      const newApproval = this.calculatePayAsYouGoApprovalAmount(
+        maxAmountPerPeriod,
+        periodLengthSeconds
+      );
+      finalApprovalAmount = existingApproval.add(newApproval);
     }
 
     // Set up approval if needed
@@ -956,13 +881,11 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const approveIx = createApproveInstruction(
+      const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         paymentsDelegatePda,
         user,
-        BigInt(finalApprovalAmount.toString()),
-        [],
-        TOKEN_PROGRAM_ID
+        finalApprovalAmount
       );
       instructions.push(approveIx);
     }
@@ -1197,12 +1120,93 @@ export class Tributary {
   }
 
   /**
-   * Calculates the total approval amount needed for a milestone payment.
+   * Calculates total approval amount needed for a milestone payment.
    * @param milestoneAmounts - Array of milestone amounts
    * @returns Total approval amount needed
    */
   private calculateMilestoneApprovalAmount(milestoneAmounts: BN[]): BN {
     return milestoneAmounts.reduce((sum, amount) => sum.add(amount), new BN(0));
+  }
+
+  /**
+   * Calculates total approval amount needed for a pay-as-you-go payment.
+   * Uses maxAmountPerPeriod multiplied by number of periods in a year.
+   * @param maxAmountPerPeriod - Maximum amount allowed per period
+   * @param periodLengthSeconds - Length of each period in seconds
+   * @returns Total approval amount needed (1 year's worth)
+   */
+  private calculatePayAsYouGoApprovalAmount(
+    maxAmountPerPeriod: BN,
+    periodLengthSeconds: BN
+  ): BN {
+    const secondsPerYear = new BN(365 * 24 * 60 * 60);
+    const periodsPerYear = secondsPerYear.div(periodLengthSeconds);
+    return maxAmountPerPeriod.mul(periodsPerYear);
+  }
+
+  /**
+   * Calculates total approval amount needed for all existing policies under a user payment account.
+   * @param userPaymentPda - Public key of user payment account
+   * @returns Total approval amount for all existing policies
+   */
+  private async getTotalApprovalForExistingPolicies(
+    userPaymentPda: PublicKey
+  ): Promise<BN> {
+    const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+      userPaymentPda
+    );
+    let totalApprovalAmount = new BN(0);
+
+    for (const { account: policy } of existingPolicies) {
+      if ("subscription" in policy.policyType) {
+        const sub = policy.policyType.subscription!;
+        const policyApproval = this.calculateSubscriptionApprovalAmount(
+          sub.amount,
+          sub.paymentFrequency,
+          sub.maxRenewals
+        );
+        totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+      } else if ("milestone" in policy.policyType) {
+        const milestone = policy.policyType.milestone!;
+        const policyApproval = this.calculateMilestoneApprovalAmount(
+          milestone.milestoneAmounts.filter((amount) => !amount.isZero())
+        );
+        totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+      } else if ("payAsYouGo" in policy.policyType) {
+        const payg = policy.policyType.payAsYouGo!;
+        const policyApproval = this.calculatePayAsYouGoApprovalAmount(
+          payg.maxAmountPerPeriod,
+          payg.periodLengthSeconds
+        );
+        totalApprovalAmount = totalApprovalAmount.add(policyApproval);
+      }
+    }
+
+    return totalApprovalAmount;
+  }
+
+  /**
+   * Creates a SPL token approval instruction with the specified amount.
+   * @param ownerTokenAccount - Token account to approve from
+   * @param delegate - Delegate receiving approval authority
+   * @param owner - Owner signing the approval
+   * @param amount - Amount to approve
+   * @returns SPL approve instruction
+   */
+  private getApprovalInstruction(
+    ownerTokenAccount: PublicKey,
+    delegate: PublicKey,
+    owner: PublicKey,
+    amount: BN
+  ): TransactionInstruction {
+    return createApproveInstruction(
+      ownerTokenAccount,
+      delegate,
+      owner,
+      BigInt(amount.toString()),
+      [],
+      TOKEN_PROGRAM_ID
+    );
   }
 
   /**
