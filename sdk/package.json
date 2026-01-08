@@ -9,7 +9,8 @@
     "build": "pnpm run clean && tsc",
     "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build",
-    "docs": "typedoc"
+    "docs": "typedoc",
+    "release": "semantic-release"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
@@ -40,6 +41,9 @@
       "types": "./dist/sdk/src/index.d.ts",
       "default": "./dist/sdk/src/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "packageManager": "pnpm@9.6.0"
 }

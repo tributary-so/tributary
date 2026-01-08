@@ -8,7 +8,8 @@
     "clean": "rm -rf ./dist",
     "build": "pnpm run clean && tsup",
     "prepack": "pnpm run build",
-    "dev": "vite"
+    "dev": "vite",
+    "release": "semantic-release"
   },
   "dependencies": {
     "@actioncodes/sdk": "^2.0.18",
@@ -67,5 +68,8 @@
   "types": "./dist/index.d.ts",
   "unpkg": "./dist/index.umd.js",
   "jsdelivr": "./dist/index.umd.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@9.6.0"
 }

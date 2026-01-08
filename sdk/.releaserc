@@ -1,0 +1,40 @@
+{
+  "branches": ["main", "next"],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "type": "feat", "scope": "sdk", "release": "minor" },
+          { "type": "fix", "scope": "sdk", "release": "patch" },
+          { "type": "perf", "release": "patch" },
+          { "type": "chore", "scope": "sdk", "release": false }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "writerOpts": {
+          "headerPartial": "# @tributary-so/sdk Changelog\n\n"
+        }
+      }
+    ],
+    [
+      "@semantic-release/npm",
+      {
+        "pkgRoot": "sdk"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["sdk/package.json", "sdk/CHANGELOG.md"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    "@semantic-release/github"
+  ]
+}
