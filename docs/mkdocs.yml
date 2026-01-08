@@ -56,9 +56,15 @@ nav:
       - Contributions: contributions.md
 
 plugins:
-  - search
   # - git-revision-date-localized:
   #     enable_creation_date: true
+  - search:
+  - llmstxt:
+      full_output: llms-full.txt
+      sections:
+        Usage documentation:
+          - index.md: Main documentation page
+          - "*.md"
 
 markdown_extensions:
   - admonition
