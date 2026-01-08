@@ -72,6 +72,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         }
         setGatewaysLoaded(true)
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        addToast({ title: 'Error', description: 'Failed to fetch payment gateways: ' + errorMessage, color: 'danger' })
         console.error('Error fetching payment gateways:', error)
       } finally {
         setGatewaysLoading(false)
@@ -159,18 +161,17 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
           break
         }
         case 'milestone': {
-          const milestoneAmounts = formData.milestoneAmounts
-            .filter((amount) => amount && parseFloat(amount) > 0)
-            .map((amount) => new anchor.BN(parseFloat(amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))))
-          const milestoneTimestamps = formData.milestoneTimestamps
-            .filter((ts) => ts && parseInt(ts) > 0)
-            .map((ts) => new anchor.BN(parseInt(ts)))
+          const validMilestones = formData.milestoneAmounts
+            .map((amount, index) => ({ amount, timestamp: formData.milestoneTimestamps[index] }))
+            .filter((m) => m.amount && parseFloat(m.amount) > 0 && m.timestamp && parseInt(m.timestamp) > 0)
+
+          const milestoneAmounts = validMilestones.map(
+            (m) => new anchor.BN(parseFloat(m.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))),
+          )
+          const milestoneTimestamps = validMilestones.map((m) => new anchor.BN(parseInt(m.timestamp)))
 
           if (milestoneAmounts.length === 0) {
             throw new Error('At least one milestone amount is required')
-          }
-          if (milestoneAmounts.length !== milestoneTimestamps.length) {
-            throw new Error('Milestone amounts and timestamps must have the same count')
           }
 
           instructions = await sdk.createMilestone(
