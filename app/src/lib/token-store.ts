@@ -1,10 +1,13 @@
 import { atom } from 'jotai'
 
+export type Network = 'mainnet' | 'devnet' | 'testnet' | 'localnet'
+
 export interface TokenMetadata {
   symbol: string
   name?: string
   decimals?: number
   logoURI?: string
+  network?: Network
 }
 
 export type TokenMetadataMap = Record<string, TokenMetadata>
@@ -33,6 +36,7 @@ export const availableTokensAtom = atom((get) => {
     symbol: data.symbol,
     name: data.name,
     decimals: data.decimals,
+    network: data.network,
   }))
 })
 

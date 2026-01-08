@@ -17,6 +17,9 @@ export default defineConfig({
       'node-fetch': 'isomorphic-fetch',
     },
   },
+  server: {
+    allowedHosts: ['tributary.so.local'],
+  },
   plugins: [
     react(),
     nodePolyfills({

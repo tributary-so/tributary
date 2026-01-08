@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Select, SelectItem, Input } from '@heroui/react'
 import { Button } from '@heroui/react'
-import { PublicKey } from '@solana/web3.js'
+import { PublicKey, TransactionInstruction } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import * as anchor from '@coral-xyz/anchor'
 import { addToast } from '@heroui/react'
@@ -15,7 +15,14 @@ import {
   getPaymentFrequency,
 } from '@tributary-so/sdk'
 import { useAtomValue } from 'jotai'
-import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom } from '@/lib/token-store'
+import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
+
+function getNetworkFromRpcEndpoint(rpcEndpoint: string): Network {
+  if (rpcEndpoint.includes('devnet')) return 'devnet'
+  if (rpcEndpoint.includes('testnet')) return 'testnet'
+  if (rpcEndpoint.includes('localhost') || rpcEndpoint.includes('127.0.0.1')) return 'localnet'
+  return 'mainnet'
+}
 
 export interface PaymentPolicyFormData {
   policyType: 'subscription' | 'milestone' | 'payasyougo'
@@ -60,6 +67,13 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const [isRecipientValid, setIsRecipientValid] = useState(true)
 
+  const currentNetwork = useMemo(() => getNetworkFromRpcEndpoint(connection.rpcEndpoint), [connection.rpcEndpoint])
+
+  const filteredTokens = useMemo(
+    () => availableTokens.filter((token) => !token.network || token.network === currentNetwork),
+    [availableTokens, currentNetwork],
+  )
+
   useEffect(() => {
     const fetchGateways = async () => {
       if (!sdk || gatewaysLoaded) return
@@ -81,10 +95,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
     if (sdk && !gatewaysLoaded) {
       fetchGateways()
-      // init with first token in the set
-      onFormDataChange({ ...formData, tokenMint: availableTokens[0]?.address })
+      if (!formData.tokenMint) {
+        onFormDataChange({ ...formData, tokenMint: filteredTokens[0]?.address })
+      }
     }
-  }, [sdk, gatewaysLoaded, formData, onFormDataChange, availableTokens])
+  }, [sdk, gatewaysLoaded, formData, onFormDataChange, filteredTokens])
 
   useEffect(() => {
     setIsRecipientValid(validateRecipientAddress(formData.recipient))
@@ -140,7 +155,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
       const tokenMint = new PublicKey(formData.tokenMint)
       const recipient = new PublicKey(formData.recipient)
       const gateway = new PublicKey(formData.gateway)
-      let instructions: any[] = []
+      let instructions: TransactionInstruction[] = []
 
       switch (formData.policyType) {
         case 'subscription': {
@@ -314,7 +329,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 required
                 className="w-full"
               >
-                {availableTokens.map((token) => (
+                {filteredTokens.map((token) => (
                   <SelectItem
                     key={token.address}
                     description={token.name ?? 'No token name'}
