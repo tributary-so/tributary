@@ -1,10 +1,10 @@
-# Tributary Referral Program Specification
-
-**Document Version:** 3.0 - Simplified Gateway-Funded Model
-**Last Updated:** 2025-01-06
-**Status:** DRAFT - Ready for Implementation Review
-
 ---
+version: 3.0
+lastUpdated: 2025-01-06
+status: DRAFT - Ready for Implementation Review
+---
+
+# Tributary Referral Program Specification
 
 ## Overview
 
@@ -12,7 +12,7 @@ Enable viral user acquisition through a simplified referral system where rewards
 
 ## User Story
 
-> "As a user, I want to earn rewards for inviting others to Tributary, so I can benefit from referral earnings while growing the protocol."
+> "As a user, I want to earn rewards for inviting others to Tributary-enabled businesses, so I can benefit from referral earnings while growing the protocol."
 
 ## Table of Contents
 
@@ -36,9 +36,10 @@ This specification describes a Viral Referral System for Tributary with a simpli
 1. **Perfect Accounting**: Every dollar is accounted for - no money creation or loss
 2. **Gateway-Funded**: All referral rewards come from gateway fees (2.5% of payment)
 3. **Configurable Budget**: Gateway operators control referral program size (0-100% of gateway fee)
-4. **Simple Math**: Fixed 60/30/10% split across referral tiers - no complex calculations
-5. **Predictable Rewards**: Referrers know exactly what they'll earn
-6. **Web3 Transparency**: On-chain accounting with complete auditability
+4. **Feature-Gated**: Referral program only active when feature flag is enabled
+5. **Simple Math**: Fixed 60/30/10% split across referral tiers - no complex calculations
+6. **Predictable Rewards**: Referrers know exactly what they'll earn
+7. **Web3 Transparency**: On-chain accounting with complete auditability
 
 ---
 
@@ -99,45 +100,57 @@ const GATEWAY_FEE_BPS = 250; // 2.5% gateway fee
 
 // Gateway specifies referral allocation (percentage of gateway fee)
 const GATEWAY_REFERRAL_ALLOCATION_BPS = 1250; // 50% of gateway fee (1250/2500 = 50%)
+const REFERRAL_FEATURE_ENABLED = true; // Bit 0 set in feature_flags
 
-// Fee calculation
+// Fee calculation (only if referral feature is enabled)
 const protocolFee = (PAYMENT_AMOUNT * PROTOCOL_FEE_BPS) / 10000; // $1.00
 const gatewayFee = (PAYMENT_AMOUNT * GATEWAY_FEE_BPS) / 10000; // $2.50
-const referralPool = (gatewayFee * GATEWAY_REFERRAL_ALLOCATION_BPS) / 10000; // $1.25
-const gatewayBusinessFee = gatewayFee - referralPool; // $1.25
+const referralPool = REFERRAL_FEATURE_ENABLED
+  ? (gatewayFee * GATEWAY_REFERRAL_ALLOCATION_BPS) / 10000
+  : 0; // $1.25 or $0
+const gatewayBusinessFee = gatewayFee - referralPool; // $1.25 or $2.50
 
-// Referral pool distribution (simple tier split)
+// Referral pool distribution (simple tier split) - only if enabled
 const LEVEL_1_SHARE = 60; // 60% of referral pool
 const LEVEL_2_SHARE = 30; // 30% of referral pool
 const LEVEL_3_SHARE = 10; // 10% of referral pool
 
-const level1Reward = (referralPool * LEVEL_1_SHARE) / 100; // $0.75
-const level2Reward = (referralPool * LEVEL_2_SHARE) / 100; // $0.375
-const level3Reward = (referralPool * LEVEL_3_SHARE) / 100; // $0.125
+const level1Reward = REFERRAL_FEATURE_ENABLED
+  ? (referralPool * LEVEL_1_SHARE) / 100
+  : 0; // $0.75 or $0
+const level2Reward = REFERRAL_FEATURE_ENABLED
+  ? (referralPool * LEVEL_2_SHARE) / 100
+  : 0; // $0.375 or $0
+const level3Reward = REFERRAL_FEATURE_ENABLED
+  ? (referralPool * LEVEL_3_SHARE) / 100
+  : 0; // $0.125 or $0
 
 // Accounting check: referralPool = level1Reward + level2Reward + level3Reward
-// $1.25 = $0.75 + $0.375 + $0.125 ✅
+// $1.25 = $0.75 + $0.375 + $0.125 ✅ (when enabled)
+// $0 = $0 + $0 + $0 ✅ (when disabled)
 ```
 
 #### Complete Fee Flow
 
-| Component                | Amount       | Source        | Recipient                |
-| ------------------------ | ------------ | ------------- | ------------------------ |
-| Payment Amount           | $100.00      | User          | -                        |
-| Protocol Fee             | $1.00 (1%)   | User          | Protocol Treasury        |
-| Gateway Fee              | $2.50 (2.5%) | User          | Gateway                  |
-| ├── Referral Pool        | $1.25 (50%)  | Gateway Fee   | Referral Program         |
-| │ ├── Level 1 Reward     | $0.75 (60%)  | Referral Pool | Direct Referrer          |
-| │ ├── Level 2 Reward     | $0.375 (30%) | Referral Pool | Indirect Referrer        |
-| │ └── Level 3 Reward     | $0.125 (10%) | Referral Pool | Second Indirect Referrer |
-| └── Gateway Business Fee | $1.25 (50%)  | Gateway Fee   | Gateway Operator         |
-| Recipient Amount         | $96.50       | User          | Recipient                |
+| Component                | Amount       | Source        | Recipient                | Condition            |
+| ------------------------ | ------------ | ------------- | ------------------------ | -------------------- |
+| Payment Amount           | $100.00      | User          | -                        | Always               |
+| Protocol Fee             | $1.00 (1%)   | User          | Protocol Treasury        | Always               |
+| Gateway Fee              | $2.50 (2.5%) | User          | Gateway                  | Always               |
+| ├── Referral Pool        | $1.25 (50%)  | Gateway Fee   | Referral Program         | Feature flag enabled |
+| │ ├── Level 1 Reward     | $0.75 (60%)  | Referral Pool | Direct Referrer          | Feature flag enabled |
+| │ ├── Level 2 Reward     | $0.375 (30%) | Referral Pool | Indirect Referrer        | Feature flag enabled |
+| │ └── Level 3 Reward     | $0.125 (10%) | Referral Pool | Second Indirect Referrer | Feature flag enabled |
+| └── Gateway Business Fee | $1.25 (50%)  | Gateway Fee   | Gateway Operator         | Referral enabled     |
+| Gateway Business Fee     | $2.50 (100%) | Gateway Fee   | Gateway Operator         | Referral disabled    |
+| Recipient Amount         | $96.50       | User          | Recipient                | Always               |
 
 **Key Design Decisions:**
 
 - **100% Accounting**: Every dollar is accounted for - no money created or lost
 - **Simple Math**: Fixed percentage splits eliminate complex calculations
 - **Gateway Control**: Operators choose referral program budget (0-100% of gateway fee)
+- **Feature-Gated**: Referral program only active when feature flag bit 0 is set
 - **Fair Distribution**: Level 1 gets majority share, diminishing for indirect levels
 
 ### Multi-Level Referral Chain
@@ -376,14 +389,17 @@ impl ReferralAccount {
 pub struct PaymentGateway {
     // ... existing fields ...
 
+    /// Gateway-scoped feature flags (bit-vector)
+    /// Bit 0: Referral program enabled (1 = enabled, 0 = disabled)
+    pub feature_flags: u8,
+
     /// Gateway-scoped referral program allocation
     /// 0 = no referral program, 2500 = 25% of gateway fee
     pub referral_allocation_bps: u16,
 
-    /// Gateway-scoped referral tier distribution (must sum to 10000 = 100%)
-    pub level1_referral_bps: u16,  // Default: 6000 (60%)
-    pub level2_referral_bps: u16,  // Default: 3000 (30%)
-    pub level3_referral_bps: u16,  // Default: 1000 (10%)
+    /// Gateway-scoped referral tier distribution as [level1, level2, level3]
+    /// Must sum to 10000 = 100%
+    pub referral_tiers_bps: [u16; 3],  // Default: [6000, 3000, 1000] (60/30/10%)
 }
 ```
 
@@ -402,11 +418,10 @@ impl PaymentGateway {
         32 + // name: [u8; 32]
         64 + // url: [u8; 64]
         32 + // signer: Pubkey
+        1 + // feature_flags: u8 (NEW)
         2 + // referral_allocation_bps: u16 (NEW)
-        2 + // level1_referral_bps: u16 (NEW)
-        2 + // level2_referral_bps: u16 (NEW)
-        2 + // level3_referral_bps: u16 (NEW)
-        120; // padding: [u8; 120] (reduced from 128 to accommodate referral fields)
+        6 + // referral_tiers_bps: [u16; 3] (NEW)
+        119; // padding: [u8; 119] (reduced to accommodate referral fields)
 }
 }
 ```
@@ -417,7 +432,7 @@ impl PaymentGateway {
 
 ```rust
 #[event]
-pub struct ReferralRewardDistributed {
+pub struct ReferralRewardDistributedRecord {
     pub payment_policy: Pubkey,
     pub gateway: Pubkey,
     pub payment_amount: u64,
@@ -444,10 +459,9 @@ pub struct ReferralRewardDistributed {
 ```rust
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct UpdateGatewayReferralSettingsArgs {
+    pub feature_flags: Option<u8>,
     pub referral_allocation_bps: Option<u16>,
-    pub level1_referral_bps: Option<u16>,
-    pub level2_referral_bps: Option<u16>,
-    pub level3_referral_bps: Option<u16>,
+    pub referral_tiers_bps: Option<[u16; 3]>,
 }
 
 pub struct UpdateGatewayReferralSettings<'info> {
@@ -468,6 +482,11 @@ pub fn update_gateway_referral_settings(
 ) -> Result<()> {
     let gateway = &mut ctx.accounts.gateway;
 
+    // Update feature flags if provided
+    if let Some(flags) = args.feature_flags {
+        gateway.feature_flags = flags;
+    }
+
     // Update referral allocation if provided
     if let Some(allocation) = args.referral_allocation_bps {
         require!(allocation <= 2500, TributaryError::InvalidReferralAllocation); // Max 25%
@@ -475,14 +494,8 @@ pub fn update_gateway_referral_settings(
     }
 
     // Update tier percentages if provided
-    if let Some(level1) = args.level1_referral_bps {
-        gateway.level1_referral_bps = level1;
-    }
-    if let Some(level2) = args.level2_referral_bps {
-        gateway.level2_referral_bps = level2;
-    }
-    if let Some(level3) = args.level3_referral_bps {
-        gateway.level3_referral_bps = level3;
+    if let Some(tiers) = args.referral_tiers_bps {
+        gateway.referral_tiers_bps = tiers;
     }
 
     // Validate that tier percentages sum to 100%
@@ -565,6 +578,11 @@ pub fn distribute_referral_rewards(
 ) -> Result<()> {
     let gateway = &ctx.accounts.gateway;
 
+    // Skip if referral program is not enabled via feature flag
+    if gateway.feature_flags & 0x01 == 0 {
+        return Ok(());
+    }
+
     // Skip if no referral allocation configured
     if gateway.referral_allocation_bps == 0 {
         return Ok(());
@@ -583,9 +601,9 @@ pub fn distribute_referral_rewards(
     let referral_pool = (gateway_fee * gateway.referral_allocation_bps as u64) / 10000;
 
     // Configurable tier distribution from gateway settings
-    let level1_reward = (referral_pool * gateway.level1_referral_bps as u64) / 10000;
-    let level2_reward = (referral_pool * gateway.level2_referral_bps as u64) / 10000;
-    let level3_reward = (referral_pool * gateway.level3_referral_bps as u64) / 10000;
+    let level1_reward = (referral_pool * gateway.referral_tiers_bps[0] as u64) / 10000;
+    let level2_reward = (referral_pool * gateway.referral_tiers_bps[1] as u64) / 10000;
+    let level3_reward = (referral_pool * gateway.referral_tiers_bps[2] as u64) / 10000;
 
     let mut distributed_rewards = 0u64;
     let mut level_rewards = [0u64; 3];
@@ -618,7 +636,7 @@ pub fn distribute_referral_rewards(
     let level2_referrer = referral_chain.get(1).map(|_| referral_chain[1].load().unwrap().owner);
     let level3_referrer = referral_chain.get(2).map(|_| referral_chain[2].load().unwrap().owner);
 
-    emit!(ReferralRewardDistributed {
+    emit!(ReferralRewardDistributedRecord {
         payment_policy: ctx.accounts.payment_policy.key(),
         gateway: ctx.accounts.gateway.key(),
         payment_amount,
@@ -742,9 +760,9 @@ export function calculateReferralRewards(
   const referralPool = calculateReferralPool(paymentAmount, gateway.referralAllocationBps);
 
   // Use configurable tier percentages from gateway
-  const level1Reward = referralPool.mul(new BN(gateway.level1ReferralBps)).div(new BN(10000));
-  const level2Reward = referralPool.mul(new BN(gateway.level2ReferralBps)).div(new BN(10000));
-  const level3Reward = referralPool.mul(new BN(gateway.level3ReferralBps)).div(new BN(10000));
+  const level1Reward = referralPool.mul(new BN(gateway.referralTiersBps[0])).div(new BN(10000));
+  const level2Reward = referralPool.mul(new BN(gateway.referralTiersBps[1])).div(new BN(10000));
+  const level3Reward = referralPool.mul(new BN(gateway.referralTiersBps[2])).div(new BN(10000));
 
   return {
     referralPool,
@@ -782,10 +800,9 @@ export function calculateReferralRewards(
   async updateGatewayReferralSettings(
     gatewayAddress: PublicKey,
     settings: {
+      featureFlags?: number;
       referralAllocationBps?: number;
-      level1ReferralBps?: number;
-      level2ReferralBps?: number;
-      level3ReferralBps?: number;
+      referralTiersBps?: [number, number, number];
     }
   ): Promise<TransactionInstruction> {
     return await this.program.methods
@@ -859,24 +876,24 @@ export default function ReferralDashboard() {
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-green-50 rounded">
                 <div className="font-semibold text-green-600">
-                  {gatewaySettings?.level1ReferralBps
-                    ? `${gatewaySettings.level1ReferralBps / 100}%`
+                  {gatewaySettings?.referralTiersBps
+                    ? `${gatewaySettings.referralTiersBps[0] / 100}%`
                     : "60%"}
                 </div>
                 <div className="text-xs text-gray-600">Level 1</div>
               </div>
               <div className="p-3 bg-blue-50 rounded">
                 <div className="font-semibold text-blue-600">
-                  {gatewaySettings?.level2ReferralBps
-                    ? `${gatewaySettings.level2ReferralBps / 100}%`
+                  {gatewaySettings?.referralTiersBps
+                    ? `${gatewaySettings.referralTiersBps[1] / 100}%`
                     : "30%"}
                 </div>
                 <div className="text-xs text-gray-600">Level 2</div>
               </div>
               <div className="p-3 bg-purple-50 rounded">
                 <div className="font-semibold text-purple-600">
-                  {gatewaySettings?.level3ReferralBps
-                    ? `${gatewaySettings.level3ReferralBps / 100}%`
+                  {gatewaySettings?.referralTiersBps
+                    ? `${gatewaySettings.referralTiersBps[2] / 100}%`
                     : "10%"}
                 </div>
                 <div className="text-xs text-gray-600">Level 3</div>
@@ -979,69 +996,20 @@ export default function ReferralDashboard() {
 
 ## Integration Architecture
 
-### Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Tributary Protocol                    │
-└────────────────────┬──────────────────────────────────────────┘
-                  │
-         ┌────────┴────────┐
-         │                 │
-     ┌───┴───┐     │
-     │ Gateway A   │     │
-     │ (ref alloc:  │     │
-     │ 50% of 2.5%) │     │
-     └─────────────┘     │
-                  │
-         ┌────────┴────────┐
-         │                 │
-   ┌─────┴─────┐     ┌─────┴─────┐
-   │ User A     │     │ User B     │
-   │ (50 refs)   │     │ (referee)   │
-   └────────────┘     └────────────┘
-         │
-   ┌─────┴─────┐
-   │ Payment    │
-   │ $100       │
-   └────────────┘
-         │
-   ┌─────┴─────┐
-   │ Gateway Fee │
-   │ $2.50       │
-   └────────────┘
-         │
-   ┌─────┴─────┐
-   │ Referral   │
-   │ Pool: $1.25 │
-   └────────────┘
-         │
-   ┌─────┴─────┐
-   │ Level 1:   │
-   │ $4.50 → A  │
-   └────────────┘
-         │
-   ┌─────┴─────┐
-   │ Referee    │
-   │ Discount:  │
-   │ $1.25 → B  │
-   └────────────┘
-```
-
 ### Data Flow
 
 ```
 User C makes $100 payment
 ├── Has referral chain: A → B → C
 ├── Include referrer accounts in transaction remaining_accounts
-├── Gateway fee: $2.50 (2.5%)
-├── Referral allocation: 50% = $1.25 pool
-├── Level 1 (A): $0.75 (60% of pool)
-├── Level 2 (B): $0.375 (30% of pool)
-├── Level 3: $0.125 (10% of pool) - no level 3 referrer in this case
-├── Gateway business fee: $1.25 (remaining 50% of gateway fee)
+├── Recipient receives: $96.50
 ├── Protocol fee: $1.00 (1%)
-└── Recipient receives: $96.50
+└── Gateway fee: $2.50 (2.5%)
+    ├── Referral allocation: 50% = $1.25 pool
+    ├── Level 1 (A): $0.75 (60% of pool)
+    ├── Level 2 (B): $0.375 (30% of pool)
+    ├── Level 3: $0.125 (10% of pool) - no level 3 referrer in this case
+    ├── Gateway business fee: $1.25 (remaining 50% of gateway fee)
 
 OR (if no referrers provided):
 
@@ -1050,6 +1018,14 @@ User C makes $100 payment
 ├── Gateway fee: $2.50 (2.5%) - all goes to gateway business fee
 ├── Protocol fee: $1.00 (1%)
 └── Recipient receives: $96.50 (no referral rewards paid)
+
+OR (if referral feature flag disabled):
+
+User C makes $100 payment
+├── Referral feature disabled (feature_flags bit 0 = 0)
+├── Gateway fee: $2.50 (2.5%) - all goes to gateway business fee
+├── Protocol fee: $1.00 (1%)
+└── Recipient receives: $96.50 (no referral rewards paid regardless of referrers)
 ```
 
 ---
@@ -1072,9 +1048,7 @@ describe("Simplified Referral System", () => {
     it("should distribute rewards with configurable percentages", () => {
       const mockGateway = {
         referralAllocationBps: 5000,
-        level1ReferralBps: 6000, // 60%
-        level2ReferralBps: 3000, // 30%
-        level3ReferralBps: 1000, // 10%
+        referralTiersBps: [6000, 3000, 1000], // 60/30/10%
       };
       const rewards = calculateReferralRewards(
         new BN(100_000_000),
@@ -1090,9 +1064,7 @@ describe("Simplified Referral System", () => {
     it("should maintain perfect accounting", () => {
       const mockGateway = {
         referralAllocationBps: 5000,
-        level1ReferralBps: 6000,
-        level2ReferralBps: 3000,
-        level3ReferralBps: 1000,
+        referralTiersBps: [6000, 3000, 1000],
       };
       const rewards = calculateReferralRewards(
         new BN(100_000_000),
@@ -1112,9 +1084,7 @@ describe("Simplified Referral System", () => {
       // $100 → $2.50 gateway fee → 50% = $1.25 referral pool
       const mockGateway = {
         referralAllocationBps: 5000,
-        level1ReferralBps: 6000,
-        level2ReferralBps: 3000,
-        level3ReferralBps: 1000,
+        referralTiersBps: [6000, 3000, 1000],
       };
       const rewards = calculateReferralRewards(
         new BN(100_000_000),
@@ -1158,18 +1128,18 @@ describe("Simplified Referral System", () => {
 
 **Tasks:**
 
-- [ ] Modify PaymentGateway to include referral_allocation_bps and configurable tier percentages
+- [ ] Modify PaymentGateway to include feature_flags, referral_allocation_bps, and referral_tiers_bps array
 - [ ] Implement remaining_accounts parsing for optional referrers (Drift-style)
-- [ ] Add dynamic referral chain distribution using configurable tier percentages
+- [ ] Add dynamic referral chain distribution using configurable tier percentages and feature flag checks
 - [ ] Create UpdateGatewayReferralSettings instruction
-- [ ] Create ReferralRewardDistributed event
+- [ ] Create ReferralRewardDistributedRecord event
 - [ ] Write comprehensive unit tests for perfect accounting and tier validation
 
 ### Phase 2: SDK Development (Week 3)
 
 **Tasks:**
 
-- [ ] Implement referral pool calculation utilities with configurable tiers
+- [ ] Implement referral pool calculation utilities with configurable tiers and feature flag support
 - [ ] Add referral chain traversal functions
 - [ ] Update Tributary class with referral methods and gateway settings management
 - [ ] Add UpdateGatewayReferralSettings method to SDK
