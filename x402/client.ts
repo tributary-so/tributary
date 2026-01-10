@@ -115,8 +115,8 @@ async function run() {
       .lastValidBlockHeight,
   });
 
-  // Create subscription instructions
-  const subscriptionIxs = await sdk.createSubscriptionInstruction(
+  // Create subscription instructions using correct SDK method
+  const subscriptionIx = await sdk.getCreateSubscriptionPolicyInstruction(
     tokenMint,
     recipient,
     gateway,
@@ -127,13 +127,10 @@ async function run() {
       paymentFrequency as PaymentFrequencyString,
       paymentFrequencyCustomSeconds
     ),
-    createMemoBuffer("x402 subscription"), // memo
-    undefined, // startTime
-    amount, // approvalAmount
-    true // executeImmediately
+    createMemoBuffer("x402 subscription") // memo
   );
 
-  tx.add(...subscriptionIxs);
+  tx.add(subscriptionIx);
 
   // Sign the transaction (but don't send it, the server will do that)
   tx.sign(payer);
@@ -144,9 +141,9 @@ async function run() {
   console.log("\nTransaction created and signed (not submitted yet)");
   console.log(`  Instructions: ${tx.instructions.length}`);
 
-  // 4) Send X-Payment header with serialized transaction (x402 deferred standard)
+  // 4) Send Payment header with serialized transaction (x402 v2 standard)
   const paymentProof = {
-    x402Version: 1,
+    x402Version: 2,
     scheme: "deferred",
     network: deferredScheme.network,
     id: deferredScheme.id,
@@ -156,7 +153,7 @@ async function run() {
   };
 
   // Base64 encode the payment proof
-  const xPaymentHeader = Buffer.from(JSON.stringify(paymentProof)).toString(
+  const paymentHeader = Buffer.from(JSON.stringify(paymentProof)).toString(
     "base64"
   );
 
@@ -165,7 +162,7 @@ async function run() {
   );
   const paid = await fetch("http://localhost:3001/premium", {
     headers: {
-      "X-Payment": xPaymentHeader,
+      Payment: paymentHeader,
     },
   });
 

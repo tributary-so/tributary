@@ -55,6 +55,10 @@ nav:
           - Subscription Payments: subscription-payments.md
           - Milestone Payments: milestone-payments.md
           - Pay-as-you-go Payments: pay-as-you-go.md
+      - x402 Payments:
+          - Overview: x402.md
+          - Getting Started: x402-getting-started.md
+          - API Reference: x402-api-reference.md
       - Contributions: contributions.md
 
 plugins:
