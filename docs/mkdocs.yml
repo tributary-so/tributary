@@ -51,8 +51,10 @@ nav:
       - Basics: how.md
       - Button Integration: quickstart/button.md
       - SDK Integration: quickstart/integration.md
-      - Milestone Payments: milestone-payments.md
-      - Pay-as-you-go Payments: pay-as-you-go.md
+      - Payment Policies:
+          - Subscription Payments: subscription-payments.md
+          - Milestone Payments: milestone-payments.md
+          - Pay-as-you-go Payments: pay-as-you-go.md
       - Contributions: contributions.md
 
 plugins:
