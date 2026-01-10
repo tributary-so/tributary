@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "rm -rf dist && tsc -b",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js test/metering.test.ts",
     "ci": "npm run build && npm run lint && npm run format:check",
     "server": "npx tsx src/server.ts",
     "client": "npx tsx src/client.ts",
@@ -30,14 +32,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
+    "@jest/globals": "^30.2.0",
     "@types/bn.js": "^5.2.0",
+    "@types/jest": "^29.5.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^24.5.2",
     "eslint": "^9.35.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.4.0",
+    "jest": "^29.7.0",
     "prettier": "^2.6.2",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.44.0"
   },
@@ -50,6 +56,23 @@
     ".": {
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
+    }
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "testMatch": [
+      "**/test/**/*.test.ts"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "useESM": true
+        }
+      ]
     }
   }
 }

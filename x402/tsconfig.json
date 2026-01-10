@@ -15,10 +15,11 @@
     "target": "es2020",
     "module": "es2020",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": ["node", "jest"],
     "outDir": "./dist",
     "sourceMap": true,
     "typeRoots": ["./node_modules/@types"]
   },
-  "exclude": ["node_modules", "tests"]
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
