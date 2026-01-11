@@ -447,21 +447,177 @@ Tributary's three payment models support diverse business use cases:
 
 ## x402 Integration
 
-Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments:
+Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments. The x402 protocol represents a proposed HTTP status code for "Payment Required" that enables seamless payment flows over HTTP without breaking the request-response cycle. Unlike traditional payment walls that return opaque errors, x402 servers provide structured payment quotes that clients can fulfill with signed blockchain transactions.
 
-- **x402**: Proposed HTTP status for "Payment Required"
-- **Deferred Payments**: Clients pay with signed Solana transactions
-- **Micropayments**: Enables practical small-amount transactions
-- **JWT Access**: Server returns tokens for seamless future access
-- **Non-Custodial**: Full Web3 sovereignty maintained
+**Core capabilities:**
+
+- **x402 Protocol**: Standards-compliant HTTP 402 implementation with v2 header format
+- **Deferred Payments**: Subscription-based model with one-time token delegation
+- **Pay-as-you-go**: Per-request metering with period-based limits
+- **JWT Access Tokens**: Seamless authenticated access after payment
+- **Non-Custodial**: Full Web3 sovereignty maintained throughout
+
+### Middleware
+
+The `createX402Middleware()` function provides a complete Express.js integration layer that handles the entire payment flow automatically. This middleware intercepts incoming requests and determines whether payment is required, processes valid payments, and grants access via JWT tokens for returning users.
+
+**Function signature:**
+
+```typescript
+function createX402Middleware(options: X402Options): RequestHandler;
+```
+
+**Options interface:**
+
+```typescript
+interface X402Options {
+  scheme: "deferred" | "x402://payg" | "x402://prepaid";
+  network: string;
+  amount: number;
+  recipient: string;
+  gateway: string;
+  tokenMint: string;
+  paymentFrequency?: string;
+  autoRenew?: boolean;
+  maxRenewals?: number | null;
+  maxAmountPerPeriod?: number;
+  periodLengthSeconds?: number;
+  maxChunkAmount?: number;
+  jwtSecret: string;
+  sdk: Tributary;
+  connection: Connection;
+}
+```
+
+**Payment handling flow:**
+
+The middleware handles three distinct scenarios for each incoming request. First, it checks for an existing JWT in the Authorization header—valid tokens are verified against the blockchain to confirm the policy remains active, and access is immediately granted. Second, it checks for a Payment header containing a base64-encoded transaction—this triggers transaction simulation, submission to Solana, on-chain confirmation, and JWT generation upon success. Third, if neither JWT nor Payment header is present, the server returns HTTP 402 with a `Payment-Required` header containing the payment quote.
+
+**JWT verification:**
+
+When a client presents a Bearer token, the middleware decodes the JWT and extracts the policy address. It then queries the blockchain to verify the policy exists, is active, and matches the expected configuration. For pay-as-you-go schemes, it additionally checks whether the current period's usage remains within configured limits. If the policy is valid and within limits, the request proceeds with policy metadata attached to the request object for downstream use.
+
+**v2 header specification:**
+
+The x402 v2 implementation uses modern IETF-style headers instead of the deprecated `X-*` prefix convention. The `Payment-Required` header communicates payment requirements when access is denied, formatted as a comma-separated list of key-value pairs. The `Payment` header carries the client's payment payload, containing base64-encoded JSON with the transaction data. The `Payment-Response` header confirms successful payment with scheme, network, ID, and timestamp details.
+
+### Metering Utilities
+
+The x402 SDK includes three specialized metering utilities for tracking resource consumption in pay-as-you-go payment models. These utilities enable precise usage tracking across different resource types and integrate seamlessly with the payment verification flow.
+
+**TokenMeter:**
+
+The `TokenMeter` class provides utilities for estimating and parsing token consumption in LLM workflows. The `estimateFromText()` method calculates approximate token counts from raw text using a character-based heuristic (approximately 4 characters per token for English text). The `fromOpenAI()` static method parses OpenAI-compatible usage objects to extract input tokens, output tokens, and total token counts. For JSON payloads, `estimateFromJSON()` provides equivalent token estimation after stringification.
+
+```typescript
+TokenMeter.estimateFromText("Hello, world!"); // Returns ~4 tokens
+TokenMeter.fromOpenAI(response); // Extracts from usage object
+```
+
+**ComputeMeter:**
+
+The `ComputeMeter` class calculates compute unit consumption for various AI operations. The `calculateForLLM()` method applies model-specific multipliers to input and output token counts—different models have distinct cost profiles based on their computational requirements. The `calculateForEmbedding()` method estimates embedding costs based on model type, dimensions, and input tokens. For fine-tuning operations, `calculateForFineTune()` provides estimates based on epochs, training examples, and model size parameters.
+
+**UsageTracker:**
+
+The `UsageTracker` class implements comprehensive usage tracking with configurable limits per resource type. It maintains period-based aggregation, tracking usage since the current billing period began and providing summaries on demand. The `trackUsage()` method records individual request consumption, while `getCurrentPeriod()` returns aggregated statistics including total usage, request count, and estimated cost. The `checkQuota()` method enables pre-flight validation to determine whether expected usage will exceed configured limits.
+
+The `createUsageTrackingMiddleware()` factory function generates Express middleware that automatically tracks request metrics including processing time, request count, and data transfer volumes. Custom usage extractors can be provided to capture application-specific metrics like token counts from LLM responses.
+
+**Resource types supported:**
+
+The metering system supports diverse resource types including API requests, input/output/total tokens, compute units, processing time in milliseconds, bytes transferred, storage consumption, GPU time, and embedding dimensions. This flexibility enables metering for virtually any billable resource in modern API services.
+
+### v2 Enhancements
+
+The x402 v2 specification introduces several compatibility updates that improve standards compliance and developer experience. The most significant change replaces the deprecated `X-Payment` header with the modern `Payment` header, aligning with IETF conventions that avoid the `X-*` prefix for custom headers. All payment payloads now require explicit versioning via the `x402Version` field, which must be set to `2` for v2 compliance.
+
+Response headers follow the same modern pattern: `Payment-Required` replaces `X-Payment-Required`, `Payment-Response` replaces `X-Payment-Response`, and `Payment-Signature` replaces `X-Payment-Signature`. The Tributary SDK automatically handles both legacy and v2 clients, accepting requests with either header format and responding with the appropriate version based on client capability signaling.
+
+Payment requirements are now structured as comma-separated key-value pairs rather than JSON objects, improving readability and compatibility with standard HTTP header parsing. The scheme field supports three payment models: `deferred` for subscription-based access, `x402://payg` for metered pay-as-you-go billing, and `x402://prepaid` for credit-based prepayment systems.
+
+### Integration Example
+
+The following example demonstrates a complete Express.js integration using the x402 middleware with metering for a pay-as-you-go API:
+
+```typescript
+import express from "express";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { Tributary } from "@tributary-so/sdk";
+import { createX402Middleware, createUsageTracker, TokenMeter, ComputeMeter } from "@tributary-so/x402";
+
+const app = express();
+const connection = new Connection(process.env.RPC_URL!);
+const sdk = new Tributary(process.env.PROGRAM_ID!, connection);
+
+const x402Middleware = createX402Middleware({
+  scheme: "x402://payg",
+  network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  amount: 100,
+  recipient: process.env.RECIPIENT_WALLET!,
+  gateway: process.env.GATEWAY!,
+  tokenMint: process.env.TOKEN_MINT!,
+  maxAmountPerPeriod: 10000,
+  periodLengthSeconds: 86400,
+  maxChunkAmount: 1000,
+  jwtSecret: process.env.JWT_SECRET!,
+  sdk,
+  connection,
+});
+
+// Apply x402 middleware to protected routes
+app.use("/api/premium", x402Middleware);
+
+// Usage tracking middleware
+const tracker = await createUsageTracker(
+  sdk,
+  connection,
+  policyAddress,
+  1000
+);
+
+// Token counting middleware for LLM endpoints
+app.use("/api/chat", async (req, res, next) => {
+  const originalSend = res.send;
+  let responseBody: any;
+
+  res.send = function(body) {
+    responseBody = body;
+    return originalSend.call(this, body);
+  };
+
+  res.on("finish", () => {
+    const inputTokens = TokenMeter.estimateFromText(req.body?.prompt || "");
+    const outputTokens = responseBody ? TokenMeter.estimateFromText(responseBody) : 0;
+    const computeUnits = ComputeMeter.calculateForLLM("gpt-4", inputTokens, outputTokens);
+
+    tracker.trackUsage(req.requestId, {
+      "tokens.in": inputTokens,
+      "tokens.out": outputTokens,
+      "tokens.total": inputTokens + outputTokens,
+      "compute.units": computeUnits,
+    });
+  });
+
+  next();
+});
+
+// Premium endpoint with usage tracking
+app.post("/api/chat", (req, res) => {
+  const response = /* LLM inference */;
+  res.json(response);
+});
+```
 
 **x402 Flow:**
 
-1. Client requests protected content
-2. Server returns subscription details (HTTP 402)
-3. Client creates Tributary subscription transaction
-4. Signed transaction sent via X-Payment header
-5. Server submits tx, confirms on-chain, returns JWT
+1. Client requests protected content via `/api/premium/endpoint`
+2. Middleware checks for JWT in Authorization header—returns 402 with `Payment-Required` header if missing
+3. Client creates payment transaction using Tributary SDK, sends base64-encoded transaction in `Payment` header
+4. Server simulates transaction, submits to Solana, waits for confirmation, verifies on-chain policy creation
+5. Server returns JWT in response body along with `Payment-Response` confirmation header
+6. Client caches JWT and includes it in future requests for seamless access
+7. Pay-as-you-go clients have usage tracked per period, with limits enforced automatically
 
 ## Business Model
 
