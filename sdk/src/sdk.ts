@@ -1296,6 +1296,7 @@ export class Tributary {
     maxAmountPerPeriod: BN,
     periodLengthSeconds: BN
   ): BN {
+    if (periodLengthSeconds.lten(0)) throw Error("Invalid Interval");
     const secondsPerYear = new BN(365 * 24 * 60 * 60);
     const periodsPerYear = secondsPerYear.div(periodLengthSeconds);
     return maxAmountPerPeriod.mul(periodsPerYear);

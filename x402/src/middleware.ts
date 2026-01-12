@@ -668,7 +668,7 @@ export function createX402Middleware(options: X402Options) {
     }
 
     // 3. Return 402 Payment Required with Payment-Required header (x402 v2 format)
-    console.log(`New ${options.scheme} payment quote requested`);
+    // console.log(`New ${options.scheme} payment quote requested`);
 
     const randomString = Math.random().toString(36).slice(2);
     const paymentId = `${
