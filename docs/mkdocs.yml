@@ -44,6 +44,7 @@ nav:
           - Security: security.md
           - Integration: integration.md
           - Network Effect: networkeffect.md
+          - Referral Program: referral-program.md
   - Use Cases: use-cases.md
   - FAQ: faq.md
   - Payment Providers: providers.md
