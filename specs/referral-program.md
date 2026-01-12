@@ -1,6 +1,6 @@
 ---
-version: 3.0
-lastUpdated: 2025-01-06
+version: 3.1
+lastUpdated: 2025-01-12
 status: DRAFT - Ready for Implementation Review
 ---
 
@@ -161,6 +161,150 @@ const level3Reward = REFERRAL_FEATURE_ENABLED
 - **Level 2**: Indirect referrer gets 30% of referral pool
 - **Level 3**: Second indirect referrer gets 10% of referral pool
 - **Maximum Depth**: 3 levels to prevent abuse
+
+#### Chain Ordering: SDK to Program Interface
+
+**Critical Implementation Detail**: The SDK's `getReferralChain()` and the Rust program's `ExecutePayment` instruction use different ordering conventions. Understanding this mapping is essential for correct reward distribution.
+
+##### SDK's getReferralChain() Returns Bottom-Up Order
+
+The SDK traverses the chain from payer upward to the original referrer:
+
+```typescript
+// sdk/src/sdk.ts:getReferralChain()
+async getReferralChain(user: PublicKey, gateway: PublicKey): Promise<(PublicKey | null)[]> {
+  const chain: (PublicKey | null)[] = [];
+
+  // L1 referrer (who referred this user) - FIRST in array
+  if (userReferral.referrer) {
+    chain.push(userReferral.referrer);  // index 0 = immediate referrer
+
+    // Get L1's referral account to find L2 - SECOND in array
+    if (l1Referral && l1Referral.referrer) {
+      chain.push(l1Referral.referrer);  // index 1 = who referred L1
+
+      // Get L2's referral account to find L3 - THIRD in array
+      if (l2Referral && l2Referral.referrer) {
+        chain.push(l2Referral.referrer);  // index 2 = original referrer
+      }
+    }
+  }
+
+  return chain;  // Returns [L1, L2, L3] or padded with nulls
+}
+```
+
+##### SDK Chain Array Structure
+
+```
+SDK getReferralChain() returns: [L1, L2, L3]
+├── index 0 = L1 (immediate referrer who referred the payer)
+├── index 1 = L2 (who referred L1)
+└── index 2 = L3 (original referrer who started the chain)
+```
+
+##### Rust Program Expects Same Order in remaining_accounts
+
+The `ExecutePayment` instruction receives referrer accounts in the same order as the SDK's chain array. However, **reward levels are assigned in REVERSE**:
+
+```
+remaining_accounts order (from SDK): [L1, L2, L3]
+Rust reward assignment:
+├── level1_referrer (60%) = remaining_accounts[2] = L3 (original)
+├── level2_referrer (30%) = remaining_accounts[1] = L2
+└── level3_referrer (10%) = remaining_accounts[0] = L1 (immediate)
+```
+
+**Why the reversal?**
+
+The terminology "Level 1" in the spec means "closest to origin" (the original referrer who started the chain), not "first in the array." This is intuitive for the business logic:
+
+- **Level 1 referrer** = The original referrer who brought the first user → deserves highest reward (60%)
+- **Level 2 referrer** = Middle of the chain → deserves medium reward (30%)
+- **Level 3 referrer** = Immediate referrer (closest to payer) → deserves lowest reward (10%)
+
+##### Example: 3-Level Referral Chain
+
+```
+Referral Tree:
+    C (origin)
+    ├── B (referred by C)
+    └── A (referred by B)
+        └── Payer (referred by A)
+
+Chain traversal (payer → A → B → C):
+SDK getReferralChain(payer) = [A, B, C]
+
+remaining_accounts passed to ExecutePayment:
+├── accounts[0] = A (immediate, L1 in SDK terms)
+├── accounts[1] = B (L2 in SDK terms)
+└── accounts[2] = C (original, L3 in SDK terms)
+
+Rust reward distribution:
+├── level1_referrer = C (original) → 60% of pool
+├── level2_referrer = B (middle)   → 30% of pool
+└── level3_referrer = A (immediate) → 10% of pool
+```
+
+##### Chain Validation
+
+The Rust program validates that accounts are passed in the correct order by checking referrer relationships:
+
+```rust
+// Validate L1 refers to L2 (remaining_accounts[0].referrer == remaining_accounts[1])
+// Validate L2 refers to L3 (remaining_accounts[1].referrer == remaining_accounts[2])
+// L3 should have no referrer (null) - validated by SDK during creation
+```
+
+If validation fails, the program returns `InvalidReferralChainOrdering` error:
+
+```rust
+#[msg("Invalid referral chain ordering in remaining_accounts")]
+InvalidReferralChainOrdering,
+```
+
+##### Common Pitfalls
+
+1. **Reusing referrers across tests**: A referrer that already has a full chain (L1→L2→L3) cannot be used as a single-level referrer in another test.
+
+2. **Array indexing confusion**: Remember that SDK array index 0 = L1, but Rust `level1_referrer` variable receives the LAST array element (L3).
+
+3. **Missing chain validation**: Without validation, a malicious actor could reorder accounts to steal higher rewards.
+
+##### Payment Execution with Referrals
+
+```typescript
+// SDK: Get referral chain before payment
+const chain = await sdk.getReferralChain(payer, gateway);
+// chain = [L1, L2, L3] where L3 is original referrer
+
+// SDK: Pass accounts to ExecutePayment in same order
+const executeIxs = await sdk.executePayment(
+  paymentPolicy,
+  amount,
+  chain.filter((k): k is PublicKey => k !== null) // Pass non-null referrers
+);
+
+// Rust: Parse remaining_accounts and reverse-assign rewards
+for (i = 0; i < referral_accounts.len(); i++) {
+  // i=0 → L1 (immediate) → level3_reward (10%)
+  // i=1 → L2 (middle)   → level2_reward (30%)
+  // i=2 → L3 (original) → level1_reward (60%)
+}
+```
+
+##### Test Fix: Single-Level Referral
+
+When testing with only a single referrer, create a fresh referrer with null referrer:
+
+```typescript
+// WRONG: Reusing referrerL1 which may already have a chain
+const referrerL1 = existingReferrerWithChain; // Already has L2, L3!
+
+// CORRECT: Create fresh referrer with null referrer
+const singleL1Referrer = Keypair.generate();
+await sdk.createReferralAccount(gateway, "L1ONLY", null); // No referrer - origin
+```
 
 #### Reward Flow Through Tree
 
