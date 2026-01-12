@@ -499,6 +499,100 @@ export type Tributary = {
       ]
     },
     {
+      "name": "createReferralAccount",
+      "discriminator": [
+        235,
+        55,
+        82,
+        230,
+        52,
+        35,
+        56,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "referralAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "docs": [
+            "The gateway this referral account belongs to"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "referralCode",
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
+        },
+        {
+          "name": "referrer",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "createUserPayment",
       "discriminator": [
         115,
@@ -1082,6 +1176,19 @@ export type Tributary = {
       ]
     },
     {
+      "name": "referralAccount",
+      "discriminator": [
+        237,
+        162,
+        80,
+        78,
+        196,
+        233,
+        91,
+        2
+      ]
+    },
+    {
       "name": "userPayment",
       "discriminator": [
         115,
@@ -1365,6 +1472,11 @@ export type Tributary = {
       "code": 6024,
       "name": "referralAccountSizeMismatch",
       "msg": "Referral account size mismatch"
+    },
+    {
+      "code": 6025,
+      "name": "invalidReferralCode",
+      "msg": "Invalid referral code - must be alphanumeric"
     }
   ],
   "types": [
@@ -2165,6 +2277,86 @@ export type Tributary = {
           {
             "name": "maxPoliciesPerUser",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "referralAccount",
+      "docs": [
+        "A referral account that tracks referral codes and chain relationships for reward distribution.",
+        "Each referral account is scoped to a specific gateway to enable gateway-specific referral ecosystems.",
+        "",
+        "The PDA derivation uses gateway pubkey to ensure uniqueness per gateway:",
+        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "docs": [
+              "The gateway this referral account belongs to (for PDA derivation and scoping)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "docs": [
+              "Authority who owns this referral code and can earn rewards"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "referralCode",
+            "docs": [
+              "6-character alphanumeric referral code"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "referrer",
+            "docs": [
+              "Referrer who brought this user (for chain traversal), None if no referrer"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "createdAt",
+            "docs": [
+              "Unix timestamp when account was created"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "totalEarned",
+            "docs": [
+              "Total rewards earned by this referrer (in smallest token units)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u64",
+                8
+              ]
+            }
           }
         ]
       }

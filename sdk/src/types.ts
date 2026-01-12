@@ -79,3 +79,9 @@ export type PaymentStatus = IdlTypes<Tributary>["paymentStatus"];
  * Contains details about the payment execution including amount, timestamp, and fees.
  */
 export type PaymentRecord = IdlTypes<Tributary>["paymentRecord"];
+
+/**
+ * Referral account structure.
+ * Tracks a user's referral code, referrer chain, and earned rewards.
+ */
+export type ReferralAccount = IdlAccounts<Tributary>["referralAccount"];

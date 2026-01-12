@@ -95,3 +95,23 @@ export function getPaymentsDelegatePda(programId: PublicKey): PdaResult {
   );
   return { address, bump };
 }
+
+/**
+ * Derives a Referral Account PDA for a specific gateway and owner.
+ * Each user can have one referral account per gateway to track their referral code and earnings.
+ * @param gateway - The PublicKey of the payment gateway
+ * @param owner - The PublicKey of the referral account owner
+ * @param programId - The PublicKey of the Tributary program
+ * @returns Object containing the PDA address and bump seed
+ */
+export function getReferralPda(
+  gateway: PublicKey,
+  owner: PublicKey,
+  programId: PublicKey
+): PdaResult {
+  const [address, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from(SEEDS.REFERRAL), gateway.toBuffer(), owner.toBuffer()],
+    programId
+  );
+  return { address, bump };
+}

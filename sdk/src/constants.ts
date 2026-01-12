@@ -31,4 +31,6 @@ export const SEEDS = {
   PAYMENT_POLICY: "payment_policy",
   /** Seed for payments delegate PDAs */
   PAYMENTS: "payments",
+  /** Seed for referral account PDAs */
+  REFERRAL: "referral",
 } as const;

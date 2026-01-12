@@ -19,6 +19,7 @@ import {
   getUserPaymentPda,
   getPaymentPolicyPda,
   getPaymentsDelegatePda,
+  getReferralPda,
 } from "./pda";
 import type {
   PolicyType,
@@ -27,6 +28,7 @@ import type {
   PaymentPolicy,
   PaymentGateway,
   ProgramConfig,
+  ReferralAccount,
 } from "./types.js";
 import { computePaymentsPerYear } from "./utils";
 import IDL from "../../target/idl/tributary.json"; // with { type: "json" };
@@ -135,6 +137,115 @@ export class Tributary {
       .createUserPayment()
       .accountsStrict(accounts)
       .instruction();
+  }
+
+  /**
+   * Creates a referral account for the current user within a specific gateway.
+   * The referral account stores the user's referral code and tracks their referrer (who referred them).
+   * @param gateway - Public key of the gateway this referral account belongs to
+   * @param referralCode - 6-character alphanumeric referral code for this user
+   * @param referrer - Optional public key of the user who referred this user (L1 referrer)
+   * @returns Transaction instruction to create the referral account
+   */
+  async createReferralAccount(
+    gateway: PublicKey,
+    referralCode: string,
+    referrer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: referralAccountPda } = this.getReferralPda(gateway, owner);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    // Validate and convert referral code
+    const codeBytes = new Array(6).fill(0);
+    const codeBuffer = Buffer.from(referralCode, "utf8");
+    if (codeBuffer.length !== 6) {
+      throw new Error("Referral code must be exactly 6 characters");
+    }
+    for (let i = 0; i < 6; i++) {
+      const byte = codeBuffer[i];
+      // Allow alphanumeric characters only
+      if (
+        !(
+          (byte >= 48 && byte <= 57) || // 0-9
+          (byte >= 65 && byte <= 90) || // A-Z
+          (byte >= 97 && byte <= 122)
+        ) // a-z
+      ) {
+        throw new Error("Referral code must be alphanumeric");
+      }
+      codeBytes[i] = byte;
+    }
+
+    const accounts = {
+      owner: owner,
+      referralAccount: referralAccountPda,
+      gateway: gateway,
+      config: configPda,
+      systemProgram: SystemProgram.programId,
+    };
+
+    return await this.program.methods
+      .createReferralAccount(codeBytes, referrer || null)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Updates the referral settings for a payment gateway.
+   * Only the gateway authority can update these settings.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param featureFlags - Bit flags to enable/disable features (bit 0 = referral enabled)
+   * @param referralAllocationBps - Basis points of gateway fee allocated to referral rewards (0-2500)
+   * @param referralTiersBps - Array of 3 values [L1, L2, L3] summing to 10000 bps
+   * @returns Transaction instruction to update gateway referral settings
+   */
+  async updateGatewayReferralSettings(
+    gatewayAuthority: PublicKey,
+    featureFlags: number,
+    referralAllocationBps: number,
+    referralTiersBps: [number, number, number]
+  ): Promise<TransactionInstruction> {
+    const authority = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    // Validate tiers sum to 10000 bps
+    const tiersSum =
+      referralTiersBps[0] + referralTiersBps[1] + referralTiersBps[2];
+    if (tiersSum !== 10000) {
+      throw new Error("Referral tiers must sum to 10000 bps");
+    }
+
+    // Validate allocation
+    if (referralAllocationBps > 2500) {
+      throw new Error("Referral allocation cannot exceed 2500 bps (25%)");
+    }
+
+    const accounts = {
+      authority: authority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .updateGatewayReferralSettings({
+        featureFlags,
+        referralAllocationBps,
+        referralTiersBps,
+      })
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Gets a Referral Account PDA for the specified gateway and owner.
+   * @param gateway - Public key of the gateway
+   * @param owner - Public key of the referral account owner
+   * @returns PdaResult containing the PDA address and bump
+   */
+  getReferralPda(gateway: PublicKey, owner: PublicKey) {
+    return getReferralPda(gateway, owner, this.programId);
   }
 
   /**
@@ -1051,12 +1162,58 @@ export class Tributary {
       protocolFeeAccount: protocolFeeAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
     };
-    instructions.push(
-      await this.program.methods
-        .executePayment(paymentAmount || null)
-        .accountsStrict(accounts)
-        .instruction()
-    );
+
+    // Build instruction with remaining accounts for referrals
+    let executeIx = await this.program.methods
+      .executePayment(paymentAmount || null)
+      .accountsStrict(accounts)
+      .instruction();
+
+    // Check if referral is enabled and build referral chain
+    if (
+      gatewayAccount &&
+      gatewayAccount.featureFlags &&
+      gatewayAccount.referralAllocationBps > 0
+    ) {
+      // Check if bit 0 is set (referral enabled)
+      const referralEnabled = (gatewayAccount.featureFlags & 1) === 1;
+
+      if (referralEnabled && _user) {
+        // Build the referral chain
+        const referralChain = await this.getReferralChain(_user, _gateway!);
+
+        // Filter out nulls and get the referral account addresses
+        const referralAccounts = referralChain.filter(
+          (ref): ref is PublicKey => ref !== null
+        );
+
+        if (referralAccounts.length > 0) {
+          // Get the actual referral account addresses (not just the owner)
+          const remainingAccounts = [];
+
+          for (const referrer of referralAccounts) {
+            const { address: referralAccountPda } = this.getReferralPda(
+              _gateway!,
+              referrer
+            );
+            remainingAccounts.push({
+              pubkey: referralAccountPda,
+              isWritable: true,
+              isSigner: false,
+            });
+          }
+
+          // Create new instruction with remaining accounts
+          executeIx = await this.program.methods
+            .executePayment(paymentAmount || null)
+            .accountsStrict(accounts)
+            .remainingAccounts(remainingAccounts)
+            .instruction();
+        }
+      }
+    }
+
+    instructions.push(executeIx);
 
     return instructions;
   }
@@ -1568,6 +1725,80 @@ export class Tributary {
     return await this.program.account.paymentPolicy.fetchNullable(
       policyAddress
     );
+  }
+
+  /**
+   * Fetches a specific referral account by its address.
+   * @param referralAccountAddress - Public key of the referral account
+   * @returns The referral account data or null if not found
+   */
+  async getReferralAccount(
+    referralAccountAddress: PublicKey
+  ): Promise<ReferralAccount | null> {
+    return await this.program.account.referralAccount.fetchNullable(
+      referralAccountAddress
+    );
+  }
+
+  /**
+   * Builds the referral chain for a given user and gateway.
+   * This method traverses the referral chain up to 3 levels deep.
+   * @param user - Public key of the user to find the referral chain for
+   * @param gateway - Public key of the gateway
+   * @returns Array of referral account addresses [L1, L2, L3] (may contain nulls)
+   */
+  async getReferralChain(
+    user: PublicKey,
+    gateway: PublicKey
+  ): Promise<(PublicKey | null)[]> {
+    const chain: (PublicKey | null)[] = [];
+
+    // Get the user's referral account for this gateway
+    const { address: userReferralPda } = this.getReferralPda(gateway, user);
+    const userReferral = await this.getReferralAccount(userReferralPda);
+
+    if (!userReferral) {
+      // User doesn't have a referral account
+      return [null, null, null];
+    }
+
+    // L1 referrer (who referred this user)
+    if (userReferral.referrer) {
+      chain.push(userReferral.referrer);
+
+      // Get L1's referral account to find L2
+      const { address: l1ReferralPda } = this.getReferralPda(
+        gateway,
+        userReferral.referrer
+      );
+      const l1Referral = await this.getReferralAccount(l1ReferralPda);
+
+      if (l1Referral && l1Referral.referrer) {
+        chain.push(l1Referral.referrer);
+
+        // Get L2's referral account to find L3
+        const { address: l2ReferralPda } = this.getReferralPda(
+          gateway,
+          l1Referral.referrer
+        );
+        const l2Referral = await this.getReferralAccount(l2ReferralPda);
+
+        if (l2Referral && l2Referral.referrer) {
+          chain.push(l2Referral.referrer);
+        } else {
+          chain.push(null);
+        }
+      } else {
+        chain.push(null);
+        chain.push(null);
+      }
+    } else {
+      chain.push(null);
+      chain.push(null);
+      chain.push(null);
+    }
+
+    return chain;
   }
 }
 
