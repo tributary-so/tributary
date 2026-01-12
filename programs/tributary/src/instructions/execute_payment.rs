@@ -1,6 +1,7 @@
 use crate::{constants::*, error::TributaryError, policies::*, state::*};
-use anchor_lang::{prelude::*, solana_program::program_option::COption};
+use anchor_lang::{prelude::*, solana_program::program_option::COption, Discriminator};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use arrayref::array_ref;
 
 // Add this helper function to your program
 pub fn token_account_has_delegate(
@@ -98,9 +99,10 @@ impl<'info> ExecutePayment<'info> {
     ) -> Result<()> {
         let payment_policy = &mut ctx.accounts.payment_policy;
         let user_payment = &mut ctx.accounts.user_payment;
-        let gateway = &mut ctx.accounts.gateway;
+        let gateway = &ctx.accounts.gateway;
         let config = &ctx.accounts.config;
         let clock = Clock::get()?;
+        let payment_policy_key = payment_policy.key();
 
         // Get appropriate strategy for policy type
         let mut strategy = crate::policies::get_policy_strategy(payment_policy)?;
@@ -198,7 +200,104 @@ impl<'info> ExecutePayment<'info> {
             token::transfer(cpi_ctx, protocol_fee)?;
         }
 
-        // Update payment policy
+        // Process referral rewards if enabled
+        if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
+            let referral_pool = gateway_fee
+                .checked_mul(gateway.referral_allocation_bps as u64)
+                .ok_or(TributaryError::ArithmeticOverflow)?
+                .checked_div(10000)
+                .ok_or(TributaryError::ArithmeticOverflow)?;
+
+            if referral_pool > 0 {
+                let tiers = &gateway.referral_tiers_bps;
+                let level1_reward = referral_pool
+                    .checked_mul(tiers[0] as u64)
+                    .ok_or(TributaryError::ArithmeticOverflow)?
+                    .checked_div(10000)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
+
+                let level2_reward = referral_pool
+                    .checked_mul(tiers[1] as u64)
+                    .ok_or(TributaryError::ArithmeticOverflow)?
+                    .checked_div(10000)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
+
+                let level3_reward = referral_pool
+                    .checked_mul(tiers[2] as u64)
+                    .ok_or(TributaryError::ArithmeticOverflow)?
+                    .checked_div(10000)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
+
+                // Parse referral accounts from remaining_accounts
+                let mut level1_referrer: Option<Pubkey> = None;
+                let mut level2_referrer: Option<Pubkey> = None;
+                let mut level3_referrer: Option<Pubkey> = None;
+
+                for account_info in ctx.remaining_accounts.iter() {
+                    if !account_info.is_writable {
+                        break;
+                    }
+
+                    // Verify discriminator to ensure this is a valid ReferralAccount
+                    let data = match account_info.try_borrow_data() {
+                        Ok(data) => data,
+                        Err(_) => break,
+                    };
+                    let expected_data_len = ReferralAccount::SIZE;
+                    if data.len() < expected_data_len {
+                        break;
+                    }
+
+                    let account_discriminator = array_ref![data, 0, 8];
+                    if account_discriminator != &ReferralAccount::DISCRIMINATOR {
+                        break;
+                    }
+
+                    // Valid referral account - use the account's key as referrer
+                    let referrer = account_info.key();
+
+                    if level1_referrer.is_none() {
+                        level1_referrer = Some(referrer);
+                    } else if level2_referrer.is_none() {
+                        level2_referrer = Some(referrer);
+                    } else if level3_referrer.is_none() {
+                        level3_referrer = Some(referrer);
+                    } else {
+                        break;
+                    }
+                }
+
+                emit!(ReferralRewardDistributedRecord {
+                    payment_policy: payment_policy_key,
+                    gateway: gateway.key(),
+                    payment_amount,
+                    timestamp: clock.unix_timestamp,
+                    rewards: [
+                        level1_referrer.map(|pubkey| ReferralReward {
+                            pubkey,
+                            reward: level1_reward,
+                        }),
+                        level2_referrer.map(|pubkey| ReferralReward {
+                            pubkey,
+                            reward: level2_reward,
+                        }),
+                        level3_referrer.map(|pubkey| ReferralReward {
+                            pubkey,
+                            reward: level3_reward,
+                        }),
+                    ],
+                });
+
+                msg!(
+                    "Referral pool: {} (L1: {}, L2: {}, L3: {})",
+                    referral_pool,
+                    level1_reward,
+                    level2_reward,
+                    level3_reward
+                );
+            }
+        }
+
         payment_policy.total_paid = payment_policy
             .total_paid
             .checked_add(payment_amount)
@@ -228,7 +327,7 @@ impl<'info> ExecutePayment<'info> {
         });
 
         msg!(
-            "Payment executed: {} tokens transferred to recipient, {} gateway fee, {} protocol fee",
+            "Payment executed: {} -> recipient, {} gateway fee, {} protocol fee",
             recipient_amount,
             gateway_fee,
             protocol_fee

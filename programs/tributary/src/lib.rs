@@ -82,6 +82,13 @@ pub mod tributary {
     pub fn change_gateway_fee_recipient(ctx: Context<ChangeGatewayFeeRecipient>) -> Result<()> {
         ChangeGatewayFeeRecipient::handler_change_gateway_fee_recipient(ctx)
     }
+
+    pub fn update_gateway_referral_settings(
+        ctx: Context<UpdateGatewayReferralSettings>,
+        args: UpdateGatewayReferralSettingsArgs,
+    ) -> Result<()> {
+        UpdateGatewayReferralSettings::handle_update_gateway_referral_settings(ctx, args)
+    }
 }
 
 #[cfg(not(feature = "no-entrypoint"))]

@@ -980,6 +980,59 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "update_gateway_referral_settings",
+      "discriminator": [
+        243,
+        85,
+        199,
+        210,
+        27,
+        35,
+        250,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateGatewayReferralSettingsArgs"
+            }
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1155,6 +1208,19 @@
       ]
     },
     {
+      "name": "ReferralRewardDistributedRecord",
+      "discriminator": [
+        91,
+        128,
+        157,
+        110,
+        236,
+        68,
+        237,
+        14
+      ]
+    },
+    {
       "name": "UserPaymentCreated",
       "discriminator": [
         112,
@@ -1248,6 +1314,51 @@
       "code": 6015,
       "name": "ArithmeticOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6016,
+      "name": "ReferralFeatureNotEnabled",
+      "msg": "Referral program feature is not enabled"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidReferralAllocation",
+      "msg": "Invalid referral allocation - must be <= 2500 bps"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidReferralTiers",
+      "msg": "Invalid referral tiers - must sum to 10000 bps"
+    },
+    {
+      "code": 6019,
+      "name": "CouldNotDeserializeReferrer",
+      "msg": "Could not deserialize referrer account"
+    },
+    {
+      "code": 6020,
+      "name": "ReferrerMustBeWritable",
+      "msg": "Referrer account must be writable"
+    },
+    {
+      "code": 6021,
+      "name": "CircularReferralChain",
+      "msg": "Circular referral chain detected"
+    },
+    {
+      "code": 6022,
+      "name": "MaxReferralDepthExceeded",
+      "msg": "Maximum referral chain depth exceeded"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidReferralAccountDiscriminator",
+      "msg": "Invalid referral account discriminator"
+    },
+    {
+      "code": 6024,
+      "name": "ReferralAccountSizeMismatch",
+      "msg": "Referral account size mismatch"
     }
   ],
   "types": [
@@ -1426,11 +1537,43 @@
             "type": "pubkey"
           },
           {
+            "name": "feature_flags",
+            "docs": [
+              "Gateway-scoped feature flags (bit-vector)",
+              "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "referral_allocation_bps",
+            "docs": [
+              "Gateway-scoped referral program allocation (in basis points)",
+              "0 = no referral program, 2500 = 25% of gateway fee can be used for referrals"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "referral_tiers_bps",
+            "docs": [
+              "Gateway-scoped referral tier distribution as [level1, level2, level3]",
+              "Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%"
+            ],
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding",
+            "docs": [
+              "Padding for future fields"
+            ],
             "type": {
               "array": [
                 "u8",
-                128
+                119
               ]
             }
           }
@@ -2016,6 +2159,107 @@
           {
             "name": "max_policies_per_user",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferralReward",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pubkey",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferralRewardDistributedRecord",
+      "docs": [
+        "An event that is thrown when referral rewards are distributed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payment_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "rewards",
+            "type": {
+              "array": [
+                {
+                  "option": {
+                    "defined": {
+                      "name": "ReferralReward"
+                    }
+                  }
+                },
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateGatewayReferralSettingsArgs",
+      "docs": [
+        "Arguments for updating gateway referral settings"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feature_flags",
+            "docs": [
+              "Optional feature flags to update (bit 0 = referral program enabled)"
+            ],
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "referral_allocation_bps",
+            "docs": [
+              "Optional referral allocation in basis points (0-2500)"
+            ],
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "referral_tiers_bps",
+            "docs": [
+              "Optional referral tier distribution [level1, level2, level3] in bps (must sum to 10000)"
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u16",
+                  3
+                ]
+              }
+            }
           }
         ]
       }

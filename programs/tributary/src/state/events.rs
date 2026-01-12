@@ -90,3 +90,19 @@ pub struct PaymentGatewayDeleted {
     pub authority: Pubkey,
     pub name: [u8; 32],
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ReferralReward {
+    pub pubkey: Pubkey,
+    pub reward: u64,
+}
+
+/// An event that is thrown when referral rewards are distributed
+#[event]
+pub struct ReferralRewardDistributedRecord {
+    pub payment_policy: Pubkey,
+    pub gateway: Pubkey,
+    pub payment_amount: u64,
+    pub timestamp: i64,
+    pub rewards: [Option<ReferralReward>; 3],
+}

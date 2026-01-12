@@ -986,6 +986,59 @@ export type Tributary = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "updateGatewayReferralSettings",
+      "discriminator": [
+        243,
+        85,
+        199,
+        210,
+        27,
+        35,
+        250,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "updateGatewayReferralSettingsArgs"
+            }
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1161,6 +1214,19 @@ export type Tributary = {
       ]
     },
     {
+      "name": "referralRewardDistributedRecord",
+      "discriminator": [
+        91,
+        128,
+        157,
+        110,
+        236,
+        68,
+        237,
+        14
+      ]
+    },
+    {
       "name": "userPaymentCreated",
       "discriminator": [
         112,
@@ -1254,6 +1320,51 @@ export type Tributary = {
       "code": 6015,
       "name": "arithmeticOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6016,
+      "name": "referralFeatureNotEnabled",
+      "msg": "Referral program feature is not enabled"
+    },
+    {
+      "code": 6017,
+      "name": "invalidReferralAllocation",
+      "msg": "Invalid referral allocation - must be <= 2500 bps"
+    },
+    {
+      "code": 6018,
+      "name": "invalidReferralTiers",
+      "msg": "Invalid referral tiers - must sum to 10000 bps"
+    },
+    {
+      "code": 6019,
+      "name": "couldNotDeserializeReferrer",
+      "msg": "Could not deserialize referrer account"
+    },
+    {
+      "code": 6020,
+      "name": "referrerMustBeWritable",
+      "msg": "Referrer account must be writable"
+    },
+    {
+      "code": 6021,
+      "name": "circularReferralChain",
+      "msg": "Circular referral chain detected"
+    },
+    {
+      "code": 6022,
+      "name": "maxReferralDepthExceeded",
+      "msg": "Maximum referral chain depth exceeded"
+    },
+    {
+      "code": 6023,
+      "name": "invalidReferralAccountDiscriminator",
+      "msg": "Invalid referral account discriminator"
+    },
+    {
+      "code": 6024,
+      "name": "referralAccountSizeMismatch",
+      "msg": "Referral account size mismatch"
     }
   ],
   "types": [
@@ -1432,11 +1543,43 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
+            "name": "featureFlags",
+            "docs": [
+              "Gateway-scoped feature flags (bit-vector)",
+              "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "referralAllocationBps",
+            "docs": [
+              "Gateway-scoped referral program allocation (in basis points)",
+              "0 = no referral program, 2500 = 25% of gateway fee can be used for referrals"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "referralTiersBps",
+            "docs": [
+              "Gateway-scoped referral tier distribution as [level1, level2, level3]",
+              "Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%"
+            ],
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding",
+            "docs": [
+              "Padding for future fields"
+            ],
             "type": {
               "array": [
                 "u8",
-                128
+                119
               ]
             }
           }
@@ -2022,6 +2165,107 @@ export type Tributary = {
           {
             "name": "maxPoliciesPerUser",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "referralReward",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pubkey",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "referralRewardDistributedRecord",
+      "docs": [
+        "An event that is thrown when referral rewards are distributed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paymentPolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "paymentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "rewards",
+            "type": {
+              "array": [
+                {
+                  "option": {
+                    "defined": {
+                      "name": "referralReward"
+                    }
+                  }
+                },
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "updateGatewayReferralSettingsArgs",
+      "docs": [
+        "Arguments for updating gateway referral settings"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "featureFlags",
+            "docs": [
+              "Optional feature flags to update (bit 0 = referral program enabled)"
+            ],
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "referralAllocationBps",
+            "docs": [
+              "Optional referral allocation in basis points (0-2500)"
+            ],
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "referralTiersBps",
+            "docs": [
+              "Optional referral tier distribution [level1, level2, level3] in bps (must sum to 10000)"
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u16",
+                  3
+                ]
+              }
+            }
           }
         ]
       }

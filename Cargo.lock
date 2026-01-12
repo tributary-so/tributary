@@ -2767,6 +2767,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "arrayref",
  "chrono",
  "proc-macro2",
  "quote",

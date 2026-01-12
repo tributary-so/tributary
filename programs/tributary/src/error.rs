@@ -34,4 +34,22 @@ pub enum TributaryError {
     InvalidPaymentDueDate,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+    #[msg("Referral program feature is not enabled")]
+    ReferralFeatureNotEnabled,
+    #[msg("Invalid referral allocation - must be <= 2500 bps")]
+    InvalidReferralAllocation,
+    #[msg("Invalid referral tiers - must sum to 10000 bps")]
+    InvalidReferralTiers,
+    #[msg("Could not deserialize referrer account")]
+    CouldNotDeserializeReferrer,
+    #[msg("Referrer account must be writable")]
+    ReferrerMustBeWritable,
+    #[msg("Circular referral chain detected")]
+    CircularReferralChain,
+    #[msg("Maximum referral chain depth exceeded")]
+    MaxReferralDepthExceeded,
+    #[msg("Invalid referral account discriminator")]
+    InvalidReferralAccountDiscriminator,
+    #[msg("Referral account size mismatch")]
+    ReferralAccountSizeMismatch,
 }

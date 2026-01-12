@@ -1,3 +1,4 @@
+use crate::error::TributaryError;
 use anchor_lang::prelude::*;
 
 /// A payment gateway operated by a service provider that executes recurring payments.
@@ -26,7 +27,17 @@ pub struct PaymentGateway {
     pub url: [u8; 64],
     /// Signer key authorized to execute payments for this gateway
     pub signer: Pubkey,
-    pub padding: [u8; 128],
+    /// Gateway-scoped feature flags (bit-vector)
+    /// Bit 0: Referral program enabled (1 = enabled, 0 = disabled)
+    pub feature_flags: u8,
+    /// Gateway-scoped referral program allocation (in basis points)
+    /// 0 = no referral program, 2500 = 25% of gateway fee can be used for referrals
+    pub referral_allocation_bps: u16,
+    /// Gateway-scoped referral tier distribution as [level1, level2, level3]
+    /// Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%
+    pub referral_tiers_bps: [u16; 3],
+    /// Padding for future fields
+    pub padding: [u8; 119],
 }
 
 impl PaymentGateway {
@@ -41,5 +52,27 @@ impl PaymentGateway {
         32 + // name: [u8; 32]
         64 + // url: [u8; 64]
         32 + // signer: Pubkey
-        128; // padding: [u8; 160]
+        1 + // feature_flags: u8
+        2 + // referral_allocation_bps: u16
+        6 + // referral_tiers_bps: [u16; 3] = 2*3 = 6
+        119; // padding
+}
+
+impl PaymentGateway {
+    /// Validate that referral tier percentages sum to 100% (10000 bps)
+    pub fn validate_referral_tiers(&self) -> Result<()> {
+        if self.referral_tiers_bps.len() != 3 {
+            return Err(TributaryError::InvalidReferralTiers.into());
+        }
+
+        let total: u16 = self.referral_tiers_bps.iter().sum();
+        require!(total == 10000, TributaryError::InvalidReferralTiers);
+
+        Ok(())
+    }
+
+    /// Check if the referral program feature is enabled
+    pub fn is_referral_enabled(&self) -> bool {
+        self.feature_flags & 0x01 != 0
+    }
 }

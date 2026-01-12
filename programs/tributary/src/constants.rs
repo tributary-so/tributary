@@ -8,3 +8,4 @@ pub const USER_PAYMENT_SEED: &[u8] = b"user_payment";
 pub const GATEWAY_SEED: &[u8] = b"gateway";
 pub const PAYMENT_POLICY_SEED: &[u8] = b"payment_policy";
 pub const PAYMENTS_SEED: &[u8] = b"payments";
+pub const REFERRAL_SEED: &[u8] = b"referral";
