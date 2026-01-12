@@ -1459,16 +1459,21 @@
     },
     {
       "code": 6023,
+      "name": "InvalidReferralChainOrdering",
+      "msg": "Invalid referral chain ordering in remaining_accounts"
+    },
+    {
+      "code": 6024,
       "name": "InvalidReferralAccountDiscriminator",
       "msg": "Invalid referral account discriminator"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "ReferralAccountSizeMismatch",
       "msg": "Referral account size mismatch"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "InvalidReferralCode",
       "msg": "Invalid referral code - must be alphanumeric"
     }

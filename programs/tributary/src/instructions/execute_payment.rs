@@ -229,10 +229,15 @@ impl<'info> ExecutePayment<'info> {
                     .ok_or(TributaryError::ArithmeticOverflow)?;
 
                 // Parse referral accounts from remaining_accounts
+                // SDK's getReferralChain() returns [L1, L2, L3] where L3 is first/original
+                // But rewards should be: L3 (original) = 60%, L2 = 30%, L1 (immediate) = 10%
+                // So we need to process remaining_accounts in reverse order
                 let mut level1_referrer: Option<Pubkey> = None;
                 let mut level2_referrer: Option<Pubkey> = None;
                 let mut level3_referrer: Option<Pubkey> = None;
 
+                // Collect all valid referral accounts first
+                let mut referral_accounts: Vec<Pubkey> = Vec::new();
                 for account_info in ctx.remaining_accounts.iter() {
                     if !account_info.is_writable {
                         break;
@@ -253,19 +258,62 @@ impl<'info> ExecutePayment<'info> {
                         break;
                     }
 
-                    // Valid referral account - use the account's key as referrer
-                    let referrer = account_info.key();
+                    // Valid referral account - add to collection
+                    referral_accounts.push(*account_info.key);
+                }
 
-                    if level1_referrer.is_none() {
-                        level1_referrer = Some(referrer);
-                    } else if level2_referrer.is_none() {
-                        level2_referrer = Some(referrer);
-                    } else if level3_referrer.is_none() {
-                        level3_referrer = Some(referrer);
-                    } else {
-                        break;
+                // Validate and assign referrers in REVERSE order (SDK returns [L1, L2, L3])
+                // L3 (original referrer) should get highest reward (60%), L1 gets lowest (10%)
+                // So referral_accounts[0] = L1, referral_accounts[1] = L2, referral_accounts[2] = L3
+                // But we want: L3 → level1 (60%), L2 → level2 (30%), L1 → level3 (10%)
+                if !referral_accounts.is_empty() {
+                    // Level 3 referrer (original) gets highest reward (60%)
+                    // This is the last account in SDK's chain (referral_accounts[referral_accounts.len()-1])
+                    level1_referrer = Some(referral_accounts[referral_accounts.len() - 1]);
+
+                    // Level 2 referrer gets 30% - second to last
+                    if referral_accounts.len() >= 2 {
+                        level2_referrer = Some(referral_accounts[referral_accounts.len() - 2]);
+                    }
+
+                    // Level 1 referrer (immediate) gets 10% - first in SDK's chain
+                    if referral_accounts.len() >= 3 {
+                        level3_referrer = Some(referral_accounts[0]);
                     }
                 }
+
+                // Validate chain ordering: account[0].referrer == account[1].owner, etc.
+                // SDK returns [L1, L2, L3] where:
+                // - L1.referrer = L2.publicKey
+                // - L2.referrer = L3.publicKey
+                // - L3.referrer = None
+                if referral_accounts.len() >= 2 {
+                    // Validate L1 refers to L2
+                    let l1_data = ctx.remaining_accounts[0]
+                        .try_borrow_data()
+                        .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
+                    if l1_data.len() < ReferralAccount::SIZE {
+                        return Err(TributaryError::ReferralAccountSizeMismatch.into());
+                    }
+                    let l1_referrer = array_ref![l1_data, ReferralAccount::SIZE - 32, 32];
+                    if *l1_referrer != referral_accounts[1].as_ref() {
+                        return Err(TributaryError::InvalidReferralChainOrdering.into());
+                    }
+                }
+                if referral_accounts.len() >= 3 {
+                    // Validate L2 refers to L3
+                    let l2_data = ctx.remaining_accounts[1]
+                        .try_borrow_data()
+                        .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
+                    if l2_data.len() < ReferralAccount::SIZE {
+                        return Err(TributaryError::ReferralAccountSizeMismatch.into());
+                    }
+                    let l2_referrer = array_ref![l2_data, ReferralAccount::SIZE - 32, 32];
+                    if *l2_referrer != referral_accounts[2].as_ref() {
+                        return Err(TributaryError::InvalidReferralChainOrdering.into());
+                    }
+                }
+                // L3 should have no referrer (checked by SDK during creation)
 
                 emit!(ReferralRewardDistributedRecord {
                     payment_policy: payment_policy_key,

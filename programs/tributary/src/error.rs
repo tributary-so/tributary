@@ -48,6 +48,8 @@ pub enum TributaryError {
     CircularReferralChain,
     #[msg("Maximum referral chain depth exceeded")]
     MaxReferralDepthExceeded,
+    #[msg("Invalid referral chain ordering in remaining_accounts")]
+    InvalidReferralChainOrdering,
     #[msg("Invalid referral account discriminator")]
     InvalidReferralAccountDiscriminator,
     #[msg("Referral account size mismatch")]

@@ -1529,7 +1529,6 @@ describe("Tributary", () => {
           "Expected policy creation to fail with invalid period length"
         );
       } catch (error: any) {
-        console.log(error);
         expect(error.message).toContain("Invalid Interval");
       }
     });
@@ -1939,7 +1938,38 @@ describe("Tributary", () => {
     });
 
     test("Referral program with only L1 referrer", async () => {
-      // Create a new payer without L2/L3 referrers
+      // Create a new referrer that has NO further referrers (origin of chain)
+      const singleL1Referrer = Keypair.generate();
+      await fund(singleL1Referrer.publicKey, 5);
+
+      const singleL1TokenAccount = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        singleL1Referrer.publicKey
+      );
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        singleL1TokenAccount,
+        mintAuthority,
+        1000000n
+      );
+
+      // Create a referral account for singleL1Referrer with NO referrer (origin)
+      await sdk.updateWallet(new anchor.Wallet(singleL1Referrer));
+      const createSingleL1Ix = await sdk.createReferralAccount(
+        gatewayPDA,
+        "L1ONLY", // 6-char code
+        null // No referrer - this is the origin
+      );
+      let tx = new Transaction().add(createSingleL1Ix);
+      await sendAndConfirmTransaction(connection, tx, [singleL1Referrer], {
+        commitment: "processed" as Commitment,
+      });
+
+      // Create a new payer who uses singleL1Referrer as their only referrer
       const singleReferrerPayer = Keypair.generate();
       await fund(singleReferrerPayer.publicKey, 5);
 
@@ -1967,14 +1997,14 @@ describe("Tributary", () => {
         program.programId
       );
 
-      // Create referral account with only L1 referrer
+      // Create referral account with only L1 referrer (singleL1Referrer)
       await sdk.updateWallet(new anchor.Wallet(singleReferrerPayer));
       const createSinglePayerIx = await sdk.createReferralAccount(
         gatewayPDA,
         "SINGL1", // 6-char code
-        referrerL1.publicKey // Only L1
+        singleL1Referrer.publicKey // Only L1 (who has no further referrers)
       );
-      let tx = new Transaction().add(createSinglePayerIx);
+      tx = new Transaction().add(createSinglePayerIx);
       await sendAndConfirmTransaction(connection, tx, [singleReferrerPayer], {
         commitment: "processed" as Commitment,
       });
@@ -2029,9 +2059,9 @@ describe("Tributary", () => {
         gatewayPDA
       );
       expect(chain.length).toEqual(3);
-      expect(chain[0]).toEqual(referrerL1.publicKey);
-      expect(chain[1]).toBeNull();
-      expect(chain[2]).toBeNull();
+      expect(chain[0]).toEqual(singleL1Referrer.publicKey); // L1 (direct referrer)
+      expect(chain[1]).toBeNull(); // L2 - singleL1Referrer has no referrer
+      expect(chain[2]).toBeNull(); // L3
 
       // Set up approval and execute payment
       const [paymentsDelegate] = PublicKey.findProgramAddressSync(
@@ -2048,7 +2078,7 @@ describe("Tributary", () => {
       );
 
       const initialL1Balance = await connection.getTokenAccountBalance(
-        l1TokenAccount
+        singleL1TokenAccount
       );
 
       await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
@@ -2061,9 +2091,9 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      // Verify only L1 received reward
+      // Verify only L1 (singleL1Referrer) received reward
       const finalL1Balance = await connection.getTokenAccountBalance(
-        l1TokenAccount
+        singleL1TokenAccount
       );
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThan(
         parseInt(initialL1Balance.value.amount)

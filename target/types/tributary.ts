@@ -1465,16 +1465,21 @@ export type Tributary = {
     },
     {
       "code": 6023,
+      "name": "invalidReferralChainOrdering",
+      "msg": "Invalid referral chain ordering in remaining_accounts"
+    },
+    {
+      "code": 6024,
       "name": "invalidReferralAccountDiscriminator",
       "msg": "Invalid referral account discriminator"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "referralAccountSizeMismatch",
       "msg": "Referral account size mismatch"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "invalidReferralCode",
       "msg": "Invalid referral code - must be alphanumeric"
     }
