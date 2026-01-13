@@ -657,28 +657,47 @@ jobs:
           echo ""
           echo "Test Results:"
 
-          FAILED_JOBS=""
-          for job in test-sdk-dry-run test-sdk-react-dry-run test-commit-analysis test-tag-format-validation test-build-verification test-workflow-syntax; do
-            NEEDS_RESULT="needs($job.result)"
-            # Check if the job was skipped
-            if [ "${{ needs.test-sdk-dry-run.result }}" == "skipped" ] && [ "$job" != "test-sdk-dry-run" ]; then
-              continue
-            fi
-            if [ "${{ needs.test-sdk-react-dry-run.result }}" == "skipped" ] && [ "$job" != "test-sdk-react-dry-run" ]; then
-              continue
-            fi
+           FAILED_JOBS=""
+           for job in test-sdk-dry-run test-sdk-react-dry-run test-commit-analysis test-tag-format-validation test-build-verification test-workflow-syntax; do
+             # Check if the job was skipped
+             if [ "${{ needs.test-sdk-dry-run.result }}" == "skipped" ] && [ "$job" != "test-sdk-dry-run" ]; then
+               continue
+             fi
+             if [ "${{ needs.test-sdk-react-dry-run.result }}" == "skipped" ] && [ "$job" != "test-sdk-react-dry-run" ]; then
+               continue
+             fi
 
-            # For other jobs that should have run
-            JOB_STATUS=\$${{ needs.$job.status }}
-            if [ "$JOB_STATUS" == "success" ]; then
-              echo "  ✓ $job: PASSED"
-            elif [ "$JOB_STATUS" == "skipped" ]; then
-              echo "  ○ $job: SKIPPED"
-            else
-              echo "  ✗ $job: FAILED"
-              FAILED_JOBS="$FAILED_JOBS $job"
-            fi
-          done
+             # Get job status explicitly for each job
+             case "$job" in
+               test-sdk-dry-run)
+                 JOB_STATUS="${{ needs.test-sdk-dry-run.status }}"
+                 ;;
+               test-sdk-react-dry-run)
+                 JOB_STATUS="${{ needs.test-sdk-react-dry-run.status }}"
+                 ;;
+               test-commit-analysis)
+                 JOB_STATUS="${{ needs.test-commit-analysis.status }}"
+                 ;;
+               test-tag-format-validation)
+                 JOB_STATUS="${{ needs.test-tag-format-validation.status }}"
+                 ;;
+               test-build-verification)
+                 JOB_STATUS="${{ needs.test-build-verification.status }}"
+                 ;;
+               test-workflow-syntax)
+                 JOB_STATUS="${{ needs.test-workflow-syntax.status }}"
+                 ;;
+             esac
+
+             if [ "$JOB_STATUS" == "success" ]; then
+               echo "  ✓ $job: PASSED"
+             elif [ "$JOB_STATUS" == "skipped" ]; then
+               echo "  ○ $job: SKIPPED"
+             else
+               echo "  ✗ $job: FAILED"
+               FAILED_JOBS="$FAILED_JOBS $job"
+             fi
+           done
 
           echo ""
           echo "========================================="
