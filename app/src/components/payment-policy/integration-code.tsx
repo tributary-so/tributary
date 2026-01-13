@@ -113,9 +113,9 @@ import { BN } from '@coral-xyz/anchor'
         const milestoneAmounts = validated.formData.milestoneAmounts
           .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
           .map((amount) => parseFloat(amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint)))
-        const milestoneTimestamps = validated.formData.milestoneTimestamps
+        const milestoneDates = validated.formData.milestoneDates
           .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
-          .map((ts) => parseInt(ts || Math.floor(Date.now() / 1000).toString()))
+          .map((date) => Math.floor(date.getTime() / 1000))
 
         return `import { MilestoneButton } from '@tributary-so/sdk-react'
 import { PublicKey } from '@solana/web3.js'
@@ -123,7 +123,7 @@ import { BN } from '@coral-xyz/anchor'
 
 <MilestoneButton
   milestoneAmounts={[${milestoneAmounts.map((a) => `new BN(${a})`).join(', ')}]}
-  milestoneTimestamps={[${milestoneTimestamps.map((ts) => `new BN(${ts})`).join(', ')}]}
+  milestoneTimestamps={[${milestoneDates.map((ts) => `new BN(${ts})`).join(', ')}]}
   releaseCondition={${validated.formData.releaseCondition}}
   token={new PublicKey('${validated.tokenMint}')}
   recipient={new PublicKey('${validated.recipient}')}
@@ -227,9 +227,10 @@ import { BN } from '@coral-xyz/anchor'
                     (amount) =>
                       new BN(parseFloat(amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))),
                   )
-                const milestoneTimestamps = validated.formData.milestoneTimestamps
+                const milestoneDates = validated.formData.milestoneDates
                   .filter((_, i) => i < parseInt(validated.formData.totalMilestones))
-                  .map((ts) => new BN(parseInt(ts || Math.floor(Date.now() / 1000).toString())))
+                  .map((date) => Math.floor(date.getTime() / 1000))
+                const milestoneTimestamps = milestoneDates.map((ts) => new BN(ts.toString()))
 
                 return (
                   <>

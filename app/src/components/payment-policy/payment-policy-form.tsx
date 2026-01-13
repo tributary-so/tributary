@@ -40,7 +40,7 @@ export interface PaymentPolicyFormData {
   intervalSeconds: string
   // Milestone specific fields
   milestoneAmounts: string[]
-  milestoneTimestamps: string[]
+  milestoneDates: Date[]
   releaseCondition: string // '0' | '1' | '2'
   totalMilestones: string
   // Pay-as-you-go specific fields
@@ -66,6 +66,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const [isRecipientValid, setIsRecipientValid] = useState(true)
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<number, string>>({})
 
   const currentNetwork = useMemo(() => getNetworkFromRpcEndpoint(connection.rpcEndpoint), [connection.rpcEndpoint])
 
@@ -111,6 +112,32 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
   }, [wallet.publicKey, formData, onFormDataChange])
 
+  // Validate milestone dates for chronological ordering
+  useEffect(() => {
+    if (formData.policyType === 'milestone') {
+      const errors: Record<number, string> = {}
+      const milestoneCount = parseInt(formData.totalMilestones) || 0
+
+      for (let i = 0; i < milestoneCount; i++) {
+        const currentDate = formData.milestoneDates[i]
+        const prevDate = i > 0 ? formData.milestoneDates[i - 1] : null
+
+        // Validate against current time
+        if (currentDate && currentDate <= new Date()) {
+          errors[i] = 'Due date must be in the future'
+          continue
+        }
+
+        // Validate chronological ordering
+        if (prevDate && currentDate <= prevDate) {
+          errors[i] = `Must be after milestone ${i}`
+        }
+      }
+
+      setMilestoneErrors(errors)
+    }
+  }, [formData.policyType, formData.totalMilestones, formData.milestoneDates])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     const newData = {
@@ -125,6 +152,12 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
   }
 
+  const handleMilestoneDateChange = (index: number, value: string) => {
+    const newDates = [...formData.milestoneDates]
+    newDates[index] = value ? new Date(value) : new Date()
+    onFormDataChange({ ...formData, milestoneDates: newDates })
+  }
+
   const validateRecipientAddress = (address: string) => {
     if (!address) return true // Allow empty for now, required validation will handle it
     try {
@@ -133,6 +166,14 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     } catch {
       return false
     }
+  }
+
+  const hasMilestoneErrors = () => {
+    const milestoneCount = parseInt(formData.totalMilestones) || 0
+    for (let i = 0; i < milestoneCount; i++) {
+      if (milestoneErrors[i]) return true
+    }
+    return false
   }
 
   const handleSubmit = async () => {
@@ -177,13 +218,13 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         }
         case 'milestone': {
           const validMilestones = formData.milestoneAmounts
-            .map((amount, index) => ({ amount, timestamp: formData.milestoneTimestamps[index] }))
-            .filter((m) => m.amount && parseFloat(m.amount) > 0 && m.timestamp && parseInt(m.timestamp) > 0)
+            .map((amount, index) => ({ amount, date: formData.milestoneDates[index] }))
+            .filter((m) => m.amount && parseFloat(m.amount) > 0 && m.date && m.date.getTime() > 0)
 
           const milestoneAmounts = validMilestones.map(
             (m) => new anchor.BN(parseFloat(m.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))),
           )
-          const milestoneTimestamps = validMilestones.map((m) => new anchor.BN(parseInt(m.timestamp)))
+          const milestoneTimestamps = validMilestones.map((m) => new anchor.BN(Math.floor(m.date.getTime() / 1000)))
 
           if (milestoneAmounts.length === 0) {
             throw new Error('At least one milestone amount is required')
@@ -246,15 +287,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
   }
 
-  const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
+  const formatDateTimeLocal = (date: Date) => {
+    return date.toISOString().slice(0, 16)
+  }
 
-  // if (!wallet.connected) {
-  //   return (
-  //     <div className="items-center">
-  //       <p className="text-xl">Please connect your wallet</p>
-  //     </div>
-  //   )
-  // }
+  const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
 
   return (
     <div className="max-w-[700px] space-y-4">
@@ -330,11 +367,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 className="w-full"
               >
                 {filteredTokens.map((token) => (
-                  <SelectItem
-                    key={token.address}
-                    description={token.name ?? 'No token name'}
-                    // startContent={<GitFolder className={iconClasses} />}
-                  >
+                  <SelectItem key={token.address} description={token.name ?? 'No token name'}>
                     {token.symbol}
                   </SelectItem>
                 ))}
@@ -448,12 +481,12 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     const selectedKey = Array.from(keys)[0] as string
                     const count = parseInt(selectedKey)
                     const newAmounts = formData.milestoneAmounts.slice(0, count).concat(Array(4 - count).fill(''))
-                    const newTimestamps = formData.milestoneTimestamps.slice(0, count).concat(Array(4 - count).fill(''))
+                    const newDates = formData.milestoneDates.slice(0, count).concat(Array(4 - count).fill(new Date()))
                     onFormDataChange({
                       ...formData,
                       totalMilestones: selectedKey,
                       milestoneAmounts: newAmounts,
-                      milestoneTimestamps: newTimestamps,
+                      milestoneDates: newDates,
                     })
                   }}
                   className="w-full"
@@ -495,21 +528,20 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     />
                   </div>
                   <div>
-                    <label htmlFor={`milestoneTimestamp${index}`} className={labelClass}>
-                      Due Date (Unix Timestamp)
+                    <label htmlFor={`milestoneDate${index}`} className={labelClass}>
+                      Due Date
                     </label>
                     <Input
-                      id={`milestoneTimestamp${index}`}
-                      type="number"
-                      value={formData.milestoneTimestamps[index]}
+                      id={`milestoneDate${index}`}
+                      type="datetime-local"
+                      value={formData.milestoneDates[index] ? formatDateTimeLocal(formData.milestoneDates[index]) : ''}
                       onChange={(e) => {
-                        const newTimestamps = [...formData.milestoneTimestamps]
-                        newTimestamps[index] = e.target.value
-                        onFormDataChange({ ...formData, milestoneTimestamps: newTimestamps })
+                        handleMilestoneDateChange(index, e.target.value)
                       }}
-                      placeholder={Math.floor(Date.now() / 1000 + (index + 1) * 86400 * 7).toString()}
-                      min={Math.floor(Date.now() / 1000).toString()}
-                      className="w-full"
+                      min={formatDateTimeLocal(new Date())}
+                      className={`w-full ${milestoneErrors[index] ? 'border-red-500' : ''}`}
+                      isInvalid={!!milestoneErrors[index]}
+                      errorMessage={milestoneErrors[index]}
                     />
                   </div>
                 </div>
@@ -631,10 +663,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
               !formData.tokenMint ||
               !formData.gateway ||
               (formData.policyType === 'subscription' && !formData.amount) ||
-              (formData.policyType === 'milestone' &&
-                formData.milestoneAmounts
-                  .slice(0, parseInt(formData.totalMilestones))
-                  .every((a) => !a || parseFloat(a) <= 0)) ||
+              (formData.policyType === 'milestone' && hasMilestoneErrors()) ||
               (formData.policyType === 'payasyougo' &&
                 (!formData.maxAmountPerPeriod || !formData.maxChunkAmount || !formData.periodLengthSeconds))
             }
