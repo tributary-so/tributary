@@ -17,7 +17,7 @@ export default function PaymentPolicyFeature() {
     approvalAmount: '',
     // Milestone fields
     milestoneAmounts: ['', '', '', ''],
-    milestoneTimestamps: ['', '', '', ''],
+    milestoneDates: [new Date(), new Date(), new Date(), new Date()],
     releaseCondition: '0',
     totalMilestones: '1',
     // Pay-as-you-go fields
