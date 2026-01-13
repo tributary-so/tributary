@@ -18,7 +18,7 @@ devnet_build:
 	anchor build
 
 devnet_deploy:
-	anchor deploy --provider.cluster devnet
+	anchor deploy --provider.cluster devnet --program-keypair $(PROGRAM_ID_PATH) -p tributary
 
 devnet_deploy_buffer:
 	solana balance
