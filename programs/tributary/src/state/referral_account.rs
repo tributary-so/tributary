@@ -13,14 +13,15 @@ pub struct ReferralAccount {
     pub owner: Pubkey,
     /// 6-character alphanumeric referral code
     pub referral_code: [u8; 6],
-    /// Referrer who brought this user (for chain traversal), None if no referrer
-    pub referrer: Option<Pubkey>,
+    /// Referrer who brought this user (for chain traversal). Might be the default Pubkey
+    pub referrer: Pubkey,
     /// Unix timestamp when account was created
     pub created_at: i64,
     /// Total rewards earned by this referrer (in smallest token units)
     pub total_earned: u64,
     /// PDA bump seed
     pub bump: u8,
+    pub padding_align: [u8; 1],
     pub padding: [u64; 8],
 }
 
@@ -29,9 +30,10 @@ impl ReferralAccount {
         32 + // gateway: Pubkey
         32 + // owner: Pubkey
         6 + // referral_code: [u8; 6]
-        33 + // referrer: Option<Pubkey>
+        32 + // referrer: Option<Pubkey>
         8 + // created_at: i64
         8 + // total_earned: u64
+        1 + // bump: u8
         1 + // bump: u8
         (8*8); // padding
 }

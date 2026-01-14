@@ -38,9 +38,8 @@ pub mod tributary {
     pub fn create_referral_account(
         ctx: Context<CreateReferralAccount>,
         referral_code: [u8; 6],
-        referrer: Option<Pubkey>,
     ) -> Result<()> {
-        CreateReferralAccount::handler_create_referral_account(ctx, referral_code, referrer)
+        CreateReferralAccount::handler_create_referral_account(ctx, referral_code)
     }
 
     pub fn create_payment_gateway(

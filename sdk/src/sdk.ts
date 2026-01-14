@@ -177,7 +177,7 @@ export class Tributary {
       codeBytes[i] = byte;
     }
 
-    const accounts = {
+    const accounts: any = {
       owner: owner,
       referralAccount: referralAccountPda,
       gateway: gateway,
@@ -185,9 +185,24 @@ export class Tributary {
       systemProgram: SystemProgram.programId,
     };
 
+    // If referrer is provided, also pass their ReferralAccount for validation
+    const remainingAccounts = [];
+    if (referrer) {
+      const { address: referrerReferralPda } = this.getReferralPda(
+        gateway,
+        referrer
+      );
+      remainingAccounts.push({
+        pubkey: referrerReferralPda,
+        isWritable: false,
+        isSigner: false,
+      });
+    }
+
     return await this.program.methods
-      .createReferralAccount(codeBytes, referrer || null)
+      .createReferralAccount(codeBytes)
       .accountsStrict(accounts)
+      .remainingAccounts(remainingAccounts)
       .instruction();
   }
 
@@ -1744,6 +1759,7 @@ export class Tributary {
   /**
    * Builds the referral chain for a given user and gateway.
    * This method traverses the referral chain up to 3 levels deep.
+   * We replace the default PublicKey by null here!
    * @param user - Public key of the user to find the referral chain for
    * @param gateway - Public key of the gateway
    * @returns Array of referral account addresses [L1, L2, L3] (may contain nulls)
@@ -1764,27 +1780,25 @@ export class Tributary {
     }
 
     // L1 referrer (who referred this user)
-    if (userReferral.referrer) {
+    if (userReferral.referrer.toString() != PublicKey.default.toString()) {
       chain.push(userReferral.referrer);
 
       // Get L1's referral account to find L2
-      const { address: l1ReferralPda } = this.getReferralPda(
-        gateway,
-        userReferral.referrer
-      );
-      const l1Referral = await this.getReferralAccount(l1ReferralPda);
+      const l1Referral = await this.getReferralAccount(userReferral.referrer);
 
-      if (l1Referral && l1Referral.referrer) {
+      if (
+        l1Referral &&
+        l1Referral.referrer.toString() != PublicKey.default.toString()
+      ) {
         chain.push(l1Referral.referrer);
 
         // Get L2's referral account to find L3
-        const { address: l2ReferralPda } = this.getReferralPda(
-          gateway,
-          l1Referral.referrer
-        );
-        const l2Referral = await this.getReferralAccount(l2ReferralPda);
+        const l2Referral = await this.getReferralAccount(l1Referral.referrer);
 
-        if (l2Referral && l2Referral.referrer) {
+        if (
+          l2Referral &&
+          l2Referral.referrer.toString() != PublicKey.default.toString()
+        ) {
           chain.push(l2Referral.referrer);
         } else {
           chain.push(null);

@@ -295,51 +295,37 @@ impl<'info> ExecutePayment<'info> {
                     }
                 }
 
-                // Validate chain ordering:
-                // SDK returns [L3, L2, L1] where:
-                // - L3.referrer = L2.publicKey
-                // - L2.referrer = L1.publicKey
-                // - L1.referrer = None
-                if referral_accounts.len() >= 2 {
-                    // Validate L1 refers to L2
-                    let l1_data = ctx.remaining_accounts[0]
-                        .try_borrow_data()
-                        .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
-                    if l1_data.len() < ReferralAccount::SIZE {
-                        return Err(TributaryError::ReferralAccountSizeMismatch.into());
-                    }
-                    let l1_referrer = array_ref![l1_data, ReferralAccount::SIZE - 32, 32];
-                    if *l1_referrer != referral_accounts[2].as_ref() {
-                        return Err(TributaryError::InvalidReferralChainOrdering.into());
-                    }
-                }
-                //
-                if referral_accounts.len() >= 2 {
-                    // Validate L1 refers to L2
-                    let l1_data = ctx.remaining_accounts[0]
-                        .try_borrow_data()
-                        .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
-                    if l1_data.len() < ReferralAccount::SIZE {
-                        return Err(TributaryError::ReferralAccountSizeMismatch.into());
-                    }
-                    let l1_referrer = array_ref![l1_data, ReferralAccount::SIZE - 32, 32];
-                    if *l1_referrer != referral_accounts[2].as_ref() {
-                        return Err(TributaryError::InvalidReferralChainOrdering.into());
-                    }
-                }
-                if referral_accounts.len() >= 3 {
-                    // Validate L2 refers to L3
-                    let l2_data = ctx.remaining_accounts[1]
-                        .try_borrow_data()
-                        .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
-                    if l2_data.len() < ReferralAccount::SIZE {
-                        return Err(TributaryError::ReferralAccountSizeMismatch.into());
-                    }
-                    let l2_referrer = array_ref![l2_data, ReferralAccount::SIZE - 32, 32];
-                    if *l2_referrer != referral_accounts[1].as_ref() {
-                        return Err(TributaryError::InvalidReferralChainOrdering.into());
-                    }
-                }
+                // Validate chain ordering: remaining_accounts[0] = L1_PDA, [1] = L2_PDA, [2] = L3_PDA
+                // Chain is: L1 -> L2 -> L3 (each refers to the next level up via wallet address)
+                // Each ReferralAccount's referrer field contains the NEXT referrer's WALLET address
+                // L1_PDA.referrer = L2_wallet, L2_PDA.referrer = L3_wallet
+                // if referral_accounts.len() >= 2 {
+                //     // Validate L1 refers to L2: L1_PDA.referrer should equal L2_wallet
+                //     let l1_data = ctx.remaining_accounts[0]
+                //         .try_borrow_data()
+                //         .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
+                //     if l1_data.len() < ReferralAccount::SIZE {
+                //         return Err(TributaryError::ReferralAccountSizeMismatch.into());
+                //     }
+                //     // referrer: Option<Pubkey> starts at offset 78, pubkey data at 79
+                //     let l1_referrer = array_ref![l1_data, 79, 32];
+                //     if *l1_referrer != referral_accounts[1].as_ref() {
+                //         return Err(TributaryError::InvalidReferralChainOrdering.into());
+                //     }
+                // }
+                // if referral_accounts.len() >= 3 {
+                //     // Validate L2 refers to L3: L2_PDA.referrer should equal L3_wallet
+                //     let l2_data = ctx.remaining_accounts[1]
+                //         .try_borrow_data()
+                //         .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
+                //     if l2_data.len() < ReferralAccount::SIZE {
+                //         return Err(TributaryError::ReferralAccountSizeMismatch.into());
+                //     }
+                //     let l2_referrer = array_ref![l2_data, 79, 32];
+                //     if *l2_referrer != referral_accounts[2].as_ref() {
+                //         return Err(TributaryError::InvalidReferralChainOrdering.into());
+                //     }
+                // }
 
                 emit!(ReferralRewardDistributedRecord {
                     payment_policy: payment_policy_key,

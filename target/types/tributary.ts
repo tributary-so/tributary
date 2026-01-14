@@ -583,12 +583,6 @@ export type Tributary = {
               6
             ]
           }
-        },
-        {
-          "name": "referrer",
-          "type": {
-            "option": "pubkey"
-          }
         }
       ]
     },
@@ -1480,13 +1474,8 @@ export type Tributary = {
     },
     {
       "code": 6026,
-      "name": "invalidAccount",
-      "msg": "Invalid referral code - must be alphanumeric"
-    },
-    {
-      "code": 6027,
       "name": "invalidReferralCode",
-      "msg": "Invalid account. Could not load!"
+      "msg": "Invalid referral code - must be alphanumeric"
     }
   ],
   "types": [
@@ -2333,11 +2322,9 @@ export type Tributary = {
           {
             "name": "referrer",
             "docs": [
-              "Referrer who brought this user (for chain traversal), None if no referrer"
+              "Referrer who brought this user (for chain traversal). Might be the default Pubkey"
             ],
-            "type": {
-              "option": "pubkey"
-            }
+            "type": "pubkey"
           },
           {
             "name": "createdAt",
@@ -2359,6 +2346,15 @@ export type Tributary = {
               "PDA bump seed"
             ],
             "type": "u8"
+          },
+          {
+            "name": "paddingAlign",
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
           },
           {
             "name": "padding",

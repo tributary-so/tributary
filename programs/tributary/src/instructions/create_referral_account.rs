@@ -1,5 +1,6 @@
 use crate::{error::TributaryError, state::*, REFERRAL_SEED};
 use anchor_lang::prelude::*;
+use arrayref::array_ref;
 
 #[derive(Accounts)]
 #[instruction(referral_code: [u8; 6])]
@@ -33,7 +34,6 @@ impl<'info> CreateReferralAccount<'info> {
     pub fn handler_create_referral_account(
         ctx: Context<CreateReferralAccount>,
         referral_code: [u8; 6],
-        referrer: Option<Pubkey>,
     ) -> Result<()> {
         let referral_account = &mut ctx.accounts.referral_account;
         let clock = Clock::get()?;
@@ -44,6 +44,25 @@ impl<'info> CreateReferralAccount<'info> {
                 b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' => {} // Valid
                 _ => return err!(TributaryError::InvalidReferralCode),
             }
+        }
+
+        let mut referrer = Pubkey::default();
+
+        for account_info in ctx.remaining_accounts.iter() {
+            // Verify discriminator to ensure this is a valid ReferralAccount
+            let data = match account_info.try_borrow_data() {
+                Ok(data) => data,
+                Err(_) => break,
+            };
+            let expected_data_len = ReferralAccount::SIZE;
+            if data.len() < expected_data_len {
+                break;
+            }
+            let account_discriminator = array_ref![data, 0, 8];
+            if account_discriminator != &ReferralAccount::DISCRIMINATOR {
+                break;
+            }
+            referrer = *account_info.key;
         }
 
         referral_account.gateway = ctx.accounts.gateway.key();
