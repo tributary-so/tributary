@@ -55,5 +55,7 @@ pub enum TributaryError {
     #[msg("Referral account size mismatch")]
     ReferralAccountSizeMismatch,
     #[msg("Invalid referral code - must be alphanumeric")]
+    InvalidAccount,
+    #[msg("Invalid account. Could not load!")]
     InvalidReferralCode,
 }

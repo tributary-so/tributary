@@ -29,6 +29,7 @@ pub struct PaymentGateway {
     pub signer: Pubkey,
     /// Gateway-scoped feature flags (bit-vector)
     /// Bit 0: Referral program enabled (1 = enabled, 0 = disabled)
+    /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
     pub feature_flags: u8,
     /// Gateway-scoped referral program allocation (in basis points)
     /// 0 = no referral program, 2500 = 25% of gateway fee can be used for referrals
@@ -74,5 +75,11 @@ impl PaymentGateway {
     /// Check if the referral program feature is enabled
     pub fn is_referral_enabled(&self) -> bool {
         self.feature_flags & 0x01 != 0
+    }
+
+    /// Check if amount is net (recipient receives exactly payment_amount, fees added on top)
+    /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
+    pub fn is_amount_net(&self) -> bool {
+        self.feature_flags & 0x02 != 0
     }
 }

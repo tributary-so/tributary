@@ -1480,8 +1480,13 @@ export type Tributary = {
     },
     {
       "code": 6026,
-      "name": "invalidReferralCode",
+      "name": "invalidAccount",
       "msg": "Invalid referral code - must be alphanumeric"
+    },
+    {
+      "code": 6027,
+      "name": "invalidReferralCode",
+      "msg": "Invalid account. Could not load!"
     }
   ],
   "types": [
@@ -1663,7 +1668,8 @@ export type Tributary = {
             "name": "featureFlags",
             "docs": [
               "Gateway-scoped feature flags (bit-vector)",
-              "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)"
+              "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)",
+              "Bit 1: Net amount mode (1 = net, 0 = gross/default)"
             ],
             "type": "u8"
           },
