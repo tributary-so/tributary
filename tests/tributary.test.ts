@@ -1559,6 +1559,7 @@ describe("Tributary", () => {
     let referrerL2: Keypair;
     let referrerL3: Keypair;
     let payer: Keypair;
+    let singleRefpayer: Keypair;
 
     let l1TokenAccount: PublicKey;
     let l2TokenAccount: PublicKey;
@@ -1793,11 +1794,6 @@ describe("Tributary", () => {
     test("Create subscription payment policy for payer with referral", async () => {
       await sdk.updateWallet(new anchor.Wallet(payer));
 
-      const { address: payerUserPaymentPDA } = sdk.getUserPaymentPda(
-        payer.publicKey,
-        tokenMint
-      );
-
       const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
       let tx = new Transaction().add(createUserPaymentIx);
       await sendAndConfirmTransaction(connection, tx, [payer], {
@@ -1827,6 +1823,11 @@ describe("Tributary", () => {
       await sendAndConfirmTransaction(connection, tx, [payer], {
         commitment: "processed" as Commitment,
       });
+
+      const { address: payerUserPaymentPDA } = sdk.getUserPaymentPda(
+        payer.publicKey,
+        tokenMint
+      );
 
       const payerUserPayment = await sdk.getUserPayment(payerUserPaymentPDA);
       const policyId = payerUserPayment!.createdPoliciesCount;
@@ -1899,6 +1900,20 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount)
       );
 
+      const l1Referral = await sdk.getReferralAccount(
+        sdk.getReferralPda(gatewayPDA, referrerL1.publicKey).address
+      );
+      const l2Referral = await sdk.getReferralAccount(
+        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
+      );
+      const l3Referral = await sdk.getReferralAccount(
+        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+      );
+
+      expect(l1Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
+      expect(l2Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
+      expect(l3Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
+
       const gateway = await sdk.getPaymentGateway(gatewayPDA);
       const gatewayFee = Math.floor(
         (paymentAmount.toNumber() * gateway!.gatewayFeeBps) / 10000
@@ -1941,60 +1956,17 @@ describe("Tributary", () => {
           l3Reward -
           Math.floor((l3Reward * 100) / 10000)
       );
-
-      const l1Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL1.publicKey).address
-      );
-      const l2Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
-      );
-      const l3Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
-      );
-
-      expect(l1Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
-      expect(l2Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
-      expect(l3Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
     });
 
-    test("Referral program with only L1 referrer", async () => {
-      const singleL1Referrer = Keypair.generate();
-      await fund(singleL1Referrer.publicKey, 5);
-
-      const singleL1TokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        singleL1Referrer.publicKey
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        singleL1TokenAccount,
-        mintAuthority,
-        1000000n
-      );
-
-      await sdk.updateWallet(new anchor.Wallet(singleL1Referrer));
-      const createSingleL1Ix = await sdk.createReferralAccount(
-        gatewayPDA,
-        "L1ONLY",
-        null
-      );
-      let tx = new Transaction().add(createSingleL1Ix);
-      await sendAndConfirmTransaction(connection, tx, [singleL1Referrer], {
-        commitment: "processed" as Commitment,
-      });
-
-      const singleReferrerPayer = Keypair.generate();
-      await fund(singleReferrerPayer.publicKey, 5);
+    test("Setup Referral program with only L1 referrer", async () => {
+      singleRefpayer = Keypair.generate();
+      await fund(singleRefpayer.publicKey, 5);
 
       const singlePayerTokenAccount = await createAssociatedTokenAccount(
         connection,
         admin,
         tokenMint,
-        singleReferrerPayer.publicKey
+        singleRefpayer.publicKey
       );
       await mintTo(
         connection,
@@ -2002,34 +1974,48 @@ describe("Tributary", () => {
         tokenMint,
         singlePayerTokenAccount,
         mintAuthority,
-        1000000n
+        100000000n
       );
 
-      await sdk.updateWallet(new anchor.Wallet(singleReferrerPayer));
+      await sdk.updateWallet(new anchor.Wallet(singleRefpayer));
       const createPayerIx = await sdk.createReferralAccount(
         gatewayPDA,
-        "PAYER2",
-        singleL1Referrer.publicKey
+        "PAYER3",
+        referrerL3.publicKey
       );
-      tx = new Transaction().add(createPayerIx);
-      await sendAndConfirmTransaction(connection, tx, [singleReferrerPayer], {
+      let tx = new Transaction().add(createPayerIx);
+      await sendAndConfirmTransaction(connection, tx, [singleRefpayer], {
         commitment: "processed" as Commitment,
       });
 
-      const { address: singlePayerUserPaymentPDA } = sdk.getUserPaymentPda(
-        singleReferrerPayer.publicKey,
-        tokenMint
+      let payerReferral = await sdk.getReferralAccount(
+        sdk.getReferralPda(gatewayPDA, singleRefpayer.publicKey).address
       );
+      expect(payerReferral).not.toBeNull();
+      expect(payerReferral!.owner).toEqual(singleRefpayer.publicKey);
+      expect(payerReferral!.referrer).toEqual(
+        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+      );
+
+      const chain = await sdk.getReferralChain(
+        singleRefpayer.publicKey,
+        gatewayPDA
+      );
+      expect(chain[0]).toEqual(
+        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+      );
+      expect(chain[1]).toBeNull();
+      expect(chain[2]).toBeNull();
 
       const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
       tx = new Transaction().add(createUserPaymentIx);
-      await sendAndConfirmTransaction(connection, tx, [singleReferrerPayer], {
+      await sendAndConfirmTransaction(connection, tx, [singleRefpayer], {
         commitment: "processed" as Commitment,
       });
 
       const amount = new anchor.BN(1000000);
       const memo = new Uint8Array(64).fill(0);
-      Buffer.from("single L1 referral test").copy(memo);
+      Buffer.from("single referrer test").copy(memo);
       const paymentFrequency = { daily: {} };
       const currentTime = Math.floor(Date.now() / 1000);
       const startTime = new anchor.BN(currentTime - 3600);
@@ -2047,9 +2033,18 @@ describe("Tributary", () => {
       );
 
       tx = new Transaction().add(...createSubscriptionIxs);
-      await sendAndConfirmTransaction(connection, tx, [singleReferrerPayer], {
+      await sendAndConfirmTransaction(connection, tx, [singleRefpayer], {
         commitment: "processed" as Commitment,
       });
+    });
+
+    test("Execute Payment in Referral program with only L1 referrer", async () => {
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+
+      const { address: singlePayerUserPaymentPDA } = sdk.getUserPaymentPda(
+        singleRefpayer.publicKey,
+        tokenMint
+      );
 
       const singlePayerUserPayment = await sdk.getUserPayment(
         singlePayerUserPaymentPDA
@@ -2061,29 +2056,16 @@ describe("Tributary", () => {
         policyId
       );
 
-      const initialL1Balance = await connection.getTokenAccountBalance(
-        singleL1TokenAccount
+      const initialReferrerBalance = await connection.getTokenAccountBalance(
+        l3TokenAccount
       );
-
-      const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
-
-      await approve(
-        connection,
-        singleReferrerPayer,
-        singlePayerTokenAccount,
-        paymentsDelegate,
-        singleReferrerPayer,
-        1000000
-      );
-
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
 
       const paymentAmount = new anchor.BN(100000);
       const executeIxs = await sdk.executePayment(
         singlePayerPolicyPDA,
         paymentAmount
       );
-      tx = new Transaction().add(...executeIxs);
+      const tx = new Transaction().add(...executeIxs);
       await sendAndConfirmTransaction(
         connection,
         tx,
@@ -2093,12 +2075,12 @@ describe("Tributary", () => {
         }
       );
 
-      const finalL1Balance = await connection.getTokenAccountBalance(
-        singleL1TokenAccount
+      const finalReferrerBalance = await connection.getTokenAccountBalance(
+        l3TokenAccount
       );
 
-      expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThan(
-        parseInt(initialL1Balance.value.amount)
+      expect(parseInt(finalReferrerBalance.value.amount)).toBeGreaterThan(
+        parseInt(initialReferrerBalance.value.amount)
       );
     });
 

@@ -1207,12 +1207,24 @@ export class Tributary {
           const remainingAccounts = [];
 
           for (const referrer of referralAccounts) {
-            const { address: referralAccountPda } = this.getReferralPda(
-              _gateway!,
-              referrer
-            );
             remainingAccounts.push({
-              pubkey: referralAccountPda,
+              pubkey: referrer,
+              isWritable: true,
+              isSigner: false,
+            });
+          }
+
+          for (const referrer of referralAccounts) {
+            const referrerAccount = await this.getReferralAccount(referrer);
+            if (!referrerAccount) {
+              // TODO: create ATA
+              throw new Error("missing ATA!");
+            }
+            remainingAccounts.push({
+              pubkey: getAssociatedTokenAddressSync(
+                _tokenMint,
+                referrerAccount.owner
+              ),
               isWritable: true,
               isSigner: false,
             });

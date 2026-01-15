@@ -60,9 +60,15 @@ fn process_referral_rewards<'a, 'info>(
         return Ok(());
     }
 
-    let level1_referrer = referral_accounts.last();
-    let level2_referrer = referral_accounts.get(referral_accounts.len().saturating_sub(2));
-    let level3_referrer = referral_accounts.first();
+    let level1_referrer: Option<&AccountLoader<ReferralAccount>> = referral_accounts.last();
+    let mut level2_referrer: Option<&AccountLoader<ReferralAccount>> = None;
+    let mut level3_referrer: Option<&AccountLoader<ReferralAccount>> = None;
+    if referral_accounts.len() == 3 {
+        level2_referrer = referral_accounts.get(referral_accounts.len().saturating_sub(2));
+        level3_referrer = referral_accounts.first();
+    } else if referral_accounts.len() == 2 {
+        level2_referrer = referral_accounts.first();
+    }
 
     emit!(ReferralRewardDistributedRecord {
         payment_policy: ctx.payment_policy_key,
@@ -119,15 +125,33 @@ fn parse_remaining_accounts<'info>(
                 // Verify we can actually load it (validates discriminator)
                 if loader.load().is_ok() {
                     referral_accounts.push(loader);
+                } else {
+                    return Err(TributaryError::ReferrerAccountInvalid.into());
                 }
+            } else {
+                return Err(TributaryError::ReferrerAccountInvalid.into());
             }
-        } else if acc.data_len() == TokenAccount::LEN {
+        } else if acc.data_len() == 165 {
+            // TokenAccount::LEN {
             if let Ok(token_acc) = Account::<TokenAccount>::try_from(acc.as_ref()) {
                 if token_acc.mint == expected_mint {
                     token_accounts.push((token_acc.owner, acc.clone()));
+                } else {
+                    return Err(TributaryError::ReferrerATAInvalid.into());
                 }
+            } else {
+                return Err(TributaryError::ReferrerATAInvalid.into());
             }
         }
+    }
+
+    if referral_accounts.len() != token_accounts.len() {
+        msg!(
+            "We have {} referrals vs {} atas",
+            referral_accounts.len(),
+            token_accounts.len()
+        );
+        return Err(TributaryError::MismatchAtaReferralAccountNumbers.into());
     }
 
     Ok((referral_accounts, token_accounts))

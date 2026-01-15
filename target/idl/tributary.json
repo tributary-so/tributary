@@ -1473,28 +1473,33 @@
     },
     {
       "code": 6027,
-      "name": "ReferrerNotFound",
-      "msg": "Referrer not found in referral map"
+      "name": "ReferrerAccountInvalid",
+      "msg": "Referrer Account invalid"
     },
     {
       "code": 6028,
-      "name": "ReferralTokenAccountNotFound",
-      "msg": "Referral token account not found"
+      "name": "ReferrerATAInvalid",
+      "msg": "Referrer ATA invalid"
     },
     {
       "code": 6029,
+      "name": "ReferrerATAMintInvalid",
+      "msg": "Referrer ATA with invalid Mint"
+    },
+    {
+      "code": 6030,
+      "name": "MissingReferralAta",
+      "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
+    },
+    {
+      "code": 6031,
       "name": "InvalidTokenAccount",
       "msg": "Invalid token account - mint mismatch or deserialization failed"
     },
     {
-      "code": 6030,
-      "name": "InvalidReferralTokenAccount",
-      "msg": "Referral token account owner does not match referrer wallet"
-    },
-    {
-      "code": 6031,
-      "name": "MissingReferralAta",
-      "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
+      "code": 6032,
+      "name": "MismatchAtaReferralAccountNumbers",
+      "msg": "Mismatch between number referrers and atas!"
     }
   ],
   "types": [

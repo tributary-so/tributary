@@ -56,16 +56,18 @@ pub enum TributaryError {
     ReferralAccountSizeMismatch,
     #[msg("Invalid referral code - must be alphanumeric")]
     InvalidReferralCode,
-    #[msg("Referrer not found in referral map")]
-    ReferrerNotFound,
-    #[msg("Referral token account not found")]
-    ReferralTokenAccountNotFound,
-    #[msg("Invalid token account - mint mismatch or deserialization failed")]
-    InvalidTokenAccount,
-    #[msg("Referral token account owner does not match referrer wallet")]
-    InvalidReferralTokenAccount,
+    #[msg("Referrer Account invalid")]
+    ReferrerAccountInvalid,
+    #[msg("Referrer ATA invalid")]
+    ReferrerATAInvalid,
+    #[msg("Referrer ATA with invalid Mint")]
+    ReferrerATAMintInvalid,
     #[msg(
         "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
     )]
     MissingReferralAta,
+    #[msg("Invalid token account - mint mismatch or deserialization failed")]
+    InvalidTokenAccount,
+    #[msg("Mismatch between number referrers and atas!")]
+    MismatchAtaReferralAccountNumbers,
 }

@@ -1479,28 +1479,33 @@ export type Tributary = {
     },
     {
       "code": 6027,
-      "name": "referrerNotFound",
-      "msg": "Referrer not found in referral map"
+      "name": "referrerAccountInvalid",
+      "msg": "Referrer Account invalid"
     },
     {
       "code": 6028,
-      "name": "referralTokenAccountNotFound",
-      "msg": "Referral token account not found"
+      "name": "referrerAtaInvalid",
+      "msg": "Referrer ATA invalid"
     },
     {
       "code": 6029,
+      "name": "referrerAtaMintInvalid",
+      "msg": "Referrer ATA with invalid Mint"
+    },
+    {
+      "code": 6030,
+      "name": "missingReferralAta",
+      "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
+    },
+    {
+      "code": 6031,
       "name": "invalidTokenAccount",
       "msg": "Invalid token account - mint mismatch or deserialization failed"
     },
     {
-      "code": 6030,
-      "name": "invalidReferralTokenAccount",
-      "msg": "Referral token account owner does not match referrer wallet"
-    },
-    {
-      "code": 6031,
-      "name": "missingReferralAta",
-      "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
+      "code": 6032,
+      "name": "mismatchAtaReferralAccountNumbers",
+      "msg": "Mismatch between number referrers and atas!"
     }
   ],
   "types": [
