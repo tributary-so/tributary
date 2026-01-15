@@ -1,7 +1,7 @@
 use crate::{
     error::TributaryError,
     policies::traits::PolicyStrategy,
-    state::{PaymentPolicy, PolicyType},
+    state::{PaymentGateway, PaymentPolicy, PolicyType},
     utils::calculate_next_payment_due,
 };
 use anchor_lang::prelude::*;
@@ -35,6 +35,9 @@ impl PolicyStrategy for SubscriptionStrategy {
         &self,
         payment_policy: &PaymentPolicy,
         current_time: i64,
+        _signer: &Pubkey,
+        _user_payment_owner: &Pubkey,
+        _gateway: &PaymentGateway,
     ) -> Result<()> {
         match &payment_policy.policy_type {
             PolicyType::Subscription {

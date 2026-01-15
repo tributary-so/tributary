@@ -108,8 +108,14 @@ impl<'info> ExecutePayment<'info> {
         let mut strategy = crate::policies::get_policy_strategy(payment_policy)?;
 
         // Execute policy-specific logic
-        let execution_result =
-            strategy.execute(payment_policy, payment_amount, clock.unix_timestamp)?;
+        let execution_result = strategy.execute(
+            payment_policy,
+            payment_amount,
+            clock.unix_timestamp,
+            &ctx.accounts.fee_payer.key(),
+            &user_payment.owner,
+            gateway,
+        )?;
         let payment_amount = execution_result.payment_amount;
 
         // Additional validation for pay-as-you-go policies

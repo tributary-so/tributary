@@ -66,42 +66,60 @@ const signature = await provider.sendAndConfirm(tx);
 
 ### Release Conditions
 
-Choose how milestones are released:
+Choose how milestones are released and who can trigger the payment:
 
 ```typescript
-// Time-based (automatic when timestamp reached)
+// Time-based (automatic when timestamp reached, anyone can trigger)
 await sdk.createMilestonePaymentPolicy(
   tokenMint,
   recipient,
   gateway,
   amounts,
   timestamps,
-  0,
+  0, // Time-based: anyone can trigger after timestamp
   memo
-); // 0 = time-based
+);
 
-// Manual approval (requires gateway authorization)
+// Manual approval (requires policy owner to sign)
 await sdk.createMilestonePaymentPolicy(
   tokenMint,
   recipient,
   gateway,
   amounts,
   timestamps,
-  1,
+  1, // Policy owner must sign to release
   memo
-); // 1 = manual approval
+);
 
-// Automatic (immediate release)
+// Gateway authorization (requires gateway signer to trigger)
 await sdk.createMilestonePaymentPolicy(
   tokenMint,
   recipient,
   gateway,
   amounts,
   timestamps,
-  2,
+  2, // Gateway signer must sign to release
   memo
-); // 2 = automatic
+);
 ```
+
+#### Release Condition Details
+
+| Condition              | Time Check           | Signer Required | Use Case                                    |
+| ---------------------- | -------------------- | --------------- | ------------------------------------------- |
+| **0** (Time-based)     | ✅ Timestamp reached | Anyone          | Automatic payments when work is time-bound  |
+| **1** (Policy Owner)   | ✅ Timestamp reached | Policy owner    | Quality control - payer approves release    |
+| **2** (Gateway Signer) | ✅ Timestamp reached | Gateway signer  | Automated release via gateway/trusted party |
+
+#### How Signer Validation Works
+
+The smart contract validates signer permissions at execution time:
+
+- **Condition 0**: No signer restriction. Any wallet can trigger the payment once the timestamp is reached (subject to existing account constraints).
+- **Condition 1**: The policy owner's wallet (`user_payment.owner`) must sign the execute_payment transaction. This ensures the payer has explicit approval over each milestone release.
+- **Condition 2**: The gateway's signer account must sign. This enables automated/headless payment processing where a server or service triggers payments on behalf of the gateway.
+
+> **Note**: The existing account constraint still applies - the transaction fee payer must be either the gateway signer or the policy owner. This prevents unauthorized parties from paying transaction fees for payments they shouldn't trigger.
 
 ## How It Works
 

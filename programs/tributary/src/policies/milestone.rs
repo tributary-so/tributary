@@ -1,7 +1,7 @@
 use crate::{
     error::TributaryError,
     policies::traits::PolicyStrategy,
-    state::{PaymentPolicy, PolicyType},
+    state::{PaymentGateway, PaymentPolicy, PolicyType},
 };
 use anchor_lang::prelude::*;
 
@@ -59,6 +59,9 @@ impl PolicyStrategy for MilestoneStrategy {
         &self,
         payment_policy: &PaymentPolicy,
         current_time: i64,
+        signer: &Pubkey,
+        user_payment_owner: &Pubkey,
+        gateway: &PaymentGateway,
     ) -> Result<()> {
         match &payment_policy.policy_type {
             PolicyType::Milestone {
@@ -72,12 +75,15 @@ impl PolicyStrategy for MilestoneStrategy {
 
                 match release_condition {
                     0 => {
-                        // Time-based
                         require!(current_time >= next_due, TributaryError::PaymentNotDue);
                     }
-                    1 => { // Manual approval - always allow (checked by signer)
+                    1 => {
+                        require!(current_time >= next_due, TributaryError::PaymentNotDue);
+                        require!(*signer == *user_payment_owner, TributaryError::Unauthorized);
                     }
-                    2 => { // Automatic - always allow
+                    2 => {
+                        require!(current_time >= next_due, TributaryError::PaymentNotDue);
+                        require!(gateway.signer == *signer, TributaryError::Unauthorized);
                     }
                     _ => return err!(TributaryError::InvalidAmount),
                 }

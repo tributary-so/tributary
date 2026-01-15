@@ -561,9 +561,15 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                   }}
                   className="w-full"
                 >
-                  <SelectItem key="0">Time-based (automatic)</SelectItem>
-                  <SelectItem key="1">Manual Approval</SelectItem>
-                  <SelectItem key="2">Automatic on Completion</SelectItem>
+                  <SelectItem key="0" description="Anyone can trigger after due date">
+                    Time-based (automatic)
+                  </SelectItem>
+                  <SelectItem key="1" description="Policy owner must sign to release">
+                    Policy Owner Approval
+                  </SelectItem>
+                  <SelectItem key="2" description="Gateway signer must sign to release">
+                    Gateway Authorization
+                  </SelectItem>
                 </Select>
               </div>
             </>

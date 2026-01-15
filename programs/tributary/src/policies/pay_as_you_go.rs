@@ -1,7 +1,7 @@
 use crate::{
     error::TributaryError,
     policies::traits::PolicyStrategy,
-    state::{PaymentPolicy, PolicyType},
+    state::{PaymentGateway, PaymentPolicy, PolicyType},
 };
 use anchor_lang::prelude::*;
 
@@ -38,6 +38,9 @@ impl PolicyStrategy for PayAsYouGoStrategy {
         &self,
         _payment_policy: &PaymentPolicy,
         _current_time: i64,
+        _signer: &Pubkey,
+        _user_payment_owner: &Pubkey,
+        _gateway: &PaymentGateway,
     ) -> Result<()> {
         // Pay-as-you-go doesn't have timing restrictions - always allowed
         Ok(())

@@ -1,4 +1,4 @@
-use crate::state::PaymentPolicy;
+use crate::state::{PaymentGateway, PaymentPolicy};
 use anchor_lang::prelude::*;
 
 /// Result type for policy operations containing payment amount and state updates
@@ -14,6 +14,9 @@ pub trait PolicyStrategy: std::fmt::Debug {
         &self,
         payment_policy: &PaymentPolicy,
         current_time: i64,
+        signer: &Pubkey,
+        user_payment_owner: &Pubkey,
+        gateway: &PaymentGateway,
     ) -> Result<()>;
 
     /// Calculate the payment amount for this execution
@@ -39,9 +42,18 @@ pub trait PolicyStrategy: std::fmt::Debug {
         payment_policy: &mut PaymentPolicy,
         provided_amount: Option<u64>,
         current_time: i64,
+        signer: &Pubkey,
+        user_payment_owner: &Pubkey,
+        gateway: &PaymentGateway,
     ) -> Result<PolicyExecutionResult> {
         // Validate timing first
-        self.validate_payment_timing(payment_policy, current_time)?;
+        self.validate_payment_timing(
+            payment_policy,
+            current_time,
+            signer,
+            user_payment_owner,
+            gateway,
+        )?;
 
         // Calculate payment amount
         let payment_amount = self.calculate_payment_amount(payment_policy, provided_amount)?;
