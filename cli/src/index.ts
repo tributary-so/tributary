@@ -469,7 +469,6 @@ program
           )}`
         );
         console.log(`Active: ${gateway.account.isActive}`);
-        console.log(`Total Processed: ${gateway.account.totalProcessed}`);
         console.log(
           `Created At: ${new Date(
             gateway.account.createdAt * 1000
