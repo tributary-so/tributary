@@ -35,8 +35,8 @@ pub mod tributary {
         CreateUserPayment::handler_create_user_payment(ctx)
     }
 
-    pub fn create_referral_account(
-        ctx: Context<CreateReferralAccount>,
+    pub fn create_referral_account<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateReferralAccount<'info>>,
         referral_code: [u8; 6],
     ) -> Result<()> {
         CreateReferralAccount::handler_create_referral_account(ctx, referral_code)
@@ -59,11 +59,11 @@ pub mod tributary {
         CreatePaymentPolicy::handler_create_payment_policy(ctx, policy_type, memo)
     }
 
-    pub fn execute_payment(
-        ctx: Context<ExecutePayment>,
+    pub fn execute_payment<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecutePayment<'info>>,
         payment_amount: Option<u64>,
     ) -> Result<()> {
-        ExecutePayment::handler_execute_payment(ctx, payment_amount)
+        ExecutePayment::handler(ctx, payment_amount)
     }
 
     pub fn change_payment_policy_status(

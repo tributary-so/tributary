@@ -2768,6 +2768,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "arrayref",
+ "bytemuck",
  "chrono",
  "proc-macro2",
  "quote",

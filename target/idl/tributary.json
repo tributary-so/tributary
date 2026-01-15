@@ -1470,6 +1470,31 @@
       "code": 6026,
       "name": "InvalidReferralCode",
       "msg": "Invalid referral code - must be alphanumeric"
+    },
+    {
+      "code": 6027,
+      "name": "ReferrerNotFound",
+      "msg": "Referrer not found in referral map"
+    },
+    {
+      "code": 6028,
+      "name": "ReferralTokenAccountNotFound",
+      "msg": "Referral token account not found"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidTokenAccount",
+      "msg": "Invalid token account - mint mismatch or deserialization failed"
+    },
+    {
+      "code": 6030,
+      "name": "InvalidReferralTokenAccount",
+      "msg": "Referral token account owner does not match referrer wallet"
+    },
+    {
+      "code": 6031,
+      "name": "MissingReferralAta",
+      "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
     }
   ],
   "types": [
@@ -2282,8 +2307,14 @@
         "Each referral account is scoped to a specific gateway to enable gateway-specific referral ecosystems.",
         "",
         "The PDA derivation uses gateway pubkey to ensure uniqueness per gateway:",
-        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey]"
+        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey]",
+        "",
+        "Uses zero_copy for efficient mutable access during payment execution."
       ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -2310,6 +2341,18 @@
               "array": [
                 "u8",
                 6
+              ]
+            }
+          },
+          {
+            "name": "_padding_code",
+            "docs": [
+              "Padding for alignment (referrer is 32 bytes, needs 8-byte alignment)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                2
               ]
             }
           },
@@ -2342,16 +2385,16 @@
             "type": "u8"
           },
           {
-            "name": "padding_align",
+            "name": "_padding_bump",
             "type": {
               "array": [
                 "u8",
-                1
+                7
               ]
             }
           },
           {
-            "name": "padding",
+            "name": "_padding",
             "type": {
               "array": [
                 "u64",

@@ -1476,6 +1476,31 @@ export type Tributary = {
       "code": 6026,
       "name": "invalidReferralCode",
       "msg": "Invalid referral code - must be alphanumeric"
+    },
+    {
+      "code": 6027,
+      "name": "referrerNotFound",
+      "msg": "Referrer not found in referral map"
+    },
+    {
+      "code": 6028,
+      "name": "referralTokenAccountNotFound",
+      "msg": "Referral token account not found"
+    },
+    {
+      "code": 6029,
+      "name": "invalidTokenAccount",
+      "msg": "Invalid token account - mint mismatch or deserialization failed"
+    },
+    {
+      "code": 6030,
+      "name": "invalidReferralTokenAccount",
+      "msg": "Referral token account owner does not match referrer wallet"
+    },
+    {
+      "code": 6031,
+      "name": "missingReferralAta",
+      "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
     }
   ],
   "types": [
@@ -2288,8 +2313,14 @@ export type Tributary = {
         "Each referral account is scoped to a specific gateway to enable gateway-specific referral ecosystems.",
         "",
         "The PDA derivation uses gateway pubkey to ensure uniqueness per gateway:",
-        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey]"
+        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey]",
+        "",
+        "Uses zero_copy for efficient mutable access during payment execution."
       ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -2316,6 +2347,18 @@ export type Tributary = {
               "array": [
                 "u8",
                 6
+              ]
+            }
+          },
+          {
+            "name": "paddingCode",
+            "docs": [
+              "Padding for alignment (referrer is 32 bytes, needs 8-byte alignment)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                2
               ]
             }
           },
@@ -2348,11 +2391,11 @@ export type Tributary = {
             "type": "u8"
           },
           {
-            "name": "paddingAlign",
+            "name": "paddingBump",
             "type": {
               "array": [
                 "u8",
-                1
+                7
               ]
             }
           },
