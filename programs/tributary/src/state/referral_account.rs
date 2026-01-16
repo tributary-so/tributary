@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 /// Each referral account is scoped to a specific gateway to enable gateway-specific referral ecosystems.
 ///
 /// The PDA derivation uses gateway pubkey and referral_code to ensure uniqueness:
-/// PDA seeds: ["referral", gateway_pubkey, owner_pubkey, referral_code]
+/// PDA seeds: ["referral", gateway_pubkey, referral_code]
 ///
 /// Uses zero_copy for efficient mutable access during payment execution.
 #[account(zero_copy)]

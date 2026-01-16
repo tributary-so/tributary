@@ -178,7 +178,6 @@ export class Tributary {
     const referralCodeBuffer = Buffer.from(codeBytes);
     const { address: referralAccountPda } = this.getReferralPda(
       gateway,
-      owner,
       referralCodeBuffer
     );
     const { address: configPda } = getConfigPda(this.programId);
@@ -203,7 +202,6 @@ export class Tributary {
       }
       const referrerReferralPda = this.getReferralPda(
         gateway,
-        referrer,
         Buffer.from(referrerAccount.referralCode)
       );
       remainingAccounts.push({
@@ -268,14 +266,13 @@ export class Tributary {
   }
 
   /**
-   * Gets a Referral Account PDA for the specified gateway, owner, and referral code.
+   * Gets a Referral Account PDA for the specified gateway and referral code.
    * @param gateway - Public key of the gateway
-   * @param owner - Public key of the referral account owner
    * @param referralCode - 6-byte buffer of the referral code
    * @returns PdaResult containing the PDA address and bump
    */
-  getReferralPda(gateway: PublicKey, owner: PublicKey, referralCode: Buffer) {
-    return getReferralPda(gateway, owner, referralCode, this.programId);
+  getReferralPda(gateway: PublicKey, referralCode: Buffer) {
+    return getReferralPda(gateway, referralCode, this.programId);
   }
 
   /**
@@ -1839,7 +1836,6 @@ export class Tributary {
     // Get the user's referral PDA using their actual referral code
     const { address: userReferralPda } = this.getReferralPda(
       gateway,
-      user,
       Buffer.from(userReferral.referralCode)
     );
 
