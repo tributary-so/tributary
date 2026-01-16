@@ -19,6 +19,7 @@ import { ComputeBudgetProgram } from "@solana/web3.js";
 import { Tributary } from "../target/types/tributary";
 import { PaymentFrequency, TributarySDK } from "../sdk/src";
 import assert from "assert";
+import { Buffer } from "buffer";
 
 describe("Tributary", () => {
   const provider = anchor.AnchorProvider.env();
@@ -1661,7 +1662,11 @@ describe("Tributary", () => {
       expect(chainL3[2]).toBeNull();
 
       let l3Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
       expect(l3Referral).not.toBeNull();
       expect(l3Referral!.owner).toEqual(referrerL3.publicKey);
@@ -1684,12 +1689,20 @@ describe("Tributary", () => {
       });
 
       let l2Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL2.publicKey,
+          Buffer.from("REF002")
+        ).address
       );
       expect(l2Referral).not.toBeNull();
       expect(l2Referral!.owner).toEqual(referrerL2.publicKey);
       expect(l2Referral!.referrer).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
 
       const chainL2 = await sdk.getReferralChain(
@@ -1697,7 +1710,11 @@ describe("Tributary", () => {
         gatewayPDA
       );
       expect(chainL2[0]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
       expect(chainL2[1]).toBeNull();
       expect(chainL2[2]).toBeNull();
@@ -1720,20 +1737,36 @@ describe("Tributary", () => {
         gatewayPDA
       );
       expect(chainL1[0]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL2.publicKey,
+          Buffer.from("REF002")
+        ).address
       );
       expect(chainL1[1]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
       expect(chainL1[2]).toBeNull();
 
       let l1Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL1.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL1.publicKey,
+          Buffer.from("REF001")
+        ).address
       );
       expect(l1Referral).not.toBeNull();
       expect(l1Referral!.owner).toEqual(referrerL1.publicKey);
       expect(l1Referral!.referrer).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL2.publicKey,
+          Buffer.from("REF002")
+        ).address
       );
     });
 
@@ -1750,23 +1783,40 @@ describe("Tributary", () => {
       });
 
       let payerReferral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, payer.publicKey).address
+        sdk.getReferralPda(gatewayPDA, payer.publicKey, Buffer.from("PAYER1"))
+          .address
       );
       expect(payerReferral).not.toBeNull();
       expect(payerReferral!.owner).toEqual(payer.publicKey);
       expect(payerReferral!.referrer).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL1.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL1.publicKey,
+          Buffer.from("REF001")
+        ).address
       );
 
       const chain = await sdk.getReferralChain(payer.publicKey, gatewayPDA);
       expect(chain[0]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL1.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL1.publicKey,
+          Buffer.from("REF001")
+        ).address
       );
       expect(chain[1]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL2.publicKey,
+          Buffer.from("REF002")
+        ).address
       );
       expect(chain[2]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
     });
 
@@ -1901,13 +1951,25 @@ describe("Tributary", () => {
       );
 
       const l1Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL1.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL1.publicKey,
+          Buffer.from("REF001")
+        ).address
       );
       const l2Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL2.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL2.publicKey,
+          Buffer.from("REF002")
+        ).address
       );
       const l3Referral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
 
       expect(l1Referral!.totalEarned.toNumber()).toBeGreaterThan(0);
@@ -1989,12 +2051,20 @@ describe("Tributary", () => {
       });
 
       let payerReferral = await sdk.getReferralAccount(
-        sdk.getReferralPda(gatewayPDA, singleRefpayer.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          singleRefpayer.publicKey,
+          Buffer.from("PAYER3")
+        ).address
       );
       expect(payerReferral).not.toBeNull();
       expect(payerReferral!.owner).toEqual(singleRefpayer.publicKey);
       expect(payerReferral!.referrer).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
 
       const chain = await sdk.getReferralChain(
@@ -2002,7 +2072,11 @@ describe("Tributary", () => {
         gatewayPDA
       );
       expect(chain[0]).toEqual(
-        sdk.getReferralPda(gatewayPDA, referrerL3.publicKey).address
+        sdk.getReferralPda(
+          gatewayPDA,
+          referrerL3.publicKey,
+          Buffer.from("REF003")
+        ).address
       );
       expect(chain[1]).toBeNull();
       expect(chain[2]).toBeNull();

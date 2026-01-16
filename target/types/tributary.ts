@@ -541,6 +541,10 @@ export type Tributary = {
               {
                 "kind": "account",
                 "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "referralCode"
               }
             ]
           }
@@ -2317,8 +2321,8 @@ export type Tributary = {
         "A referral account that tracks referral codes and chain relationships for reward distribution.",
         "Each referral account is scoped to a specific gateway to enable gateway-specific referral ecosystems.",
         "",
-        "The PDA derivation uses gateway pubkey to ensure uniqueness per gateway:",
-        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey]",
+        "The PDA derivation uses gateway pubkey and referral_code to ensure uniqueness:",
+        "PDA seeds: [\"referral\", gateway_pubkey, owner_pubkey, referral_code]",
         "",
         "Uses zero_copy for efficient mutable access during payment execution."
       ],

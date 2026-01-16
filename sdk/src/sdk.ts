@@ -153,8 +153,6 @@ export class Tributary {
     referrer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
-    const { address: referralAccountPda } = this.getReferralPda(gateway, owner);
-    const { address: configPda } = getConfigPda(this.programId);
 
     // Validate and convert referral code
     const codeBytes = new Array(6).fill(0);
@@ -177,6 +175,14 @@ export class Tributary {
       codeBytes[i] = byte;
     }
 
+    const referralCodeBuffer = Buffer.from(codeBytes);
+    const { address: referralAccountPda } = this.getReferralPda(
+      gateway,
+      owner,
+      referralCodeBuffer
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
     const accounts: any = {
       owner: owner,
       referralAccount: referralAccountPda,
@@ -188,12 +194,20 @@ export class Tributary {
     // If referrer is provided, also pass their ReferralAccount for validation
     const remainingAccounts = [];
     if (referrer) {
-      const { address: referrerReferralPda } = this.getReferralPda(
+      const referrerAccount = await this.getReferralAccountByOwner(
         gateway,
         referrer
       );
+      if (!referrerAccount) {
+        throw new Error("Referrer not found");
+      }
+      const referrerReferralPda = this.getReferralPda(
+        gateway,
+        referrer,
+        Buffer.from(referrerAccount.referralCode)
+      );
       remainingAccounts.push({
-        pubkey: referrerReferralPda,
+        pubkey: referrerReferralPda.address,
         isWritable: false,
         isSigner: false,
       });
@@ -254,13 +268,14 @@ export class Tributary {
   }
 
   /**
-   * Gets a Referral Account PDA for the specified gateway and owner.
+   * Gets a Referral Account PDA for the specified gateway, owner, and referral code.
    * @param gateway - Public key of the gateway
    * @param owner - Public key of the referral account owner
+   * @param referralCode - 6-byte buffer of the referral code
    * @returns PdaResult containing the PDA address and bump
    */
-  getReferralPda(gateway: PublicKey, owner: PublicKey) {
-    return getReferralPda(gateway, owner, this.programId);
+  getReferralPda(gateway: PublicKey, owner: PublicKey, referralCode: Buffer) {
+    return getReferralPda(gateway, owner, referralCode, this.programId);
   }
 
   /**
@@ -1756,6 +1771,37 @@ export class Tributary {
   }
 
   /**
+   * Fetches a specific referral account by the owner's public key and gateway.
+   * This is a convenience method that finds the referral account for an owner within a specific gateway.
+   * @param gateway - Public key of the gateway
+   * @param owner - Public key of the referral account owner
+   * @returns The referral account data or null if not found
+   */
+  async getReferralAccountByOwner(
+    gateway: PublicKey,
+    owner: PublicKey
+  ): Promise<ReferralAccount | null> {
+    const allReferrals = await this.program.account.referralAccount.all([
+      {
+        memcmp: {
+          offset: 40, // Skip discriminator (8) + gateway (32)
+          bytes: owner.toBase58(),
+        },
+      },
+    ]);
+
+    for (const ref of allReferrals) {
+      const refData = await this.program.account.referralAccount.fetchNullable(
+        ref.publicKey
+      );
+      if (refData && refData.gateway.toString() === gateway.toString()) {
+        return refData;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Fetches a specific referral account by its address.
    * @param referralAccountAddress - Public key of the referral account
    * @returns The referral account data or null if not found
@@ -1783,13 +1829,19 @@ export class Tributary {
     const chain: (PublicKey | null)[] = [];
 
     // Get the user's referral account for this gateway
-    const { address: userReferralPda } = this.getReferralPda(gateway, user);
-    const userReferral = await this.getReferralAccount(userReferralPda);
+    const userReferral = await this.getReferralAccountByOwner(gateway, user);
 
     if (!userReferral) {
       // User doesn't have a referral account
       return [null, null, null];
     }
+
+    // Get the user's referral PDA using their actual referral code
+    const { address: userReferralPda } = this.getReferralPda(
+      gateway,
+      user,
+      Buffer.from(userReferral.referralCode)
+    );
 
     // L1 referrer (who referred this user)
     if (userReferral.referrer.toString() != PublicKey.default.toString()) {

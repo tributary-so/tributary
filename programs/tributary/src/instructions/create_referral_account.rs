@@ -11,7 +11,7 @@ pub struct CreateReferralAccount<'info> {
         init,
         payer = owner,
         space = ReferralAccount::SIZE,
-        seeds = [REFERRAL_SEED, gateway.key().as_ref(), owner.key().as_ref()],
+        seeds = [REFERRAL_SEED, gateway.key().as_ref(), owner.key().as_ref(), referral_code.as_slice()],
         bump
     )]
     pub referral_account: AccountLoader<'info, ReferralAccount>,

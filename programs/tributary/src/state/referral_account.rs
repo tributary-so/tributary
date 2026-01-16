@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 /// A referral account that tracks referral codes and chain relationships for reward distribution.
 /// Each referral account is scoped to a specific gateway to enable gateway-specific referral ecosystems.
 ///
-/// The PDA derivation uses gateway pubkey to ensure uniqueness per gateway:
-/// PDA seeds: ["referral", gateway_pubkey, owner_pubkey]
+/// The PDA derivation uses gateway pubkey and referral_code to ensure uniqueness:
+/// PDA seeds: ["referral", gateway_pubkey, owner_pubkey, referral_code]
 ///
 /// Uses zero_copy for efficient mutable access during payment execution.
 #[account(zero_copy)]
@@ -42,11 +42,4 @@ impl ReferralAccount {
         1 + // bump: u8
         7 + // _padding_bump: [u8; 7]
         (8 * 8); // _padding: [u64; 8]
-}
-
-/// Helper function to get the referral PDA address
-/// PDA seeds: ["referral", gateway_pubkey, owner_pubkey]
-pub fn get_referral_pda(gateway: &Pubkey, owner: &Pubkey, program_id: &Pubkey) -> (Pubkey, u8) {
-    let seeds = [b"referral", gateway.as_ref(), owner.as_ref()];
-    Pubkey::find_program_address(&seeds, program_id)
 }
