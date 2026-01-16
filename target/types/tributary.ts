@@ -1510,6 +1510,11 @@ export type Tributary = {
       "code": 6032,
       "name": "mismatchAtaReferralAccountNumbers",
       "msg": "Mismatch between number referrers and atas!"
+    },
+    {
+      "code": 6033,
+      "name": "referralAccountAlreadyExists",
+      "msg": "Referral account already exists for this code"
     }
   ],
   "types": [

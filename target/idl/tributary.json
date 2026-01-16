@@ -1504,6 +1504,11 @@
       "code": 6032,
       "name": "MismatchAtaReferralAccountNumbers",
       "msg": "Mismatch between number referrers and atas!"
+    },
+    {
+      "code": 6033,
+      "name": "ReferralAccountAlreadyExists",
+      "msg": "Referral account already exists for this code"
     }
   ],
   "types": [

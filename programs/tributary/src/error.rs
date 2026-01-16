@@ -70,4 +70,6 @@ pub enum TributaryError {
     InvalidTokenAccount,
     #[msg("Mismatch between number referrers and atas!")]
     MismatchAtaReferralAccountNumbers,
+    #[msg("Referral account already exists for this code")]
+    ReferralAccountAlreadyExists,
 }

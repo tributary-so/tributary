@@ -44,6 +44,11 @@ impl<'info> CreateReferralAccount<'info> {
             }
         }
 
+        // Check if referral account already exists at this PDA
+        if ctx.accounts.referral_account.load().is_ok() {
+            return err!(TributaryError::ReferralAccountAlreadyExists);
+        }
+
         let mut referrer = Pubkey::default();
 
         // Check remaining accounts for a valid referrer ReferralAccount
