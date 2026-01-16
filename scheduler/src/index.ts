@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
-import { Connection, PublicKey, Keypair } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  Keypair,
+  SendTransactionError,
+} from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
@@ -56,20 +61,19 @@ class PaymentScheduler {
 
   private async checkAndExecutePayments(): Promise<void> {
     console.log(
-      `[${new Date().toISOString()}] Checking for payments to execute...`
+      `[${new Date().toISOString()}] Checking for payments to execute...`,
     );
 
     try {
       // Get all payment policies managed by this gateway
       const { address: gatewayPda } = this.sdk.getGatewayPda(
-        this.gatewayKeypair.publicKey
+        this.gatewayKeypair.publicKey,
       );
-      const paymentPolicies = await this.sdk.getPaymentPoliciesByGateway(
-        gatewayPda
-      );
+      const paymentPolicies =
+        await this.sdk.getPaymentPoliciesByGateway(gatewayPda);
 
       console.log(
-        `Found ${paymentPolicies.length} payment policies for this gateway`
+        `Found ${paymentPolicies.length} payment policies for this gateway`,
       );
 
       const currentTime = Math.floor(Date.now() / 1000);
@@ -89,14 +93,14 @@ class PaymentScheduler {
             }
 
             console.log(
-              `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`
+              `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`,
             );
 
             await this.executePayment(policyPda);
             executedCount++;
 
             console.log(
-              `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
+              `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`,
             );
 
             // Add small delay between payments to avoid overwhelming the RPC
@@ -104,14 +108,18 @@ class PaymentScheduler {
           }
         } catch (error) {
           console.error(
-            `🚩 Error executing payment for ${policyPda.toString()}`
+            `🚩 Error executing payment for ${policyPda.toString()}`,
           );
+          if (error instanceof SendTransactionError) {
+            console.error(error.message);
+            console.error(error.logs);
+          }
           errorCount++;
         }
       }
 
       console.log(
-        `Payment execution completed. Executed: ${executedCount}, Errors: ${errorCount}`
+        `Payment execution completed. Executed: ${executedCount}, Errors: ${errorCount}`,
       );
     } catch (error) {
       console.error("Error in payment checking process");
@@ -135,7 +143,7 @@ class PaymentScheduler {
       const maxRenewals = subscriptionDetails.maxRenewals;
       if (maxRenewals !== null && policy.paymentCount >= maxRenewals) {
         console.log(
-          `Policy ${policy.policyId} has reached max renewals (${maxRenewals})`
+          `Policy ${policy.policyId} has reached max renewals (${maxRenewals})`,
         );
         return false;
       }
@@ -158,7 +166,7 @@ class PaymentScheduler {
 
       if (currentMilestone >= totalMilestones) {
         console.log(
-          `Policy ${policy.policyId} has completed all ${totalMilestones} milestones`
+          `Policy ${policy.policyId} has completed all ${totalMilestones} milestones`,
         );
         return false;
       }
@@ -190,7 +198,7 @@ class PaymentScheduler {
         {
           commitment: "confirmed",
           skipPreflight: false,
-        }
+        },
       );
 
       console.log(`Payment executed with signature: ${signature}`);
@@ -223,7 +231,7 @@ class PaymentScheduler {
       {
         scheduled: true,
         timezone: "UTC",
-      }
+      },
     );
 
     console.log("Payment scheduler started successfully");
