@@ -1,8 +1,10 @@
 import {
   Connection,
   PublicKey,
+  SignatureStatus,
   SystemProgram,
   TransactionInstruction,
+  TransactionSignature,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddressSync,
@@ -30,7 +32,7 @@ import type {
   ProgramConfig,
   ReferralAccount,
 } from "./types.js";
-import { computePaymentsPerYear } from "./utils";
+import { computePaymentsPerYear, sleep } from "./utils";
 import IDL from "../../target/idl/tributary.json"; // with { type: "json" };
 import { Tributary as TributaryIdl } from "../../target/types/tributary.js";
 
@@ -1874,6 +1876,44 @@ export class Tributary {
     }
 
     return chain;
+  }
+
+  async confirmTransactionWithStatus(
+    signature: TransactionSignature,
+    commitment: "processed" | "confirmed" | "finalized" = "confirmed",
+    interval: number = 150, // ms
+    timeout: number = 60000 // 60 seconds
+  ): Promise<SignatureStatus> {
+    const start = Date.now();
+
+    while (Date.now() - start < timeout) {
+      const { value } = await this.connection.getSignatureStatus(signature);
+
+      if (value === null) {
+        // Transaction not found yet, wait and retry
+        await sleep(interval);
+        continue;
+      }
+
+      // Check if there's an error
+      if (value.err) {
+        throw new Error(`Transaction failed: ${JSON.stringify(value.err)}`);
+      }
+
+      // Check if we've reached the desired commitment level
+      if (
+        commitment === "processed" ||
+        (commitment === "confirmed" &&
+          value.confirmationStatus !== "processed") ||
+        (commitment === "finalized" && value.confirmationStatus === "finalized")
+      ) {
+        return value;
+      }
+
+      await sleep(500);
+    }
+
+    throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
   }
 }
 

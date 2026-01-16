@@ -97,3 +97,7 @@ export function computePaymentsPerYear(frequency: PaymentFrequency): number {
   }
   return 12; // Default to monthly
 }
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
