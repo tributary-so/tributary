@@ -80,15 +80,23 @@ class PaymentScheduler {
         try {
           // Check if payment is due and policy is active
           if (this.shouldExecutePayment(policy, currentTime)) {
+            let milestoneInfo = "";
+            if (policy.policyType.milestone) {
+              const m = policy.policyType.milestone;
+              milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${
+                m.totalMilestones
+              })`;
+            }
+
             console.log(
-              `Executing payment for policy: ${policyPda.toString()}`
+              `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`
             );
 
             await this.executePayment(policyPda);
             executedCount++;
 
             console.log(
-              `✅ Payment executed successfully for ${policyPda.toString()}`
+              `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
             );
 
             // Add small delay between payments to avoid overwhelming the RPC
@@ -116,8 +124,7 @@ class PaymentScheduler {
       return false;
     }
 
-    // Check if payment is due
-    // For subscription policies, check if we can execute now haven't exceeded max renewals
+    // Check subscription payments
     if (policy.policyType.subscription) {
       const subscriptionDetails = policy.policyType.subscription;
       const nextPaymentDue = subscriptionDetails.nextPaymentDue.toNumber();
@@ -132,9 +139,41 @@ class PaymentScheduler {
         );
         return false;
       }
+
+      return true;
     }
 
-    return true;
+    // Check milestone payments (time-based only)
+    if (policy.policyType.milestone) {
+      const milestoneDetails = policy.policyType.milestone;
+
+      // Only execute time-based milestones (releaseCondition === 0)
+      if (milestoneDetails.releaseCondition !== 0) {
+        return false;
+      }
+
+      // Check if there are more milestones to release
+      const currentMilestone = milestoneDetails.currentMilestone;
+      const totalMilestones = milestoneDetails.totalMilestones;
+
+      if (currentMilestone >= totalMilestones) {
+        console.log(
+          `Policy ${policy.policyId} has completed all ${totalMilestones} milestones`
+        );
+        return false;
+      }
+
+      // Check if current milestone timestamp has passed
+      const milestoneTimestamp =
+        milestoneDetails.milestoneTimestamps[currentMilestone].toNumber();
+      if (milestoneTimestamp > currentTime) {
+        return false;
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   private async executePayment(paymentPolicyPda: PublicKey): Promise<void> {
