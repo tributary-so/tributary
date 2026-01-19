@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "sdk-x402/**"
+      - ".github/workflows/publish-sdk-x402.yml"
       - "!sdk-x402/node_modules/**"
       - "!sdk-x402/dist/**"
       - "!sdk-x402/src/**/*.test.ts"

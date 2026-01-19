@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "sdk-react/**"
+      - ".github/workflows/publish-sdk-react.yml"
       - "!sdk-react/node_modules/**"
       - "!sdk-react/dist/**"
       - "!sdk-react/src/**/*.test.ts"
