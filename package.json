@@ -1,4 +1,5 @@
 {
+  "name": "tributary",
   "license": "MIT",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
@@ -26,14 +27,19 @@
     "typescript": "^5.9.3"
   },
   "release": {
-    "extends": "semantic-release-monorepo",
     "branches": [
       "main"
     ],
     "plugins": [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
-      "@semantic-release/npm",
+      [
+        "@semantic-release/npm",
+        {
+          "npmPublish": false
+        }
+      ],
+      "@semantic-release/changelog",
       "@semantic-release/github"
     ]
   }
