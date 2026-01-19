@@ -1,4 +1,4 @@
-name: SDK Build
+name: Publish SDKs
 
 on:
   workflow_call:
@@ -8,6 +8,10 @@ on:
         required: false
         default: '["sdk", "sdk-react", "sdk-x402"]'
         description: JSON array of package paths to build
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.6.0"
 
 jobs:
   build:

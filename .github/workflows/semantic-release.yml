@@ -7,9 +7,6 @@ on:
         type: boolean
         required: false
         default: false
-    secrets:
-      github_token:
-        required: false
 
 permissions:
   contents: write
@@ -56,7 +53,7 @@ jobs:
       - name: Release (Dry Run)
         if: inputs.dry_run
         env:
-          GITHUB_TOKEN: ${{ secrets.github_token || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "========================================="
           echo "Semantic Release - Dry Run Mode"
@@ -65,13 +62,13 @@ jobs:
           echo "No git tags will be created."
           echo "No NPM packages will be published."
           echo "========================================="
-          pnpm exec semantic-release --dry-run --debug
+          pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release -e semantic-release-monorepo --dry-run --debug
 
       - name: Release (Production)
         if: ${{ !inputs.dry_run }}
         env:
-          GITHUB_TOKEN: ${{ secrets.github_token || secrets.GITHUB_TOKEN }}
-        run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release -e semantic-release-monorepo
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release -e semantic-release-monorepo --debug
 
       - name: Show release result
         if: ${{ always() }}

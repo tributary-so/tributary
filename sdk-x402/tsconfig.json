@@ -15,7 +15,7 @@
     "target": "es2020",
     "module": "es2020",
     "moduleResolution": "bundler",
-    "types": ["node", "jest"],
+    "types": [],
     "outDir": "./dist",
     "sourceMap": true,
     "typeRoots": ["./node_modules/@types"]
