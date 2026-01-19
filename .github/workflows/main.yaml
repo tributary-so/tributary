@@ -122,7 +122,7 @@ jobs:
 
   release:
     name: Release
-    needs: [build-programs, build-sdks]
+    needs: [build-sdks, test-programs]
     uses: ./.github/workflows/semantic-release.yml
     secrets:
       github_token: ${{ secrets.GITHUB_TOKEN }}
