@@ -6,7 +6,8 @@ use anchor_lang::prelude::*;
 /// Arguments for updating gateway referral settings
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct UpdateGatewayReferralSettingsArgs {
-    /// Optional feature flags to update (bit 0 = referral program enabled)
+    /// Optional feature flags to update (bit 0 = referral program enabled, bit 1 = net mode)
+    /// Bit 2 (custom protocol fee) is reserved for protocol admin and cannot be modified here
     pub feature_flags: Option<u8>,
     /// Optional referral allocation in basis points (0-2500)
     pub referral_allocation_bps: Option<u16>,
@@ -35,8 +36,11 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
         let gateway = &mut ctx.accounts.gateway;
 
         // Update feature flags if provided
+        // Only allow modifying bits 0 and 1 (referral and net mode)
+        // Bit 2 (custom protocol fee) is reserved for protocol admin only
         if let Some(flags) = args.feature_flags {
-            gateway.feature_flags = flags;
+            let protected_bit = gateway.feature_flags & 0x04;
+            gateway.feature_flags = (flags & 0x03) | protected_bit;
         }
 
         // Update referral allocation if provided
