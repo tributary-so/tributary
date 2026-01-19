@@ -2,7 +2,6 @@ packages:
   - "app"
   - "cli"
   - "landing"
-  - "programs/*"
   - "scheduler"
   - "sdk"
   - "sdk-react"
