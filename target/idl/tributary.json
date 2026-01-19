@@ -1580,11 +1580,6 @@
       "code": 6033,
       "name": "ReferralAccountAlreadyExists",
       "msg": "Referral account already exists for this code"
-    },
-    {
-      "code": 6034,
-      "name": "InvalidProtocolFee",
-      "msg": "Invalid protocol fee - must be <= 10000 bps"
     }
   ],
   "types": [
@@ -2568,13 +2563,19 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "feature_flags",
+            "name": "use_custom_protocol_fee",
+            "docs": [
+              "Optional: Enable or disable custom protocol fee feature (bit 2)"
+            ],
             "type": {
-              "option": "u8"
+              "option": "bool"
             }
           },
           {
             "name": "custom_protocol_fee_bps",
+            "docs": [
+              "Optional custom protocol fee in basis points (bps). Only used if feature is enabled."
+            ],
             "type": {
               "option": "u16"
             }
@@ -2593,7 +2594,8 @@
           {
             "name": "feature_flags",
             "docs": [
-              "Optional feature flags to update (bit 0 = referral program enabled)"
+              "Optional feature flags to update (bit 0 = referral program enabled, bit 1 = net mode)",
+              "Bit 2 (custom protocol fee) is reserved for protocol admin and cannot be modified here"
             ],
             "type": {
               "option": "u8"

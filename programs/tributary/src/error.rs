@@ -72,6 +72,4 @@ pub enum TributaryError {
     MismatchAtaReferralAccountNumbers,
     #[msg("Referral account already exists for this code")]
     ReferralAccountAlreadyExists,
-    #[msg("Invalid protocol fee - must be <= 10000 bps")]
-    InvalidProtocolFee,
 }

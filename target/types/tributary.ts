@@ -1586,11 +1586,6 @@ export type Tributary = {
       "code": 6033,
       "name": "referralAccountAlreadyExists",
       "msg": "Referral account already exists for this code"
-    },
-    {
-      "code": 6034,
-      "name": "invalidProtocolFee",
-      "msg": "Invalid protocol fee - must be <= 10000 bps"
     }
   ],
   "types": [
@@ -2574,13 +2569,19 @@ export type Tributary = {
         "kind": "struct",
         "fields": [
           {
-            "name": "featureFlags",
+            "name": "useCustomProtocolFee",
+            "docs": [
+              "Optional: Enable or disable custom protocol fee feature (bit 2)"
+            ],
             "type": {
-              "option": "u8"
+              "option": "bool"
             }
           },
           {
             "name": "customProtocolFeeBps",
+            "docs": [
+              "Optional custom protocol fee in basis points (bps). Only used if feature is enabled."
+            ],
             "type": {
               "option": "u16"
             }
@@ -2599,7 +2600,8 @@ export type Tributary = {
           {
             "name": "featureFlags",
             "docs": [
-              "Optional feature flags to update (bit 0 = referral program enabled)"
+              "Optional feature flags to update (bit 0 = referral program enabled, bit 1 = net mode)",
+              "Bit 2 (custom protocol fee) is reserved for protocol admin and cannot be modified here"
             ],
             "type": {
               "option": "u8"

@@ -6,9 +6,9 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct UpdateGatewayProtocolFeeArgs {
     /// Optional: Enable or disable custom protocol fee feature (bit 2)
-    pub use_custom_protocol_fee: Option<bool>,
+    pub use_custom_protocol_fee: bool,
     /// Optional custom protocol fee in basis points (bps). Only used if feature is enabled.
-    pub custom_protocol_fee_bps: Option<u16>,
+    pub custom_protocol_fee_bps: u16,
 }
 
 #[derive(Accounts)]
@@ -40,18 +40,17 @@ impl<'info> UpdateGatewayProtocolFee<'info> {
     ) -> Result<()> {
         let gateway = &mut ctx.accounts.gateway;
 
-        if let Some(enable) = args.use_custom_protocol_fee {
-            if enable {
-                gateway.feature_flags |= 0x04;
-            } else {
-                gateway.feature_flags &= !0x04;
-            }
+        if args.use_custom_protocol_fee {
+            gateway.feature_flags |= 0x04;
+        } else {
+            gateway.feature_flags &= !0x04;
         }
 
-        if let Some(fee_bps) = args.custom_protocol_fee_bps {
-            require!(fee_bps <= 10000, TributaryError::InvalidFeeBps);
-            gateway.custom_protocol_fee_bps = fee_bps;
-        }
+        require!(
+            args.custom_protocol_fee_bps <= 10000,
+            TributaryError::InvalidFeeBps
+        );
+        gateway.custom_protocol_fee_bps = args.custom_protocol_fee_bps;
 
         msg!(
             "Gateway protocol fee updated: use_custom_protocol_fee={}, custom_protocol_fee_bps={}",
