@@ -351,8 +351,14 @@ impl<'info> ExecutePayment<'info> {
             .checked_div(10000)
             .ok_or(TributaryError::ArithmeticOverflow)?;
 
+        let protocol_fee_bps = if gateway.is_custom_protocol_fee_enabled() {
+            gateway.custom_protocol_fee_bps
+        } else {
+            config.protocol_fee_bps
+        };
+
         let protocol_fee = payment_amount
-            .checked_mul(config.protocol_fee_bps as u64)
+            .checked_mul(protocol_fee_bps as u64)
             .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
             .ok_or(TributaryError::ArithmeticOverflow)?;

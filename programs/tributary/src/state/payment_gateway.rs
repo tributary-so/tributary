@@ -30,6 +30,7 @@ pub struct PaymentGateway {
     /// Gateway-scoped feature flags (bit-vector)
     /// Bit 0: Referral program enabled (1 = enabled, 0 = disabled)
     /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
+    /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
     pub feature_flags: u8,
     /// Gateway-scoped referral program allocation (in basis points)
     /// 0 = no referral program, 2500 = 25% of gateway fee can be used for referrals
@@ -37,8 +38,11 @@ pub struct PaymentGateway {
     /// Gateway-scoped referral tier distribution as [level1, level2, level3]
     /// Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%
     pub referral_tiers_bps: [u16; 3],
+    /// Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.
+    /// When enabled, this overrides the default 100 bps protocol fee.
+    pub custom_protocol_fee_bps: u16,
     /// Padding for future fields
-    pub padding: [u8; 119],
+    pub padding: [u8; 117],
 }
 
 impl PaymentGateway {
@@ -56,7 +60,8 @@ impl PaymentGateway {
         1 + // feature_flags: u8
         2 + // referral_allocation_bps: u16
         6 + // referral_tiers_bps: [u16; 3] = 2*3 = 6
-        119; // padding
+        2 + // custom_protocol_fee_bps: u16
+        117; // padding
 }
 
 impl PaymentGateway {
@@ -81,5 +86,11 @@ impl PaymentGateway {
     /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
     pub fn is_amount_net(&self) -> bool {
         self.feature_flags & 0x02 != 0
+    }
+
+    /// Check if custom protocol fee feature is enabled
+    /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
+    pub fn is_custom_protocol_fee_enabled(&self) -> bool {
+        self.feature_flags & 0x04 != 0
     }
 }

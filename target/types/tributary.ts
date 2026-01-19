@@ -1076,6 +1076,81 @@ export type Tributary = {
       "args": []
     },
     {
+      "name": "updateGatewayProtocolFee",
+      "discriminator": [
+        64,
+        116,
+        3,
+        107,
+        10,
+        191,
+        237,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "updateGatewayProtocolFeeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "updateGatewayReferralSettings",
       "discriminator": [
         243,
@@ -1511,6 +1586,11 @@ export type Tributary = {
       "code": 6033,
       "name": "referralAccountAlreadyExists",
       "msg": "Referral account already exists for this code"
+    },
+    {
+      "code": 6034,
+      "name": "invalidProtocolFee",
+      "msg": "Invalid protocol fee - must be <= 10000 bps"
     }
   ],
   "types": [
@@ -1693,7 +1773,8 @@ export type Tributary = {
             "docs": [
               "Gateway-scoped feature flags (bit-vector)",
               "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)",
-              "Bit 1: Net amount mode (1 = net, 0 = gross/default)"
+              "Bit 1: Net amount mode (1 = net, 0 = gross/default)",
+              "Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)"
             ],
             "type": "u8"
           },
@@ -1719,6 +1800,14 @@ export type Tributary = {
             }
           },
           {
+            "name": "customProtocolFeeBps",
+            "docs": [
+              "Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.",
+              "When enabled, this overrides the default 100 bps protocol fee."
+            ],
+            "type": "u16"
+          },
+          {
             "name": "padding",
             "docs": [
               "Padding for future fields"
@@ -1726,7 +1815,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                119
+                117
               ]
             }
           }
@@ -2474,6 +2563,26 @@ export type Tributary = {
                 },
                 3
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "updateGatewayProtocolFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "featureFlags",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "customProtocolFeeBps",
+            "type": {
+              "option": "u16"
             }
           }
         ]

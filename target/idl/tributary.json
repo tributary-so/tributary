@@ -1070,6 +1070,81 @@
       "args": []
     },
     {
+      "name": "update_gateway_protocol_fee",
+      "discriminator": [
+        64,
+        116,
+        3,
+        107,
+        10,
+        191,
+        237,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateGatewayProtocolFeeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "update_gateway_referral_settings",
       "discriminator": [
         243,
@@ -1505,6 +1580,11 @@
       "code": 6033,
       "name": "ReferralAccountAlreadyExists",
       "msg": "Referral account already exists for this code"
+    },
+    {
+      "code": 6034,
+      "name": "InvalidProtocolFee",
+      "msg": "Invalid protocol fee - must be <= 10000 bps"
     }
   ],
   "types": [
@@ -1687,7 +1767,8 @@
             "docs": [
               "Gateway-scoped feature flags (bit-vector)",
               "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)",
-              "Bit 1: Net amount mode (1 = net, 0 = gross/default)"
+              "Bit 1: Net amount mode (1 = net, 0 = gross/default)",
+              "Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)"
             ],
             "type": "u8"
           },
@@ -1713,6 +1794,14 @@
             }
           },
           {
+            "name": "custom_protocol_fee_bps",
+            "docs": [
+              "Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.",
+              "When enabled, this overrides the default 100 bps protocol fee."
+            ],
+            "type": "u16"
+          },
+          {
             "name": "padding",
             "docs": [
               "Padding for future fields"
@@ -1720,7 +1809,7 @@
             "type": {
               "array": [
                 "u8",
-                119
+                117
               ]
             }
           }
@@ -2468,6 +2557,26 @@
                 },
                 3
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateGatewayProtocolFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feature_flags",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "custom_protocol_fee_bps",
+            "type": {
+              "option": "u16"
             }
           }
         ]

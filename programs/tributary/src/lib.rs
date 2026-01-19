@@ -96,6 +96,13 @@ pub mod tributary {
     ) -> Result<()> {
         UpdateGatewayReferralSettings::handle_update_gateway_referral_settings(ctx, args)
     }
+
+    pub fn update_gateway_protocol_fee(
+        ctx: Context<UpdateGatewayProtocolFee>,
+        args: UpdateGatewayProtocolFeeArgs,
+    ) -> Result<()> {
+        UpdateGatewayProtocolFee::handle_update_gateway_protocol_fee(ctx, args)
+    }
 }
 
 #[cfg(not(feature = "no-entrypoint"))]
