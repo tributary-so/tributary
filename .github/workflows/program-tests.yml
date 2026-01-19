@@ -11,10 +11,6 @@ on:
         type: string
         required: false
         default: ""
-    secrets:
-      rpc_url:
-        required: false
-        default: ""
 
 jobs:
   test:
