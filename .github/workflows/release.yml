@@ -45,8 +45,7 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm exec semantic-release-monorepo
+        run: pnpm exec semantic-release -e semantic-release-monorepo
 
       - name: Show release result
         if: ${{ always() }}

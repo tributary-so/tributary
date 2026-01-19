@@ -11,8 +11,12 @@ on:
       dry_run:
         description: Run semantic-release in dry-run mode (no actual publish)
         required: false
-        default: "false"
+        default: false
         type: boolean
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
 
 jobs:
   validate:
@@ -122,11 +126,6 @@ jobs:
       - name: Build SDK package
         run: pnpm run build
 
-      - name: Configure NPM registry authentication
-        run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Configure Git user
         run: |
           git config user.name "github-actions[bot]"
@@ -139,7 +138,6 @@ jobs:
           npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   dry-run:
     name: Dry Run (Preview)

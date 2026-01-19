@@ -17,12 +17,16 @@ on:
       dry_run:
         description: "Run in dry-run mode (no actual publish)"
         required: false
-        default: "true"
+        default: false
         type: boolean
       version:
         description: "Specific version to release (overrides semantic-release)"
         required: false
         type: string
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -152,12 +156,6 @@ jobs:
           name: sdk-react-dist
           path: sdk-react/dist/
 
-      - name: Configure npm registry
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          echo "@tributary-so:registry=https://registry.npmjs.org/" >> ~/.npmrc
-          echo "always-auth=true" >> ~/.npmrc
-
       - name: Configure Git user
         run: |
           git config user.name "github-actions[bot]"
@@ -168,7 +166,6 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         with:
           branch: main
           extra_plugins: |
@@ -277,12 +274,6 @@ jobs:
           name: sdk-react-dist
           path: sdk-react/dist/
 
-      - name: Configure npm registry
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          echo "@tributary-so:registry=https://registry.npmjs.org/" >> ~/.npmrc
-          echo "always-auth=true" >> ~/.npmrc
-
       - name: Configure Git user
         run: |
           git config user.name "github-actions[bot]"
@@ -306,7 +297,6 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         with:
           branch: main
           extra_plugins: |
