@@ -2332,9 +2332,9 @@
             "type": "u16"
           },
           {
-            "name": "max_policies_per_user",
+            "name": "_deprecated",
             "docs": [
-              "Maximum number of active policies allowed per user"
+              "DEPRECATED: Maximum number of active policies allowed per user. Attention tumbstone!"
             ],
             "type": "u32"
           },

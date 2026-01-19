@@ -2338,9 +2338,9 @@ export type Tributary = {
             "type": "u16"
           },
           {
-            "name": "maxPoliciesPerUser",
+            "name": "deprecated",
             "docs": [
-              "Maximum number of active policies allowed per user"
+              "DEPRECATED: Maximum number of active policies allowed per user. Attention tumbstone!"
             ],
             "type": "u32"
           },
