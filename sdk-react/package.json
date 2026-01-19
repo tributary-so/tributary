@@ -5,6 +5,7 @@
   "description": "React hooks and utilities for Tributary recurring payments",
   "scripts": {
     "lint": "exit 0",
+    "test": "exit 0",
     "clean": "rm -rf ./dist",
     "build": "pnpm run clean && tsup",
     "prepack": "pnpm run build",
