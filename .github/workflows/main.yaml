@@ -46,7 +46,11 @@ jobs:
       - name: Detect changed packages
         id: detect
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD~1)
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Diffing against: $PREV_TAG"
+          echo ""
+
+          CHANGED_FILES=$(git diff --name-only "$PREV_TAG")
           echo "Changed files:"
           echo "$CHANGED_FILES"
           echo ""
@@ -77,9 +81,6 @@ jobs:
           echo "has_sdk=$HAS_SDK" >> "$GITHUB_OUTPUT"
           echo "has_sdk_react=$HAS_SDK_REACT" >> "$GITHUB_OUTPUT"
           echo "has_sdk_x402=$HAS_SDK_X402" >> "$GITHUB_OUTPUT"
-
-          PACKAGES_JSON="{\"sdk\":$HAS_SDK,\"sdk-react\":$HAS_SDK_REACT,\"sdk-x402\":$HAS_SDK_X402}"
-          echo "packages_json=$PACKAGES_JSON" >> "$GITHUB_OUTPUT"
 
           PATHS="[]"
           if [ "$HAS_SDK" = "1" ]; then
@@ -117,14 +118,12 @@ jobs:
     uses: ./.github/workflows/sdk-build.yml
     with:
       paths: ${{ needs.detect-changes.outputs.sdk_paths }}
-    secrets:
-      npm_token: ${{ secrets.NPM_TOKEN }}
 
-  release:
-    name: Release
-    needs: [build-sdks, test-programs]
-    uses: ./.github/workflows/semantic-release.yml
-    secrets:
-      github_token: ${{ secrets.GITHUB_TOKEN }}
-    with:
-      dry_run: ${{ github.event.inputs.dry_run || false }}
+  # release:
+  #   name: Release
+  #   needs: [build-sdks, test-programs]
+  #   uses: ./.github/workflows/semantic-release.yml
+  #   secrets:
+  #     github_token: ${{ secrets.GITHUB_TOKEN }}
+  #   with:
+  #     dry_run: ${{ github.event.inputs.dry_run || false }}

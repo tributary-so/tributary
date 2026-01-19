@@ -10,10 +10,6 @@ on:
     secrets:
       github_token:
         required: false
-        default: ""
-      npm_token:
-        required: false
-        default: ""
 
 permissions:
   contents: write
@@ -61,7 +57,6 @@ jobs:
         if: inputs.dry_run
         env:
           GITHUB_TOKEN: ${{ secrets.github_token || secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.npm_token }}
         run: |
           echo "========================================="
           echo "Semantic Release - Dry Run Mode"
@@ -76,7 +71,6 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.github_token || secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.npm_token }}
         run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release -e semantic-release-monorepo
 
       - name: Show release result
