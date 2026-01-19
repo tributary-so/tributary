@@ -2573,18 +2573,14 @@ export type Tributary = {
             "docs": [
               "Optional: Enable or disable custom protocol fee feature (bit 2)"
             ],
-            "type": {
-              "option": "bool"
-            }
+            "type": "bool"
           },
           {
             "name": "customProtocolFeeBps",
             "docs": [
               "Optional custom protocol fee in basis points (bps). Only used if feature is enabled."
             ],
-            "type": {
-              "option": "u16"
-            }
+            "type": "u16"
           }
         ]
       }

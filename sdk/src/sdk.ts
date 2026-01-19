@@ -1572,6 +1572,45 @@ export class Tributary {
       .instruction();
   }
 
+  /**
+   * Updates the custom protocol fee settings for a payment gateway.
+   * Only the protocol admin can modify these settings.
+   * This allows setting a gateway-specific protocol fee that overrides the global default.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param useCustomProtocolFee - Whether to use custom protocol fee (true) or global default (false)
+   * @param customProtocolFeeBps - Custom protocol fee in basis points (0-10000). Only used if useCustomProtocolFee is true.
+   * @returns Transaction instruction to update gateway protocol fee settings
+   */
+  async updateGatewayProtocolFee(
+    gatewayAuthority: PublicKey,
+    useCustomProtocolFee: boolean,
+    customProtocolFeeBps: number
+  ): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    // Validate fee
+    if (customProtocolFeeBps > 10000) {
+      throw new Error("Protocol fee cannot exceed 10000 bps (100%)");
+    }
+
+    const accounts = {
+      admin: admin,
+      authority: gatewayAuthority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .updateGatewayProtocolFee({
+        useCustomProtocolFee,
+        customProtocolFeeBps,
+      })
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
   // Query methods
 
   /**
