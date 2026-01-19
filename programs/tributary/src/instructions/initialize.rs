@@ -27,7 +27,6 @@ impl<'info> Initialize<'info> {
         config.fee_recipient = ctx.accounts.admin.key();
 
         config.protocol_fee_bps = 100; // 1%
-        config.max_policies_per_user = 10;
         config.emergency_pause = false;
         config.bump = ctx.bumps.config;
 
@@ -35,7 +34,7 @@ impl<'info> Initialize<'info> {
             admin: config.admin,
             fee_recipient: config.fee_recipient,
             protocol_fee_bps: config.protocol_fee_bps,
-            max_policies_per_user: config.max_policies_per_user,
+            max_policies_per_user: 0, // DEPRECATED
         });
 
         msg!("Program initialized with admin: {:?}", config.admin);

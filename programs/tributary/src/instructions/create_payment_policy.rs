@@ -91,11 +91,12 @@ impl<'info> CreatePaymentPolicy<'info> {
         let user_payment = &mut ctx.accounts.user_payment;
 
         // Enforce maximum policies per user limit (check active policies count)
-        require!(
-            user_payment.active_policies_count < u32::MAX
-                && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
-            TributaryError::MaxPoliciesReached
-        );
+        // DEPRECATED!
+        // require!(
+        //     user_payment.active_policies_count < u32::MAX
+        //         && user_payment.active_policies_count < ctx.accounts.config.max_policies_per_user,
+        //     TributaryError::MaxPoliciesReached
+        // );
 
         let policy_id = user_payment.created_policies_count.saturating_add(1);
 

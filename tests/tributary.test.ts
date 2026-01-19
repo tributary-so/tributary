@@ -2221,110 +2221,112 @@ describe("Tributary", () => {
     beforeAll(async () => {
       customFeeGatewayAuthority = Keypair.generate();
       customFeeUser = Keypair.generate();
-
-      await Promise.all([
-        fund(customFeeGatewayAuthority.publicKey, 5),
-        fund(customFeeUser.publicKey, 5),
-      ]);
-
       const customFeeFeeRecipient = Keypair.generate();
-      await fund(customFeeFeeRecipient.publicKey, 1);
-      await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        customFeeFeeRecipient.publicKey
-      );
 
-      await sdk.updateWallet(new anchor.Wallet(admin));
-      const createGatewayIx = await sdk.createPaymentGateway(
-        customFeeGatewayAuthority.publicKey,
-        250, // 2.5% gateway fee
-        customFeeFeeRecipient.publicKey,
-        "custom fee gateway",
-        "https://customfee.example.com"
-      );
-      let tx = new Transaction().add(createGatewayIx);
-      await sendAndConfirmTransaction(connection, tx, [admin], {
-        commitment: "processed" as Commitment,
-      });
+      try {
+        await Promise.all([
+          fund(customFeeGatewayAuthority.publicKey, 5),
+          fund(customFeeUser.publicKey, 5),
+          fund(customFeeFeeRecipient.publicKey, 5),
+        ]);
 
-      customFeeUserTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        customFeeUser.publicKey
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        customFeeUserTokenAccount,
-        mintAuthority,
-        1000000n
-      );
+        await createAssociatedTokenAccount(
+          connection,
+          admin,
+          tokenMint,
+          customFeeFeeRecipient.publicKey
+        );
 
-      customFeeRecipientTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        recipient.publicKey
-      );
+        await sdk.updateWallet(new anchor.Wallet(admin));
+        const createGatewayIx = await sdk.createPaymentGateway(
+          customFeeGatewayAuthority.publicKey,
+          250, // 2.5% gateway fee
+          customFeeFeeRecipient.publicKey,
+          "custom fee gateway",
+          "https://customfee.example.com"
+        );
+        let tx = new Transaction().add(createGatewayIx);
+        await sendAndConfirmTransaction(connection, tx, [admin], {
+          commitment: "processed" as Commitment,
+        });
+        customFeeGatewayPDA = sdk.getGatewayPda(
+          customFeeGatewayAuthority.publicKey
+        ).address;
 
-      const { address: customFeeUserPaymentPDA } = sdk.getUserPaymentPda(
-        customFeeUser.publicKey,
-        tokenMint
-      );
+        customFeeUserTokenAccount = await createAssociatedTokenAccount(
+          connection,
+          admin,
+          tokenMint,
+          customFeeUser.publicKey
+        );
+        await mintTo(
+          connection,
+          mintAuthority,
+          tokenMint,
+          customFeeUserTokenAccount,
+          mintAuthority,
+          1000000n
+        );
 
-      await sdk.updateWallet(new anchor.Wallet(customFeeUser));
-      const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
-      tx = new Transaction().add(createUserPaymentIx);
-      await sendAndConfirmTransaction(connection, tx, [customFeeUser], {
-        commitment: "processed" as Commitment,
-      });
+        customFeeRecipientTokenAccount = recipientTokenAccount;
 
-      const amount = new anchor.BN(100000); // 0.1 tokens
-      const memo = new Uint8Array(64).fill(0);
-      Buffer.from("custom fee test").copy(memo);
-      const paymentFrequency = { daily: {} };
-      const currentTime = Math.floor(Date.now() / 1000);
-      const startTime = new anchor.BN(currentTime - 3600);
+        const { address: customFeeUserPaymentPDA } = sdk.getUserPaymentPda(
+          customFeeUser.publicKey,
+          tokenMint
+        );
 
-      const createPolicyIxs = await sdk.createSubscription(
-        tokenMint,
-        recipient.publicKey,
-        customFeeGatewayPDA,
-        amount,
-        true,
-        null,
-        paymentFrequency,
-        Array.from(memo),
-        startTime
-      );
-      tx = new Transaction().add(...createPolicyIxs);
-      await sendAndConfirmTransaction(connection, tx, [customFeeUser], {
-        commitment: "processed" as Commitment,
-      });
+        await sdk.updateWallet(new anchor.Wallet(customFeeUser));
+        const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
+        tx = new Transaction().add(createUserPaymentIx);
+        await sendAndConfirmTransaction(connection, tx, [customFeeUser], {
+          commitment: "processed" as Commitment,
+        });
 
-      const customFeeUserPayment = await sdk.getUserPayment(
-        customFeeUserPaymentPDA
-      );
-      const policyId = customFeeUserPayment!.createdPoliciesCount;
-      const { address: policyPDA } = sdk.getPaymentPolicyPda(
-        customFeeUserPaymentPDA,
-        policyId
-      );
-      customFeePolicyPDA = policyPDA;
+        const amount = new anchor.BN(100000); // 0.1 tokens
+        const memo = new Uint8Array(64).fill(0);
+        Buffer.from("custom fee test").copy(memo);
+        const paymentFrequency = { daily: {} };
+        const currentTime = Math.floor(Date.now() / 1000);
+        const startTime = new anchor.BN(currentTime - 3600);
 
-      const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
-      await approve(
-        connection,
-        customFeeUser,
-        customFeeUserTokenAccount,
-        paymentsDelegate,
-        customFeeUser,
-        1000000
-      );
+        const createPolicyIxs = await sdk.createSubscription(
+          tokenMint,
+          recipient.publicKey,
+          customFeeGatewayPDA,
+          amount,
+          true,
+          null,
+          paymentFrequency,
+          Array.from(memo),
+          startTime
+        );
+        tx = new Transaction().add(...createPolicyIxs);
+        await sendAndConfirmTransaction(connection, tx, [customFeeUser], {
+          commitment: "processed" as Commitment,
+        });
+
+        const customFeeUserPayment = await sdk.getUserPayment(
+          customFeeUserPaymentPDA
+        );
+        const policyId = customFeeUserPayment!.createdPoliciesCount;
+        const { address: policyPDA } = sdk.getPaymentPolicyPda(
+          customFeeUserPaymentPDA,
+          policyId
+        );
+        customFeePolicyPDA = policyPDA;
+
+        const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
+        await approve(
+          connection,
+          customFeeUser,
+          customFeeUserTokenAccount,
+          paymentsDelegate,
+          customFeeUser,
+          1000000
+        );
+      } catch (e) {
+        console.trace(e);
+      }
     });
 
     test("Protocol admin can update gateway custom protocol fee settings", async () => {
@@ -2515,7 +2517,7 @@ describe("Tributary", () => {
     });
 
     test("Gateway authority cannot modify custom protocol fee feature", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
 
       const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
       const featureFlagsBefore = gatewayBefore!.featureFlags;

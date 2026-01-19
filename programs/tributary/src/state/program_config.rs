@@ -10,8 +10,8 @@ pub struct ProgramConfig {
     pub fee_recipient: Pubkey,
     /// Protocol fee in basis points (bps). Max 10,000 (100%)
     pub protocol_fee_bps: u16,
-    /// Maximum number of active policies allowed per user
-    pub max_policies_per_user: u32,
+    /// DEPRECATED: Maximum number of active policies allowed per user. Attention tumbstone!
+    pub _deprecated: u32,
     /// Emergency pause flag - when true, all payments are blocked
     pub emergency_pause: bool,
     /// PDA bump seed for address derivation
@@ -25,7 +25,7 @@ impl ProgramConfig {
         32 + // admin: Pubkey
         32 + // fee_recipient: Pubkey
         2 + // protocol_fee_bps: u16
-        4 + // max_policies_per_user: u32
+        4 + // _deprecated: u32
         1 + // emergency_pause: bool
         1 + // bump: u8
         256; // padding: [u8; 256]
