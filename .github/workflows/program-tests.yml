@@ -1,0 +1,57 @@
+name: Program Tests
+
+on:
+  workflow_call:
+    inputs:
+      solana_version:
+        type: string
+        required: false
+        default: ""
+      anchor_version:
+        type: string
+        required: false
+        default: ""
+    secrets:
+      rpc_url:
+        required: false
+        default: ""
+
+jobs:
+  test:
+    name: Anchor Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        working-directory: ./sdk
+        run: pnpm run build
+
+      - name: Extract versions
+        if: inputs.solana_version == '' || inputs.anchor_version == ''
+        uses: solana-developers/github-actions/extract-versions@v0.2.5
+        id: versions
+
+      - name: Setup toolchain
+        uses: solana-developers/github-actions/setup-all@v0.2.5
+        with:
+          solana_version: ${{ inputs.solana_version || steps.versions.outputs.solana_version }}
+          anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
+          node_version: 22
+
+      - name: Run Anchor tests
+        uses: solana-developers/github-actions/run-tests@v0.2.5
+        with:
+          solana_version: ${{ inputs.solana_version || steps.versions.outputs.solana_version }}
+          anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
+          program: tributary

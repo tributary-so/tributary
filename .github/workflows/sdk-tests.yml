@@ -1,0 +1,46 @@
+name: SDK Tests
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        type: string
+        required: false
+        default: '["sdk", "sdk-react", "sdk-x402"]'
+        description: JSON array of package paths to test
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        path: ${{ fromJson(inputs.paths) }}
+
+    defaults:
+      run:
+        working-directory: ./${{ matrix.path }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        run: pnpm run lint
+
+      - name: Run tests
+        run: pnpm run test

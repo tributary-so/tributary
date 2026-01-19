@@ -24,5 +24,17 @@
     "semantic-release-monorepo": "^8.0.2",
     "ts-jest": "^29.0.2",
     "typescript": "^5.7.3"
+  },
+  "release": {
+    "extends": "semantic-release-monorepo",
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
   }
 }
