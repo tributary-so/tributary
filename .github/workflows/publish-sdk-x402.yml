@@ -1,18 +1,28 @@
-name: Publish SDK
+name: Publish SDK x402
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - "sdk/**"
-      - ".github/workflows/publish-sdk.yml"
+      - "sdk-x402/**"
+      - "!sdk-x402/node_modules/**"
+      - "!sdk-x402/dist/**"
+      - "!sdk-x402/src/**/*.test.ts"
+      - "!sdk-x402/src/**/*.test.tsx"
+      - "!sdk-x402/src/**/*.spec.ts"
+      - "!sdk-x402/src/**/*.spec.tsx"
   workflow_dispatch:
     inputs:
       dry_run:
-        description: Run semantic-release in dry-run mode (no actual publish)
+        description: "Run in dry-run mode (no actual publish)"
         required: false
         default: false
         type: boolean
+      version:
+        description: "Specific version to release (overrides semantic-release)"
+        required: false
+        type: string
 
 permissions:
   id-token: write # Required for OIDC
@@ -32,10 +42,10 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./sdk
+        working-directory: ./sdk-x402
 
     steps:
-      - name: Checkout source repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -65,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./sdk
+        working-directory: ./sdk-x402
 
     steps:
       - name: Checkout repository
@@ -87,17 +97,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build SDK package
+      - name: Build package
         run: pnpm run build
 
-      - name: Verify build output
+      - name: Verify build artifacts
         run: |
-          if [ ! -f "dist/sdk/src/index.js" ]; then
-            echo "::error::Build output not found at dist/sdk/src/index.js"
-            exit 1
-          fi
-          if [ ! -f "dist/sdk/src/index.d.ts" ]; then
-            echo "::error::Type definitions not found at dist/sdk/src/index.d.ts"
+          if [ ! -f "dist/index.js" ] || [ ! -f "dist/index.cjs" ] || [ ! -f "dist/index.d.ts" ]; then
+            echo "::error::Build artifacts missing!"
             exit 1
           fi
           echo "Build artifacts verified successfully"
@@ -105,7 +111,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-dist
+          name: sdk-x402-dist
           path: dist/
           retention-days: 1
 
@@ -120,7 +126,7 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout source repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -144,7 +150,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: sdk-dist
+          name: sdk-x402-dist
           path: dist/
 
       - name: Configure Git user
@@ -167,7 +173,7 @@ jobs:
           dry_run: false
 
   dry-run-release:
-    name: Dry Run (Preview)
+    name: Dry Run Release
     needs: build
     runs-on: ubuntu-latest
     if: github.ref != 'refs/heads/main' || github.event.inputs.dry_run == 'true'
@@ -175,7 +181,7 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout source repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -198,8 +204,8 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: sdk-dist
-          path: sdk/dist/
+          name: sdk-x402-dist
+          path: sdk-x402/dist/
 
       - name: Dry run semantic-release
         id: semantic-release-dry-run
@@ -262,8 +268,8 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: sdk-dist
-          path: sdk/dist/
+          name: sdk-x402-dist
+          path: sdk-x402/dist/
 
       - name: Configure Git user
         run: |
@@ -273,7 +279,7 @@ jobs:
       - name: Manual version release
         if: inputs.version != ''
         run: |
-          cd sdk
+          cd sdk-x402
           OLD_VERSION=$(node -p "require('./package.json').version")
           NEW_VERSION="${{ inputs.version }}"
           echo "Updating version from $OLD_VERSION to $NEW_VERSION"
@@ -307,8 +313,8 @@ jobs:
       - name: Check release status
         run: |
           if [ "${{ needs.release.result }}" == "success" ]; then
-            echo "::notice title=Release Successful::SDK package published successfully!"
+            echo "::notice title=Release Successful::SDK x402 package published successfully!"
           else
-            echo "::error title=Release Failed::SDK release failed. Check workflow logs for details."
+            echo "::error title=Release Failed::SDK x402 release failed. Check workflow logs for details."
             exit 1
           fi
