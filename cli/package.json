@@ -31,5 +31,22 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.44.0"
   },
-  "main": "./dist/sdk/src/index.js"
+  "main": "./dist/sdk/src/index.js",
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      [
+        "@semantic-release/npm",
+        {
+          "npmPublish": false
+        }
+      ],
+      "@semantic-release/changelog",
+      "@semantic-release/github"
+    ]
+  }
 }
