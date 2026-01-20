@@ -27,6 +27,7 @@
     "typescript": "^5.9.3"
   },
   "release": {
+    "extends": "semantic-release-monorepo",
     "branches": [
       "main"
     ],

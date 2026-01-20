@@ -1,5 +1,5 @@
 {
-  "name": "tests",
+  "name": "@tributatry-so/tests",
   "private": true,
   "type": "module",
   "devDependencies": {
