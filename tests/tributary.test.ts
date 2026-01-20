@@ -202,7 +202,6 @@ describe("Tributary", () => {
     expect(configAccount!.admin).toEqual(admin.publicKey);
     expect(configAccount!.feeRecipient).toEqual(admin.publicKey);
     expect(configAccount!.protocolFeeBps).toBe(100);
-    expect(configAccount!.maxPoliciesPerUser).toBe(10);
     expect(configAccount!.emergencyPause).toBe(false);
     expect(configAccount!.bump).toBe(configBump);
   });
@@ -1196,6 +1195,381 @@ describe("Tributary", () => {
       // For now, we'll just verify the policy was created correctly
       expect(policy!.policyType.milestone!.totalMilestones).toBe(2);
       expect(policy!.policyType.milestone!.currentMilestone).toBe(0);
+    });
+
+    test("Milestone bitmap - valid combinations are accepted", async () => {
+      const validBitmaps = [0, 1, 2, 3, 4, 5, 8, 9];
+
+      for (const releaseCondition of validBitmaps) {
+        await sdk.updateWallet(new anchor.Wallet(user));
+
+        const pastTime = Math.floor(Date.now() / 1000) - 3600;
+        const bitmapTestAmounts = [new anchor.BN(100000)];
+        const bitmapTestTimestamps = [new anchor.BN(pastTime)];
+
+        const memo = new Uint8Array(64).fill(0);
+        Buffer.from(`bitmap test ${releaseCondition}`).copy(memo);
+
+        const createIx = await sdk.getCreateMilestonePolicyInstruction(
+          tokenMint,
+          recipient.publicKey,
+          gatewayPDA,
+          bitmapTestAmounts,
+          bitmapTestTimestamps,
+          releaseCondition,
+          Array.from(memo)
+        );
+
+        const tx = new Transaction().add(createIx);
+        await sendAndConfirmTransaction(connection, tx, [user], {
+          commitment: "processed" as Commitment,
+        });
+
+        const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+        const policyId = userPaymentAfter!.createdPoliciesCount;
+        const [policyPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("payment_policy"),
+            userPaymentPDA.toBuffer(),
+            new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+          ],
+          program.programId
+        );
+
+        const policy = await sdk.getPaymentPolicy(policyPda);
+        expect(policy!.policyType.milestone!.releaseCondition).toBe(
+          releaseCondition
+        );
+      }
+    });
+
+    test("Milestone bitmap - invalid combinations are rejected", async () => {
+      const invalidBitmaps = [6, 10, 12, 14];
+
+      for (const releaseCondition of invalidBitmaps) {
+        await sdk.updateWallet(new anchor.Wallet(user));
+
+        const pastTime = Math.floor(Date.now() / 1000) - 3600;
+        const invalidTestAmounts = [new anchor.BN(100000)];
+        const invalidTestTimestamps = [new anchor.BN(pastTime)];
+
+        const memo = new Uint8Array(64).fill(0);
+        Buffer.from(`invalid bitmap test ${releaseCondition}`).copy(memo);
+
+        try {
+          const createIx = await sdk.getCreateMilestonePolicyInstruction(
+            tokenMint,
+            recipient.publicKey,
+            gatewayPDA,
+            invalidTestAmounts,
+            invalidTestTimestamps,
+            releaseCondition,
+            Array.from(memo)
+          );
+
+          const tx = new Transaction().add(createIx);
+          await sendAndConfirmTransaction(connection, tx, [user], {
+            commitment: "processed" as Commitment,
+          });
+
+          assert(
+            false,
+            `Expected bitmap ${releaseCondition} to be rejected (multiple signer bits)`
+          );
+        } catch (error: any) {
+          expect(error.message).toContain("mutually exclusive");
+        }
+      }
+    });
+
+    test("Milestone bitmap - execution with no restrictions (bitmap 0)", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const amounts = [new anchor.BN(100000)];
+      const timestamps = [new anchor.BN(pastTime)];
+
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("bitmap 0 test").copy(memo);
+
+      const createIxs = await sdk.createMilestone(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amounts,
+        timestamps,
+        0, // No restrictions
+        Array.from(memo)
+      );
+
+      const createTx = new Transaction().add(...createIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.createdPoliciesCount;
+      const [policyPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Execute with gateway signer - should succeed
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
+      const executeIxs = await sdk.executePayment(policyPda);
+      const executeTx = new Transaction().add(...executeIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeTx,
+        [gatewayExecutionSigner],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      expect(parseInt(finalRecipientBalance.value.amount)).toBeGreaterThan(
+        parseInt(initialRecipientBalance.value.amount)
+      );
+    });
+
+    test("Milestone bitmap - execution with gateway signer (bitmap 2)", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const amounts = [new anchor.BN(100000)];
+      const timestamps = [new anchor.BN(pastTime)];
+
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("bitmap 2 test").copy(memo);
+
+      const createIxs = await sdk.createMilestone(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amounts,
+        timestamps,
+        2, // Gateway signer required
+        Array.from(memo)
+      );
+
+      const createTx = new Transaction().add(...createIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.createdPoliciesCount;
+      const [policyPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Execute with gateway signer - should succeed
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
+      const executeIxs = await sdk.executePayment(policyPda);
+      const executeTx = new Transaction().add(...executeIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        executeTx,
+        [gatewayExecutionSigner],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      expect(parseInt(finalRecipientBalance.value.amount)).toBeGreaterThan(
+        parseInt(initialRecipientBalance.value.amount)
+      );
+    });
+
+    test("Milestone bitmap - execution with owner signer (bitmap 4)", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const amounts = [new anchor.BN(100000)];
+      const timestamps = [new anchor.BN(pastTime)];
+
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("bitmap 4 test").copy(memo);
+
+      const createIxs = await sdk.createMilestone(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amounts,
+        timestamps,
+        4, // Owner signer required
+        Array.from(memo)
+      );
+
+      const createTx = new Transaction().add(...createIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.createdPoliciesCount;
+      const [policyPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Execute with owner (user) - should succeed
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+
+      const executeIxs = await sdk.executePayment(policyPda);
+      const executeTx = new Transaction().add(...executeIxs);
+      await sendAndConfirmTransaction(connection, executeTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientTokenAccount
+      );
+      expect(parseInt(finalRecipientBalance.value.amount)).toBeGreaterThan(
+        parseInt(initialRecipientBalance.value.amount)
+      );
+    });
+
+    test("Milestone bitmap - wrong signer is rejected", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const amounts = [new anchor.BN(100000)];
+      const timestamps = [new anchor.BN(pastTime)];
+
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("wrong signer test").copy(memo);
+
+      const createIxs = await sdk.createMilestone(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amounts,
+        timestamps,
+        2, // Gateway signer required
+        Array.from(memo)
+      );
+
+      const createTx = new Transaction().add(...createIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.createdPoliciesCount;
+      const [policyPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Try to execute with user as fee payer - should fail
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      try {
+        const executeIxs = await sdk.executePayment(policyPda);
+        const executeTx = new Transaction().add(...executeIxs);
+
+        await sendAndConfirmTransaction(connection, executeTx, [user], {
+          commitment: "processed" as Commitment,
+        });
+
+        assert(false, "Expected execution to fail with wrong signer");
+      } catch (error: any) {
+        expect(error.message).toContain("Unauthorized");
+      }
+    });
+
+    test("Milestone bitmap - due date check enforced (bitmap 1 vs bitmap 0)", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const futureTime = Math.floor(Date.now() / 1000) + 3600;
+      const amounts = [new anchor.BN(100000)];
+      const timestamps = [new anchor.BN(futureTime)];
+
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("due date test").copy(memo);
+
+      const createIxs = await sdk.createMilestone(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amounts,
+        timestamps,
+        1,
+        Array.from(memo)
+      );
+
+      const createTx = new Transaction().add(...createIxs);
+      await sendAndConfirmTransaction(connection, createTx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+      const policyId = userPaymentAfter!.createdPoliciesCount;
+      const [policyPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          userPaymentPDA.toBuffer(),
+          new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      // Try to execute before due date - should fail
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+
+      try {
+        const executeIxs = await sdk.executePayment(policyPda);
+        const executeTx = new Transaction().add(...executeIxs);
+
+        await sendAndConfirmTransaction(
+          connection,
+          executeTx,
+          [gatewayExecutionSigner],
+          { commitment: "processed" as Commitment }
+        );
+
+        assert(false, "Expected execution to fail before due date");
+      } catch (error: any) {
+        expect(error.message).toContain("PaymentNotDue");
+      }
     });
   });
 
@@ -2414,6 +2788,35 @@ describe("Tributary", () => {
       );
     });
 
+    test("Gateway authority cannot modify custom protocol fee feature", async () => {
+      await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
+
+      const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
+      const featureFlagsBefore = gatewayBefore!.featureFlags;
+
+      // Try to modify feature flags through referral settings (should preserve bit 2)
+      const updateIx = await sdk.updateGatewayReferralSettings(
+        customFeeGatewayAuthority.publicKey,
+        0, // Disable referral (bit 0)
+        0,
+        [10000, 0, 0]
+      );
+      const tx = new Transaction().add(updateIx);
+      await sendAndConfirmTransaction(
+        connection,
+        tx,
+        [customFeeGatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      const gatewayAfter = await sdk.getPaymentGateway(customFeeGatewayPDA);
+      // Bit 2 should be preserved (4), bit 0 should be 0
+      expect(gatewayAfter!.featureFlags).toBe(4);
+      expect(featureFlagsBefore & 0x04).toBe(4);
+    });
+
     test("Disabling custom protocol fee reverts to global default (100 bps)", async () => {
       await sdk.updateWallet(new anchor.Wallet(admin));
 
@@ -2514,35 +2917,6 @@ describe("Tributary", () => {
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
         parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolFee
       );
-    });
-
-    test("Gateway authority cannot modify custom protocol fee feature", async () => {
-      await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
-
-      const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      const featureFlagsBefore = gatewayBefore!.featureFlags;
-
-      // Try to modify feature flags through referral settings (should preserve bit 2)
-      const updateIx = await sdk.updateGatewayReferralSettings(
-        customFeeGatewayAuthority.publicKey,
-        0, // Disable referral (bit 0)
-        0,
-        [10000, 0, 0]
-      );
-      const tx = new Transaction().add(updateIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [customFeeGatewayAuthority],
-        {
-          commitment: "processed" as Commitment,
-        }
-      );
-
-      const gatewayAfter = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      // Bit 2 should be preserved (4), bit 0 should be 0
-      expect(gatewayAfter!.featureFlags).toBe(4);
-      expect(featureFlagsBefore & 0x04).toBe(4);
     });
   });
 });

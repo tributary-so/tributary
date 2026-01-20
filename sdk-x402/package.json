@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "rm -rf dist && tsc -b",
-    "test": "exit 0",
-    "test2": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js test/metering.test.ts",
     "lint": "exit 0",
     "ci": "npm run build && npm run lint && npm run format:check",
@@ -25,7 +24,6 @@
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
     "@tributary-so/sdk": "workspace:*",
-    "@types/express": "^5.0.5",
     "bn.js": "^5.2.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
@@ -35,6 +33,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@jest/globals": "^30.2.0",
+    "@types/express": "^5.0.5",
     "@types/bn.js": "^5.2.0",
     "@types/jest": "^29.5.0",
     "@types/jsonwebtoken": "^9.0.6",

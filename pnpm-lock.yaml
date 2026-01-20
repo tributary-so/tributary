@@ -551,9 +551,6 @@ importers:
       '@tributary-so/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@types/express':
-        specifier: ^5.0.5
-        version: 5.0.6
       bn.js:
         specifier: ^5.2.2
         version: 5.2.2
@@ -579,6 +576,9 @@ importers:
       '@types/bn.js':
         specifier: ^5.2.0
         version: 5.2.0
+      '@types/express':
+        specifier: ^5.0.5
+        version: 5.0.6
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14

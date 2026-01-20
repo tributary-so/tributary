@@ -1,0 +1,118 @@
+name: Mono-repo Release
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: Skip tests (for testing purposes only)
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.6.0"
+
+jobs:
+  detect-changes:
+    name: Detect Changed Packages
+    runs-on: ubuntu-latest
+    outputs:
+      has_programs: ${{ steps.detect.outputs.has_programs }}
+      has_sdk: ${{ steps.detect.outputs.has_sdk }}
+      has_sdk_react: ${{ steps.detect.outputs.has_sdk_react }}
+      has_sdk_x402: ${{ steps.detect.outputs.has_sdk_x402 }}
+      sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed packages
+        id: detect
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Diffing against: $PREV_TAG"
+          echo ""
+
+          CHANGED_FILES=$(git diff --name-only "$PREV_TAG")
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          HAS_PROGRAMS=0
+          HAS_SDK=0
+          HAS_SDK_REACT=0
+          HAS_SDK_X402=0
+
+          if echo "$CHANGED_FILES" | grep -q "^programs/"; then
+            HAS_PROGRAMS=1
+            echo "::notice::Programs changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^sdk/"; then
+            HAS_SDK=1
+            echo "::notice::SDK changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^sdk-react/"; then
+            HAS_SDK_REACT=1
+            echo "::notice::SDK-React changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^sdk-x402/"; then
+            HAS_SDK_X402=1
+            echo "::notice::SDK-x402 changed"
+          fi
+
+          echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
+          echo "has_sdk=$HAS_SDK" >> "$GITHUB_OUTPUT"
+          echo "has_sdk_react=$HAS_SDK_REACT" >> "$GITHUB_OUTPUT"
+          echo "has_sdk_x402=$HAS_SDK_X402" >> "$GITHUB_OUTPUT"
+
+          ELEMENTS=""
+          if [ "$HAS_SDK" = "1" ]; then
+            ELEMENTS="${ELEMENTS}\"sdk\","
+          fi
+          if [ "$HAS_SDK_REACT" = "1" ]; then
+            ELEMENTS="${ELEMENTS}\"sdk-react\","
+          fi
+          if [ "$HAS_SDK_X402" = "1" ]; then
+            ELEMENTS="${ELEMENTS}\"sdk-x402\","
+          fi
+
+          if [ -n "$ELEMENTS" ]; then
+            ELEMENTS=${ELEMENTS%,}
+            PATHS="[$ELEMENTS]"
+          else
+            PATHS="[]"
+          fi
+          echo "sdk_paths=$PATHS" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Paths: $PATHS"
+
+  test-programs:
+    name: Test Programs
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_programs == '1' && github.event.inputs.skip_tests != 'true'
+    uses: ./.github/workflows/program-tests.yml
+
+  test-sdks:
+    name: Test SDKs
+    needs: detect-changes
+    if: >-
+      (needs.detect-changes.outputs.has_sdk == '1' ||
+       needs.detect-changes.outputs.has_sdk_react == '1' ||
+       needs.detect-changes.outputs.has_sdk_x402 == '1') &&
+       github.event.inputs.skip_tests != 'true'
+    uses: ./.github/workflows/sdk-tests.yml
+    with:
+      paths: ${{ needs.detect-changes.outputs.sdk_paths }}
