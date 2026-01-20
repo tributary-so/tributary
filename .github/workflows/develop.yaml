@@ -3,14 +3,9 @@ name: Mono-repo Release
 on:
   push:
     branches:
-      - main
+      - develop
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: Run semantic-release in dry-run mode (no actual publish)
-        required: false
-        default: false
-        type: boolean
       skip_tests:
         description: Skip tests (for testing purposes only)
         required: false
@@ -121,35 +116,3 @@ jobs:
     uses: ./.github/workflows/sdk-tests.yml
     with:
       paths: ${{ needs.detect-changes.outputs.sdk_paths }}
-
-  release:
-    name: Release
-    needs: [test-sdks]
-    secrets: inherit
-    uses: ./.github/workflows/semantic-release.yml
-    with:
-      dry_run: ${{ github.event.inputs.dry_run || false }}
-
-  app:
-    name: Update App
-    needs: [release]
-    secrets: inherit
-    uses: ./.github/workflows/app-prod.yml
-
-  landingpage:
-    name: Update Landing Page
-    needs: [release]
-    secrets: inherit
-    uses: ./.github/workflows/landing-page.yaml
-
-  docs:
-    name: Update Docs
-    needs: [release]
-    secrets: inherit
-    uses: ./.github/workflows/docs.yml
-
-  docs-sdk:
-    name: Update SDK Docs
-    needs: [release]
-    secrets: inherit
-    uses: ./.github/workflows/sdk-typedocs.yml

@@ -25,6 +25,17 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+function calculateReleaseCondition(formData: PaymentPolicyFormData): number {
+  const signerValue =
+    {
+      none: 0,
+      gateway: 2,
+      owner: 4,
+      recipient: 8,
+    }[formData.signerType] || 0
+  return (formData.dueDateRequired ? 1 : 0) | signerValue
+}
+
 function validateAmount(amountStr: string, tokenMint: string, getTokenPrecision: (mint: string) => number): BN {
   const amount = parseFloat(amountStr)
   const validAmount = isNaN(amount) || amount <= 0 ? 10 : amount
@@ -124,7 +135,7 @@ import { BN } from '@coral-xyz/anchor'
 <MilestoneButton
   milestoneAmounts={[${milestoneAmounts.map((a) => `new BN(${a})`).join(', ')}]}
   milestoneTimestamps={[${milestoneDates.map((ts) => `new BN(${ts})`).join(', ')}]}
-  releaseCondition={${validated.formData.releaseCondition}}
+  releaseCondition={${calculateReleaseCondition(validated.formData)}}
   token={new PublicKey('${validated.tokenMint}')}
   recipient={new PublicKey('${validated.recipient}')}
   gateway={new PublicKey('${validated.gateway}')}
@@ -237,7 +248,7 @@ import { BN } from '@coral-xyz/anchor'
                     <MilestoneButton
                       milestoneAmounts={milestoneAmounts}
                       milestoneTimestamps={milestoneTimestamps}
-                      releaseCondition={parseInt(validated.formData.releaseCondition)}
+                      releaseCondition={calculateReleaseCondition(validated.formData)}
                       token={new PublicKey(validated.tokenMint)}
                       recipient={new PublicKey(validated.recipient)}
                       gateway={new PublicKey(validated.gateway)}

@@ -7,3 +7,4 @@ packages:
   - "sdk-react"
   - "sdk-x402"
   - "tests"
+  - "programs/tributary"

@@ -23,4 +23,4 @@ jobs:
       - name: Run opencode
         uses: sst/opencode/github@latest
         with:
-          model: grok-code
+          model: opencode/grok-code

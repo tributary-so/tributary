@@ -470,7 +470,7 @@ export class Tributary {
    * @param gateway - Public key of the gateway that will execute payments
    * @param milestoneAmounts - Array of amounts for each milestone (up to 4)
    * @param milestoneTimestamps - Array of timestamps when each milestone is due
-   * @param releaseCondition - How milestones are released: 0=time-based, 1=manual approval, 2=automatic
+   * @param releaseCondition - Bitmap: bit0=check due date, bit1=gateway signer, bit2=owner signer, bit3=recipient signer. Bits 1-3 mutually exclusive.
    * @param memo - Memo bytes to include with payments (max 64 bytes)
    * @returns Transaction instruction to create the milestone payment policy
    */
@@ -503,9 +503,18 @@ export class Tributary {
         "Milestone amounts and timestamps arrays must have the same length"
       );
     }
-    if (releaseCondition < 0 || releaseCondition > 2) {
+    if (releaseCondition < 0 || releaseCondition > 15) {
       throw new Error(
-        "Release condition must be 0 (time-based), 1 (manual), or 2 (automatic)"
+        "Release condition must be 0-15 (bitmap: bit0=due date, bits1-3=signer)"
+      );
+    }
+    // Check that signer bits are mutually exclusive (bits 1-3)
+    const signerBits = (releaseCondition >> 1) & 0b0111;
+    // signerBits must be 0 (none), 1 (gateway), 2 (owner), or 4 (recipient)
+    const validSignerBits = [0, 1, 2, 4];
+    if (!validSignerBits.includes(signerBits)) {
+      throw new Error(
+        "Signer bits must be mutually exclusive (at most one of gateway/owner/recipient)"
       );
     }
 
@@ -726,7 +735,7 @@ export class Tributary {
    * @param gateway - Public key of the payment gateway
    * @param milestoneAmounts - Array of amounts for each milestone (up to 4)
    * @param milestoneTimestamps - Array of timestamps when each milestone is due
-   * @param releaseCondition - How milestones are released: 0=time-based, 1=manual approval, 2=automatic
+   * @param releaseCondition - Bitmap: bit0=check due date, bit1=gateway signer, bit2=owner signer, bit3=recipient signer. Bits 1-3 mutually exclusive.
    * @param memo - Memo bytes for the payment policy
    * @param approvalAmount - Optional specific approval amount (calculated automatically if not provided)
    * @param executeImmediately - Whether to execute the first milestone immediately if due
@@ -748,6 +757,22 @@ export class Tributary {
 
     const instructions: TransactionInstruction[] = [];
 
+
+    // Validate release condition bitmap
+    if (releaseCondition < 0 || releaseCondition > 15) {
+      throw new Error(
+        "Release condition must be 0-15 (bitmap: bit0=due date, bits1-3=signer)"
+      );
+    }
+    // Check that signer bits are mutually exclusive (bits 1-3)
+    const signerBits = (releaseCondition >> 1) & 0b0111;
+    // signerBits must be 0 (none), 1 (gateway), 2 (owner), or 4 (recipient)
+    const validSignerBits = [0, 1, 2, 4];
+    if (!validSignerBits.includes(signerBits)) {
+      throw new Error(
+        "Signer bits must be mutually exclusive (at most one of gateway/owner/recipient)"
+      );
+    }
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
     const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
 

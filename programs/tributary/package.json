@@ -1,0 +1,30 @@
+{
+  "name": "@tributary-so/contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "anchor build",
+    "test": "anchor test",
+    "lint": "rustftmp src/**/*.rs"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "release": {
+    "branches": [
+      "main",
+      "develop"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      [
+        "@semantic-release/npm",
+        {
+          "npmPublish": false
+        }
+      ],
+      "@semantic-release/changelog",
+      "@semantic-release/github"
+    ]
+  }
+}

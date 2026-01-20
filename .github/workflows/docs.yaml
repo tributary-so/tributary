@@ -1,11 +1,6 @@
 name: Build and Deploy docs to GitHub Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - ".github/workflows/*docs*"
   workflow_dispatch:
 
 jobs:

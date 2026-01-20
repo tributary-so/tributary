@@ -66,60 +66,33 @@ const signature = await provider.sendAndConfirm(tx);
 
 ### Release Conditions
 
-Choose how milestones are released and who can trigger the payment:
+Milestone payments use a **bitmap** to configure release conditions. This allows flexible combinations of time-based and authorization requirements.
 
-```typescript
-// Time-based (automatic when timestamp reached, anyone can trigger)
-await sdk.createMilestonePaymentPolicy(
-  tokenMint,
-  recipient,
-  gateway,
-  amounts,
-  timestamps,
-  0, // Time-based: anyone can trigger after timestamp
-  memo
-);
+### Bitmap Format
 
-// Manual approval (requires policy owner to sign)
-await sdk.createMilestonePaymentPolicy(
-  tokenMint,
-  recipient,
-  gateway,
-  amounts,
-  timestamps,
-  1, // Policy owner must sign to release
-  memo
-);
+The `release_condition` field is an 8-bit value where each bit represents a different requirement:
 
-// Gateway authorization (requires gateway signer to trigger)
-await sdk.createMilestonePaymentPolicy(
-  tokenMint,
-  recipient,
-  gateway,
-  amounts,
-  timestamps,
-  2, // Gateway signer must sign to release
-  memo
-);
-```
+| Bit | Value | Constant            | Description                             |
+| --- | ----- | ------------------- | --------------------------------------- |
+| 0   | 1     | `RELEASE_DUE_DATE`  | Due date must be reached before release |
+| 1   | 2     | `RELEASE_GATEWAY`   | Gateway authority must sign             |
+| 2   | 4     | `RELEASE_OWNER`     | Policy owner must sign                  |
+| 3   | 8     | `RELEASE_RECIPIENT` | Recipient must sign                     |
 
-#### Release Condition Details
+**Important:** Bits 1-3 are **mutually exclusive** - at most one of these signer requirements can be set. A value of 0 means no restrictions.
 
-| Condition              | Time Check           | Signer Required | Use Case                                    |
-| ---------------------- | -------------------- | --------------- | ------------------------------------------- |
-| **0** (Time-based)     | ✅ Timestamp reached | Anyone          | Automatic payments when work is time-bound  |
-| **1** (Policy Owner)   | ✅ Timestamp reached | Policy owner    | Quality control - payer approves release    |
-| **2** (Gateway Signer) | ✅ Timestamp reached | Gateway signer  | Automated release via gateway/trusted party |
+### Common Combinations
 
-#### How Signer Validation Works
-
-The smart contract validates signer permissions at execution time:
-
-- **Condition 0**: No signer restriction. Any wallet can trigger the payment once the timestamp is reached (subject to existing account constraints).
-- **Condition 1**: The policy owner's wallet (`user_payment.owner`) must sign the execute_payment transaction. This ensures the payer has explicit approval over each milestone release.
-- **Condition 2**: The gateway's signer account must sign. This enables automated/headless payment processing where a server or service triggers payments on behalf of the gateway.
-
-> **Note**: The existing account constraint still applies - the transaction fee payer must be either the gateway signer or the policy owner. This prevents unauthorized parties from paying transaction fees for payments they shouldn't trigger.
+| Value | Binary | Due Date | Signer    | Behavior                          |
+| ----- | ------ | -------- | --------- | --------------------------------- |
+| 0     | 0b0000 | ❌       | None      | Anyone can trigger anytime        |
+| 1     | 0b0001 | ✅       | None      | Anyone can trigger after due date |
+| 2     | 0b0010 | ❌       | Gateway   | Gateway authority must sign       |
+| 3     | 0b0011 | ✅       | Gateway   | Gateway authority + due date      |
+| 4     | 0b0100 | ❌       | Owner     | Policy owner must sign            |
+| 5     | 0b0101 | ✅       | Owner     | Policy owner + due date           |
+| 8     | 0b1000 | ❌       | Recipient | Recipient must sign               |
+| 9     | 0b1001 | ✅       | Recipient | Recipient + due date              |
 
 ## How It Works
 
@@ -150,18 +123,27 @@ Milestone {
     milestone_amounts: [u64; 4],         // Amount for each milestone
     milestone_timestamps: [i64; 4],      // Absolute timestamps
     current_milestone: u8,               // Next milestone to process (0-3)
-    release_condition: u8,               // 0=time, 1=manual, 2=automatic
+    release_condition: u8,               // Bitmap: bit0=check due date, bits1-3=signer
     total_milestones: u8,                // How many milestones (1-4)
     escrow_amount: u64,                  // Total amount escrowed
     padding: [u8; 53],                   // 128-byte alignment
 }
 ```
 
+### Bitmap Constants
+
+```rust
+pub const RELEASE_DUE_DATE: u8 = 0b0001;   // Bit 0: Check due date before release
+pub const RELEASE_GATEWAY: u8 = 0b0010;    // Bit 1: Gateway authority must sign
+pub const RELEASE_OWNER: u8 = 0b0100;      // Bit 2: Policy owner must sign
+pub const RELEASE_RECIPIENT: u8 = 0b1000;  // Bit 3: Recipient must sign
+```
+
 ### Execution Logic
 
 Milestone payments follow this execution flow:
 
-1. **Validate timing/approval** based on release condition
+1. **Validate timing/approval** based on release condition bitmap
 2. **Calculate payment amount** from current milestone
 3. **Transfer funds** from user to recipient
 4. **Update progress** (increment current_milestone)

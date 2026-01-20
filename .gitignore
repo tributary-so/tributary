@@ -11,3 +11,5 @@ test-ledger
 
 # bv (beads viewer) local config and caches
 .bv/
+
+sdk-x402/coverage/

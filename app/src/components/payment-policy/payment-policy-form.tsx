@@ -41,7 +41,8 @@ export interface PaymentPolicyFormData {
   // Milestone specific fields
   milestoneAmounts: string[]
   milestoneDates: Date[]
-  releaseCondition: string // '0' | '1' | '2'
+  dueDateRequired: boolean
+  signerType: 'none' | 'gateway' | 'owner' | 'recipient'
   totalMilestones: string
   // Pay-as-you-go specific fields
   maxAmountPerPeriod: string
@@ -230,13 +231,23 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             throw new Error('At least one milestone amount is required')
           }
 
+          // Calculate release condition bitmap
+          const signerValue =
+            {
+              none: 0,
+              gateway: 2, // 0b0010
+              owner: 4, // 0b0100
+              recipient: 8, // 0b1000
+            }[formData.signerType] || 0
+          const releaseCondition = (formData.dueDateRequired ? 1 : 0) | signerValue
+
           instructions = await sdk.createMilestone(
             tokenMint,
             recipient,
             gateway,
             milestoneAmounts,
             milestoneTimestamps,
-            parseInt(formData.releaseCondition),
+            releaseCondition,
             memo,
             approvalAmount,
           )
@@ -547,30 +558,57 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                 </div>
               ))}
 
-              <div>
-                <label htmlFor="releaseCondition" className={labelClass}>
-                  Release Condition
-                </label>
-                <Select
-                  id="releaseCondition"
-                  name="releaseCondition"
-                  selectedKeys={formData.releaseCondition ? [formData.releaseCondition] : []}
-                  onSelectionChange={(keys) => {
-                    const selectedKey = Array.from(keys)[0] as string
-                    onFormDataChange({ ...formData, releaseCondition: selectedKey })
-                  }}
-                  className="w-full"
-                >
-                  <SelectItem key="0" description="Anyone can trigger after due date">
-                    Time-based (automatic)
-                  </SelectItem>
-                  <SelectItem key="1" description="Policy owner must sign to release">
-                    Policy Owner Approval
-                  </SelectItem>
-                  <SelectItem key="2" description="Gateway signer must sign to release">
-                    Gateway Authorization
-                  </SelectItem>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="dueDateRequired" className={labelClass}>
+                    Due Date Required
+                  </label>
+                  <Select
+                    id="dueDateRequired"
+                    name="dueDateRequired"
+                    selectedKeys={formData.dueDateRequired ? ['true'] : ['false']}
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as string
+                      onFormDataChange({ ...formData, dueDateRequired: selectedKey === 'true' })
+                    }}
+                    className="w-full"
+                  >
+                    <SelectItem key="true" description="Payment can only be released after due date">
+                      Yes
+                    </SelectItem>
+                    <SelectItem key="false" description="No time restriction">
+                      No
+                    </SelectItem>
+                  </Select>
+                </div>
+                <div>
+                  <label htmlFor="signerType" className={labelClass}>
+                    Signer Required
+                  </label>
+                  <Select
+                    id="signerType"
+                    name="signerType"
+                    selectedKeys={formData.signerType ? [formData.signerType] : []}
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as 'none' | 'gateway' | 'owner' | 'recipient'
+                      onFormDataChange({ ...formData, signerType: selectedKey })
+                    }}
+                    className="w-full"
+                  >
+                    <SelectItem key="none" description="Anyone can trigger the payment">
+                      None
+                    </SelectItem>
+                    <SelectItem key="gateway" description="Gateway authority must sign">
+                      Gateway Authority
+                    </SelectItem>
+                    <SelectItem key="owner" description="Policy owner must sign">
+                      Policy Owner
+                    </SelectItem>
+                    <SelectItem key="recipient" description="Recipient must sign">
+                      Recipient
+                    </SelectItem>
+                  </Select>
+                </div>
               </div>
             </>
           )}

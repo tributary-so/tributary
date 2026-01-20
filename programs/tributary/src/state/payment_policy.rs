@@ -1,5 +1,20 @@
 use anchor_lang::prelude::*;
 
+/// Bitmap flags for milestone release conditions.
+///
+/// Bit layout:
+///   - Bit 0 (0b0001): Check due date before release
+///   - Bit 1 (0b0010): Gateway authority must sign
+///   - Bit 2 (0b0100): Policy owner must sign
+///   - Bit 3 (0b1000): Recipient must sign
+///
+/// Bits 1-3 are mutually exclusive (at most one may be set).
+/// A value of 0 means no restrictions - anyone can trigger anytime.
+pub const RELEASE_DUE_DATE: u8 = 0b0001;
+pub const RELEASE_GATEWAY: u8 = 0b0010;
+pub const RELEASE_OWNER: u8 = 0b0100;
+pub const RELEASE_RECIPIENT: u8 = 0b1000;
+
 /// Defines frequency at which recurring payments should occur.
 /// Predefined intervals are provided for common use cases, with Custom
 /// allowing arbitrary intervals defined in seconds.
@@ -55,15 +70,15 @@ pub enum PolicyType {
     },
     /// Milestone-based payment model where funds are held in escrow and released
     /// based on predefined milestones. Supports up to 4 milestones with configurable
-    /// release conditions (time-based, manual approval, or automatic).
+    /// release conditions via bitmap (see RELEASE_* constants).
     Milestone {
         milestone_amounts: [u64; 4],    // 32 bytes - Amount for each milestone
         milestone_timestamps: [i64; 4], // 32 bytes - Absolute timestamps for each milestone
         current_milestone: u8,          // 1 byte - Which milestone is next (0-3)
-        release_condition: u8,          // 1 byte - 0=time-based, 1=manual approval, 2=automatic
-        total_milestones: u8,           // 1 byte - How many milestones are configured (1-4)
-        escrow_amount: u64,             // 8 bytes - Total amount held in escrow
-        padding: [u8; 53],              // 53 bytes padding
+        release_condition: u8, // 1 byte - Bitmap: bit0=check due date, bits1-3=signer requirement
+        total_milestones: u8,  // 1 byte - How many milestones are configured (1-4)
+        escrow_amount: u64,    // 8 bytes - Total amount held in escrow
+        padding: [u8; 53],     // 53 bytes padding
     },
     /// Pay-as-you-go payment model for AI agents and service providers.
     /// Providers can claim up to max_chunk_amount when they hit usage thresholds,
