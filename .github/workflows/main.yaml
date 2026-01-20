@@ -104,11 +104,11 @@ jobs:
 
           echo "::notice::Paths: $PATHS"
 
-  # test-programs:
-  #   name: Test Programs
-  #   needs: detect-changes
-  #   if: needs.detect-changes.outputs.has_programs == '1' && github.event.inputs.skip_tests != 'true'
-  #   uses: ./.github/workflows/program-tests.yml
+  test-programs:
+    name: Test Programs
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_programs == '1' && github.event.inputs.skip_tests != 'true'
+    uses: ./.github/workflows/program-tests.yml
 
   test-sdks:
     name: Test SDKs
