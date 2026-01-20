@@ -129,3 +129,27 @@ jobs:
     uses: ./.github/workflows/semantic-release.yml
     with:
       dry_run: ${{ github.event.inputs.dry_run || false }}
+
+  app:
+    name: Update App
+    needs: [release]
+    secrets: inherit
+    uses: ./.github/workflows/app-prod.yml
+
+  landingpage:
+    name: Update Landing Page
+    needs: [release]
+    secrets: inherit
+    uses: ./.github/workflows/landing-page.yaml
+
+  docs:
+    name: Update Docs
+    needs: [release]
+    secrets: inherit
+    uses: ./.github/workflows/docs.yml
+
+  docs-sdk:
+    name: Update SDK Docs
+    needs: [release]
+    secrets: inherit
+    uses: ./.github/workflows/sdk-typedocs.yml

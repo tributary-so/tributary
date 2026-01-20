@@ -1,11 +1,6 @@
 name: Build and Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "landing/**"
-      - ".github/workflows/*app*"
   workflow_dispatch:
 
 jobs:
