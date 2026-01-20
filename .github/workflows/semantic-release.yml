@@ -17,6 +17,7 @@ permissions:
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "9.6.0"
+  HUSKY_SKIP_HOOKS: 1
 
 jobs:
   release:
