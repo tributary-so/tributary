@@ -1,0 +1,85 @@
+name: Semantic Release
+
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.6.0"
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release (Dry Run)
+        if: inputs.dry_run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "========================================="
+          echo "Semantic Release - Dry Run Mode"
+          echo "========================================="
+          echo "No actual releases will be published."
+          echo "No git tags will be created."
+          echo "No NPM packages will be published."
+          echo "========================================="
+          pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release --dry-run --debug
+
+      - name: Release (Production)
+        if: ${{ !inputs.dry_run }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release --debug
+
+      - name: Show release result
+        if: ${{ always() }}
+        run: |
+          echo "========================================="
+          echo "Release workflow completed"
+          echo "========================================="
+          echo "Check the Actions tab for release notes and published packages"
+          echo ""
+          echo "Packages published:"
+          git tag -l "sdk@*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No SDK tags yet"
+          git tag -l "sdk-react@*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No SDK-React tags yet"
+          git tag -l "sdk-x402@*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No SDK-x402 tags yet"
+          echo "========================================="

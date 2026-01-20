@@ -1,0 +1,54 @@
+name: Build Package
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        type: string
+        required: true
+      name:
+        type: string
+        required: false
+        default: ""
+      verify_script:
+        type: string
+        required: false
+        default: ""
+        description: Optional shell script to verify build output
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.6.0"
+
+jobs:
+  build:
+    name: Build ${{ inputs.name || inputs.path }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./${{ inputs.path }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: pnpm run build
+
+      - name: Verify build output
+        if: inputs.verify_script != ''
+        run: ${{ inputs.verify_script }}
