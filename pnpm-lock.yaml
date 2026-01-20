@@ -340,6 +340,8 @@ importers:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@24.7.0)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.46.0)(tsx@4.20.6)(yaml@2.8.2)
 
+  programs/tributary: {}
+
   scheduler:
     dependencies:
       '@coral-xyz/anchor':
