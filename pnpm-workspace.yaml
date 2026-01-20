@@ -5,6 +5,5 @@ packages:
   - "scheduler"
   - "sdk"
   - "sdk-react"
-  - "sdk-widgets"
   - "sdk-x402"
   - "tests"
