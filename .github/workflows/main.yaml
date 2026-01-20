@@ -125,13 +125,7 @@ jobs:
   release:
     name: Release
     needs: [test-sdks]
+    secrets: inherit
     uses: ./.github/workflows/semantic-release.yml
     with:
       dry_run: ${{ github.event.inputs.dry_run || false }}
-
-  publish-sdks:
-    name: Build SDKs
-    needs: [release]
-    uses: ./.github/workflows/sdk-publish.yml
-    with:
-      paths: ${{ needs.detect-changes.outputs.sdk_paths }}
