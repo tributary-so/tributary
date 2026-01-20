@@ -18,7 +18,8 @@ export default function PaymentPolicyFeature() {
     // Milestone fields
     milestoneAmounts: ['', '', '', ''],
     milestoneDates: [new Date(), new Date(), new Date(), new Date()],
-    releaseCondition: '0',
+    dueDateRequired: true,
+    signerType: 'none' as const,
     totalMilestones: '1',
     // Pay-as-you-go fields
     maxAmountPerPeriod: '',

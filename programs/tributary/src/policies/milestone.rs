@@ -1,7 +1,10 @@
 use crate::{
     error::TributaryError,
     policies::traits::PolicyStrategy,
-    state::{PaymentGateway, PaymentPolicy, PolicyType},
+    state::{
+        PaymentGateway, PaymentPolicy, PolicyType, RELEASE_DUE_DATE, RELEASE_GATEWAY,
+        RELEASE_OWNER, RELEASE_RECIPIENT,
+    },
 };
 use anchor_lang::prelude::*;
 
@@ -44,8 +47,10 @@ pub fn validate_milestone_policy(
         }
     }
 
-    // Validate release_condition is valid (0, 1, or 2)
-    require!(release_condition <= 2, TributaryError::InvalidAmount);
+    // Validate release_condition is valid bitmap format
+    // Bits 1-3 must be mutually exclusive (at most one may be set)
+    let signer_bits = release_condition & 0b1110;
+    require!(signer_bits.count_ones() <= 1, TributaryError::InvalidAmount);
 
     Ok(())
 }
@@ -73,20 +78,23 @@ impl PolicyStrategy for MilestoneStrategy {
                 let milestone_idx = *current_milestone as usize;
                 let next_due = milestone_timestamps[milestone_idx];
 
-                match release_condition {
-                    0 => {
-                        require!(current_time >= next_due, TributaryError::PaymentNotDue);
-                    }
-                    1 => {
-                        require!(current_time >= next_due, TributaryError::PaymentNotDue);
-                        require!(*signer == *user_payment_owner, TributaryError::Unauthorized);
-                    }
-                    2 => {
-                        require!(current_time >= next_due, TributaryError::PaymentNotDue);
-                        require!(gateway.signer == *signer, TributaryError::Unauthorized);
-                    }
-                    _ => return err!(TributaryError::InvalidAmount),
+                // Check due date if bit 0 is set
+                if (release_condition & RELEASE_DUE_DATE) != 0 {
+                    require!(current_time >= next_due, TributaryError::PaymentNotDue);
                 }
+
+                // Check signer if any signer bit is set (bits 1-3 are mutually exclusive)
+                if (release_condition & RELEASE_GATEWAY) != 0 {
+                    require!(gateway.signer == *signer, TributaryError::Unauthorized);
+                } else if (release_condition & RELEASE_OWNER) != 0 {
+                    require!(*signer == *user_payment_owner, TributaryError::Unauthorized);
+                } else if (release_condition & RELEASE_RECIPIENT) != 0 {
+                    require!(
+                        *signer == payment_policy.recipient,
+                        TributaryError::Unauthorized
+                    );
+                }
+                // If no signer bits set, anyone can trigger
                 Ok(())
             }
             _ => err!(TributaryError::InvalidAmount),
