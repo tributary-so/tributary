@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Transaction } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
+import type { PaymentPolicy } from "@tributary-so/sdk";
 import jwt from "jsonwebtoken";
 
 /**
@@ -214,8 +215,11 @@ async function verifySubscriptionCreation(
       return { success: false, error: "No payment policies found for user" };
     }
 
-    const latestPolicy = userPaymentPolicies.sort((a, b) =>
-      b.account.createdAt.sub(a.account.createdAt).toNumber()
+    const latestPolicy = userPaymentPolicies.sort(
+      (
+        a: { publicKey: PublicKey; account: PaymentPolicy },
+        b: { publicKey: PublicKey; account: PaymentPolicy }
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
     )[0];
 
     const policy = latestPolicy.account;
@@ -288,13 +292,15 @@ async function verifyPayAsYouGoPayment(
     );
 
     // Find the most recent active pay-as-you-go policy
-    const paygPolicies = userPaymentPolicies.filter((p) => {
-      const policyType = p.account.policyType;
-      return (
-        "payAsYouGo" in policyType &&
-        Object.keys(p.account.status)[0] === "active"
-      );
-    });
+    const paygPolicies = userPaymentPolicies.filter(
+      (p: { publicKey: PublicKey; account: PaymentPolicy }) => {
+        const policyType = p.account.policyType;
+        return (
+          "payAsYouGo" in policyType &&
+          Object.keys(p.account.status)[0] === "active"
+        );
+      }
+    );
 
     if (paygPolicies.length === 0) {
       return {
@@ -303,8 +309,11 @@ async function verifyPayAsYouGoPayment(
       };
     }
 
-    const latestPolicy = paygPolicies.sort((a, b) =>
-      b.account.createdAt.sub(a.account.createdAt).toNumber()
+    const latestPolicy = paygPolicies.sort(
+      (
+        a: { publicKey: PublicKey; account: PaymentPolicy },
+        b: { publicKey: PublicKey; account: PaymentPolicy }
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
     )[0];
 
     const policy = latestPolicy.account;
