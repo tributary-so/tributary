@@ -1,7 +1,7 @@
 {
   "name": "@tributary-so/sdk",
   "private": false,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "lint": "exit 0",
