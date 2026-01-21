@@ -8,6 +8,74 @@
   },
   "instructions": [
     {
+      "name": "change_gateway_fee_bps",
+      "discriminator": [
+        129,
+        65,
+        3,
+        111,
+        65,
+        208,
+        146,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "change_gateway_fee_recipient",
       "discriminator": [
         73,
@@ -1267,6 +1335,19 @@
   ],
   "events": [
     {
+      "name": "GatewayFeeBpsChanged",
+      "discriminator": [
+        124,
+        209,
+        135,
+        122,
+        9,
+        238,
+        74,
+        234
+      ]
+    },
+    {
       "name": "GatewayFeeRecipientChanged",
       "discriminator": [
         105,
@@ -1583,6 +1664,29 @@
     }
   ],
   "types": [
+    {
+      "name": "GatewayFeeBpsChanged",
+      "docs": [
+        "An event that is thrown when a gateway fee bps is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "new_fee_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
     {
       "name": "GatewayFeeRecipientChanged",
       "docs": [

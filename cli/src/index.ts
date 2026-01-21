@@ -519,7 +519,7 @@ program
 program
   .command("list-payment-policies")
   .description("List all payment policies, ordered by user payment")
-  .action(async (options) => {
+  .action(async (_options) => {
     try {
       const sdk = createSDK(
         program.opts().connectionUrl,
@@ -588,6 +588,40 @@ program
       console.log("Transaction signature:", signature);
     } catch (error) {
       console.error("Error changing gateway fee recipient:", error);
+      process.exit(1);
+    }
+  });
+
+// Change Gateway Fee BPS command
+program
+  .command("change-gateway-fee-bps")
+  .description("Change the gateway fee in basis points")
+  .requiredOption("-a, --authority <pubkey>", "Gateway authority public key")
+  .requiredOption(
+    "-f, --fee-bps <number>",
+    "New gateway fee in basis points (0-10000)"
+  )
+  .action(async (options) => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const authority = new PublicKey(options.authority);
+      const newFeeBps = parseInt(options.feeBps);
+
+      if (newFeeBps > 10000) {
+        throw new Error("Gateway fee cannot exceed 10000 bps (100%)");
+      }
+
+      const instruction = await sdk.changeGatewayFeeBps(authority, newFeeBps);
+      const tx = new anchor.web3.Transaction().add(instruction);
+      const signature = await sdk.provider.sendAndConfirm(tx);
+
+      console.log("Gateway fee BPS changed successfully!");
+      console.log("Transaction signature:", signature);
+    } catch (error) {
+      console.error("Error changing gateway fee BPS:", error);
       process.exit(1);
     }
   });

@@ -14,6 +14,74 @@ export type Tributary = {
   },
   "instructions": [
     {
+      "name": "changeGatewayFeeBps",
+      "discriminator": [
+        129,
+        65,
+        3,
+        111,
+        65,
+        208,
+        146,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "newFeeBps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "changeGatewayFeeRecipient",
       "discriminator": [
         73,
@@ -1273,6 +1341,19 @@ export type Tributary = {
   ],
   "events": [
     {
+      "name": "gatewayFeeBpsChanged",
+      "discriminator": [
+        124,
+        209,
+        135,
+        122,
+        9,
+        238,
+        74,
+        234
+      ]
+    },
+    {
       "name": "gatewayFeeRecipientChanged",
       "discriminator": [
         105,
@@ -1589,6 +1670,29 @@ export type Tributary = {
     }
   ],
   "types": [
+    {
+      "name": "gatewayFeeBpsChanged",
+      "docs": [
+        "An event that is thrown when a gateway fee bps is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "newFeeBps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
     {
       "name": "gatewayFeeRecipientChanged",
       "docs": [

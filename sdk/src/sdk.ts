@@ -757,7 +757,6 @@ export class Tributary {
 
     const instructions: TransactionInstruction[] = [];
 
-
     // Validate release condition bitmap
     if (releaseCondition < 0 || releaseCondition > 15) {
       throw new Error(
@@ -1593,6 +1592,38 @@ export class Tributary {
 
     return await this.program.methods
       .changeGatewayFeeRecipient()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Changes the gateway fee in basis points for a payment gateway.
+   * Only the gateway authority can change the fee.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param newFeeBps - New gateway fee in basis points (0-10000)
+   * @returns Transaction instruction to change the gateway fee bps
+   */
+  async changeGatewayFeeBps(
+    gatewayAuthority: PublicKey,
+    newFeeBps: number
+  ): Promise<TransactionInstruction> {
+    const authority = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    // Validate fee
+    if (newFeeBps > 10000) {
+      throw new Error("Gateway fee cannot exceed 10000 bps (100%)");
+    }
+
+    const accounts = {
+      authority: authority,
+      config: configPda,
+      gateway: gatewayPda,
+    };
+
+    return await this.program.methods
+      .changeGatewayFeeBps(newFeeBps)
       .accountsStrict(accounts)
       .instruction();
   }
