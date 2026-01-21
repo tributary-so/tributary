@@ -1,6 +1,7 @@
 name: Build and Deploy SDK Docs
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 jobs:
