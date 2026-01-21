@@ -13,8 +13,6 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 // Type-only import for Express (optional dependency)
-type ExpressRequest = any;
-type ExpressResponse = any;
 type ExpressNextFunction = (err?: any) => void;
 
 /**
