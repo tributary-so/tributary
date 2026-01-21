@@ -1,7 +1,7 @@
 {
   "name": "@tributary-so/sdk",
   "private": false,
-  "version": "1.2.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "lint": "exit 0",
@@ -10,8 +10,7 @@
     "build": "pnpm run clean && tsc",
     "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build",
-    "docs": "typedoc",
-    "release": "semantic-release"
+    "docs": "typedoc"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",

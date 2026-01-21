@@ -16,21 +16,5 @@
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4"
   },
-  "release": {
-    "branches": [
-      "main"
-    ],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      [
-        "@semantic-release/npm",
-        {
-          "npmPublish": false
-        }
-      ],
-      "@semantic-release/changelog",
-      "@semantic-release/github"
-    ]
-  }
+  "version": "1.1.0"
 }

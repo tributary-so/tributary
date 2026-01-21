@@ -1,5 +1,6 @@
 {
   "name": "@tributary-so/cli",
+  "private": "true",
   "scripts": {
     "build": "tsc -b",
     "ci": "npm run build && npm run lint && npm run format:check",
@@ -13,8 +14,7 @@
     "solana-web3js",
     "typescript"
   ],
-  "version": "0.0.0",
-  "private": true,
+  "version": "1.0.1",
   "type": "module",
   "dependencies": {
     "@tributary-so/sdk": "workspace:*",
@@ -31,22 +31,5 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.44.0"
   },
-  "main": "./dist/sdk/src/index.js",
-  "release": {
-    "branches": [
-      "main"
-    ],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      [
-        "@semantic-release/npm",
-        {
-          "npmPublish": false
-        }
-      ],
-      "@semantic-release/changelog",
-      "@semantic-release/github"
-    ]
-  }
+  "main": "./dist/sdk/src/index.js"
 }
