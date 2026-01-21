@@ -1,3 +1,4 @@
+pub mod change_gateway_fee_bps;
 pub mod change_gateway_fee_recipient;
 pub mod change_gateway_signer;
 pub mod change_payment_policy_status;
@@ -12,6 +13,7 @@ pub mod initialize;
 pub mod update_gateway_protocol_fee;
 pub mod update_gateway_referral_settings;
 
+pub use change_gateway_fee_bps::*;
 pub use change_gateway_fee_recipient::*;
 pub use change_gateway_signer::*;
 pub use change_payment_policy_status::*;

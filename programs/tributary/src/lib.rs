@@ -90,6 +90,13 @@ pub mod tributary {
         ChangeGatewayFeeRecipient::handler_change_gateway_fee_recipient(ctx)
     }
 
+    pub fn change_gateway_fee_bps(
+        ctx: Context<ChangeGatewayFeeBps>,
+        new_fee_bps: u16,
+    ) -> Result<()> {
+        ChangeGatewayFeeBps::handler_change_gateway_fee_bps(ctx, new_fee_bps)
+    }
+
     pub fn update_gateway_referral_settings(
         ctx: Context<UpdateGatewayReferralSettings>,
         args: UpdateGatewayReferralSettingsArgs,

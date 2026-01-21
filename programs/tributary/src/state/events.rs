@@ -67,6 +67,14 @@ pub struct GatewayFeeRecipientChanged {
     pub new_fee_recipient: Pubkey,
 }
 
+/// An event that is thrown when a gateway fee bps is changed
+#[event]
+pub struct GatewayFeeBpsChanged {
+    pub gateway: Pubkey,
+    pub old_fee_bps: u16,
+    pub new_fee_bps: u16,
+}
+
 /// An event that is thrown when a payment policy status is changed
 #[event]
 pub struct PaymentPolicyStatusChanged {

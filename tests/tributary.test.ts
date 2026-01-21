@@ -2919,4 +2919,31 @@ describe("Tributary", () => {
       );
     });
   });
+
+  test("Change gateway fee BPS", async () => {
+    // Get initial gateway state
+    const initialGateway = await sdk.getPaymentGateway(gatewayPDA);
+    const initialFeeBps = initialGateway!.gatewayFeeBps;
+    expect(initialFeeBps).toEqual(250); // Initial fee from gateway creation
+
+    // Update SDK to use gateway authority wallet
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+    // Change the gateway fee BPS
+    const newFeeBps = 100;
+    const changeFeeBpsIx = await sdk.changeGatewayFeeBps(
+      gatewayAuthority.publicKey,
+      newFeeBps
+    );
+    const tx = new Transaction().add(changeFeeBpsIx);
+
+    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+      commitment: "processed" as Commitment,
+    });
+
+    // Verify the gateway fee BPS was updated
+    const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
+    expect(updatedGateway!.gatewayFeeBps).toEqual(newFeeBps);
+    expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
+  });
 });
