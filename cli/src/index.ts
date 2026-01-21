@@ -6,9 +6,8 @@ import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
 import {
   TributarySDK,
-  type PolicyType,
   type PaymentFrequency,
-  createMemoBuffer,
+  type PaymentPolicy,
   UserPayment,
 } from "@tributary-so/sdk";
 
@@ -42,7 +41,7 @@ async function dumpUserPayments(
     // Group by userPayment
     const grouped: Record<
       string,
-      Array<{ publicKey: PublicKey; account: any }>
+      Array<{ publicKey: PublicKey; account: PaymentPolicy }>
     > = {};
     for (const policy of policies) {
       const userPaymentStr = policy.account.userPayment.toString();
@@ -210,10 +209,10 @@ program
     }
   });
 
-// Create Payment Policy command
+// Create Subscription command
 program
-  .command("create-policy")
-  .description("Create a payment policy")
+  .command("create-subscription")
+  .description("Create a subscription payment policy")
   .requiredOption("-t, --token-mint <pubkey>", "Token mint public key")
   .requiredOption("-r, --recipient <pubkey>", "Payment recipient public key")
   .requiredOption("-g, --gateway <pubkey>", "Payment gateway public key")
@@ -221,15 +220,16 @@ program
     "-a, --amount <number>",
     "Payment amount (in token base units)"
   )
-  .requiredOption("-i, --interval <number>", "Payment interval in seconds")
   .option("-m, --memo <string>", "Payment memo", "")
   .option("--auto-renew", "Enable auto-renewal", true)
   .option("--max-renewals <number>", "Maximum number of renewals")
   .option(
     "-f, --frequency <string>",
     "Payment frequency (daily|weekly|monthly|quarterly|semiAnnually|annually)",
-    "daily"
+    "monthly"
   )
+  .option("--start-time <number>", "Start time as Unix timestamp")
+  .option("--execute-immediately", "Execute first payment immediately")
   .action(async (options) => {
     try {
       const sdk = createSDK(
@@ -239,45 +239,52 @@ program
       const tokenMint = new PublicKey(options.tokenMint);
       const recipient = new PublicKey(options.recipient);
       const gateway = new PublicKey(options.gateway);
-
-      // Create policy type
-      // FIXME:
-      const policyType: PolicyType = {
-        subscription: {
-          amount: new anchor.BN(options.amount),
-          autoRenew: options.autoRenew,
-          maxRenewals: options.maxRenewals
-            ? parseInt(options.maxRenewals)
-            : null,
-          padding: Array(8).fill(new anchor.BN(0)),
-        },
-      };
+      const amount = new anchor.BN(options.amount);
+      const autoRenew = options.autoRenew;
+      const maxRenewals = options.maxRenewals
+        ? parseInt(options.maxRenewals)
+        : null;
+      const startTime = options.startTime
+        ? new anchor.BN(options.startTime)
+        : null;
+      const executeImmediately = options.executeImmediately || false;
 
       // Create payment frequency
       const paymentFrequency: PaymentFrequency = {
         [options.frequency]: {},
       } as PaymentFrequency;
 
-      // Create memo
-      const memo = createMemoBuffer(options.memo);
+      // Create memo buffer
+      const memo = [];
+      for (let i = 0; i < Math.min(options.memo.length, 64); i++) {
+        memo.push(options.memo.charCodeAt(i));
+      }
+      while (memo.length < 64) {
+        memo.push(0);
+      }
 
-      // FIXME:
-      const instruction = await sdk.createPaymentPolicy(
+      const instructions = await sdk.createSubscription(
         tokenMint,
         recipient,
         gateway,
-        policyType,
+        amount,
+        autoRenew,
+        maxRenewals,
         paymentFrequency,
-        memo
+        memo,
+        startTime,
+        undefined, // approvalAmount
+        executeImmediately
       );
 
-      const tx = new anchor.web3.Transaction().add(instruction);
+      const tx = new anchor.web3.Transaction();
+      instructions.forEach((ix) => tx.add(ix));
       const signature = await sdk.provider.sendAndConfirm(tx);
 
-      console.log("Payment policy created successfully!");
+      console.log("Subscription created successfully!");
       console.log("Transaction signature:", signature);
     } catch (error) {
-      console.error("Error creating payment policy:", error);
+      console.error("Error creating subscription:", error);
       process.exit(1);
     }
   });
@@ -452,10 +459,14 @@ program
       for (const gateway of gateways) {
         console.log(`Gateway: ${gateway.publicKey.toString()}`);
         console.log(`Authority: ${gateway.account.authority.toString()}`);
+        console.log(`Feature Flag: ${gateway.account.featureFlags}`);
         console.log(
           `Fee Recipient: ${gateway.account.feeRecipient.toString()}`
         );
         console.log(`Fee BPS: ${gateway.account.gatewayFeeBps}`);
+        console.log(
+          `Custom protocol Fee BPS: ${gateway.account.customProtocolFeeBps}`
+        );
         console.log(
           `Name: ${String.fromCharCode(...gateway.account.name).replace(
             /\0/g,
@@ -471,7 +482,7 @@ program
         console.log(`Active: ${gateway.account.isActive}`);
         console.log(
           `Created At: ${new Date(
-            gateway.account.createdAt * 1000
+            gateway.account.createdAt.toNumber() * 1000
           ).toISOString()}`
         );
         console.log("---");
@@ -577,6 +588,104 @@ program
       console.log("Transaction signature:", signature);
     } catch (error) {
       console.error("Error changing gateway fee recipient:", error);
+      process.exit(1);
+    }
+  });
+
+// Update Gateway Referral Settings command
+program
+  .command("update-gateway-referral-settings")
+  .description("Update referral settings for a payment gateway")
+  .requiredOption("-a, --authority <pubkey>", "Gateway authority public key")
+  .requiredOption(
+    "-f, --feature-flags <number>",
+    "Feature flags (bit 0 = referral enabled)"
+  )
+  .requiredOption(
+    "-l, --referral-allocation-bps <number>",
+    "Referral allocation in basis points (0-2500)"
+  )
+  .requiredOption(
+    "-t, --referral-tiers-bps <string>",
+    "Referral tiers BPS as comma-separated values (L1,L2,L3)"
+  )
+  .action(async (options) => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const authority = new PublicKey(options.authority);
+      const featureFlags = parseInt(options.featureFlags);
+      const referralAllocationBps = parseInt(options.referralAllocationBps);
+      const referralTiersBps = options.referralTiersBps
+        .split(",")
+        .map((s: string) => parseInt(s.trim()));
+
+      if (referralTiersBps.length !== 3) {
+        throw new Error("Referral tiers must be exactly 3 values (L1,L2,L3)");
+      }
+
+      const instruction = await sdk.updateGatewayReferralSettings(
+        authority,
+        featureFlags,
+        referralAllocationBps,
+        [referralTiersBps[0], referralTiersBps[1], referralTiersBps[2]]
+      );
+      const tx = new anchor.web3.Transaction().add(instruction);
+      const signature = await sdk.provider.sendAndConfirm(tx);
+
+      console.log("Gateway referral settings updated successfully!");
+      console.log("Transaction signature:", signature);
+    } catch (error) {
+      console.error("Error updating gateway referral settings:", error);
+      process.exit(1);
+    }
+  });
+
+// Update Gateway Protocol Fee command
+program
+  .command("update-gateway-protocol-fee")
+  .description("Update custom protocol fee settings for a payment gateway")
+  .requiredOption("-a, --authority <pubkey>", "Gateway authority public key")
+  .requiredOption(
+    "-u, --use-custom <boolean>",
+    "Use custom protocol fee (true/false)"
+  )
+  .requiredOption(
+    "-f, --custom-fee-bps <number>",
+    "Custom protocol fee in basis points (0-10000)"
+  )
+  .option(
+    "--admin-keypath <path>",
+    "Path to admin keypair file (required for protocol fee updates)"
+  )
+  .action(async (options) => {
+    try {
+      const connection = new Connection(program.opts().connectionUrl);
+      const authority = new PublicKey(options.authority);
+      const useCustomProtocolFee = options.useCustom.toLowerCase() === "true";
+      const customProtocolFeeBps = parseInt(options.customFeeBps);
+
+      if (!options.adminKeypath) {
+        throw new Error("Admin keypair is required for protocol fee updates");
+      }
+
+      const adminKeypair = readKeypairFromFile(options.adminKeypath);
+      const sdk = new TributarySDK(connection, new anchor.Wallet(adminKeypair));
+
+      const instruction = await sdk.updateGatewayProtocolFee(
+        authority,
+        useCustomProtocolFee,
+        customProtocolFeeBps
+      );
+      const tx = new anchor.web3.Transaction().add(instruction);
+      const signature = await connection.sendTransaction(tx, [adminKeypair]);
+
+      console.log("Gateway protocol fee settings updated successfully!");
+      console.log("Transaction signature:", signature);
+    } catch (error) {
+      console.error("Error updating gateway protocol fee:", error);
       process.exit(1);
     }
   });
