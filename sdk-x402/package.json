@@ -1,6 +1,7 @@
 {
   "name": "@tributary-so/sdk-x402",
   "version": "1.0.0",
+  "license": "MIT",
   "scripts": {
     "build": "rm -rf dist && tsc -b",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",

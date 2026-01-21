@@ -1,5 +1,6 @@
 {
   "name": "@tributary-so/sdk-react",
+  "license": "MIT",
   "version": "1.0.1",
   "type": "module",
   "description": "React hooks and utilities for Tributary recurring payments",

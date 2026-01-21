@@ -1,5 +1,6 @@
 {
   "name": "@tributary-so/sdk",
+  "license": "MIT",
   "private": false,
   "version": "1.1.0",
   "type": "module",
