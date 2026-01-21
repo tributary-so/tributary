@@ -40,6 +40,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # The SDK is a depenency that needs building for the other libraries
+      - name: Install dependencies
+        working-directory: ./sdk
+        if: ${{ matrix.path != 'sdk' }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

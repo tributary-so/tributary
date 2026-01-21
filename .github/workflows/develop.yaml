@@ -1,4 +1,4 @@
-name: Mono-repo Release
+name: Building and Testing develop
 
 on:
   push:
