@@ -1,6 +1,7 @@
 {
   "name": "tributary",
   "license": "MIT",
+  "private": true,
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
