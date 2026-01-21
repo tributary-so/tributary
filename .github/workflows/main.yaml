@@ -134,7 +134,7 @@ jobs:
     name: Update App
     needs: [release]
     secrets: inherit
-    uses: ./.github/workflows/app-prod.yml
+    uses: ./.github/workflows/app-prod.yaml
 
   landingpage:
     name: Update Landing Page
@@ -146,10 +146,10 @@ jobs:
     name: Update Docs
     needs: [release]
     secrets: inherit
-    uses: ./.github/workflows/docs.yml
+    uses: ./.github/workflows/docs.yaml
 
   docs-sdk:
     name: Update SDK Docs
     needs: [release]
     secrets: inherit
-    uses: ./.github/workflows/sdk-typedocs.yml
+    uses: ./.github/workflows/sdk-typedocs.yaml
