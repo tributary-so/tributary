@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Select, SelectItem, Input } from '@heroui/react'
+import { Select, SelectItem, Input, DatePicker } from '@heroui/react'
 import { Button } from '@heroui/react'
 import { PublicKey, TransactionInstruction } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
@@ -16,6 +16,21 @@ import {
 } from '@tributary-so/sdk'
 import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
+import { today, getLocalTimeZone, fromDate } from '@internationalized/date'
+
+type DateValue = any
+
+function dateToDateValue(date: Date): DateValue {
+  return fromDate(date, getLocalTimeZone())
+}
+
+function dateValueToDate(value: DateValue): Date {
+  if ('toDate' in value) {
+    return (value as { toDate: () => Date }).toDate()
+  }
+  const date = value as { year: number; month: number; day: number; hour?: number; minute?: number; second?: number }
+  return new Date(date.year, date.month - 1, date.day, date.hour || 0, date.minute || 0, date.second || 0)
+}
 
 function getNetworkFromRpcEndpoint(rpcEndpoint: string): Network {
   if (rpcEndpoint.includes('devnet')) return 'devnet'
@@ -153,9 +168,9 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     }
   }
 
-  const handleMilestoneDateChange = (index: number, value: string) => {
+  const handleMilestoneDateChange = (index: number, value: DateValue | null) => {
     const newDates = [...formData.milestoneDates]
-    newDates[index] = value ? new Date(value) : new Date()
+    newDates[index] = value ? dateValueToDate(value) : new Date()
     onFormDataChange({ ...formData, milestoneDates: newDates })
   }
 
@@ -296,10 +311,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatDateTimeLocal = (date: Date) => {
-    return date.toISOString().slice(0, 16)
   }
 
   const labelClass = 'text-xs font-medium text-[var(--color-primary)] uppercase mb-1'
@@ -492,7 +503,14 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     const selectedKey = Array.from(keys)[0] as string
                     const count = parseInt(selectedKey)
                     const newAmounts = formData.milestoneAmounts.slice(0, count).concat(Array(4 - count).fill(''))
-                    const newDates = formData.milestoneDates.slice(0, count).concat(Array(4 - count).fill(new Date()))
+                    const baseDate = new Date()
+                    baseDate.setDate(baseDate.getDate() + 1)
+                    const newDates = Array.from({ length: 4 }, (_, i) => {
+                      if (i >= count) return new Date()
+                      const date = new Date(baseDate)
+                      date.setDate(date.getDate() + i)
+                      return date
+                    })
                     onFormDataChange({
                       ...formData,
                       totalMilestones: selectedKey,
@@ -542,15 +560,16 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     <label htmlFor={`milestoneDate${index}`} className={labelClass}>
                       Due Date
                     </label>
-                    <Input
-                      id={`milestoneDate${index}`}
-                      type="datetime-local"
-                      value={formData.milestoneDates[index] ? formatDateTimeLocal(formData.milestoneDates[index]) : ''}
-                      onChange={(e) => {
-                        handleMilestoneDateChange(index, e.target.value)
-                      }}
-                      min={formatDateTimeLocal(new Date())}
-                      className={`w-full ${milestoneErrors[index] ? 'border-red-500' : ''}`}
+                    <DatePicker
+                      label="Due Date"
+                      granularity="minute"
+                      value={
+                        formData.milestoneDates[index]
+                          ? (dateToDateValue(formData.milestoneDates[index]) as unknown as DateValue)
+                          : undefined
+                      }
+                      onChange={(value) => handleMilestoneDateChange(index, value)}
+                      minValue={today(getLocalTimeZone()) as unknown as DateValue}
                       isInvalid={!!milestoneErrors[index]}
                       errorMessage={milestoneErrors[index]}
                     />

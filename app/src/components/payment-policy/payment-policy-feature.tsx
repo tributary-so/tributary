@@ -17,7 +17,11 @@ export default function PaymentPolicyFeature() {
     approvalAmount: '',
     // Milestone fields
     milestoneAmounts: ['', '', '', ''],
-    milestoneDates: [new Date(), new Date(), new Date(), new Date()],
+    milestoneDates: Array.from({ length: 4 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() + 1 + i)
+      return date
+    }),
     dueDateRequired: true,
     signerType: 'none' as const,
     totalMilestones: '1',
