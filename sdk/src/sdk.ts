@@ -32,7 +32,12 @@ import type {
   ProgramConfig,
   ReferralAccount,
 } from "./types.js";
-import { computePaymentsPerYear, sleep } from "./utils";
+import {
+  computePaymentsPerYear,
+  encodeMemo,
+  generateSecureRandomString,
+  sleep,
+} from "./utils";
 import IDL from "../../target/idl/tributary.json"; // with { type: "json" };
 import { Tributary as TributaryIdl } from "../../target/types/tributary.js";
 
@@ -156,26 +161,14 @@ export class Tributary {
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
 
+    if (!this.validateReferralCode(referralCode)) {
+      throw new Error(
+        `Referral code must be length 6 and alphanumeric (${referralCode} is not!)`
+      );
+    }
+
     // Validate and convert referral code
-    const codeBytes = new Array(6).fill(0);
-    const codeBuffer = Buffer.from(referralCode, "utf8");
-    if (codeBuffer.length !== 6) {
-      throw new Error("Referral code must be exactly 6 characters");
-    }
-    for (let i = 0; i < 6; i++) {
-      const byte = codeBuffer[i];
-      // Allow alphanumeric characters only
-      if (
-        !(
-          (byte >= 48 && byte <= 57) || // 0-9
-          (byte >= 65 && byte <= 90) || // A-Z
-          (byte >= 97 && byte <= 122)
-        ) // a-z
-      ) {
-        throw new Error("Referral code must be alphanumeric");
-      }
-      codeBytes[i] = byte;
-    }
+    const codeBytes = encodeMemo(referralCode, 6);
 
     const referralCodeBuffer = Buffer.from(codeBytes);
     const { address: referralAccountPda } = this.getReferralPda(
@@ -275,6 +268,54 @@ export class Tributary {
    */
   getReferralPda(gateway: PublicKey, referralCode: Buffer) {
     return getReferralPda(gateway, referralCode, this.programId);
+  }
+
+  /**
+   * Validates a referral code format.
+   * Referral codes must be exactly 6 alphanumeric characters.
+   * @param code - The referral code to validate
+   * @returns true if valid, false otherwise
+   */
+  validateReferralCode(code: string): boolean {
+    if (!code || code.length !== 6) {
+      return false;
+    }
+    for (let i = 0; i < code.length; i++) {
+      const byte = code.charCodeAt(i);
+      if (
+        !(
+          (byte >= 48 && byte <= 57) || // 0-9
+          (byte >= 65 && byte <= 90) || // A-Z
+          (byte >= 97 && byte <= 122)
+        )
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Fetches a referral account by gateway and referral code.
+   * @param gateway - Public key of the gateway
+   * @param code - 6-character alphanumeric referral code
+   * @returns The referral account data or null if not found
+   */
+  async getReferralAccountByCode(
+    gateway: PublicKey,
+    code: string
+  ): Promise<ReferralAccount | null> {
+    if (!this.validateReferralCode(code)) {
+      return null;
+    }
+    const codeBuffer = Buffer.from(code, "utf8");
+    const { address: referralAccountPda } = this.getReferralPda(
+      gateway,
+      codeBuffer
+    );
+    return await this.program.account.referralAccount.fetchNullable(
+      referralAccountPda
+    );
   }
 
   /**
@@ -577,6 +618,7 @@ export class Tributary {
    * @param startTime - When the first payment should occur (defaults to now)
    * @param approvalAmount - Amount to approve for token delegation (calculated automatically if not provided)
    * @param executeImmediately - Whether to execute the first payment immediately
+   * @param referralCode - Optional 6-character referral code to associate with this subscription
    * @returns Array of transaction instructions for the complete subscription setup
    */
   async createSubscription(
@@ -590,7 +632,8 @@ export class Tributary {
     memo: number[],
     startTime?: BN | null,
     approvalAmount?: BN,
-    executeImmediately?: boolean
+    executeImmediately?: boolean,
+    referralCode?: string
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -620,6 +663,27 @@ export class Tributary {
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
       instructions.push(createUserPaymentIx);
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      instructions.push(createReferralIx);
     }
 
     // Build policy type
@@ -750,7 +814,8 @@ export class Tributary {
     releaseCondition: number,
     memo: number[],
     approvalAmount?: BN,
-    executeImmediately?: boolean
+    executeImmediately?: boolean,
+    referralCode?: string
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -795,6 +860,27 @@ export class Tributary {
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
       instructions.push(createUserPaymentIx);
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      instructions.push(createReferralIx);
     }
 
     // Build policy type
@@ -933,7 +1019,8 @@ export class Tributary {
     maxChunkAmount: BN,
     periodLengthSeconds: BN,
     memo: number[],
-    approvalAmount?: BN
+    approvalAmount?: BN,
+    referralCode?: string
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -963,6 +1050,27 @@ export class Tributary {
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
       instructions.push(createUserPaymentIx);
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      instructions.push(createReferralIx);
     }
 
     // Build policy type
