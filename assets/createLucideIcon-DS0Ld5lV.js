@@ -1,4 +1,4 @@
-import{r as s}from"./wallet-adapter-BNFOm38p.js";/**
+import{r as s}from"./wallet-adapter-Cel3VKaY.js";/**
  * @license lucide-react v0.544.0 - ISC
  *
  * This source code is licensed under the ISC license.
