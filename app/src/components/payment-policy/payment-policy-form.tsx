@@ -46,6 +46,7 @@ export interface PaymentPolicyFormData {
   gateway: string
   memo: string
   approvalAmount: string
+  referralCode: string
 
   // SUbscription specific fields
   amount: string
@@ -83,6 +84,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const [isRecipientValid, setIsRecipientValid] = useState(true)
   const [milestoneErrors, setMilestoneErrors] = useState<Record<number, string>>({})
+  const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null)
 
   const currentNetwork = useMemo(() => getNetworkFromRpcEndpoint(connection.rpcEndpoint), [connection.rpcEndpoint])
 
@@ -121,6 +123,38 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
   useEffect(() => {
     setIsRecipientValid(validateRecipientAddress(formData.recipient))
   }, [formData.recipient])
+
+  useEffect(() => {
+    const validateReferralCode = async () => {
+      if (!formData.referralCode) {
+        setReferralCodeValid(null) // No code entered, neutral state
+        return
+      }
+
+      if (!sdk) {
+        setReferralCodeValid(null)
+        return
+      }
+
+      try {
+        const isValid = sdk.validateReferralCode(formData.referralCode)
+        if (!isValid) {
+          setReferralCodeValid(false)
+          return
+        }
+
+        // Check if referral code exists for the selected gateway
+        const gatewayPubkey = new PublicKey(formData.gateway)
+        const referralAccount = await sdk.getReferralAccountByCode(gatewayPubkey, formData.referralCode)
+        setReferralCodeValid(!!referralAccount)
+      } catch (error) {
+        console.error('Error validating referral code:', error)
+        setReferralCodeValid(false)
+      }
+    }
+
+    validateReferralCode()
+  }, [formData.referralCode, formData.gateway, sdk])
 
   useEffect(() => {
     if (wallet.publicKey && !formData.recipient) {
@@ -165,6 +199,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
     // Validate recipient address
     if (name === 'recipient') {
       setIsRecipientValid(validateRecipientAddress(value))
+    }
+
+    // Validate referral code
+    if (name === 'referralCode') {
+      // Validation happens in useEffect, just update state here
     }
   }
 
@@ -229,6 +268,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             memo,
             undefined,
             approvalAmount,
+            undefined,
+            formData.referralCode || undefined,
           )
           break
         }
@@ -265,6 +306,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             releaseCondition,
             memo,
             approvalAmount,
+            undefined,
+            formData.referralCode || undefined,
           )
           break
         }
@@ -294,6 +337,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
             new anchor.BN(periodLengthSeconds),
             memo,
             approvalAmount,
+            formData.referralCode || undefined,
           )
           break
         }
@@ -704,6 +748,36 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
           )}
 
           <div>
+            <label htmlFor="referralCode" className={labelClass}>
+              Referral Code (optional)
+            </label>
+            <Input
+              id="referralCode"
+              name="referralCode"
+              value={formData.referralCode}
+              onChange={handleInputChange}
+              placeholder="e.g., ABC123"
+              maxLength={6}
+              className={`w-full ${
+                referralCodeValid === false ? 'border-red-500' : referralCodeValid === true ? 'border-green-500' : ''
+              }`}
+              isInvalid={referralCodeValid === false}
+              errorMessage={referralCodeValid === false ? 'Invalid referral code' : undefined}
+              endContent={
+                referralCodeValid !== null ? (
+                  <div className="pointer-events-none flex items-center">
+                    {referralCodeValid ? (
+                      <span className="text-green-500 text-small">✓ Valid</span>
+                    ) : (
+                      <span className="text-red-500 text-small">✗ Invalid</span>
+                    )}
+                  </div>
+                ) : null
+              }
+            />
+          </div>
+
+          <div>
             <label htmlFor="memo" className={labelClass}>
               Memo (optional)
             </label>
@@ -725,6 +799,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
               !isRecipientValid ||
               !formData.tokenMint ||
               !formData.gateway ||
+              (formData.referralCode && referralCodeValid === false) ||
               (formData.policyType === 'subscription' && !formData.amount) ||
               (formData.policyType === 'milestone' && hasMilestoneErrors()) ||
               (formData.policyType === 'payasyougo' &&
