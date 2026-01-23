@@ -4,30 +4,20 @@ name: Build Docker Image
 on:
   workflow_dispatch:
     inputs:
-      version:
-        required: true
-        type: string
       registry:
-        required: true
+        required: false
+        default: ghcr.io
         type: string
-      image:
-        required: true
-        type: string
-      dockerfile:
+      package:
         required: true
         type: string
   workflow_call:
     inputs:
-      version:
-        required: true
-        type: string
       registry:
-        required: true
+        required: false
+        default: ghcr.io
         type: string
-      image:
-        required: true
-        type: string
-      dockerfile:
+      package:
         required: true
         type: string
 jobs:
@@ -42,6 +32,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest ${{ inputs.package }} tag
+        id: get-tag
+        run: |
+          PACKAGE="${{ inputs.package }}"
+          LATEST_TAG=$(git tag --list "@tributary-so/${PACKAGE}-*" --sort=-version:refname | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::error::No ${PACKAGE} tag found"
+            exit 1
+          fi
+          VERSION=${LATEST_TAG#@tributary-so/${PACKAGE}-}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "::notice::Using ${PACKAGE} version: $VERSION"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -57,9 +62,9 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: ${{ inputs.registry }}/${{ inputs.image }}:${{ inputs.version }}
-          file: ${{ inputs.dockerfile }}
+          tags: ${{ inputs.registry }}/tributary-so/${{ inputs.package }}:${{ steps.get-tag.outputs.version }}
+          file: ${{ inputs.package }}/Dockerfile
           context: .
           build-args: |
             VCS_REF=${{ github.sha }}
-            IMAGE_VERSION=${{ inputs.version }}
+            IMAGE_VERSION=${{ steps.get-tag.outputs.version }}

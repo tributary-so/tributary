@@ -36,6 +36,7 @@ jobs:
       has_sdk: ${{ steps.detect.outputs.has_sdk }}
       has_sdk_react: ${{ steps.detect.outputs.has_sdk_react }}
       has_sdk_x402: ${{ steps.detect.outputs.has_sdk_x402 }}
+      has_scheduler: ${{ steps.detect.outputs.has_scheduler }}
       sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
 
     steps:
@@ -60,6 +61,7 @@ jobs:
           HAS_SDK=0
           HAS_SDK_REACT=0
           HAS_SDK_X402=0
+          HAS_SCHEDULER=0
 
           if echo "$CHANGED_FILES" | grep -q "^programs/"; then
             HAS_PROGRAMS=1
@@ -77,11 +79,16 @@ jobs:
             HAS_SDK_X402=1
             echo "::notice::SDK-x402 changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^scheduler/"; then
+            HAS_SCHEDULER=1
+            echo "::notice::Scheduler changed"
+          fi
 
           echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
           echo "has_sdk=$HAS_SDK" >> "$GITHUB_OUTPUT"
           echo "has_sdk_react=$HAS_SDK_REACT" >> "$GITHUB_OUTPUT"
           echo "has_sdk_x402=$HAS_SDK_X402" >> "$GITHUB_OUTPUT"
+          echo "has_scheduler=$HAS_SCHEDULER" >> "$GITHUB_OUTPUT"
 
           ELEMENTS=""
           if [ "$HAS_SDK" = "1" ]; then
@@ -153,3 +160,16 @@ jobs:
     needs: [release]
     secrets: inherit
     uses: ./.github/workflows/sdk-typedocs.yaml
+
+  build-scheduler-docker:
+    name: Build Scheduler Docker Image
+    needs: [release, detect-changes]
+    if: needs.detect-changes.outputs.has_scheduler == '1'
+    permissions:
+      packages: write
+      contents: read
+    uses: ./.github/workflows/build-docker-image.yaml
+    with:
+      registry: ghcr.io
+      package: scheduler
+      dockerfile: ./scheduler/Dockerfile
