@@ -172,4 +172,3 @@ jobs:
     with:
       registry: ghcr.io
       package: scheduler
-      dockerfile: ./scheduler/Dockerfile
