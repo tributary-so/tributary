@@ -74,7 +74,8 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: "" # empty, required!
+          # empty, required!
+          NODE_AUTH_TOKEN:
         run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release --debug
 
       - name: Show release result
