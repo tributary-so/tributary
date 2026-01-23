@@ -58,7 +58,7 @@ jobs:
         with:
           push: true
           tags: ${{ inputs.registry }}/${{ inputs.image }}:${{ inputs.version }}
-          file: ${{ inputs.registry }}
+          file: ${{ inputs.dockerfile }}
           context: .
           build-args: |
             VCS_REF=${{ github.sha }}
