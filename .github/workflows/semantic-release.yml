@@ -68,13 +68,13 @@ jobs:
           echo "No git tags will be created."
           echo "No NPM packages will be published."
           echo "========================================="
-          pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release -e semantic-release-monorepo --dry-run --debug
+          pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release --dry-run --debug
 
       - name: Release (Production)
         if: ${{ !inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release -e semantic-release-monorepo --debug
+        run: pnpm -r --workspace-concurrency=1 exec -- npx --no-install semantic-release --debug
 
       - name: Show release result
         if: ${{ always() }}

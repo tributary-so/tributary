@@ -953,7 +953,7 @@ describe("Tributary", () => {
         gatewayPDA,
         milestoneAmounts,
         milestoneTimestamps,
-        1, // time-based release condition
+        0, // time-based release condition
         Array.from(memo)
       );
 
@@ -975,7 +975,7 @@ describe("Tributary", () => {
       const milestoneData = milestonePolicy!.account.policyType.milestone!;
       expect(milestoneData.totalMilestones).toBe(3);
       expect(milestoneData.currentMilestone).toBe(0);
-      expect(milestoneData.releaseCondition).toBe(1); // time-based
+      expect(milestoneData.releaseCondition).toBe(0); // time-based
       expect(milestoneData.escrowAmount.toNumber()).toBe(4500000); // 1 + 2 + 1.5 tokens
     });
 
@@ -1033,7 +1033,7 @@ describe("Tributary", () => {
         gatewayPDA,
         pastMilestoneAmounts,
         pastMilestoneTimestamps,
-        1, // time-based
+        0, // time-based
         Array.from(memo2)
       );
 
@@ -1164,7 +1164,7 @@ describe("Tributary", () => {
         gatewayPDA,
         manualMilestoneAmounts,
         manualMilestoneTimestamps,
-        1,
+        1, // manual approval release condition
         Array.from(memo3)
       );
 
