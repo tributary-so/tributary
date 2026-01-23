@@ -1,8 +1,7 @@
 name: Build and Deploy SDK Docs
 
 on:
-  pull_request:
-    branches: [main]
+  workflow_call:
 
 jobs:
   build-and-deploy:
