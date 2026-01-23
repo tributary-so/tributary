@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PaymentPolicyForm, { PaymentPolicyFormData } from './payment-policy-form'
+import ReferralAccountForm, { ReferralAccountFormData } from './referral-account-form'
 import IntegrationCode from './integration-code'
 
 export default function PaymentPolicyFeature() {
@@ -15,6 +16,7 @@ export default function PaymentPolicyFeature() {
     autoRenew: true,
     maxRenewals: '',
     approvalAmount: '',
+    referralCode: '',
     // Milestone fields
     milestoneAmounts: ['', '', '', ''],
     milestoneDates: Array.from({ length: 4 }, (_, i) => {
@@ -31,8 +33,17 @@ export default function PaymentPolicyFeature() {
     periodLengthSeconds: '2592000', // 30 days default
   })
 
+  const [referralFormData, setReferralFormData] = useState<ReferralAccountFormData>({
+    gateway: '',
+    referralCode: '',
+  })
+
   const handleFormDataChange = (newFormData: typeof formData) => {
     setFormData(newFormData)
+  }
+
+  const handleReferralFormDataChange = (newFormData: typeof referralFormData) => {
+    setReferralFormData(newFormData)
   }
 
   return (
@@ -54,6 +65,7 @@ export default function PaymentPolicyFeature() {
         <div className="flex flex-col md:flex-row gap-4 max-w-6xl mx-auto">
           <div className="w-full md:w-1/2">
             <PaymentPolicyForm formData={formData} onFormDataChange={handleFormDataChange} />
+            <ReferralAccountForm formData={referralFormData} onFormDataChange={handleReferralFormDataChange} />
           </div>
           <div className="relative w-full md:w-1/2">
             <IntegrationCode formData={formData} />

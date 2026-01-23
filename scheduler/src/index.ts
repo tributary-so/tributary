@@ -9,37 +9,44 @@ import {
 import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
-import { getGatewayPda, TributarySDK } from "@tributary-so/sdk";
+import { TributarySDK } from "@tributary-so/sdk";
 import { exit } from "process";
 
 interface SchedulerConfig {
   connectionUrl: string;
   gatewayKeypairPath?: string;
-  privateKey?: string;
-  cronSchedule?: string; // Default: every hour
+  privateKeys?: string[];
+  cronSchedule?: string;
 }
 
 class PaymentScheduler {
   private sdk: TributarySDK;
-  private gatewayKeypair: Keypair;
+  private gatewayKeypairs: Keypair[];
   private config: SchedulerConfig;
 
   constructor(config: SchedulerConfig) {
     this.config = config;
+    this.gatewayKeypairs = [];
 
-    // Load gateway keypair
     if (config.gatewayKeypairPath) {
-      this.gatewayKeypair = this.loadKeypairFromFile(config.gatewayKeypairPath);
-    } else if (config.privateKey) {
-      this.gatewayKeypair = this.loadKeypair(config.privateKey);
-    } else {
-      console.log("Error: need private key!");
+      this.gatewayKeypairs.push(
+        this.loadKeypairFromFile(config.gatewayKeypairPath),
+      );
+    } else if (config.privateKeys && config.privateKeys.length > 0) {
+      for (const privateKey of config.privateKeys) {
+        if (privateKey.trim()) {
+          this.gatewayKeypairs.push(this.loadKeypair(privateKey.trim()));
+        }
+      }
+    }
+
+    if (this.gatewayKeypairs.length === 0) {
+      console.log("Error: need at least one private key!");
       exit(1);
     }
 
-    // Initialize SDK
     const connection = new Connection(config.connectionUrl, "confirmed");
-    const wallet = new anchor.Wallet(this.gatewayKeypair);
+    const wallet = new anchor.Wallet(this.gatewayKeypairs[0]);
     this.sdk = new TributarySDK(connection, wallet);
   }
 
@@ -64,66 +71,89 @@ class PaymentScheduler {
       `[${new Date().toISOString()}] Checking for payments to execute...`,
     );
 
-    try {
-      // Get all payment policies managed by this gateway
-      const { address: gatewayPda } = this.sdk.getGatewayPda(
-        this.gatewayKeypair.publicKey,
-      );
-      const paymentPolicies =
-        await this.sdk.getPaymentPoliciesByGateway(gatewayPda);
+    let totalExecutedCount = 0;
+    let totalErrorCount = 0;
+
+    for (let i = 0; i < this.gatewayKeypairs.length; i++) {
+      const keypair = this.gatewayKeypairs[i];
+      const wallet = new anchor.Wallet(keypair);
+      await this.sdk.updateWallet(wallet);
 
       console.log(
-        `Found ${paymentPolicies.length} payment policies for this gateway`,
+        `[${new Date().toISOString()}] Processing gateway: ${keypair.publicKey.toString()}`,
       );
 
-      const currentTime = Math.floor(Date.now() / 1000);
-      let executedCount = 0;
-      let errorCount = 0;
+      try {
+        const { address: gatewayPda } = this.sdk.getGatewayPda(
+          keypair.publicKey,
+        );
+        const paymentPolicies =
+          await this.sdk.getPaymentPoliciesByGateway(gatewayPda);
 
-      for (const { publicKey: policyPda, account: policy } of paymentPolicies) {
-        try {
-          // Check if payment is due and policy is active
-          if (this.shouldExecutePayment(policy, currentTime)) {
-            let milestoneInfo = "";
-            if (policy.policyType.milestone) {
-              const m = policy.policyType.milestone;
-              milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${
-                m.totalMilestones
-              })`;
+        console.log(
+          `Found ${paymentPolicies.length} payment policies for this gateway`,
+        );
+
+        const currentTime = Math.floor(Date.now() / 1000);
+        let executedCount = 0;
+        let errorCount = 0;
+
+        for (const {
+          publicKey: policyPda,
+          account: policy,
+        } of paymentPolicies) {
+          try {
+            if (this.shouldExecutePayment(policy, currentTime)) {
+              let milestoneInfo = "";
+              if (policy.policyType.milestone) {
+                const m = policy.policyType.milestone;
+                milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${
+                  m.totalMilestones
+                })`;
+              }
+
+              console.log(
+                `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`,
+              );
+
+              await this.executePayment(policyPda);
+              executedCount++;
+
+              console.log(
+                `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`,
+              );
+
+              await this.delay(1000);
             }
-
-            console.log(
-              `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`,
+          } catch (error) {
+            console.error(
+              `🚩 Error executing payment for ${policyPda.toString()}`,
             );
-
-            await this.executePayment(policyPda);
-            executedCount++;
-
-            console.log(
-              `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`,
-            );
-
-            // Add small delay between payments to avoid overwhelming the RPC
-            await this.delay(1000);
+            if (error instanceof SendTransactionError) {
+              console.error(error.message);
+              console.error(error.logs);
+            }
+            errorCount++;
           }
-        } catch (error) {
-          console.error(
-            `🚩 Error executing payment for ${policyPda.toString()}`,
-          );
-          if (error instanceof SendTransactionError) {
-            console.error(error.message);
-            console.error(error.logs);
-          }
-          errorCount++;
         }
-      }
 
-      console.log(
-        `Payment execution completed. Executed: ${executedCount}, Errors: ${errorCount}`,
-      );
-    } catch (error) {
-      console.error("Error in payment checking process");
+        console.log(
+          `Gateway ${keypair.publicKey.toString()} completed. Executed: ${executedCount}, Errors: ${errorCount}`,
+        );
+
+        totalExecutedCount += executedCount;
+        totalErrorCount += errorCount;
+      } catch (error) {
+        console.error(
+          `Error processing gateway ${keypair.publicKey.toString()}:`,
+          error,
+        );
+      }
     }
+
+    console.log(
+      `Payment execution completed. Total Executed: ${totalExecutedCount}, Total Errors: ${totalErrorCount}`,
+    );
   }
 
   private shouldExecutePayment(policy: any, currentTime: number): boolean {
@@ -213,16 +243,16 @@ class PaymentScheduler {
   }
 
   public start(): void {
-    const schedule = this.config.cronSchedule || "*/5 * * * *"; // Every 5mins
+    const schedule = this.config.cronSchedule || "*/5 * * * *";
 
     console.log(`Starting payment scheduler with schedule: ${schedule}`);
-    console.log(`Gateway: ${this.gatewayKeypair.publicKey.toString()}`);
+    console.log(
+      `Gateways: ${this.gatewayKeypairs.map((k) => k.publicKey.toString()).join(", ")}`,
+    );
     console.log(`Connection: ${this.config.connectionUrl}`);
 
-    // Run initial check
     this.checkAndExecutePayments().catch(console.error);
 
-    // Schedule recurring checks
     cron.schedule(
       schedule,
       () => {
@@ -253,10 +283,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
 
+  let privateKeys: string[] | undefined;
+  if (process.env.PRIVATE_KEY) {
+    privateKeys = process.env.PRIVATE_KEY.split(";").filter((k) => k.trim());
+  }
+
   const config: SchedulerConfig = {
     connectionUrl: process.env.SOLANA_API,
     gatewayKeypairPath: process.env.ANCHOR_WALLET,
-    privateKey: process.env.PRIVATE_KEY,
+    privateKeys: privateKeys,
     cronSchedule: process.env.CRON_SCHEDULE || "0 * * * *",
   };
 

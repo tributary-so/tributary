@@ -101,3 +101,14 @@ export function computePaymentsPerYear(frequency: PaymentFrequency): number {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export function generateSecureRandomString(length: number = 6): string {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+
+  return Array.from(array)
+    .map((x) => characters[x % characters.length])
+    .join("");
+}

@@ -17,7 +17,7 @@ import {
 } from "@solana/spl-token";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { Tributary } from "../target/types/tributary";
-import { PaymentFrequency, TributarySDK } from "../sdk/src";
+import { PaymentFrequency, TributarySDK, encodeMemo } from "../sdk/src";
 import assert from "assert";
 import { Buffer } from "buffer";
 
@@ -2581,6 +2581,82 @@ describe("Tributary", () => {
       expect(parseInt(finalL1Balance.value.amount)).toEqual(
         parseInt(initialL1Balance.value.amount)
       );
+    });
+
+    test("Create subscription using existing referral code", async () => {
+      // Create a new user for this test
+      const subscriptionUser = Keypair.generate();
+      await fund(subscriptionUser.publicKey, 5);
+
+      const subscriptionUserTokenAccount = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        subscriptionUser.publicKey
+      );
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        subscriptionUserTokenAccount,
+        mintAuthority,
+        1000000n
+      );
+
+      // Verify the referral account was created
+      const referralCode = "PAYER3";
+      await sdk.updateWallet(new anchor.Wallet(subscriptionUser));
+      const referralPda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from(referralCode)
+      ).address;
+      const initialReferralAccount = await sdk.getReferralAccount(referralPda);
+      expect(initialReferralAccount).not.toBeNull();
+      expect(initialReferralAccount!.referralCode).toEqual(
+        encodeMemo(referralCode, 6)
+      );
+
+      // Create a subscription using the existing referral code
+      const amount = new anchor.BN(100000); // 0.1 tokens
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("subscription with referral").copy(memo);
+      const paymentFrequency = { daily: {} };
+      const currentTime = Math.floor(Date.now() / 1000);
+      const startTime = new anchor.BN(currentTime - 3600);
+
+      const createSubscriptionIxs = await sdk.createSubscription(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amount,
+        true,
+        null,
+        paymentFrequency,
+        Array.from(memo),
+        startTime,
+        undefined, // approvalAmount
+        undefined, // executeImmediately
+        referralCode // use existing referral code
+      );
+
+      const subscriptionTx = new Transaction().add(...createSubscriptionIxs);
+      await sendAndConfirmTransaction(
+        connection,
+        subscriptionTx,
+        [subscriptionUser],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+
+      // Verify the referral account still exists and has the correct code
+      const userReferralAccount = await sdk.getReferralAccountByOwner(
+        gatewayPDA,
+        subscriptionUser.publicKey
+      );
+      expect(userReferralAccount).not.toBeNull();
+      expect(userReferralAccount!.owner).toEqual(subscriptionUser.publicKey);
+      expect(userReferralAccount!.gateway).toEqual(gatewayPDA);
     });
   });
 

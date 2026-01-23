@@ -535,6 +535,7 @@ interface DetailPanelProps {
   executingPayments: Set<string>
   togglingPolicies: Set<string>
   deletingPolicies: Set<string>
+  referralAccounts: Map<string, any>
 }
 
 function SubscriptionDetailPanel(props: DetailPanelProps) {
@@ -551,6 +552,7 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
     executingPayments,
     togglingPolicies,
     deletingPolicies,
+    referralAccounts,
   } = props
   const sub = policy.account.policyType.subscription!
   const tokenMint = userPayment.userPayment.tokenMint
@@ -691,6 +693,12 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
             label="Created"
             value={new Date(userPayment.userPayment.createdAt.toNumber() * 1000).toLocaleString()}
           />
+          {(() => {
+            const referralAccount = referralAccounts.get(policy.account.gateway.toString())
+            return referralAccount ? (
+              <DetailRow label="Referral Code" value={decodeMemo(referralAccount.referralCode)} copyable />
+            ) : null
+          })()}
         </div>
       </div>
     </div>
@@ -710,6 +718,7 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
     executingPayments,
     togglingPolicies,
     deletingPolicies,
+    referralAccounts,
   } = props
   const milestone = policy.account.policyType.milestone!
   const tokenMint = userPayment.userPayment.tokenMint
@@ -809,6 +818,12 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
           <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
           <DetailRow label="Escrow Amount" value={formatAmount(milestone.escrowAmount.toString(), tokenMint)} />
+          {(() => {
+            const referralAccount = referralAccounts.get(policy.account.gateway.toString())
+            return referralAccount ? (
+              <DetailRow label="Referral Code" value={decodeMemo(referralAccount.referralCode)} copyable />
+            ) : null
+          })()}
         </div>
       </div>
     </div>
@@ -826,6 +841,7 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
     executingPayments,
     togglingPolicies,
     deletingPolicies,
+    referralAccounts,
   } = props
   const payg = policy.account.policyType.payAsYouGo!
   const tokenMint = userPayment.userPayment.tokenMint
@@ -920,6 +936,12 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
           <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
+          {(() => {
+            const referralAccount = referralAccounts.get(policy.account.gateway.toString())
+            return referralAccount ? (
+              <DetailRow label="Referral Code" value={decodeMemo(referralAccount.referralCode)} copyable />
+            ) : null
+          })()}
         </div>
       </div>
     </div>
@@ -996,6 +1018,7 @@ export default function AccountPage() {
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
   const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
   const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
+  const [referralAccounts, setReferralAccounts] = useState<Map<string, any>>(new Map())
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
 
@@ -1039,6 +1062,27 @@ export default function AccountPage() {
         }
 
         setUserPayments(Array.from(userPaymentMap.values()))
+
+        // Fetch referral accounts for unique gateways (once per gateway)
+        const uniqueGateways = new Set<string>()
+        for (const userPayment of Array.from(userPaymentMap.values())) {
+          for (const policy of userPayment.policies) {
+            uniqueGateways.add(policy.account.gateway.toString())
+          }
+        }
+
+        const referralMap = new Map<string, any>()
+        for (const gatewayKey of uniqueGateways) {
+          try {
+            const referralAccount = await sdk.getReferralAccountByOwner(new PublicKey(gatewayKey), wallet.publicKey)
+            if (referralAccount) {
+              referralMap.set(gatewayKey, referralAccount)
+            }
+          } catch (error) {
+            console.error('Error fetching referral account for gateway:', gatewayKey, error)
+          }
+        }
+        setReferralAccounts(referralMap)
 
         const allPolicies = Array.from(userPaymentMap.values()).flatMap((up) => up.policies)
         if (allPolicies.length > 0 && !selectedPolicy) {
@@ -1324,6 +1368,7 @@ export default function AccountPage() {
                 executingPayments={executingPayments}
                 togglingPolicies={togglingPolicies}
                 deletingPolicies={deletingPolicies}
+                referralAccounts={referralAccounts}
               />
             )}
             {'milestone' in selectedPolicy.account.policyType && (
@@ -1346,6 +1391,7 @@ export default function AccountPage() {
                 executingPayments={executingPayments}
                 togglingPolicies={togglingPolicies}
                 deletingPolicies={deletingPolicies}
+                referralAccounts={referralAccounts}
               />
             )}
             {'payAsYouGo' in selectedPolicy.account.policyType && (
@@ -1368,6 +1414,7 @@ export default function AccountPage() {
                 executingPayments={executingPayments}
                 togglingPolicies={togglingPolicies}
                 deletingPolicies={deletingPolicies}
+                referralAccounts={referralAccounts}
               />
             )}
           </>
