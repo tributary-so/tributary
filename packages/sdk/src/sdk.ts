@@ -38,8 +38,8 @@ import {
   generateSecureRandomString,
   sleep,
 } from "./utils";
-import IDL from "../../target/idl/tributary.json"; // with { type: "json" };
-import { Tributary as TributaryIdl } from "../../target/types/tributary.js";
+import IDL from "../../../target/idl/tributary.json"; // with { type: "json" };
+import { Tributary as TributaryIdl } from "../../../target/types/tributary.js";
 
 /**
  * Anchor Program type for the Recurring Payments smart contract.

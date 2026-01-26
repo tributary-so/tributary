@@ -1,10 +1,5 @@
 packages:
-  - "app"
-  - "cli"
-  - "landing"
-  - "scheduler"
-  - "sdk"
-  - "sdk-react"
-  - "sdk-x402"
+  - "apps/*"
+  - "packages/*"
   - "tests"
   - "programs/tributary"

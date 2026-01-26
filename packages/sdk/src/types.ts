@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { type Tributary } from "../../target/types/tributary.js";
+import { type Tributary } from "../../../target/types/tributary.js";
 import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
 
 /**

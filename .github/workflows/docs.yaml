@@ -25,11 +25,11 @@ jobs:
             mkdocs-material-
 
       - name: Install dependencies
-        working-directory: ./docs
+        working-directory: ./apps/docs
         run: pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-llmstxt
 
       - name: Build
-        working-directory: ./docs
+        working-directory: ./apps/docs
         run: mkdocs build --site-dir public
 
       - name: Deploy to external repository
@@ -39,7 +39,7 @@ jobs:
           deploy_key: ${{ secrets.DOCS_DEPLOY_KEY_TRIBUTARY_SO }}
           external_repository: tributary-so/docs.tributary.so
           publish_branch: gh-pages
-          publish_dir: ./docs/public
+          publish_dir: ./apps/docs/public
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"

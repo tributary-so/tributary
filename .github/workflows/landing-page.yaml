@@ -28,11 +28,11 @@ jobs:
           cache-dependency-path: ./pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: ./landing
+        working-directory: ./apps/landing
         run: pnpm install
 
       - name: Build
-        working-directory: ./landing
+        working-directory: ./apps/landing
         run: pnpm run build
         env:
           # https://github.com/actions/runner-images/issues/70
@@ -46,7 +46,7 @@ jobs:
           deploy_key: ${{ secrets.LANDING_DEPLOY_KEY_TRIBUTARY_SO }}
           external_repository: tributary-so/tributary.so
           publish_branch: gh-pages
-          publish_dir: ./landing/dist
+          publish_dir: ./apps/landing/dist
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"

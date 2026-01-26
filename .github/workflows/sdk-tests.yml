@@ -42,8 +42,8 @@ jobs:
 
       # The SDK is a depenency that needs building for the other libraries
       - name: Install dependencies
-        working-directory: ./sdk
-        if: ${{ matrix.path != 'sdk' }}
+        working-directory: ./packages/sdk
+        if: ${{ matrix.path != 'packages/sdk' }}
         run: |
           pnpm install --frozen-lockfile
           pnpm run build

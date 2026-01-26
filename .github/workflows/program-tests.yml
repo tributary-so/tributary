@@ -30,7 +30,7 @@ jobs:
         run: pnpm install
 
       - name: Build SDK
-        working-directory: ./sdk
+        working-directory: ./packages/sdk
         run: pnpm run build
 
       - name: Extract versions
