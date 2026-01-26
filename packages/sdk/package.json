@@ -35,12 +35,12 @@
   "engines": {
     "node": ">=16"
   },
-  "main": "./dist/sdk/src/index.js",
-  "types": "./dist/sdk/src/index.d.ts",
+  "main": "./dist/packages/sdk/src/index.js",
+  "types": "./dist/packages/sdk/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/sdk/src/index.d.ts",
-      "default": "./dist/sdk/src/index.js"
+      "types": "./dist/packages/sdk/src/index.d.ts",
+      "default": "./dist/packages/sdk/src/index.js"
     }
   },
   "publishConfig": {

@@ -724,10 +724,13 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
   const tokenMint = userPayment.userPayment.tokenMint
   const status = getStatusKey(policy.account)
 
-  const totalAmount = milestone.milestoneAmounts.reduce((sum, amt) => sum.add(amt), new anchor.BN(0))
+  const totalAmount = milestone.milestoneAmounts.reduce(
+    (sum: anchor.BN, amt: anchor.BN) => sum.add(amt),
+    new anchor.BN(0),
+  )
   const completedAmount = milestone.milestoneAmounts
     .slice(0, milestone.currentMilestone)
-    .reduce((sum, amt) => sum.add(amt), new anchor.BN(0))
+    .reduce((sum: anchor.BN, amt: anchor.BN) => sum.add(amt), new anchor.BN(0))
 
   const progressPercent = (milestone.currentMilestone / milestone.totalMilestones) * 100
 

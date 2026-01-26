@@ -17,7 +17,11 @@ import {
 } from "@solana/spl-token";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { Tributary } from "../target/types/tributary";
-import { PaymentFrequency, TributarySDK, encodeMemo } from "../sdk/src";
+import {
+  PaymentFrequency,
+  TributarySDK,
+  encodeMemo,
+} from "../packages/sdk/src";
 import assert from "assert";
 import { Buffer } from "buffer";
 

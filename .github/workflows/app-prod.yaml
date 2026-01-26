@@ -28,19 +28,19 @@ jobs:
         run: pnpm install
 
       - name: Install dependencies
-        working-directory: ./app
+        working-directory: ./apps/app
         run: pnpm install
 
       - name: Build SDK
-        working-directory: ./sdk
+        working-directory: ./packages/sdk
         run: pnpm run build
 
       - name: Build SDK-react
-        working-directory: ./sdk-react
+        working-directory: ./packages/sdk-react
         run: pnpm run build
 
       - name: Build App
-        working-directory: ./app
+        working-directory: ./apps/app
         run: pnpm run build
         env:
           # https://github.com/actions/runner-images/issues/70
@@ -53,7 +53,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./app/dist
+          publish_dir: ./apps/app/dist
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"

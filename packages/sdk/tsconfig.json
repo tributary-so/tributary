@@ -15,7 +15,6 @@
     "target": "es2020",
     "module": "es2020",
     "moduleResolution": "bundler",
-
     "outDir": "./dist"
   },
   "exclude": ["node_modules", "tests", "docs", "dist"]

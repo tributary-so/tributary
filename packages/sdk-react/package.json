@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@actioncodes/sdk": "^2.0.18",
-    "@heroui/button": "^2.2.27",
-    "@heroui/input": "^2.4.28",
-    "@heroui/react": "^2.8.5",
-    "@heroui/system": "^2.4.23",
-    "@heroui/theme": "^2.4.23",
-    "@heroui/popover": "^2.3.27",
+    "@heroui/button": "^2.2.29",
+    "@heroui/input": "^2.4.30",
+    "@heroui/popover": "^2.3.29",
+    "@heroui/react": "^2.8.7",
+    "@heroui/system": "^2.4.25",
+    "@heroui/theme": "^2.4.25",
     "@tributary-so/sdk": "workspace:*",
     "lucide-react": "^0.544.0"
   },

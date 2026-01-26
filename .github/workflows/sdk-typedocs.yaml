@@ -35,7 +35,7 @@ jobs:
           deploy_key: ${{ secrets.SDK_DEPLOY_KEY_TRIBUTARY_SO }}
           external_repository: tributary-so/sdk.tributary.so
           publish_branch: gh-pages
-          publish_dir: ./sdk/docs
+          publish_dir: ./packages/sdk/docs
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"

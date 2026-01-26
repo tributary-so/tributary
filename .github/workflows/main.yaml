@@ -67,19 +67,19 @@ jobs:
             HAS_PROGRAMS=1
             echo "::notice::Programs changed"
           fi
-          if echo "$CHANGED_FILES" | grep -q "^sdk/"; then
+          if echo "$CHANGED_FILES" | grep -q "^packages/sdk/"; then
             HAS_SDK=1
             echo "::notice::SDK changed"
           fi
-          if echo "$CHANGED_FILES" | grep -q "^sdk-react/"; then
+          if echo "$CHANGED_FILES" | grep -q "^packages/sdk-react/"; then
             HAS_SDK_REACT=1
             echo "::notice::SDK-React changed"
           fi
-          if echo "$CHANGED_FILES" | grep -q "^sdk-x402/"; then
+          if echo "$CHANGED_FILES" | grep -q "^packages/sdk-x402/"; then
             HAS_SDK_X402=1
             echo "::notice::SDK-x402 changed"
           fi
-          if echo "$CHANGED_FILES" | grep -q "^scheduler/"; then
+          if echo "$CHANGED_FILES" | grep -q "^apps/scheduler/"; then
             HAS_SCHEDULER=1
             echo "::notice::Scheduler changed"
           fi
@@ -92,13 +92,13 @@ jobs:
 
           ELEMENTS=""
           if [ "$HAS_SDK" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"sdk\","
+            ELEMENTS="${ELEMENTS}\"packages/sdk\","
           fi
           if [ "$HAS_SDK_REACT" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"sdk-react\","
+            ELEMENTS="${ELEMENTS}\"packages/sdk-react\","
           fi
           if [ "$HAS_SDK_X402" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"sdk-x402\","
+            ELEMENTS="${ELEMENTS}\"packages/sdk-x402\","
           fi
 
           if [ -n "$ELEMENTS" ]; then
@@ -171,4 +171,4 @@ jobs:
     uses: ./.github/workflows/build-docker-image.yaml
     with:
       registry: ghcr.io
-      package: scheduler
+      package: apps/scheduler

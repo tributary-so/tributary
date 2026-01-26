@@ -6,10 +6,12 @@ node_modules
 test-ledger
 .yarn
 
-*/lib
-*/dist
+**/lib
+**/dist
 
 # bv (beads viewer) local config and caches
 .bv/
 
-sdk-x402/coverage/
+packages/sdk-x402/coverage/
+apps/docs/env
+
