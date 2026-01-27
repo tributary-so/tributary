@@ -1,51 +1,13 @@
-// Stripe ↔ Tributary conversion utilities
+// Tributary ↔ Tributary conversion utilities
 
 import {
-  StripeCheckoutSession,
-  StripeSubscription,
+  TributarySubscription,
   TributaryConfig,
   PaymentTransaction,
-} from "../types/stripe";
+} from "../types/tributary";
 import { MemoUtils } from "./memo";
 
-export class StripeTributaryConverter {
-  // USDC mint address on Solana
-  private static readonly USDC_MINT =
-    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-
-  // Stripe Checkout Session → Tributary Session
-  static stripeSessionToTributary(
-    session: StripeCheckoutSession
-  ): TributarySession {
-    if (!session.tributaryConfig) {
-      throw new Error("tributaryConfig is required for Tributary conversion");
-    }
-
-    const lineItem = session.line_items[0];
-    if (!lineItem) {
-      throw new Error("At least one line item is required");
-    }
-
-    return {
-      sessionId: session.id,
-      gateway: session.tributaryConfig.gateway,
-      recipient: session.tributaryConfig.recipient,
-      tokenMint: this.USDC_MINT,
-      amount: this.parseAmount(
-        session.amount_total || lineItem.price_data.unit_amount
-      ),
-      currency: session.currency || "usd",
-      paymentFrequency: this.convertFrequency(
-        lineItem.price_data.recurring?.interval
-      ),
-      autoRenew: session.tributaryConfig.autoRenew ?? true,
-      trackingId: session.tributaryConfig.trackingId,
-      memo: this.buildMemo(session.tributaryConfig),
-      productName: lineItem.price_data.product_data.name,
-      productDescription: lineItem.price_data.product_data.description,
-    };
-  }
-
+export class TributaryTributaryConverter {
   // Build MEMO field with tracking ID
   static buildMemo(tributaryConfig: TributaryConfig): string {
     const baseMemo = tributaryConfig.memo || "";
@@ -59,7 +21,7 @@ export class StripeTributaryConverter {
     return amount * 10000; // Convert cents to USDC units (6 decimals)
   }
 
-  // Convert Stripe frequency to Tributary frequency
+  // Convert Tributary frequency to Tributary frequency
   static convertFrequency(interval?: string): string {
     switch (interval) {
       case "day":
@@ -75,7 +37,7 @@ export class StripeTributaryConverter {
     }
   }
 
-  // Convert Tributary frequency to Stripe frequency
+  // Convert Tributary frequency to Tributary frequency
   static convertFrequencyToString(
     frequency?: string
   ): "day" | "week" | "month" | "year" {
@@ -93,8 +55,8 @@ export class StripeTributaryConverter {
     }
   }
 
-  // Convert Tributary Payment Policy → Stripe Subscription
-  static tributaryPolicyToStripe(policy: any): StripeSubscription {
+  // Convert Tributary Payment Policy → Tributary Subscription
+  static tributaryPolicyToTributary(policy: any): TributarySubscription {
     return {
       id: policy.publicKey?.toString() || "",
       object: "subscription",
@@ -111,7 +73,7 @@ export class StripeTributaryConverter {
             object: "price",
             currency: "usd",
             unit_amount:
-              this.tributaryAmountToStripe(
+              this.tributaryAmountToTributary(
                 policy.policyType?.subscription?.amount
               ) || 0,
             recurring: {
@@ -132,14 +94,14 @@ export class StripeTributaryConverter {
     };
   }
 
-  // Convert Tributary amount to Stripe amount (lamports to cents)
-  static tributaryAmountToStripe(amount?: any): number {
+  // Convert Tributary amount to Tributary amount (lamports to cents)
+  static tributaryAmountToTributary(amount?: any): number {
     if (!amount) return 0;
     const lamports = amount.toNumber?.() || Number(amount);
     return Math.floor(lamports / 10000); // Convert USDC units to cents
   }
 
-  // Convert policy status to Stripe subscription status
+  // Convert policy status to Tributary subscription status
   static convertPolicyStatus(
     status?: string
   ):

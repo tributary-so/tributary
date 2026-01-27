@@ -1,20 +1,21 @@
 // Main payments client - zero configuration required
 
-import { StripeCheckoutSession, TributaryConfig } from "../types/stripe";
 import { CheckoutSessionManager } from "./session";
 import { PaymentTracker } from "./tracking";
+import { Connection } from "@solana/web3.js";
+import { Tributary } from "@tributary-so/sdk";
 
 export class PaymentsClient {
   private _checkout: CheckoutSessionManager;
   private _tracker: PaymentTracker;
 
-  constructor() {
+  constructor(connection: Connection, tributary: Tributary) {
     // Zero configuration initialization
     this._checkout = new CheckoutSessionManager();
-    this._tracker = new PaymentTracker();
+    this._tracker = new PaymentTracker(connection, tributary);
   }
 
-  // Stripe-compatible checkout sessions
+  // Tributary-compatible checkout sessions
   get checkout() {
     return this._checkout;
   }

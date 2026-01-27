@@ -1,6 +1,6 @@
 // Input validation utilities
 
-import { TributaryConfig } from "../types/stripe";
+import { TributaryConfig } from "../types/tributary";
 import { MemoUtils } from "./memo";
 
 export class ValidationUtils {

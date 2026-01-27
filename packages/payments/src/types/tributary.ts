@@ -1,6 +1,6 @@
-// Stripe-compatible types for Tributary payments
+// Tributary-compatible types for Tributary payments
 
-export interface StripeCheckoutSession {
+export interface TributaryCheckoutSession {
   id: string;
   object: "checkout.session";
   url?: string;
@@ -41,7 +41,7 @@ export interface Recurring {
   interval_count?: number;
 }
 
-export interface StripeSubscription {
+export interface TributarySubscription {
   id: string;
   object: "subscription";
   customer: string;
