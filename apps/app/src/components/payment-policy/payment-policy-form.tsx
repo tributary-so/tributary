@@ -110,6 +110,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
         console.error('Error fetching payment gateways:', error)
       } finally {
         setGatewaysLoading(false)
+        setGatewaysLoaded(true)
       }
     }
     if (sdk && !gatewaysLoaded) {
