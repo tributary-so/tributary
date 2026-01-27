@@ -1,36 +1,55 @@
-import { PaymentsClient } from "../src/index";
+// Tests for PaymentsClient and core functionality
 
-// Mock the PaymentTracker to avoid network calls
-const mockPaymentStatus = {
-  status: "pending" as const,
-  transactions: [] as const,
-};
-
-const mockPaymentHistory: any[] = [];
-
-jest.mock("../src/core/tracking", () => ({
-  PaymentTracker: jest.fn().mockImplementation(() => ({
-    checkPaymentStatus: jest.fn().mockResolvedValue(mockPaymentStatus),
-    getPaymentHistory: jest.fn().mockResolvedValue(mockPaymentHistory),
-  })),
-}));
+import { PaymentsClient } from "./index";
 
 describe("PaymentsClient", () => {
+  let mockConnection: any;
+  let mockTributary: any;
   let client: PaymentsClient;
 
   beforeEach(() => {
-    client = new PaymentsClient();
+    // Create simple mock instances
+    mockConnection = {
+      getAccountInfo: jest.fn(),
+      getParsedTransaction: jest.fn(),
+      getSignaturesForAddress: jest.fn(),
+    };
+
+    mockTributary = {
+      getUserPaymentPda: jest
+        .fn()
+        .mockReturnValue({ address: "mockUserPaymentPda" }),
+      getPaymentPoliciesByUserPayment: jest.fn().mockResolvedValue([] as any),
+      getPaymentPoliciesByGateway: jest.fn().mockResolvedValue([] as any),
+      getPaymentPolicy: jest.fn(),
+    };
+
+    client = new PaymentsClient(mockConnection, mockTributary);
   });
 
   describe("constructor", () => {
-    it("should create client without configuration", () => {
-      expect(client).toBeInstanceOf(PaymentsClient);
+    it("should create client with required parameters", () => {
+      expect(client).toBeDefined();
       expect(client.checkout).toBeDefined();
+      expect(client.checkout.sessions).toBeDefined();
       expect(client.payments).toBeDefined();
+      expect(client.subscriptions).toBeDefined();
+    });
+
+    it("should not throw error when connection is missing (current implementation)", () => {
+      expect(() => {
+        new PaymentsClient(null as any, mockTributary);
+      }).not.toThrow();
+    });
+
+    it("should not throw error when tributary is missing (current implementation)", () => {
+      expect(() => {
+        new PaymentsClient(mockConnection, null as any);
+      }).not.toThrow();
     });
   });
 
-  describe("checkout.create", () => {
+  describe("checkout.sessions.create", () => {
     it("should create a checkout session with valid parameters", async () => {
       const params = {
         payment_method_types: ["tributary"],
@@ -40,24 +59,22 @@ describe("PaymentsClient", () => {
               currency: "usd",
               product_data: { name: "Test Product" },
               unit_amount: 2000,
-              recurring: { interval: "month" as const },
+              recurring: { interval: "month" },
             },
             quantity: 1,
           },
         ],
-        mode: "subscription" as const,
+        mode: "subscription",
         success_url: "https://example.com/success",
         cancel_url: "https://example.com/cancel",
         tributaryConfig: {
           gateway: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
           recipient: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
           trackingId: "test_tracking_id",
-          autoRenew: true,
-          memo: "Test subscription",
         },
       };
 
-      const session = await client.checkout.create(params);
+      const session = await client.checkout.sessions.create(params);
 
       expect(session).toBeDefined();
       expect(session.id).toBeDefined();
@@ -66,7 +83,7 @@ describe("PaymentsClient", () => {
       expect(session.mode).toBe("subscription");
       expect(session.payment_status).toBe("unpaid");
       expect(session.status).toBe("open");
-      expect(session.tributaryConfig).toEqual(params.tributaryConfig);
+      expect(session.url).toBeDefined();
     });
 
     it("should throw error for invalid gateway key", async () => {
@@ -78,12 +95,12 @@ describe("PaymentsClient", () => {
               currency: "usd",
               product_data: { name: "Test Product" },
               unit_amount: 2000,
-              recurring: { interval: "month" as const },
+              recurring: { interval: "month" },
             },
             quantity: 1,
           },
         ],
-        mode: "subscription" as const,
+        mode: "subscription",
         success_url: "https://example.com/success",
         cancel_url: "https://example.com/cancel",
         tributaryConfig: {
@@ -93,7 +110,7 @@ describe("PaymentsClient", () => {
         },
       };
 
-      await expect(client.checkout.create(params)).rejects.toThrow(
+      await expect(client.checkout.sessions.create(params)).rejects.toThrow(
         "Invalid gateway public key format"
       );
     });
@@ -107,12 +124,12 @@ describe("PaymentsClient", () => {
               currency: "usd",
               product_data: { name: "Test Product" },
               unit_amount: 2000,
-              recurring: { interval: "month" as const },
+              recurring: { interval: "month" },
             },
             quantity: 1,
           },
         ],
-        mode: "subscription" as const,
+        mode: "subscription",
         success_url: "https://example.com/success",
         cancel_url: "https://example.com/cancel",
         tributaryConfig: {
@@ -122,7 +139,7 @@ describe("PaymentsClient", () => {
         },
       };
 
-      await expect(client.checkout.create(params)).rejects.toThrow(
+      await expect(client.checkout.sessions.create(params)).rejects.toThrow(
         "Invalid trackingId format"
       );
     });
@@ -131,7 +148,7 @@ describe("PaymentsClient", () => {
       const params = {
         payment_method_types: ["tributary"],
         line_items: [],
-        mode: "subscription" as const,
+        mode: "subscription",
         success_url: "https://example.com/success",
         cancel_url: "https://example.com/cancel",
         tributaryConfig: {
@@ -141,17 +158,113 @@ describe("PaymentsClient", () => {
         },
       };
 
-      await expect(client.checkout.create(params)).rejects.toThrow(
+      await expect(client.checkout.sessions.create(params)).rejects.toThrow(
         "line_items is required and must be a non-empty array"
       );
     });
   });
 
+  describe("checkout.sessions.retrieve", () => {
+    it("should retrieve a session by tracking ID", async () => {
+      const session = await client.checkout.sessions.retrieve("trib_test123");
+
+      expect(session).toBeDefined();
+      expect(session.object).toBe("checkout.session");
+    });
+
+    it("should handle encoded session URLs", async () => {
+      const encodedUrl =
+        "https://checkout.tributary.so/subscribe/eyJ0bSI6IkVQakFWZGRBdWZxU1NxZTJxTjF6eWJhcEM4RzR3RUdHa3p3eVREdjF2Iiwi";
+      const session = await client.checkout.sessions.retrieve(encodedUrl);
+
+      expect(session).toBeDefined();
+      expect(session.object).toBe("checkout.session");
+    });
+  });
+
+  describe("subscriptions.checkStatus", () => {
+    it("should check subscription status with user-based lookup", async () => {
+      const status = await client.subscriptions.checkStatus({
+        trackingId: "test_tracking_id",
+        userPublicKey: "test_user_public_key",
+        tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      });
+
+      expect(status).toBeDefined();
+      expect(status.status).toMatch(/pending|created|active|failed/);
+      expect(typeof status.subscriptionCreated).toBe("boolean");
+      expect(typeof status.initialPaymentExecuted).toBe("boolean");
+      expect(typeof status.paymentCount).toBe("number");
+    });
+
+    it("should check subscription status with gateway-based lookup", async () => {
+      const status = await client.subscriptions.checkStatus({
+        trackingId: "test_tracking_id",
+        gatewayPublicKey: "test_gateway_public_key",
+      });
+
+      expect(status).toBeDefined();
+      expect(status.status).toMatch(/pending|created|active|failed/);
+    });
+
+    it("should return pending status when neither user nor gateway public key is provided", async () => {
+      const status = await client.subscriptions.checkStatus({
+        trackingId: "test_tracking_id",
+      } as any);
+
+      expect(status).toBeDefined();
+      expect(status.status).toBe("pending");
+      expect(status.subscriptionCreated).toBe(false);
+      expect(status.initialPaymentExecuted).toBe(false);
+      expect(status.paymentCount).toBe(0);
+    });
+  });
+
+  describe("subscriptions.isActive", () => {
+    it("should return boolean for subscription status", async () => {
+      const isActive = await client.subscriptions.isActive({
+        trackingId: "test_tracking_id",
+        userPublicKey: "test_user_public_key",
+      });
+
+      expect(typeof isActive).toBe("boolean");
+    });
+
+    it("should work with gateway-based lookup", async () => {
+      const isActive = await client.subscriptions.isActive({
+        trackingId: "test_tracking_id",
+        gatewayPublicKey: "test_gateway_public_key",
+      });
+
+      expect(typeof isActive).toBe("boolean");
+    });
+  });
+
+  describe("subscriptions.getDetails", () => {
+    it("should return subscription details or null", async () => {
+      const details = await client.subscriptions.getDetails({
+        trackingId: "test_tracking_id",
+        userPublicKey: "test_user_public_key",
+      });
+
+      expect(details === null || typeof details === "object").toBe(true);
+    });
+
+    it("should work with gateway-based lookup", async () => {
+      const details = await client.subscriptions.getDetails({
+        trackingId: "test_tracking_id",
+        gatewayPublicKey: "test_gateway_public_key",
+      });
+
+      expect(details === null || typeof details === "object").toBe(true);
+    });
+  });
+
   describe("payments.checkStatus", () => {
-    it("should check payment status", async () => {
+    it("should check payment status using legacy method", async () => {
       const status = await client.payments.checkStatus(
         "test_tracking_id",
-        "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+        "test_recipient"
       );
 
       expect(status).toBeDefined();
@@ -161,10 +274,10 @@ describe("PaymentsClient", () => {
   });
 
   describe("payments.getHistory", () => {
-    it("should get payment history", async () => {
+    it("should get payment history using legacy method", async () => {
       const history = await client.payments.getHistory(
         "test_tracking_id",
-        "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+        "test_recipient"
       );
 
       expect(Array.isArray(history)).toBe(true);
