@@ -8,5 +8,6 @@
     "lint": "rustftmp src/**/*.rs"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {},
+  "version": "1.2.0"
 }

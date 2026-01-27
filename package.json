@@ -165,7 +165,8 @@
         {
           "npmPublish": false
         }
-      ]
+      ],
+      "@semantic-release/github"
     ]
   }
 }
