@@ -46,6 +46,7 @@ export default function ReferralAccountForm({ formData, onFormDataChange }: Refe
         console.error('Error fetching payment gateways:', error)
       } finally {
         setGatewaysLoading(false)
+        setGatewaysLoaded(true)
       }
     }
     if (sdk && !gatewaysLoaded) {
