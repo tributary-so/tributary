@@ -35,15 +35,12 @@ const session = await stripe.checkout.sessions.create({
   payment_method_types: ["tributary"],
   line_items: [
     {
-      price_data: {
-        currency: "usd",
-        product_data: { name: "Premium Plan" },
-        unit_amount: 2000, // $20.00
-        recurring: { interval: "month" },
-      },
+      description: "Monthly premium access to all features",
+      unitPrice: 20.0, // $20.00
       quantity: 1,
     },
   ],
+  paymentFrequency: "monthly",
   mode: "subscription",
   success_url: "https://yourapp.com/success",
   cancel_url: "https://yourapp.com/cancel",
@@ -51,6 +48,8 @@ const session = await stripe.checkout.sessions.create({
     gateway: "GATEWAY_PUBLIC_KEY_HERE",
     recipient: "RECIPIENT_PUBLIC_KEY_HERE",
     trackingId: "user_123_monthly_premium", // Your unique identifier
+    autoRenew: true,
+    memo: "Optional memo for the payment",
   },
 });
 
@@ -179,12 +178,13 @@ The encoded data includes:
 - `tm`: Token mint (USDC)
 - `r`: Recipient public key
 - `g`: Gateway public key
-- `a`: Amount in smallest units
+- `a`: Total amount (calculated from line items)
 - `ar`: Auto-renew flag
 - `mr`: Maximum renewals
 - `pf`: Payment frequency
 - `st`: Start time
 - `tid`: Tracking ID
+- `li`: Line items (JSON array)
 
 ## MEMO Format
 
@@ -226,28 +226,21 @@ const session = await stripe.checkout.sessions.create({
   payment_method_types: ["tributary"], // Only "tributary" supported
   line_items: [
     {
-      price_data: {
-        currency: "usd", // Only "usd" supported
-        product_data: {
-          name: "Product Name",
-          description: "Optional description",
-        },
-        unit_amount: 2000, // Amount in cents
-        recurring: {
-          interval: "day" | "week" | "month" | "year",
-          interval_count: number,
-        },
-      },
+      description: "Product Name",
+      unitPrice: 20.0, // Amount in dollars
       quantity: 1,
     },
   ],
-  mode: "subscription", // Only "subscription" for MVP
+  paymentFrequency: "monthly", // "daily" | "weekly" | "monthly" | "annually"
+  mode: "subscription",
   success_url: "https://yourapp.com/success",
   cancel_url: "https://yourapp.com/cancel",
   tributaryConfig: {
     gateway: "gateway-public-key", // Gateway public key
     recipient: "recipient-public-key", // Recipient public key
     trackingId: "unique-tracking-id", // Your unique identifier
+    autoRenew: true,
+    memo: "Optional memo for payments",
   },
 });
 ```
@@ -391,6 +384,8 @@ The `tributaryConfig` object contains Tributary-specific settings:
 - `gateway`: Your Tributary gateway public key
 - `recipient`: The recipient public key (where payments go)
 - `trackingId`: Your unique identifier for tracking payments
+- `autoRenew`: Enable automatic subscription renewal (default: false)
+- `memo`: Optional memo to attach to each payment transaction
 
 ## Tributary Configuration
 

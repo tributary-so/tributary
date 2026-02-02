@@ -54,28 +54,19 @@ export class ValidationUtils {
 
     // Validate line items
     params.line_items.forEach((item: any, index: number) => {
-      if (!item.price_data) {
-        throw new Error(`line_items[${index}].price_data is required`);
+      if (!item.description) {
+        throw new Error(`line_items[${index}].description is required`);
       }
 
-      if (item.price_data.currency !== "usd") {
+      if (typeof item.unitPrice !== "number" || item.unitPrice <= 0) {
         throw new Error(
-          `line_items[${index}].price_data.currency must be "usd"`
+          `line_items[${index}].unitPrice must be a positive number`
         );
       }
 
-      if (!item.price_data.product_data?.name) {
+      if (typeof item.quantity !== "number" || item.quantity <= 0) {
         throw new Error(
-          `line_items[${index}].price_data.product_data.name is required`
-        );
-      }
-
-      if (
-        typeof item.price_data.unit_amount !== "number" ||
-        item.price_data.unit_amount <= 0
-      ) {
-        throw new Error(
-          `line_items[${index}].price_data.unit_amount must be a positive number`
+          `line_items[${index}].quantity must be a positive number`
         );
       }
     });

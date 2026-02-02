@@ -5,11 +5,13 @@ import { ValidationUtils } from "../utils/validation";
 import { PublicKey } from "@solana/web3.js";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
-import {
-  PaymentTracker,
-  PolicyLookupOptions,
-  SubscriptionStatus,
-} from "./tracking";
+import { PaymentTracker } from "./tracking";
+
+interface LineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
 
 export interface SubscriptionParams {
   tokenMint: string;
@@ -21,6 +23,7 @@ export interface SubscriptionParams {
   paymentFrequency: string;
   startTime?: number | null;
   trackingId?: string;
+  lineItems?: LineItem[];
 }
 
 export interface EncodedSessionData {
@@ -34,6 +37,7 @@ export interface EncodedSessionData {
   pf: string; // paymentFrequency
   st: string; // startTime (timestamp or "null")
   tid: string; // trackingId
+  li: string; // lineItems (JSON string)
 }
 
 export class CheckoutSessionManager {
@@ -57,6 +61,20 @@ export class CheckoutSessionManager {
     // Generate session ID
     const sessionId = this.generateSessionId();
 
+    // Handle line items in new simplified format
+    const lineItems: LineItem[] = params.line_items || [];
+    const amount =
+      lineItems.length > 0
+        ? lineItems.reduce(
+            (sum: number, item: LineItem) =>
+              sum + item.quantity * item.unitPrice,
+            0
+          )
+        : params.tributaryConfig.amount || 0;
+
+    // Extract payment frequency from params or default
+    const paymentFrequency = params.paymentFrequency || "monthly";
+
     // Encode subscription parameters into URL
     const encodedUrl = this.encodeSubscriptionUrl({
       tokenMint:
@@ -64,14 +82,16 @@ export class CheckoutSessionManager {
         "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       recipient: params.tributaryConfig.recipient,
       gateway: params.tributaryConfig.gateway,
-      amount: this.calculateTotalAmount(params.line_items),
+      amount,
       autoRenew: params.mode === "subscription",
-      maxRenewals: null, // Default to unlimited
-      paymentFrequency: this.mapIntervalToFrequency(
-        params.line_items[0]?.price_data?.recurring?.interval || "month"
-      ),
+      maxRenewals: null,
+      paymentFrequency,
       startTime: null,
-      trackingId: params.metadata?.tracking_id || sessionId,
+      trackingId:
+        params.tributaryConfig.trackingId ||
+        params.metadata?.tracking_id ||
+        sessionId,
+      lineItems,
     });
 
     // Create Tributary-compatible response
@@ -79,13 +99,13 @@ export class CheckoutSessionManager {
       id: sessionId,
       object: "checkout.session",
       payment_method_types: params.payment_method_types || ["tributary"],
-      line_items: params.line_items,
+      line_items: lineItems,
       mode: params.mode,
       success_url: params.success_url,
       cancel_url: params.cancel_url,
       payment_status: "unpaid",
       status: "open",
-      amount_total: this.calculateTotalAmount(params.line_items),
+      amount_total: amount,
       currency: "usd",
       metadata: params.metadata || {},
       tributaryConfig: params.tributaryConfig,
@@ -107,6 +127,7 @@ export class CheckoutSessionManager {
       pf: params.paymentFrequency,
       st: params.startTime?.toString() || "null",
       tid: params.trackingId || this.generateTrackingId(),
+      li: params.lineItems ? JSON.stringify(params.lineItems) : "[]",
     };
 
     // Use Base64URL encoding (compact and URL-safe)
@@ -142,17 +163,6 @@ export class CheckoutSessionManager {
     const standardBase64 = base64.replace(/-/g, "+").replace(/_/g, "/");
     const jsonString = Buffer.from(standardBase64, "base64").toString("utf8");
     return JSON.parse(jsonString);
-  }
-
-  // Map Tributary interval to Tributary payment frequency
-  private mapIntervalToFrequency(interval: string): string {
-    const mapping: Record<string, string> = {
-      day: "daily",
-      week: "weekly",
-      month: "monthly",
-      year: "annually",
-    };
-    return mapping[interval] || "monthly";
   }
 
   // Convert Tributary frequency back to Tributary interval
@@ -201,177 +211,33 @@ export class CheckoutSessionManager {
       throw new Error("Invalid payment frequency");
     }
 
+    // Parse line items if present
+    let lineItems: LineItem[] | undefined;
+    if (data.li && data.li !== "[]") {
+      try {
+        lineItems = JSON.parse(data.li);
+      } catch (error) {
+        console.warn("Failed to parse line items, using empty array");
+        lineItems = undefined;
+      }
+    }
+
     return {
       tokenMint: data.tm,
       recipient: data.r,
       gateway: data.g,
-      amount: amount,
+      amount,
       autoRenew: data.ar === true,
       maxRenewals: data.mr === "null" ? null : parseInt(data.mr),
       paymentFrequency: data.pf,
       startTime: data.st === "null" ? null : parseInt(data.st),
       trackingId: data.tid,
-    };
-  }
-
-  // Retrieve checkout session with real Tributary status
-  async retrieve(sessionId: string): Promise<TributaryCheckoutSession> {
-    if (!this.tracker) {
-      throw new Error(
-        "Tributary SDK instance required for session retrieval. Please provide connection and tributary instances to CheckoutSessionManager constructor."
-      );
-    }
-
-    try {
-      // Try to find the subscription by tracking ID (sessionId)
-      // First attempt: Try to extract session data from the sessionId itself
-      // This handles cases where sessionId is actually a tracking ID
-      let subscriptionStatus: SubscriptionStatus | null = null;
-      let sessionData: any = null;
-
-      // Try different lookup strategies
-      const lookupStrategies: PolicyLookupOptions[] = [];
-
-      // Strategy 1: If sessionId looks like a tracking ID, try direct lookup
-      if (sessionId.startsWith("trib_") || sessionId.length < 100) {
-        // This is likely a tracking ID, not an encoded session
-        // We need context to know which user or gateway to look up
-        // For now, we'll return a basic session indicating it needs more context
-        return this.createSessionFromTrackingId(sessionId);
-      }
-
-      // Strategy 2: Try to decode as Base64URL session data
-      try {
-        const decodedParams = this.decodeSubscriptionUrl(sessionId);
-        // If successful, we have the session data and can try to look up the actual policy
-        sessionData = decodedParams;
-
-        // Try user-based lookup first
-        lookupStrategies.push({
-          userPublicKey: decodedParams.recipient,
-          tokenMint: decodedParams.tokenMint,
-        });
-
-        // Try gateway-based lookup as fallback
-        lookupStrategies.push({
-          gatewayPublicKey: decodedParams.gateway,
-        });
-      } catch (decodeError) {
-        // Not a valid encoded session, treat as tracking ID
-        return this.createSessionFromTrackingId(sessionId);
-      }
-
-      // Try each lookup strategy until we find the subscription
-      for (const lookupOptions of lookupStrategies) {
-        try {
-          subscriptionStatus = await this.tracker!.checkInitialStatus(
-            sessionData.trackingId,
-            lookupOptions
-          );
-
-          if (subscriptionStatus.subscriptionCreated) {
-            return this.createActiveSession(
-              sessionId,
-              sessionData,
-              subscriptionStatus
-            );
-          }
-        } catch (lookupError) {
-          // Continue to next strategy
-          console.debug(`Lookup strategy failed:`, lookupError);
-        }
-      }
-    } catch (error) {
-      // If all lookup strategies fail, return a basic session
-      console.debug("Session retrieval failed:", error);
-      throw new Error(`Error retreiving session`);
-    }
-
-    throw new Error(`No session could be found`);
-  }
-
-  // Create session when we only have a tracking ID (limited info)
-  private createSessionFromTrackingId(
-    trackingId: string
-  ): TributaryCheckoutSession {
-    return {
-      id: trackingId,
-      object: "checkout.session",
-      payment_method_types: ["tributary"],
-      line_items: [],
-      mode: "subscription",
-      payment_status: "unpaid",
-      status: "open", // Still waiting for subscription creation
-      amount_total: 0,
-      currency: "usd",
-      metadata: {
-        tracking_id: trackingId,
-        note: "Tracking ID found - provide user or gateway context for full status",
-      },
-    };
-  }
-
-  // Create session for active subscriptions
-  private createActiveSession(
-    sessionId: string,
-    sessionData: any,
-    status: SubscriptionStatus
-  ): TributaryCheckoutSession {
-    const paymentStatus = status.status === "active" ? "paid" : "unpaid";
-    const sessionStatus = status.status === "active" ? "complete" : "open";
-
-    return {
-      id: sessionId,
-      object: "checkout.session",
-      payment_method_types: ["tributary"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            unit_amount: sessionData.amount,
-            product_data: {
-              name: "Tributary Subscription",
-              description: `${sessionData.paymentFrequency} subscription`,
-            },
-            recurring: {
-              interval: this.frequencyToInterval(sessionData.paymentFrequency),
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      payment_status: paymentStatus,
-      status: sessionStatus,
-      amount_total: sessionData.amount,
-      currency: "usd",
-      metadata: {
-        tracking_id: sessionData.trackingId,
-        payment_count: status.paymentCount.toString(),
-        next_payment_due: status.nextPaymentDue?.toString() || "",
-        subscription_created: status.subscriptionCreated.toString(),
-        initial_payment_executed: status.initialPaymentExecuted.toString(),
-      },
-      tributaryConfig: {
-        recipient: sessionData.recipient,
-        gateway: sessionData.gateway,
-        trackingId: sessionData.trackingId,
-        autoRenew: sessionData.autoRenew,
-      },
+      lineItems,
     };
   }
 
   // Generate unique session ID
   private generateSessionId(): string {
     return `cs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // Calculate total amount from line items
-  private calculateTotalAmount(lineItems: any[]): number {
-    return lineItems.reduce((total, item) => {
-      const amount = item.price_data.unit_amount;
-      const quantity = item.quantity || 1;
-      return total + amount * quantity;
-    }, 0);
   }
 }

@@ -66,6 +66,31 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
         }`}
       >
         <div className="px-5 pb-5 space-y-4">
+          {/* Line items */}
+          {sessionData.lineItems && sessionData.lineItems.length > 0 && (
+            <div className="space-y-2 pt-2">
+              {sessionData.lineItems.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-start justify-between py-2 border-b border-border/50 last:border-0"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium text-card-foreground">
+                      {item.description}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Qty: {item.quantity} × $
+                      {(item.unitPrice / 100).toFixed(2)}
+                    </p>
+                  </div>
+                  <span className="font-medium text-card-foreground">
+                    ${((item.quantity * item.unitPrice) / 100).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Subscription details */}
           <div className="space-y-3 pt-2 border-t border-border">
             <div className="flex items-start justify-between py-2">

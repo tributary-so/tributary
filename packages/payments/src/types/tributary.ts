@@ -19,26 +19,9 @@ export interface TributaryCheckoutSession {
 }
 
 export interface LineItem {
-  price_data: PriceData;
-  quantity?: number;
-}
-
-export interface PriceData {
-  currency: string;
-  product_data: ProductData;
-  unit_amount: number;
-  recurring?: Recurring;
-}
-
-export interface ProductData {
-  name: string;
-  description?: string;
-  images?: string[];
-}
-
-export interface Recurring {
-  interval: "day" | "week" | "month" | "year";
-  interval_count?: number;
+  description: string;
+  unitPrice: number;
+  quantity: number;
 }
 
 export interface TributarySubscription {
