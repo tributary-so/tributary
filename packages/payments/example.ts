@@ -1,19 +1,27 @@
 /**
  * Example usage of @tributary-so/payments package
  *
- * This example demonstrates how to integrate Stripe-compatible payments
+ * This example demonstrates how to integrate client-compatible payments
  * with Tributary's USDC subscription system on Solana.
  */
 
+import { Tributary } from "@tributary-so/sdk";
 import { PaymentsClient } from "./src/index";
+import { Connection, Keypair } from "@solana/web3.js";
+import { Wallet } from "@coral-xyz/anchor";
+
+const SOLANA_API =
+  process.env.SOLANA_API ?? "https://api.mainnet-beta.solana.com";
+const connection = new Connection(SOLANA_API);
+const tributary = new Tributary(connection, new Wallet(Keypair.generate()));
 
 async function example() {
   // 1. Initialize the client (no API key required!)
-  const stripe = new PaymentsClient();
+  const client = new PaymentsClient(tributary);
 
   // 2. Create a checkout session
   try {
-    const session = await stripe.checkout.create({
+    const session = await client.checkout.sessions.create({
       payment_method_types: ["tributary"],
       line_items: [
         {
@@ -51,7 +59,7 @@ async function example() {
     // 4. Check payment status (example polling)
     const checkPayment = async () => {
       try {
-        const status = await stripe.payments.checkStatus(
+        const status = await client.payments.checkStatus(
           "user_123_monthly_premium",
           "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
         );
@@ -71,7 +79,7 @@ async function example() {
     };
 
     // Start polling every 30 seconds
-    const pollInterval = setInterval(checkPayment, 30000);
+    setInterval(checkPayment, 30000);
 
     // Clean up interval when done
     // clearInterval(pollInterval);
@@ -82,11 +90,11 @@ async function example() {
 
 // Error handling example
 async function errorHandlingExample() {
-  const stripe = new PaymentsClient();
+  const client = new PaymentsClient(tributary);
 
   try {
     // This will fail due to invalid gateway key
-    await stripe.checkout.create({
+    await client.checkout.sessions.create({
       payment_method_types: ["tributary"],
       line_items: [
         {
@@ -121,10 +129,10 @@ async function errorHandlingExample() {
 
 // Payment history example
 async function paymentHistoryExample() {
-  const stripe = new PaymentsClient();
+  const client = new PaymentsClient(tributary);
 
   try {
-    const history = await stripe.payments.getHistory(
+    const history = await client.payments.getHistory(
       "user_123_monthly_premium",
       "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
     );

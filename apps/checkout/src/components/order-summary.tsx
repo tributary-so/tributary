@@ -2,38 +2,17 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { SubscriptionParams } from "@tributary-so/payments";
 
-const lineItems = [
-  {
-    id: 1,
-    name: "Pro Plan",
-    description: "Monthly subscription",
-    price: 29.0,
-    quantity: 1,
-  },
-  {
-    id: 2,
-    name: "Additional Team Seats",
-    description: "5 extra seats × $4.00/seat",
-    price: 20.0,
-    quantity: 1,
-  },
-  {
-    id: 3,
-    name: "Priority Support",
-    description: "24/7 dedicated support",
-    price: 0.0,
-    quantity: 1,
-    included: true,
-  },
-];
+interface OrderSummaryProps {
+  sessionData: SubscriptionParams;
+}
 
-export function OrderSummary() {
+export function OrderSummary({ sessionData }: OrderSummaryProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const subtotal = lineItems.reduce((acc, item) => acc + item.price, 0);
-  const tax = subtotal * 0.0;
-  const total = subtotal + tax;
+  const formatAddress = (address: string) =>
+    `${address.slice(0, 4)}...${address.slice(-4)}`;
 
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -60,16 +39,17 @@ export function OrderSummary() {
           </div>
           <div className="text-left">
             <h3 className="font-semibold text-card-foreground">
-              Order Summary
+              Subscription Details
             </h3>
             <p className="text-sm text-muted-foreground">
-              {lineItems.length} items
+              {sessionData.autoRenew ? "Recurring" : "One-time"}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-semibold text-lg text-card-foreground">
-            ${total.toFixed(2)}/mo
+            ${sessionData.amount.toFixed(2)}/
+            {sessionData.paymentFrequency.replace("ly", "")}
           </span>
           <ChevronDown
             className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
@@ -86,54 +66,103 @@ export function OrderSummary() {
         }`}
       >
         <div className="px-5 pb-5 space-y-4">
-          {/* Line items */}
+          {/* Subscription details */}
           <div className="space-y-3 pt-2 border-t border-border">
-            {lineItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start justify-between py-2"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-card-foreground">
-                    {item.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.description}
-                  </p>
-                </div>
-                <div className="text-right ml-4">
-                  {item.included ? (
-                    <span className="text-sm font-medium text-primary">
-                      Included
-                    </span>
-                  ) : (
-                    <span className="font-medium text-card-foreground">
-                      ${item.price.toFixed(2)}
-                    </span>
-                  )}
-                </div>
+            <div className="flex items-start justify-between py-2">
+              <div className="flex-1">
+                <p className="font-medium text-card-foreground">
+                  Payment amount
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {sessionData.paymentFrequency.charAt(0).toUpperCase() +
+                    sessionData.paymentFrequency.slice(1)}{" "}
+                  subscription
+                </p>
               </div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="pt-4 border-t border-border space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="text-card-foreground">
-                ${subtotal.toFixed(2)}
+              <span className="font-medium text-card-foreground">
+                ${sessionData.amount.toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Tax</span>
-              <span className="text-card-foreground">${tax.toFixed(2)}</span>
+
+            <div className="flex items-start justify-between py-2">
+              <div className="flex-1">
+                <p className="font-medium text-card-foreground">Recipient</p>
+                <p className="text-sm text-muted-foreground break-all">
+                  {formatAddress(sessionData.recipient)}
+                </p>
+              </div>
             </div>
-            <div className="flex justify-between pt-2 border-t border-border">
+
+            <div className="flex items-start justify-between py-2">
+              <div className="flex-1">
+                <p className="font-medium text-card-foreground">Token mint</p>
+                <p className="text-sm text-muted-foreground break-all">
+                  {formatAddress(sessionData.tokenMint)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between py-2">
+              <div className="flex-1">
+                <p className="font-medium text-card-foreground">
+                  Payment gateway
+                </p>
+                <p className="text-sm text-muted-foreground break-all">
+                  {formatAddress(sessionData.gateway)}
+                </p>
+              </div>
+            </div>
+
+            {sessionData.maxRenewals !== null && (
+              <div className="flex items-start justify-between py-2">
+                <div className="flex-1">
+                  <p className="font-medium text-card-foreground">
+                    Max renewals
+                  </p>
+                </div>
+                <span className="font-medium text-card-foreground">
+                  {sessionData.maxRenewals === 0
+                    ? "Unlimited"
+                    : sessionData.maxRenewals}
+                </span>
+              </div>
+            )}
+
+            {sessionData.startTime !== undefined &&
+              sessionData.startTime !== null && (
+                <div className="flex items-start justify-between py-2">
+                  <div className="flex-1">
+                    <p className="font-medium text-card-foreground">
+                      Start time
+                    </p>
+                  </div>
+                  <span className="font-medium text-card-foreground">
+                    {new Date(
+                      sessionData.startTime * 1000
+                    ).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+
+            <div className="flex items-start justify-between py-2">
+              <div className="flex-1">
+                <p className="font-medium text-card-foreground">Tracking ID</p>
+              </div>
+              <span className="font-medium text-card-foreground text-sm">
+                {sessionData.trackingId || "N/A"}
+              </span>
+            </div>
+          </div>
+
+          {/* Total */}
+          <div className="pt-4 border-t border-border">
+            <div className="flex justify-between pt-2">
               <span className="font-semibold text-card-foreground">
                 Total due today
               </span>
               <span className="font-semibold text-lg text-card-foreground">
-                ${total.toFixed(2)}/mo
+                ${sessionData.amount.toFixed(2)}/
+                {sessionData.paymentFrequency.replace("ly", "")}
               </span>
             </div>
           </div>

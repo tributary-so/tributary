@@ -24,7 +24,7 @@ describe("PaymentsClient", () => {
       getPaymentPolicy: jest.fn(),
     };
 
-    client = new PaymentsClient(mockConnection, mockTributary);
+    client = new PaymentsClient(mockTributary);
   });
 
   describe("constructor", () => {
@@ -34,18 +34,6 @@ describe("PaymentsClient", () => {
       expect(client.checkout.sessions).toBeDefined();
       expect(client.payments).toBeDefined();
       expect(client.subscriptions).toBeDefined();
-    });
-
-    it("should not throw error when connection is missing (current implementation)", () => {
-      expect(() => {
-        new PaymentsClient(null as any, mockTributary);
-      }).not.toThrow();
-    });
-
-    it("should not throw error when tributary is missing (current implementation)", () => {
-      expect(() => {
-        new PaymentsClient(mockConnection, null as any);
-      }).not.toThrow();
     });
   });
 

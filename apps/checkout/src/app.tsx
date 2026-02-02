@@ -1,11 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckoutForm } from "@/components/checkout-form";
 import { OrderSummary } from "@/components/order-summary";
+import {
+  CheckoutSessionManager,
+  SubscriptionParams,
+} from "@tributary-so/payments";
 
 export default function CheckoutPage() {
   const [isOrderExpanded, setIsOrderExpanded] = useState(false);
+  const [sessionData, setSessionData] = useState<SubscriptionParams | null>(
+    null
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const encodedData = window.location.pathname.split("/subscribe/")[1];
+    if (encodedData) {
+      try {
+        const sessionManager = new CheckoutSessionManager();
+        const decoded = sessionManager.decodeSubscriptionUrl(encodedData);
+        setSessionData(decoded);
+      } catch (err) {
+        setError("Invalid session data");
+      }
+    } else {
+      setError("No session data found");
+    }
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Error</h1>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sessionData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background dark">
@@ -57,11 +101,14 @@ export default function CheckoutPage() {
                 </svg>
                 <span className="font-medium">Order summary</span>
               </div>
-              <span className="font-semibold text-lg">$29.00/mo</span>
+              <span className="font-semibold text-lg">
+                ${sessionData.amount.toFixed(2)}/
+                {sessionData.paymentFrequency.replace("ly", "")}
+              </span>
             </button>
             {isOrderExpanded && (
               <div className="px-6 pb-4">
-                <OrderSummary />
+                <OrderSummary sessionData={sessionData} />
               </div>
             )}
           </div>
@@ -71,11 +118,11 @@ export default function CheckoutPage() {
             <div className="w-full max-w-md">
               {/* Desktop order summary */}
               <div className="hidden lg:block mb-8">
-                <OrderSummary />
+                <OrderSummary sessionData={sessionData} />
               </div>
 
               {/* Checkout form */}
-              <CheckoutForm />
+              <CheckoutForm sessionData={sessionData} />
             </div>
           </div>
         </div>

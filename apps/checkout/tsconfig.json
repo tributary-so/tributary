@@ -21,7 +21,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@tributary-so/sdk": ["../sdk/src"],
+      "@tributary-so/payments": ["../payments/src"]
     }
   },
   "include": ["src"],

@@ -19,6 +19,7 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ['tributary.so.local'],
+    host: '0.0.0.0',
   },
   plugins: [
     react(),

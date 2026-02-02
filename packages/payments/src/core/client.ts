@@ -2,15 +2,15 @@
 
 import { CheckoutSessionManager } from "./session";
 import { PaymentTracker } from "./tracking";
-import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 export class PaymentsClient {
   private _checkout: CheckoutSessionManager;
   private _tracker: PaymentTracker;
 
-  constructor(connection: Connection, tributary: Tributary) {
+  constructor(tributary: Tributary) {
     // Zero configuration initialization
+    const connection = tributary.connection;
     this._checkout = new CheckoutSessionManager(connection, tributary);
     this._tracker = new PaymentTracker(connection, tributary);
   }
