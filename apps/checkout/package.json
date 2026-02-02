@@ -30,6 +30,7 @@
     "@tributary-so/sdk": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.30.0",
     "lucide-react": "^0.468.0",
     "next-themes": "^0.4.4",
     "react": "^18.3.1",
