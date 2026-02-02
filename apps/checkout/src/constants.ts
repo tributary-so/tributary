@@ -7,16 +7,15 @@ export interface Config {
 
 const config: Config = {
   rpcUrl:
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-    "https://api.mainnet-beta.solana.com",
+    import.meta.env.VITE_SOLANA_API || "https://api.mainnet-beta.solana.com",
   programId:
-    process.env.NEXT_PUBLIC_TRIBUTARY_PROGRAM_ID ||
+    import.meta.env.VITE_TRIBUTARY_PROGRAM_ID ||
     "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
   usdcMint:
-    process.env.NEXT_PUBLIC_USDC_MINT ||
+    import.meta.env.VITE_USDC_MINT ||
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   gateway:
-    process.env.NEXT_PUBLIC_GATEWAY_ADDRESS ||
+    import.meta.env.VITE_GATEWAY_ADDRESS ||
     "6ntm5rWqDFefET8RFyZV73FcdqxPMbc7Tso3pCMWk4w4",
 };
 

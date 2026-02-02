@@ -26,6 +26,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      stream: "stream-browserify", // Alias stream to stream-browserify
     },
   },
   server: {
@@ -35,7 +36,13 @@ export default defineConfig({
     target: "esnext", // Output ESNext code
     rollupOptions: {
       plugins: [inject({ Buffer: ["buffer", "Buffer"] })],
-      // external: ['vite-plugin-node-polyfills/shims/buffer', 'stream', 'http', 'https', 'zlib'],
+      external: [
+        "vite-plugin-node-polyfills/shims/buffer",
+        "stream",
+        "http",
+        "https",
+        "zlib",
+      ],
       output: {
         manualChunks: {
           "solana-vendor": ["@solana/web3.js", "@solana/spl-token"],
@@ -57,6 +64,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    include: ["stream"], // Ensure stream is bundled during development
     esbuildOptions: {
       target: "esnext", // Ensure dependency pre-bundling supports ESNext
       supported: {
