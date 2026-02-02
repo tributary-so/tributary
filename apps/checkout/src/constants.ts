@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 export interface Config {
   rpcUrl: string;
   programId: string;

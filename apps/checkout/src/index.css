@@ -123,3 +123,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+.solana-gradient {
+  background: linear-gradient(45deg, #9945ff 0%, #14f195 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
