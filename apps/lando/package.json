@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:client\"",
+    "dev:backend": "cd ../lando-backend && pnpm run dev",
+    "dev:client": "vite",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
