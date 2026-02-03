@@ -1,7 +1,7 @@
-import { Routes, Route } from 'react-router-dom';
-import { Header } from './components/Header';
-import { Landing } from './components/Landing';
-import { Subscribe } from './components/Subscribe';
+import { Routes, Route } from "react-router-dom";
+import { Header } from "./components/Header";
+import { Landing } from "./components/Landing";
+import { Subscribe } from "./components/Subscribe";
 
 function App() {
   return (

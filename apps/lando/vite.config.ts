@@ -1,7 +1,9 @@
-import tailwindcss from "@tailwindcss/vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
-import { defineConfig } from "vite";
+import viteTsconfigPaths from "vite-tsconfig-paths";
+import path from "path";
+import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 import inject from "@rollup/plugin-inject";
 
 // https://vite.dev/config/
@@ -14,8 +16,17 @@ export default defineConfig({
       },
       include: ["buffer"],
     }),
-    tailwindcss(),
+    viteTsconfigPaths({
+      //
+      root: resolve(__dirname),
+    }),
   ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      stream: "stream-browserify", // Alias stream to stream-browserify
+    },
+  },
   server: {
     host: "0.0.0.0",
   },
@@ -32,7 +43,20 @@ export default defineConfig({
       ],
       output: {
         manualChunks: {
-          "ui-vendor": ["@tailwindcss/vite"],
+          "solana-vendor": ["@solana/web3.js", "@solana/spl-token"],
+          "wallet-adapter": [
+            "@solana/wallet-adapter-react",
+            "@solana/wallet-adapter-react-ui",
+          ],
+          "ui-vendor": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-label",
+            "@radix-ui/react-progress",
+            "@radix-ui/react-separator",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-toast",
+            "@radix-ui/themes",
+          ],
         },
       },
     },

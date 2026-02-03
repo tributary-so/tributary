@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}", "./src/**/*.css"],
   theme: {
     extend: {
       fontFamily: {
@@ -17,6 +17,7 @@ export default {
           muted: "#86a786", // Muted green
           border: "#1a3a1a", // Green border
         },
+        "lando-bg": "#0a0f0a", // Deep forest green/black
         matrix: {
           green: "#00ff41",
         },
