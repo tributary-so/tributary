@@ -1,0 +1,49 @@
+name: Build and Deploy Checkout App to GitHub Pages
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: ./pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ./apps/checkout
+        run: pnpm install
+
+      - name: Build
+        working-directory: ./apps/checkout
+        run: pnpm run build
+        env:
+          VITE_VCS_REF: ${{ github.sha }}
+          NODE_ENV: production
+
+      - name: Deploy to external repository
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          deploy_key: ${{ secrets.CHECKOUT_DEPLOY_KEY_TRIBUTARY_SO }}
+          external_repository: tributary-so/checkout.tributary.so
+          publish_branch: gh-pages
+          publish_dir: ./apps/checkout/dist
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
+          cname: checkout.tributary.so

@@ -211,6 +211,145 @@ PayAsYouGo {
 }
 ```
 
+## Checkout App & SDK Integration
+
+The checkout app integrates with the Tributary SDK through a wrapper layer that abstracts blockchain complexity while maintaining full Web3 transparency.
+
+```
+User → Checkout Form → tributary.ts (wrapper) → @tributary-so/sdk → Solana Program
+```
+
+### Integration Architecture
+
+| Layer   | File                                             | Purpose                                      |
+| ------- | ------------------------------------------------ | -------------------------------------------- |
+| UI      | `apps/checkout/src/components/checkout-form.tsx` | Collects user input, handles form submission |
+| Wrapper | `apps/checkout/src/lib/tributary.ts`             | Maps UI format to SDK, handles conversions   |
+| SDK     | `@tributary-so/sdk`                              | Program interaction, PDA derivation          |
+| Program | `programs/tributary/`                            | Solana instructions, state management        |
+
+### SDK Wrapper (`apps/checkout/src/lib/tributary.ts`)
+
+The wrapper mirrors allowly's implementation with shared constants:
+
+```typescript
+// Shared configuration constants
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const GATEWAY_ADDRESS = new PublicKey(
+  "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+);
+
+export interface Subscription {
+  recipient: string;
+  amount: number; // USD amount (e.g., 10 for $10)
+  frequency: "weekly" | "biweekly" | "monthly";
+}
+
+export async function createSubscription(
+  sdk: Tributary,
+  wallet: any,
+  subscription: Subscription
+) {
+  // Convert USD to smallest units (1 USDC = 1,000,000)
+  const amountInSmallestUnits = subscription.amount * 1_000_000;
+
+  // Map UI frequency to SDK format
+  let frequencyDays: number;
+  switch (subscription.frequency) {
+    case "weekly":
+      frequencyDays = 7;
+      break;
+    case "biweekly":
+      frequencyDays = 14;
+      break;
+    case "monthly":
+      frequencyDays = 30;
+      break;
+  }
+
+  // Create and sign transaction via SDK
+  const tx = await sdk.createSubscription({
+    amount: amountInSmallestUnits,
+    recipient: new PublicKey(subscription.recipient),
+    frequencyDays,
+    mint: USDC_MINT,
+    gateway: GATEWAY_ADDRESS,
+  });
+
+  const signedTx = await wallet.signTransaction(tx);
+  const txid = await sdk.rpc.sendTransaction(signedTx);
+  await sdk.rpc.confirmTransaction(txid);
+
+  return { txid, status: "confirmed" };
+}
+```
+
+### Form Component Integration (`apps/checkout/src/components/checkout-form.tsx`)
+
+```tsx
+import { createSubscription, type Subscription } from "@/lib/tributary";
+import { Tributary } from "@tributary-so/sdk";
+
+function CheckoutForm() {
+  const [form, setForm] = useState({
+    recipient: "",
+    amount: 10,
+    frequency: "monthly" as const,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const sdk = new Tributary(wallet.adapter);
+    const result = await createSubscription(sdk, wallet, form);
+
+    if (result.status === "confirmed") {
+      // Show success, redirect, etc.
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Input fields: recipient, amount, frequency */}
+      {/* Submit button */}
+    </form>
+  );
+}
+```
+
+### On-Chain Payment Flow
+
+1. **UserPayment PDA** `["user_payment", owner, mint]`
+
+   - Created per user/mint combination
+   - Tracks total paid, policy count, next payment time
+
+2. **PaymentPolicy PDA** `["payment_policy", user_payment, policy_id]`
+
+   - Individual subscription with amount, frequency, recipient
+   - Has status: active/paused/cancelled
+
+3. **PaymentsDelegate PDA** `["payments_delegate", user_payment, recipient, gateway]`
+
+   - Stores token delegation approval
+   - Required before `execute_payment` can succeed
+
+4. **Execution**
+   - Gateway signer calls `execute_payment` (permissionless)
+   - Checks `next_payment_due` timestamp
+   - Transfers amount minus protocol fee (100 bps = 1%)
+   - Splits gateway fee between gateway and protocol
+
+### Shared Configuration
+
+Both checkout and app use identical on-chain addresses:
+
+| Constant          | Value                                          | Purpose                      |
+| ----------------- | ---------------------------------------------- | ---------------------------- |
+| `USDC_MINT`       | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` | USDC token on Solana         |
+| `GATEWAY_ADDRESS` | `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`  | Tributary gateway authority  |
+| `PROGRAM_ID`      | `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`  | Tributary program identifier |
+
 ## Environment Variables
 
 ### Required
