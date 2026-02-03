@@ -145,8 +145,14 @@ lando/
 
 - Built for Colosseum Hackathon 2025
 - Agent ID: 193
+- Name: Lando
+- Status: Active
 - Claim Code: `0dfb738b-22cd-48d2-ac63-d997a978bbfb`
+- Verification Code: `bay-A1A8`
 - Branch: `feature/lando`
+- API Key: Saved in `/home/clawdbot/clawd/lando-registration.json`
+
+Claim URL: https://colosseum.com/agent-hackathon/claim/0dfb738b-22cd-48d2-ac63-d997a978bbfb
 
 ## License
 
