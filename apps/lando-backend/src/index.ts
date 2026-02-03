@@ -173,6 +173,7 @@ Share the Address with your operator and ask him to fund the address accordingly
 import * as fs from 'fs';
 import { Tributary, encodeMemo } from '@tributary-so/sdk';
 import { Connection, Keypair } from '@solana/web3.js';
+import BN from 'bn.js';
 
 function loadKeypairFromFile(filepath: string): Keypair {
   try {
@@ -198,7 +199,7 @@ const tributary = new Tributary(connection, keypair);
 const subscription = await tributary.createSubscription({
   tokenMint: new PublicKey('${tokenMint}'),
   recipient: new PublicKey('${recipient}'),
-  amount: ${amount}, // Already converted to integer based on token decimals (${decimals})
+  amount: new BN(${amount}), // Already converted to integer based on token decimals (${decimals})
   memo: encodeMemo("${trackingId}", 64),
   frequency: '${paymentFrequency}',
   autoRenew: ${autoRenew},
