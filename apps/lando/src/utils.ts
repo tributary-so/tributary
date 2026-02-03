@@ -1,4 +1,4 @@
-import { EncodedSessionData, SubscriptionParams, LineItem } from './types';
+import type { EncodedSessionData, SubscriptionParams, LineItem } from './types';
 
 // Decode subscription parameters from URL
 export function decodeSubscriptionUrl(encodedData: string): SubscriptionParams {

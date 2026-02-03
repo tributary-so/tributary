@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { decodeSubscriptionUrl, generateSkillInstructions, formatAmount, truncateAddress } from '../utils';
-import { SubscriptionParams } from '../types';
+import { decodeSubscriptionUrl, generateSkillInstructions, formatAmount } from '../utils';
+import type { SubscriptionParams } from '../types';
 
 export function Subscribe() {
   const { data } = useParams<{ data: string }>();
