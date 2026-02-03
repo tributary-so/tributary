@@ -29,6 +29,12 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
+    proxy: {
+      "/api": {
+        target: "http://localhost:3002",
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: "esnext", // Output ESNext code
@@ -41,24 +47,6 @@ export default defineConfig({
         "https",
         "zlib",
       ],
-      output: {
-        manualChunks: {
-          "solana-vendor": ["@solana/web3.js", "@solana/spl-token"],
-          "wallet-adapter": [
-            "@solana/wallet-adapter-react",
-            "@solana/wallet-adapter-react-ui",
-          ],
-          "ui-vendor": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-label",
-            "@radix-ui/react-progress",
-            "@radix-ui/react-separator",
-            "@radix-ui/react-slot",
-            "@radix-ui/react-toast",
-            "@radix-ui/themes",
-          ],
-        },
-      },
     },
   },
   optimizeDeps: {

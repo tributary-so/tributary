@@ -5,6 +5,9 @@ import {
   SubscriptionParams,
 } from "@tributary-so/payments";
 
+const BACKEND_BASE_URL =
+  process.env.VITE_BACKEND_BASE_URL || "http://localhost:3002";
+
 function formatAmount(amount: number): string {
   if (amount >= 1_000_000) {
     return `${(amount / 1_000_000).toFixed(2)}M`;
@@ -45,83 +48,6 @@ export function Subscribe() {
     }
   }, [data]);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const generateSkillInstructions = (params: SubscriptionParams): string => {
-    const {
-      recipient,
-      amount,
-      paymentFrequency,
-      autoRenew,
-      lineItems,
-      trackingId,
-    } = params;
-
-    const itemsDescription =
-      lineItems && lineItems.length > 0
-        ? lineItems
-            .map(
-              (item) =>
-                `- ${item.description} (${item.quantity}x @ ${item.unitPrice} SOL)`
-            )
-            .join("\n")
-        : "- Custom subscription service";
-
-    const frequencyDisplay =
-      paymentFrequency.charAt(0).toUpperCase() + paymentFrequency.slice(1);
-
-    return `# Lando Subscription Skill
-
-## What You're Subscribing To
-${itemsDescription}
-
-## Payment Details
-- **Amount:** ${formatAmount(amount)} SOL
-- **Frequency:** ${frequencyDisplay}
-- **Auto-Renew:** ${autoRenew ? "Yes" : "No"}
-- **Tracking ID:** ${trackingId || "N/A"}
-
-## How to Pay (Tributary SDK)
-
-\`\`\`typescript
-import { Tributary } from '@tributary-so/sdk';
-import { Connection } from '@solana/web3.js';
-
-// Initialize connection
-const connection = new Connection('https://api.mainnet-beta.solana.com');
-const tributary = new Tributary(connection);
-
-// Create subscription payment
-const subscription = await tributary.createSubscription({
-  recipient: new PublicKey('${recipient}'),
-  amount: ${amount},
-  frequency: '${paymentFrequency}',
-  autoRenew: ${autoRenew},
-});
-
-// Sign and send transaction
-const signature = await connection.sendTransaction(
-  subscription.transaction,
-  [wallet.payer]
-);
-
-console.log('Subscription payment sent:', signature);
-\`\`\`
-
-## Next Steps
-1. Ensure you have sufficient SOL balance
-2. Execute the above Tributary SDK commands
-3. Save the transaction signature for proof of payment
-4. Access your subscription service immediately after payment confirms
-
----
-Powered by Tributary | Agent Commerce on Solana`;
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -161,7 +87,6 @@ Powered by Tributary | Agent Commerce on Solana`;
     return null;
   }
 
-  const skillInstructions = generateSkillInstructions(subscription);
   const frequencyDisplay =
     subscription.paymentFrequency.charAt(0).toUpperCase() +
     subscription.paymentFrequency.slice(1);
@@ -306,18 +231,20 @@ Powered by Tributary | Agent Commerce on Solana`;
                 <span className="text-2xl mr-3">🤖</span>
                 Tributary SDK Commands
               </h2>
-              <button
-                onClick={() => copyToClipboard(skillInstructions)}
-                className="text-lando-muted hover:text-lando-accent transition-colors font-mono text-sm flex items-center gap-2"
-              >
-                {copied ? "✓ Copied!" : "📋 Copy"}
-              </button>
             </div>
 
-            <div className="code-block">
-              <pre className="text-lando-text whitespace-pre-wrap">
-                <code>{skillInstructions}</code>
-              </pre>
+            <div className="mt-8">
+              <a
+                href={`${BACKEND_BASE_URL}/api/skill/${data}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center bg-lando-accent text-lando-bg font-bold px-6 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono text-lg border-2 border-lando-accent hover:border-white"
+              >
+                📥 Open Agent Skill (Markdown)
+              </a>
+              <p className="text-center text-lando-muted text-sm mt-3">
+                Or copy manually from code block above
+              </p>
             </div>
 
             <div className="mt-6 p-4 bg-lando-bg/50 border border-lando-border rounded-lg">
@@ -371,10 +298,10 @@ Powered by Tributary | Agent Commerce on Solana`;
                 </span>
                 <div>
                   <p className="font-mono text-lando-text">
-                    Ensure sufficient SOL balance
+                    Ensure sufficient token balance
                   </p>
                   <p className="text-lando-muted text-sm mt-1">
-                    You need {formatAmount(subscription.amount)} SOL plus
+                    You need {formatAmount(subscription.amount)} tokens plus
                     network fees
                   </p>
                 </div>
