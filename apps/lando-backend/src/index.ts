@@ -4,18 +4,52 @@ import {
   CheckoutSessionManager,
   SubscriptionParams,
 } from "@tributary-so/payments";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getMint } from "@solana/spl-token";
 
 const app = express();
 const PORT = process.env.PORT || "3002";
 
+// Initialize Solana connection for fetching mint info
+const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com";
+const connection = new Connection(SOLANA_RPC);
+
 app.use(cors());
 app.use(express.json());
+
+/**
+ * Fetch mint info from Solana and extract decimals
+ * @param tokenMint - Token mint address
+ * @returns Number of decimals for this token
+ */
+async function getMintDecimals(tokenMint: string): Promise<number> {
+  try {
+    const mintPublicKey = new PublicKey(tokenMint);
+    const mintAccount = await getMint(connection, mintPublicKey);
+    return mintAccount.decimals;
+  } catch (error) {
+    console.error(`Failed to fetch mint info for ${tokenMint}:`, error);
+    // Default to 6 decimals (USDC standard) on error
+    return 6;
+  }
+}
+
+/**
+ * Convert float amount to integer based on token decimals
+ * @param amount - Float amount (e.g., 10.5 for 10.5 tokens)
+ * @param decimals - Number of decimals for the token
+ * @returns Integer amount in smallest units (e.g., 10500000 for 10.5 USDC)
+ */
+function convertAmountToInteger(amount: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  return Math.floor(amount * factor);
+}
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "lando-skill-api" });
 });
 
-app.get("/api/skill/:encoded", (req, res) => {
+app.get("/api/skill/:encoded", async (req, res) => {
   try {
     const { encoded } = req.params;
 
@@ -26,8 +60,18 @@ app.get("/api/skill/:encoded", (req, res) => {
     const sessionManager = new CheckoutSessionManager();
     const decoded = sessionManager.decodeSubscriptionUrl(encoded);
 
+    // Fetch mint decimals and convert amount from float to integer
+    const decimals = await getMintDecimals(decoded.tokenMint);
+    const convertedAmount = convertAmountToInteger(decoded.amount, decimals);
+
+    // Replace decoded amount with converted integer
+    const decodedWithConvertedAmount = {
+      ...decoded,
+      amount: convertedAmount,
+    };
+
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");
-    res.send(generateSkillMarkdown(decoded));
+    res.send(generateSkillMarkdown(decodedWithConvertedAmount, decimals));
   } catch (error) {
     console.error("Error decoding skill data:", error);
     res.status(500).json({ error: "Failed to decode skill data" });
@@ -38,7 +82,10 @@ app.listen(PORT, () => {
   console.log(`Lando Skill API running on http://localhost:${PORT}`);
 });
 
-function generateSkillMarkdown(params: SubscriptionParams): string {
+function generateSkillMarkdown(
+  params: SubscriptionParams,
+  decimals: number
+): string {
   const {
     tokenMint,
     recipient,
@@ -50,6 +97,9 @@ function generateSkillMarkdown(params: SubscriptionParams): string {
     maxRenewals,
     startTime,
   } = params;
+
+  // Convert integer amount back to float for display
+  const displayAmount = amount / Math.pow(10, decimals);
 
   const itemsDescription =
     lineItems && lineItems.length > 0
@@ -73,7 +123,9 @@ ${itemsDescription}
 
 ## Payment Details
 - **Token Mint:** \`${tokenMint}\`
-- **Amount:** ${amount}
+- **Token Decimals:** ${decimals}
+- **Amount (Display):** ${displayAmount} tokens
+- **Amount (Integer):** ${amount} (for Tributary SDK)
 - **Frequency:** ${frequencyDisplay}
 - **Auto-Renew:** ${autoRenew ? "Yes" : "No"}
 - **Max Renewals:** ${maxRenewals !== null ? maxRenewals : "Unlimited"}
@@ -146,7 +198,7 @@ const tributary = new Tributary(connection, keypair);
 const subscription = await tributary.createSubscription({
   tokenMint: new PublicKey('${tokenMint}'),
   recipient: new PublicKey('${recipient}'),
-  amount: ${amount},
+  amount: ${amount}, // Already converted to integer based on token decimals (${decimals})
   memo: encodeMemo("${trackingId}", 64),
   frequency: '${paymentFrequency}',
   autoRenew: ${autoRenew},
