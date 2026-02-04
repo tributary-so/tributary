@@ -143,6 +143,7 @@ export class CheckoutSessionManager {
       const data = this.decodeFromBase64Url(encodedData);
       return this.validateDecodedData(data);
     } catch (error) {
+      console.error(error);
       throw new Error("Invalid session data encoding");
     }
   }
