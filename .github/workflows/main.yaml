@@ -38,6 +38,7 @@ jobs:
       has_sdk_x402: ${{ steps.detect.outputs.has_sdk_x402 }}
       has_scheduler: ${{ steps.detect.outputs.has_scheduler }}
       has_checkout: ${{ steps.detect.outputs.has_checkout }}
+      has_payments: ${{ steps.detect.outputs.has_payments }}
       sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
 
     steps:
@@ -64,6 +65,7 @@ jobs:
           HAS_SDK_X402=0
           HAS_SCHEDULER=0
           HAS_CHECKOUT=0
+          HAS_PAYMENTS=1
 
           if echo "$CHANGED_FILES" | grep -q "^programs/"; then
             HAS_PROGRAMS=1
@@ -107,6 +109,9 @@ jobs:
           if [ "$HAS_SDK_X402" = "1" ]; then
             ELEMENTS="${ELEMENTS}\"packages/sdk-x402\","
           fi
+          if [ "$HAS_PAYMENTS" = "1" ]; then
+            ELEMENTS="${ELEMENTS}\"packages/payments\","
+          fi
 
           if [ -n "$ELEMENTS" ]; then
             ELEMENTS=${ELEMENTS%,}
@@ -130,6 +135,10 @@ jobs:
     if: >-
       (needs.detect-changes.outputs.has_sdk == '1' ||
        needs.detect-changes.outputs.has_sdk_react == '1' ||
+       needs.detect-changes.outputs.has_payments == '1' ||
+       needs.detect-changes.outputs.has_checkout == '1' ||
+       needs.detect-changes.outputs.has_scheduler == '1' ||
+       needs.detect-changes.outputs.has_programs == '1' ||
        needs.detect-changes.outputs.has_sdk_x402 == '1') &&
        github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/sdk-tests.yml
@@ -180,8 +189,9 @@ jobs:
       registry: ghcr.io
       package: apps/scheduler
 
-  checkoutpage:
+  checkout:
     name: Update Checkout App
-    needs: [release]
+    if: needs.detect-changes.outputs.has_checkout == '1'
+    needs: [release, detect-changes]
     secrets: inherit
     uses: ./.github/workflows/checkout-page.yaml
