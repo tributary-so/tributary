@@ -11,14 +11,18 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 WORKDIR /app/packages/sdk
 RUN pnpm run build
 
-WORKDIR /app/apps/scheduler
+WORKDIR /app/packages/payments
+RUN pnpm run build
+
+WORKDIR /app/apps/lando-backend
 RUN pnpm run build
 
 FROM base AS build
 COPY . /app
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/packages/sdk/node_modules /app/packages/sdk/node_modules
-COPY --from=deps /app/apps/scheduler/node_modules /app/apps/scheduler/node_modules
+COPY --from=deps /app/packages/payments/node_modules /app/packages/payments/node_modules
+COPY --from=deps /app/apps/lando-backend/node_modules /app/apps/lando-backend/node_modules
 
-WORKDIR /app/apps/scheduler
+WORKDIR /app/apps/lando-backend
 CMD [ "pnpm", "start" ]

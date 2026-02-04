@@ -1,6 +1,9 @@
 node_modules
 */lib
-target
+target/debug
+target/deploy
+target/release
+target/sbpf-solana-solana
 */dist
 */__tests__
 marketing
