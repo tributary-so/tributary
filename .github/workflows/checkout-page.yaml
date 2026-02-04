@@ -25,13 +25,20 @@ jobs:
           cache-dependency-path: ./pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: ./apps/checkout
         run: pnpm install
 
-      - name: Build
+      - name: Install dependencies
+        working-directory: ./apps/app
+        run: pnpm install
+
+      - name: Build SDK
+        working-directory: ./packages/sdk
+        run: pnpm run build
+      - name: Build App
         working-directory: ./apps/checkout
         run: pnpm run build
         env:
+          # https://github.com/actions/runner-images/issues/70
           VITE_VCS_REF: ${{ github.sha }}
           NODE_ENV: production
 
