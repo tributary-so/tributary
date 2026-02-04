@@ -1,5 +1,6 @@
 import {
   Connection,
+  Keypair,
   PublicKey,
   SignatureStatus,
   SystemProgram,
@@ -75,11 +76,14 @@ export class Tributary {
    * @param connection - Solana RPC connection to use for all operations
    * @param wallet - Wallet containing the keypair for signing transactions
    */
-  constructor(connection: Connection, wallet: anchor.Wallet) {
+  constructor(connection: Connection, wallet: anchor.Wallet | Keypair) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
 
-    this.provider = new anchor.AnchorProvider(this.connection, wallet, {
+    const thisWallet =
+      wallet instanceof Keypair ? new anchor.Wallet(wallet) : wallet;
+
+    this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
       preflightCommitment: "confirmed",
     });
     this.program = new anchor.Program(IDL as TributaryIdl, this.provider);
