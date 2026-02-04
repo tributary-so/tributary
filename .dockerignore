@@ -1,6 +1,14 @@
-*/**/node_modules
-*/**/lib
-*/**/dist
+node_modules
+*/lib
+target
+*/dist
+*/__tests__
+marketing
+branding
+.hive
+.github
+.anchor
+.opencode
 .git/
 .husky/
 .benchmarks
@@ -16,4 +24,6 @@ tests
 __pycache__
 docker-compose.yml
 Dockerfile
-*/**/target
+specs/
+docs/
+programs/

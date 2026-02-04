@@ -6,8 +6,8 @@ RUN corepack enable
 FROM base AS deps
 WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY scheduler/package.json ./scheduler/package.json
-COPY sdk/package.json ./sdk/package.json
+COPY apps/scheduler/package.json ./scheduler/package.json
+COPY packages/sdk/package.json ./sdk/package.json
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 
 FROM base AS build
