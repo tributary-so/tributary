@@ -1,0 +1,68 @@
+/**
+ * Example usage of @tributary-so/payments package
+ *
+ * This example demonstrates how to integrate client-compatible payments
+ * with Tributary's USDC subscription system on Solana.
+ */
+
+import { Tributary } from "@tributary-so/sdk";
+import { PaymentsClient } from "./src/index";
+import { Connection, Keypair } from "@solana/web3.js";
+import { Wallet } from "@coral-xyz/anchor";
+
+const SOLANA_API =
+  process.env.SOLANA_API ?? "https://api.mainnet-beta.solana.com";
+const connection = new Connection(SOLANA_API);
+const tributary = new Tributary(connection, new Wallet(Keypair.generate()));
+
+async function example() {
+  // 1. Initialize the client (no API key required!)
+  const client = new PaymentsClient(tributary);
+
+  // 2. Create a checkout session
+  try {
+    const session = await client.checkout.sessions.create({
+      payment_method_types: ["tributary"],
+      line_items: [
+        {
+          description: "Monthly premium access to all features",
+          unitPrice: 20.0, // $20.00
+          quantity: 1,
+        },
+      ],
+      paymentFrequency: "monthly",
+      mode: "subscription",
+      success_url:
+        "https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://yourapp.com/cancel",
+      tributaryConfig: {
+        gateway: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", // Your gateway public key
+        recipient: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", // Your recipient public key
+        trackingId: "user_123_monthly_premium", // Your unique tracking identifier
+        autoRenew: true,
+        memo: "Monthly premium subscription payment",
+      },
+    });
+
+    console.log("Checkout session created:", session.id);
+    console.log("Checkout URL:", session.url);
+
+    // 3. Redirect user to checkout (in a real app)
+    // window.location.href = session.url;
+
+    // Clean up interval when done
+    // clearInterval(pollInterval);
+  } catch (error) {
+    console.error("Error creating checkout session:", error.message);
+  }
+}
+
+// Run examples
+if (require.main === module) {
+  console.log("=== Tributary Payments SDK Example ===\n");
+
+  console.log("1. Basic checkout session creation:");
+  example().catch(console.error);
+}
+
+export { example };

@@ -38,7 +38,8 @@ jobs:
       - name: Get latest ${{ inputs.package }} tag
         id: get-tag
         run: |
-          PACKAGE="${{ inputs.package }}"
+          FULL_PACKAGE="${{ inputs.package }}"
+          PACKAGE=${FULL_PACKAGE#apps/}
           LATEST_TAG=$(git tag --list "@tributary-so/${PACKAGE}-*" --sort=-version:refname | head -1)
           if [ -z "$LATEST_TAG" ]; then
             echo "::error::No ${PACKAGE} tag found"
