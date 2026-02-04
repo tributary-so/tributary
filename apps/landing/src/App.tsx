@@ -917,10 +917,10 @@ function App() {
                   className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
-                  <p className="font-bold text-neutral-900">Alice Johnson</p>
-                  <p className="text-sm text-neutral-600">
-                    Founder, Solana SaaS
+                  <p className="font-bold text-neutral-900">
+                    Corinna Abdel-Ibra
                   </p>
+                  <p className="text-sm text-neutral-600">Founder, Allowly</p>
                 </div>
               </div>
             </motion.div>
@@ -940,20 +940,24 @@ function App() {
                 </span>
               </div>
               <p className="text-neutral-700 italic mb-8 text-lg leading-relaxed">
-                "The developer experience with Tributary's SDK is fantastic. We
-                integrated our subscription model in a fraction of the time we
-                expected."
+                "Our engineers were able to integrate Tributary SDK for
+                (milestone) installment payments in a matter of days, while
+                constantly getting on-the-spot support from the team. Now our
+                cash loans are tracked onchain with users able to repay
+                automatically. That's UX done right."
               </p>
               <div className="flex items-center">
                 <img
-                  src="testimony/2.png"
-                  alt="Michael Scott"
+                  src="testimony/yummi-finance.png"
+                  alt="Vladislav Lenskii"
                   className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
-                  <p className="font-bold text-neutral-900">Michael Scott</p>
+                  <p className="font-bold text-neutral-900">
+                    Vladislav Lenskii
+                  </p>
                   <p className="text-sm text-neutral-600">
-                    Lead Dev, DeFi Protocol
+                    Founder, Yummi Finance
                   </p>
                 </div>
               </div>
