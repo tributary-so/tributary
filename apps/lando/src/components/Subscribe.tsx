@@ -6,7 +6,7 @@ import {
 } from "@tributary-so/payments";
 
 const BACKEND_BASE_URL =
-  process.env.VITE_BACKEND_BASE_URL || "http://localhost:3002";
+  process.env.VITE_BACKEND_BASE_URL || "https://lando-api.tributary.so";
 
 function formatAmount(amount: number): string {
   if (amount >= 1_000_000) {

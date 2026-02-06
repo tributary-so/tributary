@@ -47,6 +47,7 @@ jobs:
           fi
           VERSION=${LATEST_TAG#@tributary-so/${PACKAGE}-}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_name=$PACKAGE" >> $GITHUB_OUTPUT
           echo "::notice::Using ${PACKAGE} version: $VERSION"
 
       - name: Set up Docker Buildx
@@ -63,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: ${{ inputs.registry }}/tributary-so/${{ inputs.package }}:${{ steps.get-tag.outputs.version }}
+          tags: ${{ inputs.registry }}/tributary-so/${{ steps.get-tag.outputs.package_name }}:${{ steps.get-tag.outputs.version }}
           file: ${{ inputs.package }}/Dockerfile
           context: .
           build-args: |

@@ -28,7 +28,7 @@ import { CheckoutSessionManager } from "@tributary-so/payments";
 const manager = new CheckoutSessionManager();
 
 // Create checkout session
-manager.setBaseUrl("https://lando.tributary.so");
+manager.setBaseUrl("https://lando.tributary.so/#"); // hash-based routing
 const session = await manager.create({
   payment_method_types: ["tributary"],
   line_items: [
@@ -372,6 +372,10 @@ session and will allow the customer agent to setup a subscription accordingly:
 // Final URL
 console.log(session.url);
 ```
+
+Example URL:
+
+    https://lando.tributary.so/#/subscribe/[base64-encoded-data]
 
 ## See Also
 

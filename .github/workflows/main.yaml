@@ -40,6 +40,7 @@ jobs:
       has_scheduler: ${{ steps.detect.outputs.has_scheduler }}
       has_checkout: ${{ steps.detect.outputs.has_checkout }}
       has_lando: ${{ steps.detect.outputs.has_lando }}
+      has_lando_backend: ${{ steps.detect.outputs.has_lando_backend }}
       sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
 
     steps:
@@ -68,6 +69,7 @@ jobs:
           HAS_SCHEDULER=0
           HAS_CHECKOUT=0
           HAS_LANDO=1
+          HAS_LANDO_BACKEND=1
 
           if echo "$CHANGED_FILES" | grep -q "^programs/"; then
             HAS_PROGRAMS=1
@@ -101,6 +103,10 @@ jobs:
             HAS_LANDO=1
             echo "::notice::Checkout app changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/lando-backend/"; then
+            HAS_LANDO_BACKEND=1
+            echo "::notice::Checkout app changed"
+          fi
 
           echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
           echo "has_payments=$HAS_PAYMENTS" >> "$GITHUB_OUTPUT"
@@ -110,6 +116,7 @@ jobs:
           echo "has_scheduler=$HAS_SCHEDULER" >> "$GITHUB_OUTPUT"
           echo "has_checkout=$HAS_CHECKOUT" >> "$GITHUB_OUTPUT"
           echo "has_lando=$HAS_LANDO" >> "$GITHUB_OUTPUT"
+          echo "has_lando_backend=$HAS_LANDO_BACKEND" >> "$GITHUB_OUTPUT"
 
           ELEMENTS=""
           if [ "$HAS_SDK" = "1" ]; then
@@ -200,6 +207,18 @@ jobs:
     with:
       registry: ghcr.io
       package: apps/scheduler
+
+  build-lando-backend-docker:
+    name: Build Scheduler Docker Image
+    needs: [release, detect-changes]
+    if: needs.detect-changes.outputs.has_lando_backend == '1'
+    permissions:
+      packages: write
+      contents: read
+    uses: ./.github/workflows/build-docker-image.yaml
+    with:
+      registry: ghcr.io
+      package: apps/lando-backend
 
   checkoutpage:
     name: Update Checkout App
