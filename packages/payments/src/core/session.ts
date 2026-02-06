@@ -41,7 +41,7 @@ export interface EncodedSessionData {
 }
 
 export class CheckoutSessionManager {
-  private readonly BASE_URL = "https://checkout.tributary.so";
+  private BASE_URL = "https://checkout.tributary.so";
   connection: Connection;
   tributary?: Tributary;
   // private tracker: PaymentTracker | null;
@@ -53,6 +53,10 @@ export class CheckoutSessionManager {
     // this.tracker = tributary
     //   ? new PaymentTracker(this.connection, tributary)
     //   : null;
+  }
+
+  public setBaseUrl(url: string) {
+    this.BASE_URL = url;
   }
 
   // Create checkout session with encoded URL
