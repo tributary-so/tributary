@@ -2042,12 +2042,6 @@ export class Tributary {
       return [null, null, null];
     }
 
-    // Get the user's referral PDA using their actual referral code
-    const { address: userReferralPda } = this.getReferralPda(
-      gateway,
-      Buffer.from(userReferral.referralCode)
-    );
-
     // L1 referrer (who referred this user)
     if (userReferral.referrer.toString() != PublicKey.default.toString()) {
       chain.push(userReferral.referrer);

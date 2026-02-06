@@ -5,7 +5,7 @@ import { ValidationUtils } from "../utils/validation";
 import { PublicKey } from "@solana/web3.js";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
-import { PaymentTracker } from "./tracking";
+// import { PaymentTracker } from "./tracking";
 
 interface LineItem {
   description: string;
@@ -42,15 +42,17 @@ export interface EncodedSessionData {
 
 export class CheckoutSessionManager {
   private readonly BASE_URL = "https://checkout.tributary.so";
-  private connection: Connection;
-  private tracker: PaymentTracker | null;
+  connection: Connection;
+  tributary?: Tributary;
+  // private tracker: PaymentTracker | null;
 
   constructor(connection?: Connection, tributary?: Tributary) {
     this.connection =
       connection || new Connection("https://api.mainnet-beta.solana.com");
-    this.tracker = tributary
-      ? new PaymentTracker(this.connection, tributary)
-      : null;
+    this.tributary = tributary;
+    // this.tracker = tributary
+    //   ? new PaymentTracker(this.connection, tributary)
+    //   : null;
   }
 
   // Create checkout session with encoded URL
@@ -164,19 +166,6 @@ export class CheckoutSessionManager {
     const standardBase64 = base64.replace(/-/g, "+").replace(/_/g, "/");
     const jsonString = Buffer.from(standardBase64, "base64").toString("utf8");
     return JSON.parse(jsonString);
-  }
-
-  // Convert Tributary frequency back to Tributary interval
-  private frequencyToInterval(
-    frequency: string
-  ): "month" | "day" | "week" | "year" {
-    const mapping: Record<string, "month" | "day" | "week" | "year"> = {
-      daily: "day",
-      weekly: "week",
-      monthly: "month",
-      annually: "year",
-    };
-    return mapping[frequency] || "month";
   }
 
   // Generate unique tracking ID

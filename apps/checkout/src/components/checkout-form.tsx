@@ -3,8 +3,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SubscriptionParams } from "@tributary-so/payments";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, AlertCircle, Wallet, Loader2, Lock } from "lucide-react";
+import { CheckCircle2, Wallet, Loader2, Lock } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createSubscription } from "@/lib/tributary";
