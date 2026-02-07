@@ -27,10 +27,6 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: ./pnpm-lock.yaml
 
-      - name: Install dependencies
-        working-directory: ./apps/landing
-        run: pnpm install
-
       - name: Build
         working-directory: ./apps/landing
         run: pnpm run build
