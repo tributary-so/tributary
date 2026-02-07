@@ -11,9 +11,14 @@ import type { PaymentGateway } from '@tributary-so/sdk'
 export interface ReferralAccountFormProps {
   initialGateway?: string
   initialReferralCode?: string
+  onGatewayChange?: (gatewayPubkey: string) => void
 }
 
-export default function ReferralAccountForm({ initialGateway, initialReferralCode }: ReferralAccountFormProps) {
+export default function ReferralAccountForm({
+  initialGateway,
+  initialReferralCode,
+  onGatewayChange,
+}: ReferralAccountFormProps) {
   const { connection } = useConnection()
   const wallet = useWallet()
   const sdk = useSDK(wallet, connection)
@@ -217,7 +222,7 @@ export default function ReferralAccountForm({ initialGateway, initialReferralCod
   const status = getReferralCodeStatus()
 
   return (
-    <div className="max-w-[700px] space-y-4 mt-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+    <div className="max-w-[700px] space-y-4 p-6 border border-gray-200 rounded-lg bg-gray-50">
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Create Referral Account</h3>
       <p className="text-sm text-gray-600 mb-4">
         Create a referral account to earn rewards when others use your referral code for payments.
@@ -240,6 +245,7 @@ export default function ReferralAccountForm({ initialGateway, initialReferralCod
               onSelectionChange={(keys) => {
                 const selectedKey = Array.from(keys)[0] as string
                 setGateway(selectedKey)
+                onGatewayChange?.(selectedKey)
               }}
               placeholder="Select gateway"
               required
