@@ -14,8 +14,8 @@ Lando provides a subscription platform where:
 
 Subscription URLs follow this pattern:
 
-```
-https://lando.tributary.so/subscribe/[base64_encoded_data]
+```text
+https://lando.tributary.so/#/subscribe/[base64_encoded_data]
 ```
 
 ### Encoded Data Structure
