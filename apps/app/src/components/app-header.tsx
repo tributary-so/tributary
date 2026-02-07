@@ -144,6 +144,13 @@ export function AppHeader() {
               Docs
             </a>
             <button
+              onClick={() => handleNavClick('/referral')}
+              className={buttonClass}
+              style={{ fontFamily: 'var(--font-secondary)' }}
+            >
+              Referral Program
+            </button>
+            <button
               onClick={() => handleNavClick('/quickstart')}
               className={`${buttonClass} bg-primary text-white`}
               style={{ fontFamily: 'var(--font-secondary)' }}
@@ -241,6 +248,13 @@ export function AppHeader() {
               style={{ fontFamily: 'var(--font-secondary)' }}
             >
               Docs
+            </button>
+            <button
+              onClick={() => handleNavClick('/referral')}
+              className={`${buttonClass} w-full justify-start`}
+              style={{ fontFamily: 'var(--font-secondary)' }}
+            >
+              Referral Program
             </button>
             <button
               onClick={() => handleNavClick('/quickstart')}

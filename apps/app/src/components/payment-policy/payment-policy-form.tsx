@@ -68,9 +68,10 @@ export interface PaymentPolicyFormData {
 export interface PaymentPolicyFormProps {
   formData: PaymentPolicyFormData
   onFormDataChange: (newFormData: PaymentPolicyFormProps['formData']) => void
+  lineItemsActive?: boolean
 }
 
-export default function PaymentPolicyForm({ formData, onFormDataChange }: PaymentPolicyFormProps) {
+export default function PaymentPolicyForm({ formData, onFormDataChange, lineItemsActive }: PaymentPolicyFormProps) {
   const { connection } = useConnection()
   const wallet = useWallet()
   const sdk = useSDK(wallet, connection)
@@ -475,6 +476,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                     required
                     step="0.00000001"
                     min="0.00000001"
+                    isDisabled={lineItemsActive}
                     className="w-full"
                     endContent={
                       formData.tokenMint &&
@@ -485,6 +487,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange }: Paymen
                       )
                     }
                   />
+                  {lineItemsActive && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      ℹ️ Amount is computed from checkout line items. Cannot edit directly.
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
