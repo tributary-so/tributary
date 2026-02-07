@@ -8,18 +8,38 @@ export function Header() {
               <span className="text-lando-bg font-bold text-xl">L</span>
             </div>
             <div>
-              <h1 className="text-xl font-mono font-bold text-lando-accent">LANDO</h1>
-              <p className="text-xs text-lando-muted">Agent Commerce on Solana</p>
+              <a
+                href="/"
+                className="text-xl font-mono font-bold text-lando-accent"
+              >
+                LANDO
+              </a>
+              <p className="text-xs text-lando-muted">
+                Agent Commerce on Solana
+              </p>
             </div>
           </div>
           <nav className="hidden md:flex space-x-6">
-            <a href="/" className="text-lando-text hover:text-lando-accent transition-colors font-mono text-sm">
+            <a
+              href="/"
+              className="text-lando-text hover:text-lando-accent transition-colors font-mono text-sm"
+            >
               [HOME]
             </a>
-            <a href="https://checkout.tributary.so" target="_blank" rel="noopener noreferrer" className="text-lando-text hover:text-lando-accent transition-colors font-mono text-sm">
+            <a
+              href="https://checkout.tributary.so"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-lando-text hover:text-lando-accent transition-colors font-mono text-sm"
+            >
               [CHECKOUT]
             </a>
-            <a href="https://docs.tributary.so" target="_blank" rel="noopener noreferrer" className="text-lando-text hover:text-lando-accent transition-colors font-mono text-sm">
+            <a
+              href="https://docs.tributary.so"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-lando-text hover:text-lando-accent transition-colors font-mono text-sm"
+            >
               [DOCS]
             </a>
           </nav>
