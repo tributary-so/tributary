@@ -18,7 +18,9 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    const encodedData = window.location.pathname.split("/subscribe/")[1];
+    // const encodedData = window.location.pathname.split("#/subscribe/")[1];
+    const hashPart = window.location.hash; // Gets "#/subscribe/{encoded_data}"
+    const encodedData = hashPart ? hashPart.split("#/subscribe/")[1] : null;
     if (encodedData) {
       try {
         const sessionManager = new CheckoutSessionManager();
