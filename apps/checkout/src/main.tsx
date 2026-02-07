@@ -1,16 +1,20 @@
 import { Toaster } from "@/components/ui/sonner";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { HashRouter } from "react-router-dom";
 import { SolanaProvider } from "./components/solana-provider";
+import { Theme } from "@radix-ui/themes";
 import App from "./app.tsx";
+import "@radix-ui/themes/styles.css";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <SolanaProvider>
-    <BrowserRouter>
-      <App />
+    <HashRouter>
+      <Theme>
+        <App />
+      </Theme>
       <Toaster />
-    </BrowserRouter>
+    </HashRouter>
   </SolanaProvider>
 );
 // Patch BigInt so we can log it using JSON.stringify without any errors
