@@ -42,11 +42,15 @@ jobs:
       - name: Detect changed packages
         id: detect
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          echo "Diffing against: $PREV_TAG"
+          echo "Previous HEAD: ${{ github.event.before }}"
+          echo "Current HEAD: ${{ github.sha }}"
+
+          # PREV_COMMIT=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          PREV_COMMIT=${{ github.event.before }}
+          echo "Diffing against: $PREV_COMMIT"
           echo ""
 
-          CHANGED_FILES=$(git diff --name-only "$PREV_TAG")
+          CHANGED_FILES=$(git diff --name-only "$PREV_COMMIT")
           echo "Changed files:"
           echo "$CHANGED_FILES"
           echo ""
