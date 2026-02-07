@@ -41,6 +41,7 @@ jobs:
       has_checkout: ${{ steps.detect.outputs.has_checkout }}
       has_lando: ${{ steps.detect.outputs.has_lando }}
       has_lando_backend: ${{ steps.detect.outputs.has_lando_backend }}
+      has_app: ${{ steps.detect.outputs.has_app }}
       sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
 
     steps:
@@ -68,8 +69,9 @@ jobs:
           HAS_PAYMENTS=0
           HAS_SCHEDULER=0
           HAS_CHECKOUT=0
-          HAS_LANDO=1
-          HAS_LANDO_BACKEND=1
+          HAS_APP=0
+          HAS_LANDO=0
+          HAS_LANDO_BACKEND=0
 
           if echo "$CHANGED_FILES" | grep -q "^programs/"; then
             HAS_PROGRAMS=1
@@ -99,13 +101,17 @@ jobs:
             HAS_CHECKOUT=1
             echo "::notice::Checkout app changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/app/"; then
+            HAS_APP=1
+            echo "::notice::app changed"
+          fi
           if echo "$CHANGED_FILES" | grep -q "^apps/lando/"; then
             HAS_LANDO=1
-            echo "::notice::Checkout app changed"
+            echo "::notice::lando changed"
           fi
           if echo "$CHANGED_FILES" | grep -q "^apps/lando-backend/"; then
             HAS_LANDO_BACKEND=1
-            echo "::notice::Checkout app changed"
+            echo "::notice::lando-backend changed"
           fi
 
           echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
@@ -117,11 +123,13 @@ jobs:
           echo "has_checkout=$HAS_CHECKOUT" >> "$GITHUB_OUTPUT"
           echo "has_lando=$HAS_LANDO" >> "$GITHUB_OUTPUT"
           echo "has_lando_backend=$HAS_LANDO_BACKEND" >> "$GITHUB_OUTPUT"
+          echo "has_app=$HAS_APP" >> "$GITHUB_OUTPUT"
 
-          ELEMENTS=""
-          if [ "$HAS_SDK" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"packages/sdk\","
-          fi
+          # we always test SDK no matter
+          ELEMENTS="\"packages/sdk\","
+          # if [ "$HAS_SDK" = "1" ]; then
+          #   ELEMENTS="${ELEMENTS}\"packages/sdk\","
+          # fi
           if [ "$HAS_SDK_REACT" = "1" ]; then
             ELEMENTS="${ELEMENTS}\"packages/sdk-react\","
           fi
@@ -151,15 +159,6 @@ jobs:
   test-sdks:
     name: Test SDKs
     needs: detect-changes
-    if: >-
-      (needs.detect-changes.outputs.has_sdk == '1' ||
-       needs.detect-changes.outputs.has_sdk_react == '1' ||
-       needs.detect-changes.outputs.has_payments == '1' ||
-       needs.detect-changes.outputs.has_lando == '1' ||
-       needs.detect-changes.outputs.has_checkout == '1' ||
-       needs.detect-changes.outputs.has_scheduler == '1' ||
-       needs.detect-changes.outputs.has_sdk_x402 == '1') &&
-       github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/sdk-tests.yml
     with:
       paths: ${{ needs.detect-changes.outputs.sdk_paths }}
@@ -174,7 +173,8 @@ jobs:
 
   app:
     name: Update App
-    needs: [release]
+    needs: [release, detect-changes]
+    if: needs.detect-changes.outputs.has_app == '1'
     secrets: inherit
     uses: ./.github/workflows/app-prod.yaml
 
@@ -192,7 +192,8 @@ jobs:
 
   docs-sdk:
     name: Update SDK Docs
-    needs: [release]
+    needs: [release, detect-changes]
+    if: needs.detect-changes.outputs.has_sdk == '1'
     secrets: inherit
     uses: ./.github/workflows/sdk-typedocs.yaml
 
@@ -222,12 +223,14 @@ jobs:
 
   checkoutpage:
     name: Update Checkout App
-    needs: [release]
+    needs: [release, detect-changes]
+    if: needs.detect-changes.outputs.has_checkout == '1'
     secrets: inherit
     uses: ./.github/workflows/checkout-page.yaml
 
   lando:
     name: Update lando App
-    needs: [release]
+    needs: [release, detect-changes]
+    if: needs.detect-changes.outputs.has_lando == '1'
     secrets: inherit
     uses: ./.github/workflows/lando-page.yaml
