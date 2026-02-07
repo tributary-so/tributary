@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import PaymentPolicyForm, { PaymentPolicyFormData } from './payment-policy-form'
-import ReferralAccountForm, { ReferralAccountFormData } from './referral-account-form'
 import IntegrationCode from './integration-code'
 
 export default function PaymentPolicyFeature() {
@@ -35,17 +34,8 @@ export default function PaymentPolicyFeature() {
 
   const [lineItemsActive, setLineItemsActive] = useState(false)
 
-  const [referralFormData, setReferralFormData] = useState<ReferralAccountFormData>({
-    gateway: '',
-    referralCode: '',
-  })
-
   const handleFormDataChange = (newFormData: typeof formData) => {
     setFormData(newFormData)
-  }
-
-  const handleReferralFormDataChange = (newFormData: typeof referralFormData) => {
-    setReferralFormData(newFormData)
   }
 
   return (
@@ -71,7 +61,6 @@ export default function PaymentPolicyFeature() {
               onFormDataChange={handleFormDataChange}
               lineItemsActive={lineItemsActive}
             />
-            <ReferralAccountForm formData={referralFormData} onFormDataChange={handleReferralFormDataChange} />
           </div>
           <div className="relative w-full md:w-1/2">
             <IntegrationCode formData={formData} onLineItemsActive={setLineItemsActive} />
