@@ -1,5 +1,14 @@
 import BN from "bn.js";
 import { PaymentFrequency, PaymentFrequencyString } from "./types";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import { publicKey } from "@metaplex-foundation/umi";
+import {
+  safeFetchMetadata,
+  findMetadataPda,
+  type Metadata,
+} from "@metaplex-foundation/mpl-token-metadata";
+import { getMint } from "@solana/spl-token";
 
 /**
  * Encodes a string memo into a fixed-size number array (Uint8Array).
@@ -111,4 +120,63 @@ export function generateSecureRandomString(length: number = 6): string {
   return Array.from(array)
     .map((x) => characters[x % characters.length])
     .join("");
+}
+
+/**
+ * Fetches token metadata for a given mint address.
+ * Uses Metaplex Token Metadata program to retrieve on-chain metadata.
+ * @param connection - Solana RPC connection
+ * @param mintAddress - Base58 encoded mint address string or PublicKey
+ * @returns Promise<Metadata | null> - Metadata object or null if not found
+ */
+export async function getTokenMetadata(
+  connection: Connection,
+  mintAddress: string | PublicKey
+): Promise<Metadata | null> {
+  const mintPubkey =
+    typeof mintAddress === "string" ? new PublicKey(mintAddress) : mintAddress;
+
+  const umi = createUmi(connection);
+
+  const metadataPda = findMetadataPda(umi, { mint: publicKey(mintPubkey) });
+
+  const metadata = await safeFetchMetadata(umi, metadataPda);
+  return metadata;
+}
+
+/**
+ * Fetches token symbol for a given mint address.
+ * Convenience wrapper around getTokenMetadata that extracts just the symbol.
+ * @param connection - Solana RPC connection
+ * @param mintAddress - Base58 encoded mint address string or PublicKey
+ * @returns Promise<string | null> - Token symbol string or null if not found
+ */
+export async function getTokenSymbol(
+  connection: Connection,
+  mintAddress: string | PublicKey
+): Promise<string | null> {
+  const metadata = await getTokenMetadata(connection, mintAddress);
+  return metadata?.symbol ?? null;
+}
+
+/**
+ * Fetches token decimals (precision) for a given mint address.
+ * Uses SPL Token program to retrieve mint information containing decimals.
+ * @param connection - Solana RPC connection
+ * @param mintAddress - Base58 encoded mint address string or PublicKey
+ * @returns Promise<number | null> - Number of decimals (precision) or null if not found
+ */
+export async function getTokenDecimals(
+  connection: Connection,
+  mintAddress: string | PublicKey
+): Promise<number | null> {
+  const mintPubkey =
+    typeof mintAddress === "string" ? new PublicKey(mintAddress) : mintAddress;
+
+  try {
+    const mint = await getMint(connection, mintPubkey);
+    return mint.decimals;
+  } catch {
+    return null;
+  }
 }

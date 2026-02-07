@@ -36,7 +36,8 @@ async function example() {
         "https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://yourapp.com/cancel",
       tributaryConfig: {
-        gateway: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", // Your gateway public key
+        tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC on mainnet
+        gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr", // Your gateway public key
         recipient: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", // Your recipient public key
         trackingId: "user_123_monthly_premium", // Your unique tracking identifier
         autoRenew: true,

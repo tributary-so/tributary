@@ -4,9 +4,15 @@ import {
   CheckoutSessionManager,
   SubscriptionParams,
 } from "@tributary-so/payments";
+import { Connection } from "@solana/web3.js";
+import { getTokenSymbol, getTokenDecimals } from "@tributary-so/sdk";
 
 const BACKEND_BASE_URL =
-  process.env.VITE_BACKEND_BASE_URL || "https://lando-api.tributary.so";
+  import.meta.env.VITE_BACKEND_BASE_URL ?? "https://lando-api.tributary.so";
+const SOLANA_RPC =
+  import.meta.env.VITE_SOLANA_API ?? "https://api.mainnet-beta.solana.com";
+
+console.log(SOLANA_RPC);
 
 function formatAmount(amount: number): string {
   if (amount >= 1_000_000) {
@@ -25,6 +31,10 @@ export function Subscribe() {
   );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tokenSymbol, setTokenSymbol] = useState<string | null>(null);
+  const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data) {
@@ -38,6 +48,39 @@ export function Subscribe() {
       const decoded = sessionManager.decodeSubscriptionUrl(data);
       setSubscription(decoded);
       setLoading(false);
+
+      if (decoded.tokenMint) {
+        const connection = new Connection(SOLANA_RPC);
+        setTokenLoading(true);
+        Promise.all([
+          getTokenSymbol(connection, decoded.tokenMint),
+          getTokenDecimals(connection, decoded.tokenMint),
+        ])
+          .then(([symbol, decimals]) => {
+            if (!symbol || decimals === null) {
+              setTokenError(
+                `Token mint ${decoded.tokenMint.slice(
+                  0,
+                  8
+                )}... not found or has no metadata`
+              );
+            } else {
+              setTokenSymbol(symbol);
+              setTokenDecimals(decimals);
+            }
+          })
+          .catch((err) => {
+            console.warn("Failed to fetch token metadata:", err);
+            setTokenError(
+              `Failed to fetch token metadata: ${
+                err instanceof Error ? err.message : "Unknown error"
+              }`
+            );
+          })
+          .finally(() => {
+            setTokenLoading(false);
+          });
+      }
     } catch (err) {
       console.trace(err);
       setError(
@@ -75,6 +118,32 @@ export function Subscribe() {
               className="inline-block bg-lando-accent text-lando-bg font-bold px-6 py-3 rounded-lg hover:bg-lando-glow transition-all font-mono"
             >
               Return Home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tokenError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="bg-lando-card border border-lando-border rounded-lg p-8 max-w-lg w-full">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⛔️</div>
+            <h2 className="text-2xl font-bold text-lando-accent font-mono mb-4">
+              Invalid Token
+            </h2>
+            <p className="text-lando-muted mb-6">{tokenError}</p>
+            <p className="text-lando-text mb-6">
+              Please contact the merchant and provide the correct token mint
+              address. You cannot proceed with an invalid token.
+            </p>
+            <a
+              href="/"
+              className="inline-block border border-lando-border text-lando-text px-6 py-3 rounded-lg hover:border-lando-accent hover:text-lando-accent transition-all font-mono"
+            >
+              ← Return Home
             </a>
           </div>
         </div>
@@ -131,12 +200,14 @@ export function Subscribe() {
                           {item.description}
                         </h3>
                         <p className="text-lando-muted text-sm mt-1">
-                          Quantity: {item.quantity} × {item.unitPrice} SOL
+                          Quantity: {item.quantity} × {item.unitPrice}{" "}
+                          {tokenSymbol || "SOL"}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-lando-accent font-mono">
-                          {formatAmount(item.quantity * item.unitPrice)} SOL
+                          {formatAmount(item.quantity * item.unitPrice)}{" "}
+                          {tokenSymbol || "SOL"}
                         </p>
                       </div>
                     </div>
@@ -153,7 +224,11 @@ export function Subscribe() {
               <div className="flex justify-between items-center">
                 <span className="text-lando-muted">Total Amount</span>
                 <span className="text-2xl font-bold text-lando-accent font-mono">
-                  {formatAmount(subscription.amount)} SOL
+                  {formatAmount(subscription.amount)} {tokenSymbol || "SOL"}
+                  <span className="font-normal text-lando-muted text-sm">
+                    {" "}
+                    /{frequencyDisplay.toLowerCase()}
+                  </span>
                 </span>
               </div>
             </div>
@@ -168,12 +243,53 @@ export function Subscribe() {
               Payment Details
             </h2>
 
+            <div className="mt-6 bg-lando-bg/50 border border-lando-border rounded-lg p-4">
+              <p className="text-lando-muted text-sm mb-1">Token Mint</p>
+              <p className="font-mono text-lando-text text-sm break-all">
+                {subscription.tokenMint}
+              </p>
+              {tokenLoading ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-lando-accent border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-lando-muted text-sm">
+                    Loading token details...
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2 flex gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lando-muted">Symbol:</span>
+                    <span className="font-mono text-lando-accent">
+                      {tokenSymbol || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lando-muted">Precision:</span>
+                    <span className="font-mono text-lando-accent">
+                      {tokenDecimals !== null
+                        ? `${tokenDecimals} decimals`
+                        : "Unknown"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-lando-bg/50 border border-lando-border rounded-lg p-4">
                 <p className="text-lando-muted text-sm mb-1">Amount</p>
-                <p className="font-mono text-lando-text text-lg">
-                  {formatAmount(subscription.amount)} SOL
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-lando-text text-lg">
+                    {tokenLoading ? (
+                      <span className="inline-block w-3 h-3 border-2 border-lando-accent border-t-transparent rounded-full animate-spin"></span>
+                    ) : (
+                      <>
+                        {formatAmount(subscription.amount)}{" "}
+                        {tokenSymbol || "SOL"}
+                      </>
+                    )}
+                  </p>
+                </div>
               </div>
 
               <div className="bg-lando-bg/50 border border-lando-border rounded-lg p-4">
@@ -263,8 +379,11 @@ export function Subscribe() {
                     Ensure sufficient token balance
                   </p>
                   <p className="text-lando-muted text-sm mt-1">
-                    You need {formatAmount(subscription.amount)} tokens plus
-                    network fees
+                    {tokenLoading
+                      ? "Loading token details..."
+                      : `You need ${formatAmount(subscription.amount)} ${
+                          tokenSymbol || "SOL"
+                        } tokens plus network fees`}
                   </p>
                 </div>
               </li>

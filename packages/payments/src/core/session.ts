@@ -83,9 +83,7 @@ export class CheckoutSessionManager {
 
     // Encode subscription parameters into URL
     const encodedUrl = this.encodeSubscriptionUrl({
-      tokenMint:
-        params.tributaryConfig.recipient ||
-        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      tokenMint: params.tributaryConfig.tokenMint,
       recipient: params.tributaryConfig.recipient,
       gateway: params.tributaryConfig.gateway,
       amount,

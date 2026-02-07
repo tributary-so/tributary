@@ -43,6 +43,7 @@ const session = await manager.create({
   success_url: "https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}",
   cancel_url: "https://yourapp.com/cancel",
   tributaryConfig: {
+    tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC on mainnet
     gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr", // fixed, do not change
     recipient: "RECIPIENT_PUBLIC_KEY_HERE",
     trackingId: "user_123_monthly_premium",
@@ -76,6 +77,7 @@ Use `manager.create()` to generate a checkout session with an encoded URL.
   success_url: string, // Redirect after successful payment
   cancel_url: string, // Redirect if user cancels
   tributaryConfig: {
+    tokenMint: string, // token mint addess (base58)
     gateway: string, // Gateway public key (base58)
     recipient: string, // Recipient public key (base58)
     trackingId: string, // Your unique identifier
@@ -246,7 +248,7 @@ try {
 
 **Common validation errors:**
 
-- Invalid gateway/recipient public keys (not valid base58)
+- Invalid tokenMint/gateway/recipient public keys (not valid base58)
 - Invalid tracking ID format
 - Missing required fields in tributaryConfig
 - Invalid payment frequency
@@ -277,6 +279,7 @@ function generateTrackingId(userId: string, planId: string): string {
 ```typescript
 function validateCheckoutParams(params: any): boolean {
   if (!params.line_items?.length) return false;
+  if (!params.tributaryConfig?.tokenMint) return false;
   if (!params.tributaryConfig?.gateway) return false;
   if (!params.tributaryConfig?.recipient) return false;
   if (!params.tributaryConfig?.trackingId) return false;

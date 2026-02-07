@@ -37,7 +37,7 @@ export function Landing() {
               </a>
               <a
                 type="button"
-                href="/#/subscribe/eyJ0bSI6IjlXekRYd0JibWtnOFpUYk5NcVV4dlFSQXlyWnpEc0dZZExWTDl6WXRBV1dNIiwiciI6IjlXekRYd0JibWtnOFpUYk5NcVV4dlFSQXlyWnpEc0dZZExWTDl6WXRBV1dNIiwiZyI6IjlXekRYd0JibWtnOFpUYk5NcVV4dlFSQXlyWnpEc0dZZExWTDl6WXRBV1dNIiwiYSI6IjIwIiwiYXIiOnRydWUsIm1yIjoibnVsbCIsInBmIjoibW9udGhseSIsInN0IjoibnVsbCIsInRpZCI6InVzZXJfMTIzX21vbnRobHlfcHJlbWl1bSIsImxpIjoiW3tcImRlc2NyaXB0aW9uXCI6XCJNb250aGx5IHByZW1pdW0gYWNjZXNzIHRvIGFsbCBmZWF0dXJlc1wiLFwidW5pdFByaWNlXCI6MjAsXCJxdWFudGl0eVwiOjF9XSJ9"
+                href="/#/subscribe/"
                 className="border border-lando-border text-lando-text px-8 py-4 rounded-lg hover:border-lando-accent hover:text-lando-accent transition-all font-mono"
               >
                 Try Demo →
