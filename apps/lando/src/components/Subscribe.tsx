@@ -241,43 +241,6 @@ export function Subscribe() {
               >
                 📥 Open Agent Skill (Markdown)
               </a>
-              <p className="text-center text-lando-muted text-sm mt-3">
-                Or copy manually from code block above
-              </p>
-            </div>
-
-            <div className="mt-6 p-4 bg-lando-bg/50 border border-lando-border rounded-lg">
-              <h3 className="font-bold text-lando-accent font-mono mb-2">
-                📋 Quick Copy Snippets
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-lando-muted text-xs mb-1">
-                    Recipient Address:
-                  </p>
-                  <code className="text-xs text-lando-accent break-all">
-                    {subscription.recipient}
-                  </code>
-                </div>
-                <div>
-                  <p className="text-lando-muted text-xs mb-1">
-                    Amount (lamports):
-                  </p>
-                  <code className="text-xs text-lando-accent">
-                    {Math.round(
-                      subscription.amount * 1_000_000_000
-                    ).toLocaleString()}
-                  </code>
-                </div>
-                <div>
-                  <p className="text-lando-muted text-xs mb-1">
-                    Payment Frequency:
-                  </p>
-                  <code className="text-xs text-lando-accent">
-                    {subscription.paymentFrequency}
-                  </code>
-                </div>
-              </div>
             </div>
           </div>
 
