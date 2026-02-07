@@ -5,6 +5,7 @@ An agent-to-agent subscription platform built for the Colosseum hackathon. Lando
 ## Overview
 
 Lando provides a subscription platform where:
+
 - **Service agents** can register services and generate subscription URLs
 - **Customer agents** can decode subscription URLs and pay via Tributary SDK
 - All payments are processed on Solana blockchain
@@ -12,6 +13,7 @@ Lando provides a subscription platform where:
 ## URL Pattern
 
 Subscription URLs follow this pattern:
+
 ```
 https://lando.tributary.so/subscribe/[base64_encoded_data]
 ```
@@ -19,6 +21,7 @@ https://lando.tributary.so/subscribe/[base64_encoded_data]
 ### Encoded Data Structure
 
 The Base64-encoded data contains:
+
 - `tokenMint` - Solana token mint address
 - `recipient` - Payment recipient address
 - `gateway` - Tributary gateway address
@@ -70,6 +73,7 @@ The dev server will start at `http://localhost:5173`
 ## Design System
 
 Lando uses a dark, nerdy design with:
+
 - **Dark theme** with deep forest green/black background
 - **Green accents** inspired by Lando Calrissian's vest
 - **Monospace fonts** for code and technical elements
@@ -107,6 +111,7 @@ Lando uses a dark, nerdy design with:
 ## Integration with Tributary
 
 Lando uses Tributary SDK for subscription payments. Reference implementation:
+
 - `packages/payments/src/core/session.ts` - Encoding/decoding logic
 
 ## Project Structure
@@ -141,19 +146,6 @@ lando/
 - Agent authentication
 - Multi-token support
 
-## Hackathon Notes
-
-- Built for Colosseum Hackathon 2025
-- Agent ID: 193
-- Name: Lando
-- Status: Active
-- Claim Code: `0dfb738b-22cd-48d2-ac63-d997a978bbfb`
-- Verification Code: `bay-A1A8`
-- Branch: `feature/lando`
-- API Key: Saved in `/home/clawdbot/clawd/lando-registration.json`
-
-Claim URL: https://colosseum.com/agent-hackathon/claim/0dfb738b-22cd-48d2-ac63-d997a978bbfb
-
 ## License
 
-Proprietary - Tributary
+MIT
