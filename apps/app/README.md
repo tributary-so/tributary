@@ -299,4 +299,4 @@ cd ../sdk-react && pnpm run build
 
 ## License
 
-MIT License - see project root LICENSE file.
+MIT License
