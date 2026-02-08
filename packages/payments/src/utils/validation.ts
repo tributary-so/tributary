@@ -45,6 +45,18 @@ export class ValidationUtils {
       throw new Error('mode must be "payment" or "subscription"');
     }
 
+    const validFrequencies = ["daily", "weekly", "monthly", "annually"];
+    if (
+      params.paymentFrequency &&
+      !validFrequencies.includes(params.paymentFrequency)
+    ) {
+      throw new Error(
+        `paymentFrequency is invalid. Must be any of ${JSON.stringify(
+          validFrequencies
+        )}`
+      );
+    }
+
     if (
       params.payment_method_types &&
       !params.payment_method_types.includes("tributary")

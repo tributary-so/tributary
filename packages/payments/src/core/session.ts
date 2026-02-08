@@ -146,9 +146,9 @@ export class CheckoutSessionManager {
     try {
       const data = this.decodeFromBase64Url(encodedData);
       return this.validateDecodedData(data);
-    } catch (error) {
-      console.error(error);
-      throw new Error("Invalid session data encoding");
+    } catch (err) {
+      const error = err as Error;
+      throw new Error(`Invalid session data encoding: ${error.message}`);
     }
   }
 
@@ -194,13 +194,13 @@ export class CheckoutSessionManager {
     // Validate amount
     const amount = parseInt(data.a);
     if (isNaN(amount) || amount <= 0) {
-      throw new Error("Invalid amount");
+      throw new Error(`Invalid amount (${amount})`);
     }
 
     // Validate payment frequency
     const validFrequencies = ["daily", "weekly", "monthly", "annually"];
     if (!validFrequencies.includes(data.pf)) {
-      throw new Error("Invalid payment frequency");
+      throw new Error(`Invalid payment frequency (${data.pf})!`);
     }
 
     // Parse line items if present
