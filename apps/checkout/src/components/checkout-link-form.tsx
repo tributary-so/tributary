@@ -4,7 +4,11 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { Copy, Check, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { LineItem, SubscriptionParams, EncodedSessionData } from "@tributary-so/payments";
+import {
+  LineItem,
+  SubscriptionParams,
+  EncodedSessionData,
+} from "@tributary-so/payments";
 
 export function CheckoutLinkForm() {
   const [copied, setCopied] = React.useState(false);
@@ -74,15 +78,12 @@ export function CheckoutLinkForm() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Validate Solana address format (using same pattern as ValidationUtils.isValidPublicKey)
   const isValidSolanaAddress = (address: string): boolean => {
-    try {
-      // Check if it's a valid Solana address format (base58, 32-44 chars)
-      return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
-    } catch {
-      return false;
-    }
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
   };
 
+  // Validate URL format (not in payments package, keep local)
   const isValidUrl = (url: string): boolean => {
     try {
       new URL(url);
@@ -92,11 +93,14 @@ export function CheckoutLinkForm() {
     }
   };
 
+  // Generate tracking ID (using same pattern as CheckoutSessionManager.generateTrackingId)
   const generateTrackingId = (): string => {
     return `trib_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   };
 
+  // Encode checkout URL using CheckoutSessionManager
   const encodeCheckoutUrl = (params: SubscriptionParams): string => {
+    // Use the encoding logic from CheckoutSessionManager
     const data: EncodedSessionData = {
       tm: params.tokenMint,
       r: params.recipient,
@@ -109,9 +113,12 @@ export function CheckoutLinkForm() {
       tid: params.trackingId,
       li: params.lineItems ? JSON.stringify(params.lineItems) : "[]",
     };
+
+    // Use the same encoding logic as CheckoutSessionManager.encodeAsBase64Url
     const jsonString = JSON.stringify(data);
     const base64 = Buffer.from(jsonString).toString("base64");
     const encoded = base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
     return `${window.location.origin}/#/subscribe/${encoded}`;
   };
 
