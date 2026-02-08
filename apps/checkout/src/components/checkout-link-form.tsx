@@ -4,38 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { Copy, Check, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface LineItem {
-  description: string;
-  unitPrice: number;
-  quantity: number;
-}
-
-interface CheckoutParams {
-  tokenMint: string;
-  recipient: string;
-  gateway: string;
-  amount: number;
-  autoRenew: boolean;
-  maxRenewals: number | null;
-  paymentFrequency: string;
-  startTime: number | null;
-  trackingId: string;
-  lineItems: LineItem[];
-}
-
-interface EncodedSessionData {
-  tm: string;
-  r: string;
-  g: string;
-  a: string;
-  ar: boolean;
-  mr: string;
-  pf: string;
-  st: string;
-  tid: string;
-  li: string;
-}
+import { LineItem, SubscriptionParams, EncodedSessionData } from "@tributary-so/payments";
 
 export function CheckoutLinkForm() {
   const [copied, setCopied] = React.useState(false);
@@ -127,7 +96,7 @@ export function CheckoutLinkForm() {
     return `trib_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   };
 
-  const encodeCheckoutUrl = (params: CheckoutParams): string => {
+  const encodeCheckoutUrl = (params: SubscriptionParams): string => {
     const data: EncodedSessionData = {
       tm: params.tokenMint,
       r: params.recipient,
