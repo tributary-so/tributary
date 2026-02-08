@@ -50,8 +50,10 @@ nav:
   - Payment Providers: providers.md
   - Developer Guide:
       - Basics: how.md
-      - Button Integration: quickstart/button.md
+      - Integration Options: integration.md
       - SDK Integration: quickstart/integration.md
+      - React Button: quickstart/button.md
+      - Checkout Page Links: quickstart/checkout.md
       - Payment Policies:
           - Subscription Payments: subscription-payments.md
           - Milestone Payments: milestone-payments.md
