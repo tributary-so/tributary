@@ -30,7 +30,6 @@ const manager = new CheckoutSessionManager();
 // Create checkout session
 manager.setBaseUrl("https://lando.tributary.so/#"); // hash-based routing
 const session = await manager.create({
-  payment_method_types: ["tributary"],
   line_items: [
     {
       description: "Monthly premium access to all features",
