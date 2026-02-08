@@ -290,20 +290,6 @@ if (!validateCheckoutParams(params)) {
 }
 ```
 
-### Handle Auto-Renew Appropriately
-
-```typescript
-const autoRenew = planType === "recurring"; // Only enable for recurring plans
-
-await manager.create({
-  tributaryConfig: {
-    // ... other config
-    autoRenew,
-  },
-  // ... rest of config
-});
-```
-
 ## Testing
 
 You can test checkout session creation without executing payments:

@@ -173,11 +173,12 @@ function generateSkillMarkdown(
     tokenMint,
     recipient,
     paymentFrequency,
-    autoRenew,
+    autoRenew: autoRenew ?? true ? "Yes" : "No",
     lineItems,
-    trackingId,
-    maxRenewals,
+    trackingId: trackingId ?? "N/A",
+    maxRenewals: maxRenewals !== null ? maxRenewals : "Unlimited",
     startTime,
+    decimals,
   };
 
   return MarkdownTemplateEngine.renderFile(
