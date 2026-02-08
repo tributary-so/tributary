@@ -27,7 +27,8 @@ export default function CheckoutPage() {
         const decoded = sessionManager.decodeSubscriptionUrl(encodedData);
         setSessionData(decoded);
       } catch (err) {
-        setError("Invalid session data");
+        const error = err as Error;
+        setError(error.message);
       }
     } else {
       setError("No session data found");
