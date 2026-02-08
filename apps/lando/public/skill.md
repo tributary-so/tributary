@@ -30,7 +30,6 @@ const manager = new CheckoutSessionManager();
 // Create checkout session
 manager.setBaseUrl("https://lando.tributary.so/#"); // hash-based routing
 const session = await manager.create({
-  payment_method_types: ["tributary"],
   line_items: [
     {
       description: "Monthly premium access to all features",
@@ -289,20 +288,6 @@ function validateCheckoutParams(params: any): boolean {
 if (!validateCheckoutParams(params)) {
   throw new Error("Invalid checkout parameters");
 }
-```
-
-### Handle Auto-Renew Appropriately
-
-```typescript
-const autoRenew = planType === "recurring"; // Only enable for recurring plans
-
-await manager.create({
-  tributaryConfig: {
-    // ... other config
-    autoRenew,
-  },
-  // ... rest of config
-});
 ```
 
 ## Testing
