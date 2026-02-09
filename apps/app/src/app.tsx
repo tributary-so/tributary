@@ -8,6 +8,7 @@ const LazyPaymentPolicy = lazy(() => import('@/components/payment-policy/payment
 const LazyAccount = lazy(() => import('@/components/account/account-page'))
 const LazyPresentation = lazy(() => import('@/components/presentation/presentation-feature'))
 const LazyX402Presentation = lazy(() => import('@/components/presentation/x402-presentation-feature'))
+const LazyLandoPresentation = lazy(() => import('@/components/presentation/lando-presentation-feature'))
 const LazyReferralProgram = lazy(() => import('@/components/referral-program/ReferralProgramPage'))
 
 const routes: RouteObject[] = [
@@ -19,6 +20,7 @@ const routes: RouteObject[] = [
   { path: 'account', element: <LazyAccount /> },
   { path: 'hackathon', element: <LazyPresentation /> },
   { path: 'x402', element: <LazyX402Presentation /> },
+  { path: 'agent', element: <LazyLandoPresentation /> },
   { path: 'referral', element: <LazyReferralProgram /> },
 ]
 

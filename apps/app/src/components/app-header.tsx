@@ -130,6 +130,14 @@ export function AppHeader() {
                   >
                     x402
                   </button>
+                  <button
+                    onClick={() => handleNavClick('/agent')}
+                    className={dropdownItemClass}
+                    style={{ fontFamily: 'var(--font-secondary)' }}
+                    role="menuitem"
+                  >
+                    Agent
+                  </button>
                 </div>
               )}
             </div>
@@ -238,6 +246,14 @@ export function AppHeader() {
                     role="menuitem"
                   >
                     x402
+                  </button>
+                  <button
+                    onClick={() => handleNavClick('/agent')}
+                    className={`${dropdownItemClass} justify-start`}
+                    style={{ fontFamily: 'var(--font-secondary)' }}
+                    role="menuitem"
+                  >
+                    Agent
                   </button>
                 </div>
               )}
