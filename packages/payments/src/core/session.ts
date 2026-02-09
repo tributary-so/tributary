@@ -24,6 +24,8 @@ export interface SubscriptionParams {
   startTime?: number | null;
   trackingId?: string;
   lineItems?: LineItem[];
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
 export interface EncodedSessionData {
@@ -38,6 +40,8 @@ export interface EncodedSessionData {
   st: string; // startTime (timestamp or "null")
   tid: string; // trackingId
   li: string; // lineItems (JSON string)
+  su: string; // successUrl or "null"
+  cu: string; // cancelUrl or "null"
 }
 
 export class CheckoutSessionManager {
@@ -96,6 +100,8 @@ export class CheckoutSessionManager {
         params.metadata?.tracking_id ||
         sessionId,
       lineItems,
+      successUrl: params.successUrl,
+      cancelUrl: params.cancelUrl,
     });
 
     // Create Tributary-compatible response
@@ -132,6 +138,8 @@ export class CheckoutSessionManager {
       st: params.startTime?.toString() || "null",
       tid: params.trackingId || this.generateTrackingId(),
       li: params.lineItems ? JSON.stringify(params.lineItems) : "[]",
+      su: params.successUrl || "null",
+      cu: params.cancelUrl || "null",
     };
 
     // Use Base64URL encoding (compact and URL-safe)
@@ -145,6 +153,7 @@ export class CheckoutSessionManager {
     // Try Base64URL decoding first
     try {
       const data = this.decodeFromBase64Url(encodedData);
+      console.log(data);
       return this.validateDecodedData(data);
     } catch (err) {
       const error = err as Error;
@@ -225,6 +234,8 @@ export class CheckoutSessionManager {
       startTime: data.st === "null" ? null : parseInt(data.st),
       trackingId: data.tid,
       lineItems,
+      successUrl: data.su === "null" ? undefined : data.su,
+      cancelUrl: data.cu === "null" ? undefined : data.cu,
     };
   }
 

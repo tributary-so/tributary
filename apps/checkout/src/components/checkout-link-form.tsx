@@ -110,7 +110,7 @@ export function CheckoutLinkForm() {
       : parseFloat(formData.amount || "0");
 
     const manager = new CheckoutSessionManager();
-    manager.setBaseUrl(window.location.origin);
+    manager.setBaseUrl(window.location.origin + "/#");
     const url = manager.encodeSubscriptionUrl({
       tokenMint: formData.tokenMint,
       recipient: formData.recipient,
@@ -122,6 +122,8 @@ export function CheckoutLinkForm() {
       startTime: null,
       trackingId: formData.trackingId || generateTrackingId(),
       lineItems: formData.lineItems,
+      successUrl: formData.successUrl,
+      cancelUrl: formData.cancelUrl,
     });
 
     setCheckoutUrl(url);
