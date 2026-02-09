@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && cp src/skill.md lib/",
     "start": "npx tsx src/index.ts"
   },
   "dependencies": {
