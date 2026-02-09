@@ -34,6 +34,8 @@ interface EncodedSessionData {
   st: string
   tid: string
   li: string
+  su: string
+  cu: string
 }
 
 interface IntegrationCodeProps {
@@ -119,6 +121,8 @@ function encodeSubscriptionUrl(params: {
   startTime: number | null
   trackingId: string
   lineItems: LineItem[]
+  successUrl?: string
+  cancelUrl?: string
 }): string {
   const data: EncodedSessionData = {
     tm: params.tokenMint,
@@ -131,6 +135,8 @@ function encodeSubscriptionUrl(params: {
     st: params.startTime?.toString() || 'null',
     tid: params.trackingId,
     li: params.lineItems ? JSON.stringify(params.lineItems) : '[]',
+    su: params.successUrl || 'null',
+    cu: params.cancelUrl || 'null',
   }
   const jsonString = JSON.stringify(data)
   const base64 = Buffer.from(jsonString).toString('base64')
@@ -225,6 +231,8 @@ export default function IntegrationCode({ formData, onLineItemsActive }: Integra
       startTime: null,
       trackingId: checkoutParams.trackingId || generateTrackingId(),
       lineItems: checkoutParams.lineItems,
+      successUrl: checkoutParams.successUrl || undefined,
+      cancelUrl: checkoutParams.cancelUrl || undefined,
     })
   }
 
