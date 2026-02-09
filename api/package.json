@@ -1,0 +1,25 @@
+{
+  "name": "@tributary-so/api",
+  "version": "1.0.0",
+  "description": "Tributary API - Modular Express API for subscription and payment services",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "npx tsx src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "@tributary-so/payments": "workspace:*",
+    "@tributary-so/sdk": "workspace:*",
+    "@solana/web3.js": "^1.95.0",
+    "@solana/spl-token": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/cors": "^2.8.13",
+    "tsx": "^4.7.4",
+    "typescript": "^5.3.3"
+  }
+}
