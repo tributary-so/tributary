@@ -2,13 +2,9 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Copy, Check, ExternalLink, Loader2 } from "lucide-react";
+import { Copy, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import {
-  LineItem,
-  SubscriptionParams,
-  EncodedSessionData,
-} from "@tributary-so/payments";
+import { LineItem, CheckoutSessionManager } from "@tributary-so/payments";
 
 export function CheckoutLinkForm() {
   const [copied, setCopied] = React.useState(false);
@@ -30,7 +26,10 @@ export function CheckoutLinkForm() {
 
   const lineItemsActive = formData.lineItems.length > 0;
   const computedAmount = lineItemsActive
-    ? formData.lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+    ? formData.lineItems.reduce(
+        (sum, item) => sum + item.quantity * item.unitPrice,
+        0
+      )
     : 0;
 
   const validateForm = (): boolean => {
@@ -55,13 +54,15 @@ export function CheckoutLinkForm() {
     if (lineItemsActive) {
       formData.lineItems.forEach((item, index) => {
         if (!item.description.trim()) {
-          newErrors[`lineItem_${index}_description`] = "Description is required";
+          newErrors[`lineItem_${index}_description`] =
+            "Description is required";
         }
         if (item.unitPrice <= 0) {
           newErrors[`lineItem_${index}_price`] = "Price must be greater than 0";
         }
         if (item.quantity < 1) {
-          newErrors[`lineItem_${index}_quantity`] = "Quantity must be at least 1";
+          newErrors[`lineItem_${index}_quantity`] =
+            "Quantity must be at least 1";
         }
       });
     }
@@ -98,39 +99,19 @@ export function CheckoutLinkForm() {
     return `trib_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   };
 
-  // Encode checkout URL using CheckoutSessionManager
-  const encodeCheckoutUrl = (params: SubscriptionParams): string => {
-    // Use the encoding logic from CheckoutSessionManager
-    const data: EncodedSessionData = {
-      tm: params.tokenMint,
-      r: params.recipient,
-      g: params.gateway,
-      a: params.amount.toString(),
-      ar: params.autoRenew,
-      mr: params.maxRenewals?.toString() || "null",
-      pf: params.paymentFrequency,
-      st: params.startTime?.toString() || "null",
-      tid: params.trackingId,
-      li: params.lineItems ? JSON.stringify(params.lineItems) : "[]",
-    };
-
-    // Use the same encoding logic as CheckoutSessionManager.encodeAsBase64Url
-    const jsonString = JSON.stringify(data);
-    const base64 = Buffer.from(jsonString).toString("base64");
-    const encoded = base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-
-    return `${window.location.origin}/#/subscribe/${encoded}`;
-  };
-
   const handleGenerate = () => {
     if (!validateForm()) {
       toast.error("Please fix the form errors");
       return;
     }
 
-    const amount = lineItemsActive ? computedAmount : parseFloat(formData.amount || "0");
+    const amount = lineItemsActive
+      ? computedAmount
+      : parseFloat(formData.amount || "0");
 
-    const url = encodeCheckoutUrl({
+    const manager = new CheckoutSessionManager();
+    manager.setBaseUrl(window.location.origin);
+    const url = manager.encodeSubscriptionUrl({
       tokenMint: formData.tokenMint,
       recipient: formData.recipient,
       gateway: formData.gateway,
@@ -157,11 +138,18 @@ export function CheckoutLinkForm() {
   const addLineItem = () => {
     setFormData({
       ...formData,
-      lineItems: [...formData.lineItems, { description: "", unitPrice: 0, quantity: 1 }],
+      lineItems: [
+        ...formData.lineItems,
+        { description: "", unitPrice: 0, quantity: 1 },
+      ],
     });
   };
 
-  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+  const updateLineItem = (
+    index: number,
+    field: keyof LineItem,
+    value: string | number
+  ) => {
     const newLineItems = [...formData.lineItems];
     newLineItems[index] = { ...newLineItems[index], [field]: value };
     setFormData({ ...formData, lineItems: newLineItems });
@@ -191,13 +179,17 @@ export function CheckoutLinkForm() {
           <input
             type="text"
             value={formData.recipient}
-            onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, recipient: e.target.value })
+            }
             placeholder="Your Solana wallet address"
             className={`w-full px-4 py-3 rounded-lg border ${
               errors.recipient ? "border-red-500" : "border-gray-300"
             } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
           />
-          {errors.recipient && <p className="mt-1 text-sm text-red-600">{errors.recipient}</p>}
+          {errors.recipient && (
+            <p className="mt-1 text-sm text-red-600">{errors.recipient}</p>
+          )}
         </div>
 
         {/* Amount (if no line items) */}
@@ -209,7 +201,9 @@ export function CheckoutLinkForm() {
             <input
               type="number"
               value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, amount: e.target.value })
+              }
               placeholder="e.g., 10"
               step="0.01"
               min="0"
@@ -217,7 +211,9 @@ export function CheckoutLinkForm() {
                 errors.amount ? "border-red-500" : "border-gray-300"
               } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             />
-            {errors.amount && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
+            {errors.amount && (
+              <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+            )}
           </div>
         )}
 
@@ -238,7 +234,8 @@ export function CheckoutLinkForm() {
 
           {formData.lineItems.length === 0 ? (
             <p className="text-sm text-gray-500 italic">
-              Using base amount from above. Add line items for multi-item orders.
+              Using base amount from above. Add line items for multi-item
+              orders.
             </p>
           ) : (
             <div className="space-y-3">
@@ -249,11 +246,16 @@ export function CheckoutLinkForm() {
                 <div className="col-span-1" />
               </div>
               {formData.lineItems.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-3 items-start">
+                <div
+                  key={index}
+                  className="grid grid-cols-12 gap-3 items-start"
+                >
                   <input
                     type="text"
                     value={item.description}
-                    onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                    onChange={(e) =>
+                      updateLineItem(index, "description", e.target.value)
+                    }
                     placeholder="Product/Service name"
                     className={`col-span-5 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
                       errors[`lineItem_${index}_description`]
@@ -266,20 +268,36 @@ export function CheckoutLinkForm() {
                     step="0.01"
                     min="0"
                     value={item.unitPrice || ""}
-                    onChange={(e) => updateLineItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      updateLineItem(
+                        index,
+                        "unitPrice",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     placeholder="0.00"
                     className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                      errors[`lineItem_${index}_price`] ? "border-red-500" : "border-gray-300"
+                      errors[`lineItem_${index}_price`]
+                        ? "border-red-500"
+                        : "border-gray-300"
                     }`}
                   />
                   <input
                     type="number"
                     min="1"
                     value={item.quantity}
-                    onChange={(e) => updateLineItem(index, "quantity", parseInt(e.target.value) || 1)}
+                    onChange={(e) =>
+                      updateLineItem(
+                        index,
+                        "quantity",
+                        parseInt(e.target.value) || 1
+                      )
+                    }
                     placeholder="1"
                     className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                      errors[`lineItem_${index}_quantity`] ? "border-red-500" : "border-gray-300"
+                      errors[`lineItem_${index}_quantity`]
+                        ? "border-red-500"
+                        : "border-gray-300"
                     }`}
                   />
                   <button
@@ -297,8 +315,12 @@ export function CheckoutLinkForm() {
           {lineItemsActive && (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-blue-800">Computed Total:</span>
-                <span className="text-sm font-bold text-blue-900">${computedAmount.toFixed(2)}</span>
+                <span className="text-sm font-semibold text-blue-800">
+                  Computed Total:
+                </span>
+                <span className="text-sm font-bold text-blue-900">
+                  ${computedAmount.toFixed(2)}
+                </span>
               </div>
             </div>
           )}
@@ -311,12 +333,14 @@ export function CheckoutLinkForm() {
           </label>
           <select
             value={formData.paymentFrequency}
-            onChange={(e) => setFormData({ ...formData, paymentFrequency: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, paymentFrequency: e.target.value })
+            }
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="weekly">Weekly</option>
-            <option value="biweekly">Bi-weekly</option>
             <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
           </select>
         </div>
 
@@ -326,7 +350,9 @@ export function CheckoutLinkForm() {
             type="checkbox"
             id="autoRenew"
             checked={formData.autoRenew}
-            onChange={(e) => setFormData({ ...formData, autoRenew: e.target.checked })}
+            onChange={(e) =>
+              setFormData({ ...formData, autoRenew: e.target.checked })
+            }
             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <label htmlFor="autoRenew" className="text-sm text-gray-700">
@@ -342,14 +368,18 @@ export function CheckoutLinkForm() {
           <input
             type="number"
             value={formData.maxRenewals}
-            onChange={(e) => setFormData({ ...formData, maxRenewals: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, maxRenewals: e.target.value })
+            }
             placeholder="Leave empty for unlimited"
             min="0"
             className={`w-full px-4 py-3 rounded-lg border ${
               errors.maxRenewals ? "border-red-500" : "border-gray-300"
             } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
           />
-          {errors.maxRenewals && <p className="mt-1 text-sm text-red-600">{errors.maxRenewals}</p>}
+          {errors.maxRenewals && (
+            <p className="mt-1 text-sm text-red-600">{errors.maxRenewals}</p>
+          )}
         </div>
 
         {/* Success URL */}
@@ -360,13 +390,17 @@ export function CheckoutLinkForm() {
           <input
             type="url"
             value={formData.successUrl}
-            onChange={(e) => setFormData({ ...formData, successUrl: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, successUrl: e.target.value })
+            }
             placeholder="https://yourapp.com/success"
             className={`w-full px-4 py-3 rounded-lg border ${
               errors.successUrl ? "border-red-500" : "border-gray-300"
             } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
           />
-          {errors.successUrl && <p className="mt-1 text-sm text-red-600">{errors.successUrl}</p>}
+          {errors.successUrl && (
+            <p className="mt-1 text-sm text-red-600">{errors.successUrl}</p>
+          )}
         </div>
 
         {/* Cancel URL */}
@@ -377,13 +411,17 @@ export function CheckoutLinkForm() {
           <input
             type="url"
             value={formData.cancelUrl}
-            onChange={(e) => setFormData({ ...formData, cancelUrl: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, cancelUrl: e.target.value })
+            }
             placeholder="https://yourapp.com/cancel"
             className={`w-full px-4 py-3 rounded-lg border ${
               errors.cancelUrl ? "border-red-500" : "border-gray-300"
             } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
           />
-          {errors.cancelUrl && <p className="mt-1 text-sm text-red-600">{errors.cancelUrl}</p>}
+          {errors.cancelUrl && (
+            <p className="mt-1 text-sm text-red-600">{errors.cancelUrl}</p>
+          )}
         </div>
 
         {/* Tracking ID */}
@@ -394,7 +432,9 @@ export function CheckoutLinkForm() {
           <input
             type="text"
             value={formData.trackingId}
-            onChange={(e) => setFormData({ ...formData, trackingId: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, trackingId: e.target.value })
+            }
             placeholder="Auto-generated if empty"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
@@ -418,7 +458,9 @@ export function CheckoutLinkForm() {
             className="bg-white rounded-xl p-6 border border-gray-200"
           >
             <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-semibold text-gray-700">Your Checkout Link</span>
+              <span className="text-sm font-semibold text-gray-700">
+                Your Checkout Link
+              </span>
               <button
                 onClick={handleCopy}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
