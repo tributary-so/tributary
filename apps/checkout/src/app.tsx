@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Landing } from "./landing";
 import { CheckoutPage } from "./checkout-page";

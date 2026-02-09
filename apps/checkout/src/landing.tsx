@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Shield, Zap, Lock, Globe, Copy, ExternalLink, ArrowRight } from "lucide-react";
+import { CheckCircle, Shield, Zap, Globe, ArrowRight } from "lucide-react";
 import { CheckoutLinkForm } from "@/components/checkout-link-form";
-import { toast } from "sonner";
 
 export function Landing() {
   const scrollToForm = React.useRef<HTMLDivElement>(null);
@@ -106,7 +105,9 @@ export function Landing() {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow"
             >
-              <div className={`w-12 h-12 rounded-lg ${feature.color} flex items-center justify-center mb-4`}>
+              <div
+                className={`w-12 h-12 rounded-lg ${feature.color} flex items-center justify-center mb-4`}
+              >
                 <feature.icon className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -147,7 +148,9 @@ export function Landing() {
                 className="text-center"
               >
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#9945FF] to-[#14F195] flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-white">{index + 1}</span>
+                  <span className="text-2xl font-bold text-white">
+                    {index + 1}
+                  </span>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   {step.title}
@@ -240,19 +243,22 @@ const features = [
   {
     icon: Zap,
     title: "Instant Setup",
-    description: "No coding required. Generate a checkout link in seconds and start accepting payments immediately.",
+    description:
+      "No coding required. Generate a checkout link in seconds and start accepting payments immediately.",
     color: "bg-gradient-to-br from-yellow-400 to-orange-500",
   },
   {
     icon: Shield,
     title: "Secure by Design",
-    description: "Built on Solana's secure blockchain. Non-custodial payments mean funds stay safe in user wallets.",
+    description:
+      "Built on Solana's secure blockchain. Non-custodial payments mean funds stay safe in user wallets.",
     color: "bg-gradient-to-br from-blue-400 to-indigo-500",
   },
   {
     icon: Globe,
     title: "Share Anywhere",
-    description: "Use your checkout link on social media, email, websites, or anywhere you can paste a URL.",
+    description:
+      "Use your checkout link on social media, email, websites, or anywhere you can paste a URL.",
     color: "bg-gradient-to-br from-green-400 to-emerald-500",
   },
 ];
@@ -260,15 +266,18 @@ const features = [
 const howItWorks = [
   {
     title: "Configure Your Payment",
-    description: "Set your amount, frequency, and other payment parameters using the form below.",
+    description:
+      "Set your amount, frequency, and other payment parameters using the form below.",
   },
   {
     title: "Get Your Checkout Link",
-    description: "Generate a unique URL that contains all your payment configuration.",
+    description:
+      "Generate a unique URL that contains all your payment configuration.",
   },
   {
     title: "Share & Collect Payments",
-    description: "Send the link to customers. They'll be directed to a secure checkout page to pay.",
+    description:
+      "Send the link to customers. They'll be directed to a secure checkout page to pay.",
   },
 ];
 
