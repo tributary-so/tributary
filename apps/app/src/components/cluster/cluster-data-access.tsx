@@ -17,6 +17,7 @@ export enum ClusterNetwork {
   Custom = 'custom',
 }
 
+// FIXME: these are limited to domains, but might still take them out of repo and inside build secrets
 const DEVNET_RPC_URL = 'https://devnet.helius-rpc.com/?api-key=756c46f1-dcfa-42f7-a873-0561431937e1'
 const MAINNET_RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=756c46f1-dcfa-42f7-a873-0561431937e1'
 

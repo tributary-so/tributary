@@ -1,12 +1,12 @@
 {
-  "name": "lando-skill-api",
+  "name": "@tributary-so/lando-backend",
   "version": "1.0.0",
   "description": "Express API for Lando skill generation",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "build": "tsc && cp src/skill.md lib/",
+    "start": "npx tsx src/index.ts"
   },
   "dependencies": {
     "express": "^4.18.2",

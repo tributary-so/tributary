@@ -1,5 +1,5 @@
-import * as React from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 export function Hero() {
   return (
@@ -29,6 +29,12 @@ export function Hero() {
         transition={{ duration: 0.6, delay: 0.4 }}
         className="relative z-10 w-full text-center"
       >
+        <Link
+          to="/"
+          className="absolute top-6 left-6 text-white/80 hover:text-white text-sm font-medium transition-colors"
+        >
+          ← Back to Home
+        </Link>
         <h1 className="text-5xl font-bold text-gray-800 mb-4 tracking-tight leading-tight mt-28">
           Secure & Simple
           <br />

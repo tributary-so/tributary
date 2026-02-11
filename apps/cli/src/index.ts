@@ -405,6 +405,116 @@ program
   });
 
 program
+  .command("get-payment-policy-details")
+  .description("Get full details of a payment policy and its user payment")
+  .requiredOption("-p, --policy-pubkey <pubkey>", "Payment policy public key")
+  .action(async (options) => {
+    try {
+      const sdk = createSDK(
+        program.opts().connectionUrl,
+        program.opts().keypath
+      );
+      const policyPubkey = new PublicKey(options.policyPubkey);
+
+      const policy = await sdk.program.account.paymentPolicy.fetchNullable(
+        policyPubkey
+      );
+      if (!policy) {
+        console.log("Payment policy not found");
+        return;
+      }
+
+      console.log("=== Payment Policy ===");
+      console.log(`Public Key: ${policyPubkey.toString()}`);
+      console.log(`Policy ID: ${policy.policyId}`);
+      console.log(`Status: ${Object.keys(policy.status)[0]}`);
+      console.log(`Recipient: ${policy.recipient.toString()}`);
+      console.log(`Gateway: ${policy.gateway.toString()}`);
+      console.log(`User Payment: ${policy.userPayment.toString()}`);
+
+      if ("subscription" in policy.policyType) {
+        const sub = policy.policyType.subscription!;
+        console.log(`Type: subscription`);
+        console.log(`Amount: ${sub.amount.toString()}`);
+        console.log(`Auto Renew: ${sub.autoRenew}`);
+        console.log(`Max Renewals: ${sub.maxRenewals?.toString() ?? "None"}`);
+        console.log(`Frequency: ${Object.keys(sub.paymentFrequency)[0]}`);
+        console.log(
+          `Next Payment Due: ${new Date(
+            sub.nextPaymentDue.toNumber() * 1000
+          ).toISOString()}`
+        );
+      } else if ("milestone" in policy.policyType) {
+        console.log(`Type: milestone`);
+        const milestone = policy.policyType.milestone!;
+        console.log(
+          `Milestone Amounts: ${milestone.milestoneAmounts
+            .map((a) => a.toString())
+            .join(", ")}`
+        );
+      } else if ("payAsYouGo" in policy.policyType) {
+        console.log(`Type: payAsYouGo`);
+        const payg = policy.policyType.payAsYouGo!;
+        console.log(
+          `Max Amount Per Period: ${payg.maxAmountPerPeriod.toString()}`
+        );
+        console.log(
+          `Period Length: ${payg.periodLengthSeconds.toString()} seconds`
+        );
+      }
+
+      console.log(
+        `Memo: ${String.fromCharCode(...policy.memo).replace(/\0/g, "")}`
+      );
+      console.log(`Total Paid: ${policy.totalPaid.toString()}`);
+      console.log(`Payment Count: ${policy.paymentCount}`);
+      console.log(
+        `Created At: ${new Date(
+          policy.createdAt.toNumber() * 1000
+        ).toISOString()}`
+      );
+      console.log(
+        `Updated At: ${new Date(
+          policy.updatedAt.toNumber() * 1000
+        ).toISOString()}`
+      );
+      console.log(`Bump: ${policy.bump}`);
+
+      const userPaymentAccount = await sdk.getUserPayment(policy.userPayment);
+      if (userPaymentAccount) {
+        console.log("\n=== User Payment ===");
+        console.log(`Public Key: ${policy.userPayment.toString()}`);
+        console.log(`Owner: ${userPaymentAccount.owner.toString()}`);
+        console.log(
+          `Token Account: ${userPaymentAccount.tokenAccount.toString()}`
+        );
+        console.log(`Token Mint: ${userPaymentAccount.tokenMint.toString()}`);
+        console.log(
+          `Active Policies: ${userPaymentAccount.activePoliciesCount.toString()}`
+        );
+        console.log(
+          `Total Policies: ${userPaymentAccount.createdPoliciesCount.toString()}`
+        );
+        console.log(`Is Active: ${userPaymentAccount.isActive}`);
+        console.log(
+          `Created At: ${new Date(
+            userPaymentAccount.createdAt.toNumber() * 1000
+          ).toISOString()}`
+        );
+        console.log(
+          `Updated At: ${new Date(
+            userPaymentAccount.updatedAt.toNumber() * 1000
+          ).toISOString()}`
+        );
+        console.log(`Bump: ${userPaymentAccount.bump}`);
+      }
+    } catch (error) {
+      console.error("Error getting payment policy details:", error);
+      process.exit(1);
+    }
+  });
+
+program
   .command("get-payments-delegate-pda")
   .description("Get the payments delegate PDA")
   .action(() => {

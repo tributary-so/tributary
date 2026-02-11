@@ -22,8 +22,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@tributary-so/sdk": ["../sdk/src"],
-      "@tributary-so/payments": ["../payments/src"]
+      "@tributary-so/sdk": ["../../packages/sdk/src"],
+      "@tributary-so/payments": ["../../packages/payments/src"]
     }
   },
   "include": ["src"],

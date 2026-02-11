@@ -1,4 +1,4 @@
-name: Build and Deploy to GitHub Pages
+name: Build and Deploy Lando App to GitHub Pages
 
 on:
   workflow_call:
@@ -9,16 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source repository
+      - name: Lando source repository
         uses: actions/checkout@v4
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-
-      - name: Install dependencies
-        run: pnpm install
 
       - name: Use Node.js 22
         uses: actions/setup-node@v4
@@ -27,23 +24,27 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: ./pnpm-lock.yaml
 
+      - name: Install dependencies
+        working-directory: ./apps/lando
+        run: pnpm install
+
       - name: Build
-        working-directory: ./apps/landing
+        working-directory: ./apps/lando
         run: pnpm run build
         env:
-          # https://github.com/actions/runner-images/issues/70
           VITE_VCS_REF: ${{ github.sha }}
           NODE_ENV: production
+          VITE_SOLANA_API: ${{ secrets.VITE_SOLANA_API }}
 
       - name: Deploy to external repository
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
         with:
-          deploy_key: ${{ secrets.LANDING_DEPLOY_KEY_TRIBUTARY_SO }}
-          external_repository: tributary-so/tributary.so
+          deploy_key: ${{ secrets.LANDO_DEPLOY_KEY_TRIBUTARY_SO }}
+          external_repository: tributary-so/lando.tributary.so
           publish_branch: gh-pages
-          publish_dir: ./apps/landing/dist
+          publish_dir: ./apps/lando/dist
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
-          cname: tributary.so
+          cname: lando.tributary.so

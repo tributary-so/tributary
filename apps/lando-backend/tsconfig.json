@@ -1,18 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "NodeNext",
-    "lib": ["ES2020"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
+    "types": [],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2020"],
+    "module": "es2020",
+    "target": "es2020",
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
+    "outDir": "./lib",
+    "declaration": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@tributary-so/sdk": ["../packages/sdk/src"],
+      "@tributary-so/payments": ["../../packages/payments/src"]
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "lib"]
 }

@@ -11,7 +11,7 @@ export function Landing() {
           <div className="text-center max-w-4xl mx-auto animate-fade-in">
             <div className="inline-block mb-6">
               <span className="text-matrix-green font-mono text-sm px-4 py-2 border border-lando-border rounded-full">
-                &gt; System initialized for agent commerce
+                &gt; Stripe for AI agents
               </span>
             </div>
 
@@ -22,17 +22,26 @@ export function Landing() {
             </h1>
 
             <p className="text-xl text-lando-muted mb-8 max-w-2xl mx-auto leading-relaxed">
-              The subscription platform where <span className="text-lando-accent">service agents</span> register their offerings
-              and <span className="text-lando-accent">customer agents</span> pay via Tributary SDK.
+              <span className="text-lando-accent">Service agents</span> generate
+              subscription URLs.{" "}
+              <span className="text-lando-accent">Customer agents</span> pay via
+              Tributary.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-lando-accent text-lando-bg font-bold px-8 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono animate-pulse-green">
-                Register Your Service
-              </button>
-              <button className="border border-lando-border text-lando-text px-8 py-4 rounded-lg hover:border-lando-accent hover:text-lando-accent transition-all font-mono">
-                View Documentation
-              </button>
+              <a
+                href="/skill.md"
+                className="bg-lando-accent text-lando-bg font-bold px-8 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono animate-pulse-green"
+              >
+                Get the Skill
+              </a>
+              <a
+                type="button"
+                href="/#/subscribe/eyJ0bSI6IkVQakZXZGQ1QXVmcVNTcWVNMnFOMXh6eWJhcEM4RzR3RUdHa1p3eVREdDF2IiwiciI6IjlXekRYd0JibWtnOFpUYk5NcVV4dlFSQXlyWnpEc0dZZExWTDl6WXRBV1dNIiwiZyI6IkN3TnliTFZRM3NWbWNaM1ExdmVTNng5OWdVWmNBRjJkdU5EZTNxYmNFTUdyIiwiYSI6IjIwIiwiYXIiOnRydWUsIm1yIjoibnVsbCIsInBmIjoibW9udGhseSIsInN0IjoibnVsbCIsInRpZCI6InVzZXJfMTIzX21vbnRobHlfcHJlbWl1bSIsImxpIjoiW3tcImRlc2NyaXB0aW9uXCI6XCJNb250aGx5IHByZW1pdW0gYWNjZXNzIHRvIGFsbCBmZWF0dXJlc1wiLFwidW5pdFByaWNlXCI6MjAsXCJxdWFudGl0eVwiOjF9XSJ9"
+                className="border border-lando-border text-lando-text px-8 py-4 rounded-lg hover:border-lando-accent hover:text-lando-accent transition-all font-mono"
+              >
+                Try Demo →
+              </a>
             </div>
           </div>
         </section>
@@ -40,62 +49,52 @@ export function Landing() {
         {/* How It Works */}
         <section className="container mx-auto px-4 py-16">
           <h2 className="text-3xl font-bold text-center mb-12 font-mono">
-            <span className="text-lando-accent">&lt;HowItWorks /&gt;</span>
+            <span className="text-lando-accent">&lt;The Flow /&gt;</span>
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Service Agent Flow */}
-            <div className="bg-lando-card border border-lando-border rounded-lg p-6 animate-slide-up box-glow">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4">
-                  <span className="text-2xl">🤖</span>
-                </div>
-                <h3 className="text-xl font-bold text-lando-accent font-mono">Service Agent</h3>
-              </div>
-              <ol className="space-y-3 text-lando-muted">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-lando-card border border-lando-border rounded-lg p-8 box-glow">
+              <ol className="space-y-6 text-lando-muted">
                 <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">01.</span>
-                  <span>Register your service</span>
+                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                    1
+                  </div>
+                  <div>
+                    <span className="text-lando-text font-semibold">
+                      Service agent generates subscription URL
+                    </span>
+                    <p className="text-sm mt-1">Using the Lando skill</p>
+                  </div>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">02.</span>
-                  <span>Generate subscription URL</span>
+                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                    2
+                  </div>
+                  <div>
+                    <span className="text-lando-text font-semibold">
+                      Customer agent receives URL and visits page
+                    </span>
+                  </div>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">03.</span>
-                  <span>Share with customer agents</span>
+                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                    3
+                  </div>
+                  <div>
+                    <span className="text-lando-text font-semibold">
+                      Lando decodes URL and displays custom SKILL.md
+                    </span>
+                  </div>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">04.</span>
-                  <span>Receive payments via Tributary</span>
-                </li>
-              </ol>
-            </div>
-
-            {/* Customer Agent Flow */}
-            <div className="bg-lando-card border border-lando-border rounded-lg p-6 animate-slide-up box-glow" style={{ animationDelay: '0.2s' }}>
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4">
-                  <span className="text-2xl">💳</span>
-                </div>
-                <h3 className="text-xl font-bold text-lando-accent font-mono">Customer Agent</h3>
-              </div>
-              <ol className="space-y-3 text-lando-muted">
-                <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">01.</span>
-                  <span>Receive subscription URL</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">02.</span>
-                  <span>Decode subscription details</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">03.</span>
-                  <span>Execute Tributary SDK payment</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-lando-accent mr-2 font-mono">04.</span>
-                  <span>Access service immediately</span>
+                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                    4
+                  </div>
+                  <div>
+                    <span className="text-lando-text font-semibold">
+                      Customer agent follows SKILL.md to set up Tributary
+                    </span>
+                  </div>
                 </li>
               </ol>
             </div>
@@ -123,15 +122,42 @@ export function Landing() {
                 Encoded data contains:
               </p>
               <ul className="text-lando-muted space-y-2 font-mono text-sm ml-4">
-                <li><span className="text-lando-accent">tokenMint</span> - Solana token mint address</li>
-                <li><span className="text-lando-accent">recipient</span> - Payment recipient address</li>
-                <li><span className="text-lando-accent">gateway</span> - Tributary gateway address</li>
-                <li><span className="text-lando-accent">amount</span> - Payment amount</li>
-                <li><span className="text-lando-accent">autoRenew</span> - Auto-renewal flag</li>
-                <li><span className="text-lando-accent">maxRenewals</span> - Maximum renewals</li>
-                <li><span className="text-lando-accent">paymentFrequency</span> - Payment frequency</li>
-                <li><span className="text-lando-accent">trackingId</span> - Unique tracking ID</li>
-                <li><span className="text-lando-accent">lineItems</span> - Subscription line items</li>
+                <li>
+                  <span className="text-lando-accent">tokenMint</span> - Solana
+                  token mint address
+                </li>
+                <li>
+                  <span className="text-lando-accent">recipient</span> - Payment
+                  recipient address
+                </li>
+                <li>
+                  <span className="text-lando-accent">gateway</span> - Tributary
+                  gateway address
+                </li>
+                <li>
+                  <span className="text-lando-accent">amount</span> - Payment
+                  amount
+                </li>
+                <li>
+                  <span className="text-lando-accent">autoRenew</span> -
+                  Auto-renewal flag
+                </li>
+                <li>
+                  <span className="text-lando-accent">maxRenewals</span> -
+                  Maximum renewals
+                </li>
+                <li>
+                  <span className="text-lando-accent">paymentFrequency</span> -
+                  Payment frequency
+                </li>
+                <li>
+                  <span className="text-lando-accent">trackingId</span> - Unique
+                  tracking ID
+                </li>
+                <li>
+                  <span className="text-lando-accent">lineItems</span> -
+                  Subscription line items
+                </li>
               </ul>
             </div>
           </div>
@@ -145,11 +171,16 @@ export function Landing() {
                 Ready to Build Agent Commerce?
               </h2>
               <p className="text-lando-muted mb-6">
-                Join the Tributary ecosystem and enable agent-to-agent subscriptions on Solana.
+                Join the Tributary ecosystem and enable agent-to-agent
+                subscriptions on Solana.
               </p>
-              <button className="bg-lando-accent text-lando-bg font-bold px-8 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono">
-                Register Your Service
-              </button>
+              <a
+                href="/skill.md"
+                type="button"
+                className="bg-lando-accent text-lando-bg font-bold px-8 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono"
+              >
+                Get the Skill
+              </a>
             </div>
           </div>
         </section>
@@ -159,17 +190,41 @@ export function Landing() {
           <div className="container mx-auto px-4 py-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="text-lando-muted text-sm mb-4 md:mb-0">
-                <span className="text-lando-accent font-mono">LANDO</span> · Built for Colosseum Hackathon 2025
+                <span className="text-lando-accent font-mono">LANDO</span> ·
+                Built for Colosseum Hackathon 2025
               </div>
               <div className="flex space-x-6">
-                <a href="https://docs.tributary.so" target="_blank" rel="noopener noreferrer" className="text-lando-muted hover:text-lando-accent transition-colors text-sm">
+                <a
+                  href="https://docs.tributary.so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
+                >
                   Docs
                 </a>
-                <a href="https://github.com/tributary-so" target="_blank" rel="noopener noreferrer" className="text-lando-muted hover:text-lando-accent transition-colors text-sm">
+                <a
+                  href="https://sdk.tributary.so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
+                >
+                  SDK
+                </a>
+                <a
+                  href="https://github.com/tributary-so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
+                >
                   GitHub
                 </a>
-                <a href="https://twitter.com/tributary_sol" target="_blank" rel="noopener noreferrer" className="text-lando-muted hover:text-lando-accent transition-colors text-sm">
-                  Twitter
+                <a
+                  href="https://x.com/tributaryso"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
+                >
+                  X
                 </a>
               </div>
             </div>

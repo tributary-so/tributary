@@ -5,7 +5,7 @@ import { ValidationUtils } from "../utils/validation";
 import { PublicKey } from "@solana/web3.js";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
-import { PaymentTracker } from "./tracking";
+// import { PaymentTracker } from "./tracking";
 
 interface LineItem {
   description: string;
@@ -24,6 +24,8 @@ export interface SubscriptionParams {
   startTime?: number | null;
   trackingId?: string;
   lineItems?: LineItem[];
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
 export interface EncodedSessionData {
@@ -38,19 +40,27 @@ export interface EncodedSessionData {
   st: string; // startTime (timestamp or "null")
   tid: string; // trackingId
   li: string; // lineItems (JSON string)
+  su: string; // successUrl or "null"
+  cu: string; // cancelUrl or "null"
 }
 
 export class CheckoutSessionManager {
-  private readonly BASE_URL = "https://checkout.tributary.so";
-  private connection: Connection;
-  private tracker: PaymentTracker | null;
+  private BASE_URL = "https://checkout.tributary.so";
+  connection: Connection;
+  tributary?: Tributary;
+  // private tracker: PaymentTracker | null;
 
   constructor(connection?: Connection, tributary?: Tributary) {
     this.connection =
       connection || new Connection("https://api.mainnet-beta.solana.com");
-    this.tracker = tributary
-      ? new PaymentTracker(this.connection, tributary)
-      : null;
+    this.tributary = tributary;
+    // this.tracker = tributary
+    //   ? new PaymentTracker(this.connection, tributary)
+    //   : null;
+  }
+
+  public setBaseUrl(url: string) {
+    this.BASE_URL = url;
   }
 
   // Create checkout session with encoded URL
@@ -77,9 +87,7 @@ export class CheckoutSessionManager {
 
     // Encode subscription parameters into URL
     const encodedUrl = this.encodeSubscriptionUrl({
-      tokenMint:
-        params.tributaryConfig.recipient ||
-        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      tokenMint: params.tributaryConfig.tokenMint,
       recipient: params.tributaryConfig.recipient,
       gateway: params.tributaryConfig.gateway,
       amount,
@@ -92,6 +100,8 @@ export class CheckoutSessionManager {
         params.metadata?.tracking_id ||
         sessionId,
       lineItems,
+      successUrl: params.successUrl,
+      cancelUrl: params.cancelUrl,
     });
 
     // Create Tributary-compatible response
@@ -128,6 +138,8 @@ export class CheckoutSessionManager {
       st: params.startTime?.toString() || "null",
       tid: params.trackingId || this.generateTrackingId(),
       li: params.lineItems ? JSON.stringify(params.lineItems) : "[]",
+      su: params.successUrl || "null",
+      cu: params.cancelUrl || "null",
     };
 
     // Use Base64URL encoding (compact and URL-safe)
@@ -141,10 +153,11 @@ export class CheckoutSessionManager {
     // Try Base64URL decoding first
     try {
       const data = this.decodeFromBase64Url(encodedData);
+      console.log(data);
       return this.validateDecodedData(data);
-    } catch (error) {
-      console.error(error);
-      throw new Error("Invalid session data encoding");
+    } catch (err) {
+      const error = err as Error;
+      throw new Error(`Invalid session data encoding: ${error.message}`);
     }
   }
 
@@ -164,19 +177,6 @@ export class CheckoutSessionManager {
     const standardBase64 = base64.replace(/-/g, "+").replace(/_/g, "/");
     const jsonString = Buffer.from(standardBase64, "base64").toString("utf8");
     return JSON.parse(jsonString);
-  }
-
-  // Convert Tributary frequency back to Tributary interval
-  private frequencyToInterval(
-    frequency: string
-  ): "month" | "day" | "week" | "year" {
-    const mapping: Record<string, "month" | "day" | "week" | "year"> = {
-      daily: "day",
-      weekly: "week",
-      monthly: "month",
-      annually: "year",
-    };
-    return mapping[frequency] || "month";
   }
 
   // Generate unique tracking ID
@@ -203,13 +203,13 @@ export class CheckoutSessionManager {
     // Validate amount
     const amount = parseInt(data.a);
     if (isNaN(amount) || amount <= 0) {
-      throw new Error("Invalid amount");
+      throw new Error(`Invalid amount (${amount})`);
     }
 
     // Validate payment frequency
     const validFrequencies = ["daily", "weekly", "monthly", "annually"];
     if (!validFrequencies.includes(data.pf)) {
-      throw new Error("Invalid payment frequency");
+      throw new Error(`Invalid payment frequency (${data.pf})!`);
     }
 
     // Parse line items if present
@@ -234,6 +234,8 @@ export class CheckoutSessionManager {
       startTime: data.st === "null" ? null : parseInt(data.st),
       trackingId: data.tid,
       lineItems,
+      successUrl: data.su === "null" ? undefined : data.su,
+      cancelUrl: data.cu === "null" ? undefined : data.cu,
     };
   }
 

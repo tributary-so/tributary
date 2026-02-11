@@ -17,19 +17,15 @@ jobs:
         with:
           version: 9
 
+      - name: Install dependencies
+        run: pnpm install
+
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: "pnpm"
           cache-dependency-path: ./pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install dependencies
-        working-directory: ./apps/app
-        run: pnpm install
 
       - name: Build SDK
         working-directory: ./packages/sdk

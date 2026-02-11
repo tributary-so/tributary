@@ -3,8 +3,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SubscriptionParams } from "@tributary-so/payments";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, AlertCircle, Wallet, Loader2, Lock } from "lucide-react";
+import { CheckCircle2, Wallet, Loader2, Lock, XCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createSubscription } from "@/lib/tributary";
@@ -18,6 +17,7 @@ interface CheckoutFormProps {
 export function CheckoutForm({ sessionData }: CheckoutFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
+  const [showCancelModal, setShowCancelModal] = React.useState(false);
   const wallet = useWallet();
   const { connected, connecting, publicKey } = wallet;
 
@@ -48,12 +48,24 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       });
 
       setSuccess(true);
+
+      if (sessionData.successUrl) {
+        window.location.href = sessionData.successUrl;
+      }
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to create subscription"
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (sessionData.cancelUrl) {
+      window.location.href = sessionData.cancelUrl;
+    } else {
+      setShowCancelModal(true);
     }
   };
 
@@ -75,6 +87,29 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
         </div>
 
         <WalletMultiButton className="w-full h-12 px-6 rounded-lg font-medium text-base bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" />
+      </motion.div>
+    );
+  }
+
+  if (success && !sessionData.successUrl) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-semibold text-emerald-900 mb-2">
+            Congratulations!
+          </h2>
+          <p className="text-emerald-700">
+            You're done! The subscription has been set up successfully.
+          </p>
+        </div>
       </motion.div>
     );
   }
@@ -213,7 +248,7 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || success}
-            className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center justify-between px-4"
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center justify-between px-4 mb-3"
           >
             {isLoading ? (
               <>
@@ -241,6 +276,15 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
               </>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isLoading}
+            className="w-full h-10 bg-transparent hover:bg-gray-100 disabled:bg-transparent text-gray-600 hover:text-gray-800 disabled:text-gray-400 rounded-lg transition-colors text-sm font-medium"
+          >
+            Cancel
+          </button>
         </div>
 
         {publicKey && (
@@ -266,6 +310,44 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       <p className="text-xs text-muted-foreground text-center">
         Secured by Tributary protocol on Solana
       </p>
+
+      <AnimatePresence>
+        {showCancelModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCancelModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-card rounded-xl border border-border p-8 max-w-sm w-full text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+                <XCircle className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Payment Cancelled
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                You can return to this checkout page anytime to complete your
+                subscription.
+              </p>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors font-medium"
+              >
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
