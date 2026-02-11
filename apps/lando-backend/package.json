@@ -1,5 +1,6 @@
 {
   "name": "@tributary-so/lando-backend",
+  "private": true,
   "version": "1.0.0",
   "description": "Express API for Lando skill generation",
   "main": "dist/index.js",
