@@ -15,3 +15,5 @@ test-ledger
 packages/sdk-x402/coverage/
 apps/docs/env
 
+
+apps/lando-remotion/build

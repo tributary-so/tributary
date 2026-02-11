@@ -1,0 +1,13 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  --lando-bg: #0a0a0a;
+  --lando-card: #171717;
+  --lando-text: #fafafa;
+  --lando-muted: #a1a1aa;
+  --lando-accent: #4ade80;
+  --lando-accent-dark: #22c55e;
+  --lando-border: #262626;
+}
