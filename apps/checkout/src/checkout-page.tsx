@@ -91,18 +91,6 @@ export function CheckoutPage() {
         <Hero />
 
         <div className="flex-1 lg:w-1/2 flex flex-col bg-gray-200/80 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="lg:hidden bg-white border-b border-slate-200 shadow-sm"
-          >
-            <div className={`overflow-hidden transition-all duration-300`}>
-              <div className="px-6 pb-4">
-                <OrderSummary sessionData={sessionData} />
-              </div>
-            </div>
-          </motion.div>
           <div className="flex-1 flex items-start justify-center p-6 lg:p-12 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

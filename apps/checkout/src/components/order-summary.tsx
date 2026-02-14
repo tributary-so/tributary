@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, Package } from "lucide-react";
 import { SubscriptionParams } from "@tributary-so/payments";
+import { getTokenSymbol } from "@tributary-so/sdk";
+import { Connection } from "@solana/web3.js";
+import config from "@/constants";
 
 interface OrderSummaryProps {
   sessionData: SubscriptionParams;
@@ -10,6 +13,24 @@ interface OrderSummaryProps {
 
 export function OrderSummary({ sessionData }: OrderSummaryProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [tokenSymbol, setTokenSymbol] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionData.tokenMint) {
+      return;
+    }
+
+    const connection = new Connection(config.rpcUrl);
+    getTokenSymbol(connection, sessionData.tokenMint)
+      .then((symbol) => {
+        if (symbol) {
+          setTokenSymbol(symbol);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch token metadata:", err);
+      });
+  }, [sessionData.tokenMint]);
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -34,7 +55,12 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
         </div>
         <div className="flex items-center gap-3">
           <span className="font-semibold text-lg text-foreground">
-            ${sessionData.amount.toFixed(2)}
+            {sessionData.amount.toFixed(2)}{" "}
+            {tokenSymbol ||
+              `${sessionData.tokenMint.slice(
+                0,
+                6
+              )}...${sessionData.tokenMint.slice(-4)}`}
             <span className="text-sm font-normal text-muted-foreground">
               /{sessionData.paymentFrequency.replace("ly", "")}
             </span>
@@ -65,11 +91,21 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                       {item.description}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Qty {item.quantity} × ${(item.unitPrice / 100).toFixed(2)}
+                      Qty {item.quantity} × {(item.unitPrice / 100).toFixed(2)}{" "}
+                      {tokenSymbol ||
+                        `${sessionData.tokenMint.slice(
+                          0,
+                          6
+                        )}...${sessionData.tokenMint.slice(-4)}`}
                     </p>
                   </div>
                   <span className="font-medium text-foreground">
-                    ${((item.quantity * item.unitPrice) / 100).toFixed(2)}
+                    {((item.quantity * item.unitPrice) / 100).toFixed(2)}{" "}
+                    {tokenSymbol ||
+                      `${sessionData.tokenMint.slice(
+                        0,
+                        6
+                      )}...${sessionData.tokenMint.slice(-4)}`}
                   </span>
                 </div>
               ))}
@@ -80,7 +116,12 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-muted-foreground">Subtotal</span>
               <span className="font-medium text-foreground">
-                ${sessionData.amount.toFixed(2)}
+                {sessionData.amount.toFixed(2)}{" "}
+                {tokenSymbol ||
+                  `${sessionData.tokenMint.slice(
+                    0,
+                    6
+                  )}...${sessionData.tokenMint.slice(-4)}`}
               </span>
             </div>
 
@@ -96,9 +137,14 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
             <div className="flex items-center justify-between">
               <span className="font-semibold text-foreground">Total due</span>
               <span className="font-semibold text-xl text-foreground">
-                ${sessionData.amount.toFixed(2)}
+                {sessionData.amount.toFixed(2)}{" "}
+                {tokenSymbol ||
+                  `${sessionData.tokenMint.slice(
+                    0,
+                    6
+                  )}...${sessionData.tokenMint.slice(-4)}`}
                 <span className="text-sm font-normal text-muted-foreground">
-                  /{sessionData.paymentFrequency.replace("ly", "")}
+                  /{sessionData.paymentFrequency}
                 </span>
               </span>
             </div>
