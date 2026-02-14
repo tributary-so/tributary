@@ -16,9 +16,14 @@ export class TributaryTributaryConverter {
     return baseMemo ? `${baseMemo} | ${trackingMemo}` : trackingMemo;
   }
 
-  // Convert amount from cents to lamports (USDC has 6 decimals)
-  static parseAmount(amount: number): number {
-    return amount * 10000; // Convert cents to USDC units (6 decimals)
+  // Convert amount from cents to token units based on decimals
+  static parseAmount(amount: number, decimals: number): number {
+    return amount * Math.pow(10, decimals - 2); // Convert cents to token units
+  }
+
+  // Convert amount from USD to token units based on decimals
+  static parseUsdAmount(amount: number, decimals: number): number {
+    return Math.floor(amount * Math.pow(10, decimals));
   }
 
   // Convert Tributary frequency to Tributary frequency
@@ -92,13 +97,6 @@ export class TributaryTributaryConverter {
         tracking_id: this.extractTrackingIdFromMemo(policy.memo),
       },
     };
-  }
-
-  // Convert Tributary amount to Tributary amount (lamports to cents)
-  static tributaryAmountToTributary(amount?: any): number {
-    if (!amount) return 0;
-    const lamports = amount.toNumber?.() || Number(amount);
-    return Math.floor(lamports / 10000); // Convert USDC units to cents
   }
 
   // Convert policy status to Tributary subscription status
@@ -175,20 +173,4 @@ export class TributaryTributaryConverter {
     // In reality, you'd parse the transaction to find the token transfer amount
     return 0; // Placeholder
   }
-}
-
-// Internal Tributary session type
-interface TributarySession {
-  sessionId: string;
-  gateway: string;
-  recipient: string;
-  tokenMint: string;
-  amount: number;
-  currency: string;
-  paymentFrequency: string;
-  autoRenew: boolean;
-  trackingId: string;
-  memo: string;
-  productName: string;
-  productDescription?: string;
 }

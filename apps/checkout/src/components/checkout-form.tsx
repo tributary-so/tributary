@@ -9,6 +9,9 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createSubscription } from "@/lib/tributary";
 import { PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
+import { getTokenSymbol } from "@tributary-so/sdk";
+import { Connection } from "@solana/web3.js";
+import config from "@/constants";
 
 interface CheckoutFormProps {
   sessionData: SubscriptionParams;
@@ -18,10 +21,28 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [showCancelModal, setShowCancelModal] = React.useState(false);
+  const [tokenSymbol, setTokenSymbol] = React.useState<string | null>(null);
   const wallet = useWallet();
   const { connected, connecting, publicKey } = wallet;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (!sessionData.tokenMint) {
+      return;
+    }
+
+    const connection = new Connection(config.rpcUrl);
+    getTokenSymbol(connection, sessionData.tokenMint)
+      .then((symbol) => {
+        if (symbol) {
+          setTokenSymbol(symbol);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch token metadata:", err);
+      });
+  }, [sessionData.tokenMint]);
+
+  const handleSubmit = async (e: React.UIEvent) => {
     e.preventDefault();
     if (!connected || !publicKey) {
       toast.error("Please connect your wallet first");
@@ -42,9 +63,10 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       await createSubscription({
         wallet,
         recipientWallet: recipient,
-        amountUSD: sessionData.amount,
+        amount: sessionData.amount,
         frequency: frequencyMap[sessionData.paymentFrequency] || "monthly",
         memo: sessionData.trackingId,
+        tokenMint: sessionData.tokenMint,
       });
 
       setSuccess(true);
@@ -269,8 +291,13 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
             ) : (
               <>
                 <span>
-                  Subscribe for ${sessionData.amount.toFixed(2)}/
-                  {sessionData.paymentFrequency.replace("ly", "")}
+                  Subscribe for {sessionData.amount.toFixed(2)}{" "}
+                  {tokenSymbol ||
+                    `${sessionData.tokenMint.slice(
+                      0,
+                      6
+                    )}...${sessionData.tokenMint.slice(-4)}`}
+                  /{sessionData.paymentFrequency}
                 </span>
                 <Lock className="w-4 h-4 mr-2" />
               </>

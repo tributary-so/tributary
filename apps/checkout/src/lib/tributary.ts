@@ -8,6 +8,7 @@ import {
   Tributary,
   PaymentFrequency,
   createMemoBuffer,
+  getTokenDecimals,
 } from "@tributary-so/sdk";
 import * as anchor from "@coral-xyz/anchor";
 import { WalletContextState } from "@solana/wallet-adapter-react";
@@ -30,9 +31,10 @@ export interface SubscriptionPolicy {
 export interface CreateSubscriptionParams {
   wallet: any;
   recipientWallet: PublicKey;
-  amountUSD: number;
+  amount: number;
   frequency: "weekly" | "biweekly" | "monthly";
   memo?: string;
+  tokenMint?: string;
 }
 
 interface AnchorWallet {
@@ -102,17 +104,26 @@ function mapFrequency(
   }
 }
 
-function usdToBN(usdAmount: number): anchor.BN {
-  return new anchor.BN(Math.floor(usdAmount * 1_000_000));
+async function amountToBN(
+  usdAmount: number,
+  tokenMint: string
+): Promise<anchor.BN> {
+  const connection = new Connection(config.rpcUrl);
+  const decimals = await getTokenDecimals(connection, tokenMint);
+  if (decimals === null) {
+    throw new Error("Failed to fetch token decimals");
+  }
+  return new anchor.BN(Math.floor(usdAmount * Math.pow(10, decimals)));
 }
 
 async function getUserPayment(
-  wallet: WalletContextState
+  wallet: WalletContextState,
+  tokenMint: PublicKey
 ): Promise<{ userPayment: any; pubkey: PublicKey } | null> {
   const tributary = getTributary(wallet);
   const userPaymentsPda = tributary.getUserPaymentPda(
     wallet.publicKey!,
-    new PublicKey(config.usdcMint)
+    tokenMint
   );
   const userPayment = await tributary.getUserPayment(userPaymentsPda.address);
   if (userPayment) {
@@ -127,12 +138,18 @@ async function getUserPayment(
 export async function createSubscription(
   params: CreateSubscriptionParams
 ): Promise<SubscriptionPolicy> {
-  const { wallet, recipientWallet, amountUSD, frequency } = params;
+  const {
+    wallet,
+    recipientWallet,
+    amount,
+    frequency,
+    tokenMint: tokenMintStr,
+  } = params;
   const tributary = getTributary(wallet);
 
-  const amountInSmallestUnits = usdToBN(amountUSD);
+  const tokenMint = new PublicKey(tokenMintStr || config.usdcMint);
+  const amountInSmallestUnits = await amountToBN(amount, tokenMint.toString());
   const paymentFrequency = mapFrequency(frequency);
-  const tokenMint = new PublicKey(config.usdcMint);
   const gateway = new PublicKey(config.gateway);
 
   const instructions = await tributary.createSubscription(
@@ -161,7 +178,7 @@ export async function createSubscription(
   );
   await confirmTransactionWithStatus(tributary.connection, txid, "confirmed");
 
-  const userPayment = await getUserPayment(wallet);
+  const userPayment = await getUserPayment(wallet, tokenMint);
 
   const newPolicyPda = tributary.getPaymentPolicyPda(
     userPayment!.pubkey,
