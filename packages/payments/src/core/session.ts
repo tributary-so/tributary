@@ -201,7 +201,7 @@ export class CheckoutSessionManager {
     }
 
     // Validate amount
-    const amount = parseInt(data.a);
+    const amount = parseFloat(data.a);
     if (isNaN(amount) || amount <= 0) {
       throw new Error(`Invalid amount (${amount})`);
     }

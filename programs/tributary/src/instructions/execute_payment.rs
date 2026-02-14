@@ -217,6 +217,13 @@ pub fn token_account_has_delegate(
 #[derive(Accounts)]
 pub struct ExecutePayment<'info> {
     /// CHECK: The gateway authority that can trigger payments
+    #[account(
+        constraint = (
+            fee_payer.key() == gateway.signer      // gateway can execute
+            || fee_payer.key() == user_payment.owner  // payer can execute
+            || fee_payer.key() == payment_policy.recipient // recipient can only execute pay-as-you-go!
+        ),
+    )]
     pub fee_payer: Signer<'info>,
 
     #[account(
@@ -248,7 +255,6 @@ pub struct ExecutePayment<'info> {
         bump = gateway.bump,
         constraint = gateway.is_active,
         constraint = gateway.key() == payment_policy.gateway,
-        constraint = gateway.signer == fee_payer.key() || user_payment.owner == fee_payer.key(),
     )]
     pub gateway: Box<Account<'info, PaymentGateway>>,
 
@@ -328,6 +334,13 @@ impl<'info> ExecutePayment<'info> {
             gateway,
         )?;
         let payment_amount = execution_result.payment_amount;
+
+        // Only in the case of PayAsYouGo can the recipient trigger payments
+        if fee_payer_key == payment_policy.recipient {
+            if !matches!(&payment_policy.policy_type, PolicyType::PayAsYouGo { .. }) {
+                return Err(TributaryError::Unauthorized.into());
+            }
+        }
 
         // Additional validation for pay-as-you-go policies
         if let PolicyType::PayAsYouGo { .. } = &payment_policy.policy_type {

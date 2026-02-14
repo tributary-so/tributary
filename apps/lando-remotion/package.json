@@ -1,5 +1,5 @@
 {
-  "name": "lando-video",
+  "name": "@tributary-so/lando-video",
   "version": "1.0.0",
   "description": "Lando Colosseum Hackathon Presentation Video",
   "scripts": {
