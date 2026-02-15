@@ -1925,6 +1925,60 @@ export class Tributary {
   }
 
   /**
+   * Retrieves all payment policies with a matching memo field.
+   * The memo is a 64-byte array stored at offset 234 in the PaymentPolicy account.
+   * @param memoBytes - Memo bytes to search for (max 64 bytes)
+   * @returns Array of payment policies with matching memo
+   */
+  async getPaymentPoliciesByMemo(
+    memoBytes: number[]
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    // Validate memo length (must be <= 64 bytes)
+    if (memoBytes.length > 64) {
+      throw new Error("Memo bytes must be 64 bytes or less");
+    }
+
+    // Pad memo to 64 bytes if needed
+    const paddedMemo = [...memoBytes, ...Array(64 - memoBytes.length).fill(0)];
+
+    // Use getProgramAccounts to search by memo
+    const accounts = await this.connection.getProgramAccounts(this.programId, {
+      filters: [
+        {
+          dataSize: 586, // PaymentPolicy account size
+        },
+        {
+          memcmp: {
+            offset: 234, // Offset to memo field (8+32+32+32+129+1)
+            bytes: Buffer.from(paddedMemo).toString("base64"),
+          },
+        },
+      ],
+    });
+
+    // Decode and return the payment policy accounts
+    const policies = [];
+    for (const { pubkey, account } of accounts) {
+      try {
+        const decoded =
+          this.program.coder.accounts.decode<PaymentPolicy>(
+            "PaymentPolicy",
+            account.data
+          );
+        policies.push({
+          publicKey: pubkey,
+          account: decoded,
+        });
+      } catch (e) {
+        // Skip accounts that can't be decoded
+        console.warn(`Failed to decode account ${pubkey.toString()}:`, e);
+      }
+    }
+
+    return policies;
+  }
+
+  /**
    * Fetches a specific user payment account by its address.
    * @param userPaymentAddress - Public key of the user payment account
    * @returns The user payment account data or null if not found
