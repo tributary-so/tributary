@@ -1927,12 +1927,20 @@ export class Tributary {
   /**
    * Retrieves all payment policies with a matching memo field.
    * The memo is a 64-byte array stored at offset 234 in the PaymentPolicy account.
-   * @param memoBytes - Memo bytes to search for (max 64 bytes)
+   * @param memo - Memo to search for (string or number[], max 64 bytes)
    * @returns Array of payment policies with matching memo
    */
   async getPaymentPoliciesByMemo(
-    memoBytes: number[]
+    memo: string | number[]
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    // Convert string to memo bytes if needed
+    let memoBytes: number[];
+    if (typeof memo === "string") {
+      memoBytes = encodeMemo(memo, 64);
+    } else {
+      memoBytes = memo;
+    }
+
     // Validate memo length (must be <= 64 bytes)
     if (memoBytes.length > 64) {
       throw new Error("Memo bytes must be 64 bytes or less");
