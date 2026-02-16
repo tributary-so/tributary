@@ -42,6 +42,7 @@ jobs:
           # https://github.com/actions/runner-images/issues/70
           VITE_VCS_REF: ${{ github.sha }}
           NODE_ENV: production
+          VITE_SOLANA_API: ${{ secrets.VITE_SOLANA_API }}
 
       - name: Deploy to external repository
         uses: peaceiris/actions-gh-pages@v3
