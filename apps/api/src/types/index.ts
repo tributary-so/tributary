@@ -9,26 +9,10 @@ export interface ApiResponse<T = any> {
   timestamp: number;
 }
 
-export interface SubscriptionStatusRequest {
-  trackingId: string;
-  userPublicKey?: string;
-  gatewayPublicKey?: string;
-  tokenMint?: string;
-}
-
-export interface SubscriptionStatusResponse {
-  subscriptionCreated: boolean;
-  initialPaymentExecuted: boolean;
-  paymentCount: number;
-  nextPaymentDue?: number;
-  status: "pending" | "created" | "active" | "failed";
-}
-
 export interface HealthResponse {
   status: string;
   service: string;
   version: string;
-  uptime: number;
 }
 
 export interface SkillParams {

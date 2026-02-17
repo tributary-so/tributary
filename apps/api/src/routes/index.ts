@@ -8,7 +8,7 @@ import healthRouter from "./health";
 import skillRouter from "./skill";
 import subscriptionRouter from "./subscription";
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * API v1 Routes
@@ -22,6 +22,6 @@ router.use("/health", healthRouter);
 router.use("/skill", skillRouter);
 
 // Subscription management
-router.use("/subscription", subscriptionRouter);
+router.use("/subscriptions", subscriptionRouter);
 
 export default router;

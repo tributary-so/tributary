@@ -27,12 +27,14 @@ export class PaymentsClient {
     return {
       // Check payment status by tracking ID
       checkStatus: async (trackingId: string, recipient: string) => {
-        return this._tracker.checkPaymentStatus(trackingId, recipient);
+        // FIXME: TODO
+        // return this._tracker.checkPaymentStatus(trackingId, recipient);
       },
 
       // Get payment history for tracking ID
       getHistory: async (trackingId: string, recipient: string) => {
-        return this._tracker.getPaymentHistory(trackingId, recipient);
+        // FIXME: TODO
+        // return this._tracker.getPaymentHistory(trackingId, recipient);
       },
     };
   }
@@ -49,7 +51,8 @@ export class PaymentsClient {
           | { gatewayPublicKey: string }
         )
       ) => {
-        return this._tracker.checkInitialStatus(options.trackingId, options);
+        // FIXME: TODO
+        // return this._tracker.checkInitialStatus(options.trackingId, options);
       },
 
       /**
@@ -61,7 +64,8 @@ export class PaymentsClient {
           | { gatewayPublicKey: string }
         )
       ) => {
-        return this._tracker.isSubscriptionActive(options.trackingId, options);
+        // FIXME: TODO
+        // return this._tracker.isSubscriptionActive(options.trackingId, options);
       },
 
       /**
@@ -73,10 +77,11 @@ export class PaymentsClient {
           | { gatewayPublicKey: string }
         )
       ) => {
-        return this._tracker.getSubscriptionDetails(
-          options.trackingId,
-          options
-        );
+        // FIXME: TODO
+        // return this._tracker.getSubscriptionDetails(
+        //   options.trackingId,
+        //   options
+        // );
       },
     };
   }

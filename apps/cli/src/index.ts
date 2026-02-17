@@ -9,6 +9,7 @@ import {
   type PaymentFrequency,
   type PaymentPolicy,
   UserPayment,
+  decodeMemo,
 } from "@tributary-so/sdk";
 
 function readKeypairFromFile(filePath: string): anchor.web3.Keypair {
@@ -64,7 +65,9 @@ async function dumpUserPayments(
         console.log(
           `  Policy ${policy.account.policyId}: Status ${
             Object.keys(policy.account.status)[0]
-          }, Recipient ${policy.account.recipient.toString()}, Gateway ${policy.account.gateway.toString()}`
+          }, Recipient ${policy.account.recipient.toString()}, Gateway ${policy.account.gateway.toString()} (${decodeMemo(
+            policy.account.memo
+          )})`
         );
       }
     }

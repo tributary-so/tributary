@@ -76,7 +76,7 @@ export class Tributary {
    * @param connection - Solana RPC connection to use for all operations
    * @param wallet - Wallet containing the keypair for signing transactions
    */
-  constructor(connection: Connection, wallet: anchor.Wallet | Keypair) {
+  constructor(connection: Connection, wallet: Keypair | anchor.Wallet) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
 
@@ -1844,21 +1844,12 @@ export class Tributary {
    * Retrieves all payment policies where the specified user is the payer.
    * @param user - Public key of the payment user
    * @returns Array of payment policies where the user is the payer
+   * @deprecated Use getPaymentPoliciesByUserPayment instead!
    */
   async getPaymentPoliciesByUser(
     user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
-    return await this.program.account.paymentPolicy.all([
-      {
-        dataSize: 586,
-      },
-      {
-        memcmp: {
-          offset: 8, // Skip discriminator
-          bytes: user.toBase58(),
-        },
-      },
-    ]);
+    return await this.getPaymentPoliciesByUserPayment(user);
   }
 
   /**
@@ -1919,6 +1910,39 @@ export class Tributary {
         memcmp: {
           offset: 8, // Skip discriminator
           bytes: userPayment.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Retrieves all payment policies belonging to the specified user payment account.
+   * @param userPayment - Public key of the user payment PDA
+   * @returns Array of payment policies for the user payment account
+   */
+  async getPaymentPoliciesByGatewayOwnerAndMint(
+    walletPublicKey: PublicKey,
+    tokenMint: PublicKey,
+    gateway: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    const userPayment = this.getUserPaymentPda(
+      walletPublicKey,
+      tokenMint
+    ).address;
+    return await this.program.account.paymentPolicy.all([
+      {
+        dataSize: 586,
+      },
+      {
+        memcmp: {
+          offset: 8, // Skip discriminator
+          bytes: userPayment.toBase58(),
+        },
+      },
+      {
+        memcmp: {
+          offset: 8 + 32 + 32, // Skip discriminator + user_payment + recipient
+          bytes: gateway.toBase58(),
         },
       },
     ]);
