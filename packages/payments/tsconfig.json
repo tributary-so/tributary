@@ -13,6 +13,9 @@
     "resolveJsonModule": true,
     "moduleResolution": "bundler"
   },
+  "paths": {
+    "@tributary-so/sdk": ["../sdk/src"]
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
