@@ -3,6 +3,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {},
+  "packageManager": "pnpm@10.28.2",
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@solana/spl-token": "^0.4.14",

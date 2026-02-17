@@ -23,10 +23,6 @@ permissions:
   pull-requests: write
   id-token: write
 
-env:
-  NODE_VERSION: "22"
-  PNPM_VERSION: "9.6.0"
-
 jobs:
   detect-changes:
     name: Detect Changed Packages
