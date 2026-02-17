@@ -51,6 +51,7 @@
     "@tributary-so/sdk": "workspace:*",
     "@tributary-so/sdk-react": "workspace:*",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
