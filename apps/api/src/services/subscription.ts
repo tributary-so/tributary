@@ -7,37 +7,6 @@ import { PaymentTracker, PolicyLookupOptions } from "@tributary-so/payments";
 import { getConnection } from "./solana";
 import { decodeMemo } from "@tributary-so/sdk";
 
-function convertBNValues(obj: any): any {
-  if (obj === null || obj === undefined) return obj;
-
-  if (Array.isArray(obj)) {
-    return obj.map(convertBNValues);
-  }
-
-  if (typeof obj === "object") {
-    const result: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (key === "padding") {
-        continue; // Skip padding arrays
-      }
-
-      // Check if value is a BN instance
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        typeof (value as any).toNumber === "function"
-      ) {
-        result[key] = value.toNumber();
-      } else {
-        result[key] = convertBNValues(value);
-      }
-    }
-    return result;
-  }
-
-  return obj;
-}
-
 /**
  * Get full subscription details by tracking ID
  * @param options - Lookup options (user or gateway public key)
