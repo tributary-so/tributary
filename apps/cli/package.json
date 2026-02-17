@@ -1,5 +1,6 @@
 {
   "name": "@tributary-so/cli",
+  "private": false,
   "scripts": {
     "build": "bun build ./src/index.tsx --outdir ./dist --target bun",
     "postbuild": "chmod +x dist/index.js",
