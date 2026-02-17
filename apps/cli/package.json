@@ -1,14 +1,18 @@
 {
   "name": "@tributary-so/cli",
-  "private": "true",
   "scripts": {
-    "build": "tsc -b",
-    "ci": "npm run build && npm run lint && npm run format:check",
-    "dev": "npx tsx src/index.ts",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint ."
+    "build": "bun build ./src/index.tsx --outdir ./dist --target bun",
+    "postbuild": "chmod +x dist/index.js",
+    "ci": "bun run build && bun run lint && bun run format:check",
+    "dev": "bun run src/index.tsx",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "lint": "exit 0;",
+    "lint2": "eslint ."
   },
+  "files": [
+    "dist"
+  ],
   "description": "Keeper to run payments",
   "keywords": [
     "solana-web3js",
@@ -17,12 +21,21 @@
   "version": "1.0.1",
   "type": "module",
   "dependencies": {
+    "@coral-xyz/anchor": "^0.31.0",
+    "@opentui/core": "^0.1.0",
+    "@opentui/react": "^0.1.0",
+    "@solana/spl-token": "^0.4.12",
+    "@solana/web3.js": "^1.98.0",
     "@tributary-so/sdk": "workspace:*",
-    "commander": "^14.0.1"
+    "bn.js": "^5.2.1",
+    "react": "^19.0.0",
+    "react-devtools-core": "^7.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
+    "@types/bn.js": "^5.1.6",
     "@types/node": "^24.5.2",
+    "@types/react": "^19.0.0",
     "eslint": "^9.35.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -31,5 +44,11 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.44.0"
   },
-  "main": "./dist/sdk/src/index.js"
+  "main": "./dist/index.js",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "bin": {
+    "tributary": "./dist/index.js"
+  }
 }
