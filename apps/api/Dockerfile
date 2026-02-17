@@ -14,7 +14,7 @@ RUN pnpm run build
 WORKDIR /app/packages/payments
 RUN pnpm run build
 
-WORKDIR /app/api
+WORKDIR /app/apps/api
 RUN pnpm run build
 
 FROM base AS build
@@ -22,7 +22,7 @@ COPY . /app
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/packages/sdk/node_modules /app/packages/sdk/node_modules
 COPY --from=deps /app/packages/payments/node_modules /app/packages/payments/node_modules
-COPY --from=deps /app/api/node_modules /app/api/node_modules
+COPY --from=deps /app/apps/api/node_modules /app/apps/api/node_modules
 
-WORKDIR /app/api
+WORKDIR /app/apps/api
 CMD [ "pnpm", "start" ]
