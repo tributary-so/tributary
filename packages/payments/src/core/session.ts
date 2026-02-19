@@ -14,6 +14,7 @@ interface LineItem {
 }
 
 export interface SubscriptionParams {
+  mode: "subscription";
   tokenMint: string;
   recipient: string;
   gateway: string;
@@ -28,18 +29,32 @@ export interface SubscriptionParams {
   cancelUrl?: string;
 }
 
+export interface OneTimeParams {
+  mode: "payment";
+  tokenMint: string;
+  recipient: string;
+  amount: number;
+  trackingId?: string;
+  memo?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+}
+
+export type CheckoutParams = SubscriptionParams | OneTimeParams;
+
 export interface EncodedSessionData {
-  // Core subscription parameters
+  m: "subscription" | "payment"; // mode
   tm: string; // tokenMint (base58)
   r: string; // recipient (base58)
-  g: string; // gateway (base58)
+  g?: string; // gateway (base58) - subscription only
   a: string; // amount (string number)
-  ar: boolean; // autoRenew
-  mr: string; // maxRenewals (string number or "null")
-  pf: string; // paymentFrequency
-  st: string; // startTime (timestamp or "null")
+  ar?: boolean; // autoRenew - subscription only
+  mr?: string; // maxRenewals (string number or "null") - subscription only
+  pf?: string; // paymentFrequency - subscription only
+  st?: string; // startTime (timestamp or "null") - subscription only
   tid: string; // trackingId
-  li: string; // lineItems (JSON string)
+  li?: string; // lineItems (JSON string) - subscription only
+  memo?: string; // custom memo - one-time only
   su: string; // successUrl or "null"
   cu: string; // cancelUrl or "null"
 }
@@ -87,6 +102,7 @@ export class CheckoutSessionManager {
 
     // Encode subscription parameters into URL
     const encodedUrl = this.encodeSubscriptionUrl({
+      mode: "subscription",
       tokenMint: params.tributaryConfig.tokenMint,
       recipient: params.tributaryConfig.recipient,
       gateway: params.tributaryConfig.gateway,
@@ -125,31 +141,44 @@ export class CheckoutSessionManager {
     return session;
   }
 
-  // Encode subscription parameters into compact URL
-  encodeSubscriptionUrl(params: SubscriptionParams): string {
+  // Encode checkout parameters into compact URL
+  encodeUrl(params: CheckoutParams): string {
     const data: EncodedSessionData = {
+      m: params.mode,
       tm: params.tokenMint,
       r: params.recipient,
-      g: params.gateway,
       a: params.amount.toString(),
-      ar: params.autoRenew,
-      mr: params.maxRenewals?.toString() || "null",
-      pf: params.paymentFrequency,
-      st: params.startTime?.toString() || "null",
       tid: params.trackingId || this.generateTrackingId(),
-      li: params.lineItems ? JSON.stringify(params.lineItems) : "[]",
       su: params.successUrl || "null",
       cu: params.cancelUrl || "null",
     };
 
+    if (params.mode === "subscription") {
+      data.g = params.gateway;
+      data.ar = params.autoRenew;
+      data.mr = params.maxRenewals?.toString() || "null";
+      data.pf = params.paymentFrequency;
+      data.st = params.startTime?.toString() || "null";
+      data.li = params.lineItems ? JSON.stringify(params.lineItems) : "[]";
+    } else if (params.mode === "payment") {
+      data.memo = params.memo;
+    }
+
     // Use Base64URL encoding (compact and URL-safe)
     const encoded = this.encodeAsBase64Url(data);
 
-    return `${this.BASE_URL}/subscribe/${encoded}`;
+    return params.mode === "subscription"
+      ? `${this.BASE_URL}/subscribe/${encoded}`
+      : `${this.BASE_URL}/pay/${encoded}`;
+  }
+
+  // Encode subscription parameters into compact URL (legacy, for backward compat)
+  encodeSubscriptionUrl(params: SubscriptionParams): string {
+    return this.encodeUrl(params);
   }
 
   // Decode subscription parameters from URL
-  decodeSubscriptionUrl(encodedData: string): SubscriptionParams {
+  decodeSubscriptionUrl(encodedData: string): CheckoutParams {
     // Try Base64URL decoding first
     try {
       const data = this.decodeFromBase64Url(encodedData);
@@ -185,9 +214,9 @@ export class CheckoutSessionManager {
   }
 
   // Validate decoded data
-  private validateDecodedData(data: any): SubscriptionParams {
-    // Validate required fields
-    if (!data.tm || !data.r || !data.g || !data.a) {
+  private validateDecodedData(data: any): SubscriptionParams | OneTimeParams {
+    // Validate required common fields
+    if (!data.tm || !data.r || !data.a || !data.m) {
       throw new Error("Missing required fields in session data");
     }
 
@@ -195,7 +224,7 @@ export class CheckoutSessionManager {
     try {
       new PublicKey(data.tm);
       new PublicKey(data.r);
-      new PublicKey(data.g);
+      if (data.g) new PublicKey(data.g);
     } catch (error) {
       throw new Error("Invalid public key format");
     }
@@ -206,37 +235,58 @@ export class CheckoutSessionManager {
       throw new Error(`Invalid amount (${amount})`);
     }
 
-    // Validate payment frequency
-    const validFrequencies = ["daily", "weekly", "monthly", "annually"];
-    if (!validFrequencies.includes(data.pf)) {
-      throw new Error(`Invalid payment frequency (${data.pf})!`);
-    }
-
-    // Parse line items if present
-    let lineItems: LineItem[] | undefined;
-    if (data.li && data.li !== "[]") {
-      try {
-        lineItems = JSON.parse(data.li);
-      } catch (error) {
-        console.warn("Failed to parse line items, using empty array");
-        lineItems = undefined;
+    // Handle based on mode
+    if (data.m === "subscription") {
+      if (!data.g) {
+        throw new Error("Missing required gateway for subscription");
       }
-    }
 
-    return {
-      tokenMint: data.tm,
-      recipient: data.r,
-      gateway: data.g,
-      amount,
-      autoRenew: data.ar === true,
-      maxRenewals: data.mr === "null" ? null : parseInt(data.mr),
-      paymentFrequency: data.pf,
-      startTime: data.st === "null" ? null : parseInt(data.st),
-      trackingId: data.tid,
-      lineItems,
-      successUrl: data.su === "null" ? undefined : data.su,
-      cancelUrl: data.cu === "null" ? undefined : data.cu,
-    };
+      // Validate payment frequency
+      const validFrequencies = ["daily", "weekly", "monthly", "annually"];
+      if (!validFrequencies.includes(data.pf)) {
+        throw new Error(`Invalid payment frequency (${data.pf})!`);
+      }
+
+      // Parse line items if present
+      let lineItems: LineItem[] | undefined;
+      if (data.li && data.li !== "[]") {
+        try {
+          lineItems = JSON.parse(data.li);
+        } catch (error) {
+          console.warn("Failed to parse line items, using empty array");
+          lineItems = undefined;
+        }
+      }
+
+      return {
+        mode: "subscription",
+        tokenMint: data.tm,
+        recipient: data.r,
+        gateway: data.g,
+        amount,
+        autoRenew: data.ar === true,
+        maxRenewals: data.mr === "null" ? null : parseInt(data.mr),
+        paymentFrequency: data.pf,
+        startTime: data.st === "null" ? null : parseInt(data.st),
+        trackingId: data.tid,
+        lineItems,
+        successUrl: data.su === "null" ? undefined : data.su,
+        cancelUrl: data.cu === "null" ? undefined : data.cu,
+      };
+    } else if (data.m === "payment") {
+      return {
+        mode: "payment",
+        tokenMint: data.tm,
+        recipient: data.r,
+        amount,
+        trackingId: data.tid,
+        memo: data.memo,
+        successUrl: data.su === "null" ? undefined : data.su,
+        cancelUrl: data.cu === "null" ? undefined : data.cu,
+      };
+    } else {
+      throw new Error(`Invalid mode (${data.m})`);
+    }
   }
 
   // Generate unique session ID

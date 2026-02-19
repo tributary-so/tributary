@@ -2,17 +2,20 @@
 
 import { CheckoutSessionManager } from "./session";
 import { PaymentTracker } from "./tracking";
+import { OneTimePaymentTracker } from "./onetime";
 import { Tributary } from "@tributary-so/sdk";
 
 export class PaymentsClient {
   private _checkout: CheckoutSessionManager;
   private _tracker: PaymentTracker;
+  private _onetimeTracker: OneTimePaymentTracker;
 
   constructor(tributary: Tributary) {
     // Zero configuration initialization
     const connection = tributary.connection;
     this._checkout = new CheckoutSessionManager(connection, tributary);
     this._tracker = new PaymentTracker(connection, tributary);
+    this._onetimeTracker = new OneTimePaymentTracker(connection);
   }
 
   // Tributary-compatible checkout sessions
@@ -35,6 +38,21 @@ export class PaymentsClient {
       getHistory: async (trackingId: string, recipient: string) => {
         // FIXME: TODO
         // return this._tracker.getPaymentHistory(trackingId, recipient);
+      },
+
+      // One-time payment tracking
+      oneTime: {
+        checkStatus: async (trackingId: string) => {
+          return this._onetimeTracker.checkStatus(trackingId);
+        },
+
+        buildMemo: (trackingId: string, customMemo?: string) => {
+          return this._onetimeTracker.buildPaymentMemo(trackingId, customMemo);
+        },
+
+        extractTrackingId: (memo: string) => {
+          return this._onetimeTracker.extractTrackingId(memo);
+        },
       },
     };
   }

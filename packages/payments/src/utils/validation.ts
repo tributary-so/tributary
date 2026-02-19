@@ -30,14 +30,7 @@ export class ValidationUtils {
 
   // Validate checkout session parameters
   static validateCheckoutSessionParams(params: any): void {
-    if (
-      !params.line_items ||
-      !Array.isArray(params.line_items) ||
-      params.line_items.length === 0
-    ) {
-      throw new Error("line_items is required and must be a non-empty array");
-    }
-
+    // Validate mode
     if (
       !params.mode ||
       (params.mode !== "payment" && params.mode !== "subscription")
@@ -45,16 +38,29 @@ export class ValidationUtils {
       throw new Error('mode must be "payment" or "subscription"');
     }
 
-    const validFrequencies = ["daily", "weekly", "monthly", "annually"];
-    if (
-      params.paymentFrequency &&
-      !validFrequencies.includes(params.paymentFrequency)
-    ) {
-      throw new Error(
-        `paymentFrequency is invalid. Must be any of ${JSON.stringify(
-          validFrequencies
-        )}`
-      );
+    // Mode-specific validation
+    if (params.mode === "subscription") {
+      if (
+        !params.line_items ||
+        !Array.isArray(params.line_items) ||
+        params.line_items.length === 0
+      ) {
+        throw new Error("line_items is required for subscription mode");
+      }
+
+      const validFrequencies = ["daily", "weekly", "monthly", "annually"];
+      if (
+        params.paymentFrequency &&
+        !validFrequencies.includes(params.paymentFrequency)
+      ) {
+        throw new Error(
+          `paymentFrequency is invalid. Must be any of ${JSON.stringify(
+            validFrequencies
+          )}`
+        );
+      }
+    } else if (params.mode === "payment") {
+      // One-time payment mode - line items optional
     }
 
     if (
@@ -64,24 +70,26 @@ export class ValidationUtils {
       throw new Error('Only "tributary" payment method is supported');
     }
 
-    // Validate line items
-    params.line_items.forEach((item: any, index: number) => {
-      if (!item.description) {
-        throw new Error(`line_items[${index}].description is required`);
-      }
+    // Validate line items if present
+    if (params.line_items) {
+      params.line_items.forEach((item: any, index: number) => {
+        if (!item.description) {
+          throw new Error(`line_items[${index}].description is required`);
+        }
 
-      if (typeof item.unitPrice !== "number" || item.unitPrice <= 0) {
-        throw new Error(
-          `line_items[${index}].unitPrice must be a positive number`
-        );
-      }
+        if (typeof item.unitPrice !== "number" || item.unitPrice <= 0) {
+          throw new Error(
+            `line_items[${index}].unitPrice must be a positive number`
+          );
+        }
 
-      if (typeof item.quantity !== "number" || item.quantity <= 0) {
-        throw new Error(
-          `line_items[${index}].quantity must be a positive number`
-        );
-      }
-    });
+        if (typeof item.quantity !== "number" || item.quantity <= 0) {
+          throw new Error(
+            `line_items[${index}].quantity must be a positive number`
+          );
+        }
+      });
+    }
 
     // Validate tributary config if present
     if (params.tributaryConfig) {
