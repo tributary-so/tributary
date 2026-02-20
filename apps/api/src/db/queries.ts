@@ -228,7 +228,7 @@ export async function getPaymentRecords(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [eq(events.eventName, "tributary_payment_record")];
+  const conditions = [eq(events.eventName, "tributary_PaymentRecord")];
 
   if (options?.gateway) {
     conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
@@ -263,7 +263,7 @@ export async function getPaymentPolicyCreatedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [eq(events.eventName, "tributary_payment_policy_created")];
+  const conditions = [eq(events.eventName, "tributary_PaymentPolicyCreated")];
 
   if (options?.gateway) {
     conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
@@ -299,9 +299,7 @@ export async function getGatewayFeeBpsChangedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [
-    eq(events.eventName, "tributary_gateway_fee_bps_changed"),
-  ];
+  const conditions = [eq(events.eventName, "tributary_GatewayFeeBpsChanged")];
 
   if (options?.gateway) {
     conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
@@ -330,7 +328,7 @@ export async function getGatewayFeeRecipientChangedEvents(options?: {
   if (!db) return [];
 
   const conditions = [
-    eq(events.eventName, "tributary_gateway_fee_recipient_changed"),
+    eq(events.eventName, "tributary_GatewayFeeRecipientChanged"),
   ];
 
   if (options?.gateway) {
@@ -359,7 +357,7 @@ export async function getGatewaySignerChangedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [eq(events.eventName, "tributary_gateway_signer_changed")];
+  const conditions = [eq(events.eventName, "tributary_GatewaySignerChanged")];
 
   if (options?.gateway) {
     conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
@@ -387,9 +385,7 @@ export async function getPaymentGatewayCreatedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [
-    eq(events.eventName, "tributary_payment_gateway_created"),
-  ];
+  const conditions = [eq(events.eventName, "tributary_PaymentGatewayCreated")];
 
   if (options?.authority) {
     conditions.push(sql`${events.data}->>'authority' = ${options.authority}`);
@@ -418,9 +414,7 @@ export async function getPaymentGatewayDeletedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [
-    eq(events.eventName, "tributary_payment_gateway_deleted"),
-  ];
+  const conditions = [eq(events.eventName, "tributary_PaymentGatewayDeleted")];
 
   if (options?.gateway) {
     conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
@@ -452,7 +446,7 @@ export async function getPaymentPolicyDeletedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [eq(events.eventName, "tributary_payment_policy_deleted")];
+  const conditions = [eq(events.eventName, "tributary_PaymentPolicyDeleted")];
 
   if (options?.paymentPolicy) {
     conditions.push(
@@ -486,7 +480,7 @@ export async function getPaymentPolicyStatusChangedEvents(options?: {
   if (!db) return [];
 
   const conditions = [
-    eq(events.eventName, "tributary_payment_policy_status_changed"),
+    eq(events.eventName, "tributary_PaymentPolicyStatusChanged"),
   ];
 
   if (options?.paymentPolicy) {
@@ -517,7 +511,7 @@ export async function getProgramConfigCreatedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [eq(events.eventName, "tributary_program_config_created")];
+  const conditions = [eq(events.eventName, "tributary_ProgramConfigCreated")];
 
   if (options?.admin) {
     conditions.push(sql`${events.data}->>'admin' = ${options.admin}`);
@@ -547,7 +541,7 @@ export async function getReferralRewardDistributedEvents(options?: {
   if (!db) return [];
 
   const conditions = [
-    eq(events.eventName, "tributary_referral_reward_distributed_record"),
+    eq(events.eventName, "tributary_ReferralRewardDistributedRecord"),
   ];
 
   if (options?.gateway) {
@@ -582,7 +576,7 @@ export async function getUserPaymentCreatedEvents(options?: {
   const db = getDb();
   if (!db) return [];
 
-  const conditions = [eq(events.eventName, "tributary_user_payment_created")];
+  const conditions = [eq(events.eventName, "tributary_UserPaymentCreated")];
 
   if (options?.owner) {
     conditions.push(sql`${events.data}->>'owner' = ${options.owner}`);
@@ -609,11 +603,11 @@ export async function getPaymentStats(options?: {
   gateway?: string;
   startTime?: Date;
   endTime?: Date;
-}): Promise<{ totalAmount: number; count: number }> {
+}): Promise<{ count: number }> {
   const db = getDb();
-  if (!db) return { totalAmount: 0, count: 0 };
+  if (!db) return { count: 0 };
 
-  const conditions = [eq(events.eventName, "tributary_payment_record")];
+  const conditions = [eq(events.eventName, "tributary_PaymentRecord")];
 
   if (options?.gateway) {
     conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
@@ -627,14 +621,12 @@ export async function getPaymentStats(options?: {
 
   const [result] = await db
     .select({
-      totalAmount: sql<number>`COALESCE(SUM((${events.data}->>'amount')::bigint), 0)`,
       count: sql<number>`count(*)::int`,
     })
     .from(events)
     .where(and(...conditions));
 
   return {
-    totalAmount: Number(result?.totalAmount ?? 0),
     count: result?.count ?? 0,
   };
 }
