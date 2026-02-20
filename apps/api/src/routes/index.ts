@@ -7,6 +7,7 @@ import { Router } from "express";
 import healthRouter from "./health";
 import skillRouter from "./skill";
 import subscriptionRouter from "./subscription";
+import eventsRouter from "./events";
 
 const router: Router = Router();
 
@@ -23,5 +24,8 @@ router.use("/skill", skillRouter);
 
 // Subscription management
 router.use("/subscriptions", subscriptionRouter);
+
+// Event queries
+router.use("/events", eventsRouter);
 
 export default router;

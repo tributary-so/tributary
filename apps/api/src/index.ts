@@ -1,3 +1,4 @@
+import "dotenv/config";
 /**
  * Tributary API
  * Modular Express API for subscription and payment services
@@ -29,6 +30,9 @@ app.get("/", (req, res) => {
       health: "/v1/health",
       skill: "/v1/skill/:encoded",
       subscriptionDetails: "/v1/subscriptions/",
+      events: "/v1/events",
+      eventsCount: "/v1/events/count",
+      eventsNames: "/v1/events/names",
     },
   });
 });
