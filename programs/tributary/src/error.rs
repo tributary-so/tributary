@@ -72,4 +72,6 @@ pub enum TributaryError {
     MismatchAtaReferralAccountNumbers,
     #[msg("Referral account already exists for this code")]
     ReferralAccountAlreadyExists,
+    #[msg("Token mint mismatch between accounts")]
+    TokenMintMismatch,
 }
