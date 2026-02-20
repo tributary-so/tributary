@@ -1,6 +1,6 @@
 # PostgreSQL Integration with Drizzle ORM
 
-This project includes read-only access to an existing PostgreSQL database using Drizzle ORM.
+This project includes read-only access to an existing PostgreSQL database using Drizzle ORM with typed event data structures.
 
 ## Setup
 
@@ -35,6 +35,7 @@ This project includes read-only access to an existing PostgreSQL database using 
 
    ```bash
    curl "http://localhost:3002/v1/events/names"
+   curl "http://localhost:3002/v1/events/names/tributary"
    ```
 
 ## Database Schema
@@ -50,7 +51,28 @@ The existing `events` table structure:
 | data       | jsonb                    | NO       | Event data (JSON)     |
 | timestamp  | timestamp with time zone | NO       | Event timestamp       |
 
+## Event Types
+
+All Tributary events are prefixed with `tributary_` and have typed data structures:
+
+| Event Name                                     | Description                           |
+| ---------------------------------------------- | ------------------------------------- |
+| `tributary_payment_record`                     | Payment executed                      |
+| `tributary_payment_policy_created`             | New payment policy created            |
+| `tributary_payment_policy_deleted`             | Payment policy deleted                |
+| `tributary_payment_policy_status_changed`      | Policy status changed (Active/Paused) |
+| `tributary_payment_gateway_created`            | New gateway created                   |
+| `tributary_payment_gateway_deleted`            | Gateway deleted                       |
+| `tributary_gateway_fee_bps_changed`            | Gateway fee basis points changed      |
+| `tributary_gateway_fee_recipient_changed`      | Gateway fee recipient changed         |
+| `tributary_gateway_signer_changed`             | Gateway signer changed                |
+| `tributary_referral_reward_distributed_record` | Referral rewards distributed          |
+| `tributary_user_payment_created`               | User payment account created          |
+| `tributary_program_config_created`             | Program initialized                   |
+
 ## Available Queries
+
+### Generic Queries
 
 ```typescript
 import {
@@ -61,6 +83,7 @@ import {
   searchEvents,
   getEventCount,
   getUniqueEventNames,
+  getTributaryEventNames,
 } from "./db/queries";
 
 // Get event by signature
@@ -70,7 +93,7 @@ const event = await getEventsBySignature("5x7...");
 const events = await getEventsBySlot(123456789, { limit: 50 });
 
 // Get events by event name
-const payments = await getEventsByName("Payment");
+const payments = await getEventsByName("tributary_payment_record");
 
 // Get events in time range
 const events = await getEventsByTimeRange(
@@ -81,7 +104,7 @@ const events = await getEventsByTimeRange(
 // Search with multiple filters
 const results = await searchEvents(
   {
-    eventName: "Payment",
+    eventName: "tributary_payment_record",
     minSlot: 100000,
     maxSlot: 200000,
   },
@@ -89,10 +112,127 @@ const results = await searchEvents(
 );
 
 // Count events
-const count = await getEventCount({ eventName: "Payment" });
+const count = await getEventCount({ eventName: "tributary_payment_record" });
 
 // Get all unique event names
 const names = await getUniqueEventNames();
+
+// Get only Tributary event names
+const tributaryNames = await getTributaryEventNames();
+```
+
+### Typed Event Queries
+
+```typescript
+import {
+  getTypedEvents,
+  getPaymentRecords,
+  getPaymentPolicyCreatedEvents,
+  getPaymentStats,
+  getGatewayFeeBpsChangedEvents,
+  getReferralRewardDistributedEvents,
+} from "./db/queries";
+
+// Get typed events by name
+const payments = await getTypedEvents("tributary_payment_record", {
+  limit: 50,
+});
+
+// Get payment records with filters
+const payments = await getPaymentRecords({
+  gateway: "GatewayPubkey...",
+  paymentPolicy: "PolicyPubkey...",
+  limit: 100,
+});
+
+// Get payment statistics
+const stats = await getPaymentStats({
+  gateway: "GatewayPubkey...",
+  startTime: new Date("2024-01-01"),
+  endTime: new Date("2024-12-31"),
+});
+// Returns: { totalAmount: number; count: number }
+
+// Get policy created events
+const policies = await getPaymentPolicyCreatedEvents({
+  gateway: "GatewayPubkey...",
+  recipient: "RecipientPubkey...",
+});
+
+// Get gateway fee changes
+const feeChanges = await getGatewayFeeBpsChangedEvents({
+  gateway: "GatewayPubkey...",
+});
+
+// Get referral reward distributions
+const rewards = await getReferralRewardDistributedEvents({
+  gateway: "GatewayPubkey...",
+});
+```
+
+## TypeScript Types
+
+All event data types are defined in `src/db/events.ts`:
+
+```typescript
+import type {
+  // Event data types
+  TributaryPaymentRecord,
+  TributaryPaymentPolicyCreated,
+  TributaryPaymentGatewayCreated,
+  TributaryGatewayFeeBpsChanged,
+  // ... more event types
+
+  // Supporting types
+  PaymentStatus,
+  PaymentFrequency,
+  PolicyType,
+  SubscriptionPolicy,
+  MilestonePolicy,
+  PayAsYouGoPolicy,
+
+  // Utility types
+  TributaryEventName,
+  TributaryEventDataMap,
+} from "./db/events";
+```
+
+### Key Types
+
+#### PaymentStatus
+
+```typescript
+type PaymentStatus = "Active" | "Paused";
+```
+
+#### PaymentFrequency
+
+```typescript
+type PaymentFrequency =
+  | { Daily: null }
+  | { Weekly: null }
+  | { Monthly: null }
+  | { Quarterly: null }
+  | { SemiAnnually: null }
+  | { Annually: null }
+  | { Custom: number };
+```
+
+#### PolicyType
+
+```typescript
+type PolicyType =
+  | { Subscription: SubscriptionPolicy }
+  | { Milestone: MilestonePolicy }
+  | { PayAsYouGo: PayAsYouGoPolicy };
+
+interface SubscriptionPolicy {
+  amount: number;
+  auto_renew: boolean;
+  max_renewals: number | null;
+  payment_frequency: PaymentFrequency;
+  next_payment_due: number;
+}
 ```
 
 ## API Routes
@@ -103,13 +243,19 @@ See [API_ROUTES.md](./API_ROUTES.md) for detailed API documentation.
 
 ```bash
 # Get events
-curl "http://localhost:3002/v1/events?eventName=Payment&limit=10"
+curl "http://localhost:3002/v1/events?eventName=tributary_payment_record&limit=10"
 
-# Count events
-curl "http://localhost:3002/v1/events/count?eventName=Transfer"
+# Get payment records
+curl "http://localhost:3002/v1/events/payments?gateway=GatewayPubkey..."
 
-# Get event names
-curl "http://localhost:3002/v1/events/names"
+# Get payment statistics
+curl "http://localhost:3002/v1/events/payments/stats?gateway=GatewayPubkey..."
+
+# Get tributary event names
+curl "http://localhost:3002/v1/events/names/tributary"
+
+# Get policy created events
+curl "http://localhost:3002/v1/events/policies/created?recipient=RecipientPubkey..."
 ```
 
 ## Database Configuration
@@ -169,14 +315,14 @@ If you see "connection refused" or "authentication failed":
 If you see TypeScript errors:
 
 - Run `pnpm run build` to check compilation
-- Only the pre-existing `skill.ts` error should appear
 - Database code should compile without errors
 
 ## Files
 
 - `src/db/schema.ts` - Database schema definition
 - `src/db/index.ts` - Database client singleton
-- `src/db/queries.ts` - Query functions
+- `src/db/events.ts` - Event type definitions
+- `src/db/queries.ts` - Query functions (generic and typed)
 - `src/routes/events.ts` - API routes for events
 - `src/test-db.ts` - Database connection test script
 - `src/index.ts` - Main application entry with dotenv import

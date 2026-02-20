@@ -1,6 +1,26 @@
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { getDb } from ".";
 import { events, type Event } from "./schema";
+import type {
+  TributaryEventName,
+  TributaryEventDataMap,
+  TributaryPaymentRecord,
+  TributaryPaymentPolicyCreated,
+  TributaryGatewayFeeBpsChanged,
+  TributaryGatewayFeeRecipientChanged,
+  TributaryGatewaySignerChanged,
+  TributaryPaymentGatewayCreated,
+  TributaryPaymentGatewayDeleted,
+  TributaryPaymentPolicyDeleted,
+  TributaryPaymentPolicyStatusChanged,
+  TributaryProgramConfigCreated,
+  TributaryReferralRewardDistributedRecord,
+  TributaryUserPaymentCreated,
+} from "./events";
+
+export interface TypedEvent<T> extends Omit<Event, "data"> {
+  data: T;
+}
 
 export async function getEventsBySignature(
   signature: string
@@ -163,4 +183,458 @@ export async function getUniqueEventNames(): Promise<string[]> {
     .orderBy(events.eventName);
 
   return results.map((r) => r.eventName);
+}
+
+export async function getTributaryEventNames(): Promise<TributaryEventName[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const results = await db
+    .selectDistinct({ eventName: events.eventName })
+    .from(events)
+    .where(sql`${events.eventName} LIKE 'tributary_%'`)
+    .orderBy(events.eventName);
+
+  return results.map((r) => r.eventName as TributaryEventName);
+}
+
+export async function getTypedEvents<T extends TributaryEventName>(
+  eventName: T,
+  options?: { limit?: number; offset?: number }
+): Promise<TypedEvent<TributaryEventDataMap[T]>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(eq(events.eventName, eventName))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryEventDataMap[T],
+  }));
+}
+
+export async function getPaymentRecords(options?: {
+  gateway?: string;
+  paymentPolicy?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryPaymentRecord>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_payment_record")];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+  if (options?.paymentPolicy) {
+    conditions.push(
+      sql`${events.data}->>'payment_policy' = ${options.paymentPolicy}`
+    );
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentRecord,
+  }));
+}
+
+export async function getPaymentPolicyCreatedEvents(options?: {
+  gateway?: string;
+  recipient?: string;
+  userPayment?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryPaymentPolicyCreated>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_payment_policy_created")];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+  if (options?.recipient) {
+    conditions.push(sql`${events.data}->>'recipient' = ${options.recipient}`);
+  }
+  if (options?.userPayment) {
+    conditions.push(
+      sql`${events.data}->>'user_payment' = ${options.userPayment}`
+    );
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentPolicyCreated,
+  }));
+}
+
+export async function getGatewayFeeBpsChangedEvents(options?: {
+  gateway?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryGatewayFeeBpsChanged>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_gateway_fee_bps_changed"),
+  ];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryGatewayFeeBpsChanged,
+  }));
+}
+
+export async function getGatewayFeeRecipientChangedEvents(options?: {
+  gateway?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryGatewayFeeRecipientChanged>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_gateway_fee_recipient_changed"),
+  ];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryGatewayFeeRecipientChanged,
+  }));
+}
+
+export async function getGatewaySignerChangedEvents(options?: {
+  gateway?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryGatewaySignerChanged>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_gateway_signer_changed")];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryGatewaySignerChanged,
+  }));
+}
+
+export async function getPaymentGatewayCreatedEvents(options?: {
+  authority?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryPaymentGatewayCreated>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_payment_gateway_created"),
+  ];
+
+  if (options?.authority) {
+    conditions.push(sql`${events.data}->>'authority' = ${options.authority}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentGatewayCreated,
+  }));
+}
+
+export async function getPaymentGatewayDeletedEvents(options?: {
+  gateway?: string;
+  authority?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryPaymentGatewayDeleted>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_payment_gateway_deleted"),
+  ];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+  if (options?.authority) {
+    conditions.push(sql`${events.data}->>'authority' = ${options.authority}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentGatewayDeleted,
+  }));
+}
+
+export async function getPaymentPolicyDeletedEvents(options?: {
+  paymentPolicy?: string;
+  owner?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryPaymentPolicyDeleted>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_payment_policy_deleted")];
+
+  if (options?.paymentPolicy) {
+    conditions.push(
+      sql`${events.data}->>'payment_policy' = ${options.paymentPolicy}`
+    );
+  }
+  if (options?.owner) {
+    conditions.push(sql`${events.data}->>'owner' = ${options.owner}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentPolicyDeleted,
+  }));
+}
+
+export async function getPaymentPolicyStatusChangedEvents(options?: {
+  paymentPolicy?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryPaymentPolicyStatusChanged>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_payment_policy_status_changed"),
+  ];
+
+  if (options?.paymentPolicy) {
+    conditions.push(
+      sql`${events.data}->>'payment_policy' = ${options.paymentPolicy}`
+    );
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentPolicyStatusChanged,
+  }));
+}
+
+export async function getProgramConfigCreatedEvents(options?: {
+  admin?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryProgramConfigCreated>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_program_config_created")];
+
+  if (options?.admin) {
+    conditions.push(sql`${events.data}->>'admin' = ${options.admin}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryProgramConfigCreated,
+  }));
+}
+
+export async function getReferralRewardDistributedEvents(options?: {
+  gateway?: string;
+  paymentPolicy?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryReferralRewardDistributedRecord>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_referral_reward_distributed_record"),
+  ];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+  if (options?.paymentPolicy) {
+    conditions.push(
+      sql`${events.data}->>'payment_policy' = ${options.paymentPolicy}`
+    );
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryReferralRewardDistributedRecord,
+  }));
+}
+
+export async function getUserPaymentCreatedEvents(options?: {
+  owner?: string;
+  tokenMint?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TypedEvent<TributaryUserPaymentCreated>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_user_payment_created")];
+
+  if (options?.owner) {
+    conditions.push(sql`${events.data}->>'owner' = ${options.owner}`);
+  }
+  if (options?.tokenMint) {
+    conditions.push(sql`${events.data}->>'token_mint' = ${options.tokenMint}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryUserPaymentCreated,
+  }));
+}
+
+export async function getPaymentStats(options?: {
+  gateway?: string;
+  startTime?: Date;
+  endTime?: Date;
+}): Promise<{ totalAmount: number; count: number }> {
+  const db = getDb();
+  if (!db) return { totalAmount: 0, count: 0 };
+
+  const conditions = [eq(events.eventName, "tributary_payment_record")];
+
+  if (options?.gateway) {
+    conditions.push(sql`${events.data}->>'gateway' = ${options.gateway}`);
+  }
+  if (options?.startTime) {
+    conditions.push(gte(events.timestamp, options.startTime));
+  }
+  if (options?.endTime) {
+    conditions.push(lte(events.timestamp, options.endTime));
+  }
+
+  const [result] = await db
+    .select({
+      totalAmount: sql<number>`COALESCE(SUM((${events.data}->>'amount')::bigint), 0)`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(events)
+    .where(and(...conditions));
+
+  return {
+    totalAmount: Number(result?.totalAmount ?? 0),
+    count: result?.count ?? 0,
+  };
 }
