@@ -2,8 +2,8 @@
   "name": "@tributary-so/cli",
   "private": false,
   "scripts": {
-    "build": "bun build ./src/index.tsx --outdir ./dist --target bun",
-    "postbuild": "chmod +x dist/index.js",
+    "build": "tsc",
+    "postbuild": "chmod +x dist/src/index.js",
     "ci": "bun run build && bun run lint && bun run format:check",
     "dev": "bun run src/index.tsx",
     "format": "prettier --write src",
@@ -12,7 +12,8 @@
     "lint2": "eslint ."
   },
   "files": [
-    "dist"
+    "dist/src",
+    "tributary.cjs"
   ],
   "description": "Keeper to run payments",
   "keywords": [
@@ -45,11 +46,15 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.44.0"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/src/index.js",
   "engines": {
-    "bun": ">=1.0.0"
+    "node": ">=18.0.0"
   },
   "bin": {
-    "tributary": "./dist/index.js"
+    "tributary": "./tributary.cjs",
+    "@tributary-so/cli": "./tributary.cjs"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

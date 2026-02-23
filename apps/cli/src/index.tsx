@@ -550,7 +550,7 @@ async function handleSubscriptionCommand(
 
       const paymentFrequency: PaymentFrequency = {
         [frequency]: {},
-      } as PaymentFrequency;
+      } as unknown as PaymentFrequency;
       const instructions = await sdk.createSubscription(
         tokenMint,
         recipient,
@@ -684,7 +684,7 @@ async function handleReferralCommand(
         (options.code as string) ||
         Math.random().toString(36).substring(2, 8).toUpperCase();
       const referrer = options.referrer
-        ? parsePublicKey(options.referrer as string)
+        ? parsePublicKey(options.referrer as string) ?? undefined
         : undefined;
       if (!gateway) throw new Error("Invalid gateway");
       const instruction = await sdk.createReferralAccount(
