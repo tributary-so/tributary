@@ -85,7 +85,7 @@ router.get(
     const decodedWithConvertedAmount = {
       ...decoded,
       amount: convertedAmount,
-    };
+    } as SubscriptionParams;
 
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");
     res.send(generateSkillMarkdown(decodedWithConvertedAmount, decimals));

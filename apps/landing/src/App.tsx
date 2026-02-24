@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "./assets/logo.png";
 import GetStartedSection from "./components/GetStartedSection";
 import ProductScreenshotSection from "./components/ProductScreenshotSection";
+import PartnerBanner from "./components/PartnerBanner";
 
 function App() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -196,6 +197,9 @@ function App() {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Partner Banner */}
+      <PartnerBanner />
 
       {/* Get Started Section */}
       <GetStartedSection />

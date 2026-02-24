@@ -91,3 +91,9 @@
     color: rgba(115, 138, 148, 0.4);
   }
 }
+
+@layer utilities {
+  .animation-pause {
+    animation-play-state: paused;
+  }
+}
