@@ -8,7 +8,7 @@
     "lint": "exit 0",
     "test": "exit 0",
     "clean": "rm -rf ./dist",
-    "build": "pnpm run clean && tsc",
+    "build": "tsup",
     "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build",
     "docs": "typedoc"
@@ -29,7 +29,9 @@
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "eslint": "^10.0.0",
+    "esbuild-fix-imports-plugin": "^1.0.23",
     "typedoc": "^0.28.14",
+    "tsup": "^8.0.0",
     "typescript": "^5.7.3"
   },
   "engines": {
