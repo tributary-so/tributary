@@ -15,14 +15,8 @@
     "target": "es2020",
     "module": "es2020",
     "moduleResolution": "bundler",
-    "types": ["node", "react"],
-    "outDir": "./dist",
-    "jsx": "react-jsx",
-    "jsxImportSource": "@opentui/react",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@tributary-so/sdk": ["../sdk/src"]
-    }
+    "types": ["node"],
+    "outDir": "./dist"
   },
-  "exclude": ["node_modules", "tests"]
+  "exclude": ["node_modules", "tests", "eslint.config.js"]
 }

@@ -70,6 +70,7 @@ jobs:
           HAS_API=0
           HAS_LANDO=0
           HAS_LANDO_BACKEND=0
+          HAS_CLI=0
 
           if echo "$CHANGED_FILES" | grep -q "^programs/"; then
             HAS_PROGRAMS=1
@@ -115,6 +116,10 @@ jobs:
             HAS_LANDO_BACKEND=1
             echo "::notice::lando-backend changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/cli/"; then
+            HAS_CLI=1
+            echo "::notice::lando-backend changed"
+          fi
 
           echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
           echo "has_payments=$HAS_PAYMENTS" >> "$GITHUB_OUTPUT"
@@ -127,6 +132,7 @@ jobs:
           echo "has_lando_backend=$HAS_LANDO_BACKEND" >> "$GITHUB_OUTPUT"
           echo "has_app=$HAS_APP" >> "$GITHUB_OUTPUT"
           echo "has_api=$HAS_API" >> "$GITHUB_OUTPUT"
+          echo "has_cli=$HAS_CLI" >> "$GITHUB_OUTPUT"
 
           # we always test SDK no matter
           ELEMENTS="\"packages/sdk\","

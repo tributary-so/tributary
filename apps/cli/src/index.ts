@@ -1,61 +1,14 @@
-#!/usr/bin/env bun
-
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
 import * as fs from "fs";
 import * as path from "path";
-import {
-  Tributary,
-  PaymentFrequency,
-  decodeMemo,
-  encodeMemo,
-} from "@tributary-so/sdk";
-import { createCliRenderer } from "@opentui/core";
-import {
-  createRoot,
-  useKeyboard,
-  useRenderer,
-  useTerminalDimensions,
-} from "@opentui/react";
-import { useState, useEffect, useCallback, useMemo } from "react";
-
-// ============================================================================
-// Types & Interfaces
-// ============================================================================
+import { Tributary, PaymentFrequency, encodeMemo } from "@tributary-so/sdk";
 
 interface WalletConfig {
   connectionUrl: string;
   keypath: string;
 }
-
-interface CommandContext {
-  sdk: Tributary;
-  wallet: anchor.Wallet;
-  connection: Connection;
-  config: WalletConfig;
-}
-
-type CommandGroup =
-  | "wallet"
-  | "program"
-  | "user"
-  | "gateway"
-  | "subscription"
-  | "payments"
-  | "referral"
-  | "pda";
-
-interface MenuItem {
-  id: string;
-  label: string;
-  description: string;
-  group: CommandGroup;
-}
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
 
 function readKeypairFromFile(filePath: string): Keypair {
   try {
@@ -107,14 +60,9 @@ function truncatePubkey(pubkey: string | PublicKey, length = 8): string {
   return `${str.slice(0, length)}...${str.slice(-length)}`;
 }
 
-// ============================================================================
-// CLI Mode - Non-interactive command execution
-// ============================================================================
-
 async function runCliMode(args: string[]): Promise<void> {
   const config = getDefaultConfig();
 
-  // Parse global options
   let i = 0;
   while (i < args.length) {
     const arg = args[i];
@@ -136,7 +84,6 @@ async function runCliMode(args: string[]): Promise<void> {
   const remainingArgs = args.slice(i + 2);
   const { options, positional } = parseOptionsWithPositional(remainingArgs);
 
-  // Wallet commands don't need SDK
   if (command === "wallet") {
     try {
       await handleWalletCommand(subcommand, options, positional, config);
@@ -147,7 +94,6 @@ async function runCliMode(args: string[]): Promise<void> {
     }
   }
 
-  // Other commands need SDK
   let sdk: Tributary;
   try {
     const result = createSDK(config);
@@ -289,10 +235,6 @@ Commands:
     delegate                      Get payments delegate PDA
 `);
 }
-
-// ============================================================================
-// Command Handlers
-// ============================================================================
 
 async function handleWalletCommand(
   subcommand: string,
@@ -550,7 +492,7 @@ async function handleSubscriptionCommand(
 
       const paymentFrequency: PaymentFrequency = {
         [frequency]: {},
-      } as PaymentFrequency;
+      } as unknown as PaymentFrequency;
       const instructions = await sdk.createSubscription(
         tokenMint,
         recipient,
@@ -684,7 +626,7 @@ async function handleReferralCommand(
         (options.code as string) ||
         Math.random().toString(36).substring(2, 8).toUpperCase();
       const referrer = options.referrer
-        ? parsePublicKey(options.referrer as string)
+        ? parsePublicKey(options.referrer as string) ?? undefined
         : undefined;
       if (!gateway) throw new Error("Invalid gateway");
       const instruction = await sdk.createReferralAccount(
@@ -783,484 +725,9 @@ async function handlePdaCommand(
   }
 }
 
-// ============================================================================
-// TUI Components
-// ============================================================================
-
-function Banner() {
-  return (
-    <box marginBottom={1}>
-      <text>
-        <strong fg="#6a5acd">
-          ╔═══════════════════════════════════════════════════╗
-        </strong>
-        <br />
-        <strong fg="#6a5acd">║</strong>{" "}
-        <strong fg="#00ff88">🌊 Tributary CLI</strong> - Recurring Payments on
-        Solana <strong fg="#6a5acd">║</strong>
-        <br />
-        <strong fg="#6a5acd">
-          ╚═══════════════════════════════════════════════════╝
-        </strong>
-      </text>
-    </box>
-  );
-}
-
-function MenuItemComponent({
-  item,
-  selected,
-  onSelect,
-}: {
-  item: MenuItem;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <box
-      onMouseDown={onSelect}
-      paddingX={1}
-      backgroundColor={selected ? "#6a5acd" : undefined}
-    >
-      <text fg={selected ? "#ffffff" : "#cccccc"}>
-        {selected ? "▶ " : "  "}
-        {item.label}
-        <span fg={selected ? "#aaaaaa" : "#666666"}> - {item.description}</span>
-      </text>
-    </box>
-  );
-}
-
-function CommandGroupComponent({
-  group,
-  items,
-  selectedIndex,
-  startIndex,
-  onSelect,
-}: {
-  group: CommandGroup;
-  items: MenuItem[];
-  selectedIndex: number;
-  startIndex: number;
-  onSelect: (index: number) => void;
-}) {
-  return (
-    <box marginBottom={1}>
-      <text fg="#6a5acd">
-        <strong>{group.toUpperCase()}</strong>
-      </text>
-      {items.map((item, idx) => {
-        const actualIndex = startIndex + idx;
-        return (
-          <MenuItemComponent
-            key={item.id}
-            item={item}
-            selected={selectedIndex === actualIndex}
-            onSelect={() => onSelect(actualIndex)}
-          />
-        );
-      })}
-    </box>
-  );
-}
-
-function StatusBar({ message }: { message: string }) {
-  return (
-    <box
-      position="absolute"
-      bottom={0}
-      left={0}
-      right={0}
-      height={1}
-      backgroundColor="#1a1a2e"
-    >
-      <text fg="#888888">{message}</text>
-    </box>
-  );
-}
-
-// ============================================================================
-// Main TUI App
-// ============================================================================
-
-function App() {
-  const renderer = useRenderer();
-  const { height } = useTerminalDimensions();
-  const [config] = useState<WalletConfig>(getDefaultConfig());
-  const [context, setContext] = useState<CommandContext | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [statusMessage, setStatusMessage] = useState(
-    "Use ↑↓ to navigate, Enter to select, 'q' to quit"
-  );
-  const [currentView, setCurrentView] = useState<"menu" | "loading" | "error">(
-    "menu"
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  // Initialize SDK on mount
-  useEffect(() => {
-    try {
-      const { sdk, wallet, connection } = createSDK(config);
-      setContext({ sdk, wallet, connection, config });
-      setStatusMessage(
-        `Connected to ${truncatePubkey(
-          config.connectionUrl,
-          20
-        )} | Wallet: ${truncatePubkey(wallet.publicKey)}`
-      );
-    } catch (err) {
-      setError(
-        `Failed to initialize: ${err instanceof Error ? err.message : err}`
-      );
-      setCurrentView("error");
-    }
-  }, [config]);
-
-  const menuItems: MenuItem[] = useMemo(
-    () => [
-      // Wallet
-      {
-        id: "wallet-create",
-        label: "wallet create",
-        description: "Generate new keypair",
-        group: "wallet",
-      },
-      {
-        id: "wallet-import",
-        label: "wallet import",
-        description: "Import existing keypair",
-        group: "wallet",
-      },
-      {
-        id: "wallet-address",
-        label: "wallet address",
-        description: "Show public key",
-        group: "wallet",
-      },
-      {
-        id: "wallet-balance",
-        label: "wallet balance",
-        description: "Show balances",
-        group: "wallet",
-      },
-      // Program
-      {
-        id: "program-init",
-        label: "program initialize",
-        description: "Initialize program (admin only)",
-        group: "program",
-      },
-      {
-        id: "program-config",
-        label: "program config",
-        description: "Get program config PDA",
-        group: "program",
-      },
-      // User
-      {
-        id: "user-create",
-        label: "user create",
-        description: "Create user payment account",
-        group: "user",
-      },
-      {
-        id: "user-list",
-        label: "user list",
-        description: "List user payment accounts",
-        group: "user",
-      },
-      {
-        id: "user-show",
-        label: "user show",
-        description: "Show user payment details",
-        group: "user",
-      },
-      // Gateway
-      {
-        id: "gateway-create",
-        label: "gateway create",
-        description: "Create payment gateway",
-        group: "gateway",
-      },
-      {
-        id: "gateway-list",
-        label: "gateway list",
-        description: "List all payment gateways",
-        group: "gateway",
-      },
-      {
-        id: "gateway-show",
-        label: "gateway show",
-        description: "Show gateway details",
-        group: "gateway",
-      },
-      {
-        id: "gateway-delete",
-        label: "gateway delete",
-        description: "Delete payment gateway",
-        group: "gateway",
-      },
-      // Subscription
-      {
-        id: "sub-create",
-        label: "subscription create",
-        description: "Create subscription policy",
-        group: "subscription",
-      },
-      {
-        id: "sub-list",
-        label: "subscription list",
-        description: "List payment policies",
-        group: "subscription",
-      },
-      {
-        id: "sub-pause",
-        label: "subscription pause",
-        description: "Pause payment policy",
-        group: "subscription",
-      },
-      {
-        id: "sub-resume",
-        label: "subscription resume",
-        description: "Resume payment policy",
-        group: "subscription",
-      },
-      // Payments
-      {
-        id: "payment-exec",
-        label: "payments execute",
-        description: "Execute a payment",
-        group: "payments",
-      },
-      // Referral
-      {
-        id: "ref-create",
-        label: "referral create",
-        description: "Create referral account",
-        group: "referral",
-      },
-      {
-        id: "ref-show",
-        label: "referral show",
-        description: "Show referral by code",
-        group: "referral",
-      },
-      {
-        id: "ref-chain",
-        label: "referral chain",
-        description: "Show referral chain",
-        group: "referral",
-      },
-      // PDA
-      {
-        id: "pda-config",
-        label: "pda config",
-        description: "Get program config PDA",
-        group: "pda",
-      },
-      {
-        id: "pda-delegate",
-        label: "pda delegate",
-        description: "Get payments delegate PDA",
-        group: "pda",
-      },
-    ],
-    []
-  );
-
-  const groupedItems = useMemo(() => {
-    const groups: Record<CommandGroup, MenuItem[]> = {
-      wallet: [],
-      program: [],
-      user: [],
-      gateway: [],
-      subscription: [],
-      payments: [],
-      referral: [],
-      pda: [],
-    };
-    menuItems.forEach((item) => {
-      groups[item.group].push(item);
-    });
-    return groups;
-  }, [menuItems]);
-
-  const groupStartIndices = useMemo(() => {
-    const indices: Record<CommandGroup, number> = {
-      wallet: 0,
-      program: 0,
-      user: 0,
-      gateway: 0,
-      subscription: 0,
-      payments: 0,
-      referral: 0,
-      pda: 0,
-    };
-    let currentIndex = 0;
-    (Object.keys(groupedItems) as CommandGroup[]).forEach((group) => {
-      indices[group] = currentIndex;
-      currentIndex += groupedItems[group].length;
-    });
-    return indices;
-  }, [groupedItems]);
-
-  const executeCommand = useCallback(
-    async (item: MenuItem) => {
-      if (!context) return;
-      setCurrentView("loading");
-      setStatusMessage(`Executing: ${item.label}...`);
-
-      try {
-        // Simulate command execution
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setStatusMessage(`✓ ${item.label} completed successfully`);
-        setCurrentView("menu");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-        setCurrentView("error");
-      }
-    },
-    [context]
-  );
-
-  useKeyboard((key) => {
-    if (key.name === "q" || (key.ctrl && key.name === "c")) {
-      renderer.destroy();
-      return;
-    }
-
-    if (currentView === "menu") {
-      if (key.name === "up" || key.name === "k") {
-        setSelectedIndex((prev) =>
-          prev > 0 ? prev - 1 : menuItems.length - 1
-        );
-      } else if (key.name === "down" || key.name === "j") {
-        setSelectedIndex((prev) =>
-          prev < menuItems.length - 1 ? prev + 1 : 0
-        );
-      } else if (key.name === "return" || key.name === "enter") {
-        const item = menuItems[selectedIndex];
-        if (item) executeCommand(item);
-      }
-    } else if (currentView === "error") {
-      setCurrentView("menu");
-      setError(null);
-    }
-  });
-
-  if (currentView === "error") {
-    return (
-      <box padding={2} border borderColor="#ff4444">
-        <Banner />
-        <text fg="#ff4444">
-          <strong>❌ Error</strong>
-        </text>
-        <text>{error}</text>
-        <text fg="#888888" marginTop={1}>
-          Press any key to return to menu
-        </text>
-        <StatusBar message={statusMessage} />
-      </box>
-    );
-  }
-
-  if (currentView === "loading") {
-    return (
-      <box padding={2}>
-        <Banner />
-        <text>⏳ Executing command...</text>
-        <StatusBar message={statusMessage} />
-      </box>
-    );
-  }
-
-  return (
-    <box padding={1} height={height}>
-      <Banner />
-      <box flexDirection="row" flexGrow={1}>
-        <box flexGrow={1} paddingRight={2}>
-          <scrollbox focused height={height - 8}>
-            {(Object.keys(groupedItems) as CommandGroup[]).map((group) => (
-              <CommandGroupComponent
-                key={group}
-                group={group}
-                items={groupedItems[group]}
-                selectedIndex={selectedIndex}
-                startIndex={groupStartIndices[group]}
-                onSelect={setSelectedIndex}
-              />
-            ))}
-          </scrollbox>
-        </box>
-        <box width={30} border padding={1}>
-          <text fg="#6a5acd">
-            <strong>Quick Info</strong>
-          </text>
-          <text marginTop={1} fg="#aaaaaa">
-            Network:
-          </text>
-          <text>{truncatePubkey(config.connectionUrl, 20)}</text>
-          <text marginTop={1} fg="#aaaaaa">
-            Wallet:
-          </text>
-          <text>
-            {context ? truncatePubkey(context.wallet.publicKey) : "Loading..."}
-          </text>
-        </box>
-      </box>
-      <StatusBar message={statusMessage} />
-    </box>
-  );
-}
-
-// ============================================================================
-// Entry Point
-// ============================================================================
-
 async function main() {
   const args = process.argv.slice(2);
-
-  // Check if running in CLI mode (has command arguments)
-  // CLI mode: first non-flag arg is a command like "wallet", "program", etc.
-  // TUI mode: no args, or only global flags like --help, -c, -k
-  let firstCommandIndex = 0;
-  while (
-    firstCommandIndex < args.length &&
-    args[firstCommandIndex].startsWith("-")
-  ) {
-    // Skip global options and their values
-    if (
-      args[firstCommandIndex] === "-c" ||
-      args[firstCommandIndex] === "--connection-url" ||
-      args[firstCommandIndex] === "-k" ||
-      args[firstCommandIndex] === "--keypath"
-    ) {
-      firstCommandIndex += 2; // Skip option and its value
-    } else if (
-      args[firstCommandIndex] === "-h" ||
-      args[firstCommandIndex] === "--help"
-    ) {
-      // Help is CLI mode
-      await runCliMode(args);
-      return;
-    } else {
-      firstCommandIndex++;
-    }
-  }
-
-  const isCliMode = firstCommandIndex < args.length;
-
-  if (isCliMode) {
-    await runCliMode(args);
-    return;
-  }
-
-  // Run TUI mode
-  const renderer = await createCliRenderer({
-    exitOnCtrlC: false,
-  });
-
-  createRoot(renderer).render(<App />);
+  await runCliMode(args);
 }
 
 main().catch((err) => {
