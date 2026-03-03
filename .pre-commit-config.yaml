@@ -96,8 +96,7 @@ repos:
     hooks:
       - id: fmt
         files: ^programs/.*/.*.rs
-        args:
-          [--manifest-path=programs/recurring_payments/Cargo.toml, --check, --]
+        args: [--manifest-path=programs/tributary/Cargo.toml, --check, --]
       - id: cargo-check
         files: ^programs/
-        args: [--manifest-path=programs/recurring_payments/Cargo.toml, --]
+        args: [--manifest-path=programs/tributary/Cargo.toml, --]

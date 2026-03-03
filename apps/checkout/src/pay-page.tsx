@@ -4,22 +4,28 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { CheckoutForm } from "@/components/checkout-form";
 import { OrderSummary } from "@/components/order-summary";
-import {
-  CheckoutSessionManager,
-  SubscriptionParams,
-} from "@tributary-so/payments";
+import { CheckoutSessionManager, CheckoutParams } from "@tributary-so/payments";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { Hero } from "./components/hero";
+import { PayForm } from "./components/pay-form";
 
-export function CheckoutPage() {
-  const [sessionData, setSessionData] =
-    React.useState<SubscriptionParams | null>(null);
+export function PayPage() {
+  const [sessionData, setSessionData] = React.useState<CheckoutParams | null>(
+    null
+  );
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     const hashPart = window.location.hash;
-    const encodedData = hashPart ? hashPart.split("#/subscribe/")[1] : null;
+    let encodedData: string | null = null;
+
+    if (hashPart.includes("#/pay/")) {
+      encodedData = hashPart.split("#/pay/")[1];
+    } else if (hashPart.includes("#/subscribe/")) {
+      encodedData = hashPart.split("#/subscribe/")[1];
+    }
+
     if (encodedData) {
       try {
         const sessionManager = new CheckoutSessionManager();
@@ -80,6 +86,8 @@ export function CheckoutPage() {
     );
   }
 
+  const isSubscription = sessionData.mode === "subscription";
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -102,7 +110,11 @@ export function CheckoutPage() {
                 <OrderSummary sessionData={sessionData} />
               </div>
 
-              <CheckoutForm sessionData={sessionData} />
+              {isSubscription ? (
+                <CheckoutForm sessionData={sessionData} />
+              ) : (
+                <PayForm sessionData={sessionData} />
+              )}
             </motion.div>
           </div>
         </div>

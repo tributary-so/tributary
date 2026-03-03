@@ -1,6 +1,6 @@
 # @tributary-so/payments
 
-A minimal Stripe-compatible payments SDK for Tributary USDC subscriptions on Solana. Provides essential checkout session functionality with zero API keys required - developers can integrate immediately without registration.
+A minimal Stripe-compatible payments SDK for Tributary on Solana. Supports both recurring subscriptions (via smart contract) and one-time payments (via SPL transfers with memo tracking). Provides essential checkout session functionality with zero API keys required - developers can integrate immediately without registration.
 
 ## Features
 
@@ -8,8 +8,10 @@ A minimal Stripe-compatible payments SDK for Tributary USDC subscriptions on Sol
 - **USDC Only**: Single currency support (USDC on Solana)
 - **Tributary Payment Method**: Only supports "tributary" payment method type
 - **Base64URL Encoding**: Compact, URL-safe session encoding for sharing
+- **Dual Payment Modes**: Subscriptions (smart contract) OR one-time payments (SPL transfers)
 - **Dual Lookup Strategy**: User-based OR gateway-based subscription status checking
 - **Real-time Status**: Live subscription status using PaymentPolicy `paymentCount`
+- **Memo Tracking**: One-time payments tracked via transaction memo fields
 - **Pure Frontend**: No backend or webhooks required for basic functionality
 - **Type Safety**: Full TypeScript support with Stripe-compatible types
 
@@ -50,6 +52,40 @@ const session = await stripe.checkout.sessions.create({
     trackingId: "user_123_monthly_premium", // Your unique identifier
     autoRenew: true,
     memo: "Optional memo for the payment",
+  },
+});
+
+// Redirect to hosted checkout
+window.location.href = session.url;
+```
+
+### One-Time Payment Quick Start
+
+```typescript
+import { PaymentsClient } from "@tributary-so/payments";
+import { Connection } from "@solana/web3.js";
+import { Tributary } from "@tributary-so/sdk";
+
+// Initialize with connection and tributary
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const tributary = new Tributary(connection, wallet);
+const stripe = new PaymentsClient(connection, tributary);
+
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [
+    {
+      description: "Premium feature access",
+      unitPrice: 50.0, // $50.00
+      quantity: 1,
+    },
+  ],
+  mode: "payment",
+  success_url: "https://yourapp.com/success",
+  cancel_url: "https://yourapp.com/cancel",
+  tributaryConfig: {
+    recipient: "RECIPIENT_PUBLIC_KEY_HERE",
+    trackingId: "user_123_premium_upgrade", // equivalent to memo
   },
 });
 
@@ -129,6 +165,72 @@ async function getSessionWithStatus() {
 checkUserSubscription();
 ```
 
+## One-Time Payment Status Tracking
+
+One-time payments are tracked via SPL transfers with memo fields. Status checking requires indexing (planned in Milestone 2):
+
+```typescript
+import { PaymentsClient } from "@tributary-so/payments";
+import { Connection } from "@solana/web3.js";
+import { Tributary } from "@tributary-so/sdk";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const tributary = new Tributary(connection, wallet);
+const stripe = new PaymentsClient(connection, tributary);
+
+// Check one-time payment status
+async function checkOneTimePayment() {
+  const status = await stripe.payments.oneTime.checkStatus(
+    "user_123_premium_upgrade"
+  );
+
+  if (status.status === "paid") {
+    console.log("Payment completed!", {
+      transaction: status.transaction,
+      paidAt: status.paidAt,
+      amount: status.amount,
+    });
+    // Grant access, update UI, etc.
+  } else if (status.status === "pending") {
+    console.log("Payment pending...");
+    // Show pending status
+  } else if (status.status === "expired") {
+    console.log("Payment link expired");
+    // Show expired state
+  }
+}
+
+// Build memo for manual SPL transfer
+async function prepareManualTransfer() {
+  const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
+  console.log("Memo:", memo);
+  // Output: "Custom memo text | user_123_premium_upgrade"
+}
+
+// Extract tracking ID from existing transaction
+async function parseTransactionMemo(txMemo: string) {
+  const trackingId = stripe.payments.oneTime.extractTrackingId(txMemo);
+  console.log("Tracking ID:", trackingId);
+}
+```
+
+### One-Time Payment Status Flow
+
+1. **`pending`**: Payment not yet executed
+2. **`paid`**: SPL transfer with matching memo found
+3. **`expired`**: Payment window expired (if expiration is set)
+
+```typescript
+interface OneTimePaymentStatus {
+  trackingId: string;
+  status: "pending" | "paid" | "expired";
+  transaction?: PaymentTransaction; // Transaction details if paid
+  amount: number; // Amount expected
+  recipient: string; // Recipient public key
+  paidAt?: number; // Unix timestamp when paid
+}
+```
+
 ## Status Flow
 
 The subscription status follows a simple flow based on PaymentPolicy state:
@@ -160,11 +262,14 @@ interface SubscriptionStatus {
 
 ## URL Encoding
 
-The SDK uses Base64URL encoding to pack all subscription parameters into compact, shareable URLs:
+The SDK uses Base64URL encoding to pack all payment parameters into compact, shareable URLs:
+
+### Subscription URLs
 
 ```typescript
 // Session URL contains all necessary data
 const session = await stripe.checkout.sessions.create({
+  mode: "subscription",
   // ... configuration
 });
 
@@ -173,28 +278,49 @@ console.log(session.url);
 // Example: https://checkout.tributary.so/subscribe/eyJ0bSI6IkVQakZXZGRBdWZxU1NxZTJxTjF6eWJhcEM4RzR3RUdHa3p3eVREdjF2Iiwi...
 ```
 
+### One-Time Payment URLs
+
+```typescript
+// One-time payment URL
+const session = await stripe.checkout.sessions.create({
+  mode: "payment",
+  // ... configuration
+});
+
+// URL format: https://checkout.tributary.so/pay/{base64url-encoded-data}
+console.log(session.url);
+// Example: https://checkout.tributary.so/pay/eyJ0bSI6ImBheW1lbnQiLCJ0bSI6Ii...
+```
+
 The encoded data includes:
 
+**Common fields:**
+
+- `m`: Mode (`"subscription"` | `"payment"`)
 - `tm`: Token mint (USDC)
 - `r`: Recipient public key
-- `g`: Gateway public key
 - `a`: Total amount (calculated from line items)
+- `tid`: Tracking ID
+
+**Subscription-only fields:**
+
+- `g`: Gateway public key
 - `ar`: Auto-renew flag
 - `mr`: Maximum renewals
 - `pf`: Payment frequency
 - `st`: Start time
-- `tid`: Tracking ID
 - `li`: Line items (JSON array)
+
+**One-time payment-only fields:**
+
+- _none_
 
 ## MEMO Format
 
-Tracking IDs are stored in Solana transaction MEMO fields using the format:
+Tracking IDs are stored in Solana transaction MEMO fields as well as in events
+when payment is triggered.
 
-```
-tributary:payment:{trackingId}
-```
-
-Example: `tributary:payment:user_123_monthly_premium`
+Example: `user_123_monthly_premium`
 
 This enables:
 
@@ -240,7 +366,6 @@ const session = await stripe.checkout.sessions.create({
     recipient: "recipient-public-key", // Recipient public key
     trackingId: "unique-tracking-id", // Your unique identifier
     autoRenew: true,
-    memo: "Optional memo for payments",
   },
 });
 ```
@@ -379,13 +504,68 @@ const details = await stripe.subscriptions.getDetails({
 // Returns: SubscriptionStatus | null
 ```
 
+#### payments.oneTime.checkStatus()
+
+Check one-time payment status by tracking ID (requires indexer):
+
+```typescript
+const status = await stripe.payments.oneTime.checkStatus(
+  "user_123_premium_upgrade"
+);
+```
+
+**Returns:**
+
+```typescript
+{
+  trackingId: string;
+  status: "pending" | "paid" | "expired";
+  transaction?: {
+    signature: string;
+    timestamp: number;
+    amount: number;
+    recipient: string;
+    memo: string;
+  };
+  amount: number;
+  recipient: string;
+  paidAt?: number;
+}
+```
+
+#### payments.oneTime.buildMemo()
+
+Build memo field for manual SPL transfer:
+
+```typescript
+const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
+// Output: "Optional custom memo text | user_123_premium_upgrade"
+```
+
+#### payments.oneTime.extractTrackingId()
+
+Extract tracking ID from transaction memo:
+
+```typescript
+const trackingId = stripe.payments.oneTime.extractTrackingId(
+  "user_123_premium_upgrade"
+);
+// Output: "user_123_premium_upgrade"
+```
+
 The `tributaryConfig` object contains Tributary-specific settings:
 
-- `gateway`: Your Tributary gateway public key
+**Subscription mode (`mode: "subscription"`):**
+
+- `gateway`: Your Tributary gateway public key (required)
 - `recipient`: The recipient public key (where payments go)
 - `trackingId`: Your unique identifier for tracking payments
 - `autoRenew`: Enable automatic subscription renewal (default: false)
-- `memo`: Optional memo to attach to each payment transaction
+
+**One-time payment mode (`mode: "payment"`):**
+
+- `recipient`: The recipient public key (where payment goes) - no gateway needed
+- `trackingId`: Your unique identifier for tracking payment
 
 ## Tributary Configuration
 
@@ -397,9 +577,7 @@ const transactions = await connection.getSignaturesForAddress(recipient);
 const paymentTxs = await Promise.all(
   transactions.map((sig) => connection.getParsedTransaction(sig.signature))
 );
-const hasPayment = paymentTxs.some((tx) =>
-  tx.memo?.includes(`tributary:payment:${trackingId}`)
-);
+const hasPayment = paymentTxs.some((tx) => tx.memo?.includes(`${trackingId}`));
 ```
 
 ### PaymentPolicy Approach (Efficient)
@@ -412,7 +590,7 @@ const isActive = paymentPolicy?.paymentCount > 0;
 
 ## Performance Benefits
 
-### Traditional Approach (Expensive)
+### Traditional Approach
 
 ```typescript
 // Expensive: Scan transaction history
@@ -420,12 +598,10 @@ const transactions = await connection.getSignaturesForAddress(recipient);
 const paymentTxs = await Promise.all(
   transactions.map((sig) => connection.getParsedTransaction(sig.signature))
 );
-const hasPayment = paymentTxs.some((tx) =>
-  tx.memo?.includes(`tributary:payment:${trackingId}`)
-);
+const hasPayment = paymentTxs.some((tx) => tx.memo?.includes(trackingId));
 ```
 
-### PaymentPolicy Approach (Efficient)
+### Payment Policy Approach
 
 ```typescript
 // Fast: Direct on-chain state lookup

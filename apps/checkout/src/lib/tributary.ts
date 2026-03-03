@@ -4,6 +4,7 @@ import {
   Transaction,
   TransactionSignature,
 } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
   Tributary,
   PaymentFrequency,
@@ -203,4 +204,49 @@ export async function createSubscription(
     totalPaid: newPolicy.totalPaid,
     createdAt: newPolicy.createdAt,
   };
+}
+
+export interface CreateOneTimePaymentParams {
+  wallet: WalletContextState;
+  recipientWallet: PublicKey;
+  amount: number;
+  memo?: string;
+  trackingId?: string;
+  tokenMint?: string;
+}
+
+export async function createOneTimePayment(
+  params: CreateOneTimePaymentParams
+): Promise<TransactionSignature> {
+  const { wallet, recipientWallet, amount, tokenMint: tokenMintStr } = params;
+  const tributary = getTributary(wallet);
+
+  const tokenMint = new PublicKey(tokenMintStr || config.usdcMint);
+  const amountInSmallestUnits = await amountToBN(amount, tokenMint.toString());
+
+  const fromAta = getAssociatedTokenAddressSync(tokenMint, wallet.publicKey!);
+  const toAta = getAssociatedTokenAddressSync(tokenMint, recipientWallet);
+
+  const memo = params.memo || params.trackingId || "tributary payment";
+
+  const transferIx = await tributary.transfer(
+    fromAta,
+    toAta,
+    amountInSmallestUnits,
+    createMemoBuffer(memo, 64)
+  );
+
+  const transaction = new Transaction().add(transferIx);
+  const { blockhash } =
+    await tributary.program.provider.connection.getLatestBlockhash();
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey!;
+
+  const signedTx = await wallet.signTransaction!(transaction);
+  const txid = await tributary.program.provider.connection.sendRawTransaction(
+    signedTx.serialize()
+  );
+  await confirmTransactionWithStatus(tributary.connection, txid, "confirmed");
+
+  return txid;
 }
