@@ -109,7 +109,9 @@ app.get("/api/skill/:encoded", async (req, res) => {
     }
 
     const sessionManager = new CheckoutSessionManager();
-    const decoded = sessionManager.decodeSubscriptionUrl(encoded);
+    const decoded = sessionManager.decodeSubscriptionUrl(
+      encoded
+    ) as SubscriptionParams;
 
     // Fetch mint decimals and convert amount from float to integer
     const decimals = await getMintDecimals(decoded.tokenMint);

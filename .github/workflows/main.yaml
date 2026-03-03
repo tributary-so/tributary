@@ -277,7 +277,7 @@ jobs:
       package: apps/api
 
   build-lando-backend-docker:
-    name: Build Scheduler Docker Image
+    name: Build Lando Docker Image
     needs: [release-pass, detect-changes]
     if: needs.detect-changes.outputs.has_lando_backend == '1' || github.event.inputs.post_release == 'true'
     permissions:
