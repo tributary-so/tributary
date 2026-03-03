@@ -143,6 +143,18 @@ jobs:
             echo "::notice::lando-backend changed"
           fi
 
+          if [ ${{github.event.inputs.post_release}} ]; then
+            HAS_PROGRAMS=1
+            HAS_PAYMENTS=1
+            HAS_SCHEDULER=1
+            HAS_CHECKOUT=1
+            HAS_APP=1
+            HAS_API=1
+            HAS_LANDO=1
+            HAS_LANDO_BACKEND=1
+            HAS_CLI=1
+          fi
+
           echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
           echo "has_payments=$HAS_PAYMENTS" >> "$GITHUB_OUTPUT"
           echo "has_sdk=$HAS_SDK" >> "$GITHUB_OUTPUT"
