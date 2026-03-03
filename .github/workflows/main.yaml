@@ -143,7 +143,7 @@ jobs:
             echo "::notice::lando-backend changed"
           fi
 
-          if [ ${{github.event.inputs.post_release}} ]; then
+          if [ "${{ github.event.inputs.post_release }}" == "true" ]; then
             HAS_PROGRAMS=1
             HAS_PAYMENTS=1
             HAS_SCHEDULER=1
