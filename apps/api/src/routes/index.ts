@@ -26,6 +26,9 @@ router.use("/skill", skillRouter);
 // Subscription management
 router.use("/subscriptions", subscriptionRouter);
 
+// One-time payment queries
+router.use("/onetime", onetimeRouter);
+
 // Event queries
 router.use("/events", eventsRouter);
 
