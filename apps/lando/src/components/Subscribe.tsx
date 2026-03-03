@@ -45,7 +45,9 @@ export function Subscribe() {
 
     try {
       const sessionManager = new CheckoutSessionManager();
-      const decoded = sessionManager.decodeSubscriptionUrl(data);
+      const decoded = sessionManager.decodeSubscriptionUrl(
+        data
+      ) as SubscriptionParams;
       setSubscription(decoded);
       setLoading(false);
 

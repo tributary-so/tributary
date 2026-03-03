@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { type Tributary } from "../../../target/types/tributary.js";
-import { IdlAccounts, IdlTypes, BN } from "@coral-xyz/anchor";
+import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
 
 /**
  * Result of a Program Derived Address (PDA) derivation operation.
