@@ -139,7 +139,7 @@ describe("PaymentsClient", () => {
       };
 
       await expect(client.checkout.sessions.create(params)).rejects.toThrow(
-        "line_items is required and must be a non-empty array"
+        "line_items is required for subscription mode"
       );
     });
   });
