@@ -4,6 +4,23 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      dry_run:
+        description: Run semantic-release in dry-run mode (no actual publish)
+        required: false
+        default: false
+        type: boolean
+      skip_tests:
+        description: Skip tests (for testing purposes only)
+        required: false
+        default: false
+        type: boolean
+      post_release:
+        description: Run all post-release jobs (app, landing, docs, docker images) without running release
+        required: false
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       dry_run:
