@@ -1,7 +1,6 @@
 // Input validation utilities
 
 import { TributaryConfig } from "../types/tributary";
-import { MemoUtils } from "./memo";
 
 export class ValidationUtils {
   // Validate Tributary configuration
@@ -21,7 +20,7 @@ export class ValidationUtils {
       throw new Error("Invalid recipient public key format");
     }
 
-    if (!MemoUtils.validateTrackingId(config.trackingId)) {
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(config.trackingId)) {
       throw new Error(
         "Invalid trackingId format. Use alphanumeric, underscore, or hyphen (max 64 chars)"
       );

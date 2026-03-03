@@ -1,21 +1,18 @@
 // Main payments client - zero configuration required
 
 import { CheckoutSessionManager } from "./session";
-import { PaymentTracker } from "./tracking";
 import { OneTimePaymentTracker } from "./onetime";
 import { Tributary } from "@tributary-so/sdk";
 
 export class PaymentsClient {
   private _checkout: CheckoutSessionManager;
-  private _tracker: PaymentTracker;
   private _onetimeTracker: OneTimePaymentTracker;
 
   constructor(tributary: Tributary) {
     // Zero configuration initialization
     const connection = tributary.connection;
     this._checkout = new CheckoutSessionManager(connection, tributary);
-    this._tracker = new PaymentTracker(connection, tributary);
-    this._onetimeTracker = new OneTimePaymentTracker(connection);
+    this._onetimeTracker = new OneTimePaymentTracker();
   }
 
   // Tributary-compatible checkout sessions
@@ -29,13 +26,13 @@ export class PaymentsClient {
   get payments() {
     return {
       // Check payment status by tracking ID
-      checkStatus: async (trackingId: string, recipient: string) => {
+      checkStatus: async (_trackingId: string, _recipient: string) => {
         // FIXME: TODO
         // return this._tracker.checkPaymentStatus(trackingId, recipient);
       },
 
       // Get payment history for tracking ID
-      getHistory: async (trackingId: string, recipient: string) => {
+      getHistory: async (_trackingId: string, _recipient: string) => {
         // FIXME: TODO
         // return this._tracker.getPaymentHistory(trackingId, recipient);
       },
@@ -46,8 +43,8 @@ export class PaymentsClient {
           return this._onetimeTracker.checkStatus(trackingId);
         },
 
-        buildMemo: (trackingId: string, customMemo?: string) => {
-          return this._onetimeTracker.buildPaymentMemo(trackingId, customMemo);
+        buildMemo: (trackingId: string) => {
+          return this._onetimeTracker.buildPaymentMemo(trackingId);
         },
 
         extractTrackingId: (memo: string) => {
@@ -64,7 +61,7 @@ export class PaymentsClient {
        * Check subscription status using dual lookup strategy
        */
       checkStatus: async (
-        options: { trackingId: string } & (
+        _options: { trackingId: string } & (
           | { userPublicKey: string; tokenMint?: string }
           | { gatewayPublicKey: string }
         )
@@ -77,7 +74,7 @@ export class PaymentsClient {
        * Quick check if subscription is active
        */
       isActive: async (
-        options: { trackingId: string } & (
+        _options: { trackingId: string } & (
           | { userPublicKey: string; tokenMint?: string }
           | { gatewayPublicKey: string }
         )
@@ -90,7 +87,7 @@ export class PaymentsClient {
        * Get detailed subscription information
        */
       getDetails: async (
-        options: { trackingId: string } & (
+        _options: { trackingId: string } & (
           | { userPublicKey: string; tokenMint?: string }
           | { gatewayPublicKey: string }
         )

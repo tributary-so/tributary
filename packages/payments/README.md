@@ -85,8 +85,7 @@ const session = await stripe.checkout.sessions.create({
   cancel_url: "https://yourapp.com/cancel",
   tributaryConfig: {
     recipient: "RECIPIENT_PUBLIC_KEY_HERE",
-    trackingId: "user_123_premium_upgrade",
-    memo: "Optional memo for one-time payment",
+    trackingId: "user_123_premium_upgrade", // equivalent to memo
   },
 });
 
@@ -203,12 +202,9 @@ async function checkOneTimePayment() {
 
 // Build memo for manual SPL transfer
 async function prepareManualTransfer() {
-  const memo = stripe.payments.oneTime.buildMemo(
-    "user_123_premium_upgrade",
-    "Custom memo text"
-  );
+  const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
   console.log("Memo:", memo);
-  // Output: "Custom memo text | tributary:payment:user_123_premium_upgrade"
+  // Output: "Custom memo text | user_123_premium_upgrade"
 }
 
 // Extract tracking ID from existing transaction
@@ -317,17 +313,14 @@ The encoded data includes:
 
 **One-time payment-only fields:**
 
-- `memo`: Custom memo text
+- _none_
 
 ## MEMO Format
 
-Tracking IDs are stored in Solana transaction MEMO fields using the format:
+Tracking IDs are stored in Solana transaction MEMO fields as well as in events
+when payment is triggered.
 
-```
-tributary:payment:{trackingId}
-```
-
-Example: `tributary:payment:user_123_monthly_premium`
+Example: `user_123_monthly_premium`
 
 This enables:
 
@@ -373,7 +366,6 @@ const session = await stripe.checkout.sessions.create({
     recipient: "recipient-public-key", // Recipient public key
     trackingId: "unique-tracking-id", // Your unique identifier
     autoRenew: true,
-    memo: "Optional memo for payments",
   },
 });
 ```
@@ -546,11 +538,8 @@ const status = await stripe.payments.oneTime.checkStatus(
 Build memo field for manual SPL transfer:
 
 ```typescript
-const memo = stripe.payments.oneTime.buildMemo(
-  "user_123_premium_upgrade",
-  "Optional custom memo text"
-);
-// Output: "Optional custom memo text | tributary:payment:user_123_premium_upgrade"
+const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
+// Output: "Optional custom memo text | user_123_premium_upgrade"
 ```
 
 #### payments.oneTime.extractTrackingId()
@@ -559,7 +548,7 @@ Extract tracking ID from transaction memo:
 
 ```typescript
 const trackingId = stripe.payments.oneTime.extractTrackingId(
-  "Custom memo | tributary:payment:user_123_premium_upgrade"
+  "user_123_premium_upgrade"
 );
 // Output: "user_123_premium_upgrade"
 ```
@@ -572,13 +561,11 @@ The `tributaryConfig` object contains Tributary-specific settings:
 - `recipient`: The recipient public key (where payments go)
 - `trackingId`: Your unique identifier for tracking payments
 - `autoRenew`: Enable automatic subscription renewal (default: false)
-- `memo`: Optional memo to attach to each payment transaction
 
 **One-time payment mode (`mode: "payment"`):**
 
 - `recipient`: The recipient public key (where payment goes) - no gateway needed
 - `trackingId`: Your unique identifier for tracking payment
-- `memo`: Optional memo to attach to payment transaction
 
 ## Tributary Configuration
 
@@ -590,9 +577,7 @@ const transactions = await connection.getSignaturesForAddress(recipient);
 const paymentTxs = await Promise.all(
   transactions.map((sig) => connection.getParsedTransaction(sig.signature))
 );
-const hasPayment = paymentTxs.some((tx) =>
-  tx.memo?.includes(`tributary:payment:${trackingId}`)
-);
+const hasPayment = paymentTxs.some((tx) => tx.memo?.includes(`${trackingId}`));
 ```
 
 ### PaymentPolicy Approach (Efficient)
@@ -613,9 +598,7 @@ const transactions = await connection.getSignaturesForAddress(recipient);
 const paymentTxs = await Promise.all(
   transactions.map((sig) => connection.getParsedTransaction(sig.signature))
 );
-const hasPayment = paymentTxs.some((tx) =>
-  tx.memo?.includes(`tributary:payment:${trackingId}`)
-);
+const hasPayment = paymentTxs.some((tx) => tx.memo?.includes(trackingId));
 ```
 
 ### Payment Policy Approach

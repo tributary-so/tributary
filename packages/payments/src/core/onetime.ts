@@ -1,16 +1,7 @@
 // One-time payment tracking using SPL transfers with memo fields
 
-import { Connection, PublicKey } from "@solana/web3.js";
-import { ParsedTransactionWithMeta } from "@solana/web3.js";
-import { PaymentTransaction } from "../types/tributary";
-import { MemoUtils } from "../utils/memo";
-
 export class OneTimePaymentTracker {
-  private connection: Connection;
-
-  constructor(connection: Connection) {
-    this.connection = connection;
-  }
+  constructor() {}
 
   /**
    * Check one-time payment status by tracking ID
@@ -18,10 +9,7 @@ export class OneTimePaymentTracker {
    * @param trackingId The tracking ID to search for
    * @returns Payment status with transaction details if found
    */
-  async checkStatus(trackingId: string): Promise<any> {
-    // TODO: Implement transaction search with memo filtering
-    // This requires indexing the chain for transfers with matching memos
-    // For now, return pending status
+  async checkStatus(trackingId: string) {
     return {
       trackingId,
       status: "pending",
@@ -33,30 +21,18 @@ export class OneTimePaymentTracker {
   /**
    * Get payment status from indexed data (future)
    * Will integrate with Indexer + Core API from grant milestone 2
-   * @param trackingId The tracking ID
+   * @param _trackingId The tracking ID
    * @returns Detailed payment status from indexer
    */
-  async getFromIndexer(trackingId: string): Promise<any> {
-    // TODO: Integrate with /v1/onetime/{trackingId} endpoint
+  async getFromIndexer(_trackingId: string) {
     throw new Error("Indexer integration not yet implemented");
   }
 
-  /**
-   * Build memo field for one-time payment
-   * @param trackingId The tracking ID
-   * @param customMemo Optional custom memo text
-   * @returns Complete memo string with tracking
-   */
-  buildPaymentMemo(trackingId: string, customMemo?: string): string {
-    return MemoUtils.buildMemo(customMemo || "", trackingId);
+  buildPaymentMemo(trackingId: string): string {
+    return trackingId;
   }
 
-  /**
-   * Extract tracking ID from transaction memo
-   * @param memo The memo field from transaction
-   * @returns Tracking ID or null if not found
-   */
   extractTrackingId(memo: string): string | null {
-    return MemoUtils.extractTrackingId(memo);
+    return memo || null;
   }
 }

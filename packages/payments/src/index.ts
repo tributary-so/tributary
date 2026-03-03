@@ -8,5 +8,4 @@ export * from "./core/onetime";
 export * from "./types/tributary";
 
 // Utility exports
-export * from "./utils/memo";
 export * from "./utils/validation";
