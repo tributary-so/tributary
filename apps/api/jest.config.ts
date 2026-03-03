@@ -6,7 +6,7 @@ const config: Config = {
   roots: ["<rootDir>/src"],
   testMatch: ["**/__tests__/**/*.test.ts", "**/*.test.ts"],
   transform: {
-    "^.+\\.ts$": [
+    "^.+\\.(ts|js)$": [
       "ts-jest",
       {
         tsconfig: {
@@ -27,6 +27,9 @@ const config: Config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
+  transformIgnorePatterns: [
+    "node_modules/(?!(@tributary-so/payments|@tributary-so/sdk))",
+  ],
   setupFilesAfterEnv: ["<rootDir>/src/__tests__/setup.ts"],
 };
 
