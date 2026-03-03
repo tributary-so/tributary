@@ -1138,6 +1138,52 @@
       "args": []
     },
     {
+      "name": "transfer",
+      "discriminator": [
+        163,
+        52,
+        200,
+        231,
+        140,
+        3,
+        69,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "from",
+          "writable": true
+        },
+        {
+          "name": "to",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "memo",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "update_gateway_protocol_fee",
       "discriminator": [
         64,
@@ -1478,6 +1524,19 @@
       ]
     },
     {
+      "name": "TransferRecord",
+      "discriminator": [
+        212,
+        45,
+        151,
+        165,
+        177,
+        0,
+        16,
+        236
+      ]
+    },
+    {
       "name": "UserPaymentCreated",
       "discriminator": [
         112,
@@ -1661,6 +1720,11 @@
       "code": 6033,
       "name": "ReferralAccountAlreadyExists",
       "msg": "Referral account already exists for this code"
+    },
+    {
+      "code": 6034,
+      "name": "TokenMintMismatch",
+      "msg": "Token mint mismatch between accounts"
     }
   ],
   "types": [
@@ -2657,6 +2721,47 @@
                 3
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransferRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

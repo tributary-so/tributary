@@ -10,7 +10,8 @@ export function CheckoutLinkForm() {
   const [copied, setCopied] = React.useState(false);
   const [checkoutUrl, setCheckoutUrl] = React.useState<string>("");
   const [formData, setFormData] = React.useState({
-    tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+    mode: "subscription" as "subscription" | "payment",
+    tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     recipient: "",
     gateway: "6ntm5rWqDFefET8RFyZV73FcdqxPMbc7Tso3pCMWk4w4",
     amount: "",
@@ -47,8 +48,10 @@ export function CheckoutLinkForm() {
       newErrors.amount = "Amount must be greater than 0";
     }
 
-    if (formData.maxRenewals && parseInt(formData.maxRenewals) < 0) {
-      newErrors.maxRenewals = "Max renewals must be 0 or greater";
+    if (formData.mode === "subscription") {
+      if (formData.maxRenewals && parseInt(formData.maxRenewals) < 0) {
+        newErrors.maxRenewals = "Max renewals must be 0 or greater";
+      }
     }
 
     if (lineItemsActive) {
@@ -79,12 +82,10 @@ export function CheckoutLinkForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Validate Solana address format (using same pattern as ValidationUtils.isValidPublicKey)
   const isValidSolanaAddress = (address: string): boolean => {
     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
   };
 
-  // Validate URL format (not in payments package, keep local)
   const isValidUrl = (url: string): boolean => {
     try {
       new URL(url);
@@ -94,7 +95,6 @@ export function CheckoutLinkForm() {
     }
   };
 
-  // Generate tracking ID (using same pattern as CheckoutSessionManager.generateTrackingId)
   const generateTrackingId = (): string => {
     return `trib_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   };
@@ -111,22 +111,39 @@ export function CheckoutLinkForm() {
 
     const manager = new CheckoutSessionManager();
     manager.setBaseUrl(window.location.origin + "/#");
-    const url = manager.encodeSubscriptionUrl({
-      tokenMint: formData.tokenMint,
-      recipient: formData.recipient,
-      gateway: formData.gateway,
-      amount,
-      autoRenew: formData.autoRenew,
-      maxRenewals: formData.maxRenewals ? parseInt(formData.maxRenewals) : null,
-      paymentFrequency: formData.paymentFrequency,
-      startTime: null,
-      trackingId: formData.trackingId || generateTrackingId(),
-      lineItems: formData.lineItems,
-      successUrl: formData.successUrl,
-      cancelUrl: formData.cancelUrl,
-    });
 
-    setCheckoutUrl(url);
+    if (formData.mode === "subscription") {
+      const url = manager.encodeSubscriptionUrl({
+        mode: "subscription",
+        tokenMint: formData.tokenMint,
+        recipient: formData.recipient,
+        gateway: formData.gateway,
+        amount,
+        autoRenew: formData.autoRenew,
+        maxRenewals: formData.maxRenewals
+          ? parseInt(formData.maxRenewals)
+          : null,
+        paymentFrequency: formData.paymentFrequency,
+        startTime: null,
+        trackingId: formData.trackingId || generateTrackingId(),
+        lineItems: formData.lineItems,
+        successUrl: formData.successUrl,
+        cancelUrl: formData.cancelUrl,
+      });
+      setCheckoutUrl(url);
+    } else {
+      const url = manager.encodeUrl({
+        mode: "payment",
+        tokenMint: formData.tokenMint,
+        recipient: formData.recipient,
+        amount,
+        trackingId: formData.trackingId || generateTrackingId(),
+        successUrl: formData.successUrl,
+        cancelUrl: formData.cancelUrl,
+      });
+      setCheckoutUrl(url);
+    }
+
     toast.success("Checkout link generated!");
   };
 
@@ -173,7 +190,38 @@ export function CheckoutLinkForm() {
       className="bg-gray-50 rounded-2xl p-8"
     >
       <div className="space-y-6">
-        {/* Recipient */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Payment Type
+          </label>
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, mode: "subscription" })}
+              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                formData.mode === "subscription"
+                  ? "bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white"
+                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Subscription
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setFormData({ ...formData, mode: "payment", lineItems: [] })
+              }
+              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                formData.mode === "payment"
+                  ? "bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white"
+                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              One-Time Payment
+            </button>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Recipient Address
@@ -194,11 +242,12 @@ export function CheckoutLinkForm() {
           )}
         </div>
 
-        {/* Amount (if no line items) */}
-        {!lineItemsActive && (
+        {(formData.mode === "payment" || !lineItemsActive) && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount (USDC)
+              {formData.mode === "payment"
+                ? "Total Amount (USDC)"
+                : "Amount (USDC)"}
             </label>
             <input
               type="number"
@@ -219,172 +268,175 @@ export function CheckoutLinkForm() {
           </div>
         )}
 
-        {/* Line Items */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Line Items (optional)
-            </label>
-            <button
-              type="button"
-              onClick={addLineItem}
-              className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              + Add Item
-            </button>
-          </div>
+        {formData.mode === "subscription" && (
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Line Items (optional)
+              </label>
+              <button
+                type="button"
+                onClick={addLineItem}
+                className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                + Add Item
+              </button>
+            </div>
 
-          {formData.lineItems.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">
-              Using base amount from above. Add line items for multi-item
-              orders.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-12 gap-3 text-xs text-gray-500 font-medium">
-                <div className="col-span-5">Description</div>
-                <div className="col-span-3">Price ($)</div>
-                <div className="col-span-3">Quantity</div>
-                <div className="col-span-1" />
-              </div>
-              {formData.lineItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-12 gap-3 items-start"
-                >
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e) =>
-                      updateLineItem(index, "description", e.target.value)
-                    }
-                    placeholder="Product/Service name"
-                    className={`col-span-5 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                      errors[`lineItem_${index}_description`]
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={item.unitPrice || ""}
-                    onChange={(e) =>
-                      updateLineItem(
-                        index,
-                        "unitPrice",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                    placeholder="0.00"
-                    className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                      errors[`lineItem_${index}_price`]
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      updateLineItem(
-                        index,
-                        "quantity",
-                        parseInt(e.target.value) || 1
-                      )
-                    }
-                    placeholder="1"
-                    className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                      errors[`lineItem_${index}_quantity`]
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeLineItem(index)}
-                    className="col-span-1 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex justify-center"
-                  >
-                    <span className="text-lg">×</span>
-                  </button>
+            {formData.lineItems.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">
+                Using base amount from above. Add line items for multi-item
+                orders.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-12 gap-3 text-xs text-gray-500 font-medium">
+                  <div className="col-span-5">Description</div>
+                  <div className="col-span-3">Price ($)</div>
+                  <div className="col-span-3">Quantity</div>
+                  <div className="col-span-1" />
                 </div>
-              ))}
-            </div>
-          )}
-
-          {lineItemsActive && (
-            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-blue-800">
-                  Computed Total:
-                </span>
-                <span className="text-sm font-bold text-blue-900">
-                  ${computedAmount.toFixed(2)}
-                </span>
+                {formData.lineItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-3 items-start"
+                  >
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) =>
+                        updateLineItem(index, "description", e.target.value)
+                      }
+                      placeholder="Product/Service name"
+                      className={`col-span-5 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
+                        errors[`lineItem_${index}_description`]
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.unitPrice || ""}
+                      onChange={(e) =>
+                        updateLineItem(
+                          index,
+                          "unitPrice",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="0.00"
+                      className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
+                        errors[`lineItem_${index}_price`]
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateLineItem(
+                          index,
+                          "quantity",
+                          parseInt(e.target.value) || 1
+                        )
+                      }
+                      placeholder="1"
+                      className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
+                        errors[`lineItem_${index}_quantity`]
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeLineItem(index)}
+                      className="col-span-1 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex justify-center"
+                    >
+                      <span className="text-lg">×</span>
+                    </button>
+                  </div>
+                ))}
               </div>
+            )}
+
+            {lineItemsActive && (
+              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-blue-800">
+                    Computed Total:
+                  </span>
+                  <span className="text-sm font-bold text-blue-900">
+                    ${computedAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {formData.mode === "subscription" && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Frequency
+              </label>
+              <select
+                value={formData.paymentFrequency}
+                onChange={(e) =>
+                  setFormData({ ...formData, paymentFrequency: e.target.value })
+                }
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
             </div>
-          )}
-        </div>
 
-        {/* Payment Frequency */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Frequency
-          </label>
-          <select
-            value={formData.paymentFrequency}
-            onChange={(e) =>
-              setFormData({ ...formData, paymentFrequency: e.target.value })
-            }
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="yearly">Yearly</option>
-          </select>
-        </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="autoRenew"
+                checked={formData.autoRenew}
+                onChange={(e) =>
+                  setFormData({ ...formData, autoRenew: e.target.checked })
+                }
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="autoRenew" className="text-sm text-gray-700">
+                Auto-renew payment
+              </label>
+            </div>
 
-        {/* Auto Renew */}
-        <div className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            id="autoRenew"
-            checked={formData.autoRenew}
-            onChange={(e) =>
-              setFormData({ ...formData, autoRenew: e.target.checked })
-            }
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="autoRenew" className="text-sm text-gray-700">
-            Auto-renew payment
-          </label>
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Max Renewals (optional)
+              </label>
+              <input
+                type="number"
+                value={formData.maxRenewals}
+                onChange={(e) =>
+                  setFormData({ ...formData, maxRenewals: e.target.value })
+                }
+                placeholder="Leave empty for unlimited"
+                min="0"
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.maxRenewals ? "border-red-500" : "border-gray-300"
+                } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              />
+              {errors.maxRenewals && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.maxRenewals}
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
-        {/* Max Renewals */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Max Renewals (optional)
-          </label>
-          <input
-            type="number"
-            value={formData.maxRenewals}
-            onChange={(e) =>
-              setFormData({ ...formData, maxRenewals: e.target.value })
-            }
-            placeholder="Leave empty for unlimited"
-            min="0"
-            className={`w-full px-4 py-3 rounded-lg border ${
-              errors.maxRenewals ? "border-red-500" : "border-gray-300"
-            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-          />
-          {errors.maxRenewals && (
-            <p className="mt-1 text-sm text-red-600">{errors.maxRenewals}</p>
-          )}
-        </div>
-
-        {/* Success URL */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Success URL (optional)
@@ -405,7 +457,6 @@ export function CheckoutLinkForm() {
           )}
         </div>
 
-        {/* Cancel URL */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Cancel URL (optional)
@@ -426,7 +477,6 @@ export function CheckoutLinkForm() {
           )}
         </div>
 
-        {/* Tracking ID */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tracking ID (optional)
@@ -442,7 +492,6 @@ export function CheckoutLinkForm() {
           />
         </div>
 
-        {/* Generate Button */}
         <button
           type="button"
           onClick={handleGenerate}
@@ -451,7 +500,6 @@ export function CheckoutLinkForm() {
           Generate Checkout Link
         </button>
 
-        {/* Generated URL */}
         {checkoutUrl && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}

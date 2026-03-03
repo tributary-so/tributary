@@ -2,10 +2,10 @@
 export * from "./core/client";
 export * from "./core/session";
 export * from "./core/tracking";
+export * from "./core/onetime";
 
 // Type exports
 export * from "./types/tributary";
 
 // Utility exports
-export * from "./utils/memo";
 export * from "./utils/validation";

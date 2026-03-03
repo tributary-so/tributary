@@ -2140,6 +2140,31 @@ export class Tributary {
 
     throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
   }
+
+  async transfer(
+    from: PublicKey,
+    to: PublicKey,
+    amount: BN,
+    memo: string | number[]
+  ): Promise<TransactionInstruction> {
+    const memoBytes = typeof memo === "string" ? encodeMemo(memo, 64) : memo;
+
+    if (memoBytes.length !== 64) {
+      throw new Error("Memo must be exactly 64 bytes");
+    }
+
+    const memoArray = memoBytes as [number, ...number[]] & { length: 64 };
+
+    return await this.program.methods
+      .transfer(amount, memoArray)
+      .accountsStrict({
+        from,
+        to,
+        authority: this.provider.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+  }
 }
 
 // Legacy export for backward compatibility

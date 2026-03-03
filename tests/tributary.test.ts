@@ -3026,4 +3026,303 @@ describe("Tributary", () => {
     expect(updatedGateway!.gatewayFeeBps).toEqual(newFeeBps);
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
+
+  describe("Transfer instruction", () => {
+    let transferUser: Keypair;
+    let transferUserTokenAccount: PublicKey;
+    let transferRecipient: Keypair;
+    let transferRecipientTokenAccount: PublicKey;
+
+    beforeAll(async () => {
+      transferUser = Keypair.generate();
+      transferRecipient = Keypair.generate();
+
+      await Promise.all([
+        fund(transferUser.publicKey, 5),
+        fund(transferRecipient.publicKey, 5),
+      ]);
+
+      transferUserTokenAccount = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        transferUser.publicKey
+      );
+
+      transferRecipientTokenAccount = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        transferRecipient.publicKey
+      );
+
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        transferUserTokenAccount,
+        mintAuthority,
+        10000000n
+      );
+    });
+
+    test("Execute simple transfer with memo", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      const initialUserBalance = await connection.getTokenAccountBalance(
+        transferUserTokenAccount
+      );
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      const transferAmount = new anchor.BN(500000);
+
+      const transferIx = await sdk.transfer(
+        transferUserTokenAccount,
+        transferRecipientTokenAccount,
+        transferAmount,
+        "one-time payment #12345"
+      );
+
+      const tx = new Transaction().add(transferIx);
+      await sendAndConfirmTransaction(connection, tx, [transferUser], {
+        commitment: "processed" as Commitment,
+      });
+
+      const finalUserBalance = await connection.getTokenAccountBalance(
+        transferUserTokenAccount
+      );
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
+        parseInt(initialRecipientBalance.value.amount) +
+          transferAmount.toNumber()
+      );
+      expect(parseInt(finalUserBalance.value.amount)).toEqual(
+        parseInt(initialUserBalance.value.amount) - transferAmount.toNumber()
+      );
+    });
+
+    test("Transfer fails with zero amount", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      try {
+        const transferIx = await sdk.transfer(
+          transferUserTokenAccount,
+          transferRecipientTokenAccount,
+          new anchor.BN(0),
+          "zero amount test"
+        );
+
+        const tx = new Transaction().add(transferIx);
+        await sendAndConfirmTransaction(connection, tx, [transferUser], {
+          commitment: "processed" as Commitment,
+        });
+
+        assert(false, "Expected transfer to fail with zero amount");
+      } catch (error: any) {
+        expect(error.message).toContain("InvalidAmount");
+      }
+    });
+
+    test("Transfer fails with insufficient balance", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      const userBalance = await connection.getTokenAccountBalance(
+        transferUserTokenAccount
+      );
+      const excessiveAmount = new anchor.BN(
+        parseInt(userBalance.value.amount) + 1000000
+      );
+
+      try {
+        const transferIx = await sdk.transfer(
+          transferUserTokenAccount,
+          transferRecipientTokenAccount,
+          excessiveAmount,
+          "insufficient balance test"
+        );
+
+        const tx = new Transaction().add(transferIx);
+        await sendAndConfirmTransaction(connection, tx, [transferUser], {
+          commitment: "processed" as Commitment,
+        });
+
+        assert(false, "Expected transfer to fail with insufficient balance");
+      } catch (error: any) {
+        expect(error.message).toBeDefined();
+      }
+    });
+
+    test("Transfer fails with mismatched token mints", async () => {
+      const differentMint = await createMint(
+        connection,
+        mintAuthority,
+        mintAuthority.publicKey,
+        null,
+        6
+      );
+
+      const differentTokenAccount = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        differentMint,
+        transferRecipient.publicKey
+      );
+
+      await mintTo(
+        connection,
+        mintAuthority,
+        differentMint,
+        differentTokenAccount,
+        mintAuthority,
+        1000000n
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      try {
+        const transferIx = await sdk.transfer(
+          transferUserTokenAccount,
+          differentTokenAccount,
+          new anchor.BN(100000),
+          "mint mismatch test"
+        );
+
+        const tx = new Transaction().add(transferIx);
+        await sendAndConfirmTransaction(connection, tx, [transferUser], {
+          commitment: "processed" as Commitment,
+        });
+
+        assert(false, "Expected transfer to fail with mismatched mints");
+      } catch (error: any) {
+        expect(error.message).toContain("TokenMintMismatch");
+      }
+    });
+
+    test("Transfer fails when non-owner tries to transfer", async () => {
+      const nonOwner = Keypair.generate();
+      await fund(nonOwner.publicKey, 5);
+
+      await sdk.updateWallet(new anchor.Wallet(nonOwner));
+
+      try {
+        const transferIx = await sdk.transfer(
+          transferUserTokenAccount,
+          transferRecipientTokenAccount,
+          new anchor.BN(100000),
+          "unauthorized transfer test"
+        );
+
+        const tx = new Transaction().add(transferIx);
+        await sendAndConfirmTransaction(connection, tx, [nonOwner], {
+          commitment: "processed" as Commitment,
+        });
+
+        assert(false, "Expected transfer to fail for non-owner");
+      } catch (error: any) {
+        expect(error.message).toContain("Unauthorized");
+      }
+    });
+
+    test("Transfer with empty memo", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      const transferAmount = new anchor.BN(100000);
+
+      const transferIx = await sdk.transfer(
+        transferUserTokenAccount,
+        transferRecipientTokenAccount,
+        transferAmount,
+        ""
+      );
+
+      const tx = new Transaction().add(transferIx);
+      await sendAndConfirmTransaction(connection, tx, [transferUser], {
+        commitment: "processed" as Commitment,
+      });
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
+        parseInt(initialRecipientBalance.value.amount) +
+          transferAmount.toNumber()
+      );
+    });
+
+    test("Transfer with full 64-byte memo", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      const transferAmount = new anchor.BN(250000);
+
+      const transferIx = await sdk.transfer(
+        transferUserTokenAccount,
+        transferRecipientTokenAccount,
+        transferAmount,
+        "Invoice #INV-2024-001234: Payment for services rendered"
+      );
+
+      const tx = new Transaction().add(transferIx);
+      await sendAndConfirmTransaction(connection, tx, [transferUser], {
+        commitment: "processed" as Commitment,
+      });
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
+        parseInt(initialRecipientBalance.value.amount) +
+          transferAmount.toNumber()
+      );
+    });
+
+    test("Multiple sequential transfers", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      const transferAmounts = [100000, 200000, 150000];
+      let totalTransferred = 0;
+
+      for (let i = 0; i < transferAmounts.length; i++) {
+        const transferIx = await sdk.transfer(
+          transferUserTokenAccount,
+          transferRecipientTokenAccount,
+          new anchor.BN(transferAmounts[i]),
+          `batch transfer #${i + 1}`
+        );
+
+        const tx = new Transaction().add(transferIx);
+        await sendAndConfirmTransaction(connection, tx, [transferUser], {
+          commitment: "processed" as Commitment,
+        });
+
+        totalTransferred += transferAmounts[i];
+      }
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        transferRecipientTokenAccount
+      );
+
+      expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
+        parseInt(initialRecipientBalance.value.amount) + totalTransferred
+      );
+    });
+  });
 });

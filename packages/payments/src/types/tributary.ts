@@ -1,5 +1,24 @@
 // Tributary-compatible types for Tributary payments
 
+export interface OneTimePaymentParams {
+  tokenMint: string;
+  recipient: string;
+  amount: number;
+  trackingId?: string;
+  memo?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+}
+
+export interface OneTimePaymentStatus {
+  trackingId: string;
+  status: "pending" | "paid" | "expired";
+  transaction?: PaymentTransaction;
+  amount: number;
+  recipient: string;
+  paidAt?: number;
+}
+
 export interface TributaryCheckoutSession {
   id: string;
   object: "checkout.session";

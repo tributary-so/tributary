@@ -6,7 +6,7 @@ import {
   Keypair,
   GetProgramAccountsFilter,
 } from "@solana/web3.js";
-import { Tributary, PaymentPolicy, encodeMemo } from "@tributary-so/sdk";
+import { Tributary, PaymentPolicy } from "@tributary-so/sdk";
 
 export interface SubscriptionStatus {
   subscriptionCreated: boolean;
@@ -33,12 +33,11 @@ export interface PolicyLookupOptions {
 }
 
 export class PaymentTracker {
-  private connection: Connection;
-  private tributary: Tributary;
+  private _tributary: Tributary;
 
-  constructor(connection: Connection, tributary?: Tributary) {
-    this.connection = connection;
-    this.tributary = tributary ?? new Tributary(connection, Keypair.generate());
+  constructor(_connection: Connection, tributary?: Tributary) {
+    this._tributary =
+      tributary ?? new Tributary(_connection, Keypair.generate());
   }
 
   /**
@@ -51,7 +50,7 @@ export class PaymentTracker {
   ): Promise<Array<{ publicKey: PublicKey; account: any }>> {
     try {
       // Get all payment policies for this gateway
-      return await this.tributary.getPaymentPoliciesByGateway(
+      return await this._tributary.getPaymentPoliciesByGateway(
         new PublicKey(gatewayPublicKey)
       );
     } catch (error) {
@@ -72,13 +71,13 @@ export class PaymentTracker {
   ): Promise<Array<{ publicKey: PublicKey; account: any }>> {
     try {
       // Get user payment PDA
-      const userPaymentPda = this.tributary.getUserPaymentPda(
+      const userPaymentPda = this._tributary.getUserPaymentPda(
         new PublicKey(walletPublicKey),
         new PublicKey(tokenMint)
       ).address;
 
       // Get all payment policies for this user payment account
-      return await this.tributary.getPaymentPoliciesByUserPayment(
+      return await this._tributary.getPaymentPoliciesByUserPayment(
         userPaymentPda
       );
     } catch (error) {
@@ -101,7 +100,7 @@ export class PaymentTracker {
       },
     ];
     if (options.walletPublicKey && options.tokenMint) {
-      const userPayment = this.tributary.getUserPaymentPda(
+      const userPayment = this._tributary.getUserPaymentPda(
         new PublicKey(options.walletPublicKey),
         new PublicKey(options.tokenMint)
       ).address;
@@ -138,6 +137,6 @@ export class PaymentTracker {
         },
       });
     }
-    return await this.tributary.program.account.paymentPolicy.all(filters);
+    return await this._tributary.program.account.paymentPolicy.all(filters);
   }
 }
