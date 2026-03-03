@@ -8,6 +8,7 @@ import healthRouter from "./health";
 import skillRouter from "./skill";
 import subscriptionRouter from "./subscription";
 import eventsRouter from "./events";
+import onetimeRouter from "./onetime";
 
 const router: Router = Router();
 
@@ -27,5 +28,8 @@ router.use("/subscriptions", subscriptionRouter);
 
 // Event queries
 router.use("/events", eventsRouter);
+
+// One-time payment lookup
+router.use("/onetime", onetimeRouter);
 
 export default router;

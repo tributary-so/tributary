@@ -30,6 +30,7 @@ app.get("/", (req, res) => {
       health: "/v1/health",
       skill: "/v1/skill/:encoded",
       subscriptionDetails: "/v1/subscriptions/",
+      onetimePayment: "/v1/onetime/:trackingId",
       events: "/v1/events",
       tributaryEventNames: "/v1/events/names/tributary",
       payments: "/v1/events/payments",

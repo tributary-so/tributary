@@ -37,12 +37,15 @@ api/
 ## API Endpoints
 
 ### Health
+
 - `GET /api/v1/health` - Health check endpoint
 
 ### Skill
+
 - `GET /api/v1/skill/:encoded` - Generate Lando skill markdown from encoded subscription data
 
 ### Subscription
+
 - `GET /api/v1/subscription/status/:trackingId` - Check subscription status
   - Query params:
     - `userPublicKey` (optional): User's public key for user-based lookup
@@ -54,25 +57,37 @@ api/
     - `gatewayPublicKey` (optional): Gateway's public key for gateway-based lookup
     - `tokenMint` (optional): Token mint address
 
+### One-Time Payments
+
+- `GET /api/v1/onetime/:trackingId` - Get one-time payment details by tracking ID
+  - Query params:
+    - `recipient` (optional): Filter by recipient public key
+    - `limit` (optional): Maximum number of results (default: 100)
+    - `offset` (optional): Pagination offset (default: 0)
+
 ## Development
 
 ### Install Dependencies
+
 ```bash
 cd api
 pnpm install
 ```
 
 ### Development Mode
+
 ```bash
 pnpm dev
 ```
 
 ### Build
+
 ```bash
 pnpm build
 ```
 
 ### Start Server
+
 ```bash
 pnpm start
 ```
@@ -80,7 +95,7 @@ pnpm start
 ## Environment Variables
 
 - `PORT` - Server port (default: 3002)
-- `SOLANA_RPC` - Solana RPC URL (default: https://api.mainnet-beta.solana.com)
+- `SOLANA_RPC` - Solana RPC URL (default: <https://api.mainnet-beta.solana.com>)
 
 ## Microservice Splitting
 
@@ -92,6 +107,7 @@ The modular structure makes it easy to split individual APIs into separate proje
 4. Each endpoint can be deployed independently
 
 Example: To split `/api/v1/subscription` into a separate service:
+
 1. Copy `src/routes/subscription.ts` to new project
 2. Copy required services (`src/services/subscription.ts`, `src/services/solana.ts`)
 3. Copy types (`src/types/index.ts`)
