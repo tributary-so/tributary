@@ -217,7 +217,7 @@ jobs:
 
   release-pass:
     name: Release Pass-through
-    needs: [detect-changes]
+    needs: [detect-changes, test-sdks]
     if: github.event.inputs.post_release == 'true'
     runs-on: ubuntu-latest
     steps:
