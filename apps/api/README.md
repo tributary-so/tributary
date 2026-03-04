@@ -114,10 +114,7 @@ Connect via WebSocket client to `/ws/v1`. Supports multiple concurrent connectio
     "type": "payment_notification",
     "data": {
       "trackingId": "your-tracking-id",
-      "policyId": "policy-public-key",
       "amount": 1000000,
-      "tokenMint": "token-mint-address",
-      "recipient": "recipient-public-key",
       "timestamp": 1234567890,
       "status": "executed",
       "signature": "transaction-signature"
@@ -220,8 +217,10 @@ pnpm start
 - `PORT` - Server port (default: 3002)
 - `SOLANA_RPC` - Solana RPC URL (default: <https://api.mainnet-beta.solana.com>)
 - `REDIS_URL` - Redis URL for WebSocket adapter (optional, enables multi-server scaling)
+- `PORT` - Server port (default: 3002)
+- `SOLANA_RPC` - Solana RPC URL (default: <https://api.mainnet-beta.solana.com>)
+- `REDIS_URL` - Redis URL for WebSocket adapter (optional, enables multi-server scaling)
 - `KAFKA_BROKERS` - Comma-separated list of Kafka brokers (optional, enables payment notifications)
-- `DATABASE_URL` - PostgreSQL database URL (required for Kafka integration)
 
 ## Kafka Integration
 
@@ -239,7 +238,7 @@ KAFKA_BROKERS=localhost:9092,localhost:9093
 
 1. **Kafka Consumer**: Subscribes to the `tributary_PaymentRecord` topic
 2. **Event Processing**: When a payment is made on-chain, the event is received from Kafka
-3. **Database Lookup**: Queries the database to find the trackingId from the payment policy memo
+3. **Memo Decoding**: Extracts the trackingId directly from the payment event's memo field (no database lookup needed!)
 4. **WebSocket Notification**: Pushes the payment notification to all clients subscribed to that trackingId
 
 ### Kafka Message Format
@@ -269,7 +268,7 @@ The consumer expects messages in this format:
 ### Payment Flow
 
 ```
-On-chain Payment → Kafka Event → API Consumer → Database Lookup → WebSocket Push → Client Notification
+On-chain Payment → Kafka Event → API Consumer (decode memo) → WebSocket Push → Client Notification
 ```
 
 ## Microservice Splitting

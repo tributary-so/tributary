@@ -69,10 +69,7 @@ setTimeout(() => {
     
     notifyPayment({
       trackingId: "${TRACKING_ID}",
-      policyId: "test-policy-id",
       amount: 1000000,
-      tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      recipient: "recipient-wallet-address",
       timestamp: Date.now(),
       status: "executed",
       signature: "test-signature"

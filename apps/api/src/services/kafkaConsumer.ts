@@ -1,9 +1,6 @@
 import { Kafka, EachMessagePayload } from "kafkajs";
 import { notifyPayment } from "./paymentNotifications";
 import { PaymentNotificationData } from "../types";
-import { getDb } from "../db";
-import { events } from "../db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
 import { decodeMemo } from "@tributary-so/sdk";
 
 interface KafkaPaymentRecordEvent {
@@ -22,16 +19,6 @@ interface KafkaPaymentRecordEvent {
     record_id: number;
   };
   timestamp: string;
-}
-
-interface PaymentPolicyCreatedEvent {
-  user_payment: string;
-  recipient: string;
-  gateway: string;
-  policy_id: number;
-  policy_type: any;
-  memo: number[];
-  created_policies_count: number;
 }
 
 export class KafkaPaymentConsumer {
@@ -105,24 +92,21 @@ export class KafkaPaymentConsumer {
       }
 
       console.log(
-        `Processing PaymentRecord: payment_policy=${event.data.payment_policy}, amount=${event.data.amount}`
+        `Processing PaymentRecord: amount=${event.data.amount}, signature=${event.signature}`
       );
 
-      const policyInfo = await this.getPolicyInfo(event.data.payment_policy);
+      const trackingId = this.extractTrackingIdFromMemo(event.data.memo);
 
-      if (!policyInfo) {
+      if (!trackingId) {
         console.warn(
-          `No policy info found for payment_policy: ${event.data.payment_policy}`
+          `No trackingId found in memo for payment: ${event.signature}`
         );
         return;
       }
 
       const notification: PaymentNotificationData = {
-        trackingId: policyInfo.trackingId,
-        policyId: event.data.payment_policy,
+        trackingId,
         amount: parseInt(event.data.amount, 10),
-        tokenMint: policyInfo.tokenMint,
-        recipient: policyInfo.recipient,
         timestamp: event.data.timestamp,
         status: "executed",
         signature: event.signature,
@@ -131,109 +115,11 @@ export class KafkaPaymentConsumer {
       notifyPayment(notification);
 
       console.log(
-        `Payment notification sent for trackingId: ${policyInfo.trackingId}, amount: ${notification.amount}`
+        `Payment notification sent for trackingId: ${trackingId}, amount: ${notification.amount}`
       );
     } catch (error) {
       console.error("Error parsing Kafka message:", error);
       console.error("Message value:", message.value?.toString());
-    }
-  }
-
-  private async getPolicyInfo(
-    paymentPolicyPubkey: string
-  ): Promise<{
-    trackingId: string;
-    recipient: string;
-    tokenMint: string;
-  } | null> {
-    try {
-      const db = getDb();
-      if (!db) {
-        console.error("Database not initialized");
-        return null;
-      }
-
-      const policyCreatedEvents = await db
-        .select()
-        .from(events)
-        .where(
-          and(
-            eq(events.eventName, "PaymentPolicyCreated"),
-            sql`${events.data}->>'payment_policy' = ${paymentPolicyPubkey}`
-          )
-        )
-        .orderBy(desc(events.timestamp))
-        .limit(1);
-
-      if (policyCreatedEvents.length === 0) {
-        console.warn(
-          `No PaymentPolicyCreated event found for payment_policy: ${paymentPolicyPubkey}`
-        );
-        return null;
-      }
-
-      const eventData = policyCreatedEvents[0]
-        .data as PaymentPolicyCreatedEvent;
-
-      if (!eventData.memo || eventData.memo.length === 0) {
-        console.warn(
-          `No memo found in PaymentPolicyCreated event for payment_policy: ${paymentPolicyPubkey}`
-        );
-        return null;
-      }
-
-      const trackingId = this.extractTrackingIdFromMemo(eventData.memo);
-      if (!trackingId) {
-        return null;
-      }
-
-      const userPaymentInfo = await this.getUserPaymentInfo(
-        eventData.user_payment
-      );
-
-      return {
-        trackingId,
-        recipient: eventData.recipient,
-        tokenMint: userPaymentInfo?.tokenMint || "",
-      };
-    } catch (error) {
-      console.error("Error fetching policy info from database:", error);
-      return null;
-    }
-  }
-
-  private async getUserPaymentInfo(
-    userPaymentPubkey: string
-  ): Promise<{ tokenMint: string } | null> {
-    try {
-      const db = getDb();
-      if (!db) {
-        return null;
-      }
-
-      const userPaymentEvents = await db
-        .select()
-        .from(events)
-        .where(
-          and(
-            eq(events.eventName, "UserPaymentCreated"),
-            sql`${events.data}->>'user_payment' = ${userPaymentPubkey}`
-          )
-        )
-        .orderBy(desc(events.timestamp))
-        .limit(1);
-
-      if (userPaymentEvents.length === 0) {
-        return null;
-      }
-
-      const eventData = userPaymentEvents[0].data as any;
-      return {
-        tokenMint: eventData.token_mint || "",
-      };
-    } catch (error) {
-      console.error("Error fetching user payment info:", error);
-      return null;
     }
   }
 

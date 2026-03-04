@@ -16,23 +16,17 @@ import { PaymentNotificationData } from "../types";
 // Example payment event from Kafka
 interface KafkaPaymentEvent {
   trackingId: string;
-  policyId: string;
   amount: string;
-  tokenMint: string;
-  recipient: string;
+  timestamp: number;
   status: "executed" | "failed" | "pending";
   signature?: string;
-  timestamp: number;
 }
 
 // Example Kafka message handler
 export function handleKafkaPaymentEvent(event: KafkaPaymentEvent): void {
   const notification: PaymentNotificationData = {
     trackingId: event.trackingId,
-    policyId: event.policyId,
     amount: parseFloat(event.amount),
-    tokenMint: event.tokenMint,
-    recipient: event.recipient,
     status: event.status,
     signature: event.signature,
     timestamp: event.timestamp,

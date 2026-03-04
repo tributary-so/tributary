@@ -40,10 +40,7 @@ export interface WebSocketMessage<T = any> {
 
 export interface PaymentNotificationData {
   trackingId: string;
-  policyId: string;
   amount: number;
-  tokenMint: string;
-  recipient: string;
   timestamp: number;
   status: "executed" | "failed" | "pending";
   signature?: string;
