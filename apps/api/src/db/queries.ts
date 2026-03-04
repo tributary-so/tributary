@@ -630,3 +630,38 @@ export async function getPaymentStats(options?: {
     count: result?.count ?? 0,
   };
 }
+
+export async function getOneTimePaymentByTrackingId(
+  trackingId: string,
+  options?: {
+    recipient?: string;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<TypedEvent<TributaryPaymentRecord>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [eq(events.eventName, "tributary_PaymentRecord")];
+
+  conditions.push(
+    sql`${events.data}->'memo'::text LIKE ${`%"${trackingId}"%`}`
+  );
+
+  if (options?.recipient) {
+    conditions.push(sql`${events.data}->>'recipient' = ${options.recipient}`);
+  }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentRecord,
+  }));
+}

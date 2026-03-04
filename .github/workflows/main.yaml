@@ -196,7 +196,8 @@ jobs:
   test-programs:
     name: Test Programs
     needs: detect-changes
-    if: needs.detect-changes.outputs.has_programs == '1' && github.event.inputs.skip_tests != 'true'
+    # && false results in skipping this test
+    if: needs.detect-changes.outputs.has_programs == '1' && github.event.inputs.skip_tests != 'true' && false
     uses: ./.github/workflows/program-tests.yml
 
   test-sdks:

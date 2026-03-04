@@ -79,7 +79,7 @@ router.get(
     // Get subscription details
     const details = await getSubscriptionDetails(options);
 
-    if (!details) {
+    if (!details || details.length === 0) {
       const response: ApiResponse = {
         success: false,
         error: "Subscription not found",
