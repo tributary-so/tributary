@@ -6,11 +6,14 @@ import "dotenv/config";
 
 import express from "express";
 import cors from "cors";
+import { createServer } from "http";
 import { requestLogger, errorHandler, notFoundHandler } from "./middleware";
 import apiRoutes from "./routes";
+import { WebSocketService } from "./services/websocket";
 
 const app: express.Express = express();
 const PORT = process.env.PORT || "3002";
+const REDIS_URL = process.env.REDIS_URL;
 
 // Global middleware
 app.use(cors());
@@ -53,12 +56,20 @@ app.get("/", (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+let wsService: WebSocketService | null = null;
+
 // Start server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  const httpServer = createServer(app);
+
+  wsService = new WebSocketService(httpServer, REDIS_URL);
+
+  httpServer.listen(PORT, () => {
     console.log(`Tributary API running on http://localhost:${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/api/v1/health`);
+    console.log(`Health check: http://localhost:${PORT}/v1/health`);
+    console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws/v1`);
   });
 }
 
 export default app;
+export { wsService };

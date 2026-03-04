@@ -31,3 +31,30 @@ export interface SkillParams {
   maxRenewals?: number | null;
   startTime?: string | number;
 }
+
+export interface WebSocketMessage<T = any> {
+  type: "payment_notification" | "error" | "ack";
+  data: T;
+  timestamp: number;
+}
+
+export interface PaymentNotificationData {
+  trackingId: string;
+  policyId: string;
+  amount: number;
+  tokenMint: string;
+  recipient: string;
+  timestamp: number;
+  status: "executed" | "failed" | "pending";
+  signature?: string;
+}
+
+export interface WebSocketSubscribeData {
+  trackingId: string;
+}
+
+export interface WebSocketErrorData {
+  code: string;
+  message: string;
+  details?: any;
+}
