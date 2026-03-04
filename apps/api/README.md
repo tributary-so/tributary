@@ -8,6 +8,7 @@ Modular Express API for Tributary subscription and payment services.
 - **Easy to Split**: Designed to easily split individual API endpoints into separate microservices
 - **RESTful Design**: Standard REST API with `/api/v1` prefix
 - **WebSocket Support**: Real-time payment notifications via WebSocket at `/ws/v1`
+- **Kafka Integration**: Consume on-chain payment events and push real-time notifications
 - **Subscription Status**: Check subscription status by tracking ID using the PaymentTracker
 - **Health Monitoring**: Built-in health check endpoint
 - **Error Handling**: Centralized error handling and logging
@@ -160,7 +161,7 @@ Connect via WebSocket client to `/ws/v1`. Supports multiple concurrent connectio
 ```javascript
 const io = require("socket.io-client");
 
-const socket = io("http://localhost:3002", {
+const socket = io("https://api.tributary.so", {
   path: "/ws/v1",
   transports: ["websocket"],
 });
@@ -219,6 +220,57 @@ pnpm start
 - `PORT` - Server port (default: 3002)
 - `SOLANA_RPC` - Solana RPC URL (default: <https://api.mainnet-beta.solana.com>)
 - `REDIS_URL` - Redis URL for WebSocket adapter (optional, enables multi-server scaling)
+- `KAFKA_BROKERS` - Comma-separated list of Kafka brokers (optional, enables payment notifications)
+- `DATABASE_URL` - PostgreSQL database URL (required for Kafka integration)
+
+## Kafka Integration
+
+The API can consume payment events from Kafka and push real-time notifications to WebSocket clients.
+
+### Configuration
+
+Set the `KAFKA_BROKERS` environment variable to enable Kafka integration:
+
+```bash
+KAFKA_BROKERS=localhost:9092,localhost:9093
+```
+
+### How It Works
+
+1. **Kafka Consumer**: Subscribes to the `tributary_PaymentRecord` topic
+2. **Event Processing**: When a payment is made on-chain, the event is received from Kafka
+3. **Database Lookup**: Queries the database to find the trackingId from the payment policy memo
+4. **WebSocket Notification**: Pushes the payment notification to all clients subscribed to that trackingId
+
+### Kafka Message Format
+
+The consumer expects messages in this format:
+
+```json
+{
+  "_id": "ObjectId",
+  "slot": 123456789,
+  "signature": "transaction-signature",
+  "program_id": "program-public-key",
+  "event_name": "PaymentRecord",
+  "discriminator": "event-discriminator",
+  "data": {
+    "payment_policy": "policy-public-key",
+    "gateway": "gateway-public-key",
+    "amount": "1000000",
+    "timestamp": 1234567890,
+    "memo": [116, 114, 97, 99, 107, 105, 110, 103, 45, 105, 100],
+    "record_id": 1
+  },
+  "timestamp": "ISO-8601-date"
+}
+```
+
+### Payment Flow
+
+```
+On-chain Payment → Kafka Event → API Consumer → Database Lookup → WebSocket Push → Client Notification
+```
 
 ## Microservice Splitting
 
