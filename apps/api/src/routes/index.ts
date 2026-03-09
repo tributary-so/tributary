@@ -9,6 +9,7 @@ import skillRouter from "./skill";
 import subscriptionRouter from "./subscription";
 import eventsRouter from "./events";
 import onetimeRouter from "./onetime";
+import webhooksRouter from "./webhooks";
 
 const router: Router = Router();
 
@@ -34,5 +35,8 @@ router.use("/events", eventsRouter);
 
 // One-time payment lookup
 router.use("/onetime", onetimeRouter);
+
+// Webhook management
+router.use("/webhooks", webhooksRouter);
 
 export default router;
