@@ -494,6 +494,8 @@ impl<'info> ExecutePayment<'info> {
             timestamp: clock.unix_timestamp,
             memo: payment_policy.memo,
             record_id: payment_policy.payment_count,
+            payer: user_payment.owner,
+            recipient: recipient_token_account_info.owner.key(),
         });
 
         msg!(

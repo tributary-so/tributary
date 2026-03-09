@@ -24,7 +24,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "cargo test && pnpm exec jest ./tests --preset ts-jest"
+test = "cargo test && npx jest ./tests --preset ts-jest"
 
 [test]
 startup_wait = 20000

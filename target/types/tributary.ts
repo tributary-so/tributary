@@ -2314,6 +2314,14 @@ export type Tributary = {
           {
             "name": "recordId",
             "type": "u32"
+          },
+          {
+            "name": "payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
           }
         ]
       }
