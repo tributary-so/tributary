@@ -23,7 +23,9 @@ import {
   getReferralRewardDistributedEvents,
   getUserPaymentCreatedEvents,
   getPaymentStats,
+  getEventsByMemo,
 } from "../db/queries";
+import { encodeMemo } from "@tributary-so/sdk";
 
 const router: ExpressRouter = Router();
 
@@ -37,6 +39,7 @@ router.get("/", async (req, res, next) => {
       endTime,
       minSlot,
       maxSlot,
+      trackingId,
       limit = "100",
       offset = "0",
     } = req.query;
@@ -51,6 +54,15 @@ router.get("/", async (req, res, next) => {
 
     if (slot) {
       const events = await getEventsBySlot(Number(slot), {
+        limit: Number(limit),
+        offset: Number(offset),
+      });
+      return res.json(events);
+    }
+
+    if (trackingId) {
+      const encodedMemo = encodeMemo(trackingId as string, 64);
+      const events = await getEventsByMemo(encodedMemo, {
         limit: Number(limit),
         offset: Number(offset),
       });

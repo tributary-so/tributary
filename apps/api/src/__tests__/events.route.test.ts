@@ -5,10 +5,23 @@ import express, { Application } from "express";
 import eventsRouter from "../routes/events";
 import { errorHandler } from "../middleware/errorHandler";
 import * as queries from "../db/queries";
+import { encodeMemo as originalEncodeMemo } from "@tributary-so/sdk";
 
 jest.mock("../db/queries");
+jest.mock("@tributary-so/sdk", () => ({
+  encodeMemo: jest.fn((memo: string) => {
+    const encoder = new TextEncoder();
+    const encoded = encoder.encode(memo);
+    const buffer = new Uint8Array(64).fill(0);
+    buffer.set(encoded.slice(0, 64));
+    return Array.from(buffer);
+  }),
+}));
 
 const mockedQueries = queries as jest.Mocked<typeof queries>;
+const mockedEncodeMemo = originalEncodeMemo as jest.MockedFunction<
+  typeof originalEncodeMemo
+>;
 
 function createApp(): Application {
   const app = express();
@@ -122,6 +135,23 @@ describe("Events API Routes", () => {
 
       expect(response.body).toEqual([serializedMockEvent]);
       expect(mockedQueries.searchEvents).toHaveBeenCalled();
+    });
+
+    it("should return events by trackingId", async () => {
+      mockedQueries.getEventsByMemo.mockResolvedValueOnce([mockEvent]);
+      const trackingId = "test-tracking-id";
+      const encodedMemo = mockedEncodeMemo(trackingId, 64);
+
+      const response = await request(app)
+        .get("/v1/events")
+        .query({ trackingId })
+        .expect(200);
+
+      expect(response.body).toEqual([serializedMockEvent]);
+      expect(mockedQueries.getEventsByMemo).toHaveBeenCalledWith(encodedMemo, {
+        limit: 100,
+        offset: 0,
+      });
     });
 
     it("should handle service errors", async () => {
