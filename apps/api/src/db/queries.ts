@@ -665,3 +665,24 @@ export async function getOneTimePaymentByTrackingId(
     data: event.data as TributaryPaymentRecord,
   }));
 }
+
+export async function getEventsByMemo(
+  encodedMemo: number[],
+  options?: {
+    limit?: number;
+    offset?: number;
+  }
+): Promise<Event[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const memoJson = JSON.stringify(encodedMemo);
+
+  return db
+    .select()
+    .from(events)
+    .where(sql`${events.data}->>'memo' = ${memoJson}`)
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+}

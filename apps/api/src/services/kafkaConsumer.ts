@@ -2,6 +2,7 @@ import { Kafka, EachMessagePayload } from "kafkajs";
 import { notifyPayment } from "./paymentNotifications";
 import { PaymentNotificationData } from "../types";
 import { decodeMemo } from "@tributary-so/sdk";
+import { WebhookService } from "./webhookForwarder";
 
 interface KafkaPaymentRecordEvent {
   _id: string;
@@ -117,6 +118,15 @@ export class KafkaPaymentConsumer {
       console.log(
         `Payment notification sent for trackingId: ${trackingId}, amount: ${notification.amount}`
       );
+
+      await WebhookService.forwardPaymentRecord(event.data.gateway, {
+        payment_policy: event.data.payment_policy,
+        gateway: event.data.gateway,
+        amount: parseInt(event.data.amount, 10),
+        timestamp: event.data.timestamp,
+        memo: event.data.memo,
+        record_id: event.data.record_id,
+      });
     } catch (error) {
       console.error("Error parsing Kafka message:", error);
       console.error("Message value:", message.value?.toString());

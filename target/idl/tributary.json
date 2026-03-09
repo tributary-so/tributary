@@ -2308,6 +2308,14 @@
           {
             "name": "record_id",
             "type": "u32"
+          },
+          {
+            "name": "payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
           }
         ]
       }

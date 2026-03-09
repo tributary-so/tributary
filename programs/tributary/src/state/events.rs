@@ -10,6 +10,8 @@ pub struct PaymentRecord {
     pub timestamp: i64,
     pub memo: [u8; 64],
     pub record_id: u32,
+    pub payer: Pubkey,
+    pub recipient: Pubkey,
 }
 
 /// An event that is thrown when program is initialized

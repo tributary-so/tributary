@@ -50,6 +50,9 @@ app.get("/", (req, res) => {
       gatewaySignerChanged: "/v1/events/gateways/signer-changed",
       referralRewards: "/v1/events/referrals/rewards",
       userPaymentsCreated: "/v1/events/user-payments/created",
+      webhooks: "/v1/webhooks",
+      webhooksByGateway: "/v1/webhooks/gateway/:gatewayPubkey",
+      webhookById: "/v1/webhooks/:id",
     },
   });
 });

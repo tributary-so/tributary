@@ -4,6 +4,7 @@ import {
   text,
   jsonb,
   timestamp,
+  boolean,
   customType,
 } from "drizzle-orm/pg-core";
 
@@ -31,5 +32,17 @@ export const events = pgTable("events", {
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 });
 
+export const webhooks = pgTable("webhooks", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  gatewayPubkey: text("gateway_pubkey").notNull(),
+  endpointUrl: text("endpoint_url").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+export type Webhook = typeof webhooks.$inferSelect;
+export type NewWebhook = typeof webhooks.$inferInsert;
