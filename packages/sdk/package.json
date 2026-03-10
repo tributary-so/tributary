@@ -8,7 +8,7 @@
     "lint": "exit 0",
     "test": "exit 0",
     "clean": "rm -rf ./dist",
-    "build": "tsup",
+    "build": "npx tsup",
     "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build",
     "docs": "typedoc"
