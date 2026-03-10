@@ -1,6 +1,6 @@
-# Lando Subscription Skill
+# Tributary Subscription Skill
 
-This skill sets up a one-time subscription payment for Lando services. **Important**: This should only be called once per subscription.
+This skill sets up a recurring subscription payment using Tributary. **Important**: This should only be called once per subscription.
 
 ## What You're Subscribing To
 
@@ -18,318 +18,202 @@ ${itemsDescription}
 | **Auto-Renew**        | ${autoRenew}            |
 | **Max Renewals**      | ${maxRenewals}          |
 | **Tracking ID**       | `${trackingId}`         |
+| **Gateway**           | `${gateway}`            |
 
-## How to Pay (Tributary SDK)
-
-## Implementation Guide
+## How to Pay
 
 ### Prerequisites
 
-1. **Install Dependencies**
+1. **Install CLI**
 
 ```bash
-pnpm add @tributary-so/sdk @solana/web3.js bn.js
+# No installation needed - use npx directly
+npx @tributary-so/cli@latest --help
 ```
 
-2. **Funded Solana Account**
-   - Option A: Use operator-provided private key (formatted as `[num,num,num,...]`)
-   - Option B: Create and fund a new wallet
+1. **Funded Solana Account**
+   - Option A: Use existing keypair file
+   - Option B: Create new wallet and fund it
 
-## Complete Implementation File
+### Step 1: Create or Load Wallet
 
-Save the following code as `lando-subscription.ts`:
+**Create new wallet:**
 
-```typescript
-import { Tributary, encodeMemo } from "@tributary-so/sdk";
-import { Connection, Keypair, PublicKey, Commitment } from "@solana/web3.js";
-import BN from "bn.js";
-import * as fs from "fs";
-import * as path from "path";
+```bash
+npx @tributary-so/cli@latest wallet create keypair.json
+```
 
-// ==================== WALLET UTILITIES ====================
+**Check wallet address:**
 
-export interface WalletConfig {
-  publicKey: string;
-  secretKey: number[];
-  createdAt?: string;
-}
+```bash
+npx @tributary-so/cli@latest -k keypair.json wallet address
+```
 
-/**
- * Generates a new Solana wallet and saves it to a JSON file
- */
-export function generateAndSaveWallet(directory: string = "./"): Keypair {
-  const keypair = Keypair.generate();
-  const walletData: WalletConfig = {
-    publicKey: keypair.publicKey.toString(),
-    secretKey: Array.from(keypair.secretKey),
-    createdAt: new Date().toISOString(),
-  };
+**Fund the wallet** with:
 
-  const filePath = path.join(directory, "wallet.json");
-  fs.writeFileSync(filePath, JSON.stringify(walletData, null, 2));
+- At least ${displayAmount} tokens (${tokenMint})
+- At least 0.01 SOL for transaction fees
 
-  console.log(`✅ Wallet created successfully!`);
-  console.log(`📁 Saved to: ${filePath}`);
-  console.log(`📍 Address: ${keypair.publicKey.toString()}`);
-  console.log(
-    `⚠️  Keep this file secure and share only the address with your operator`,
-  );
+### Step 2: Create Subscription
 
-  return keypair;
-}
+```bash
+npx @tributary-so/cli@latest -k keypair.json subscription create \
+  --token-mint ${tokenMint} \
+  --recipient ${recipient} \
+  --gateway ${gateway} \
+  --amount ${amount} \
+  --frequency ${frequencyDisplay} \
+  --auto-renew ${autoRenew} \
+  ${maxRenewals ? `--max-renewals ${maxRenewals}` : ""} \
+  --memo ${trackingId}
+```
 
-/**
- * Loads a wallet from a JSON file
- */
-export function loadWalletFromFile(filePath: string): Keypair {
-  try {
-    const data = fs.readFileSync(filePath, "utf-8");
-    const config: WalletConfig = JSON.parse(data);
+### Alternative: One-Liner
 
-    if (!config.secretKey || !Array.isArray(config.secretKey)) {
-      throw new Error("Invalid wallet format: secretKey must be an array");
-    }
+If you already have a funded keypair:
 
-    return Keypair.fromSecretKey(Uint8Array.from(config.secretKey));
-  } catch (error) {
-    throw new Error(
-      `Failed to load wallet: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-  }
-}
+```bash
+npx @tributary-so/cli@latest -k keypair.json subscription create \
+  --token-mint ${tokenMint} \
+  --recipient ${recipient} \
+  --gateway ${gateway} \
+  --amount ${amount} \
+  --frequency ${frequencyDisplay} \
+  --memo ${trackingId}
+```
 
-// ==================== SUBSCRIPTION SERVICE ====================
+## Complete Implementation Script
 
-export interface SubscriptionConfig {
-  tokenMint: PublicKey;
-  recipient: PublicKey;
-  amount: BN;
-  memo: string;
-  frequency: "monthly" | "weekly" | "daily";
-  autoRenew: boolean;
-  maxRenewals?: number;
-  trackingId: string;
-}
+Save as `setup-subscription.sh`:
 
-export const DEFAULT_SUBSCRIPTION_CONFIG: Partial<SubscriptionConfig> = {
-  frequency: "monthly",
-  autoRenew: true,
-};
+```bash
+#!/bin/bash
 
-/**
- * Main service for creating Lando subscriptions
- */
-export class LandoSubscriptionService {
-  private connection: Connection;
-  private wallet: Keypair;
-  private tributary: Tributary;
+KEYPAIR="keypair.json"
+TOKEN_MINT="${tokenMint}"
+RECIPIENT="${recipient}"
+GATEWAY="${gateway}"
+AMOUNT="${amount}"
+FREQUENCY="${frequencyDisplay}"
+TRACKING_ID="${trackingId}"
+AUTO_RENEW="${autoRenew}"
+${maxRenewals ? `MAX_RENEWALS="${maxRenewals}"` : "# MAX_RENEWALS not set"}
 
-  constructor(
-    rpcEndpoint: string = "https://api.mainnet-beta.solana.com",
-    wallet: Keypair,
-  ) {
-    this.connection = new Connection(rpcEndpoint);
-    this.wallet = wallet;
-    this.tributary = new Tributary(this.connection, wallet);
-  }
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-  /**
-   * Creates a Lando subscription payment
-   */
-  async createLandoSubscription(
-    config: Partial<SubscriptionConfig>,
-  ): Promise<string> {
-    try {
-      console.log("🚀 Starting Lando subscription process...");
+echo "========================================"
+echo "  Tributary Subscription Setup"
+echo "========================================"
 
-      // Validate required parameters
-      this.validateConfig(config);
+# Check if keypair exists
+if [ ! -f "$KEYPAIR" ]; then
+    echo -e "${GREEN}Creating new wallet...${NC}"
+    npx @tributary-so/cli@latest wallet create "$KEYPAIR"
+    echo ""
+    echo -e "${RED}Please fund this wallet with:${NC}"
+    echo "  - At least ${displayAmount} tokens ($TOKEN_MINT)"
+    echo "  - At least 0.01 SOL for fees"
+    echo ""
+    echo "Then run this script again."
+    exit 0
+fi
 
-      // Prepare full configuration
-      const fullConfig: SubscriptionConfig = {
-        ...DEFAULT_SUBSCRIPTION_CONFIG,
-        ...config,
-        memo: encodeMemo(config.trackingId!, 64),
-      } as SubscriptionConfig;
+# Show wallet address
+echo -e "${GREEN}Using wallet:${NC}"
+WALLET_ADDRESS=$(npx @tributary-so/cli@latest -k "$KEYPAIR" wallet address)
+echo "  $WALLET_ADDRESS"
+echo ""
 
-      console.log(`📊 Configuration validated`);
-      console.log(`💰 Amount: ${fullConfig.amount.toNumber() / 1000000} USDC`);
-      console.log(`📝 Tracking ID: ${fullConfig.trackingId}`);
+# Create subscription
+echo -e "${GREEN}Creating subscription...${NC}"
+echo "  Amount: ${displayAmount} tokens"
+echo "  Frequency: $FREQUENCY"
+echo "  Tracking ID: $TRACKING_ID"
+echo ""
 
-      // Create subscription
-      const subscription = await this.tributary.createSubscription({
-        tokenMint: fullConfig.tokenMint,
-        recipient: fullConfig.recipient,
-        amount: fullConfig.amount,
-        memo: fullConfig.memo,
-        frequency: fullConfig.frequency,
-        autoRenew: fullConfig.autoRenew,
-        maxRenewals: fullConfig.maxRenewals,
-      });
+SUBSCRIPTION_CMD="npx @tributary-so/cli@latest -k \"$KEYPAIR\" subscription create \
+  --token-mint \"$TOKEN_MINT\" \
+  --recipient \"$RECIPIENT\" \
+  --gateway \"$GATEWAY\" \
+  --amount \"$AMOUNT\" \
+  --frequency \"$FREQUENCY\" \
+  --auto-renew \"$AUTO_RENEW\" \
+  --memo \"$TRACKING_ID\""
 
-      console.log(`📡 Sending transaction...`);
+${maxRenewals ? `SUBSCRIPTION_CMD="$SUBSCRIPTION_CMD --max-renewals \"$MAX_RENEWALS\""` : ""}
 
-      // Send transaction
-      const signature = await this.connection.sendTransaction(
-        subscription.transaction,
-        [this.wallet],
-        { skipPreflight: false, preflightCommitment: "confirmed" },
-      );
+eval $SUBSCRIPTION_CMD
 
-      console.log(`⏳ Transaction sent, confirming: ${signature}`);
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "========================================"
+    echo -e "${GREEN}  Subscription Active!${NC}"
+    echo "========================================"
+    echo "  Tracking ID: $TRACKING_ID"
+    echo "  Service Start: Immediate"
+else
+    echo ""
+    echo -e "${RED}Subscription creation failed${NC}"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Check wallet has sufficient tokens and SOL"
+    echo "  2. Verify network connectivity"
+    echo "  3. Try again in a few minutes"
+    exit 1
+fi
+```
 
-      // Confirm transaction
-      await this.confirmTransaction(signature);
+## Managing Your Subscription
 
-      console.log(`✅ Transaction confirmed!`);
-      return signature;
-    } catch (error) {
-      console.error("❌ Failed to create subscription:");
-      if (error instanceof Error) {
-        console.error(`   ${error.message}`);
-      }
-      throw error;
-    }
-  }
+### View subscription status
 
-  /**
-   * Validates the subscription configuration
-   */
-  private validateConfig(config: Partial<SubscriptionConfig>): void {
-    const required = ["tokenMint", "recipient", "amount", "trackingId"];
-    const missing = required.filter(
-      (field) => !config[field as keyof SubscriptionConfig],
-    );
+```bash
+npx @tributary-so/cli@latest -k keypair.json subscription list
+```
 
-    if (missing.length > 0) {
-      throw new Error(`Missing required configuration: ${missing.join(", ")}`);
-    }
-  }
+### Pause subscription
 
-  /**
-   * Confirms a transaction with retry logic
-   */
-  private async confirmTransaction(
-    signature: string,
-    maxRetries: number = 30,
-  ): Promise<void> {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const confirmation = await this.connection.getSignatureStatus(
-          signature,
-          { searchTransactionHistory: true },
-        );
+```bash
+npx @tributary-so/cli@latest -k keypair.json subscription pause \
+  --token-mint ${tokenMint} \
+  --policy-id <POLICY_ID>
+```
 
-        if (confirmation?.value?.confirmationStatus === "confirmed") {
-          if (confirmation.value.err) {
-            throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-          }
-          return;
-        }
+### Resume subscription
 
-        // Wait before retrying
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (error) {
-        if (i === maxRetries - 1) {
-          throw new Error(
-            `Transaction confirmation timeout after ${maxRetries} seconds`,
-          );
-        }
-      }
-    }
-  }
-}
+```bash
+npx @tributary-so/cli@latest -k keypair.json subscription resume \
+  --token-mint ${tokenMint} \
+  --policy-id <POLICY_ID>
+```
 
-// ==================== MAIN EXECUTION ====================
+### Cancel subscription
 
-/**
- * Main function to execute the Lando subscription
- */
-async function runLandoSubscription() {
-  try {
-    console.log("🎬 Starting Lando Subscription Process");
-    console.log("=".repeat(50));
+```bash
+npx @tributary-so/cli@latest -k keypair.json subscription delete \
+  --token-mint ${tokenMint} \
+  --policy-id <POLICY_ID>
+```
 
-    // 1. Load or create wallet
-    const walletPath = "./wallet.json";
-    let wallet: Keypair;
+## Troubleshooting
 
-    if (fs.existsSync(walletPath)) {
-      console.log(`📂 Loading existing wallet from ${walletPath}`);
-      wallet = loadWalletFromFile(walletPath);
-    } else {
-      console.log(`🆕 Creating new wallet...`);
-      wallet = generateAndSaveWallet();
-      console.log(
-        `💡 Please fund this wallet with at least 10 USDC + SOL for gas fees`,
-      );
-      console.log(`   Address: ${wallet.publicKey.toString()}`);
-      console.log(`\n⚠️  After funding, run this script again to continue.`);
-      return;
-    }
-
-    console.log(`✅ Using wallet: ${wallet.publicKey.toString()}`);
-
-    // 2. Initialize service
-    const subscriptionService = new LandoSubscriptionService(
-      "https://api.mainnet-beta.solana.com",
-      wallet,
-    );
-
-    // 3. Configure Lando subscription
-    const landoConfig: Partial<SubscriptionConfig> = {
-      tokenMint: new PublicKey("${tokenMint}"), // USDC
-      recipient: new PublicKey("${recipient}"), // Lando recipient
-      amount: new BN(${amount}), // 10 USDC (6 decimals)
-      trackingId: "${trackingId}",
-      frequency: "${frequencyDisplay}",
-      autoRenew: ${autoRenew},
-    };
-
-    console.log("\n📋 Subscription Details:");
-    console.log("-".repeat(30));
-    console.log(`Amount: ${displayAmount} token`);
-    console.log(`Tracking ID: %{trackingId}`);
-
-    // 5. Create subscription
-    console.log("\n⏳ Processing payment...");
-    const signature = await subscriptionService.createLandoSubscription(
-      landoConfig,
-    );
-
-    // 6. Success output
-    console.log("\n" + "=".repeat(50));
-    console.log("🎉 LANDO SUBSCRIPTION ACTIVATED!");
-    console.log("=".repeat(50));
-    console.log(`Transaction Signature: ${signature}`);
-    console.log(`Explorer Link: https://explorer.solana.com/tx/${signature}`);
-    console.log(`Tracking ID: ${trackingId}`);
-    console.log(`Service Start: Immediate`);
-    console.log("\n✅ Process completed successfully!");
-  } catch (error) {
-    console.error("\n" + "❌".repeat(20));
-    console.error("SUBSCRIPTION PROCESS FAILED");
-    console.error("❌".repeat(20));
-    console.error(
-      `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    console.error("\n💡 Troubleshooting Tips:");
-    console.error("1. Check your wallet has at least 10 USDC + 0.01 SOL");
-    console.error("2. Verify your internet connection");
-    console.error("3. Ensure you're using the correct wallet file");
-    console.error("4. Try again in a few minutes if network is busy");
-    process.exit(1);
-  }
-}
+| Error              | Solution                             |
+| ------------------ | ------------------------------------ |
+| Insufficient funds | Add more tokens/SOL to wallet        |
+| Invalid token mint | Verify token mint address            |
+| Gateway not found  | Contact support for correct gateway  |
+| Transaction failed | Wait and retry, check network status |
 
 ## Next Steps
 
-1. Ensure you have sufficient token balance (${tokenMint})
-2. Execute the above Tributary SDK commands
-3. Save the transaction signature for proof of payment
-4. Access your subscription service immediately after payment confirms
+1. Ensure wallet has sufficient balance
+2. Run the subscription create command
+3. Save the transaction signature
+4. Access your subscription service immediately after confirmation
 
 ---
 
-Powered by Tributary | Agent Commerce on Solana
-```
+Powered by Tributary | Recurring Payments on Solana
