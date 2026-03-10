@@ -3,7 +3,7 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
+    "module": "es2020",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -21,9 +21,7 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@tributary-so/sdk": ["../../packages/sdk/src"],
-      "@tributary-so/payments": ["../../packages/payments/src"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],

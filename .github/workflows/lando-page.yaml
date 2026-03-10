@@ -15,12 +15,23 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
+      - name: Install dependencies
+        run: pnpm install
+
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: "pnpm"
           cache-dependency-path: ./pnpm-lock.yaml
+
+      - name: Build SDK
+        working-directory: ./packages/sdk
+        run: pnpm run build
+
+      - name: Build Payments
+        working-directory: ./packages/payments
+        run: pnpm run build
 
       - name: Install dependencies
         working-directory: ./apps/lando
