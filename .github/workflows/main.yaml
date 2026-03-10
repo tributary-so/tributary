@@ -128,7 +128,7 @@ jobs:
           fi
           if echo "$CHANGED_FILES" | grep -q "^apps/api/"; then
             HAS_API=1
-            echo "::notice::app changed"
+            echo "::notice::api changed"
           fi
           if echo "$CHANGED_FILES" | grep -q "^apps/lando/"; then
             HAS_LANDO=1
@@ -216,47 +216,38 @@ jobs:
     with:
       dry_run: ${{ github.event.inputs.dry_run || false }}
 
-  release-pass:
-    name: Release Pass-through
-    needs: [detect-changes, test-sdks]
-    if: github.event.inputs.post_release == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Pass
-        run: 'echo "Post-release mode: skipping release"'
-
   app:
     name: Update App
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_app == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_app == '1' || github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/app-prod.yaml
 
   landingpage:
     name: Update Landing Page
-    needs: [release-pass]
-    if: github.event.inputs.post_release == 'true'
+    needs: [release]
+    if: always() && (github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/landing-page.yaml
 
   docs:
     name: Update Docs
-    needs: [release-pass]
-    if: github.event.inputs.post_release == 'true'
+    needs: [release]
+    if: always() && (github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/docs.yaml
 
   docs-sdk:
     name: Update SDK Docs
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_sdk == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_sdk == '1' || github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/sdk-typedocs.yaml
 
   build-scheduler-docker:
     name: Build Scheduler Docker Image
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_scheduler == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_scheduler == '1' || github.event.inputs.post_release == 'true')
     permissions:
       packages: write
       contents: read
@@ -267,8 +258,8 @@ jobs:
 
   build-api-docker:
     name: Build API Docker Image
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_api == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_api == '1' || github.event.inputs.post_release == 'true')
     permissions:
       packages: write
       contents: read
@@ -279,8 +270,8 @@ jobs:
 
   build-lando-backend-docker:
     name: Build Lando Docker Image
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_lando_backend == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_lando_backend == '1' || github.event.inputs.post_release == 'true')
     permissions:
       packages: write
       contents: read
@@ -291,14 +282,14 @@ jobs:
 
   checkoutpage:
     name: Update Checkout App
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_checkout == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_checkout == '1' || github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/checkout-page.yaml
 
   lando:
     name: Update lando App
-    needs: [release-pass, detect-changes]
-    if: needs.detect-changes.outputs.has_lando == '1' || github.event.inputs.post_release == 'true'
+    needs: [release, detect-changes]
+    if: always() && (needs.detect-changes.outputs.has_lando == '1' || github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/lando-page.yaml
