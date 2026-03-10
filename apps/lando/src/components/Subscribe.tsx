@@ -8,7 +8,7 @@ import { Connection } from "@solana/web3.js";
 import { getTokenSymbol, getTokenDecimals } from "@tributary-so/sdk";
 
 const BACKEND_BASE_URL =
-  import.meta.env.VITE_BACKEND_BASE_URL ?? "https://lando-api.tributary.so";
+  import.meta.env.VITE_BACKEND_BASE_URL ?? "https://api.tributary.so";
 const SOLANA_RPC =
   import.meta.env.VITE_SOLANA_API ?? "https://api.mainnet-beta.solana.com";
 
@@ -352,7 +352,7 @@ export function Subscribe() {
 
             <div className="mt-8">
               <a
-                href={`${BACKEND_BASE_URL}/api/skill/${data}`}
+                href={`${BACKEND_BASE_URL}/v1/skill/${data}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center bg-lando-accent text-lando-bg font-bold px-6 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono text-lg border-2 border-lando-accent hover:border-white"
