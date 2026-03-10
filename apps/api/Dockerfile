@@ -19,9 +19,9 @@ RUN pnpm run build
 
 FROM base AS build
 COPY . /app
+COPY --from=deps /app/packages/sdk /app/packages/sdk
+COPY --from=deps /app/packages/payments /app/packages/payments
 COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=deps /app/packages/sdk/node_modules /app/packages/sdk/node_modules
-COPY --from=deps /app/packages/payments/node_modules /app/packages/payments/node_modules
 COPY --from=deps /app/apps/api/node_modules /app/apps/api/node_modules
 
 WORKDIR /app/apps/api
