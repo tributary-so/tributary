@@ -30,3 +30,4 @@ Dockerfile
 specs/
 docs/
 programs/
+.pnp.cjs

@@ -2,10 +2,10 @@ import { defineConfig } from "tsup";
 import { fixImportsPlugin } from "esbuild-fix-imports-plugin";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["./src/index.ts"],
   format: ["esm"],
   target: "es2020",
-  outDir: "dist/packages/sdk/src",
+  outDir: "./dist/packages/sdk/src",
   dts: true,
   clean: true,
   sourcemap: true,
