@@ -17,7 +17,7 @@ RUN pnpm run build
 FROM base AS build
 COPY . /app
 COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=deps /app/packages/sdk/node_modules /app/packages/sdk/node_modules
+COPY --from=deps /app/packages/sdk /app/packages/sdk
 COPY --from=deps /app/apps/scheduler/node_modules /app/apps/scheduler/node_modules
 
 WORKDIR /app/apps/scheduler
