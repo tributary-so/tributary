@@ -65,13 +65,22 @@ export function Landing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <button
-                onClick={handleScrollToForm}
+              <a
+                href="https://tributary.so"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg"
               >
-                Create Checkout Link
+                Visit Tributary.so
                 <ArrowRight className="w-5 h-5" />
+              </a>
+              <button
+                onClick={handleScrollToForm}
+                className="inline-flex items-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-lg font-semibold text-lg hover:bg-white/10 transition-colors"
+              >
+                Create Checkout Link
               </button>
             </motion.div>
           </div>
