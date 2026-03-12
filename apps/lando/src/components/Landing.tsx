@@ -37,7 +37,7 @@ export function Landing() {
               </a>
               <a
                 type="button"
-                href="/#/subscribe/eyJ0bSI6IkVQakZXZGQ1QXVmcVNTcWVNMnFOMXh6eWJhcEM4RzR3RUdHa1p3eVREdDF2IiwiciI6IjlXekRYd0JibWtnOFpUYk5NcVV4dlFSQXlyWnpEc0dZZExWTDl6WXRBV1dNIiwiZyI6IkN3TnliTFZRM3NWbWNaM1ExdmVTNng5OWdVWmNBRjJkdU5EZTNxYmNFTUdyIiwiYSI6IjIwIiwiYXIiOnRydWUsIm1yIjoibnVsbCIsInBmIjoibW9udGhseSIsInN0IjoibnVsbCIsInRpZCI6InVzZXJfMTIzX21vbnRobHlfcHJlbWl1bSIsImxpIjoiW3tcImRlc2NyaXB0aW9uXCI6XCJNb250aGx5IHByZW1pdW0gYWNjZXNzIHRvIGFsbCBmZWF0dXJlc1wiLFwidW5pdFByaWNlXCI6MjAsXCJxdWFudGl0eVwiOjF9XSJ9"
+                href="/#/subscribe/eyJtIjoic3Vic2NyaXB0aW9uIiwidG0iOiJFUGpGV2RkNUF1ZnFTU3FlTTJxTjF4enliYXBDOEc0d0VHR2tad3lURHQxdiIsInIiOiJIaHExVDhBSGo0UEg0ZmJVVnRrcVZIRjhNeUY3eHZCU2JBODd2TFV5ZFNUbiIsImEiOiIxMCIsInRpZCI6InRyaWJfMTc3MzI5ODY4NDU3OF9hdWw1MTRiOHAiLCJzdSI6Im51bGwiLCJjdSI6Im51bGwiLCJnIjoiNm50bTVyV3FERmVmRVQ4UkZ5WlY3M0ZjZHF4UE1iYzdUc28zcENNV2s0dzQiLCJhciI6dHJ1ZSwibXIiOiIxMiIsInBmIjoid2Vla2x5Iiwic3QiOiJudWxsIiwibGkiOiJbXSJ9"
                 className="border border-lando-border text-lando-text px-8 py-4 rounded-lg hover:border-lando-accent hover:text-lando-accent transition-all font-mono"
               >
                 Try Demo →
