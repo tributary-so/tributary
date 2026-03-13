@@ -5,6 +5,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { Tributary, PaymentFrequency, encodeMemo } from "@tributary-so/sdk";
 
+const isAgent = !!process.env.NO_DNA;
+
 interface WalletConfig {
   connectionUrl: string;
   keypath: string;
@@ -54,6 +56,22 @@ function formatDate(timestamp: BN | number): string {
   return new Date(ts * 1000).toISOString();
 }
 
+function output(data: unknown): void {
+  if (isAgent) {
+    console.log(JSON.stringify(data, null, 2));
+  } else {
+    console.log(data);
+  }
+}
+
+function outputError(message: string, details?: Record<string, unknown>): void {
+  if (isAgent) {
+    console.error(JSON.stringify({ error: message, ...details }));
+  } else {
+    console.error(`Error: ${message}`);
+  }
+}
+
 function truncatePubkey(pubkey: string | PublicKey, length = 8): string {
   const str = typeof pubkey === "string" ? pubkey : pubkey.toString();
   if (str.length <= length * 2) return str;
@@ -89,7 +107,7 @@ async function runCliMode(args: string[]): Promise<void> {
       await handleWalletCommand(subcommand, options, positional, config);
       return;
     } catch (error) {
-      console.error("Error:", error instanceof Error ? error.message : error);
+      outputError(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   }
@@ -99,10 +117,9 @@ async function runCliMode(args: string[]): Promise<void> {
     const result = createSDK(config);
     sdk = result.sdk;
   } catch (error) {
-    console.error(
-      "Failed to initialize SDK:",
-      error instanceof Error ? error.message : error
-    );
+    outputError("Failed to initialize SDK", {
+      details: error instanceof Error ? error.message : String(error),
+    });
     process.exit(1);
   }
 
@@ -130,12 +147,24 @@ async function runCliMode(args: string[]): Promise<void> {
         await handlePdaCommand(subcommand, options, sdk);
         break;
       default:
-        console.error(`Unknown command: ${command}`);
-        printHelp();
+        outputError(`Unknown command: ${command}`, {
+          command,
+          availableCommands: [
+            "wallet",
+            "program",
+            "user",
+            "gateway",
+            "subscription",
+            "payments",
+            "referral",
+            "pda",
+          ],
+        });
+        if (!isAgent) printHelp();
         process.exit(1);
     }
   } catch (error) {
-    console.error("Error:", error instanceof Error ? error.message : error);
+    outputError(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
@@ -171,6 +200,110 @@ function parseOptionsWithPositional(args: string[]): {
 }
 
 function printHelp(): void {
+  const helpData = {
+    name: "tributary-cli",
+    version: "1.0.0",
+    description: "Tributary CLI - Automated recurring payments on Solana",
+    globalOptions: {
+      "-c, --connection-url": "Solana RPC connection URL",
+      "-k, --keypath": "Path to keypair file",
+      "-h, --help": "Display help",
+    },
+    environment: {
+      SOLANA_API: "RPC connection URL (default: https://api.devnet.solana.com)",
+      KEY_PATH: "Key path (default: keypair.json)",
+      NO_DNA: "When set, output JSON and disable interactive features",
+    },
+    commands: {
+      wallet: {
+        description: "Wallet management",
+        subcommands: {
+          create: { args: "[output]", desc: "Generate new keypair" },
+          import: { args: "<path>", desc: "Import existing keypair" },
+          address: { args: "", desc: "Show public key" },
+          balance: { args: "[--token-mint]", desc: "Show balances" },
+        },
+      },
+      program: {
+        description: "Protocol configuration",
+        subcommands: {
+          initialize: {
+            args: "[--admin]",
+            desc: "Initialize program (admin only)",
+          },
+          config: { args: "", desc: "Get program config PDA" },
+        },
+      },
+      user: {
+        description: "User Payment accounts",
+        subcommands: {
+          create: {
+            args: "[--token-mint]",
+            desc: "Create user payment account",
+          },
+          list: { args: "", desc: "List user payment accounts" },
+          show: { args: "[--user-payment]", desc: "Show user payment details" },
+        },
+      },
+      gateway: {
+        description: "Payment gateway management",
+        subcommands: {
+          create: { args: "[options]", desc: "Create payment gateway" },
+          delete: { args: "[--authority]", desc: "Delete payment gateway" },
+          list: { args: "", desc: "List all payment gateways" },
+          show: { args: "[--gateway]", desc: "Show gateway details" },
+          signer: { args: "[options]", desc: "Change gateway signer" },
+          "fee-recipient": { args: "[options]", desc: "Change fee recipient" },
+          "fee-bps": { args: "[options]", desc: "Change gateway fee BPS" },
+        },
+      },
+      subscription: {
+        description: "Subscription payment policies",
+        subcommands: {
+          create: { args: "[options]", desc: "Create subscription policy" },
+          list: { args: "[options]", desc: "List payment policies" },
+          show: { args: "[policy]", desc: "Show payment policy details" },
+          pause: { args: "[options]", desc: "Pause payment policy" },
+          resume: { args: "[options]", desc: "Resume payment policy" },
+          delete: { args: "[options]", desc: "Delete payment policy" },
+        },
+      },
+      payments: {
+        description: "Payment execution",
+        subcommands: {
+          execute: { args: "[options]", desc: "Execute a payment" },
+        },
+      },
+      referral: {
+        description: "Referral system",
+        subcommands: {
+          create: { args: "[options]", desc: "Create referral account" },
+          show: { args: "[options]", desc: "Show referral by code" },
+          "show-owner": { args: "[options]", desc: "Show referral by owner" },
+          chain: { args: "[options]", desc: "Show referral chain" },
+        },
+      },
+      pda: {
+        description: "PDA utilities",
+        subcommands: {
+          config: { args: "", desc: "Get program config PDA" },
+          gateway: { args: "[--authority]", desc: "Get gateway PDA" },
+          "user-payment": { args: "[options]", desc: "Get user payment PDA" },
+          "payment-policy": {
+            args: "[options]",
+            desc: "Get payment policy PDA",
+          },
+          delegate: { args: "", desc: "Get payments delegate PDA" },
+        },
+      },
+    },
+  };
+
+  if (isAgent) {
+    console.log(JSON.stringify(helpData, null, 2));
+    return;
+  }
+
   console.log(`
 tributary-cli — Tributary CLI v1.0.0
 
@@ -182,6 +315,7 @@ Global options:
 Environment:
   SOLANA_API                    RPC connection URL (default: https://api.devnet.solana.com)
   KEY_PATH                      Key path (default: keypair.json)
+  NO_DNA                        When set, output JSON and disable interactive features
 
 Commands:
   wallet              Wallet management
@@ -210,8 +344,6 @@ Commands:
 
   subscription        Subscription payment policies
     create [options]              Create subscription policy
-    pay-as-you-go [options]       Create PAYG policy
-    milestone [options]           Create milestone policy
     list [options]                List payment policies
     show [policy]                 Show payment policy details
     pause [options]               Pause payment policy
@@ -251,27 +383,52 @@ async function handleWalletCommand(
         outputPath,
         JSON.stringify(Array.from(newKeypair.secretKey))
       );
-      console.log(`✓ Created new keypair: ${newKeypair.publicKey.toString()}`);
-      console.log(`  Saved to: ${outputPath}`);
+      output({
+        success: true,
+        command: "wallet create",
+        publicKey: newKeypair.publicKey.toString(),
+        path: outputPath,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "import": {
       const importPath = positional[0];
       if (!importPath) throw new Error("Import path required");
       const keypair = readKeypairFromFile(importPath);
-      console.log(`✓ Imported keypair: ${keypair.publicKey.toString()}`);
+      output({
+        success: true,
+        command: "wallet import",
+        publicKey: keypair.publicKey.toString(),
+        path: importPath,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "address": {
       const keypair = readKeypairFromFile(config.keypath);
-      console.log(keypair.publicKey.toString());
+      output({
+        success: true,
+        command: "wallet address",
+        publicKey: keypair.publicKey.toString(),
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "balance": {
       const { connection } = createSDK(config);
       const keypair = readKeypairFromFile(config.keypath);
       const balance = await connection.getBalance(keypair.publicKey);
-      console.log(`SOL Balance: ${balance / 1e9} SOL`);
+      output({
+        success: true,
+        command: "wallet balance",
+        publicKey: keypair.publicKey.toString(),
+        balance: {
+          lamports: balance,
+          sol: balance / 1e9,
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -293,14 +450,26 @@ async function handleProgramCommand(
       const instruction = await sdk.initialize(adminPubkey);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Program initialized`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "program initialize",
+        admin: adminPubkey.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "config": {
       const pda = sdk.getConfigPda();
-      console.log(`Config PDA: ${pda.address.toString()}`);
-      console.log(`Bump: ${pda.bump}`);
+      output({
+        success: true,
+        command: "program config",
+        pda: {
+          address: pda.address.toString(),
+          bump: pda.bump,
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -320,20 +489,29 @@ async function handleUserCommand(
       const instruction = await sdk.createUserPayment(tokenMint);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ User payment account created`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "user create",
+        tokenMint: tokenMint.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "list": {
       const users = await sdk.getAllUserPayments();
-      console.log(`Found ${users.length} user payment accounts:`);
-      for (const user of users) {
-        console.log(`\n  ${truncatePubkey(user.publicKey)}`);
-        console.log(`    Owner: ${truncatePubkey(user.account.owner)}`);
-        console.log(
-          `    Policies: ${user.account.activePoliciesCount}/${user.account.createdPoliciesCount}`
-        );
-      }
+      output({
+        success: true,
+        command: "user list",
+        count: users.length,
+        users: users.map((u) => ({
+          publicKey: u.publicKey.toString(),
+          owner: u.account.owner.toString(),
+          activePolicies: u.account.activePoliciesCount,
+          totalPolicies: u.account.createdPoliciesCount,
+        })),
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "show": {
@@ -341,13 +519,20 @@ async function handleUserCommand(
       if (!userPaymentPubkey) throw new Error("Invalid user payment pubkey");
       const userPayment = await sdk.getUserPayment(userPaymentPubkey);
       if (!userPayment) throw new Error("User payment not found");
-      console.log(`User Payment: ${userPaymentPubkey.toString()}`);
-      console.log(`  Owner: ${userPayment.owner.toString()}`);
-      console.log(`  Token Mint: ${userPayment.tokenMint.toString()}`);
-      console.log(`  Token Account: ${userPayment.tokenAccount.toString()}`);
-      console.log(`  Active Policies: ${userPayment.activePoliciesCount}`);
-      console.log(`  Total Policies: ${userPayment.createdPoliciesCount}`);
-      console.log(`  Created: ${formatDate(userPayment.createdAt)}`);
+      output({
+        success: true,
+        command: "user show",
+        userPayment: {
+          publicKey: userPaymentPubkey.toString(),
+          owner: userPayment.owner.toString(),
+          tokenMint: userPayment.tokenMint.toString(),
+          tokenAccount: userPayment.tokenAccount.toString(),
+          activePolicies: userPayment.activePoliciesCount,
+          totalPolicies: userPayment.createdPoliciesCount,
+          createdAt: formatDate(userPayment.createdAt),
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -378,8 +563,17 @@ async function handleGatewayCommand(
       );
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Payment gateway created`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "gateway create",
+        authority: authority.toString(),
+        feeBps,
+        feeRecipient: feeRecipient.toString(),
+        name,
+        url,
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "delete": {
@@ -388,21 +582,30 @@ async function handleGatewayCommand(
       const instruction = await sdk.deletePaymentGateway(authority);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Payment gateway deleted`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "gateway delete",
+        authority: authority.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "list": {
       const gateways = await sdk.getAllPaymentGateway();
-      console.log(`Found ${gateways.length} payment gateways:`);
-      for (const gw of gateways) {
-        const name = String.fromCharCode(...gw.account.name).replace(/\0/g, "");
-        console.log(`\n  ${truncatePubkey(gw.publicKey)}`);
-        console.log(`    Name: ${name}`);
-        console.log(`    Authority: ${truncatePubkey(gw.account.authority)}`);
-        console.log(`    Fee BPS: ${gw.account.gatewayFeeBps}`);
-        console.log(`    Active: ${gw.account.isActive}`);
-      }
+      output({
+        success: true,
+        command: "gateway list",
+        count: gateways.length,
+        gateways: gateways.map((gw) => ({
+          publicKey: gw.publicKey.toString(),
+          name: String.fromCharCode(...gw.account.name).replace(/\0/g, ""),
+          authority: gw.account.authority.toString(),
+          feeBps: gw.account.gatewayFeeBps,
+          active: gw.account.isActive,
+        })),
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "show": {
@@ -410,18 +613,21 @@ async function handleGatewayCommand(
       if (!gatewayPubkey) throw new Error("Invalid gateway pubkey");
       const gateway = await sdk.getPaymentGateway(gatewayPubkey);
       if (!gateway) throw new Error("Gateway not found");
-      console.log(`Gateway: ${gatewayPubkey.toString()}`);
-      console.log(`  Authority: ${gateway.authority.toString()}`);
-      console.log(`  Fee Recipient: ${gateway.feeRecipient.toString()}`);
-      console.log(`  Fee BPS: ${gateway.gatewayFeeBps}`);
-      console.log(`  Feature Flags: ${gateway.featureFlags}`);
-      console.log(`  Active: ${gateway.isActive}`);
-      console.log(
-        `  Name: ${String.fromCharCode(...gateway.name).replace(/\0/g, "")}`
-      );
-      console.log(
-        `  URL: ${String.fromCharCode(...gateway.url).replace(/\0/g, "")}`
-      );
+      output({
+        success: true,
+        command: "gateway show",
+        gateway: {
+          publicKey: gatewayPubkey.toString(),
+          authority: gateway.authority.toString(),
+          feeRecipient: gateway.feeRecipient.toString(),
+          feeBps: gateway.gatewayFeeBps,
+          featureFlags: gateway.featureFlags,
+          active: gateway.isActive,
+          name: String.fromCharCode(...gateway.name).replace(/\0/g, ""),
+          url: String.fromCharCode(...gateway.url).replace(/\0/g, ""),
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "signer": {
@@ -432,8 +638,14 @@ async function handleGatewayCommand(
       const instruction = await sdk.changeGatewaySigner(authority, newSigner);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Gateway signer changed`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "gateway signer",
+        authority: authority.toString(),
+        newSigner: newSigner.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "fee-recipient": {
@@ -447,8 +659,14 @@ async function handleGatewayCommand(
       );
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Gateway fee recipient changed`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "gateway fee-recipient",
+        authority: authority.toString(),
+        newRecipient: newRecipient.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "fee-bps": {
@@ -458,8 +676,14 @@ async function handleGatewayCommand(
       const instruction = await sdk.changeGatewayFeeBps(authority, feeBps);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Gateway fee BPS changed to ${feeBps}`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "gateway fee-bps",
+        authority: authority.toString(),
+        feeBps,
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -506,8 +730,19 @@ async function handleSubscriptionCommand(
       const tx = new anchor.web3.Transaction();
       instructions.forEach((ix) => tx.add(ix));
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Subscription created`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "subscription create",
+        tokenMint: tokenMint.toString(),
+        recipient: recipient.toString(),
+        gateway: gateway.toString(),
+        amount: amount.toString(),
+        frequency,
+        autoRenew,
+        maxRenewals,
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "list": {
@@ -516,30 +751,39 @@ async function handleSubscriptionCommand(
         : null;
       if (owner) {
         const userPayments = await sdk.getAllUserPaymentsByOwner(owner);
-        console.log(`Found ${userPayments.length} user payments for owner`);
+        const results = [];
         for (const up of userPayments) {
           const policies = await sdk.getPaymentPoliciesByUserPayment(
             up.publicKey
           );
-          console.log(`\n  User Payment: ${truncatePubkey(up.publicKey)}`);
-          for (const policy of policies) {
-            console.log(
-              `    Policy ${policy.account.policyId}: ${
-                Object.keys(policy.account.status)[0]
-              }`
-            );
-          }
+          results.push({
+            userPayment: up.publicKey.toString(),
+            policies: policies.map((p) => ({
+              policyId: p.account.policyId,
+              status: Object.keys(p.account.status)[0],
+            })),
+          });
         }
+        output({
+          success: true,
+          command: "subscription list",
+          filter: { owner: owner.toString() },
+          userPaymentsCount: userPayments.length,
+          userPayments: results,
+          timestamp: new Date().toISOString(),
+        });
       } else {
         const policies = await sdk.getAllPaymentPolicies();
-        console.log(`Found ${policies.length} payment policies:`);
-        for (const policy of policies) {
-          console.log(
-            `  ${truncatePubkey(policy.publicKey)} - ${
-              Object.keys(policy.account.status)[0]
-            }`
-          );
-        }
+        output({
+          success: true,
+          command: "subscription list",
+          count: policies.length,
+          policies: policies.map((p) => ({
+            publicKey: p.publicKey.toString(),
+            status: Object.keys(p.account.status)[0],
+          })),
+          timestamp: new Date().toISOString(),
+        });
       }
       break;
     }
@@ -554,8 +798,14 @@ async function handleSubscriptionCommand(
       );
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Policy paused`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "subscription pause",
+        tokenMint: tokenMint.toString(),
+        policyId,
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "resume": {
@@ -569,8 +819,14 @@ async function handleSubscriptionCommand(
       );
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Policy resumed`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "subscription resume",
+        tokenMint: tokenMint.toString(),
+        policyId,
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "delete": {
@@ -580,8 +836,14 @@ async function handleSubscriptionCommand(
       const instruction = await sdk.deletePaymentPolicy(tokenMint, policyId);
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Policy deleted`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "subscription delete",
+        tokenMint: tokenMint.toString(),
+        policyId,
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -605,8 +867,13 @@ async function handlePaymentsCommand(
       const tx = new anchor.web3.Transaction();
       instructions.forEach((ix) => tx.add(ix));
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Payment executed`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "payments execute",
+        policy: policyPubkey.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -636,9 +903,15 @@ async function handleReferralCommand(
       );
       const tx = new anchor.web3.Transaction().add(instruction);
       const signature = await sdk.provider.sendAndConfirm(tx);
-      console.log(`✓ Referral account created`);
-      console.log(`  Code: ${code}`);
-      console.log(`  Transaction: ${signature}`);
+      output({
+        success: true,
+        command: "referral create",
+        gateway: gateway.toString(),
+        code,
+        referrer: referrer?.toString(),
+        transaction: signature,
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "show": {
@@ -647,11 +920,17 @@ async function handleReferralCommand(
       if (!gateway || !code) throw new Error("Gateway and code required");
       const referral = await sdk.getReferralAccountByCode(gateway, code);
       if (!referral) throw new Error("Referral not found");
-      console.log(`Referral Account:`);
-      console.log(`  Code: ${String.fromCharCode(...referral.referralCode)}`);
-      console.log(`  Owner: ${referral.owner.toString()}`);
-      console.log(`  Gateway: ${referral.gateway.toString()}`);
-      console.log(`  Referrer: ${referral.referrer.toString()}`);
+      output({
+        success: true,
+        command: "referral show",
+        referral: {
+          code: String.fromCharCode(...referral.referralCode),
+          owner: referral.owner.toString(),
+          gateway: referral.gateway.toString(),
+          referrer: referral.referrer.toString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "show-owner": {
@@ -660,9 +939,15 @@ async function handleReferralCommand(
       if (!gateway || !owner) throw new Error("Gateway and owner required");
       const referral = await sdk.getReferralAccountByOwner(gateway, owner);
       if (!referral) throw new Error("Referral not found");
-      console.log(`Referral Account:`);
-      console.log(`  Code: ${String.fromCharCode(...referral.referralCode)}`);
-      console.log(`  Owner: ${referral.owner.toString()}`);
+      output({
+        success: true,
+        command: "referral show-owner",
+        referral: {
+          code: String.fromCharCode(...referral.referralCode),
+          owner: referral.owner.toString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "chain": {
@@ -670,10 +955,17 @@ async function handleReferralCommand(
       const owner = parsePublicKey(options.owner as string);
       if (!gateway || !owner) throw new Error("Gateway and owner required");
       const chain = await sdk.getReferralChain(owner, gateway);
-      console.log(`Referral Chain (L1 → L2 → L3):`);
-      console.log(`  L1: ${chain[0]?.toString() || "None"}`);
-      console.log(`  L2: ${chain[1]?.toString() || "None"}`);
-      console.log(`  L3: ${chain[2]?.toString() || "None"}`);
+      output({
+        success: true,
+        command: "referral chain",
+        owner: owner.toString(),
+        chain: {
+          L1: chain[0]?.toString() || null,
+          L2: chain[1]?.toString() || null,
+          L3: chain[2]?.toString() || null,
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -689,14 +981,33 @@ async function handlePdaCommand(
   switch (subcommand) {
     case "config": {
       const pda = sdk.getConfigPda();
-      console.log(pda.address.toString());
+      output({
+        success: true,
+        command: "pda config",
+        pda: {
+          type: "config",
+          address: pda.address.toString(),
+          bump: pda.bump,
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "gateway": {
       const authority = parsePublicKey(options.authority as string);
       if (!authority) throw new Error("Invalid authority");
       const pda = sdk.getGatewayPda(authority);
-      console.log(pda.address.toString());
+      output({
+        success: true,
+        command: "pda gateway",
+        pda: {
+          type: "gateway",
+          address: pda.address.toString(),
+          bump: pda.bump,
+          authority: authority.toString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "user-payment": {
@@ -704,7 +1015,18 @@ async function handlePdaCommand(
       const tokenMint = parsePublicKey(options.tokenmint as string);
       if (!user || !tokenMint) throw new Error("Invalid user or token mint");
       const pda = sdk.getUserPaymentPda(user, tokenMint);
-      console.log(pda.address.toString());
+      output({
+        success: true,
+        command: "pda user-payment",
+        pda: {
+          type: "user-payment",
+          address: pda.address.toString(),
+          bump: pda.bump,
+          user: user.toString(),
+          tokenMint: tokenMint.toString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "payment-policy": {
@@ -712,12 +1034,32 @@ async function handlePdaCommand(
       const policyId = parseInt(options.policyid as string);
       if (!userPayment) throw new Error("Invalid user payment");
       const pda = sdk.getPaymentPolicyPda(userPayment, policyId);
-      console.log(pda.address.toString());
+      output({
+        success: true,
+        command: "pda payment-policy",
+        pda: {
+          type: "payment-policy",
+          address: pda.address.toString(),
+          bump: pda.bump,
+          userPayment: userPayment.toString(),
+          policyId,
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     case "delegate": {
       const pda = sdk.getPaymentsDelegatePda();
-      console.log(pda.address.toString());
+      output({
+        success: true,
+        command: "pda delegate",
+        pda: {
+          type: "delegate",
+          address: pda.address.toString(),
+          bump: pda.bump,
+        },
+        timestamp: new Date().toISOString(),
+      });
       break;
     }
     default:
@@ -731,6 +1073,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Fatal error:", err);
+  outputError("Fatal error", {
+    details: err instanceof Error ? err.message : String(err),
+  });
   process.exit(1);
 });
