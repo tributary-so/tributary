@@ -1530,19 +1530,6 @@ export type Tributary = {
       ]
     },
     {
-      "name": "transferRecord",
-      "discriminator": [
-        212,
-        45,
-        151,
-        165,
-        177,
-        0,
-        16,
-        236
-      ]
-    },
-    {
       "name": "userPaymentCreated",
       "discriminator": [
         112,
@@ -2735,47 +2722,6 @@ export type Tributary = {
                 3
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "transferRecord",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "from",
-            "type": "pubkey"
-          },
-          {
-            "name": "to",
-            "type": "pubkey"
-          },
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "memo",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
           }
         ]
       }
