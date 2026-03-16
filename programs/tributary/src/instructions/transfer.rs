@@ -1,4 +1,4 @@
-use crate::state::events::TransferRecord;
+use crate::state::events::PaymentRecord;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
@@ -40,14 +40,15 @@ impl<'info> TransferTokens<'info> {
 
         let clock = Clock::get()?;
 
-        emit!(TransferRecord {
-            from: ctx.accounts.from.key(),
-            to: ctx.accounts.to.key(),
-            authority: ctx.accounts.authority.key(),
-            mint: ctx.accounts.from.mint,
+        emit!(PaymentRecord {
+            payment_policy: Pubkey::default(), // unused
+            gateway: Pubkey::default(),        // unused
             amount,
-            memo,
             timestamp: clock.unix_timestamp,
+            memo,
+            record_id: 0,
+            payer: ctx.accounts.from.key(),
+            recipient: ctx.accounts.to.key(),
         });
 
         msg!(

@@ -107,17 +107,6 @@ pub struct ReferralReward {
     pub reward: u64,
 }
 
-#[event]
-pub struct TransferRecord {
-    pub from: Pubkey,
-    pub to: Pubkey,
-    pub authority: Pubkey,
-    pub mint: Pubkey,
-    pub amount: u64,
-    pub memo: [u8; 64],
-    pub timestamp: i64,
-}
-
 /// An event that is thrown when referral rewards are distributed
 #[event]
 pub struct ReferralRewardDistributedRecord {
