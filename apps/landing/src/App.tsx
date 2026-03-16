@@ -958,7 +958,7 @@ function App() {
                 />
                 <div>
                   <p className="font-bold text-neutral-900">
-                    MVladislav Lenskii
+                    Vladislav Lenskii
                   </p>
                   <p className="text-sm text-neutral-600">
                     Founder, Yumi Finance
