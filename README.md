@@ -564,7 +564,7 @@ Open [http://localhost:8000](http://localhost:8000) to view the documentation.
 
 ## Security
 
-- **Audit**: Completed by Ottersec/Neodyme
+- **Audit**: _Pending_
 - **Non-custodial**: Funds remain in user wallets
 - **Delegation-based**: SPL token delegation for automation
 - **Emergency pause**: Program can be paused in emergencies
