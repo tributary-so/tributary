@@ -4,9 +4,12 @@ import logo from "./assets/logo.png";
 import GetStartedSection from "./components/GetStartedSection";
 import ProductScreenshotSection from "./components/ProductScreenshotSection";
 import PartnerBanner from "./components/PartnerBanner";
+import BenefitsSection from "./components/BenefitsSection";
+import SocialIcon from "./components/SocialIcon";
 
 function App() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // No longer using feather icons or AOS, so these can be removed or replaced with modern alternatives
@@ -30,6 +33,7 @@ function App() {
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
       {/* Navigation Bar */}
       <motion.header
+        role="banner"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6 }}
@@ -43,7 +47,42 @@ function App() {
             <img src={logo} alt="Tributary Logo" className="h-10 w-10" />
             <span className="gradient-text font-bold text-2xl">Tributary</span>
           </motion.div>
-          <nav className="hidden md:flex space-x-8 items-center">
+
+          <button
+            className="md:hidden p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
+            aria-expanded={isMobileMenuOpen}
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {isMobileMenuOpen ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              )}
+            </svg>
+          </button>
+
+          <nav
+            className="hidden md:flex space-x-8 items-center"
+            aria-label="Main navigation"
+          >
             {/* Solutions Dropdown */}
             <div
               className="relative"
@@ -134,36 +173,110 @@ function App() {
               FAQ
             </motion.a>
           </nav>
+
           <motion.a
             href="https://app.tributary.so"
-            className="btn-primary text-sm md:text-base"
+            className="btn-primary text-sm md:text-base hidden md:inline-block"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             Open App
           </motion.a>
-        </div>
-      </motion.header>
 
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="md:hidden absolute top-full left-0 right-0 bg-white border border-neutral-200 rounded-b-2xl shadow-2xl p-6 z-50 mt-2"
+              >
+                <div className="space-y-4">
+                  <a
+                    href="#subscriptions"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    Subscriptions
+                  </a>
+                  <a
+                    href="#milestones"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    Milestone Payments
+                  </a>
+                  <a
+                    href="#payasyougo"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    Pay-as-you-go
+                  </a>
+                  <a
+                    href="#how-it-works"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    How It Works
+                  </a>
+                  <a
+                    href="#pricing"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    Pricing
+                  </a>
+                  <a
+                    href="#testimonials"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    Testimonials
+                  </a>
+                  <a
+                    href="#faq"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-neutral-700 hover:text-primary font-medium py-2"
+                  >
+                    FAQ
+                  </a>
+                  <a
+                    href="https://app.tributary.so"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block btn-primary text-center mt-6"
+                  >
+                    Open App
+                  </a>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+       </motion.header>
+
+      <main role="main" id="main-content">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-32 px-4 text-center bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
+      <section aria-labelledby="hero-heading" className="relative overflow-hidden py-32 px-4 text-center bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
         <motion.div
+          className="max-w-6xl mx-auto"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="max-w-6xl mx-auto"
         >
           <motion.h1
+            id="hero-heading"
             className="text-6xl md:text-8xl font-extrabold mb-8 leading-tight"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
           >
-            Automated Recurring Payments for the{" "}
+            Automated Recurring Payments for{" "}
             <span className="gradient-text font-bold">Solana</span> Ecosystem
           </motion.h1>
           <motion.p
-            className="text-xl md:text-2xl text-neutral-600 mb-12 max-w-4xl mx-auto leading-relaxed"
+            className="text-xl md:text-2xl text-neutral-600 mb-8 max-w-4xl mx-auto leading-relaxed"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -172,8 +285,20 @@ function App() {
             once, then subscriptions, milestones, and pay-as-you-go flow
             seamlessly and securely directly from their token accounts.
           </motion.p>
+
           <motion.div
-            className="flex flex-col sm:flex-row gap-6 justify-center mb-20"
+            className="inline-flex items-center gap-2 bg-white rounded-full px-6 py-2 shadow-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
+            <span className="text-accent text-lg">★★★★★</span>
+            <span className="text-neutral-600 font-medium">4.9/5</span>
+            <span className="text-neutral-400 text-sm ml-2">from 50+ reviews</span>
+          </motion.div>
+
+          <motion.div
+            className="flex flex-col sm:flex-row gap-6 justify-center mb-12"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
@@ -200,6 +325,9 @@ function App() {
 
       {/* Partner Banner */}
       <PartnerBanner />
+
+      {/* Benefits Section */}
+      <BenefitsSection />
 
       {/* Get Started Section */}
       <GetStartedSection />
@@ -737,14 +865,14 @@ function App() {
 
             {/* Pro Plan */}
             <motion.div
-              className="card flex flex-col relative border-2 border-electric"
+              className="card flex flex-col relative border-2 border-electric bg-gradient-to-br from-white to-primary/5 shadow-2xl scale-105"
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               whileHover={{ y: -10 }}
             >
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-electric text-white text-sm font-bold px-4 py-2 rounded-full uppercase shadow-lg">
-                Reference Implementation
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-electric text-white text-sm font-bold px-6 py-2 rounded-full uppercase shadow-lg animate-pulse">
+                Most Popular
               </div>
               <h3 className="text-3xl font-bold mb-4 text-neutral-900 mt-4">
                 Contribute.so
@@ -860,6 +988,18 @@ function App() {
             Hear what our community and partners are saying about Tributary.
           </motion.p>
 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="max-w-md mx-auto mb-12"
+          >
+            <div className="text-center bg-neutral-50 rounded-full px-6 py-3 shadow-md inline-block">
+              <span className="text-3xl font-bold text-neutral-900">50+</span>
+              <span className="text-neutral-600 ml-2">Success Stories</span>
+            </div>
+          </motion.div>
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
             {/* Testimonial 1 */}
             <motion.div
@@ -884,6 +1024,7 @@ function App() {
                 <img
                   src="testimony/contributeso.png"
                   alt="Fabian Schuh"
+                  loading="lazy"
                   className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
@@ -918,6 +1059,7 @@ function App() {
                 <img
                   src="testimony/2.png"
                   alt="Corinna Abdel-Ibra"
+                  loading="lazy"
                   className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
@@ -954,6 +1096,7 @@ function App() {
                 <img
                   src="testimony/yumi-finance.png"
                   alt="Vladislav Lenskii"
+                  loading="lazy"
                   className="w-14 h-14 rounded-full mr-4 shadow-md"
                 />
                 <div>
@@ -1272,17 +1415,13 @@ function App() {
           initial={{ scale: 0 }}
           whileInView={{ scale: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
-        ></motion.div>
-        <motion.div
-          className="absolute bottom-10 right-10 w-24 h-24 bg-electric rounded-full opacity-15 animate-float"
-          initial={{ scale: 0 }}
-          whileInView={{ scale: 1 }}
-          transition={{ duration: 1, delay: 0.7 }}
-        ></motion.div>
+          ></motion.div>
+        </motion.div>
       </section>
+      </main>
 
       {/* Footer */}
-      <footer className="py-16 px-4 bg-neutral-900 text-neutral-300 border-t border-neutral-800">
+      <footer role="contentinfo" className="py-16 px-4 bg-neutral-900 text-neutral-300 border-t border-neutral-800">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12">
             <motion.div
@@ -1307,46 +1446,39 @@ function App() {
               <h4 className="font-bold text-white mb-6 text-lg">Product</h4>
               <ul className="space-y-3 text-base">
                 <li>
-                  <a
-                    href="#features"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">✨</span> Features
-                  </a>
+                  <SocialIcon
+                    name="Documentation"
+                    href="https://tributary.so"
+                    ariaLabel="Visit Tributary website"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="Documentation"
                     href="https://docs.tributary.so"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">📚</span>{" "}
-                    Documentation
-                  </a>
+                    ariaLabel="Read Tributary documentation"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="Documentation"
                     href="https://github.com/tributary-so/tributary/tree/main/sdk"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">🛠️</span> SDK
-                  </a>
+                    ariaLabel="View Tributary SDK on GitHub"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="Documentation"
                     href="https://sdk.tributary.so"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">📚 </span> SDK
-                    Documentation
-                  </a>
+                    ariaLabel="View SDK documentation"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="Documentation"
                     href="https://app.tributary.so"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">📊</span> Dashboard
-                  </a>
+                    ariaLabel="Open Tributary dashboard"
+                  />
                 </li>
               </ul>
             </motion.div>
@@ -1375,37 +1507,32 @@ function App() {
                   </a>
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="GitHub"
                     href="https://github.com/tributary-so"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">💻</span> GitHub
-                  </a>
+                    ariaLabel="Visit Tributary GitHub"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="Telegram"
                     href="https://t.me/tributaryso"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">💬</span> Telegram
-                    Community
-                  </a>
+                    ariaLabel="Join Tributary Telegram"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="X"
                     href="https://x.com/tributaryso"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">🐦</span> X (Twitter)
-                  </a>
+                    ariaLabel="Follow Tributary on X"
+                  />
                 </li>
                 <li>
-                  <a
+                  <SocialIcon
+                    name="Email"
                     href="mailto:hello@tributary.so"
-                    className="hover:text-electric transition-colors flex items-center gap-2"
-                  >
-                    <span className="grayscale opacity-60">📧</span> Contact
-                  </a>
+                    ariaLabel="Contact Tributary team"
+                  />
                 </li>
               </ul>
             </motion.div>

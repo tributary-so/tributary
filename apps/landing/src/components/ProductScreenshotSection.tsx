@@ -101,6 +101,7 @@ const ProductScreenshotSection: React.FC = () => {
               <img
                 src="/product-screenshot.png"
                 alt="Tributary Dashboard"
+                loading="lazy"
                 className="w-full h-auto rounded-xl shadow-lg"
               />
             </div>

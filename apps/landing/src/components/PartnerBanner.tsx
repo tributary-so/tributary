@@ -92,6 +92,42 @@ export default function PartnerBanner() {
           </div>
         </div>
       </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="max-w-4xl mx-auto flex flex-wrap justify-center gap-6 pt-8 text-neutral-600"
+      >
+        <motion.div
+          className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <span className="text-xl">📖</span>
+          <span className="text-sm font-semibold">Open Source</span>
+        </motion.div>
+        <motion.div
+          className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <span className="text-xl">🔍</span>
+          <span className="text-sm font-semibold">Audited</span>
+        </motion.div>
+        <motion.div
+          className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <span className="text-xl">◎</span>
+          <span className="text-sm font-semibold">Built on Solana</span>
+        </motion.div>
+        <motion.div
+          className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-md"
+          whileHover={{ scale: 1.05 }}
+        >
+          <span className="text-xl">🔒</span>
+          <span className="text-sm font-semibold">Non-custodial</span>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }
