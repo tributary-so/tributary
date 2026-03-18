@@ -142,7 +142,7 @@ export default function DashboardFeature() {
         //
       </div>
 
-      <div className="rounded-none border border-border bg-muted/20 p-12 text-center">
+      <div className=" border border-border bg-muted/20 p-12 text-center">
         <h2 className="mb-4 text-2xl font-bold">Ready to Accept Recurring Payments?</h2>
         <p className="mb-8 text-muted-foreground">Connect your wallet and create your first payment policy</p>
         <Link

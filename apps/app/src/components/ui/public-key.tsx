@@ -31,8 +31,8 @@ export function PublicKeyComponent({ publicKey, className = '' }: PublicKeyProps
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
       {copying ? (
-        <span className="text-xs sm:text-sm text-green-500 flex items-center gap-1.5">
-          <Check size={16} className="text-green-500" />
+        <span className="text-xs sm:text-sm text-status-active-500 flex items-center gap-1.5">
+          <Check size={16} className="text-status-active-500" />
           Copied!
         </span>
       ) : (
@@ -46,7 +46,7 @@ export function PublicKeyComponent({ publicKey, className = '' }: PublicKeyProps
             className="ml-1 min-w-unit-6 w-unit-6 h-unit-6"
             title="Copy full public key"
           >
-            <Copy size={13} className="text-gray-500 hover:text-gray-700" />
+            <Copy size={13} className="text-muted-foreground hover:text-foreground" />
           </Button>
         </>
       )}

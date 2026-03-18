@@ -33,8 +33,8 @@ export default function ReferralProgramPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <div className="p-6 bg-lando-card rounded-xl border border-lando-border">
-              <div className="w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mb-4">
+            <div className="p-6 bg-lando-card  border border-lando-border">
+              <div className="w-10 h-10 bg-lando-accent/20  flex items-center justify-center mb-4">
                 <span className="text-2xl">🎁</span>
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Create Your Code</h3>
@@ -43,8 +43,8 @@ export default function ReferralProgramPage() {
               </p>
             </div>
 
-            <div className="p-6 bg-lando-card rounded-xl border border-lando-border">
-              <div className="w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mb-4">
+            <div className="p-6 bg-lando-card  border border-lando-border">
+              <div className="w-10 h-10 bg-lando-accent/20  flex items-center justify-center mb-4">
                 <span className="text-2xl">👥</span>
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Share & Invite</h3>
@@ -53,8 +53,8 @@ export default function ReferralProgramPage() {
               </p>
             </div>
 
-            <div className="p-6 bg-lando-card rounded-xl border border-lando-border">
-              <div className="w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center">
+            <div className="p-6 bg-lando-card  border border-lando-border">
+              <div className="w-10 h-10 bg-lando-accent/20  flex items-center justify-center">
                 <span className="text-2xl">📈</span>
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Earn on Payments</h3>

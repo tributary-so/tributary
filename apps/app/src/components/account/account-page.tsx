@@ -49,25 +49,25 @@ const POLICY_TYPE_CONFIG: Record<
   subscription: {
     icon: '🔄',
     label: 'Subscription',
-    color: 'text-indigo-700',
-    bgColor: 'bg-indigo-50',
-    borderColor: 'border-indigo-200',
+    color: 'text-subscription-700',
+    bgColor: 'bg-subscription-50',
+    borderColor: 'border-subscription-200',
     description: 'Recurring payments',
   },
   milestone: {
     icon: '🎯',
     label: 'Milestone',
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
+    color: 'text-milestone-700',
+    bgColor: 'bg-milestone-50',
+    borderColor: 'border-milestone-200',
     description: 'Stage-based payments',
   },
   payAsYouGo: {
     icon: '⚡',
     label: 'Pay-as-you-go',
-    color: 'text-emerald-700',
-    bgColor: 'bg-emerald-50',
-    borderColor: 'border-emerald-200',
+    color: 'text-payasyougo-700',
+    bgColor: 'bg-payasyougo-50',
+    borderColor: 'border-payasyougo-200',
     description: 'Usage-based payments',
   },
 }
@@ -83,33 +83,33 @@ const STATUS_CONFIG: Record<
 > = {
   active: {
     label: 'Active',
-    color: 'text-green-700',
-    bgColor: 'bg-green-50',
-    dotColor: 'bg-green-500',
+    color: 'text-status-active-700',
+    bgColor: 'bg-status-active-50',
+    dotColor: 'bg-status-active-500',
   },
   paused: {
     label: 'Paused',
-    color: 'text-orange-700',
-    bgColor: 'bg-orange-50',
-    dotColor: 'bg-orange-500',
+    color: 'text-status-paused-700',
+    bgColor: 'bg-status-paused-50',
+    dotColor: 'bg-status-paused-500',
   },
   cancelled: {
     label: 'Cancelled',
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
-    dotColor: 'bg-gray-400',
+    color: 'text-muted-foreground',
+    bgColor: 'bg-muted',
+    dotColor: 'bg-muted-foreground',
   },
   completed: {
     label: 'Completed',
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-50',
-    dotColor: 'bg-blue-500',
+    color: 'text-completed-700',
+    bgColor: 'bg-completed-50',
+    dotColor: 'bg-completed-500',
   },
   overdue: {
     label: 'Overdue',
-    color: 'text-red-700',
-    bgColor: 'bg-red-50',
-    dotColor: 'bg-red-500',
+    color: 'text-overdue-700',
+    bgColor: 'bg-overdue-50',
+    dotColor: 'bg-overdue-500',
   },
 }
 
@@ -118,13 +118,9 @@ function StatusBadge({ status, isOverdue }: { status: StatusKey; isOverdue: bool
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium ${config.bgColor} ${config.color}`}
     >
-      <span
-        className={`w-1.5 h-1.5 rounded-full ${config.dotColor} ${
-          status === 'active' && !isOverdue ? 'animate-pulse' : ''
-        }`}
-      />
+      <span className={`w-1.5 h-1.5 ${config.dotColor} ${status === 'active' && !isOverdue ? 'animate-pulse' : ''}`} />
       {config.label}
     </span>
   )
@@ -134,7 +130,7 @@ function PolicyTypeBadge({ type }: { type: PolicyTypeKey }) {
   const config = POLICY_TYPE_CONFIG[type]
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.bgColor} ${config.color} border ${config.borderColor}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${config.bgColor} ${config.color} border ${config.borderColor}`}
     >
       <span>{config.icon}</span>
       {config.label}
@@ -142,7 +138,15 @@ function PolicyTypeBadge({ type }: { type: PolicyTypeKey }) {
   )
 }
 
-function CircularProgress({ progress, size = 48 }: { progress: number; size?: number }) {
+function CircularProgress({
+  progress,
+  size = 48,
+  colorClass = 'text-subscription-600',
+}: {
+  progress: number
+  size?: number
+  colorClass?: string
+}) {
   const strokeWidth = size > 50 ? 4 : 3
   const radius = (size - strokeWidth) / 2
   const circumference = radius * 2 * Math.PI
@@ -152,7 +156,7 @@ function CircularProgress({ progress, size = 48 }: { progress: number; size?: nu
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg className="transform -rotate-90" width={size} height={size}>
         <circle
-          className="text-gray-200"
+          className="text-muted/30"
           strokeWidth={strokeWidth}
           stroke="currentColor"
           fill="transparent"
@@ -161,7 +165,7 @@ function CircularProgress({ progress, size = 48 }: { progress: number; size?: nu
           cy={size / 2}
         />
         <circle
-          className="text-indigo-600 transition-all duration-500 ease-out"
+          className={`${colorClass} transition-all duration-500 ease-out`}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
@@ -174,7 +178,7 @@ function CircularProgress({ progress, size = 48 }: { progress: number; size?: nu
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`font-semibold text-gray-700 ${size > 50 ? 'text-xs' : 'text-[10px]'}`}>
+        <span className={`font-semibold text-foreground ${size > 50 ? 'text-xs' : 'text-[10px]'}`}>
           {Math.round(progress)}%
         </span>
       </div>
@@ -182,11 +186,11 @@ function CircularProgress({ progress, size = 48 }: { progress: number; size?: nu
   )
 }
 
-function ProgressBar({ progress, color = 'bg-indigo-600' }: { progress: number; color?: string }) {
+function ProgressBar({ progress, color = 'bg-subscription-600' }: { progress: number; color?: string }) {
   return (
-    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+    <div className="w-full h-2 bg-muted/30 overflow-hidden">
       <div
-        className={`h-full ${color} rounded-full transition-all duration-500 ease-out`}
+        className={`h-full ${color} transition-all duration-500 ease-out`}
         style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
       />
     </div>
@@ -209,8 +213,8 @@ function MilestoneTracker({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs sm:text-sm">
-        <span className="text-gray-600">Progress</span>
-        <span className="font-semibold text-amber-700">
+        <span className="text-muted-foreground">Progress</span>
+        <span className="font-semibold text-milestone-700">
           {currentMilestone} / {totalMilestones} completed
         </span>
       </div>
@@ -227,33 +231,33 @@ function MilestoneTracker({
           return (
             <div
               key={i}
-              className={`flex items-center gap-3 p-2 rounded-lg ${
-                isCurrent ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
+              className={`flex items-center gap-3 p-2 ${
+                isCurrent ? 'bg-milestone-50 border border-milestone-200' : 'bg-muted/30'
               }`}
             >
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+                className={`w-7 h-7 flex items-center justify-center text-xs font-bold shrink-0
                   ${
                     isCompleted
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-milestone-500 text-white'
                       : isCurrent
-                      ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
-                      : 'bg-gray-100 text-gray-400'
+                      ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
+                      : 'bg-muted text-muted-foreground'
                   }
-                  ${isDue && !isCompleted ? 'ring-2 ring-red-400' : ''}`}
+                  ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
               >
                 {isCompleted ? '✓' : i + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <div
                   className={`text-xs font-medium truncate ${
-                    isCompleted ? 'text-gray-500' : isCurrent ? 'text-amber-700' : 'text-gray-400'
+                    isCompleted ? 'text-muted-foreground' : isCurrent ? 'text-milestone-700' : 'text-muted-foreground'
                   }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : 'No amount'}
                 </div>
                 {timestamp && timestamp.toNumber() > 0 && !isCompleted && (
-                  <div className={`text-[10px] ${isDue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                  <div className={`text-[10px] ${isDue ? 'text-overdue-600 font-medium' : 'text-muted-foreground'}`}>
                     {isDue
                       ? 'Due now'
                       : formatDistanceToNow(new Date(timestamp.toNumber() * 1000), { addSuffix: true })}
@@ -277,34 +281,40 @@ function MilestoneTracker({
           return (
             <div key={i} className="flex-1 group relative">
               {i > 0 && (
-                <div className={`absolute top-3 -left-1 w-2 h-0.5 ${isCompleted ? 'bg-amber-500' : 'bg-gray-200'}`} />
+                <div
+                  className={`absolute top-3 -left-1 w-2 h-0.5 ${isCompleted ? 'bg-milestone-500' : 'bg-muted/30'}`}
+                />
               )}
 
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                  className={`w-6 h-6 flex items-center justify-center text-xs font-bold transition-all
                     ${
                       isCompleted
-                        ? 'bg-amber-500 text-white'
+                        ? 'bg-milestone-500 text-white'
                         : isCurrent
-                        ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
-                        : 'bg-gray-100 text-gray-400'
+                        ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
+                        : 'bg-muted text-muted-foreground'
                     }
-                    ${isDue && !isCompleted ? 'ring-2 ring-red-400' : ''}`}
+                    ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
                 >
                   {isCompleted ? '✓' : i + 1}
                 </div>
 
                 <span
                   className={`mt-1 text-xs ${
-                    isCompleted ? 'text-gray-500' : isCurrent ? 'text-amber-700 font-medium' : 'text-gray-400'
+                    isCompleted
+                      ? 'text-muted-foreground'
+                      : isCurrent
+                      ? 'text-milestone-700 font-medium'
+                      : 'text-muted-foreground'
                   }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : '-'}
                 </span>
 
                 {timestamp && timestamp.toNumber() > 0 && !isCompleted && (
-                  <span className={`text-[10px] ${isDue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                  <span className={`text-[10px] ${isDue ? 'text-overdue-600 font-medium' : 'text-muted-foreground'}`}>
                     {isDue
                       ? 'Due now'
                       : formatDistanceToNow(new Date(timestamp.toNumber() * 1000), { addSuffix: true })}
@@ -333,27 +343,27 @@ function UsageGauge({
   const percentage = limitNum > 0 ? (usedNum / limitNum) * 100 : 0
 
   const getColor = () => {
-    if (percentage >= 90) return 'text-red-600'
-    if (percentage >= 70) return 'text-orange-600'
-    return 'text-emerald-600'
+    if (percentage >= 90) return 'text-overdue-600'
+    if (percentage >= 70) return 'text-status-paused-600'
+    return 'text-payasyougo-600'
   }
 
   const getBarColor = () => {
-    if (percentage >= 90) return 'bg-red-500'
-    if (percentage >= 70) return 'bg-orange-500'
-    return 'bg-emerald-500'
+    if (percentage >= 90) return 'bg-overdue-500'
+    if (percentage >= 70) return 'bg-status-paused-500'
+    return 'bg-payasyougo-500'
   }
 
   return (
     <div className="space-y-2 sm:space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs sm:text-sm text-gray-600">Usage this period</span>
+        <span className="text-xs sm:text-sm text-muted-foreground">Usage this period</span>
         <span className={`text-base sm:text-lg font-bold ${getColor()}`}>{percentage.toFixed(1)}%</span>
       </div>
 
       <ProgressBar progress={percentage} color={getBarColor()} />
 
-      <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-gray-500">
+      <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-muted-foreground">
         <span className="truncate">Used: {formatAmount(used.toString())}</span>
         <span className="truncate">Limit: {formatAmount(limit.toString())}</span>
       </div>
@@ -363,10 +373,10 @@ function UsageGauge({
 
 function StatCard({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-2 sm:p-3 border border-gray-100">
-      <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide mb-0.5 sm:mb-1">{label}</div>
-      <div className="text-sm sm:text-lg font-semibold text-gray-900 truncate">{value}</div>
-      {sublabel && <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{sublabel}</div>}
+    <div className="bg-muted/30 p-2 sm:p-3 border border-border">
+      <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">{label}</div>
+      <div className="text-sm sm:text-lg font-semibold text-foreground truncate">{value}</div>
+      {sublabel && <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">{sublabel}</div>}
     </div>
   )
 }
@@ -387,9 +397,11 @@ function ActionButton({
   title: string
 }) {
   const variants = {
-    primary: 'border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white active:bg-indigo-700',
-    warning: 'border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white active:bg-orange-600',
-    danger: 'border-red-500 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600',
+    primary:
+      'border-subscription-600 text-subscription-600 hover:bg-subscription-600 hover:text-white active:bg-subscription-700',
+    warning:
+      'border-status-paused-500 text-status-paused-500 hover:bg-status-paused-500 hover:text-white active:bg-status-paused-600',
+    danger: 'border-overdue-500 text-overdue-500 hover:bg-overdue-500 hover:text-white active:bg-overdue-600',
   }
 
   return (
@@ -397,13 +409,9 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className={`p-2 sm:p-2.5 border-2 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation ${variants[variant]}`}
+      className={`p-2 sm:p-2.5 border-2 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation ${variants[variant]}`}
     >
-      {loading ? (
-        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-      ) : (
-        children
-      )}
+      {loading ? <div className="w-4 h-4 border-2 border-current border-t-transparent animate-spin" /> : children}
     </button>
   )
 }
@@ -418,18 +426,24 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   }
 
   return (
-    <button onClick={handleCopy} className="p-1.5 hover:bg-gray-100 rounded transition-colors" title={`Copy ${label}`}>
-      {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5 text-gray-400" />}
+    <button onClick={handleCopy} className="p-1.5 hover:bg-muted transition-colors" title={`Copy ${label}`}>
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-status-active-600" />
+      ) : (
+        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+      )}
     </button>
   )
 }
 
 function DetailRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center py-2 border-b border-gray-50 last:border-0 gap-0.5 sm:gap-0">
-      <span className="sm:min-w-[140px] text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center py-2 border-b border-border last:border-0 gap-0.5 sm:gap-0">
+      <span className="sm:min-w-[140px] text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
+        {label}
+      </span>
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className="text-xs sm:text-sm text-gray-800 truncate font-mono">{value}</span>
+        <span className="text-xs sm:text-sm text-foreground truncate font-mono">{value}</span>
         {copyable && <CopyButton value={value} label={label} />}
       </div>
     </div>
@@ -474,11 +488,11 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
     <div
       onClick={onClick}
       className={`
-        relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-gray-500
-        hover:bg-gray-50 group active:bg-gray-100
+        relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
+        hover:bg-muted/30 group active:bg-muted/50
         ${
           isSelected
-            ? 'bg-gradient-to-r from-indigo-50 to-white border-l-4 border-l-indigo-600'
+            ? 'bg-gradient-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
             : 'border-l-4 border-l-transparent'
         }
       `}
@@ -487,7 +501,7 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
         <div className="flex items-center gap-2 min-w-0">
           <div className="min-w-0">
             <PolicyTypeBadge type={policyType} />
-            <div className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+            <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
               ID: {policy.account.policyId}
             </div>
           </div>
@@ -495,9 +509,9 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
         <StatusBadge status={statusKey} isOverdue={isOverdue} />
       </div>
 
-      <div className="text-xs sm:text-sm font-medium text-gray-800 mb-1 truncate">{memo || 'Untitled Policy'}</div>
+      <div className="text-xs sm:text-sm font-medium text-foreground mb-1 truncate">{memo || 'Untitled Policy'}</div>
 
-      <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 mb-2 min-w-0">
+      <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mb-2 min-w-0">
         <span className="shrink-0">To:</span>
         <span className="truncate">
           <PublicKeyComponent publicKey={policy.account.recipient} />
@@ -505,16 +519,16 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
       </div>
 
       <div className="flex items-center justify-between text-[10px] sm:text-xs gap-2">
-        <span className="text-gray-500 shrink-0">
+        <span className="text-muted-foreground shrink-0">
           {policy.account.paymentCount} payment{policy.account.paymentCount !== 1 ? 's' : ''}
         </span>
-        <span className={`font-medium truncate ${isOverdue ? 'text-red-600' : 'text-gray-600'}`}>
+        <span className={`font-medium truncate ${isOverdue ? 'text-overdue-600' : 'text-muted-foreground'}`}>
           {getNextPaymentDue(policy.account)}
         </span>
       </div>
 
       {isSelected && (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-subscription-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
           →
         </div>
       )}
@@ -616,8 +630,8 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
             <span className="text-2xl sm:text-3xl">🔄</span>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subscription</h2>
-              <p className="text-xs sm:text-sm text-gray-500">Recurring payment policy</p>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">Subscription</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Recurring payment policy</p>
             </div>
           </div>
           <StatusBadge status={status} isOverdue={!!isOverdue} />
@@ -654,23 +668,23 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-4 sm:p-5 border border-indigo-100">
-        <div className="text-xs sm:text-sm text-indigo-600 font-medium mb-1">Payment Amount</div>
-        <div className="text-2xl sm:text-3xl font-bold text-indigo-900 mb-1 sm:mb-2 truncate">
+      <div className="bg-gradient-to-br from-subscription-50 to-subscription-100/50 p-4 sm:p-5 border border-subscription-100">
+        <div className="text-xs sm:text-sm text-subscription-600 font-medium mb-1">Payment Amount</div>
+        <div className="text-2xl sm:text-3xl font-bold text-subscription-900 mb-1 sm:mb-2 truncate">
           {formatAmount(sub.amount.toString(), tokenMint)}
         </div>
-        <div className="text-xs sm:text-sm text-indigo-600">every {getInterval(policy.account)}</div>
+        <div className="text-xs sm:text-sm text-subscription-600">every {getInterval(policy.account)}</div>
       </div>
 
       <div className="space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between text-xs sm:text-sm">
-          <span className="text-gray-600">Time to next payment</span>
-          <span className={`font-semibold ${isOverdue ? 'text-red-600' : 'text-indigo-700'}`}>
+          <span className="text-muted-foreground">Time to next payment</span>
+          <span className={`font-semibold ${isOverdue ? 'text-overdue-600' : 'text-subscription-700'}`}>
             {getNextPaymentDue(policy.account)}
           </span>
         </div>
-        <ProgressBar progress={progressToNextPayment} color={isOverdue ? 'bg-red-500' : 'bg-indigo-600'} />
-        <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-gray-400">
+        <ProgressBar progress={progressToNextPayment} color={isOverdue ? 'bg-overdue-500' : 'bg-subscription-600'} />
+        <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-muted-foreground">
           <span>Last: {lastPaymentDate ? formatDistanceToNow(lastPaymentDate, { addSuffix: true }) : 'Never'}</span>
           <span>Next: {nextPaymentDate ? nextPaymentDate.toLocaleDateString() : 'N/A'}</span>
         </div>
@@ -682,9 +696,11 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
         <StatCard label="Auto-Renew" value={sub.autoRenew ? 'Yes' : 'No'} />
       </div>
 
-      <div className="border-t border-gray-100 pt-3 sm:pt-4">
-        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 mb-2 sm:mb-3">Policy Details</h3>
-        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 space-y-1">
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
           <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
@@ -744,8 +760,8 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
             <span className="text-2xl sm:text-3xl">🎯</span>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Milestone Payment</h2>
-              <p className="text-xs sm:text-sm text-gray-500">Stage-based payment policy</p>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">Milestone Payment</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Stage-based payment policy</p>
             </div>
           </div>
           <StatusBadge status={status} isOverdue={false} />
@@ -782,19 +798,19 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-4 sm:p-5 border border-amber-100">
+      <div className="bg-gradient-to-br from-milestone-50 to-milestone-100/50 p-4 sm:p-5 border border-milestone-100">
         <div className="flex items-center justify-between mb-2 sm:mb-3 gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-xs sm:text-sm text-amber-600 font-medium mb-1">Total Value</div>
-            <div className="text-xl sm:text-3xl font-bold text-amber-900 truncate">
+            <div className="text-xs sm:text-sm text-milestone-600 font-medium mb-1">Total Value</div>
+            <div className="text-xl sm:text-3xl font-bold text-milestone-900 truncate">
               {formatAmount(totalAmount.toString(), tokenMint)}
             </div>
           </div>
           <div className="shrink-0">
-            <CircularProgress progress={progressPercent} size={56} />
+            <CircularProgress progress={progressPercent} size={56} colorClass="text-milestone-600" />
           </div>
         </div>
-        <div className="text-xs sm:text-sm text-amber-600 truncate">
+        <div className="text-xs sm:text-sm text-milestone-600 truncate">
           {formatAmount(completedAmount.toString(), tokenMint)} released so far
         </div>
       </div>
@@ -813,9 +829,11 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
         <StatCard label="Payments Made" value={policy.account.paymentCount.toString()} />
       </div>
 
-      <div className="border-t border-gray-100 pt-3 sm:pt-4">
-        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 mb-2 sm:mb-3">Policy Details</h3>
-        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 space-y-1">
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
           <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
@@ -863,8 +881,8 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
             <span className="text-2xl sm:text-3xl">⚡</span>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Pay-as-you-go</h2>
-              <p className="text-xs sm:text-sm text-gray-500">Usage-based payment policy</p>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">Pay-as-you-go</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Usage-based payment policy</p>
             </div>
           </div>
           <StatusBadge status={status} isOverdue={false} />
@@ -901,7 +919,7 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 sm:p-5 border border-emerald-100">
+      <div className="bg-gradient-to-br from-payasyougo-50 to-payasyougo-100/50 p-4 sm:p-5 border border-payasyougo-100">
         <UsageGauge
           used={payg.currentPeriodTotal}
           limit={payg.maxAmountPerPeriod}
@@ -910,17 +928,19 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
       </div>
 
       <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
-        <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-100">
-          <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide mb-0.5 sm:mb-1">
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
             Period Started
           </div>
-          <div className="text-xs sm:text-sm font-medium text-gray-900">
+          <div className="text-xs sm:text-sm font-medium text-foreground">
             {periodStartDate ? periodStartDate.toLocaleDateString() : 'N/A'}
           </div>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-100">
-          <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide mb-0.5 sm:mb-1">Resets</div>
-          <div className="text-xs sm:text-sm font-medium text-gray-900">
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Resets
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
             {periodEndDate ? formatDistanceToNow(periodEndDate, { addSuffix: true }) : 'N/A'}
           </div>
         </div>
@@ -932,9 +952,11 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
         <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
       </div>
 
-      <div className="border-t border-gray-100 pt-3 sm:pt-4">
-        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 mb-2 sm:mb-3">Policy Details</h3>
-        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 space-y-1">
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
           <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
           <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
           <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
@@ -955,12 +977,12 @@ function LoadingState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
       <div className="relative">
-        <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-indigo-100 rounded-full" />
-        <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-muted" />
+        <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 border-4 border-subscription-600 border-t-transparent animate-spin" />
       </div>
       <div className="text-center">
-        <p className="text-base sm:text-lg font-semibold text-gray-800 mb-1">Loading your policies</p>
-        <p className="text-xs sm:text-sm text-gray-500">Fetching payment data from Solana...</p>
+        <p className="text-base sm:text-lg font-semibold text-foreground mb-1">Loading your policies</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">Fetching payment data from Solana...</p>
       </div>
     </div>
   )
@@ -969,23 +991,23 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
-      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center">
+      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-muted flex items-center justify-center">
         <span className="text-3xl sm:text-4xl">📭</span>
       </div>
       <div className="text-center max-w-md">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No Payment Policies Yet</h2>
-        <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2">No Payment Policies Yet</h2>
+        <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
           You haven't set up any recurring payments. Create a subscription, milestone, or pay-as-you-go policy to get
           started.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
-          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-600">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <span>🔄</span> Subscriptions
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-600">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <span>🎯</span> Milestones
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-600">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <span>⚡</span> Pay-as-you-go
           </div>
         </div>
@@ -997,12 +1019,12 @@ function EmptyState() {
 function WalletNotConnected() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
-      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-indigo-50 rounded-full flex items-center justify-center">
-        <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-indigo-600" />
+      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-subscription-50 flex items-center justify-center">
+        <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-subscription-600" />
       </div>
       <div className="text-center max-w-md">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Connect Your Wallet</h2>
-        <p className="text-sm sm:text-base text-gray-500">
+        <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2">Connect Your Wallet</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Please connect your Solana wallet to view and manage your payment policies.
         </p>
       </div>
@@ -1304,39 +1326,39 @@ export default function AccountPage() {
   const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length, 0)
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-[500px] w-full lg:min-w-[600px] lg:max-w-[1100px] bg-white">
+    <div className="flex flex-col lg:flex-row min-h-[500px] w-full lg:min-w-[600px] lg:max-w-[1100px] bg-background">
       <div
         className={`
           w-full lg:w-[320px] xl:w-[380px] lg:min-w-[320px] xl:min-w-[380px]
-          border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50/50
+          border-b lg:border-b-0 lg:border-r border-border bg-muted/20
           flex flex-col
           ${selectedPolicy ? 'hidden lg:flex' : 'flex'}
         `}
       >
-        <div className="h-12 sm:h-14 flex items-center justify-between px-3 sm:px-4 border-b border-gray-200 bg-white">
+        <div className="h-12 sm:h-14 flex items-center justify-between px-3 sm:px-4 border-b border-border bg-background">
           <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg font-bold text-gray-900">My Policies</span>
-            <span className="px-1.5 sm:px-2 py-0.5 bg-gray-100 rounded-full text-[10px] sm:text-xs font-medium text-gray-600">
+            <span className="text-base sm:text-lg font-bold text-foreground">My Policies</span>
+            <span className="px-1.5 sm:px-2 py-0.5 bg-muted text-[10px] sm:text-xs font-medium text-muted-foreground">
               {totalPolicies}
             </span>
           </div>
           <button
             onClick={() => setLoaded(false)}
-            className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation"
+            className="p-2 hover:bg-muted active:bg-muted/50 transition-colors touch-manipulation"
             title="Refresh policies"
           >
-            <RefreshCw className="h-4 w-4 text-gray-500" />
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
 
         <div className="flex-1 max-h-full lg:max-h-none">
           {userPayments.map(({ policies, userPayment, userPaymentAddress }) => (
             <div key={userPaymentAddress.toString()}>
-              <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-gray-100/90 backdrop-blur-sm border-b border-gray-600">
-                <span className="text-[10px] sm:text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-muted/80 backdrop-blur-sm border-b border-border">
+                <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {getTokenSymbol(userPayment.tokenMint.toString())}
                 </span>
-                <span className="ml-2 text-[10px] sm:text-xs text-gray-400">
+                <span className="ml-2 text-[10px] sm:text-xs text-muted-foreground">
                   ({policies.length} {policies.length === 1 ? 'policy' : 'policies'})
                 </span>
               </div>
@@ -1357,12 +1379,12 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto bg-white ${!selectedPolicy ? 'hidden lg:flex' : 'flex flex-col'}`}>
+      <div className={`flex-1 overflow-y-auto bg-background ${!selectedPolicy ? 'hidden lg:flex' : 'flex flex-col'}`}>
         {selectedPolicy && currentUserPayment ? (
           <>
             <button
               onClick={() => setSelectedPolicy(null)}
-              className="lg:hidden flex items-center gap-2 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 border-b border-gray-600 touch-manipulation"
+              className="lg:hidden flex items-center gap-2 px-4 py-3 text-sm font-medium text-subscription-600 hover:bg-subscription-50 border-b border-border touch-manipulation"
             >
               <span>←</span>
               <span>Back to policies</span>
@@ -1438,7 +1460,7 @@ export default function AccountPage() {
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 p-8">
+          <div className="flex items-center justify-center h-full text-muted-foreground p-8">
             <div className="text-center">
               <p className="text-sm sm:text-base">Select a policy to view details</p>
             </div>

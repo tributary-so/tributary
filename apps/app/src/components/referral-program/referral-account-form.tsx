@@ -222,9 +222,9 @@ export default function ReferralAccountForm({
   const status = getReferralCodeStatus()
 
   return (
-    <div className="max-w-[700px] space-y-4 p-6 border border-gray-200 rounded-lg bg-gray-50">
-      <h3 className="text-xl font-semibold text-gray-900 mb-4">Create Referral Account</h3>
-      <p className="text-sm text-gray-600 mb-4">
+    <div className="max-w-[700px] space-y-4 p-6 border border-border  bg-muted/30">
+      <h3 className="text-xl font-semibold text-foreground mb-4">Create Referral Account</h3>
+      <p className="text-sm text-muted-foreground mb-4">
         Create a referral account to earn rewards when others use your referral code for payments.
       </p>
 
@@ -234,8 +234,8 @@ export default function ReferralAccountForm({
             Gateway
           </label>
           {gatewaysLoading ? (
-            <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] rounded">
-              <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] ">
+              <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent  animate-spin" />
             </div>
           ) : (
             <Select
@@ -276,13 +276,13 @@ export default function ReferralAccountForm({
             maxLength={6}
             className={`w-full ${
               status?.color === 'error'
-                ? 'border-red-500'
+                ? 'border-overdue-500'
                 : status?.color === 'warning'
-                ? 'border-yellow-500'
+                ? 'border-milestone-500'
                 : status?.color === 'success'
-                ? 'border-green-500'
+                ? 'border-status-active-500'
                 : status?.color === 'validating'
-                ? 'border-blue-400'
+                ? 'border-subscription-400'
                 : ''
             }`}
             isInvalid={status?.color === 'error' || status?.color === 'warning'}
@@ -291,17 +291,17 @@ export default function ReferralAccountForm({
               status ? (
                 <div className="pointer-events-none flex items-center">
                   {status.color === 'validating' ? (
-                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-subscription-400 border-t-transparent  animate-spin" />
                   ) : (
                     <span
                       className={`text-small ${
                         status.color === 'error'
-                          ? 'text-red-500'
+                          ? 'text-overdue-500'
                           : status.color === 'warning'
-                          ? 'text-yellow-500'
+                          ? 'text-milestone-500'
                           : status.color === 'success'
-                          ? 'text-green-500'
-                          : 'text-gray-500'
+                          ? 'text-status-active-500'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {status.color === 'error'
@@ -318,9 +318,9 @@ export default function ReferralAccountForm({
             }
           />
           {status?.color === 'validating' ? (
-            <p className="text-xs text-blue-500 mt-1">Validating...</p>
+            <p className="text-xs text-subscription-500 mt-1">Validating...</p>
           ) : (
-            <p className="text-xs text-gray-500 mt-1">Must be exactly 6 alphanumeric characters (A-Z, 0-9)</p>
+            <p className="text-xs text-muted-foreground mt-1">Must be exactly 6 alphanumeric characters (A-Z, 0-9)</p>
           )}
         </div>
 
@@ -340,11 +340,11 @@ export default function ReferralAccountForm({
             maxLength={6}
             className={`w-full ${
               referrerValid === false
-                ? 'border-red-500'
+                ? 'border-overdue-500'
                 : referrerValid === true
-                ? 'border-green-500'
+                ? 'border-status-active-500'
                 : validatingReferrer
-                ? 'border-blue-400'
+                ? 'border-subscription-400'
                 : ''
             }`}
             isInvalid={referrerValid === false}
@@ -353,15 +353,15 @@ export default function ReferralAccountForm({
               validatingReferrer || referrerValid !== null ? (
                 <div className="pointer-events-none flex items-center">
                   {validatingReferrer ? (
-                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-subscription-400 border-t-transparent  animate-spin" />
                   ) : (
                     <span
                       className={`text-small ${
                         referrerValid === false
-                          ? 'text-red-500'
+                          ? 'text-overdue-500'
                           : referrerValid === true
-                          ? 'text-green-500'
-                          : 'text-gray-500'
+                          ? 'text-status-active-500'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {referrerValid === false ? '✗' : referrerValid === true ? '✓' : ''}
@@ -371,7 +371,9 @@ export default function ReferralAccountForm({
               ) : null
             }
           />
-          <p className="text-xs text-gray-500 mt-1">Optional: Enter the referral code of the person who referred you</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Optional: Enter the referral code of the person who referred you
+          </p>
         </div>
       </div>
 

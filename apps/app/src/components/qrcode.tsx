@@ -30,8 +30,8 @@ export default function QRCodeGenerator({ text, url, size = '128px' }: QRCodePro
 
   return (
     <div>
-      <div ref={qrRef} className="bg-white p-4 rounded-lg -m-5" />
-      <a href={url} className="text-xl italic text-gray-400 ml-5 underline underline-offset-4">
+      <div ref={qrRef} className="bg-white p-4  -m-5" />
+      <a href={url} className="text-xl italic text-muted-foreground ml-5 underline underline-offset-4">
         {text}
       </a>
     </div>

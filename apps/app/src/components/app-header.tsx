@@ -4,6 +4,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { ChevronDown, Moon, Sun } from 'lucide-react'
 import { WalletButton } from '@/components/solana/solana-provider'
 import { ClusterUiSelect } from './cluster/cluster-ui'
+import logo from '../../public/logo.png'
 
 const navItems = [{ label: 'Docs', href: 'https://docs.tributary.so' }]
 
@@ -78,10 +79,10 @@ export function AppHeader() {
   return (
     <header className="py-6">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
-        <Link className="inline-flex text-primary" to="/">
+        <Link className="inline-flex text-primary items-center gap-3" to="/">
+          <img src={logo} alt="Tributary Logo" className="h-4 w-4" />
           <span className="font-semibold text-xs uppercase tracking-[0.3em]">TRIBUTARY</span>
         </Link>
-
         <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row md:items-center md:justify-end md:gap-6">
           <nav className="hidden md:flex flex-wrap items-center gap-4 text-muted-foreground text-xs uppercase tracking-[0.12em]">
             {navItems.map((item) => (
@@ -127,9 +128,6 @@ export function AppHeader() {
             >
               QUICK START
             </Link>
-          </nav>
-
-          <div className="hidden md:flex items-center gap-2">
             {connected && (
               <button
                 onClick={() => navigate('/account')}
@@ -141,30 +139,30 @@ export function AppHeader() {
             <WalletButton />
             <ClusterUiSelect />
             <ThemeToggle />
-          </div>
-
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden flex flex-col justify-center items-center w-8 h-8"
-            aria-label="Toggle menu"
-          >
-            <span
-              className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${
-                isMenuOpen ? 'rotate-45 translate-y-1' : '-translate-y-0.5'
-              }`}
-            ></span>
-            <span
-              className={`block w-5 h-0.5 bg-current transition-opacity duration-200 ${
-                isMenuOpen ? 'opacity-0' : 'opacity-100'
-              }`}
-            ></span>
-            <span
-              className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${
-                isMenuOpen ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'
-              }`}
-            ></span>
-          </button>
+          </nav>
         </div>
+
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="md:hidden flex flex-col justify-center items-center w-8 h-8"
+          aria-label="Toggle menu"
+        >
+          <span
+            className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${
+              isMenuOpen ? 'rotate-45 translate-y-1' : '-translate-y-0.5'
+            }`}
+          ></span>
+          <span
+            className={`block w-5 h-0.5 bg-current transition-opacity duration-200 ${
+              isMenuOpen ? 'opacity-0' : 'opacity-100'
+            }`}
+          ></span>
+          <span
+            className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${
+              isMenuOpen ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'
+            }`}
+          ></span>
+        </button>
       </div>
 
       {isMenuOpen && (

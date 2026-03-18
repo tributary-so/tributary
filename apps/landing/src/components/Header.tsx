@@ -117,8 +117,11 @@ export function Header() {
             </div>
             <ThemeToggle />
           </nav>
-          <a href="https://app.tributary.so" className="btn-primary text-sm">
-            Open App
+          <a
+            href="https://app.tributary.so"
+            className="text-sm border border-primary border-1 p-2 rounded-lg"
+          >
+            OPEN APP
           </a>
         </div>
       </div>
