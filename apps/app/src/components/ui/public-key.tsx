@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { PublicKey } from '@solana/web3.js'
-import { Button } from '@heroui/react'
+import { Button, addToast } from '@heroui/react'
 import { Copy, Check } from '../../icons'
-import { toast } from 'sonner'
 
 interface PublicKeyProps {
   publicKey: PublicKey
@@ -25,7 +24,7 @@ export function PublicKeyComponent({ publicKey, className = '' }: PublicKeyProps
         setCopying(false)
       }, 2000)
     } catch (_err) {
-      toast.error('Copying to clipboard failed!')
+      addToast({ title: 'Copying to clipboard failed!', description: '', color: 'danger' })
     }
   }
 

@@ -5,7 +5,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { useSDK, createAndSendTransaction } from '@/lib/client'
 import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
 import { Play, Pause, Trash2, RotateCcw, Copy, Check, RefreshCw, AlertCircle } from '../../icons'
-import { toast } from 'sonner'
+import { addToast } from '@heroui/react'
 import { formatDistanceToNow, formatDuration, intervalToDuration, differenceInSeconds, addSeconds } from 'date-fns'
 import { PublicKeyComponent } from '../ui/public-key'
 import { getTokenPrecisionAtom, getTokenSymbolAtom } from '@/lib/token-store'
@@ -1095,7 +1095,8 @@ export default function AccountPage() {
         setLoaded(true)
       } catch (err) {
         console.error('Error fetching payment policies:', err)
-        toast.error('Failed to load payment policies')
+        addToast({ title: 'Failed to load payment policies', color: 'danger' })
+        setLoaded(true)
       } finally {
         setLoading(false)
       }
@@ -1191,24 +1192,29 @@ export default function AccountPage() {
   }
 
   const handleExecutePayment = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
-    if (!sdk || !wallet.publicKey || !wallet.connected) return toast.error('Wallet not connected')
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ title: 'Wallet not connected', color: 'danger' })
     try {
       const gateway: PaymentGateway | null = await sdk.getPaymentGateway(policy.gateway)
-      if (!gateway) return toast.error('Gateway not found')
+      if (!gateway) return addToast({ title: 'Gateway not found', color: 'danger' })
       if (
         gateway.authority.toString() !== wallet.publicKey.toString() &&
         userPayment.owner.toString() !== wallet.publicKey.toString()
       ) {
-        return toast.error('Only the gateway authority can execute payments')
+        return addToast({ title: 'Only the gateway authority can execute payments', color: 'danger' })
       }
       setExecutingPayments((prev) => new Set(prev).add(policyPublicKey.toString()))
       const executeIxs = await sdk.executePayment(policyPublicKey)
       const txid = await createAndSendTransaction(executeIxs, wallet, connection)
-      toast.success(`Payment executed! TX: ${txid}`)
+      addToast({ title: `Payment executed!", description: "TX: ${txid}`, color: 'success' })
       setLoaded(false)
     } catch (err) {
       console.error('Error:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to execute payment')
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to execute payment',
+        color: 'danger',
+      })
     } finally {
       setExecutingPayments((prev) => {
         const newSet = new Set(prev)
@@ -1219,9 +1225,10 @@ export default function AccountPage() {
   }
 
   const handleToggleStatus = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
-    if (!sdk || !wallet.publicKey || !wallet.connected) return toast.error('Wallet not connected')
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ description: 'Wallet not connected', color: 'danger' })
     if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
-      return toast.error('Only the policy owner can change status')
+      return addToast({ title: 'Only the policy owner can change status', color: 'danger' })
     }
     try {
       setTogglingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
@@ -1230,11 +1237,15 @@ export default function AccountPage() {
       const newStatus = isCurrentlyActive ? { paused: {} } : { active: {} }
       const toggleIx = await sdk.changePaymentPolicyStatus(userPayment.tokenMint, policy.policyId, newStatus)
       await createAndSendTransaction([toggleIx], wallet, connection)
-      toast.success(`Payment policy ${isCurrentlyActive ? 'paused' : 'resumed'}!`)
+      addToast({ title: `Payment policy ${isCurrentlyActive ? 'paused' : 'resumed'}!`, color: 'success' })
       setLoaded(false)
     } catch (err) {
       console.error('Error:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to toggle status')
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to toggle status',
+        color: 'danger',
+      })
     } finally {
       setTogglingPolicies((prev) => {
         const newSet = new Set(prev)
@@ -1245,21 +1256,26 @@ export default function AccountPage() {
   }
 
   const handleDeletePolicy = async (policyPublicKey: PublicKey, policy: PaymentPolicy, userPayment: UserPayment) => {
-    if (!sdk || !wallet.publicKey || !wallet.connected) return toast.error('Wallet not connected')
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ description: 'Wallet not connected', color: 'danger' })
     if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
-      return toast.error('Only the policy owner can delete')
+      return addToast({ title: 'Only the policy owner can delete', color: 'danger' })
     }
     if (!confirm('Delete this payment policy? This cannot be undone.')) return
     try {
       setDeletingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
       const deleteIx = await sdk.deletePaymentPolicy(userPayment.tokenMint, policy.policyId)
       await createAndSendTransaction([deleteIx], wallet, connection)
-      toast.success('Payment policy deleted!')
+      addToast({ title: 'Payment policy deleted!', color: 'success' })
       setSelectedPolicy(null)
       setLoaded(false)
     } catch (err) {
       console.error('Error:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to delete')
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete',
+        color: 'danger',
+      })
     } finally {
       setDeletingPolicies((prev) => {
         const newSet = new Set(prev)
