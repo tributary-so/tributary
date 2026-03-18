@@ -15,6 +15,7 @@
     "aos": "3.0.0-beta.6",
     "feather-icons": "^4.29.2",
     "framer-motion": "^12.23.22",
+    "lucide-react": "^0.577.0",
     "react": "^19.2.3",
     "react-dom": "^19.1.1"
   },
