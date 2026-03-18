@@ -14,6 +14,12 @@
     background-color: #fafafa;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  body.dark {
+    color: #fafafa;
+    background-color: #0a0a0a;
   }
 
   h1,
@@ -23,7 +29,7 @@
   h5,
   h6 {
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.1;
   }
 
   a {
@@ -38,28 +44,41 @@
 
 @layer components {
   .glass {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .glass {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .gradient-text {
-    background: linear-gradient(45deg, #9945ff 0%, #14f195 100%);
+    background: linear-gradient(
+      135deg,
+      oklch(65% 0.2 300) 0%,
+      oklch(60% 0.18 140) 100%
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
 
   .btn-primary {
-    @apply bg-primary hover:bg-secondary text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1;
+    @apply bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-700 hover:to-emerald-700 text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-0.5;
   }
 
   .btn-secondary {
-    @apply border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg;
+    @apply border-2 border-purple-500/50 text-purple-500 hover:bg-purple-500 hover:text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-purple-500/10;
   }
 
   .card {
-    @apply bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 transition-all duration-300 hover:shadow-xl hover:-translate-y-2;
+    @apply bg-white/50 dark:bg-white/5 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 p-8 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/5 hover:-translate-y-1 hover:border-purple-500/20 dark:hover:border-purple-500/20;
+  }
+
+  .dark .card {
+    @apply bg-neutral-900/50;
   }
 
   /* Code block line numbers */
@@ -89,6 +108,72 @@
     display: inline-block;
     text-align: right;
     color: rgba(115, 138, 148, 0.4);
+  }
+
+  /* Bento grid utilities */
+  .bento-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .bento-span-2 {
+    @apply md:col-span-2;
+  }
+
+  /* Dot pattern background */
+  .dot-pattern {
+    background-image: radial-gradient(
+      circle,
+      oklch(0.5 0 0) 1px,
+      transparent 1px
+    );
+    background-size: 32px 32px;
+  }
+
+  .dark .dot-pattern {
+    background-image: radial-gradient(
+      circle,
+      oklch(0.3 0 0) 1px,
+      transparent 1px
+    );
+  }
+
+  /* Gradient orbs animation */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(30px, -30px) scale(1.1);
+    }
+    50% {
+      transform: translate(-20px, 20px) scale(0.95);
+    }
+    75% {
+      transform: translate(20px, 10px) scale(1.05);
+    }
+  }
+
+  .gradient-orb {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .gradient-orb-2 {
+    animation: float 10s ease-in-out infinite reverse;
+  }
+
+  /* Slide left animation for partner banner */
+  @keyframes slide-left {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-slide-left {
+    animation: slide-left 30s linear infinite;
   }
 }
 

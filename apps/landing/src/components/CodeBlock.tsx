@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { codeToHtml } from "shiki";
+import { Copy, Check, Terminal } from "lucide-react";
 
 interface CodeExample {
   language: string;
@@ -15,18 +16,13 @@ interface CodeBlockProps {
   showLineNumbers?: boolean;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({
-  examples,
-  title,
-  showLineNumbers = true,
-}) => {
-  // Find the first non-disabled tab as default
+const CodeBlock: React.FC<CodeBlockProps> = ({ examples, title }) => {
   const defaultActiveTab = examples.findIndex((example) => !example.disabled);
   const [activeTab, setActiveTab] = useState(
     defaultActiveTab >= 0 ? defaultActiveTab : 0
   );
   const [highlightedCodes, setHighlightedCodes] = useState<string[]>([]);
-  const [copyButtonText, setCopyButtonText] = useState("Copy");
+  const [copied, setCopied] = useState(false);
   const [hoveredTab, setHoveredTab] = useState<number | null>(null);
 
   useEffect(() => {
@@ -43,27 +39,34 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     };
 
     highlightAll();
-  }, [examples, showLineNumbers]);
+  }, [examples]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(examples[activeTab].code);
-    setCopyButtonText("Copied!");
+    setCopied(true);
     setTimeout(() => {
-      setCopyButtonText("Copy");
+      setCopied(false);
     }, 2000);
   };
 
   return (
-    <div className="relative overflow-hidden shadow-2xl rounded-2xl border-2 border-neutral-200 bg-white w-full max-w-full">
-      {title && (
-        <div className="bg-gradient-to-r from-primary to-secondary px-6 py-4 text-white text-lg font-bold rounded-t-2xl">
-          {title}
+    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-900 dark:bg-neutral-950 w-full max-w-full">
+      {/* Terminal Header */}
+      <div className="bg-neutral-800 px-4 py-3 flex items-center gap-2">
+        <Terminal className="w-4 h-4 text-neutral-400" />
+        {title && (
+          <span className="text-neutral-300 text-sm font-medium">{title}</span>
+        )}
+        <div className="ml-auto flex gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-neutral-600" />
+          <div className="w-3 h-3 rounded-full bg-neutral-600" />
+          <div className="w-3 h-3 rounded-full bg-neutral-600" />
         </div>
-      )}
+      </div>
 
       {/* Framework Tabs */}
       {examples.length > 1 && (
-        <div className="flex border-b border-neutral-200 bg-neutral-50 relative">
+        <div className="flex border-b border-neutral-700 bg-neutral-800/50 relative">
           {examples.map((example, index) => (
             <div key={index} className="relative">
               <button
@@ -71,22 +74,21 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
                 onMouseEnter={() => setHoveredTab(index)}
                 onMouseLeave={() => setHoveredTab(null)}
                 disabled={example.disabled}
-                className={`px-6 py-3 text-sm font-medium transition-colors relative ${
+                className={`px-5 py-3 text-sm font-medium transition-colors relative ${
                   example.disabled
-                    ? "text-neutral-400 cursor-not-allowed opacity-60"
+                    ? "text-neutral-500 cursor-not-allowed opacity-60"
                     : activeTab === index
-                    ? "text-primary border-b-2 border-primary bg-white"
-                    : "text-neutral-600 hover:text-primary hover:bg-neutral-100"
+                    ? "text-purple-400 border-b-2 border-purple-400 bg-neutral-700/50"
+                    : "text-neutral-400 hover:text-purple-300 hover:bg-neutral-700/30"
                 }`}
               >
                 {example.title}
               </button>
 
-              {/* Tooltip for disabled tabs */}
               {example.disabled && hoveredTab === index && example.tooltip && (
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-neutral-800 text-white text-xs rounded-md shadow-lg z-10 whitespace-nowrap">
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-neutral-900 text-neutral-200 text-xs rounded-md shadow-lg z-10 whitespace-nowrap border border-neutral-700">
                   {example.tooltip}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full border-4 border-transparent border-b-neutral-800"></div>
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full border-4 border-transparent border-b-neutral-700"></div>
                 </div>
               )}
             </div>
@@ -98,29 +100,17 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
         {highlightedCodes[activeTab] && (
           <div
             dangerouslySetInnerHTML={{ __html: highlightedCodes[activeTab] }}
-            className="max-w-full break-words font-mono code-with-line-numbers"
+            className="max-w-full break-words font-mono code-with-line-numbers text-neutral-100"
           />
         )}
       </div>
 
       <button
         onClick={handleCopy}
-        className="absolute bottom-4 right-4 bg-electric hover:bg-primary text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+        className="absolute top-14 right-4 bg-purple-600 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/20 hover:scale-105 flex items-center gap-2"
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-          />
-        </svg>
-        {copyButtonText}
+        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+        {copied ? "Copied!" : "Copy"}
       </button>
     </div>
   );

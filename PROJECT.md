@@ -29,7 +29,7 @@ Tributary is a comprehensive payment protocol on Solana that enables automated r
 - **Live Networks**: Devnet and Mainnet deployment
 - **SDK Packages**: TypeScript SDK, React components, CLI manager
 - **Demo Flows**: Create, pause, resume, delete subscriptions
-- **Security**: Audit completed (Ottersec/Neodyme)
+- **Security**: Audit pending
 - **CI/CD**: Full test coverage with GitHub Actions pipelines
 - **Payment Types**: Three payment models fully implemented and tested
 
@@ -58,7 +58,7 @@ Tributary maintains comprehensive test coverage across all components:
 
 - **Code Coverage**: >95% across all critical paths
 - **Test Automation**: 100% automated testing pipeline
-- **Security Audits**: Regular third-party security assessments
+- **Security Audits**: Regular third-party security assessments (TBD)
 - **Performance**: Sub-second transaction processing guaranteed
 
 ## Smart Contracts
@@ -360,7 +360,7 @@ PayAsYouGo {
 
 ## Payment Type Selection Guide
 
-### Choose Subscriptions when:
+### Choose Subscriptions when
 
 - Service usage is consistent and predictable
 - Customers prefer fixed monthly costs
@@ -369,7 +369,7 @@ PayAsYouGo {
 
 **Examples:** Netflix-style content, SaaS software, gym memberships, software maintenance
 
-### Choose Milestone Payments when:
+### Choose Milestone Payments when
 
 - Work is delivered in discrete phases
 - Payment should follow completion, not time
@@ -378,7 +378,7 @@ PayAsYouGo {
 
 **Examples:** Construction projects, software development, consulting engagements, content series
 
-### Choose Pay-as-you-go when:
+### Choose Pay-as-you-go when
 
 - Usage patterns are variable and unpredictable
 - Customers prefer paying only for what they use
@@ -389,7 +389,7 @@ PayAsYouGo {
 
 ## Action Codes Integration
 
-🛳️ **Shipped! Tributary now supports Action Codes!** Trigger secure Solana payments without requiring a wallet. Generate a one-time code on http://actioncode.app, review & approve in wallet elsewhere - always in control. Docs: http://docs.actioncodes.org @actioncodesorg
+🛳️ **Shipped! Tributary now supports Action Codes!** Trigger secure Solana payments without requiring a wallet. Generate a one-time code on <http://actioncode.app>, review & approve in wallet elsewhere - always in control. Docs: <http://docs.actioncodes.org> @actioncodesorg
 
 **Key Benefits:**
 
@@ -661,7 +661,7 @@ app.post("/api/chat", (req, res) => {
 3. **Non-custodial Security**: Funds remain in user wallets with delegation-based automation
 4. **Developer-first**: Complete SDK, React components, comprehensive documentation
 5. **Protocol Approach**: Network effects via provider ecosystem and extensible design
-6. **Production Ready**: Full CI/CD pipeline, comprehensive testing, audit completed
+6. **Production Ready**: Full CI/CD pipeline, comprehensive testing, audit pending
 7. **Speed + Cost**: Solana's 400ms finality, <$0.01 transactions
 8. **Team Velocity**: Built in 3 weeks; proven execution and rapid iteration
 
