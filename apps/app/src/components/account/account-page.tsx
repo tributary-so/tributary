@@ -4,7 +4,7 @@ import { PublicKey } from '@solana/web3.js'
 import * as anchor from '@coral-xyz/anchor'
 import { useSDK, createAndSendTransaction } from '@/lib/client'
 import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
-import { Play, Pause, Trash2, RotateCcw, Copy, Check, RefreshCw, AlertCircle } from '../../icons'
+import { Play, Pause, Trash2, RotateCcw, Copy, Check, RefreshCw, AlertCircle, Target, Zap, Inbox } from '../../icons'
 import { addToast } from '@heroui/react'
 import { formatDistanceToNow, formatDuration, intervalToDuration, differenceInSeconds, addSeconds } from 'date-fns'
 import { PublicKeyComponent } from '../ui/public-key'
@@ -38,7 +38,7 @@ function getStatusKey(policy: PaymentPolicy): StatusKey {
 const POLICY_TYPE_CONFIG: Record<
   PolicyTypeKey,
   {
-    icon: string
+    Icon: React.ComponentType<{ className?: string }>
     label: string
     color: string
     bgColor: string
@@ -47,7 +47,7 @@ const POLICY_TYPE_CONFIG: Record<
   }
 > = {
   subscription: {
-    icon: '🔄',
+    Icon: RefreshCw,
     label: 'Subscription',
     color: 'text-subscription-700',
     bgColor: 'bg-subscription-50',
@@ -55,7 +55,7 @@ const POLICY_TYPE_CONFIG: Record<
     description: 'Recurring payments',
   },
   milestone: {
-    icon: '🎯',
+    Icon: Target,
     label: 'Milestone',
     color: 'text-milestone-700',
     bgColor: 'bg-milestone-50',
@@ -63,7 +63,7 @@ const POLICY_TYPE_CONFIG: Record<
     description: 'Stage-based payments',
   },
   payAsYouGo: {
-    icon: '⚡',
+    Icon: Zap,
     label: 'Pay-as-you-go',
     color: 'text-payasyougo-700',
     bgColor: 'bg-payasyougo-50',
@@ -132,7 +132,7 @@ function PolicyTypeBadge({ type }: { type: PolicyTypeKey }) {
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${config.bgColor} ${config.color} border ${config.borderColor}`}
     >
-      <span>{config.icon}</span>
+      <config.Icon className="w-3 h-3" />
       {config.label}
     </span>
   )
@@ -246,7 +246,7 @@ function MilestoneTracker({
                   }
                   ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
               >
-                {isCompleted ? '✓' : i + 1}
+                {isCompleted ? <Check className="w-3 h-3" /> : i + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <div
@@ -628,7 +628,7 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
-            <span className="text-2xl sm:text-3xl">🔄</span>
+            <RefreshCw className="w-7 h-7 text-subscription-600" />
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-foreground">Subscription</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Recurring payment policy</p>
@@ -758,7 +758,7 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
-            <span className="text-2xl sm:text-3xl">🎯</span>
+            <Target className="w-7 h-7 text-milestone-600" />
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-foreground">Milestone Payment</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Stage-based payment policy</p>
@@ -879,7 +879,7 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
-            <span className="text-2xl sm:text-3xl">⚡</span>
+            <Zap className="w-7 h-7 text-payasyougo-600" />
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-foreground">Pay-as-you-go</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Usage-based payment policy</p>
@@ -992,7 +992,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
       <div className="w-20 h-20 sm:w-24 sm:h-24 bg-muted flex items-center justify-center">
-        <span className="text-3xl sm:text-4xl">📭</span>
+        <Inbox className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
       </div>
       <div className="text-center max-w-md">
         <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2">No Payment Policies Yet</h2>
@@ -1002,13 +1002,13 @@ function EmptyState() {
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <span>🔄</span> Subscriptions
+            <RefreshCw className="w-4 h-4" /> Subscriptions
           </div>
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <span>🎯</span> Milestones
+            <Target className="w-4 h-4" /> Milestones
           </div>
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <span>⚡</span> Pay-as-you-go
+            <Zap className="w-4 h-4" /> Pay-as-you-go
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { Check, X, AlertCircle, Loader2 } from 'lucide-react'
 import { Select, SelectItem, Input } from '@heroui/react'
 import { Button } from '@heroui/react'
 import { PublicKey } from '@solana/web3.js'
@@ -235,7 +236,7 @@ export default function ReferralAccountForm({
           </label>
           {gatewaysLoading ? (
             <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] ">
-              <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent  animate-spin" />
+              <Loader2 className="w-4 h-4 text-[var(--color-primary)] animate-spin" />
             </div>
           ) : (
             <Select
@@ -291,7 +292,7 @@ export default function ReferralAccountForm({
               status ? (
                 <div className="pointer-events-none flex items-center">
                   {status.color === 'validating' ? (
-                    <div className="w-4 h-4 border-2 border-subscription-400 border-t-transparent  animate-spin" />
+                    <Loader2 className="w-4 h-4 text-subscription-400 animate-spin" />
                   ) : (
                     <span
                       className={`text-small ${
@@ -304,13 +305,15 @@ export default function ReferralAccountForm({
                           : 'text-muted-foreground'
                       }`}
                     >
-                      {status.color === 'error'
-                        ? '✗'
-                        : status.color === 'warning'
-                        ? '⚠'
-                        : status.color === 'success'
-                        ? '✓'
-                        : ''}
+                      {status.color === 'error' ? (
+                        <X className="w-4 h-4" />
+                      ) : status.color === 'warning' ? (
+                        <AlertCircle className="w-4 h-4" />
+                      ) : status.color === 'success' ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        ''
+                      )}
                     </span>
                   )}
                 </div>
@@ -353,7 +356,7 @@ export default function ReferralAccountForm({
               validatingReferrer || referrerValid !== null ? (
                 <div className="pointer-events-none flex items-center">
                   {validatingReferrer ? (
-                    <div className="w-4 h-4 border-2 border-subscription-400 border-t-transparent  animate-spin" />
+                    <Loader2 className="w-4 h-4 text-subscription-400 animate-spin" />
                   ) : (
                     <span
                       className={`text-small ${
@@ -364,7 +367,13 @@ export default function ReferralAccountForm({
                           : 'text-muted-foreground'
                       }`}
                     >
-                      {referrerValid === false ? '✗' : referrerValid === true ? '✓' : ''}
+                      {referrerValid === false ? (
+                        <X className="w-4 h-4" />
+                      ) : referrerValid === true ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        ''
+                      )}
                     </span>
                   )}
                 </div>

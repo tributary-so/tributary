@@ -4,7 +4,6 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { ChevronDown, Moon, Sun } from 'lucide-react'
 import { WalletButton } from '@/components/solana/solana-provider'
 import { ClusterUiSelect } from './cluster/cluster-ui'
-import logo from '../../public/logo.png'
 
 const navItems = [{ label: 'Docs', href: 'https://docs.tributary.so' }]
 
@@ -80,7 +79,7 @@ export function AppHeader() {
     <header className="py-6">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
         <Link className="inline-flex text-primary items-center gap-3" to="/">
-          <img src={logo} alt="Tributary Logo" className="h-4 w-4" />
+          <img src="/logo.png" alt="Tributary Logo" className="h-4 w-4" />
           <span className="font-semibold text-xs uppercase tracking-[0.3em]">TRIBUTARY</span>
         </Link>
         <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row md:items-center md:justify-end md:gap-6">

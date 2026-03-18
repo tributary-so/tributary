@@ -129,6 +129,29 @@
   border-radius: 0px !important;
 }
 
+/* HeroUI no-radius overrides */
+[data-slot='base'],
+[data-slot='trigger'],
+[data-slot='input'],
+[data-slot='wrapper'],
+.heroui-button,
+.heroui-input,
+.heroui-select,
+.heroui-select-trigger,
+.heroui-dropdown,
+.heroui-dropdown-menu,
+.heroui-dropdown-item,
+.heroui-card,
+.heroui-modal,
+.heroui-popover,
+.heroui-alert,
+.heroui-checkbox,
+.heroui-switch,
+.heroui-tabs,
+.heroui-tab {
+  border-radius: 0px !important;
+}
+
 .wallet-adapter-button-start-icon img {
   height: 12px !important;
   width: 12px !important;

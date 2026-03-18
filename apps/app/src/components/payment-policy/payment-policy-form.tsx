@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { RefreshCw, Target, Zap, Check, X, Loader2 } from 'lucide-react'
 import { Select, SelectItem, Input, DatePicker } from '@heroui/react'
 import { Button } from '@heroui/react'
 import { PublicKey, TransactionInstruction } from '@solana/web3.js'
@@ -71,17 +72,17 @@ export interface PaymentPolicyFormProps {
 
 const POLICY_TYPE_STYLES = {
   subscription: {
-    icon: '🔄',
+    Icon: RefreshCw,
     border: 'border-l-subscription-600',
     bg: 'bg-subscription-50',
   },
   milestone: {
-    icon: '🎯',
+    Icon: Target,
     border: 'border-l-milestone-600',
     bg: 'bg-milestone-50',
   },
   payasyougo: {
-    icon: '⚡',
+    Icon: Zap,
     border: 'border-l-payasyougo-600',
     bg: 'bg-payasyougo-50',
   },
@@ -372,7 +373,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
 
       <div className={`border-l-4 ${policyStyle.border} ${policyStyle.bg} -lg p-4 mb-4`}>
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg">{policyStyle.icon}</span>
+          <policyStyle.Icon className="w-5 h-5" />
           <span className="font-semibold text-foreground uppercase text-sm tracking-wide">
             {formData.policyType === 'payasyougo'
               ? 'Pay-as-you-go'
@@ -417,7 +418,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
             </label>
             {gatewaysLoading ? (
               <div className="flex items-center justify-center h-10 border border-border ">
-                <div className="w-4 h-4 border-2 border-subscription-600 border-t-transparent  animate-spin" />
+                <Loader2 className="w-4 h-4 text-subscription-600 animate-spin" />
               </div>
             ) : (
               <Select
@@ -841,9 +842,13 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
               referralCodeValid !== null ? (
                 <div className="pointer-events-none flex items-center">
                   {referralCodeValid ? (
-                    <span className="text-status-active-600 text-small">✓ Valid</span>
+                    <span className="text-status-active-600 text-small flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Valid
+                    </span>
                   ) : (
-                    <span className="text-overdue-600 text-small">✗ Invalid</span>
+                    <span className="text-overdue-600 text-small flex items-center gap-1">
+                      <X className="w-3.5 h-3.5" /> Invalid
+                    </span>
                   )}
                 </div>
               ) : null

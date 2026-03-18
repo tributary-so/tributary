@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Gift, Users, TrendingUp } from 'lucide-react'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { useSDK } from '@/lib/client'
@@ -35,7 +36,7 @@ export default function ReferralProgramPage() {
           <div className="grid md:grid-cols-3 gap-6 mb-12">
             <div className="p-6 bg-lando-card  border border-lando-border">
               <div className="w-10 h-10 bg-lando-accent/20  flex items-center justify-center mb-4">
-                <span className="text-2xl">🎁</span>
+                <Gift className="w-5 h-5 text-lando-accent" />
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Create Your Code</h3>
               <p className="text-sm text-lando-muted">
@@ -45,7 +46,7 @@ export default function ReferralProgramPage() {
 
             <div className="p-6 bg-lando-card  border border-lando-border">
               <div className="w-10 h-10 bg-lando-accent/20  flex items-center justify-center mb-4">
-                <span className="text-2xl">👥</span>
+                <Users className="w-5 h-5 text-lando-accent" />
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Share & Invite</h3>
               <p className="text-sm text-lando-muted">
@@ -55,7 +56,7 @@ export default function ReferralProgramPage() {
 
             <div className="p-6 bg-lando-card  border border-lando-border">
               <div className="w-10 h-10 bg-lando-accent/20  flex items-center justify-center">
-                <span className="text-2xl">📈</span>
+                <TrendingUp className="w-5 h-5 text-lando-accent" />
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Earn on Payments</h3>
               <p className="text-sm text-lando-muted">

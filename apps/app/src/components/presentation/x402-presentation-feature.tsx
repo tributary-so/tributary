@@ -398,7 +398,7 @@ export default function X402PresentationFeature() {
             onClick={() => setCurrentSlide(index)}
             className="w-2.5 h-2.5  transition-all border border-primary"
             style={{
-              backgroundColor: index === currentSlide ? 'var(--color-primary)' : 'transparent',
+              backgroundColor: index === currentSlide ? 'hsl(var(--primary))' : 'transparent',
             }}
           />
         ))}

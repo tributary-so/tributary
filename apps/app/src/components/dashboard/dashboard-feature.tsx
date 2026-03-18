@@ -49,7 +49,7 @@ const actions = [
 const stats = [
   { label: 'Network', value: 'Solana' },
   { label: 'Type', value: 'Recurring Payments' },
-  { label: 'UX', value: 'Web2-simple' },
+  { label: 'UX', value: 'set & forget' },
 ]
 
 function ActionCard({ action }: { action: (typeof actions)[number] }) {
@@ -115,7 +115,7 @@ export default function DashboardFeature() {
             <div key={stat.label} className="space-y-2">
               <div className="font-mono text-sm text-muted-foreground">{stat.label}</div>
               <div className="text-2xl font-bold flex items-center gap-2">
-                {stat.label === 'Network' && <Droplets className="h-5 w-5 text-primary" />}
+                {stat.label === 'Network' && <img src="/public/solana-logomark.svg" className="h-5 w-5 text-primary" />}
                 {stat.value}
               </div>
             </div>

@@ -1,3 +1,4 @@
+import { TrendingUp, Zap, Target } from 'lucide-react'
 import type { PaymentGateway } from '@tributary-so/sdk'
 
 interface ReferralProgramExplainerProps {
@@ -28,7 +29,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
     <div className="max-w-4xl mx-auto">
       <div className="bg-gradient-to-r from-lando-accent/10 to-lando-accent/5  border border-lando-accent/30 p-8 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">📈</span>
+          <TrendingUp className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">Ready to Start Earning?</h2>
         </div>
         <p className="text-lando-muted mb-4">
@@ -53,7 +54,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
 
       <div className="bg-lando-card  border border-lando-border p-8 mb-6">
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl">⚡</span>
+          <Zap className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">How It Works</h2>
         </div>
 
@@ -115,7 +116,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
 
       <div className="bg-lando-card  border border-lando-border p-8 mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl">🎯</span>
+          <Target className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">Reward Breakdown</h2>
         </div>
 
