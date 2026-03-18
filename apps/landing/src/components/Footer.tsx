@@ -42,6 +42,16 @@ export function Footer() {
               </li>
               <li>
                 <a
+                  href="https://sdk.tributary.so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  SDK
+                </a>
+              </li>
+              <li>
+                <a
                   href="https://npmjs.com/package/@tributary-so/sdk"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -60,39 +70,28 @@ export function Footer() {
                   href="https://app.tributary.so"
                   className="hover:text-foreground transition-colors"
                 >
-                  Tributary App
+                  Dashboard
                 </a>
               </li>
               <li>
                 <a
-                  href="https://actioncode.app"
+                  href="https://checkout.tributary.so"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-foreground transition-colors"
                 >
-                  Action Codes
+                  Checkout
                 </a>
               </li>
-            </ul>
-          </div>
-          <div>
-            <div className="font-medium text-sm mb-4">Legal</div>
-            <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link
-                  to="/privacy"
+                <a
+                  href="https://lando.tributary.so"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-foreground transition-colors"
                 >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/legal"
-                  className="hover:text-foreground transition-colors"
-                >
-                  Legal Notice &amp; Terms
-                </Link>
+                  Lando
+                </a>
               </li>
             </ul>
           </div>

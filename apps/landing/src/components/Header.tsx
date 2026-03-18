@@ -58,7 +58,7 @@ export function Header() {
     <header className="py-6">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
         <Link className="inline-flex text-primary items-center gap-3" to="/">
-          <img src={logo} alt="Tributary Logo" className="h-8 w-8" />
+          <img src={logo} alt="Tributary Logo" className="h-4 w-4" />
           <span className="font-semibold text-xs uppercase tracking-[0.3em]">
             TRIBUTARY
           </span>

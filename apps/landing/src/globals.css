@@ -23,7 +23,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 271.5 81.3% 55.9%;
-    --radius: 0.5rem;
+    --radius: 0;
   }
 
   .dark {
@@ -66,113 +66,8 @@
 }
 
 @layer components {
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--border));
-  }
-
-  .dark .glass {
-    background: rgba(0, 0, 0, 0.3);
-  }
-
-  .gradient-text {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--primary)) 0%,
-      hsl(var(--accent)) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .btn-primary {
-    @apply bg-gradient-to-r font-semibold py-3 px-8 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5;
-    background-image: linear-gradient(
-      to right,
-      hsl(var(--primary)),
-      hsl(var(--accent))
-    );
-  }
-
-  .btn-primary:hover {
-    filter: brightness(1.1);
-  }
-
-  .btn-secondary {
-    @apply border-2 font-semibold py-3 px-8 rounded-full transition-all duration-300;
-    border-color: hsl(var(--primary));
-    color: hsl(var(--primary));
-  }
-
-  .btn-secondary:hover {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-  }
-
-  .card {
-    @apply rounded-2xl shadow-sm border p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
-    background: hsl(var(--card));
-    border-color: hsl(var(--border));
-  }
-
-  .card:hover {
-    border-color: hsl(var(--primary) / 0.3);
-  }
-
-  .bento-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
-  }
-
-  .bento-span-2 {
-    @apply md:col-span-2;
-  }
-
-  .dot-pattern {
-    background-image: radial-gradient(
-      circle,
-      hsl(var(--muted-foreground) / 0.3) 1px,
-      transparent 1px
-    );
-    background-size: 32px 32px;
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translate(0, 0) scale(1);
-    }
-    25% {
-      transform: translate(30px, -30px) scale(1.1);
-    }
-    50% {
-      transform: translate(-20px, 20px) scale(0.95);
-    }
-    75% {
-      transform: translate(20px, 10px) scale(1.05);
-    }
-  }
-
-  .gradient-orb {
-    animation: float 8s ease-in-out infinite;
-  }
-
-  .gradient-orb-2 {
-    animation: float 10s ease-in-out infinite reverse;
-  }
-
-  @keyframes slide-left {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-50%);
-    }
-  }
-
-  .animate-slide-left {
-    animation: slide-left 30s linear infinite;
+  .font-mono {
+    font-family: "Roboto Mono", monospace;
   }
 }
 
