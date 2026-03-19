@@ -17,23 +17,8 @@ export enum ClusterNetwork {
   Custom = 'custom',
 }
 
-// FIXME: these are limited to domains, but might still take them out of repo and inside build secrets
-const DEVNET_RPC_URL = 'https://devnet.helius-rpc.com/?api-key=756c46f1-dcfa-42f7-a873-0561431937e1'
-const MAINNET_RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=756c46f1-dcfa-42f7-a873-0561431937e1'
-
-const getDefaultEndpoint = (): string => {
-  return import.meta.env.VITE_SOLANA_API || DEVNET_RPC_URL
-}
-
-const getDefaultNetwork = (): ClusterNetwork => {
-  const customEndpoint = import.meta.env.VITE_SOLANA_API
-  if (!customEndpoint) return ClusterNetwork.Devnet
-
-  if (customEndpoint.includes('mainnet')) return ClusterNetwork.Mainnet
-  if (customEndpoint.includes('testnet')) return ClusterNetwork.Testnet
-  if (customEndpoint.includes('devnet')) return ClusterNetwork.Devnet
-  return ClusterNetwork.Custom
-}
+const DEVNET_RPC_URL = import.meta.env.VITE_SOLANA_API_DEVNET
+const MAINNET_RPC_URL = import.meta.env.VITE_SOLANA_API
 
 export const defaultClusters: SolanaCluster[] = [
   {
@@ -42,16 +27,10 @@ export const defaultClusters: SolanaCluster[] = [
     network: ClusterNetwork.Mainnet,
   },
   {
-    name: import.meta.env.VITE_SOLANA_API ? 'custom' : 'devnet',
-    endpoint: getDefaultEndpoint(),
-    network: getDefaultNetwork(),
+    name: 'devnet',
+    endpoint: DEVNET_RPC_URL,
+    network: ClusterNetwork.Devnet,
   },
-  // { name: 'local', endpoint: 'http://localhost:8899' },
-  // {
-  //   name: 'testnet',
-  //   endpoint: clusterApiUrl('testnet'),
-  //   network: ClusterNetwork.Testnet,
-  // },
 ]
 
 const clusterAtom = atomWithStorage<SolanaCluster>('solana-cluster', defaultClusters[0])
