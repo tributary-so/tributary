@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import PaymentPolicyForm, { PaymentPolicyFormData } from './payment-policy-form'
-import IntegrationCode from './integration-code'
+// import IntegrationCode from './integration-code'
 
 export default function PaymentPolicyFeature() {
   const [formData, setFormData] = useState<PaymentPolicyFormData>({
@@ -30,7 +30,8 @@ export default function PaymentPolicyFeature() {
     periodLengthSeconds: '2592000',
   })
 
-  const [lineItemsActive, setLineItemsActive] = useState(false)
+  // const [lineItemsActive, setLineItemsActive] = useState(false)
+  const [lineItemsActive] = useState(false)
 
   const handleFormDataChange = (newFormData: typeof formData) => {
     setFormData(newFormData)
