@@ -53,12 +53,12 @@ export function ClusterChecker({ children }: { children: React.ReactNode }) {
 export function ClusterUiSelect() {
   const { clusters, setCluster, cluster } = useCluster()
 
-  const buttonClass =
-    'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
   return (
     <Dropdown>
       <DropdownTrigger>
-        <button className={`${buttonClass}`}>{cluster.name}</button>
+        <button className="border border-border px-3 py-1 text-xs uppercase tracking-[0.12em] hover:bg-accent transition-colors">
+          {cluster.name}
+        </button>
       </DropdownTrigger>
       <DropdownMenu>
         {clusters.map((item) => (

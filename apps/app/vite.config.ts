@@ -1,7 +1,6 @@
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
 import viteTsconfigPaths from 'vite-tsconfig-paths'
 import { resolve } from 'node:path'
 import inject from '@rollup/plugin-inject'
@@ -17,6 +16,7 @@ export default defineConfig({
       'node-fetch': 'isomorphic-fetch',
     },
   },
+  base: './', // CRITICAL for GitHub Pages
   server: {
     allowedHosts: ['tributary.so.local'],
     host: '0.0.0.0',
@@ -29,7 +29,6 @@ export default defineConfig({
       },
       include: ['buffer'],
     }),
-    tailwindcss(),
     viteTsconfigPaths({
       //
       root: resolve(__dirname),

@@ -14,9 +14,14 @@ interface CodeBlockProps {
   examples: CodeExample[];
   title?: string;
   showLineNumbers?: boolean;
+  className?: string;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({ examples, title }) => {
+const CodeBlock: React.FC<CodeBlockProps> = ({
+  examples,
+  title,
+  className,
+}) => {
   const defaultActiveTab = examples.findIndex((example) => !example.disabled);
   const [activeTab, setActiveTab] = useState(
     defaultActiveTab >= 0 ? defaultActiveTab : 0
@@ -37,7 +42,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ examples, title }) => {
       );
       setHighlightedCodes(highlighted);
     };
-
     highlightAll();
   }, [examples]);
 
@@ -50,8 +54,11 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ examples, title }) => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-900 dark:bg-neutral-950 w-full max-w-full">
-      {/* Terminal Header */}
+    <div
+      className={`relative overflow-hidden rounded-2xl border border-border bg-neutral-900 w-full max-w-full ${
+        className || ""
+      }`}
+    >
       <div className="bg-neutral-800 px-4 py-3 flex items-center gap-2">
         <Terminal className="w-4 h-4 text-neutral-400" />
         {title && (
@@ -64,7 +71,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ examples, title }) => {
         </div>
       </div>
 
-      {/* Framework Tabs */}
       {examples.length > 1 && (
         <div className="flex border-b border-neutral-700 bg-neutral-800/50 relative">
           {examples.map((example, index) => (
@@ -107,7 +113,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ examples, title }) => {
 
       <button
         onClick={handleCopy}
-        className="absolute top-14 right-4 bg-purple-600 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/20 hover:scale-105 flex items-center gap-2"
+        className="absolute top-14 right-4 bg-primary hover:bg-primary/80 text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-primary/20 flex items-center gap-2"
       >
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
         {copied ? "Copied!" : "Copy"}

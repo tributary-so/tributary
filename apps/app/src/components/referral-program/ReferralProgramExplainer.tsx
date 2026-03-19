@@ -1,3 +1,4 @@
+import { TrendingUp, Zap, Target } from 'lucide-react'
 import type { PaymentGateway } from '@tributary-so/sdk'
 
 interface ReferralProgramExplainerProps {
@@ -26,9 +27,9 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
   const recipientReceives = PAYMENT_AMOUNT - protocolFee - gatewayFee
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-gradient-to-r from-lando-accent/10 to-lando-accent/5 rounded-xl border border-lando-accent/30 p-8 mb-6">
+      <div className="bg-gradient-to-r from-lando-accent/10 to-lando-accent/5  border border-lando-accent/30 p-8 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">📈</span>
+          <TrendingUp className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">Ready to Start Earning?</h2>
         </div>
         <p className="text-lando-muted mb-4">
@@ -37,29 +38,29 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
         </p>
         <div className="flex flex-wrap gap-4 text-sm text-lando-muted">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <span className="w-2 h-2  bg-status-active-500"></span>
             <span>Gateway-specific codes</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span className="w-2 h-2  bg-subscription-500"></span>
             <span>Up to 3 earning levels</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+            <span className="w-2 h-2  bg-purple-500"></span>
             <span>On-chain transparent rewards</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-lando-card rounded-xl border border-lando-border p-8 mb-6">
+      <div className="bg-lando-card  border border-lando-border p-8 mb-6">
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl">⚡</span>
+          <Zap className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">How It Works</h2>
         </div>
 
         <div className="space-y-6">
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               1
             </div>
             <div>
@@ -71,14 +72,14 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               2
             </div>
             <div>
               <h4 className="font-semibold text-lando-text mb-1">Tiered Rewards (3 Levels)</h4>
               <p className="text-sm text-lando-muted">
                 Earn up to 3 levels deep:{' '}
-                <span className="font-semibold text-green-600">
+                <span className="font-semibold text-subscription-600">
                   {bpsToPercent(tiers[0])}% / {bpsToPercent(tiers[1])}% / {bpsToPercent(tiers[2])}%
                 </span>{' '}
                 of referral pool
@@ -87,7 +88,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               3
             </div>
             <div>
@@ -100,7 +101,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               4
             </div>
             <div>
@@ -113,9 +114,9 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
         </div>
       </div>
 
-      <div className="bg-lando-card rounded-xl border border-lando-border p-8 mb-12">
+      <div className="bg-lando-card  border border-lando-border p-8 mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl">🎯</span>
+          <Target className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">Reward Breakdown</h2>
         </div>
 
@@ -135,11 +136,17 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
                 <span className="text-lando-muted">Gateway Fee ({gatewayFeePercent}%)</span>
                 <span className="font-bold text-lando-text">${gatewayFee.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-green-50 px-2 rounded">
-                <span className="text-green-700 font-medium">Referral Pool ({referralAllocationPercent}%)</span>
-                <span className="font-bold text-green-700">${referralPool.toFixed(2)}</span>
+              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-subscription-50 px-2 ">
+                <span className="text-subscription-700 font-medium">Referral Pool ({referralAllocationPercent}%)</span>
+                <span className="font-bold text-subscription-700">${referralPool.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-blue-50 px-2 rounded">
+              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-secondary-50 px-2 ">
+                <span className="text-secondary-700 font-medium">
+                  Gateway Business Fee ({100 - referralAllocationPercent}%)
+                </span>
+                <span className="font-bold text-secondary-700">${gatewayBusinessFee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-blue-50 px-2 ">
                 <span className="text-blue-700 font-medium">
                   Gateway Business Fee ({100 - referralAllocationPercent}%)
                 </span>
@@ -155,26 +162,26 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           <div>
             <h4 className="font-semibold text-lando-text mb-4">Referral Pool Distribution</h4>
             <div className="space-y-3">
-              <div className="p-4 bg-green-50 rounded-lg">
+              <div className="p-4 bg-subscription-50 ">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-green-700 font-semibold">Level 1 (Original Referrer)</span>
-                  <span className="text-2xl font-bold text-green-700">${tier1Amount.toFixed(2)}</span>
+                  <span className="text-subscription-700 font-semibold">Level 1 (Original Referrer)</span>
+                  <span className="text-2xl font-bold text-subscription-700">${tier1Amount.toFixed(2)}</span>
                 </div>
-                <div className="text-sm text-green-600">{bpsToPercent(tiers[0])}% of pool • highest earner</div>
+                <div className="text-sm text-subscription-600">{bpsToPercent(tiers[0])}% of pool • highest earner</div>
               </div>
-              <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="p-4 bg-milestone-50 ">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-blue-700 font-semibold">Level 2 (Middle Referrer)</span>
-                  <span className="text-2xl font-bold text-blue-700">${tier2Amount.toFixed(2)}</span>
+                  <span className="text-milestone-700 font-semibold">Level 2 (Middle Referrer)</span>
+                  <span className="text-2xl font-bold text-milestone-700">${tier2Amount.toFixed(2)}</span>
                 </div>
-                <div className="text-sm text-blue-600">{bpsToPercent(tiers[1])}% of pool • second highest</div>
+                <div className="text-sm text-milestone-600">{bpsToPercent(tiers[1])}% of pool • second highest</div>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
+              <div className="p-4 bg-payasyougo-50 ">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-purple-700 font-semibold">Level 3 (Immediate Referrer)</span>
-                  <span className="text-2xl font-bold text-purple-700">${tier3Amount.toFixed(2)}</span>
+                  <span className="text-payasyougo-700 font-semibold">Level 3 (Immediate Referrer)</span>
+                  <span className="text-2xl font-bold text-payasyougo-700">${tier3Amount.toFixed(2)}</span>
                 </div>
-                <div className="text-sm text-purple-600">{bpsToPercent(tiers[2])}% of pool • latest in chain</div>
+                <div className="text-sm text-payasyougo-600">{bpsToPercent(tiers[2])}% of pool • latest in chain</div>
               </div>
             </div>
           </div>

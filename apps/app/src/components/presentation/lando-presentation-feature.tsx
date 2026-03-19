@@ -240,7 +240,7 @@ export default function LandoPresentationFeature() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
-            <span className="text-gray-600 font-semibold">{slide.subtitle}</span>
+            <span className="text-muted-foreground font-semibold">{slide.subtitle}</span>
           </motion.div>
         )}
 
@@ -255,8 +255,8 @@ export default function LandoPresentationFeature() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.25, delay: 0.2 + index * 0.08 }}
                 >
-                  <div className="flex-shrink-0 w-1.5 h-1.5 bg-primary rounded-full mt-2" />
-                  <div className="text-gray-800 leading-snug">{point}</div>
+                  <div className="flex-shrink-0 w-1.5 h-1.5 bg-primary  mt-2" />
+                  <div className="text-foreground leading-snug">{point}</div>
                 </motion.div>
               ))}
             </div>
@@ -266,7 +266,7 @@ export default function LandoPresentationFeature() {
             <div className="mt-4">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-gray-100">
+                  <tr className="bg-muted">
                     {slide.comparison.headers.map((header, i) => (
                       <th
                         key={i}
@@ -279,11 +279,11 @@ export default function LandoPresentationFeature() {
                 </thead>
                 <tbody>
                   {slide.comparison.rows.map((row, i) => (
-                    <tr key={i} className="bg-gray-50">
+                    <tr key={i} className="bg-muted/50">
                       {row.map((cell, j) => (
                         <td
                           key={j}
-                          className="border border-primary px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-700"
+                          className="border border-primary px-2 sm:px-3 py-2 text-xs sm:text-sm text-muted-foreground"
                         >
                           {cell}
                         </td>
@@ -297,12 +297,12 @@ export default function LandoPresentationFeature() {
 
           {slide.stats && (
             <div className="mt-4">
-              <div className="text-xs sm:text-sm uppercase mb-2 text-gray-600">{slide.stats.label}</div>
+              <div className="text-xs sm:text-sm uppercase mb-2 text-muted-foreground">{slide.stats.label}</div>
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {slide.stats.items.map((item, i) => (
-                  <div key={i} className="border border-primary rounded p-2 sm:p-3 text-center bg-gray-50">
+                  <div key={i} className="border border-primary  p-2 sm:p-3 text-center bg-muted/50">
                     <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 text-primary">{item.value}</div>
-                    <div className="text-xs uppercase text-gray-600">{item.label}</div>
+                    <div className="text-xs uppercase text-muted-foreground">{item.label}</div>
                   </div>
                 ))}
               </div>
@@ -313,11 +313,11 @@ export default function LandoPresentationFeature() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4">
               {slide.architecture.map((item, i) => (
                 <div key={i} className="text-center">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-base sm:text-xl bg-primary border-2 border-primary">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12  mx-auto mb-2 flex items-center justify-center text-primary-foreground text-base sm:text-xl bg-primary border-2 border-primary">
                     {item.step}
                   </div>
                   <div className="text-xs sm:text-sm font-semibold mb-1 text-primary">{item.title}</div>
-                  <div className="text-xs text-gray-600">{item.desc}</div>
+                  <div className="text-xs text-muted-foreground">{item.desc}</div>
                 </div>
               ))}
             </div>
@@ -325,10 +325,10 @@ export default function LandoPresentationFeature() {
 
           {slide.codeExample && (
             <div className="mt-4">
-              <div className="text-xs sm:text-sm uppercase mb-2 text-gray-600 font-semibold">
+              <div className="text-xs sm:text-sm uppercase mb-2 text-muted-foreground font-semibold">
                 {slide.codeExample.title}
               </div>
-              <div className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">
+              <div className="bg-muted/80 text-status-active-400 p-3  text-xs overflow-x-auto">
                 <pre className="whitespace-pre-wrap">{slide.codeExample.code}</pre>
               </div>
             </div>
@@ -337,9 +337,9 @@ export default function LandoPresentationFeature() {
           {slide.grid && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
               {slide.grid.map((item, i) => (
-                <div key={i} className="border border-primary rounded p-2 bg-gray-50">
+                <div key={i} className="border border-primary  p-2 bg-muted/50">
                   <div className="text-xs sm:text-sm uppercase font-bold mb-1 text-primary">{item.category}</div>
-                  <div className="text-xs text-gray-600">{item.examples}</div>
+                  <div className="text-xs text-muted-foreground">{item.examples}</div>
                 </div>
               ))}
             </div>
@@ -350,10 +350,12 @@ export default function LandoPresentationFeature() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {slide.metrics.map((metric, i) => (
                   <div key={i} className="text-center">
-                    <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 border-2 border-primary rounded-lg p-3 sm:p-4 bg-gray-50 text-primary">
+                    <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 border-2 border-primary  p-3 sm:p-4 bg-muted/50 text-primary">
                       {metric.value}
                     </div>
-                    <div className="text-xs sm:text-sm font-semibold uppercase text-gray-600 mt-1">{metric.label}</div>
+                    <div className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground mt-1">
+                      {metric.label}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -362,13 +364,15 @@ export default function LandoPresentationFeature() {
 
           {slide.demo && (
             <div className="mt-3">
-              <div className="text-xs sm:text-sm uppercase mt-2 mb-2 text-gray-600 font-semibold">Key Features</div>
+              <div className="text-xs sm:text-sm uppercase mt-2 mb-2 text-muted-foreground font-semibold">
+                Key Features
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {slide.demo.features.map((feature, i) => (
-                  <div key={i} className="border border-primary rounded p-2 flex items-center gap-2 bg-gray-50">
+                  <div key={i} className="border border-primary  p-2 flex items-center gap-2 bg-muted/50">
                     <div className="text-lg sm:text-xl">{feature.icon}</div>
                     <div className="flex-1">
-                      <div className="text-xs sm:text-sm font-semibold text-gray-800">{feature.text}</div>
+                      <div className="text-xs sm:text-sm font-semibold text-foreground">{feature.text}</div>
                       <div className="text-xs uppercase text-primary">{feature.status}</div>
                     </div>
                   </div>
@@ -390,7 +394,7 @@ export default function LandoPresentationFeature() {
                 → {slide.cta}
               </div>
             )}
-            {slide.footer && <div className="text-xs italic text-gray-400">{slide.footer}</div>}
+            {slide.footer && <div className="text-xs italic text-muted-foreground/60">{slide.footer}</div>}
           </motion.div>
         )}
       </div>
@@ -405,14 +409,14 @@ export default function LandoPresentationFeature() {
     >
       <button
         onClick={prevSlide}
-        className="absolute top-8 right-11 sm:right-15 z-10 p-2 border border-primary rounded hover:bg-primary hover:text-white transition-all"
+        className="absolute top-8 right-11 sm:right-15 z-10 p-2 border border-primary  hover:bg-primary hover:text-primary-foreground transition-all"
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
 
       <button
         onClick={nextSlide}
-        className="absolute top-8 right-2 sm:right-6 z-10 p-2 border border-primary rounded hover:bg-primary hover:text-white transition-all"
+        className="absolute top-8 right-2 z-10 p-2 border border-primary  hover:bg-primary hover:text-primary-foreground transition-all"
       >
         <ChevronRight className="w-4 h-4" />
       </button>
@@ -438,15 +442,15 @@ export default function LandoPresentationFeature() {
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className="w-2.5 h-2.5 rounded-full transition-all border border-primary"
+            className="w-2.5 h-2.5  transition-all border border-primary"
             style={{
-              backgroundColor: index === currentSlide ? 'var(--color-primary)' : 'transparent',
+              backgroundColor: index === currentSlide ? 'hsl(var(--primary))' : 'transparent',
             }}
           />
         ))}
       </div>
 
-      <div className="absolute top-4 right-2 sm:right-6 text-xs uppercase tracking-wide text-gray-600">
+      <div className="absolute top-4 right-2 sm:right-6 text-xs uppercase tracking-wide text-muted-foreground">
         {currentSlide + 1} / {slides.length}
       </div>
     </div>
