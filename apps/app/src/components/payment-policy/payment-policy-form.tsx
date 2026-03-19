@@ -175,10 +175,10 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
   }, [formData.referralCode, formData.gateway, sdk])
 
   useEffect(() => {
-    if (wallet.publicKey && !formData.recipient) {
+    if (wallet && wallet.publicKey && !formData.recipient) {
       onFormDataChange({ ...formData, recipient: wallet.publicKey.toString() })
     }
-  }, [wallet.publicKey, formData, onFormDataChange])
+  }, [wallet, formData, onFormDataChange])
 
   useEffect(() => {
     if (formData.policyType === 'milestone') {
@@ -241,7 +241,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
   }
 
   const handleSubmit = async () => {
-    if (!wallet.publicKey || !wallet.connected) {
+    if (!wallet?.publicKey || !wallet?.connected) {
       addToast({ title: 'Error', description: 'Please connect your wallet', color: 'danger' })
       return
     }
@@ -874,7 +874,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
         <Button
           isDisabled={
             loading ||
-            !wallet.connected ||
+            !wallet?.connected ||
             !isRecipientValid ||
             !formData.tokenMint ||
             !formData.gateway ||

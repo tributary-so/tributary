@@ -64,7 +64,7 @@ export default function PaymentPolicyFeature() {
             </div>
           </div>
           <div className="w-full md:w-1/2">
-            <IntegrationCode formData={formData} onLineItemsActive={setLineItemsActive} />
+            {/* <IntegrationCode formData={formData} onLineItemsActive={setLineItemsActive} /> */}
           </div>
         </div>
       </div>
