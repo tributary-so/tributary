@@ -1,28 +1,44 @@
 import { useState, useEffect, useRef } from 'react'
-import { WalletButton } from '@/components/solana/solana-provider'
 import { Link, useNavigate } from 'react-router'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { BorderedContainer } from '@/components/ui/bordered-container'
+import { ChevronDown, Moon, Sun } from 'lucide-react'
+import { WalletButton } from '@/components/solana/solana-provider'
 import { ClusterUiSelect } from './cluster/cluster-ui'
 
-function ChevronDown({ className }: { className?: string }) {
+const navItems = [{ label: 'Docs', href: 'https://docs.tributary.so' }]
+
+const hackathons = [
+  { label: 'Cypherpunk', href: '/hackathon' },
+  { label: 'x402', href: '/x402' },
+  { label: 'Agent', href: '/agent' },
+]
+
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const shouldBeDark = saved === 'dark' || (!saved && prefersDark)
+    setIsDark(shouldBeDark)
+    document.documentElement.classList.toggle('dark', shouldBeDark)
+  }, [])
+
+  const toggleTheme = () => {
+    const newDark = !isDark
+    setIsDark(newDark)
+    localStorage.setItem('theme', newDark ? 'dark' : 'light')
+    document.documentElement.classList.toggle('dark', newDark)
+  }
+
   return (
-    <svg
-      className={className}
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <button
+      onClick={toggleTheme}
+      className="p-1 hover:bg-accent hover:text-accent-foreground transition-colors"
+      aria-label="Toggle theme"
     >
-      <path
-        d="M2.5 4.5L6 8L9.5 4.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
   )
 }
 
@@ -30,160 +46,99 @@ export function AppHeader() {
   const { connected } = useWallet()
   const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isPresentationsOpen, setIsPresentationsOpen] = useState(false)
-  const [isMobilePresentationsOpen, setIsMobilePresentationsOpen] = useState(false)
-  const presentationsRef = useRef<HTMLDivElement>(null)
-  const mobilePresentationsRef = useRef<HTMLDivElement>(null)
+  const [isHackathonsOpen, setIsHackathonsOpen] = useState(false)
+  const hackathonsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (presentationsRef.current && !presentationsRef.current.contains(event.target as Node)) {
-        setIsPresentationsOpen(false)
-      }
-      if (mobilePresentationsRef.current && !mobilePresentationsRef.current.contains(event.target as Node)) {
-        setIsMobilePresentationsOpen(false)
+      if (hackathonsRef.current && !hackathonsRef.current.contains(event.target as Node)) {
+        setIsHackathonsOpen(false)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleNavClick = (path: string) => {
-    navigate(path)
-    setIsMenuOpen(false)
-    setIsPresentationsOpen(false)
-    setIsMobilePresentationsOpen(false)
+  const scrollToSection = (id: string) => {
+    navigate('/')
+    sessionStorage.setItem('scrollTo', id)
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const buttonClass =
-    'flex items-center justify-center gap-2 px-3 py-1.5 border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
-
-  const dropdownItemClass =
-    'w-full text-left px-3 py-2 hover:bg-[var(--color-primary)] hover:text-white transition-all duration-200 cursor-pointer uppercase text-sm'
+  useEffect(() => {
+    const section = sessionStorage.getItem('scrollTo')
+    if (section) {
+      sessionStorage.removeItem('scrollTo')
+      setTimeout(() => {
+        document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    }
+  }, [])
 
   return (
-    <div className="relative z-50 pt-[2px] sm:pt-[23px]" style={{ fontFamily: 'var(--font-primary)' }}>
-      <BorderedContainer
-        borderSides={['top', 'right', 'left']}
-        className="relative flex items-center justify-between"
-        style={{
-          height: '40px',
-          paddingLeft: '16px',
-          paddingRight: '16px',
-        }}
-      >
-        <Link to="/" className="flex items-center gap-2 cursor-pointer">
-          <div
-            className="rounded-full"
-            style={{
-              height: '10px',
-              width: '10px',
-              backgroundColor: 'var(--color-primary)',
-            }}
-          />
-          <div
-            style={{
-              letterSpacing: '0.8px',
-              textTransform: 'uppercase',
-              fontSize: '14px',
-            }}
-          >
-            Tributary
-          </div>
+    <header className="py-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
+        <Link className="inline-flex text-primary items-center gap-3" to="/">
+          <img src="/logo.png" alt="Tributary Logo" className="h-4 w-4" />
+          <span className="font-semibold text-xs uppercase tracking-[0.3em]">TRIBUTARY</span>
         </Link>
-
-        <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2">
-          <div className="flex items-center gap-2">
-            <div ref={presentationsRef} className="relative">
-              <button
-                onClick={() => setIsPresentationsOpen(!isPresentationsOpen)}
-                className={`${buttonClass} bg-warning-300 text-black`}
-                style={{ fontFamily: 'var(--font-secondary)' }}
-                aria-expanded={isPresentationsOpen}
-                aria-haspopup="true"
+        <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row md:items-center md:justify-end md:gap-6">
+          <nav className="hidden md:flex flex-wrap items-center gap-4 text-muted-foreground text-xs uppercase tracking-[0.12em]">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                className="transition-colors hover:text-foreground hover:cursor-pointer"
+                href={item.href}
               >
-                Hackathons
-                <ChevronDown
-                  className={`transition-transform duration-200 ${isPresentationsOpen ? 'rotate-180' : ''}`}
-                />
+                {item.label}
+              </a>
+            ))}
+            <div ref={hackathonsRef} className="relative">
+              <button
+                onClick={() => setIsHackathonsOpen(!isHackathonsOpen)}
+                className="flex items-center gap-1 transition-colors hover:text-foreground"
+              >
+                HACKATHONS
+                <ChevronDown className={`h-3 w-3 transition-transform ${isHackathonsOpen ? 'rotate-180' : ''}`} />
               </button>
-              {isPresentationsOpen && (
-                <div
-                  className="absolute top-full left-0 mt-1 min-w-full bg-white border border-[var(--color-primary)] rounded shadow-lg z-50"
-                  role="menu"
-                  aria-orientation="vertical"
-                >
-                  <button
-                    onClick={() => handleNavClick('/hackathon')}
-                    className={dropdownItemClass}
-                    style={{ fontFamily: 'var(--font-secondary)' }}
-                    role="menuitem"
-                  >
-                    Cypherpunk
-                  </button>
-                  <button
-                    onClick={() => handleNavClick('/x402')}
-                    className={dropdownItemClass}
-                    style={{ fontFamily: 'var(--font-secondary)' }}
-                    role="menuitem"
-                  >
-                    x402
-                  </button>
-                  <button
-                    onClick={() => handleNavClick('/agent')}
-                    className={dropdownItemClass}
-                    style={{ fontFamily: 'var(--font-secondary)' }}
-                    role="menuitem"
-                  >
-                    Agent
-                  </button>
+              {isHackathonsOpen && (
+                <div className="absolute left-0 top-full pt-2 z-50">
+                  <div className="bg-background border border-border shadow-lg min-w-32 py-2">
+                    {hackathons.map((hackathon) => (
+                      <Link
+                        key={hackathon.href}
+                        to={hackathon.href}
+                        onClick={() => setIsHackathonsOpen(false)}
+                        className="block px-4 py-2 hover:bg-muted/50 transition-colors text-xs uppercase tracking-[0.12em] text-foreground"
+                      >
+                        {hackathon.label}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-            <a
-              type="button"
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://docs.tributary.so/"
-              className={buttonClass}
-              style={{ fontFamily: 'var(--font-secondary)' }}
+            <Link to="/referral" className="transition-colors hover:text-foreground">
+              REFERRAL
+            </Link>
+            <Link
+              to="/quickstart"
+              className="bg-primary text-primary-foreground px-3 py-1 hover:bg-primary/90 transition-colors"
             >
-              Docs
-            </a>
-            <button
-              onClick={() => handleNavClick('/referral')}
-              className={buttonClass}
-              style={{ fontFamily: 'var(--font-secondary)' }}
-            >
-              Referral Program
-            </button>
-            <button
-              onClick={() => handleNavClick('/quickstart')}
-              className={`${buttonClass} bg-primary text-white`}
-              style={{ fontFamily: 'var(--font-secondary)' }}
-            >
-              Quick Start
-            </button>
-          </div>
-        </div>
-
-        <div className="hidden md:flex items-center gap-2">
-          {!connected ? (
-            <WalletButton />
-          ) : (
-            <div className="flex items-center gap-2">
+              QUICK START
+            </Link>
+            {connected && (
               <button
                 onClick={() => navigate('/account')}
-                className={buttonClass}
-                style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
+                className="border border-border px-3 py-1 text-xs uppercase tracking-[0.12em] hover:bg-accent transition-colors"
               >
                 Dashboard
               </button>
-              <WalletButton />
-            </div>
-          )}
-          <ClusterUiSelect />
+            )}
+            <WalletButton />
+            <ClusterUiSelect />
+            <ThemeToggle />
+          </nav>
         </div>
 
         <button
@@ -207,97 +162,64 @@ export function AppHeader() {
             }`}
           ></span>
         </button>
-      </BorderedContainer>
+      </div>
 
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-[3px] right-[3px] bg-white border border-[var(--color-primary)] border-t-0 z-40">
-          <div className="flex flex-col p-4 gap-2">
-            <div ref={mobilePresentationsRef} className="relative">
-              <button
-                onClick={() => setIsMobilePresentationsOpen(!isMobilePresentationsOpen)}
-                className={`${buttonClass} bg-warning-300 text-black w-full justify-between`}
-                style={{ fontFamily: 'var(--font-secondary)' }}
-                aria-expanded={isMobilePresentationsOpen}
-                aria-haspopup="true"
+        <div className="md:hidden border-t border-border mt-4 pt-4 px-4">
+          <nav className="flex flex-col gap-3 text-muted-foreground text-xs uppercase tracking-[0.12em]">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                className="transition-colors hover:text-foreground hover:cursor-pointer"
+                onClick={() => {
+                  scrollToSection(item.href)
+                  setIsMenuOpen(false)
+                }}
               >
-                Hackathons
-                <ChevronDown
-                  className={`transition-transform duration-200 ${isMobilePresentationsOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {isMobilePresentationsOpen && (
-                <div
-                  className="mt-1 bg-white border border-[var(--color-primary)] rounded"
-                  role="menu"
-                  aria-orientation="vertical"
-                >
-                  <button
-                    onClick={() => handleNavClick('/hackathon')}
-                    className={`${dropdownItemClass} justify-start`}
-                    style={{ fontFamily: 'var(--font-secondary)' }}
-                    role="menuitem"
-                  >
-                    Cypherpunk
-                  </button>
-                  <button
-                    onClick={() => handleNavClick('/x402')}
-                    className={`${dropdownItemClass} justify-start`}
-                    style={{ fontFamily: 'var(--font-secondary)' }}
-                    role="menuitem"
-                  >
-                    x402
-                  </button>
-                  <button
-                    onClick={() => handleNavClick('/agent')}
-                    className={`${dropdownItemClass} justify-start`}
-                    style={{ fontFamily: 'var(--font-secondary)' }}
-                    role="menuitem"
-                  >
-                    Agent
-                  </button>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => handleNavClick('/docs')}
-              className={`${buttonClass} w-full justify-start`}
-              style={{ fontFamily: 'var(--font-secondary)' }}
+                {item.label}
+              </a>
+            ))}
+            {hackathons.map((hackathon) => (
+              <Link
+                key={hackathon.href}
+                to={hackathon.href}
+                onClick={() => setIsMenuOpen(false)}
+                className="transition-colors hover:text-foreground"
+              >
+                {hackathon.label}
+              </Link>
+            ))}
+            <Link
+              to="/referral"
+              onClick={() => setIsMenuOpen(false)}
+              className="transition-colors hover:text-foreground"
             >
-              Docs
-            </button>
-            <button
-              onClick={() => handleNavClick('/referral')}
-              className={`${buttonClass} w-full justify-start`}
-              style={{ fontFamily: 'var(--font-secondary)' }}
-            >
-              Referral Program
-            </button>
-            <button
-              onClick={() => handleNavClick('/quickstart')}
-              className={`${buttonClass} bg-primary text-white w-full justify-start`}
-              style={{ fontFamily: 'var(--font-secondary)' }}
+              Referral
+            </Link>
+            <Link
+              to="/quickstart"
+              onClick={() => setIsMenuOpen(false)}
+              className="bg-primary text-primary-foreground px-3 py-2 text-center"
             >
               Quick Start
-            </button>
-            <div className="border-t border-[var(--color-primary)] pt-2 mt-2">
-              {!connected ? (
-                <WalletButton />
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => handleNavClick('/account')}
-                    className={`${buttonClass} w-full justify-start`}
-                    style={{ fontFamily: 'var(--font-secondary)', fontSize: '13px' }}
-                  >
-                    Dashboard
-                  </button>
-                  <WalletButton />
-                </div>
+            </Link>
+            <div className="border-t border-border pt-3 mt-2">
+              {connected && (
+                <button
+                  onClick={() => {
+                    navigate('/account')
+                    setIsMenuOpen(false)
+                  }}
+                  className="w-full text-left border border-border px-3 py-2 mb-2"
+                >
+                  Dashboard
+                </button>
               )}
+              <WalletButton />
             </div>
-          </div>
+          </nav>
         </div>
       )}
-    </div>
+    </header>
   )
 }

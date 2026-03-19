@@ -1,69 +1,95 @@
-import { BorderedContainer } from '@/components/ui/bordered-container'
+import { Droplets } from 'lucide-react'
 
 export function AppFooter() {
   return (
-    <div className="pb-[3px] sm:pb-[23px]">
-      <BorderedContainer
-        borderSides={['right', 'bottom', 'left']}
-        className="flex flex-col md:flex-row items-center justify-center md:justify-between"
-        style={{
-          boxSizing: 'border-box',
-          minHeight: '40px',
-          fontSize: '12px',
-          padding: '8px 16px',
-        }}
-      >
-        {/* Copyright */}
-        <div className="text-center md:text-left uppercase">(2025 TRIBUTARY ALL RIGHTS RESERVED)</div>
-
-        {/* Legal Section */}
-        {/* <div className="flex items-center justify-center gap-2 mt-2 md:mt-0"> */}
-        {/*   <div style={{ textTransform: 'uppercase' }}>( LEGAL</div> */}
-        {/*   <a href="#" className="relative cursor-pointer group uppercase"> */}
-        {/*     TERMS OF USE */}
-        {/*     <span className="absolute bottom-[-2px] left-0 h-[1px] w-0 bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full" /> */}
-        {/*   </a> */}
-        {/*   <div>/</div> */}
-        {/*   <a href="#" className="relative cursor-pointer group uppercase"> */}
-        {/*     PRIVACY POLICY */}
-        {/*     <span className="absolute bottom-[-2px] left-0 h-[1px] w-0 bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full" /> */}
-        {/*   </a> */}
-        {/*   <div style={{ textTransform: 'uppercase' }}>)</div> */}
-        {/* </div> */}
-
-        {/* Social Section */}
-        <div className="flex items-center justify-center gap-2 mt-2 md:mt-0">
-          <div>(</div>
-          <a
-            href="https://x.com/tributaryso"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative cursor-pointer group uppercase"
-          >
-            X
-            <span className="absolute bottom-[-2px] left-0 h-[1px] w-0 bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full" />
-          </a>
-          <div>/</div>
-          <a
-            href="https://t.me/tributary_so"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative cursor-pointer group uppercase"
-          >
-            Telegram
-            <span className="absolute bottom-[-2px] left-0 h-[1px] w-0 bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full" />
-          </a>
-          <div>/</div>
-          <a
-            href="https://arena.colosseum.org/projects/explore/tributary-1"
-            className="relative cursor-pointer group uppercase"
-          >
-            COLOSSEUM
-            <span className="absolute bottom-[-2px] left-0 h-[1px] w-0 bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full" />
-          </a>
-          <div>)</div>
+    <footer className="border-t border-border/50">
+      <div className="mx-auto max-w-5xl px-4 py-12">
+        <div className="grid md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Droplets className="h-5 w-5 text-primary" />
+              <span className="font-semibold uppercase tracking-[0.3em]">TRIBUTARY</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Automated recurring payments on Solana using token delegation.
+            </p>
+          </div>
+          <div></div>
+          <div>
+            <div className="font-medium text-sm mb-4">Resources</div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>
+                <a
+                  href="https://docs.tributary.so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Documentation
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/tributary-so/tributary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  GitHub Repository
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://contribute.so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Contribute
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-medium text-sm mb-4">Community</div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>
+                <a
+                  href="https://x.com/tributaryso"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  X (Twitter)
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://t.me/tributary_so"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Telegram
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://arena.colosseum.org/projects/explore/tributary-1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Colosseum
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
-      </BorderedContainer>
-    </div>
+        <div className="text-center text-sm text-muted-foreground/60 mt-8">
+          &copy; 2026 Tributary. Built with ❤️ on Solana.
+        </div>
+      </div>
+    </footer>
   )
 }

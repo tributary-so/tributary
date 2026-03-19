@@ -14,4 +14,7 @@ export {
   Moon,
   Sun,
   XIcon,
+  Target,
+  Zap,
+  Inbox,
 } from 'lucide-react'
