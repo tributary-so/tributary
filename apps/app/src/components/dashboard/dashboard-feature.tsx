@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ExternalLink, Play, BookOpen, Code, Heart, Github, PlusCircle, Droplets } from 'lucide-react'
+import { ExternalLink, Play, BookOpen, Code, Heart, Github, PlusCircle } from 'lucide-react'
 
 const actions = [
   {
