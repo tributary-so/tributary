@@ -1048,12 +1048,6 @@ export default function AccountPage() {
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
 
   useEffect(() => {
-    if (wallet.publicKey?.toString()) {
-      setLoaded(false)
-    }
-  }, [wallet.publicKey])
-
-  useEffect(() => {
     const fetchPolicies = async () => {
       if (!sdk || loaded) return
       if (!wallet.publicKey) return

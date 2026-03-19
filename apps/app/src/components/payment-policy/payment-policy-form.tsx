@@ -369,23 +369,19 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
 
   return (
     <div className="max-w-[700px] space-y-4">
-      <p className="text-sm text-muted-foreground">Create a new recurring payment policy and get integration code.</p>
-
-      <div className={`border-l-4 ${policyStyle.border} ${policyStyle.bg} -lg p-4 mb-4`}>
-        <div className="flex items-center gap-2 mb-1">
-          <policyStyle.Icon className="w-5 h-5" />
-          <span className="font-semibold text-foreground uppercase text-sm tracking-wide">
-            {formData.policyType === 'payasyougo'
-              ? 'Pay-as-you-go'
-              : formData.policyType.charAt(0).toUpperCase() + formData.policyType.slice(1)}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {formData.policyType === 'subscription' && 'Recurring payments at fixed intervals'}
-          {formData.policyType === 'milestone' && 'Stage-based payments with due dates'}
-          {formData.policyType === 'payasyougo' && 'Usage-based payments with spending limits'}
-        </p>
+      <div className="flex items-center gap-2 mb-1">
+        <policyStyle.Icon className="w-5 h-5" />
+        <span className="font-semibold text-foreground uppercase text-sm tracking-wide">
+          {formData.policyType === 'payasyougo'
+            ? 'Pay-as-you-go'
+            : formData.policyType.charAt(0).toUpperCase() + formData.policyType.slice(1)}
+        </span>
       </div>
+      <p className="text-xs text-muted-foreground">
+        {formData.policyType === 'subscription' && 'Recurring payments at fixed intervals'}
+        {formData.policyType === 'milestone' && 'Stage-based payments with due dates'}
+        {formData.policyType === 'payasyougo' && 'Usage-based payments with spending limits'}
+      </p>
 
       <div className="max-w-3xl">
         <div className="grid grid-cols-2 gap-4">

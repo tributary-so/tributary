@@ -1,11 +1,5 @@
-import { useState, useEffect } from 'react'
-import {
-  SubscriptionButton,
-  SubscriptionButtonWithCode,
-  PaymentInterval,
-  MilestoneButton,
-  PayAsYouGoButton,
-} from '@tributary-so/sdk-react'
+import { useState } from 'react'
+import { SubscriptionButton, PaymentInterval, MilestoneButton, PayAsYouGoButton } from '@tributary-so/sdk-react'
 import { Copy, Check, Trash2 } from '../../icons'
 import type { PaymentPolicyFormData } from './payment-policy-form'
 import { getTokenPrecisionAtom } from '@/lib/token-store'
@@ -207,15 +201,10 @@ export default function IntegrationCode({ formData, onLineItemsActive }: Integra
 
   const checkoutValidation = validateCheckoutData()
 
-  useEffect(() => {
-    onLineItemsActive?.(lineItemsActive)
-  }, [lineItemsActive, onLineItemsActive])
-
   const addLineItem = () => {
-    setCheckoutParams({
-      ...checkoutParams,
-      lineItems: [...checkoutParams.lineItems, { description: '', unitPrice: 0, quantity: 1 }],
-    })
+    const newItems = [...checkoutParams.lineItems, { description: '', unitPrice: 0, quantity: 1 }]
+    setCheckoutParams({ ...checkoutParams, lineItems: newItems })
+    onLineItemsActive?.(true)
   }
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
@@ -225,10 +214,12 @@ export default function IntegrationCode({ formData, onLineItemsActive }: Integra
   }
 
   const removeLineItem = (index: number) => {
+    const newItems = checkoutParams.lineItems.filter((_, i) => i !== index)
     setCheckoutParams({
       ...checkoutParams,
-      lineItems: checkoutParams.lineItems.filter((_, i) => i !== index),
+      lineItems: newItems,
     })
+    onLineItemsActive?.(newItems.length > 0)
   }
 
   const generateCheckoutUrl = (): string => {
@@ -385,21 +376,6 @@ import { BN } from '@coral-xyz/anchor'
                   radius="md"
                   size="md"
                 />
-                <SubscriptionButtonWithCode
-                  amount={validated.amount}
-                  token={new PublicKey(validated.tokenMint)}
-                  gateway={new PublicKey(validated.gateway)}
-                  maxRenewals={parseInt(validated.formData.maxRenewals) || 12}
-                  interval={interval}
-                  custom_interval={customInterval}
-                  memo={validated.memo}
-                  label={`ılıılııl ActionCode for ${parseFloat(validated.formData.amount) || 10}/${
-                    validated.formData.frequency
-                  }`}
-                  executeImmediately={true}
-                  radius="md"
-                  size="md"
-                />
               </>
             )}
             {connected &&
@@ -461,21 +437,6 @@ import { BN } from '@coral-xyz/anchor'
             {!connected && validated.formData.policyType === 'subscription' && (
               <>
                 <WalletMultiButton />
-                <SubscriptionButtonWithCode
-                  amount={validated.amount}
-                  token={new PublicKey(validated.tokenMint)}
-                  gateway={new PublicKey(validated.gateway)}
-                  maxRenewals={parseInt(validated.formData.maxRenewals) || 12}
-                  interval={interval}
-                  custom_interval={customInterval}
-                  memo={validated.memo}
-                  label={`ılıılııl ActionCode for ${parseFloat(validated.formData.amount) || 10}/${
-                    validated.formData.frequency
-                  }`}
-                  executeImmediately={true}
-                  radius="md"
-                  size="md"
-                />
               </>
             )}
             {!connected && validated.formData.policyType !== 'subscription' && <WalletMultiButton />}
