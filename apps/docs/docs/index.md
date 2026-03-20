@@ -1,73 +1,144 @@
 # Welcome to Tributary Protocol
 
-**The Open-Source, Permissionless Automated Payment Infrastructure for Solana**
+**Open-source, permissionless automated payment infrastructure for Solana**
 
-Tributary is a protocol that brings Web2's subscription simplicity to Web3. We provide the foundational smart contract infrastructure that enables any business to offer truly automated recurring payments on Solana - no manual transaction signing every month, no deposits into contracts, payments flow directly from user token accounts.
+Tributary brings Web2 subscription simplicity to Web3 with truly automated recurring payments—no manual signing every month, no deposits into contracts, funds flow directly from user token accounts.
 
-## 🎯 What is Tributary?
+## What is Tributary?
 
-Tributary is a **protocol**, not a service. We provide:
+Tributary is a **protocol** that enables automated recurring payments on Solana:
 
-- **Open-source smart contracts** for automated recurring payments
-- **Developer SDKs** for easy integration
-- **TypeScript libraries** for building payment applications
-- **Permissionless access** - anyone can build on top of Tributary
+- **Open-source smart contracts** for automated payments using token delegation
+- **Developer SDKs** for easy integration (TypeScript, React, Payments)
+- **Permissionless access** - anyone can build on top
+- **Multiple payment types** - subscriptions, milestones, pay-as-you-go
 
-Think of us as the foundation layer that businesses build upon to create meaningful payment services for their users.
+## Key Features
 
-## ⚡ Key Features
+### ✅ Payment Types
 
-**✅ Already Built:**
+- **Subscriptions** - Fixed recurring payments (daily, weekly, monthly, etc.)
+- **Milestones** - Project-based payments with up to 4 deliverables
+- **Pay-as-you-go** - Usage-based billing with period limits
 
-- Smart contract for automated recurring payments using Solana token delegation
-- Support for multiple payment policies (subscriptions, installments, usage-based, etc.)
-- TypeScript SDK with comprehensive payment management
-- React components for easy frontend integration
-- CLI tools for protocol management
+### ✅ Developer Tools
 
-**🚀 Built by Payment Providers:**
+- **TypeScript SDK** - Complete protocol interaction
+- **React SDK** - Pre-built payment components
+- **Payments SDK** - Stripe-compatible checkout (zero API keys)
+- **x402 SDK** - HTTP 402 middleware for API monetization
+- **CLI** - Protocol management tools
+- **REST API** - Query subscriptions, events, manage webhooks
+- **WebSocket API** - Real-time payment notifications
 
-- User-friendly dashboards for subscription management
-- Webhook notifications for payment events
-- Advanced analytics and reporting
-- Custom onboarding flows
-- White-label solutions
+### ✅ Protocol Features
 
-## 🏗️ Architecture
+- **Automated Execution** - Payments execute automatically on schedule
+- **Non-Custodial** - Funds stay in user wallets
+- **Low Fees** - 1% protocol fee + configurable gateway fees
+- **Action Codes** - Wallet-less payment initiation
+- **Full Control** - Pause, resume, or cancel anytime
 
-```mermaid
-graph LR
-A[👥 End Users]
-B[🏢 Payment Providers]
-C[⚙️ Tributary Protocol]
-D[⛓️ Solana Blockchain]
+## Architecture
 
-    A --> B
-    B --> C
-    C --> D
-
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PAYMENT PROVIDERS                        │
+│   (Build user-facing services, dashboards, integrations)   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    TRIBUTARY SDKs                           │
+│   TypeScript SDK │ React SDK │ Payments SDK │ x402 SDK     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 TRIBUTARY PROTOCOL                          │
+│   Smart Contracts │ PDA System │ Fee Distribution           │
+│   Program ID: TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    SOLANA BLOCKCHAIN                        │
+│   400ms finality │ Sub-cent fees │ Global access            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Payment Providers** build services on top of the Tributary protocol to offer:
+## Quick Start
 
-- Seamless user onboarding
-- Beautiful payment interfaces
-- Subscription management dashboards
-- Webhook integrations
-- Customer support
-- Analytics and insights
+### Generate Checkout Link
 
-## 🌟 Why Tributary?
+```bash
+pnpm install @tributary-so/payments @tributary-so/sdk @solana/web3.js
+```
 
-- **Truly Automated:** Users sign once, payments execute automatically
-- **No Lock-up:** Funds stay in user's accounts, no deposits required
-- **Permissionless:** Open protocol anyone can build upon
-- **Flexible:** Support any token, any payment schedule, any business model
-- **Transparent:** All operations visible on Solana blockchain
-- **Developer First:** Comprehensive tools and documentation
+```typescript
+import { PaymentsClient } from "@tributary-so/payments";
 
-Ready to build the future of recurring payments? [Get Started →](how.md)
+const stripe = new PaymentsClient(connection, tributary);
+const session = await stripe.checkout.sessions.create({
+  mode: "subscription",
+  line_items: [{ description: "Pro Plan", unitPrice: 10, quantity: 1 }],
+  paymentFrequency: "monthly",
+  tributaryConfig: { gateway, recipient, trackingId },
+});
+
+console.log(session.url); // Share this link!
+```
+
+### React Component
+
+```tsx
+import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
+
+<SubscriptionButton
+  amount={new BN(10000000)}
+  recipient={recipient}
+  interval={PaymentInterval.Monthly}
+  label="Subscribe $10/month"
+/>;
+```
+
+### REST API
+
+```bash
+# Check subscription status
+curl "https://api.tributary.so/v1/subscriptions?trackingId=my-sub"
+```
+
+## Why Tributary?
+
+| Feature     | Tributary       | Traditional          |
+| ----------- | --------------- | -------------------- |
+| Setup       | Seconds         | Days (KYC, approval) |
+| Fees        | 1%              | 2.9% + 30¢           |
+| Settlement  | Instant         | 2-7 days             |
+| Chargebacks | No              | Yes                  |
+| Recurring   | Native          | Complex setup        |
+| Custody     | Non-custodial   | Custodial risk       |
+| Global      | No restrictions | Country restrictions |
+
+## Program Details
+
+- **Program ID**: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`
+- **Network**: Solana Mainnet & Devnet
+- **USDC Mint**: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
+
+## Resources
+
+- **Documentation**: [docs.tributary.so](https://docs.tributary.so)
+- **GitHub**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
+- **Website**: [tributary.so](https://tributary.so)
+- **Checkout**: [checkout.tributary.so](https://checkout.tributary.so)
+- **API**: [api.tributary.so](https://api.tributary.so)
+
+## Next Steps
+
+- [What is Tributary?](./what.md) - Understand the protocol
+- [Integration Options](./integration.md) - Choose your integration method
+- [Quickstarts](./quickstart/integration.md) - Get started quickly
+- [SDK Reference](./sdks.md) - Complete SDK documentation
+- [API Reference](./api/overview.md) - REST and WebSocket APIs

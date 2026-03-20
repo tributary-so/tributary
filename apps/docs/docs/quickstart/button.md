@@ -1,182 +1,259 @@
 # Subscription Button Quickstart
 
-This guide provides a step-by-step walkthrough for integrating the `SubscriptionButton` component from `@tributary-so/sdk-react` into your React application. The button allows users to create recurring payment subscriptions on Solana with a single click.
+Integrate the `SubscriptionButton` component from `@tributary-so/sdk-react` into your React application for one-click recurring payments.
 
 ## Prerequisites
 
 - Node.js (v16 or higher)
 - pnpm package manager
-- A Solana wallet (Phantom, Solflare, etc.)
-- Basic knowledge of React and Solana development
+- A Solana wallet (Phantom, Solflare, Backpack, etc.)
+- Basic knowledge of React
 
 ## Step 1: Installation
 
-Install the required packages:
-
 ```bash
-pnpm install @tributary-so/sdk-react @solana/wallet-adapter-react @solana/wallet-adapter-react-ui @solana/web3.js @solana/spl-token @coral-xyz/anchor
+pnpm install @tributary-so/sdk-react @solana/wallet-adapter-react @solana/wallet-adapter-react-ui @solana/web3.js @coral-xyz/anchor
 ```
 
-## Step 2: Setup Wallet Connection
+## Step 2: Setup Wallet Provider
 
-The `SubscriptionButton` requires a connected Solana wallet to function. You'll need to set up wallet connection using `@solana/wallet-adapter-react`.
-
-First, configure the wallet adapter in your app's entry point:
+Configure wallet adapter in your app's entry point:
 
 ```typescript
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { clusterApiUrl } from "@solana/web3.js";
 
-// Configure wallet adapters
 const wallets = [new PhantomWalletAdapter()];
-
-// Choose network (mainnet-beta for production)
-const network = WalletAdapterNetwork.Mainnet;
-const endpoint = clusterApiUrl(network);
+const endpoint = clusterApiUrl("mainnet-beta");
 
 function App() {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        {/* Your app components */}
+        <WalletModalProvider>{/* Your app */}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );
 }
 ```
 
-## Step 3: Wrap with Tributary Provider
-
-Import and wrap your app with the `TributarySDKProvider`:
+## Step 3: Use Subscription Button
 
 ```typescript
-import { TributarySDKProvider } from "@tributary-so/sdk-react";
-
-function App() {
-  return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <TributarySDKProvider>
-          {/* Your subscription components */}
-        </TributarySDKProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
-}
-```
-
-## Step 4: Add Wallet Connection UI
-
-Add a wallet connection button to allow users to connect their wallets:
-
-```typescript
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
+import { PublicKey, BN } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 
-function WalletConnection() {
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const RECIPIENT = new PublicKey("YOUR_RECIPIENT_WALLET");
+const GATEWAY = new PublicKey("CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr");
+
+function PricingPage() {
   const { connected } = useWallet();
-
-  return (
-    <div>
-      <WalletMultiButton />
-      {!connected && <p>Please connect your wallet to continue</p>}
-    </div>
-  );
-}
-```
-
-## Step 5: Integrate the Subscription Button
-
-Now you can use the `SubscriptionButton` component. Here's a complete example:
-
-```typescript
-import React from "react";
-import { SubscriptionButton } from "@tributary-so/sdk-react";
-import { PaymentInterval } from "@tributary-so/sdk-react";
-import { PublicKey } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
-import { useWallet } from "@solana/wallet-adapter-react";
-
-// Configuration constants
-const CONFIG = {
-  TOKEN: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"), // USDC
-  RECIPIENT: new PublicKey("8EVBvLDVhJUw1nkAUp73mPyxviVFK9Wza5ba1GRANEw1"), // Replace with actual recipient
-  GATEWAY: new PublicKey("CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr"), // hosted by contribute.so
-  AMOUNT: new BN(1_000), // 1 USDC (6 decimals)
-};
-
-const SubscriptionExample: React.FC = () => {
-  const { connected } = useWallet();
-
-  const handleSuccess = (result: any) => {
-    console.log("Subscription created successfully:", result);
-    alert("Subscription created! Check console for details.");
-  };
-
-  const handleError = (error: Error) => {
-    console.error("Subscription creation failed:", error);
-    alert(`Error: ${error.message}`);
-  };
 
   if (!connected) {
-    return <p>Please connect your wallet to create a subscription.</p>;
+    return <p>Please connect your wallet</p>;
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-8">
-      <div className="text-center">
+    <SubscriptionButton
+      amount={new BN(10_000_000)} // 10 USDC (6 decimals)
+      token={USDC_MINT}
+      recipient={RECIPIENT}
+      gateway={GATEWAY}
+      interval={PaymentInterval.Monthly}
+      maxRenewals={12}
+      memo="Pro subscription"
+      executeImmediately={true}
+      label="Subscribe $10/month"
+      onSuccess={(tx) => console.log("Success:", tx)}
+      onError={(err) => console.error("Failed:", err)}
+    />
+  );
+}
+```
+
+## Props Reference
+
+| Prop                 | Type               | Required | Description                                               |
+| -------------------- | ------------------ | -------- | --------------------------------------------------------- |
+| `amount`             | `BN`               | Yes      | Payment amount in smallest token units (USDC: 6 decimals) |
+| `token`              | `PublicKey`        | Yes      | Token mint address (USDC: `EPjFWdd5...`)                  |
+| `recipient`          | `PublicKey`        | Yes      | Recipient wallet address                                  |
+| `gateway`            | `PublicKey`        | Yes      | Payment gateway address                                   |
+| `interval`           | `PaymentInterval`  | Yes      | Payment frequency                                         |
+| `custom_interval`    | `number`           | No       | Custom interval in seconds                                |
+| `maxRenewals`        | `number`           | No       | Maximum renewals (null = unlimited)                       |
+| `memo`               | `string`           | No       | Payment memo                                              |
+| `startTime`          | `number`           | No       | Start timestamp (null = now)                              |
+| `executeImmediately` | `boolean`          | No       | Execute first payment now (default: true)                 |
+| `label`              | `string`           | No       | Button text (default: "Subscribe")                        |
+| `className`          | `string`           | No       | CSS classes                                               |
+| `disabled`           | `boolean`          | No       | Disable button                                            |
+| `onSuccess`          | `(result) => void` | No       | Success callback                                          |
+| `onError`            | `(error) => void`  | No       | Error callback                                            |
+
+## Payment Intervals
+
+```typescript
+enum PaymentInterval {
+  Daily,
+  Weekly,
+  Monthly,
+  Quarterly,
+  SemiAnnually,
+  Annually,
+}
+```
+
+For custom intervals:
+
+```typescript
+<SubscriptionButton
+  interval={PaymentInterval.Custom}
+  custom_interval={604800} // 7 days in seconds
+  // ... other props
+/>
+```
+
+## Multiple Tiers
+
+```typescript
+function PricingTiers() {
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {/* Basic */}
+      <div>
+        <h3>Basic - $5/mo</h3>
         <SubscriptionButton
-          amount={CONFIG.AMOUNT}
-          token={CONFIG.TOKEN}
-          recipient={CONFIG.RECIPIENT}
-          gateway={CONFIG.GATEWAY}
+          amount={new BN(5_000_000)}
+          recipient={RECIPIENT}
+          gateway={GATEWAY}
+          token={USDC_MINT}
           interval={PaymentInterval.Monthly}
-          maxRenewals={12}
-          memo="Example subscription"
-          executeImmediately={true}
-          label="Subscribe for $1/month"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all"
-          onSuccess={handleSuccess}
-          onError={handleError}
+          label="Subscribe Basic"
+        />
+      </div>
+
+      {/* Pro */}
+      <div>
+        <h3>Pro - $15/mo</h3>
+        <SubscriptionButton
+          amount={new BN(15_000_000)}
+          recipient={RECIPIENT}
+          gateway={GATEWAY}
+          token={USDC_MINT}
+          interval={PaymentInterval.Monthly}
+          label="Subscribe Pro"
+        />
+      </div>
+
+      {/* Enterprise */}
+      <div>
+        <h3>Enterprise - $99/mo</h3>
+        <SubscriptionButton
+          amount={new BN(99_000_000)}
+          recipient={RECIPIENT}
+          gateway={GATEWAY}
+          token={USDC_MINT}
+          interval={PaymentInterval.Monthly}
+          label="Subscribe Enterprise"
         />
       </div>
     </div>
   );
-};
-
-export default SubscriptionExample;
+}
 ```
 
-## Step 6: Understanding the Props
+## Handling Success/Error
 
-The `SubscriptionButton` accepts the following props:
+```typescript
+function SubscribePage() {
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [txSignature, setTxSignature] = useState<string | null>(null);
 
-- `amount`: The subscription amount as a `BN` (in smallest token units)
-- `token`: The token mint `PublicKey` for payments
-- `recipient`: The `PublicKey` of the payment recipient
-- `gateway`: The `PublicKey` of the payment gateway
-- `interval`: Payment frequency (`PaymentInterval.Monthly`, `PaymentInterval.Weekly`, etc.)
-- `custom_interval`: Custom interval in seconds (optional)
-- `maxRenewals`: Maximum number of automatic renewals (optional)
-- `memo`: Optional memo string for the subscription
-- `startTime`: Optional start date for the subscription
-- `executeImmediately`: Whether to execute the first payment immediately (default: true)
-- `label`: Button text (default: "Subscribe")
-- `className`: Additional CSS classes
-- `disabled`: Whether the button is disabled
-- `radius` & `size`: Button styling options
-- `onSuccess`: Callback function called on successful subscription creation
-- `onError`: Callback function called on error
+  return (
+    <div>
+      {status === "success" && (
+        <div className="text-green-600">
+          Subscription created!
+          <a href={`https://solscan.io/tx/${txSignature}`}>View transaction</a>
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="text-red-600">Failed to create subscription</div>
+      )}
+
+      <SubscriptionButton
+        // ... props
+        onSuccess={(result) => {
+          setStatus("success");
+          setTxSignature(result.signature);
+        }}
+        onError={(error) => {
+          setStatus("error");
+          console.error(error);
+        }}
+      />
+    </div>
+  );
+}
+```
+
+## Common Patterns
+
+### Yearly with Discount
+
+```typescript
+<SubscriptionButton
+  amount={new BN(100_000_000)} // $100/year ($8.33/mo equivalent)
+  interval={PaymentInterval.Annually}
+  maxRenewals={1} // One year commitment
+  label="Subscribe Yearly (Save 17%)"
+/>
+```
+
+### Time-Limited Subscription
+
+```typescript
+<SubscriptionButton
+  amount={new BN(29_000_000)}
+  interval={PaymentInterval.Monthly}
+  maxRenewals={3} // 3 months max
+  label="3-Month Access"
+/>
+```
+
+### Custom Start Date
+
+```typescript
+<SubscriptionButton
+  amount={new BN(10_000_000)}
+  interval={PaymentInterval.Monthly}
+  startTime={Math.floor(Date.now() / 1000) + 86400} // Tomorrow
+  executeImmediately={false}
+  label="Start Tomorrow"
+/>
+```
 
 ## Important Notes
 
-- **Wallet Connection Required**: The button will not work unless `wallet.connected` is `true`. Always check this before rendering the button.
-- **Gateway**: You'll need a valid payment gateway PublicKey. The one provided in the code is operated by contribute.so and is operational on devnet and mainnet.
-- **Testing**: Use Solana devnet for testing before deploying to mainnet.
+- **Wallet Required**: Button only works when wallet is connected
+- **Token Balance**: User must have sufficient token balance
+- **SOL for Fees**: User needs SOL for transaction fees
+- **Gateway**: Use `CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr` (default Tributary gateway)
+- **Testing**: Use devnet (`https://api.devnet.solana.com`) for testing
 
-For more examples and the latest code, visit [app.tributary.so](https://app.tributary.so).
+## Next Steps
+
+- [SDK Reference](../sdks.md) - Full SDK documentation
+- [Checkout Links](./checkout.md) - Generate shareable payment URLs
+- [API Reference](../api/overview.md) - Check subscription status

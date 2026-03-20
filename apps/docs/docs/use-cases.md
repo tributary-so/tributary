@@ -1,157 +1,250 @@
-# Use Cases for Tributary Protocol
+# Use Cases
 
-Tributary's automated payment infrastructure opens up possibilities far beyond traditional subscriptions. Any business model that benefits from predictable, automated payments can leverage our protocol.
+Tributary's three payment types support diverse business models. Each type is optimized for specific scenarios.
 
-## 🎯 Core Payment Types Supported
+## Payment Type Overview
 
-### ✅ Already Implemented
+| Type          | Best For         | Predictability | Flexibility |
+| ------------- | ---------------- | -------------- | ----------- |
+| Subscriptions | Regular services | High           | Low         |
+| Milestones    | Project work     | Medium         | Medium      |
+| Pay-as-you-go | Variable usage   | Low            | High        |
 
-These payment models are fully supported by the current Tributary protocol:
+## Subscriptions
 
-#### 1. **Subscription Payments**
+Fixed recurring payments at regular intervals.
 
-Fixed amounts charged at regular intervals for ongoing services.
+### SaaS & Software
 
-- **Examples:** SaaS software, streaming services, newsletters, gym memberships
-- **Configuration:** Fixed amount, recurring interval (weekly/monthly/yearly/custom)
-
-#### 2. **Donation/Support Payments**
-
-Regular financial support for causes or creators.
-
-- **Examples:** Patreon-style creator support, charity donations, open source funding
-- **Configuration:** Variable amounts, flexible intervals
-
-## 🚀 Expanded Use Cases
-
-### Installment Payments
-
-Breaking large purchases into smaller, scheduled payments over time.
-
-- **Examples:** Equipment financing, course payments, high-ticket items
-- **Configuration:** Fixed total amount, payment schedule, defined end date
-
-### Usage-Based Recurring Payments
-
-Variable amounts based on consumption, charged regularly.
-
-- **Examples:** Cloud computing, utility services, API usage billing
-- **Configuration:** Variable amounts, fixed billing cycle
-
-### Membership Dues
-
-Regular payments to maintain membership status.
-
-- **Examples:** Professional associations, clubs, unions, DAOs
-- **Configuration:** Fixed amount, annual or monthly billing
-
-### Business & Finance
-
-- **Retainer Payments:** Legal services, consulting agreements, maintenance contracts
-- **License Fees:** Software licenses, intellectual property, franchise fees
-- **Insurance Premiums:** DeFi insurance protocols, coverage plans
-- **Loan Payments:** DeFi lending protocols, payment schedules
-- **Treasury Management:** DAO treasury distributions, protocol rewards
+- **Monthly software licenses** - $29/month for productivity tools
+- **Annual enterprise plans** - $999/year with discounts
+- **Developer tools** - API access with tiered pricing
+- **Cloud services** - Compute, storage, bandwidth
 
 ### Content & Media
 
-- **Newsletter Subscriptions:** Premium content, research reports
-- **Course Access:** Educational platforms, skill development
-- **Podcast Support:** Creator monetization, exclusive content
-- **Gaming Subscriptions:** Game passes, in-game currency, premium features
-- **NFT Rentals:** Regular payments for NFT usage rights
+- **Newsletters** - Premium content for $10/month
+- **Streaming platforms** - Video, audio, podcasts
+- **Research reports** - Weekly/monthly analysis
+- **Course access** - Continuous learning subscriptions
 
-### Services & Platforms
+### Memberships & Communities
 
-- **API Access:** Developer tools, data services, infrastructure
-- **Storage Services:** Decentralized storage, backup services
-- **Compute Resources:** Rendering farms, AI processing, mining pools
-- **Professional Services:** Accounting, legal, consulting, marketing
+- **Professional associations** - Annual dues
+- **Creator communities** - Discord server access
+- **DAO participation** - Voting rights, exclusive channels
+- **Club memberships** - Gym, co-working, social clubs
 
-### Community & Social
+### Donations & Support
 
-- **DAO Contributions:** Regular funding for community projects
-- **Group Purchases:** Collective buying, shared subscriptions
-- **Event Tickets:** Season passes, recurring event access
-- **Support Groups:** Community maintenance, moderation services
+- **Open source funding** - Monthly GitHub sponsors
+- **Creator support** - Patreon-style recurring donations
+- **Nonprofit donations** - Charitable giving automation
 
-### DeFi & Web3 Native
+---
 
-- **Staking Services:** Validator fees, staking pool management
-- **Yield Farming:** Strategy fees, protocol participation
-- **Cross-Chain Services:** Bridge fees, multi-chain management
-- **MEV Protection:** Ongoing protection services, priority access
+## Milestone Payments
 
-## 🎨 Creative Business Models
+Project-based compensation with up to 4 configurable deliverables.
 
-### Hybrid Models
+### Freelance & Consulting
 
-- **Freemium Plus:** Base free tier with premium recurring features
-- **Usage Caps:** Free tier with overage billing
-- **Graduated Pricing:** Pricing tiers that automatically adjust based on usage
+```
+Website Development - $1,500 total
+├── Milestone 1: Design mockups - $300 (Week 1)
+├── Milestone 2: Core development - $700 (Week 3)
+├── Milestone 3: Testing & launch - $500 (Week 5)
+```
 
-### Time-Based Models
+### Software Development
 
-- **Seasonal Subscriptions:** Services active only during specific periods
-- **Project-Based:** Recurring payments for project duration
-- **Milestone Payments:** Triggered by specific events or achievements
+- **Feature development** - Payment per feature delivered
+- **Bug fixes** - Bounties with milestone verification
+- **Code reviews** - Payment upon completion
+- **Documentation** - Writing projects with chapter milestones
 
-### Community-Driven Models
+### Content Creation
 
-- **Collective Subscriptions:** Group subscriptions with shared benefits
-- **Tip Schedules:** Regular appreciation payments
-- **Bounty Programs:** Recurring payments for ongoing contributions
+- **Video series** - Payment per episode
+- **Article packages** - Payment per article delivered
+- **Design work** - Concept, draft, final milestones
+- **Translation** - Milestone per document section
 
-## 🏢 What Payment Providers Can Build
+### Construction & Physical Work
 
-Payment providers can create specialized services for these use cases:
+- **Home renovations** - Foundation, framing, finishing
+- **Event planning** - Booking, preparation, execution
+- **Manufacturing** - Design, prototype, production
 
-### User Experience Enhancements
+### Release Conditions
 
-- **Smart Onboarding:** One-click setup for complex payment schedules
-- **Payment Calendars:** Visual timeline of upcoming payments
-- **Budget Management:** Spending limits, payment consolidation
-- **Pause/Resume Controls:** Vacation modes, financial hardship options
+| Condition  | Description                     |
+| ---------- | ------------------------------- |
+| Time-based | Automatic release at timestamp  |
+| Manual     | Requires recipient approval     |
+| Automatic  | Instant on milestone completion |
 
-### Business Intelligence
+---
 
-- **Revenue Analytics:** Predictable revenue forecasting
-- **Churn Analysis:** Subscription health metrics
-- **Customer Lifetime Value:** Advanced analytics dashboards
-- **Payment Success Rates:** Optimization insights
+## Pay-as-you-go
 
-### Integration Services
+Usage-based billing with period limits and chunk controls.
 
-- **Webhook Systems:** Real-time payment notifications
-- **API Gateways:** Easy integration with existing systems
-- **Multi-Chain Support:** Cross-blockchain payment coordination
-- **Fiat On-Ramps:** Traditional payment method integration
+### AI & LLM Services
 
-### Advanced Features
+```typescript
+// AI API billing
+PayAsYouGo {
+  maxAmountPerPeriod: 100_000_000, // $100/month
+  maxChunkAmount: 10_000_000,      // $10 max per call
+  periodLengthSeconds: 2_592_000,   // 30 days
+}
+```
 
-- **Smart Contracts Integration:** Automated service activation/deactivation
-- **Escrow Services:** Payment protection for both parties
-- **Multi-Party Splits:** Revenue sharing automation
-- **Compliance Tools:** Tax reporting, regulatory compliance
+- **LLM token usage** - Per-token billing
+- **Image generation** - Pay per image
+- **Embedding services** - Per-request billing
+- **Model inference** - Compute time billing
 
-## 💡 Innovation Opportunities
+### API Services
 
-### Emerging Possibilities
+- **REST APIs** - Per-request billing
+- **GraphQL** - Query complexity billing
+- **Webhooks** - Event delivery charges
+- **Rate limiting** - Premium tier access
 
-- **AI-Powered Pricing:** Dynamic pricing based on usage patterns
-- **Reputation-Based Pricing:** Credit scoring for Web3 users
-- **Social Payment Plans:** Friend-funded subscriptions
-- **Micro-Subscriptions:** Ultra-low-cost recurring services
-- **Conditional Payments:** Smart contract-triggered billing
+### Cloud Resources
 
-### Cross-Industry Applications
+- **Compute** - Per-hour billing
+- **Storage** - Per-GB billing
+- **Bandwidth** - Per-TB billing
+- **Database** - Query-based pricing
 
-- **Healthcare:** Regular wellness checks, medication reminders with payments
-- **Education:** Continuous learning subscriptions, skill certifications
-- **Real Estate:** Property management fees, shared ownership models
-- **Transportation:** Mobility subscriptions, shared vehicle access
-- **Energy:** Carbon credit subscriptions, renewable energy sharing
+### Data Services
 
-The Tributary protocol provides the foundation for all these use cases. Payment providers build the user experiences, business logic, and specialized features that make these models accessible and valuable to end users.
+- **Data feeds** - Real-time market data
+- **Analytics** - Query-based billing
+- **Search** - Per-search billing
+- **Monitoring** - Metric ingestion
 
-Ready to build your payment application? [Learn How →](how.md)
+---
+
+## Integration Patterns
+
+### AI Agent Monetization (Lando)
+
+Service agents generate subscription URLs for customer agents:
+
+```typescript
+// Service agent generates payment URL
+const session = await stripe.checkout.sessions.create({
+  mode: "subscription",
+  line_items: [{ description: "AI Service Pro", unitPrice: 29, quantity: 1 }],
+  paymentFrequency: "monthly",
+  tributaryConfig: {
+    gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
+    recipient: "SERVICE_AGENT_WALLET",
+    trackingId: "ai-service-pro",
+  },
+});
+
+// Customer agent visits URL, subscribes
+// Payments execute automatically
+```
+
+### API Monetization (x402)
+
+HTTP 402 middleware for API access:
+
+```typescript
+import { createX402Middleware } from "@tributary-so/x402";
+
+app.use(
+  "/api/premium",
+  createX402Middleware({
+    scheme: "x402://payg",
+    amount: 0.01, // $0.01 per request
+    maxAmountPerPeriod: 100,
+    periodLengthSeconds: 86400,
+  })
+);
+```
+
+### Checkout Links
+
+Zero-code payment collection:
+
+```typescript
+// Generate link
+const session = await stripe.checkout.sessions.create({
+  mode: "subscription",
+  line_items: [{ description: "Newsletter Pro", unitPrice: 10, quantity: 1 }],
+  paymentFrequency: "monthly",
+  tributaryConfig: { gateway, recipient, trackingId },
+});
+
+// Share via email, SMS, chat
+sendEmail(email, `Subscribe: ${session.url}`);
+```
+
+---
+
+## Hybrid Models
+
+Combine payment types for complex scenarios:
+
+### Freemium + Subscription
+
+- Free tier with basic access
+- $10/month for premium features
+- $50/month for enterprise
+
+### Project + Maintenance
+
+- Milestone payments for initial build
+- Monthly subscription for ongoing support
+
+### Usage + Minimum
+
+- $50/month minimum (subscription)
+- Pay-as-you-go for usage above threshold
+
+---
+
+## Industry Applications
+
+### Creator Economy
+
+| Creator Type      | Payment Type  | Model                  |
+| ----------------- | ------------- | ---------------------- |
+| Newsletter writer | Subscription  | $10/month premium      |
+| YouTuber          | Subscription  | $5/month membership    |
+| Consultant        | Milestone     | $500 per project phase |
+| AI bot builder    | Pay-as-you-go | $0.01 per API call     |
+
+### DeFi & Web3
+
+| Protocol Type   | Payment Type  | Model                  |
+| --------------- | ------------- | ---------------------- |
+| Staking service | Subscription  | Monthly management fee |
+| Bridge protocol | Pay-as-you-go | Per-transaction fee    |
+| DAO tooling     | Milestone     | Feature bounties       |
+| Analytics       | Subscription  | $99/month premium      |
+
+### Professional Services
+
+| Service Type   | Payment Type  | Model        |
+| -------------- | ------------- | ------------ |
+| Legal retainer | Subscription  | $2000/month  |
+| Development    | Milestone     | $500/feature |
+| Consulting     | Pay-as-you-go | $150/hour    |
+| Accounting     | Subscription  | $300/month   |
+
+---
+
+## Next Steps
+
+- [Subscription Payments](./subscription-payments.md) - Detailed subscription docs
+- [Milestone Payments](./milestone-payments.md) - Milestone implementation
+- [Pay-as-you-go](./pay-as-you-go.md) - Usage-based billing
+- [Integration Options](./integration.md) - Get started

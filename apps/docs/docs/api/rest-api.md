@@ -28,6 +28,20 @@ curl https://api.tributary.so/v1/health
 }
 ```
 
+## Skill Generation
+
+### GET /skill/:encoded
+
+Generate Lando skill markdown from encoded subscription parameters. Used by AI agents to create payment subscription instructions.
+
+**Path Parameters:**
+
+| Parameter | Type   | Required | Description                            |
+| --------- | ------ | -------- | -------------------------------------- |
+| `encoded` | string | Yes      | Base64-encoded subscription parameters |
+
+**Response:** `text/markdown`
+
 ## Subscriptions
 
 ### GET /subscriptions
@@ -38,18 +52,14 @@ Get subscription details by various lookup options.
 
 | Parameter          | Type   | Required | Description                                   |
 | ------------------ | ------ | -------- | --------------------------------------------- |
-| `trackingId`       | string | No       | Subscription tracking ID                      |
-| `userPublicKey`    | string | No       | User's public key                             |
-| `gatewayPublicKey` | string | No       | Gateway's public key                          |
-| `walletPublicKey`  | string | No       | Wallet public key (requires tokenMint)        |
-| `tokenMint`        | string | No       | Token mint address (requires walletPublicKey) |
-| `recipient`        | string | No       | Recipient public key                          |
+| `trackingId`       | string | No\*     | Subscription tracking ID                      |
+| `userPublicKey`    | string | No\*     | User's public key                             |
+| `gatewayPublicKey` | string | No\*     | Gateway's public key                          |
+| `walletPublicKey`  | string | No\*     | Wallet public key (requires tokenMint)        |
+| `tokenMint`        | string | No\*     | Token mint address (requires walletPublicKey) |
+| `recipient`        | string | No\*     | Recipient public key                          |
 
-**Constraints:**
-
-- Must provide at least one lookup parameter
-- `walletPublicKey` and `tokenMint` must be provided together
-- Maximum 3 query parameters allowed
+\*Must provide at least one parameter. `walletPublicKey` and `tokenMint` must be provided together. Maximum 3 query parameters allowed.
 
 **Example:**
 
@@ -206,9 +216,21 @@ Get all unique event names.
   "PaymentRecord",
   "PaymentPolicyCreated",
   "PaymentGatewayCreated",
-  ...
+  "PaymentPolicyDeleted",
+  "PaymentGatewayDeleted",
+  "PaymentPolicyStatusChanged",
+  "GatewayFeeBpsChanged",
+  "GatewayFeeRecipientChanged",
+  "GatewaySignerChanged",
+  "UserPaymentCreated",
+  "ProgramConfigCreated",
+  "ReferralRewardDistributed"
 ]
 ```
+
+### GET /events/names/tributary
+
+Get all Tributary program event names.
 
 ### GET /events/payments
 
@@ -249,6 +271,31 @@ Get payment policy created events.
 | `limit`       | number | No       | Max results             |
 | `offset`      | number | No       | Pagination offset       |
 
+### GET /events/policies/deleted
+
+Get payment policy deleted events.
+
+**Query Parameters:**
+
+| Parameter       | Type   | Required | Description               |
+| --------------- | ------ | -------- | ------------------------- |
+| `paymentPolicy` | string | No       | Payment policy public key |
+| `owner`         | string | No       | Owner public key          |
+| `limit`         | number | No       | Max results               |
+| `offset`        | number | No       | Pagination offset         |
+
+### GET /events/policies/status-changed
+
+Get payment policy status changed events.
+
+**Query Parameters:**
+
+| Parameter       | Type   | Required | Description               |
+| --------------- | ------ | -------- | ------------------------- |
+| `paymentPolicy` | string | No       | Payment policy public key |
+| `limit`         | number | No       | Max results               |
+| `offset`        | number | No       | Pagination offset         |
+
 ### GET /events/gateways/created
 
 Get payment gateway created events.
@@ -260,6 +307,110 @@ Get payment gateway created events.
 | `authority` | string | No       | Authority public key |
 | `limit`     | number | No       | Max results          |
 | `offset`    | number | No       | Pagination offset    |
+
+### GET /events/gateways/deleted
+
+Get payment gateway deleted events.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Description          |
+| ----------- | ------ | -------- | -------------------- |
+| `gateway`   | string | No       | Gateway public key   |
+| `authority` | string | No       | Authority public key |
+| `limit`     | number | No       | Max results          |
+| `offset`    | number | No       | Pagination offset    |
+
+### GET /events/gateways/fee-bps-changed
+
+Get gateway fee bps changed events.
+
+**Query Parameters:**
+
+| Parameter | Type   | Required | Description        |
+| --------- | ------ | -------- | ------------------ |
+| `gateway` | string | No       | Gateway public key |
+| `limit`   | number | No       | Max results        |
+| `offset`  | number | No       | Pagination offset  |
+
+### GET /events/gateways/fee-recipient-changed
+
+Get gateway fee recipient changed events.
+
+**Query Parameters:**
+
+| Parameter | Type   | Required | Description        |
+| --------- | ------ | -------- | ------------------ |
+| `gateway` | string | No       | Gateway public key |
+| `limit`   | number | No       | Max results        |
+| `offset`  | number | No       | Pagination offset  |
+
+### GET /events/gateways/signer-changed
+
+Get gateway signer changed events.
+
+**Query Parameters:**
+
+| Parameter | Type   | Required | Description        |
+| --------- | ------ | -------- | ------------------ |
+| `gateway` | string | No       | Gateway public key |
+| `limit`   | number | No       | Max results        |
+| `offset`  | number | No       | Pagination offset  |
+
+### GET /events/referrals/rewards
+
+Get referral reward distributed events.
+
+**Query Parameters:**
+
+| Parameter       | Type   | Required | Description               |
+| --------------- | ------ | -------- | ------------------------- |
+| `gateway`       | string | No       | Gateway public key        |
+| `paymentPolicy` | string | No       | Payment policy public key |
+| `limit`         | number | No       | Max results               |
+| `offset`        | number | No       | Pagination offset         |
+
+### GET /events/user-payments/created
+
+Get user payment created events.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Description        |
+| ----------- | ------ | -------- | ------------------ |
+| `owner`     | string | No       | Owner public key   |
+| `tokenMint` | string | No       | Token mint address |
+| `limit`     | number | No       | Max results        |
+| `offset`    | number | No       | Pagination offset  |
+
+### GET /events/program/config-created
+
+Get program config created events.
+
+**Query Parameters:**
+
+| Parameter | Type   | Required | Description       |
+| --------- | ------ | -------- | ----------------- |
+| `admin`   | string | No       | Admin public key  |
+| `limit`   | number | No       | Max results       |
+| `offset`  | number | No       | Pagination offset |
+
+### GET /events/typed/:eventName
+
+Get typed events by event name.
+
+**Path Parameters:**
+
+| Parameter   | Type   | Required | Description |
+| ----------- | ------ | -------- | ----------- |
+| `eventName` | string | Yes      | Event name  |
+
+**Query Parameters:**
+
+| Parameter | Type   | Required | Description       |
+| --------- | ------ | -------- | ----------------- |
+| `limit`   | number | No       | Max results       |
+| `offset`  | number | No       | Pagination offset |
 
 ## Webhooks
 
@@ -305,6 +456,12 @@ Get all webhooks with optional filters.
 
 Get webhooks by gateway public key.
 
+**Path Parameters:**
+
+| Parameter       | Type   | Required | Description        |
+| --------------- | ------ | -------- | ------------------ |
+| `gatewayPubkey` | string | Yes      | Gateway public key |
+
 **Query Parameters:**
 
 | Parameter     | Type    | Required | Description                 |
@@ -325,6 +482,12 @@ Get webhook by ID.
 
 Update webhook active status.
 
+**Path Parameters:**
+
+| Parameter | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `id`      | number | Yes      | Webhook ID  |
+
 **Request Body:**
 
 ```json
@@ -338,6 +501,43 @@ Update webhook active status.
 Delete webhook by ID.
 
 **Response:** 204 No Content
+
+### DELETE /webhooks/gateway/:gatewayPubkey
+
+Delete all webhooks for a gateway.
+
+**Path Parameters:**
+
+| Parameter       | Type   | Required | Description        |
+| --------------- | ------ | -------- | ------------------ |
+| `gatewayPubkey` | string | Yes      | Gateway public key |
+
+**Response:** 204 No Content
+
+## Webhook Delivery
+
+Webhooks are delivered with:
+
+- **Max retries**: 3 attempts with exponential backoff (1s, 2s, 3s)
+- **Timeout**: 10 seconds per request
+- **Headers**: `Content-Type: application/json`, `User-Agent: Tributary-Webhook-Forwarder/1.0`
+
+**Webhook Payload:**
+
+```json
+{
+  "event": "tributary_PaymentRecord",
+  "data": {
+    "payment_policy": "policy-public-key",
+    "gateway": "gateway-public-key",
+    "amount": 1000000,
+    "timestamp": 1234567890,
+    "memo": [116, 114, 97, 99, 107, 105, 110, 103, 45, 105, 100],
+    "record_id": 1
+  },
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
 
 ## Error Codes
 

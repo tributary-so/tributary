@@ -1,6 +1,6 @@
 # API Overview
 
-The Tributary API provides a RESTful interface for querying subscription status, payment events, and managing webhooks, along with real-time WebSocket notifications for payment events.
+The Tributary API provides RESTful endpoints for querying subscriptions, payment events, and managing webhooks, plus real-time WebSocket notifications.
 
 **Base URL:** `https://api.tributary.so`
 
@@ -22,21 +22,34 @@ curl "https://api.tributary.so/v1/events?trackingId=my-subscription"
 - **RESTful API** - Standard HTTP endpoints with JSON responses
 - **WebSocket Support** - Real-time payment notifications via Socket.IO
 - **Event Querying** - Comprehensive database queries with filtering
-- **Webhook Management** - Register and manage webhooks for notifications
-- **Subscription Tracking** - Check subscription status by tracking ID
+- **Webhook Management** - Register webhooks for payment notifications
+- **Subscription Tracking** - Check status by tracking ID, user, or gateway
 - **One-Time Payments** - Track one-time payments alongside subscriptions
+
+## Endpoints Overview
+
+| Endpoint                      | Description                  |
+| ----------------------------- | ---------------------------- |
+| `GET /v1/health`              | Health check                 |
+| `GET /v1/subscriptions`       | Query subscription status    |
+| `GET /v1/onetime/:trackingId` | Get one-time payment details |
+| `GET /v1/events`              | Query payment events         |
+| `GET /v1/events/payments`     | Get payment records          |
+| `POST /v1/webhooks`           | Create webhook               |
+| `GET /v1/webhooks`            | List webhooks                |
+| `WS /ws/v1`                   | WebSocket endpoint           |
 
 ## Authentication
 
-The API is currently open for read operations. Write operations (webhooks) require gateway authentication.
+Read operations are open. Write operations (webhooks) require gateway authentication.
 
 ## Rate Limits
 
-- Standard rate limits apply to prevent abuse
+- Standard rate limits apply
 - WebSocket connections limited per tracking ID
 - Webhooks retry up to 3 times with exponential backoff
 
-## Base URL
+## Environments
 
 | Environment | Base URL                          |
 | ----------- | --------------------------------- |
@@ -45,18 +58,18 @@ The API is currently open for read operations. Write operations (webhooks) requi
 
 ## SDK Integration
 
-The API is fully integrated with the Tributary SDK:
-
 ```typescript
+import { PaymentsClient } from "@tributary-so/payments";
 import { Tributary } from "@tributary-so/sdk";
 
-const tributary = new Tributary({
-  apiUrl: "https://api.tributary.so",
-});
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const tributary = new Tributary(connection, wallet);
+const stripe = new PaymentsClient(connection, tributary);
 
-// Get subscription status
-const subscription = await tributary.getSubscription({
+// Check subscription status
+const status = await stripe.subscriptions.checkStatus({
   trackingId: "my-subscription",
+  userPublicKey: "USER_PUBLIC_KEY",
 });
 ```
 
@@ -79,22 +92,56 @@ socket.on("payment", (message) => {
 });
 ```
 
+## Webhook Integration
+
+```bash
+# Create webhook
+curl -X POST https://api.tributary.so/v1/webhooks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gateway_pubkey": "YOUR_GATEWAY",
+    "endpoint_url": "https://yourserver.com/webhook",
+    "active": true
+  }'
+```
+
+Webhooks are delivered with:
+
+- Max 3 retries with exponential backoff (1s, 2s, 3s)
+- 10 second timeout per request
+- `Content-Type: application/json` header
+
 ## Data Flow
 
 ```
-┌─────────────┐      ┌───────────┐      ┌─────────┐      ┌──────────┐
-│  On-chain   │─────▶│ Soltrace  │─────▶│  Kafka  │─────▶│   API    │
-│   Payment   │      │  Indexer  │      │  Queue  │      │ Consumer │
-└─────────────┘      └───────────┘      └─────────┘      └────┬─────┘
-                                                             │
-                                                             │
-                                               ┌─────────────┴─────────────┐
-                                               │                           │
-                                               ▼                           ▼
-                                          ┌─────────┐                ┌──────────┐
-                                          │   REST  │                │WebSocket │
-                                          │   API   │                │ Clients  │
-                                          └─────────┘                └──────────┘
+On-chain Payment → Soltrace Indexer → Kafka Queue → API Consumer
+                                                   ↓
+                                          ┌────────┴────────┐
+                                          ↓                 ↓
+                                     REST API          WebSocket
+                                                       Clients
+```
+
+## Response Format
+
+All responses follow this structure:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "timestamp": 1699876543210
+}
+```
+
+Error responses:
+
+```json
+{
+  "success": false,
+  "error": "Detailed error message",
+  "timestamp": 1699876543210
+}
 ```
 
 ## Next Steps
