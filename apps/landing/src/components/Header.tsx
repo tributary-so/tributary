@@ -119,7 +119,7 @@ export function Header() {
           </nav>
           <a
             href="https://app.tributary.so"
-            className="text-sm border border-primary border-1 p-2 rounded-lg"
+            className="text-sm border border-primary border p-2 rounded-lg"
           >
             OPEN APP
           </a>

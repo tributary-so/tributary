@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
-import { Copy, Check, ExternalLink } from "lucide-react";
+import { Copy, Check, ExternalLink, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { LineItem, CheckoutSessionManager } from "@tributary-so/payments";
 
@@ -182,367 +181,355 @@ export function CheckoutLinkForm() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6 }}
-      className="bg-gray-50 rounded-2xl p-8"
-    >
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Type
-          </label>
-          <div className="flex gap-4">
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, mode: "subscription" })}
-              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-                formData.mode === "subscription"
-                  ? "bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Subscription
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setFormData({ ...formData, mode: "payment", lineItems: [] })
-              }
-              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-                formData.mode === "payment"
-                  ? "bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              One-Time Payment
-            </button>
-          </div>
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+          Payment Type
+        </label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, mode: "subscription" })}
+            className={`flex-1 py-2 px-4 border transition-all text-sm ${
+              formData.mode === "subscription"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-border hover:bg-accent text-foreground"
+            }`}
+          >
+            Subscription
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setFormData({ ...formData, mode: "payment", lineItems: [] })
+            }
+            className={`flex-1 py-2 px-4 border transition-all text-sm ${
+              formData.mode === "payment"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-border hover:bg-accent text-foreground"
+            }`}
+          >
+            One-Time
+          </button>
         </div>
+      </div>
 
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+          Recipient Address
+        </label>
+        <input
+          type="text"
+          value={formData.recipient}
+          onChange={(e) =>
+            setFormData({ ...formData, recipient: e.target.value })
+          }
+          placeholder="Your Solana wallet address"
+          className={`w-full px-4 py-2 bg-background border ${
+            errors.recipient ? "border-destructive" : "border-border"
+          } focus:border-primary focus:outline-none transition-colors text-sm`}
+        />
+        {errors.recipient && (
+          <p className="mt-1 text-sm text-destructive">{errors.recipient}</p>
+        )}
+      </div>
+
+      {(formData.mode === "payment" || !lineItemsActive) && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Recipient Address
+          <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+            {formData.mode === "payment"
+              ? "Total Amount (USDC)"
+              : "Amount (USDC)"}
           </label>
           <input
-            type="text"
-            value={formData.recipient}
+            type="number"
+            value={formData.amount}
             onChange={(e) =>
-              setFormData({ ...formData, recipient: e.target.value })
+              setFormData({ ...formData, amount: e.target.value })
             }
-            placeholder="Your Solana wallet address"
-            className={`w-full px-4 py-3 rounded-lg border ${
-              errors.recipient ? "border-red-500" : "border-gray-300"
-            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+            placeholder="e.g., 10"
+            step="0.01"
+            min="0"
+            className={`w-full px-4 py-2 bg-background border ${
+              errors.amount ? "border-destructive" : "border-border"
+            } focus:border-primary focus:outline-none transition-colors text-sm`}
           />
-          {errors.recipient && (
-            <p className="mt-1 text-sm text-red-600">{errors.recipient}</p>
+          {errors.amount && (
+            <p className="mt-1 text-sm text-destructive">{errors.amount}</p>
           )}
         </div>
+      )}
 
-        {(formData.mode === "payment" || !lineItemsActive) && (
+      {formData.mode === "subscription" && (
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <label className="block text-sm font-medium text-foreground uppercase tracking-[0.12em]">
+              Line Items (optional)
+            </label>
+            <button
+              type="button"
+              onClick={addLineItem}
+              className="inline-flex items-center gap-1 text-sm px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
+            </button>
+          </div>
+
+          {formData.lineItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              Using base amount from above. Add line items for multi-item
+              orders.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-12 gap-3 text-xs text-muted-foreground font-medium uppercase tracking-[0.08em]">
+                <div className="col-span-5">Description</div>
+                <div className="col-span-3">Price ($)</div>
+                <div className="col-span-3">Quantity</div>
+                <div className="col-span-1" />
+              </div>
+              {formData.lineItems.map((item, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-12 gap-3 items-start"
+                >
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(e) =>
+                      updateLineItem(index, "description", e.target.value)
+                    }
+                    placeholder="Product/Service name"
+                    className={`col-span-5 px-3 py-2 bg-background border text-sm focus:border-primary focus:outline-none ${
+                      errors[`lineItem_${index}_description`]
+                        ? "border-destructive"
+                        : "border-border"
+                    }`}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={item.unitPrice || ""}
+                    onChange={(e) =>
+                      updateLineItem(
+                        index,
+                        "unitPrice",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
+                    placeholder="0.00"
+                    className={`col-span-3 px-3 py-2 bg-background border text-sm focus:border-primary focus:outline-none ${
+                      errors[`lineItem_${index}_price`]
+                        ? "border-destructive"
+                        : "border-border"
+                    }`}
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) =>
+                      updateLineItem(
+                        index,
+                        "quantity",
+                        parseInt(e.target.value) || 1
+                      )
+                    }
+                    placeholder="1"
+                    className={`col-span-3 px-3 py-2 bg-background border text-sm focus:border-primary focus:outline-none ${
+                      errors[`lineItem_${index}_quantity`]
+                        ? "border-destructive"
+                        : "border-border"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeLineItem(index)}
+                    className="col-span-1 p-2 text-muted-foreground hover:text-destructive transition-colors flex justify-center"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {lineItemsActive && (
+            <div className="mt-3 border border-border p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">
+                  Computed Total:
+                </span>
+                <span className="text-sm font-bold text-primary">
+                  ${computedAmount.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {formData.mode === "subscription" && (
+        <>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {formData.mode === "payment"
-                ? "Total Amount (USDC)"
-                : "Amount (USDC)"}
+            <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+              Payment Frequency
+            </label>
+            <select
+              value={formData.paymentFrequency}
+              onChange={(e) =>
+                setFormData({ ...formData, paymentFrequency: e.target.value })
+              }
+              className="w-full px-4 py-2 bg-background border border-border focus:border-primary focus:outline-none text-sm"
+            >
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="autoRenew"
+              checked={formData.autoRenew}
+              onChange={(e) =>
+                setFormData({ ...formData, autoRenew: e.target.checked })
+              }
+              className="w-4 h-4 border border-border"
+            />
+            <label htmlFor="autoRenew" className="text-sm text-foreground">
+              Auto-renew payment
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+              Max Renewals (optional)
             </label>
             <input
               type="number"
-              value={formData.amount}
+              value={formData.maxRenewals}
               onChange={(e) =>
-                setFormData({ ...formData, amount: e.target.value })
+                setFormData({ ...formData, maxRenewals: e.target.value })
               }
-              placeholder="e.g., 10"
-              step="0.01"
+              placeholder="Leave empty for unlimited"
               min="0"
-              className={`w-full px-4 py-3 rounded-lg border ${
-                errors.amount ? "border-red-500" : "border-gray-300"
-              } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={`w-full px-4 py-2 bg-background border ${
+                errors.maxRenewals ? "border-destructive" : "border-border"
+              } focus:border-primary focus:outline-none text-sm`}
             />
-            {errors.amount && (
-              <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
-            )}
-          </div>
-        )}
-
-        {formData.mode === "subscription" && (
-          <div>
-            <div className="flex justify-between items-center mb-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Line Items (optional)
-              </label>
-              <button
-                type="button"
-                onClick={addLineItem}
-                className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                + Add Item
-              </button>
-            </div>
-
-            {formData.lineItems.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                Using base amount from above. Add line items for multi-item
-                orders.
+            {errors.maxRenewals && (
+              <p className="mt-1 text-sm text-destructive">
+                {errors.maxRenewals}
               </p>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-12 gap-3 text-xs text-gray-500 font-medium">
-                  <div className="col-span-5">Description</div>
-                  <div className="col-span-3">Price ($)</div>
-                  <div className="col-span-3">Quantity</div>
-                  <div className="col-span-1" />
-                </div>
-                {formData.lineItems.map((item, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-12 gap-3 items-start"
-                  >
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) =>
-                        updateLineItem(index, "description", e.target.value)
-                      }
-                      placeholder="Product/Service name"
-                      className={`col-span-5 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                        errors[`lineItem_${index}_description`]
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={item.unitPrice || ""}
-                      onChange={(e) =>
-                        updateLineItem(
-                          index,
-                          "unitPrice",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      placeholder="0.00"
-                      className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                        errors[`lineItem_${index}_price`]
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateLineItem(
-                          index,
-                          "quantity",
-                          parseInt(e.target.value) || 1
-                        )
-                      }
-                      placeholder="1"
-                      className={`col-span-3 px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 ${
-                        errors[`lineItem_${index}_quantity`]
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeLineItem(index)}
-                      className="col-span-1 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex justify-center"
-                    >
-                      <span className="text-lg">×</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {lineItemsActive && (
-              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-blue-800">
-                    Computed Total:
-                  </span>
-                  <span className="text-sm font-bold text-blue-900">
-                    ${computedAmount.toFixed(2)}
-                  </span>
-                </div>
-              </div>
             )}
           </div>
-        )}
+        </>
+      )}
 
-        {formData.mode === "subscription" && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Frequency
-              </label>
-              <select
-                value={formData.paymentFrequency}
-                onChange={(e) =>
-                  setFormData({ ...formData, paymentFrequency: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="autoRenew"
-                checked={formData.autoRenew}
-                onChange={(e) =>
-                  setFormData({ ...formData, autoRenew: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="autoRenew" className="text-sm text-gray-700">
-                Auto-renew payment
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Max Renewals (optional)
-              </label>
-              <input
-                type="number"
-                value={formData.maxRenewals}
-                onChange={(e) =>
-                  setFormData({ ...formData, maxRenewals: e.target.value })
-                }
-                placeholder="Leave empty for unlimited"
-                min="0"
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.maxRenewals ? "border-red-500" : "border-gray-300"
-                } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              />
-              {errors.maxRenewals && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.maxRenewals}
-                </p>
-              )}
-            </div>
-          </>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Success URL (optional)
-          </label>
-          <input
-            type="url"
-            value={formData.successUrl}
-            onChange={(e) =>
-              setFormData({ ...formData, successUrl: e.target.value })
-            }
-            placeholder="https://yourapp.com/success"
-            className={`w-full px-4 py-3 rounded-lg border ${
-              errors.successUrl ? "border-red-500" : "border-gray-300"
-            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-          />
-          {errors.successUrl && (
-            <p className="mt-1 text-sm text-red-600">{errors.successUrl}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Cancel URL (optional)
-          </label>
-          <input
-            type="url"
-            value={formData.cancelUrl}
-            onChange={(e) =>
-              setFormData({ ...formData, cancelUrl: e.target.value })
-            }
-            placeholder="https://yourapp.com/cancel"
-            className={`w-full px-4 py-3 rounded-lg border ${
-              errors.cancelUrl ? "border-red-500" : "border-gray-300"
-            } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-          />
-          {errors.cancelUrl && (
-            <p className="mt-1 text-sm text-red-600">{errors.cancelUrl}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tracking ID (optional)
-          </label>
-          <input
-            type="text"
-            value={formData.trackingId}
-            onChange={(e) =>
-              setFormData({ ...formData, trackingId: e.target.value })
-            }
-            placeholder="Auto-generated if empty"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGenerate}
-          className="w-full py-4 bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
-        >
-          Generate Checkout Link
-        </button>
-
-        {checkoutUrl && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-xl p-6 border border-gray-200"
-          >
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-semibold text-gray-700">
-                Your Checkout Link
-              </span>
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy Link
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4 break-all text-sm font-mono text-gray-700 border border-gray-200">
-              {checkoutUrl}
-            </div>
-            <a
-              href={checkoutUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Test Checkout Page
-            </a>
-          </motion.div>
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+          Success URL (optional)
+        </label>
+        <input
+          type="url"
+          value={formData.successUrl}
+          onChange={(e) =>
+            setFormData({ ...formData, successUrl: e.target.value })
+          }
+          placeholder="https://yourapp.com/success"
+          className={`w-full px-4 py-2 bg-background border ${
+            errors.successUrl ? "border-destructive" : "border-border"
+          } focus:border-primary focus:outline-none text-sm`}
+        />
+        {errors.successUrl && (
+          <p className="mt-1 text-sm text-destructive">{errors.successUrl}</p>
         )}
       </div>
-    </motion.div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+          Cancel URL (optional)
+        </label>
+        <input
+          type="url"
+          value={formData.cancelUrl}
+          onChange={(e) =>
+            setFormData({ ...formData, cancelUrl: e.target.value })
+          }
+          placeholder="https://yourapp.com/cancel"
+          className={`w-full px-4 py-2 bg-background border ${
+            errors.cancelUrl ? "border-destructive" : "border-border"
+          } focus:border-primary focus:outline-none text-sm`}
+        />
+        {errors.cancelUrl && (
+          <p className="mt-1 text-sm text-destructive">{errors.cancelUrl}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2 uppercase tracking-[0.12em]">
+          Tracking ID (optional)
+        </label>
+        <input
+          type="text"
+          value={formData.trackingId}
+          onChange={(e) =>
+            setFormData({ ...formData, trackingId: e.target.value })
+          }
+          placeholder="Auto-generated if empty"
+          className="w-full px-4 py-2 bg-background border border-border focus:border-primary focus:outline-none text-sm"
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGenerate}
+        className="w-full py-3 bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors uppercase tracking-[0.12em] text-sm"
+      >
+        Generate Checkout Link
+      </button>
+
+      {checkoutUrl && (
+        <div className="border border-border p-6">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-semibold text-foreground uppercase tracking-[0.12em]">
+              Your Checkout Link
+            </span>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy Link
+                </>
+              )}
+            </button>
+          </div>
+          <div className="bg-muted/50 p-4 break-all text-sm font-mono text-muted-foreground border border-border">
+            {checkoutUrl}
+          </div>
+          <a
+            href={checkoutUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Test Checkout Page
+          </a>
+        </div>
+      )}
+    </div>
   );
 }

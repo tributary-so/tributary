@@ -2,7 +2,7 @@ import React from 'react'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex-grow" style={{ display: 'flex', flexDirection: 'column' }}>
+    <main className="grow" style={{ display: 'flex', flexDirection: 'column' }}>
       <div
         style={{
           flex: 1,

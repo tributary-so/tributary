@@ -1,236 +1,195 @@
+import { ArrowRight, Play } from "lucide-react";
+
 export function Landing() {
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Matrix rain background effect */}
-      <div className="matrix-rain" />
-      <div className="scanline absolute inset-0 opacity-30 pointer-events-none" />
-
-      <div className="relative z-10">
-        {/* Hero Section */}
-        <section className="container mx-auto px-4 py-20 md:py-32">
-          <div className="text-center max-w-4xl mx-auto animate-fade-in">
-            <div className="inline-block mb-6">
-              <span className="text-matrix-green font-mono text-sm px-4 py-2 border border-lando-border rounded-full">
+    <>
+      <section className="py-20">
+        <div className="grid gap-8 lg:grid-cols-[2fr_1fr] lg:gap-16">
+          <div className="flex flex-col items-start gap-4 text-left">
+            <div className="inline-block mb-2">
+              <span className="text-matrix-green font-mono text-sm px-4 py-2 border ">
                 &gt; Stripe for AI agents
               </span>
             </div>
-
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 font-mono">
-              <span className="text-lando-accent text-glow">LANDO</span>
+            <h1 className="text-5xl md:text-7xl font-bold leading-snug tracking-tighter font-mono">
+              <span className="">LANDO</span>
               <br />
-              <span className="text-lando-text">Agent Commerce on Solana</span>
+              <span className="">Agent Commerce on Solana</span>
             </h1>
-
-            <p className="text-xl text-lando-muted mb-8 max-w-2xl mx-auto leading-relaxed">
-              <span className="text-lando-accent">Service agents</span> generate
-              subscription URLs.{" "}
-              <span className="text-lando-accent">Customer agents</span> pay via
-              Tributary.
+            <p className="text-xl ">
+              <span className="">Service agents</span> generate subscription
+              URLs. <span className="">Customer agents</span> pay via Tributary.
             </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <a
                 href="/skill.md"
-                className="bg-lando-accent text-lando-bg font-bold px-8 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono animate-pulse-green"
+                className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
               >
+                <ArrowRight className="h-4 w-4" />
                 Get the Skill
               </a>
               <a
-                type="button"
                 href="/#/subscribe/eyJtIjoic3Vic2NyaXB0aW9uIiwidG0iOiJFUGpGV2RkNUF1ZnFTU3FlTTJxTjF4enliYXBDOEc0d0VHR2tad3lURHQxdiIsInIiOiJIaHExVDhBSGo0UEg0ZmJVVnRrcVZIRjhNeUY3eHZCU2JBODd2TFV5ZFNUbiIsImEiOiIxMCIsInRpZCI6InRyaWJfMTc3MzI5ODY4NDU3OF9hdWw1MTRiOHAiLCJzdSI6Im51bGwiLCJjdSI6Im51bGwiLCJnIjoiNm50bTVyV3FERmVmRVQ4UkZ5WlY3M0ZjZHF4UE1iYzdUc28zcENNV2s0dzQiLCJhciI6dHJ1ZSwibXIiOiIxMiIsInBmIjoid2Vla2x5Iiwic3QiOiJudWxsIiwibGkiOiJbXSJ9"
-                className="border border-lando-border text-lando-text px-8 py-4 rounded-lg hover:border-lando-accent hover:text-lando-accent transition-all font-mono"
+                className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
               >
-                Try Demo →
+                <Play className="h-4 w-4" />
+                Try Demo
               </a>
             </div>
           </div>
-        </section>
-
-        {/* How It Works */}
-        <section className="container mx-auto px-4 py-16">
-          <h2 className="text-3xl font-bold text-center mb-12 font-mono">
-            <span className="text-lando-accent">&lt;The Flow /&gt;</span>
-          </h2>
-
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-lando-card border border-lando-border rounded-lg p-8 box-glow">
-              <ol className="space-y-6 text-lando-muted">
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
-                    1
-                  </div>
-                  <div>
-                    <span className="text-lando-text font-semibold">
-                      Service agent generates subscription URL
-                    </span>
-                    <p className="text-sm mt-1">Using the Lando skill</p>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
-                    2
-                  </div>
-                  <div>
-                    <span className="text-lando-text font-semibold">
-                      Customer agent receives URL and visits page
-                    </span>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
-                    3
-                  </div>
-                  <div>
-                    <span className="text-lando-text font-semibold">
-                      Lando decodes URL and displays custom SKILL.md
-                    </span>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
-                    4
-                  </div>
-                  <div>
-                    <span className="text-lando-text font-semibold">
-                      Customer agent follows SKILL.md to set up Tributary
-                    </span>
-                  </div>
-                </li>
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        {/* URL Pattern Example */}
-        <section className="container mx-auto px-4 py-16">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-8 font-mono">
-              <span className="text-lando-accent">&lt;URL Pattern /&gt;</span>
-            </h2>
-
-            <div className="bg-lando-card border border-lando-border rounded-lg p-8">
-              <p className="text-lando-muted mb-4 text-sm">
-                Subscription URLs follow this pattern (Base64-encoded):
-              </p>
-              <div className="code-block mb-6">
-                <code className="text-lando-accent">
-                  https://lando.tributary.so/subscribe/[base64_encoded_data]
-                </code>
+          <div className="flex flex-col justify-center space-y-4">
+            <div className="space-y-2">
+              <div className="font-mono text-sm  uppercase tracking-[0.12em]">
+                Network
               </div>
-
-              <p className="text-lando-muted mb-4 text-sm">
-                Encoded data contains:
-              </p>
-              <ul className="text-lando-muted space-y-2 font-mono text-sm ml-4">
-                <li>
-                  <span className="text-lando-accent">tokenMint</span> - Solana
-                  token mint address
-                </li>
-                <li>
-                  <span className="text-lando-accent">recipient</span> - Payment
-                  recipient address
-                </li>
-                <li>
-                  <span className="text-lando-accent">gateway</span> - Tributary
-                  gateway address
-                </li>
-                <li>
-                  <span className="text-lando-accent">amount</span> - Payment
-                  amount
-                </li>
-                <li>
-                  <span className="text-lando-accent">autoRenew</span> -
-                  Auto-renewal flag
-                </li>
-                <li>
-                  <span className="text-lando-accent">maxRenewals</span> -
-                  Maximum renewals
-                </li>
-                <li>
-                  <span className="text-lando-accent">paymentFrequency</span> -
-                  Payment frequency
-                </li>
-                <li>
-                  <span className="text-lando-accent">trackingId</span> - Unique
-                  tracking ID
-                </li>
-                <li>
-                  <span className="text-lando-accent">lineItems</span> -
-                  Subscription line items
-                </li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="container mx-auto px-4 py-16">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="bg-lando-card border border-lando-border rounded-lg p-8 box-glow">
-              <h2 className="text-2xl font-bold mb-4 font-mono text-lando-accent">
-                Ready to Build Agent Commerce?
-              </h2>
-              <p className="text-lando-muted mb-6">
-                Join the Tributary ecosystem and enable agent-to-agent
-                subscriptions on Solana.
-              </p>
-              <a
-                href="/skill.md"
-                type="button"
-                className="bg-lando-accent text-lando-bg font-bold px-8 py-4 rounded-lg hover:bg-lando-glow transition-all font-mono"
-              >
-                Get the Skill
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="border-t border-lando-border bg-lando-card/50 backdrop-blur-sm mt-16">
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="text-lando-muted text-sm mb-4 md:mb-0">
-                <span className="text-lando-accent font-mono">LANDO</span> ·
-                Built for Colosseum Hackathon 2025
-              </div>
-              <div className="flex space-x-6">
-                <a
-                  href="https://docs.tributary.so"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
-                >
-                  Docs
-                </a>
-                <a
-                  href="https://sdk.tributary.so"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
-                >
-                  SDK
-                </a>
-                <a
-                  href="https://github.com/tributary-so"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
-                >
-                  GitHub
-                </a>
-                <a
-                  href="https://x.com/tributaryso"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lando-muted hover:text-lando-accent transition-colors text-sm"
-                >
-                  X
-                </a>
+              <div className="text-2xl font-bold flex items-center gap-2 ">
+                <img
+                  src="/solana-logomark.svg"
+                  className="h-5 w-5"
+                  alt="Solana"
+                />
+                Solana
               </div>
             </div>
+            <div className="space-y-2">
+              <div className="font-mono text-sm  uppercase tracking-[0.12em]">
+                Type
+              </div>
+              <div className="text-2xl font-bold ">Agent Commerce</div>
+            </div>
+            <div className="space-y-2">
+              <div className="font-mono text-sm  uppercase tracking-[0.12em]">
+                Integration
+              </div>
+              <div className="text-2xl font-bold ">Tributary SDK</div>
+            </div>
           </div>
-        </footer>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
       </div>
-    </div>
+
+      <section className="py-20">
+        <div className="mb-8 max-w-2xl space-y-3">
+          <h2 className="text-xl font-semibold  font-mono">The Flow</h2>
+          <p className="">How agents interact with Lando</p>
+        </div>
+
+        <div className="border   p-8 space-y-4">
+          <ol className="space-y-4">
+            <li className="flex items-start">
+              <div className="shrink-0 w-10 h-10 /20 flex items-center justify-center mr-4 font-mono  font-bold">
+                1
+              </div>
+              <div>
+                <span className=" font-semibold">
+                  Service agent generates subscription URL
+                </span>
+                <p className="text-sm mt-1 ">Using the Lando skill</p>
+              </div>
+            </li>
+            <li className="flex items-start">
+              <div className="shrink-0 w-10 h-10 /20 flex items-center justify-center mr-4 font-mono  font-bold">
+                2
+              </div>
+              <div>
+                <span className=" font-semibold">
+                  Customer agent receives URL and visits page
+                </span>
+              </div>
+            </li>
+            <li className="flex items-start">
+              <div className="shrink-0 w-10 h-10 /20 flex items-center justify-center mr-4 font-mono  font-bold">
+                3
+              </div>
+              <div>
+                <span className=" font-semibold">
+                  Lando decodes URL and displays custom SKILL.md
+                </span>
+              </div>
+            </li>
+            <li className="flex items-start">
+              <div className="shrink-0 w-10 h-10 /20 flex items-center justify-center mr-4 font-mono  font-bold">
+                4
+              </div>
+              <div>
+                <span className=" font-semibold">
+                  Customer agent follows SKILL.md to set up Tributary
+                </span>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      <section className="py-20">
+        <div className="mb-8 max-w-2xl space-y-3">
+          <h2 className="text-xl font-semibold  font-mono">URL Pattern</h2>
+          <p className="">Subscription URLs follow this pattern</p>
+        </div>
+
+        <div className="border   p-6">
+          <p className=" mb-4 text-sm">Subscription URLs are Base64-encoded:</p>
+          <div className="/50 border  p-4 font-mono text-sm  break-all">
+            https://lando.tributary.so/subscribe/[base64_encoded_data]
+          </div>
+          <p className=" mt-6 mb-4 text-sm">Encoded data contains:</p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {[
+              "tokenMint - Solana token mint address",
+              "recipient - Payment recipient address",
+              "gateway - Tributary gateway address",
+              "amount - Payment amount",
+              "autoRenew - Auto-renewal flag",
+              "maxRenewals - Maximum renewals",
+              "paymentFrequency - Payment frequency",
+              "trackingId - Unique tracking ID",
+            ].map((item) => (
+              <div key={item} className=" text-sm font-mono">
+                <span className="">{item.split(" - ")[0]}</span> -{" "}
+                {item.split(" - ")[1]}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      <section className="py-20">
+        <div className="border  bg-muted/20 p-12 text-center">
+          <h2 className="mb-4 text-2xl font-bold  font-mono">
+            Ready to Build Agent Commerce?
+          </h2>
+          <p className="mb-8 ">
+            Join the Tributary ecosystem and enable agent-to-agent subscriptions
+            on Solana.
+          </p>
+          <a
+            href="/skill.md"
+            className="  font-bold px-8 py-4  transition-all font-mono text-sm inline-block"
+          >
+            Get the Skill
+          </a>
+        </div>
+      </section>
+    </>
   );
 }

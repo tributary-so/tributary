@@ -33,7 +33,7 @@ const ProductScreenshotSection: React.FC = () => {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+              <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0">
                 1
               </div>
               <div>
@@ -54,7 +54,7 @@ const ProductScreenshotSection: React.FC = () => {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+              <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0">
                 2
               </div>
               <div>
@@ -75,7 +75,7 @@ const ProductScreenshotSection: React.FC = () => {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+              <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shrink-0">
                 3
               </div>
               <div>

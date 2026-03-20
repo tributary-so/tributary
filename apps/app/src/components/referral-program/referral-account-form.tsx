@@ -231,12 +231,12 @@ export default function ReferralAccountForm({
 
       <div className="grid grid-cols-1 gap-4">
         <div>
-          <label htmlFor="gateway" className="text-xs font-medium text-[var(--color-primary)] uppercase mb-1 block">
+          <label htmlFor="gateway" className="text-xs font-medium text-(--color-primary) uppercase mb-1 block">
             Gateway
           </label>
           {gatewaysLoading ? (
-            <div className="flex items-center justify-center h-10 border border-[var(--color-primary)] ">
-              <Loader2 className="w-4 h-4 text-[var(--color-primary)] animate-spin" />
+            <div className="flex items-center justify-center h-10 border border-(--color-primary) ">
+              <Loader2 className="w-4 h-4 text-(--color-primary) animate-spin" />
             </div>
           ) : (
             <Select
@@ -264,7 +264,7 @@ export default function ReferralAccountForm({
         <div>
           <label
             htmlFor="referralCode"
-            className="text-xs font-medium text-[var(--color-primary)] uppercase mb-1 block"
+            className="text-xs font-medium text-(--color-primary) uppercase mb-1 block"
           >
             Referral Code
           </label>
@@ -330,7 +330,7 @@ export default function ReferralAccountForm({
         <div>
           <label
             htmlFor="referrerCode"
-            className="text-xs font-medium text-[var(--color-primary)] uppercase mb-1 block"
+            className="text-xs font-medium text-(--color-primary) uppercase mb-1 block"
           >
             Referrer Code
           </label>

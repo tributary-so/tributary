@@ -148,7 +148,7 @@ const TAB_STYLES = {
 const LABEL_STYLES = 'block text-xs font-medium uppercase text-muted-foreground'
 
 const INPUT_STYLES =
-  'w-full px-3 py-2 border border-border  focus:outline-none focus:ring-2 focus:ring-ring text-sm bg-background text-foreground'
+  'w-full px-3 py-2 border border-border  focus:outline-hidden focus:ring-2 focus:ring-ring text-sm bg-background text-foreground'
 
 const BUTTON_STYLES = {
   primary: 'px-3 py-1.5 text-xs font-medium  bg-primary text-primary-foreground hover:bg-primary/90',
@@ -552,7 +552,7 @@ import { BN } from '@coral-xyz/anchor'
                         value={item.description}
                         onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                         placeholder="Product/Service name"
-                        className={`col-span-6 px-2 py-1.5 border  text-xs focus:outline-none focus:ring-2 focus:ring-ring ${
+                        className={`col-span-6 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${
                           !item.description.trim() ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
                         }`}
                       />
@@ -563,7 +563,7 @@ import { BN } from '@coral-xyz/anchor'
                         value={item.unitPrice || ''}
                         onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                         placeholder="1.00"
-                        className={`col-span-3 px-2 py-1.5 border  text-xs focus:outline-none focus:ring-2 focus:ring-ring ${
+                        className={`col-span-3 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${
                           item.unitPrice <= 0 ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
                         }`}
                       />
@@ -573,7 +573,7 @@ import { BN } from '@coral-xyz/anchor'
                         value={item.quantity}
                         onChange={(e) => updateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
                         placeholder="1"
-                        className={`col-span-2 px-2 py-1.5 border  text-xs focus:outline-none focus:ring-2 focus:ring-ring ${
+                        className={`col-span-2 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${
                           item.quantity < 1 ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
                         }`}
                       />
@@ -599,7 +599,7 @@ import { BN } from '@coral-xyz/anchor'
             </div>
           )}
 
-          <div className="bg-gradient-to-r from-muted/30 to-muted/50  p-4 border border-border">
+          <div className="bg-linear-to-r from-muted/30 to-muted/50  p-4 border border-border">
             <div className="flex justify-between items-center mb-2">
               <span className={LABEL_STYLES}>Checkout URL</span>
               <button

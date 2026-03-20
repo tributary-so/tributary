@@ -40,25 +40,27 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
     isSubscription && sessionData.lineItems ? sessionData.lineItems.length : 1;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="border border-border">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-5 flex items-center justify-between hover:bg-muted/50 transition-colors"
+        className="w-full px-4 py-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Package className="w-5 h-5 text-primary" />
+          <div className="w-8 h-8 flex items-center justify-center border border-primary">
+            <Package className="w-4 h-4 text-primary" />
           </div>
           <div className="text-left">
-            <h3 className="font-semibold text-foreground">Order summary</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-semibold text-foreground text-sm">
+              Order summary
+            </h3>
+            <p className="text-xs text-muted-foreground">
               {lineItemCount} item{lineItemCount !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="font-semibold text-lg text-foreground">
+            <div className="font-semibold text-foreground">
               {sessionData.amount.toFixed(2)}{" "}
               {tokenSymbol ||
                 `${sessionData.tokenMint.slice(
@@ -72,13 +74,13 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                 <span>/{sessionData.paymentFrequency.replace("ly", "")}</span>
               </div>
             ) : (
-              <div className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                One-time payment
+              <div className="text-xs font-medium text-foreground">
+                One-time
               </div>
             )}
           </div>
           <ChevronDown
-            className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
+            className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
               isExpanded ? "rotate-180" : ""
             }`}
           />
@@ -90,7 +92,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
           isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="px-6 pb-6 space-y-6">
+        <div className="px-4 pb-4 space-y-4">
           {isSubscription &&
             sessionData.lineItems &&
             sessionData.lineItems.length > 0 && (
@@ -98,14 +100,14 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                 {sessionData.lineItems.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-start justify-between py-3 border-b border-border/50 last:border-0"
+                    className="flex items-start justify-between py-2 border-b border-border/50 last:border-0"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">
+                      <p className="font-medium text-foreground text-sm">
                         {item.description}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Qty {item.quantity} ×{" "}
+                      <p className="text-xs text-muted-foreground">
+                        Qty {item.quantity} x{" "}
                         {(item.unitPrice / 100).toFixed(2)}{" "}
                         {tokenSymbol ||
                           `${sessionData.tokenMint.slice(
@@ -114,7 +116,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                           )}...${sessionData.tokenMint.slice(-4)}`}
                       </p>
                     </div>
-                    <span className="font-medium text-foreground">
+                    <span className="font-medium text-foreground text-sm">
                       {((item.quantity * item.unitPrice) / 100).toFixed(2)}{" "}
                       {tokenSymbol ||
                         `${sessionData.tokenMint.slice(
@@ -127,12 +129,12 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
               </div>
             )}
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-muted-foreground">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-[0.08em]">
                 {isSubscription ? "Subtotal" : "Payment amount"}
               </span>
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-foreground text-sm">
                 {sessionData.amount.toFixed(2)}{" "}
                 {tokenSymbol ||
                   `${sessionData.tokenMint.slice(
@@ -142,9 +144,11 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
               </span>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-muted-foreground">Recipient</span>
-              <span className="font-medium text-foreground font-mono text-sm">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-[0.08em]">
+                Recipient
+              </span>
+              <span className="font-medium text-foreground font-mono text-xs">
                 {formatAddress(sessionData.recipient)}
               </span>
             </div>
@@ -152,14 +156,14 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
 
           <div className="pt-4 border-t border-border">
             {!isSubscription && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="mb-4 border border-border p-3">
                 <div className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <Clock className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div className="text-sm">
-                    <p className="font-semibold text-amber-900">
+                    <p className="font-semibold text-foreground">
                       One-time payment
                     </p>
-                    <p className="text-amber-700">
+                    <p className="text-muted-foreground text-xs">
                       This is a single payment. You will not be charged again.
                     </p>
                   </div>
@@ -167,11 +171,11 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
               </div>
             )}
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-foreground text-sm uppercase tracking-[0.08em]">
                 {isSubscription ? "Total due" : "Amount due"}
               </span>
               <div className="text-right">
-                <span className="font-semibold text-xl text-foreground">
+                <span className="font-semibold text-foreground">
                   {sessionData.amount.toFixed(2)}{" "}
                   {tokenSymbol ||
                     `${sessionData.tokenMint.slice(
