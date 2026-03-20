@@ -611,6 +611,9 @@ importers:
       '@tributary-so/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      lucide-react:
+        specifier: ^0.577.0
+        version: 0.577.0(react@19.2.3)
       react:
         specifier: ^19.1.1
         version: 19.2.3
