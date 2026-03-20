@@ -1,13 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
 import { CheckoutForm } from "@/components/checkout-form";
 import { OrderSummary } from "@/components/order-summary";
 import { CheckoutSessionManager, CheckoutParams } from "@tributary-so/payments";
 import { AlertCircle, ArrowLeft } from "lucide-react";
-import { Hero } from "./components/hero";
 import { PayForm } from "./components/pay-form";
+import { Link } from "react-router-dom";
 
 export function PayPage() {
   const [sessionData, setSessionData] = React.useState<CheckoutParams | null>(
@@ -42,46 +41,35 @@ export function PayPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </motion.div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-muted-foreground text-sm uppercase tracking-[0.12em]">
+          Loading...
+        </div>
       </div>
     );
   }
 
   if (error || !sessionData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-full max-w-md"
-        >
-          <div className="bg-card rounded-xl border border-border p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-6 h-6 text-destructive" />
+      <div className="flex items-center justify-center min-h-[400px] px-4">
+        <div className="w-full max-w-md">
+          <div className="border border-border p-8 text-center">
+            <div className="w-12 h-12 flex items-center justify-center mx-auto mb-4 border border-destructive">
+              <AlertCircle className="h-6 w-6 text-destructive" />
             </div>
             <h1 className="text-lg font-semibold text-foreground mb-2">
               Something went wrong
             </h1>
             <p className="text-sm text-muted-foreground mb-6">{error}</p>
-            <button
-              onClick={() => (window.location.href = document.referrer || "/")}
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Return
-            </button>
+            </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -89,36 +77,63 @@ export function PayPage() {
   const isSubscription = sessionData.mode === "subscription";
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30"
-    >
-      <div className="flex flex-col lg:flex-row min-h-screen">
-        <Hero />
+    <section className="py-12">
+      <div className="mb-8 flex items-center gap-4">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Link>
+      </div>
 
-        <div className="flex-1 lg:w-1/2 flex flex-col bg-gray-200/80 backdrop-blur-sm">
-          <div className="flex-1 flex items-start justify-center p-6 lg:p-12 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="w-full max-w-md"
-            >
-              <div className="hidden lg:block mb-8">
-                <OrderSummary sessionData={sessionData} />
-              </div>
+      <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl">
+              {isSubscription ? "Complete Subscription" : "Complete Payment"}
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              {isSubscription
+                ? "Review your subscription details and connect your wallet to authorize recurring payments."
+                : "Review your payment details and connect your wallet to complete the transaction."}
+            </p>
+          </div>
 
-              {isSubscription ? (
-                <CheckoutForm sessionData={sessionData} />
-              ) : (
-                <PayForm sessionData={sessionData} />
-              )}
-            </motion.div>
+          <div className="border border-border/50 p-6 space-y-4">
+            <h2 className="font-bold text-foreground uppercase tracking-[0.12em] text-sm">
+              Order Summary
+            </h2>
+            <OrderSummary sessionData={sessionData} />
+          </div>
+        </div>
+
+        <div>
+          <div className="border border-border/50 p-6">
+            {isSubscription ? (
+              <CheckoutForm sessionData={sessionData} />
+            ) : (
+              <PayForm sessionData={sessionData} />
+            )}
           </div>
         </div>
       </div>
-    </motion.div>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none py-8"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      <div className="border border-border bg-muted/20 p-8 text-center">
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span>Powered by Tributary</span>
+          <span className="text-muted-foreground/30">|</span>
+          <span>Secured by Solana</span>
+        </div>
+      </div>
+    </section>
   );
 }
