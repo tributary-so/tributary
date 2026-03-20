@@ -6,18 +6,21 @@ repo_name: tributary-so/tributary
 
 theme:
   name: material
+  custom_dir: docs/overrides
+  font:
+    text: Roboto Mono
+    code: Roboto Mono
+
   palette:
     # Palette toggle for light mode
     - scheme: default
-      primary: custom
-      accent: custom
+      primary: white
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     # Palette toggle for dark mode
     - scheme: slate
-      primary: custom
-      accent: custom
+      primary: black
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -73,6 +76,7 @@ plugins:
   # - git-revision-date-localized:
   #     enable_creation_date: true
   - search:
+  - privacy
   - llmstxt:
       full_output: llms-full.txt
       sections:
@@ -106,7 +110,7 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/tributary-so/tributary
     - icon: fontawesome/brands/twitter
-      link: https://twitter.com/tributary_so
+      link: https://twitter.com/tributaryso
 
 extra_css:
   - stylesheets/extra.css
