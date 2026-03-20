@@ -40,7 +40,7 @@ const SinglePartner = ({ partner }: { partner: Partner }) => (
     href={partner.link}
     target="_blank"
     rel="noopener noreferrer"
-    className="flex-shrink-0 flex flex-col items-center gap-2 px-5 py-3 rounded-lg hover:bg-white dark:hover:bg-neutral-800 hover:shadow-md transition-all duration-300 border border-transparent hover:border-purple-500/20 dark:hover:border-purple-500/30"
+    className="shrink-0 flex flex-col items-center gap-2 px-5 py-3 rounded-lg hover:bg-white dark:hover:bg-neutral-800 hover:shadow-md transition-all duration-300 border border-transparent hover:border-purple-500/20 dark:hover:border-purple-500/30"
     whileHover={{ scale: 1.03 }}
     whileTap={{ scale: 0.97 }}
   >
@@ -83,7 +83,7 @@ export default function PartnerBanner() {
         transition={{ duration: 0.5 }}
         className="relative"
       >
-        <div className="group relative overflow-hidden whitespace-nowrap py-4 [mask-image:linear-gradient(to_right,transparent_0,white_96px,white_calc(100%-96px),transparent_100%)] dark:[mask-image:linear-gradient(to_right,transparent_0,#0a0a0a_96px,#0a0a0a_calc(100%-96px),transparent_100%)]">
+        <div className="group relative overflow-hidden whitespace-nowrap py-4 mask-[linear-gradient(to_right,transparent_0,white_96px,white_calc(100%-96px),transparent_100%)] dark:mask-[linear-gradient(to_right,transparent_0,#0a0a0a_96px,#0a0a0a_calc(100%-96px),transparent_100%)]">
           <div className="animate-slide-left group-hover:animation-pause inline-flex w-max gap-10">
             {PARTNERS.map((partner) => (
               <SinglePartner key={partner.name} partner={partner} />

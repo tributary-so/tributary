@@ -492,7 +492,7 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
         hover:bg-muted/30 group active:bg-muted/50
         ${
           isSelected
-            ? 'bg-gradient-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
+            ? 'bg-linear-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
             : 'border-l-4 border-l-transparent'
         }
       `}
@@ -668,7 +668,7 @@ function SubscriptionDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-subscription-50 to-subscription-100/50 p-4 sm:p-5 border border-subscription-100">
+      <div className="bg-linear-to-br from-subscription-50 to-subscription-100/50 p-4 sm:p-5 border border-subscription-100">
         <div className="text-xs sm:text-sm text-subscription-600 font-medium mb-1">Payment Amount</div>
         <div className="text-2xl sm:text-3xl font-bold text-subscription-900 mb-1 sm:mb-2 truncate">
           {formatAmount(sub.amount.toString(), tokenMint)}
@@ -798,7 +798,7 @@ function MilestoneDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-milestone-50 to-milestone-100/50 p-4 sm:p-5 border border-milestone-100">
+      <div className="bg-linear-to-br from-milestone-50 to-milestone-100/50 p-4 sm:p-5 border border-milestone-100">
         <div className="flex items-center justify-between mb-2 sm:mb-3 gap-3">
           <div className="min-w-0 flex-1">
             <div className="text-xs sm:text-sm text-milestone-600 font-medium mb-1">Total Value</div>
@@ -919,7 +919,7 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-payasyougo-50 to-payasyougo-100/50 p-4 sm:p-5 border border-payasyougo-100">
+      <div className="bg-linear-to-br from-payasyougo-50 to-payasyougo-100/50 p-4 sm:p-5 border border-payasyougo-100">
         <UsageGauge
           used={payg.currentPeriodTotal}
           limit={payg.maxAmountPerPeriod}
@@ -1348,7 +1348,7 @@ export default function AccountPage() {
         <div className="flex-1 max-h-full lg:max-h-none">
           {userPayments.map(({ policies, userPayment, userPaymentAddress }) => (
             <div key={userPaymentAddress.toString()}>
-              <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-muted/80 backdrop-blur-sm border-b border-border">
+              <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-muted/80 backdrop-blur-xs border-b border-border">
                 <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {getTokenSymbol(userPayment.tokenMint.toString())}
                 </span>

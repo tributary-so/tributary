@@ -27,7 +27,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
   const recipientReceives = PAYMENT_AMOUNT - protocolFee - gatewayFee
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-gradient-to-r from-lando-accent/10 to-lando-accent/5  border border-lando-accent/30 p-8 mb-6">
+      <div className="bg-linear-to-r from-lando-accent/10 to-lando-accent/5  border border-lando-accent/30 p-8 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <TrendingUp className="w-6 h-6 text-lando-accent" />
           <h2 className="text-2xl font-bold text-lando-text">Ready to Start Earning?</h2>
@@ -60,7 +60,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
 
         <div className="space-y-6">
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               1
             </div>
             <div>
@@ -72,7 +72,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               2
             </div>
             <div>
@@ -88,7 +88,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               3
             </div>
             <div>
@@ -101,7 +101,7 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
+            <div className="shrink-0 w-8 h-8  bg-lando-accent text-lando-bg font-bold flex items-center justify-center text-sm">
               4
             </div>
             <div>

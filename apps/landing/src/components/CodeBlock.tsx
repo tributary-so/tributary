@@ -106,7 +106,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
         {highlightedCodes[activeTab] && (
           <div
             dangerouslySetInnerHTML={{ __html: highlightedCodes[activeTab] }}
-            className="max-w-full break-words font-mono code-with-line-numbers text-neutral-100"
+            className="max-w-full wrap-break-word font-mono code-with-line-numbers text-neutral-100"
           />
         )}
       </div>

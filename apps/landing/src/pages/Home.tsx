@@ -175,14 +175,14 @@ export default function Home() {
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <a
                 href="https://docs.tributary.so"
-                className="bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-none transition-all h-11 px-6"
+                className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-hidden transition-all h-11 px-6"
               >
                 <Code2 className="h-4 w-4" />
                 Start Building
               </a>
               <a
                 href="https://app.tributary.so"
-                className="border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-none transition-all h-11 px-6"
+                className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-hidden transition-all h-11 px-6"
               >
                 Open App
               </a>
@@ -246,7 +246,7 @@ export default function Home() {
                       key={feature}
                       className="flex items-center gap-2 text-sm text-muted-foreground"
                     >
-                      <Check className="h-3 w-3 text-accent flex-shrink-0" />
+                      <Check className="h-3 w-3 text-accent shrink-0" />
                       {feature}
                     </li>
                   ))}
@@ -304,7 +304,7 @@ export default function Home() {
         </div>
         <div className="mt-12 border border-border bg-muted/10 p-8">
           <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <Terminal className="h-10 w-10 text-primary flex-shrink-0" />
+            <Terminal className="h-10 w-10 text-primary shrink-0" />
             <div className="flex-1 space-y-2">
               <h3 className="font-bold">Simple Integration</h3>
               <p className="text-sm text-muted-foreground">
@@ -433,7 +433,7 @@ export default function Home() {
             >
               <summary className="flex cursor-pointer items-center justify-between p-4 font-medium hover:text-primary">
                 <div className="flex items-center gap-3">
-                  <HelpCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                  <HelpCircle className="h-4 w-4 text-primary shrink-0" />
                   {faq.question}
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
@@ -463,14 +463,14 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="https://docs.tributary.so"
-              className="bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-none transition-all h-11 px-6"
+              className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-hidden transition-all h-11 px-6"
             >
               <Code2 className="h-4 w-4" />
               Get Started
             </a>
             <a
               href="https://app.tributary.so"
-              className="border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-none transition-all h-11 px-6"
+              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-none font-medium text-sm outline-hidden transition-all h-11 px-6"
             >
               Try Demo
             </a>

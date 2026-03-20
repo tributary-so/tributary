@@ -13,7 +13,7 @@ const InstallationSection: React.FC = () => {
   };
 
   return (
-    <section className="py-16 px-4 bg-gradient-to-br from-neutral-50 to-white">
+    <section className="py-16 px-4 bg-linear-to-br from-neutral-50 to-white">
       <div className="max-w-4xl mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}

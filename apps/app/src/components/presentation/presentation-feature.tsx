@@ -215,7 +215,7 @@ export default function PresentationFeature() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.25, delay: 0.2 + index * 0.08 }}
                 >
-                  <div className="flex-shrink-0 w-1.5 h-1.5 bg-primary  mt-2" />
+                  <div className="shrink-0 w-1.5 h-1.5 bg-primary  mt-2" />
                   <div className="text-foreground leading-snug">{point}</div>
                 </motion.div>
               ))}
