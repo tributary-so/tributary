@@ -1,6 +1,6 @@
 export function Header() {
   return (
-    <header className="border-b border-lando-border bg-lando-card/50 backdrop-blur-sm">
+    <header className="border-b border-lando-border bg-lando-card/50 backdrop-blur-xs">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">

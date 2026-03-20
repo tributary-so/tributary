@@ -373,7 +373,7 @@ export function Subscribe() {
 
             <ol className="space-y-4">
               <li className="flex items-start">
-                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 shrink-0">
                   1
                 </span>
                 <div>
@@ -390,7 +390,7 @@ export function Subscribe() {
                 </div>
               </li>
               <li className="flex items-start">
-                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 shrink-0">
                   2
                 </span>
                 <div>
@@ -403,7 +403,7 @@ export function Subscribe() {
                 </div>
               </li>
               <li className="flex items-start">
-                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 shrink-0">
                   3
                 </span>
                 <div>
@@ -416,7 +416,7 @@ export function Subscribe() {
                 </div>
               </li>
               <li className="flex items-start">
-                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="bg-lando-accent text-lando-bg font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 shrink-0">
                   4
                 </span>
                 <div>

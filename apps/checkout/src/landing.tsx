@@ -145,7 +145,7 @@ export function Landing() {
               Create Checkout Link
             </a>
             <a
-              href="https://tributary.so"
+              href="https://app.tributary.so"
               target="_blank"
               rel="noopener noreferrer"
               className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"

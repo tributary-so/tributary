@@ -1,6 +1,128 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --font-mono: 'Fira Code', 'Courier New', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  --color-lando-bg: #0a0f0a;
+  --color-lando-card: #0d1a0d;
+  --color-lando-accent: #22c55e;
+  --color-lando-glow: #4ade80;
+  --color-lando-text: #e8fce8;
+  --color-lando-muted: #86a786;
+  --color-lando-border: #1a3a1a;
+
+  --color-lando-bg: #0a0f0a;
+
+  --color-matrix-green: #00ff41;
+
+  --animate-matrix-scan: matrixScan 8s linear infinite;
+  --animate-pulse-green: pulseGreen 2s ease-in-out infinite;
+  --animate-fade-in: fadeIn 0.5s ease-in-out;
+  --animate-slide-up: slideUp 0.6s ease-out;
+
+  --background-image-matrix-gradient: linear-gradient(
+    180deg,
+    rgba(0, 255, 65, 0.03) 0%,
+    rgba(0, 255, 65, 0) 100%
+  );
+
+  @keyframes matrixScan {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100vh);
+    }
+  }
+  @keyframes pulseGreen {
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 5px #22c55e;
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 20px #4ade80;
+    }
+  }
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-glow {
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+@utility box-glow {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+@utility scanline {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 255, 65, 0) 0%,
+    rgba(0, 255, 65, 0.05) 50%,
+    rgba(0, 255, 65, 0) 100%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+}
+
+@utility matrix-rain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(
+    circle at center,
+    transparent 0%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+@utility code-block {
+  /* @apply bg-black/50 border border-lando-border rounded-lg p-4 font-mono text-sm; */
+  @apply bg-black/50 border rounded-lg p-4 font-mono text-sm;
+  overflow-x: auto;
+}
 
 @layer base {
   body {
@@ -10,48 +132,6 @@
 
   * {
     @apply border-lando-border;
-  }
-}
-
-@layer utilities {
-  .text-glow {
-    text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
-  }
-
-  .box-glow {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
-  }
-
-  .scanline {
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 255, 65, 0) 0%,
-      rgba(0, 255, 65, 0.05) 50%,
-      rgba(0, 255, 65, 0) 100%
-    );
-    background-size: 100% 4px;
-    pointer-events: none;
-  }
-
-  .matrix-rain {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: radial-gradient(
-      circle at center,
-      transparent 0%,
-      rgba(0, 0, 0, 0.8) 100%
-    );
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .code-block {
-    /* @apply bg-black/50 border border-lando-border rounded-lg p-4 font-mono text-sm; */
-    @apply bg-black/50 border rounded-lg p-4 font-mono text-sm;
-    overflow-x: auto;
   }
 }
 
@@ -65,7 +145,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-lando-border rounded;
+  @apply bg-lando-border rounded-sm;
 }
 
 ::-webkit-scrollbar-thumb:hover {

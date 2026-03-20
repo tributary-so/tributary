@@ -56,7 +56,7 @@ export function Landing() {
             <div className="bg-lando-card border border-lando-border rounded-lg p-8 box-glow">
               <ol className="space-y-6 text-lando-muted">
                 <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                  <div className="shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
                     1
                   </div>
                   <div>
@@ -67,7 +67,7 @@ export function Landing() {
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                  <div className="shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
                     2
                   </div>
                   <div>
@@ -77,7 +77,7 @@ export function Landing() {
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                  <div className="shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
                     3
                   </div>
                   <div>
@@ -87,7 +87,7 @@ export function Landing() {
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
+                  <div className="shrink-0 w-10 h-10 bg-lando-accent/20 rounded-lg flex items-center justify-center mr-4 font-mono text-lando-accent font-bold">
                     4
                   </div>
                   <div>
@@ -186,7 +186,7 @@ export function Landing() {
         </section>
 
         {/* Footer */}
-        <footer className="border-t border-lando-border bg-lando-card/50 backdrop-blur-sm mt-16">
+        <footer className="border-t border-lando-border bg-lando-card/50 backdrop-blur-xs mt-16">
           <div className="container mx-auto px-4 py-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="text-lando-muted text-sm mb-4 md:mb-0">
