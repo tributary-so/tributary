@@ -1,6 +1,6 @@
 # @tributary-so/payments
 
-A minimal Stripe-compatible payments SDK for Tributary on Solana. Supports both recurring subscriptions (via smart contract) and one-time payments (via SPL transfers with memo tracking). Provides essential checkout session functionality with zero API keys required - developers can integrate immediately without registration.
+A minimal payments SDK for Tributary on Solana. Supports both recurring subscriptions (via smart contract) and one-time payments (via SPL transfers with memo tracking). Provides essential checkout session functionality with zero API keys required - developers can integrate immediately without registration.
 
 ## Features
 
@@ -13,7 +13,7 @@ A minimal Stripe-compatible payments SDK for Tributary on Solana. Supports both 
 - **Real-time Status**: Live subscription status using PaymentPolicy `paymentCount`
 - **Memo Tracking**: One-time payments tracked via transaction memo fields
 - **Pure Frontend**: No backend or webhooks required for basic functionality
-- **Type Safety**: Full TypeScript support with Stripe-compatible types
+- **Type Safety**: Full TypeScript support
 
 ## Installation
 
@@ -31,9 +31,9 @@ import { Tributary } from "@tributary-so/sdk";
 // Initialize with connection and tributary
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const stripe = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(connection, tributary);
 
-const session = await stripe.checkout.sessions.create({
+const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"],
   line_items: [
     {
@@ -69,9 +69,9 @@ import { Tributary } from "@tributary-so/sdk";
 // Initialize with connection and tributary
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const stripe = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(connection, tributary);
 
-const session = await stripe.checkout.sessions.create({
+const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"],
   line_items: [
     {
@@ -104,11 +104,11 @@ import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const stripe = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(connection, tributary);
 
 // Option 1: User-based lookup (for user-facing apps)
 async function checkUserSubscription() {
-  const status = await stripe.subscriptions.checkStatus({
+  const status = await manager.subscriptions.checkStatus({
     trackingId: "user_123_monthly_premium",
     userPublicKey: "USER_PUBLIC_KEY_HERE",
     tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -131,7 +131,7 @@ async function checkUserSubscription() {
 
 // Option 2: Gateway-based lookup (for gateway management)
 async function checkGatewaySubscription() {
-  const status = await stripe.subscriptions.checkStatus({
+  const status = await manager.subscriptions.checkStatus({
     trackingId: "user_123_monthly_premium",
     gatewayPublicKey: "GATEWAY_PUBLIC_KEY_HERE",
   });
@@ -147,7 +147,7 @@ async function checkGatewaySubscription() {
 
 // Enhanced session retrieval with real-time status
 async function getSessionWithStatus() {
-  const session = await stripe.checkout.sessions.retrieve(
+  const session = await manager.checkout.sessions.retrieve(
     "session_id_or_encoded_url"
   );
 
@@ -176,11 +176,11 @@ import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const stripe = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(connection, tributary);
 
 // Check one-time payment status
 async function checkOneTimePayment() {
-  const status = await stripe.payments.oneTime.checkStatus(
+  const status = await manager.payments.oneTime.checkStatus(
     "user_123_premium_upgrade"
   );
 
@@ -202,14 +202,14 @@ async function checkOneTimePayment() {
 
 // Build memo for manual SPL transfer
 async function prepareManualTransfer() {
-  const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
+  const memo = manager.payments.oneTime.buildMemo("user_123_premium_upgrade");
   console.log("Memo:", memo);
   // Output: "Custom memo text | user_123_premium_upgrade"
 }
 
 // Extract tracking ID from existing transaction
 async function parseTransactionMemo(txMemo: string) {
-  const trackingId = stripe.payments.oneTime.extractTrackingId(txMemo);
+  const trackingId = manager.payments.oneTime.extractTrackingId(txMemo);
   console.log("Tracking ID:", trackingId);
 }
 ```
@@ -268,7 +268,7 @@ The SDK uses Base64URL encoding to pack all payment parameters into compact, sha
 
 ```typescript
 // Session URL contains all necessary data
-const session = await stripe.checkout.sessions.create({
+const session = await manager.checkout.sessions.create({
   mode: "subscription",
   // ... configuration
 });
@@ -282,7 +282,7 @@ console.log(session.url);
 
 ```typescript
 // One-time payment URL
-const session = await stripe.checkout.sessions.create({
+const session = await manager.checkout.sessions.create({
   mode: "payment",
   // ... configuration
 });
@@ -340,7 +340,7 @@ import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const stripe = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(connection, tributary);
 ```
 
 #### checkout.sessions.create()
@@ -348,7 +348,7 @@ const stripe = new PaymentsClient(connection, tributary);
 Create a checkout session with encoded URL.
 
 ```typescript
-const session = await stripe.checkout.sessions.create({
+const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"], // Only "tributary" supported
   line_items: [
     {
@@ -381,7 +381,7 @@ const session = await stripe.checkout.sessions.create({
   status: "open";
   amount_total: number;
   currency: "usd";
-  // ... other Stripe-compatible fields
+  // ... other manager-compatible fields
 }
 ```
 
@@ -391,10 +391,10 @@ Retrieve a session with real-time subscription status.
 
 ```typescript
 // Retrieve by session ID
-const session = await stripe.checkout.sessions.retrieve("cs_1234567890");
+const session = await manager.checkout.sessions.retrieve("cs_1234567890");
 
 // Or retrieve by encoded URL (auto-detected)
-const session = await stripe.checkout.sessions.retrieve(
+const session = await manager.checkout.sessions.retrieve(
   "https://checkout.tributary.so/subscribe/eyJ0bSI6IkVQakFWZGRBdWZxU1NxZTJxTjF6eWJhcEM4RzR3RUdHa3p3eVREdjF2Iiwi..."
 );
 
@@ -423,7 +423,7 @@ console.log(session.subscription);
   amount_total: number;
   currency: "usd";
   subscription?: SubscriptionStatus; // Real-time status if available
-  // ... other Stripe-compatible fields
+  // ... other manager-compatible fields
 }
 ```
 
@@ -433,14 +433,14 @@ Check subscription status using dual lookup strategy.
 
 ```typescript
 // User-based lookup
-const status = await stripe.subscriptions.checkStatus({
+const status = await manager.subscriptions.checkStatus({
   trackingId: "user_123_monthly_premium",
   userPublicKey: "USER_PUBLIC_KEY_HERE",
   tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 });
 
 // Gateway-based lookup
-const status = await stripe.subscriptions.checkStatus({
+const status = await manager.subscriptions.checkStatus({
   trackingId: "user_123_monthly_premium",
   gatewayPublicKey: "GATEWAY_PUBLIC_KEY_HERE",
 });
@@ -485,7 +485,7 @@ interface PolicyLookupOptions {
 Quick check if subscription is active (created + initial payment).
 
 ```typescript
-const isActive = await stripe.subscriptions.isActive({
+const isActive = await manager.subscriptions.isActive({
   trackingId: "user_123_monthly_premium",
   userPublicKey: "USER_PUBLIC_KEY_HERE",
 });
@@ -497,7 +497,7 @@ const isActive = await stripe.subscriptions.isActive({
 Get detailed subscription information.
 
 ```typescript
-const details = await stripe.subscriptions.getDetails({
+const details = await manager.subscriptions.getDetails({
   trackingId: "user_123_monthly_premium",
   gatewayPublicKey: "GATEWAY_PUBLIC_KEY_HERE",
 });
@@ -509,7 +509,7 @@ const details = await stripe.subscriptions.getDetails({
 Check one-time payment status by tracking ID (requires indexer):
 
 ```typescript
-const status = await stripe.payments.oneTime.checkStatus(
+const status = await manager.payments.oneTime.checkStatus(
   "user_123_premium_upgrade"
 );
 ```
@@ -538,7 +538,7 @@ const status = await stripe.payments.oneTime.checkStatus(
 Build memo field for manual SPL transfer:
 
 ```typescript
-const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
+const memo = manager.payments.oneTime.buildMemo("user_123_premium_upgrade");
 // Output: "Optional custom memo text | user_123_premium_upgrade"
 ```
 
@@ -547,7 +547,7 @@ const memo = stripe.payments.oneTime.buildMemo("user_123_premium_upgrade");
 Extract tracking ID from transaction memo:
 
 ```typescript
-const trackingId = stripe.payments.oneTime.extractTrackingId(
+const trackingId = manager.payments.oneTime.extractTrackingId(
   "user_123_premium_upgrade"
 );
 // Output: "user_123_premium_upgrade"
@@ -645,7 +645,7 @@ The SDK throws standard JavaScript errors for invalid inputs:
 
 ```typescript
 try {
-  const session = await stripe.checkout.sessions.create(params);
+  const session = await manager.checkout.sessions.create(params);
 } catch (error) {
   if (error.message.includes("Invalid gateway public key")) {
     // Handle invalid gateway key
