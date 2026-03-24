@@ -1,39 +1,55 @@
 # SDKs for Developers
 
-## **TypeScript SDK** (`sdk/`)
+Tributary provides multiple SDKs for different integration needs.
 
-- Complete protocol interaction library with Anchor integration
-- Payment management functions (create, execute, pause/resume policies)
-- PDA (Program Derived Address) helpers for deterministic addresses
-- Token delegation utilities for SPL integration
-- Error handling, validation, and payment frequency mapping
+## TypeScript SDK (`@tributary-so/sdk`)
+
+Complete protocol interaction library with Anchor integration.
+
+### Installation
+
+```bash
+pnpm install @tributary-so/sdk @solana/web3.js @solana/spl-token @coral-xyz/anchor
+```
+
+### Basic Setup
+
+```typescript
+import { Tributary } from '@tributary-so/sdk';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
+
+const connection = new Connection('https://api.mainnet-beta.solana.com');
+const wallet: Wallet = /* your connected wallet */;
+const tributary = new Tributary(connection, wallet);
+```
 
 ### Creating Subscriptions
 
 ```typescript
-const instructions = await sdk.createSubscriptionInstruction(
-  params.token,
-  params.recipient,
-  params.gateway,
-  params.amount,
-  false,
-  null,
-  createPaymentFrequency(params.interval),
-  createMemoBuffer(params.memo || "", 64),
-  params.startTime,
-  params.approvalAmount,
-  params.executeImmediately ?? true
+import { BN } from "@coral-xyz/anchor";
+import { PaymentFrequency, createMemoBuffer } from "@tributary-so/sdk";
+
+const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
+const recipient = new PublicKey("...");
+const gateway = new PublicKey("...");
+
+const instructions = await tributary.createSubscriptionInstruction(
+  tokenMint,
+  recipient,
+  gateway,
+  new BN(1000000), // 1 USDC
+  true, // autoRenew
+  12, // maxRenewals
+  { monthly: {} } as PaymentFrequency,
+  createMemoBuffer("Monthly subscription", 64),
+  undefined, // startTime
+  new BN(12000000), // approvalAmount
+  true // executeImmediately
 );
 
-// Build transaction
-const transaction = new Transaction();
-instructions.forEach((ix) => transaction.add(ix));
-transaction.feePayer = wallet.publicKey;
-const { blockhash, lastValidBlockHeight } =
-  await connection.getLatestBlockhash();
-transaction.recentBlockhash = blockhash;
-const signedTx = await wallet.signTransaction(transaction);
-const txId = await connection.sendRawTransaction(signedTx.serialize());
+const tx = new Transaction().add(...instructions);
+const signature = await provider.sendAndConfirm(tx);
 ```
 
 ### Creating Milestone Payments
@@ -41,7 +57,6 @@ const txId = await connection.sendRawTransaction(signedTx.serialize());
 ```typescript
 import { BN } from "@coral-xyz/anchor";
 
-// Define milestone parameters
 const milestoneAmounts = [
   new BN(50000000), // $50 - Initial setup
   new BN(75000000), // $75 - Core development
@@ -53,8 +68,7 @@ const milestoneTimestamps = [
   new BN(Math.floor(Date.now() / 1000) + 86400 * 35), // 5 weeks
 ];
 
-// Create milestone payment policy
-const milestoneIx = await sdk.createMilestonePaymentPolicy(
+const milestoneIx = await tributary.createMilestonePaymentPolicy(
   tokenMint,
   recipient,
   gateway,
@@ -63,32 +77,16 @@ const milestoneIx = await sdk.createMilestonePaymentPolicy(
   0, // Time-based release condition
   createMemoBuffer("Website development project", 64)
 );
-
-// Create user payment account if needed
-const userPaymentIx = await sdk.createUserPayment(tokenMint);
-
-// Build transaction
-const transaction = new Transaction().add(userPaymentIx).add(milestoneIx);
-
-transaction.feePayer = wallet.publicKey;
-const { blockhash } = await connection.getLatestBlockhash();
-transaction.recentBlockhash = blockhash;
-const signedTx = await wallet.signTransaction(transaction);
-const txId = await connection.sendRawTransaction(signedTx.serialize());
 ```
 
 ### Creating Pay-as-you-go Payments
 
 ```typescript
-import { BN } from "@coral-xyz/anchor";
-
-// Define pay-as-you-go parameters
 const maxAmountPerPeriod = new BN(100000000); // $100 per period
 const maxChunkAmount = new BN(10000000); // $10 max per claim
 const periodLengthSeconds = new BN(86400 * 30); // 30 days
 
-// Create pay-as-you-go payment policy
-const payAsYouGoIx = await sdk.createPayAsYouGoPaymentPolicy(
+const payAsYouGoIx = await tributary.createPayAsYouGoPaymentPolicy(
   tokenMint,
   recipient,
   gateway,
@@ -97,49 +95,259 @@ const payAsYouGoIx = await sdk.createPayAsYouGoPaymentPolicy(
   periodLengthSeconds,
   createMemoBuffer("AI API usage billing", 64)
 );
-
-// Create user payment account if needed
-const userPaymentIx = await sdk.createUserPayment(tokenMint);
-
-// Build transaction
-const transaction = new Transaction().add(userPaymentIx).add(payAsYouGoIx);
-
-transaction.feePayer = wallet.publicKey;
-const { blockhash } = await connection.getLatestBlockhash();
-transaction.recentBlockhash = blockhash;
-const signedTx = await wallet.signTransaction(transaction);
-const txId = await connection.sendRawTransaction(signedTx.serialize());
-
-// Execute payments (called by service provider when usage thresholds are met)
-const executeIx = await sdk.executePayment(
-  paymentPolicyPDA,
-  new BN(5000000) // $5 payment amount
-);
 ```
 
-## **React SDK** (`sdk-react/`)
+### Key Methods
 
-- Pre-built payment components
-- React hooks for payment management
-- TypeScript support
-- Wallet integration
+| Method                            | Description                                         |
+| --------------------------------- | --------------------------------------------------- |
+| `createSubscriptionInstruction()` | Create subscription with all necessary instructions |
+| `createMilestonePaymentPolicy()`  | Create milestone-based payment policy               |
+| `createPayAsYouGoPaymentPolicy()` | Create usage-based payment policy                   |
+| `executePayment()`                | Execute a payment for existing subscription         |
+| `getAllUserPaymentsByOwner()`     | Get all user payment accounts                       |
+| `getPaymentPoliciesByUser()`      | Get all policies for a user                         |
+| `getPaymentPoliciesByRecipient()` | Get policies where user is recipient                |
+| `changePaymentPolicyStatus()`     | Pause or resume a subscription                      |
+| `deletePaymentPolicy()`           | Cancel a subscription                               |
+
+---
+
+## Payments SDK (`@tributary-so/payments`)
+
+Stripe-compatible payments SDK for Tributary. Supports subscriptions and one-time payments with zero API keys required.
+
+### Installation
+
+```bash
+pnpm install @tributary-so/payments @tributary-so/sdk @solana/web3.js
+```
+
+### Basic Setup
+
+```typescript
+import { PaymentsClient } from "@tributary-so/payments";
+import { Connection } from "@solana/web3.js";
+import { Tributary } from "@tributary-so/sdk";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const tributary = new Tributary(connection, wallet);
+const stripe = new PaymentsClient(connection, tributary);
+```
+
+### Create Checkout Session
+
+```typescript
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [
+    {
+      description: "Monthly premium access",
+      unitPrice: 20.0,
+      quantity: 1,
+    },
+  ],
+  paymentFrequency: "monthly",
+  mode: "subscription",
+  success_url: "https://yourapp.com/success",
+  cancel_url: "https://yourapp.com/cancel",
+  tributaryConfig: {
+    gateway: "GATEWAY_PUBLIC_KEY",
+    recipient: "RECIPIENT_PUBLIC_KEY",
+    trackingId: "user_123_monthly_premium",
+    autoRenew: true,
+  },
+});
+
+// Redirect to checkout
+window.location.href = session.url;
+```
+
+### Check Subscription Status
+
+```typescript
+// User-based lookup
+const status = await stripe.subscriptions.checkStatus({
+  trackingId: "user_123_monthly_premium",
+  userPublicKey: "USER_PUBLIC_KEY",
+  tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+});
+
+if (status.status === "active") {
+  console.log("Active!", {
+    paymentCount: status.paymentCount,
+    nextPaymentDue: status.nextPaymentDue,
+  });
+}
+```
+
+### One-Time Payments
+
+```typescript
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [
+    {
+      description: "Premium feature",
+      unitPrice: 50.0,
+      quantity: 1,
+    },
+  ],
+  mode: "payment",
+  success_url: "https://yourapp.com/success",
+  cancel_url: "https://yourapp.com/cancel",
+  tributaryConfig: {
+    recipient: "RECIPIENT_PUBLIC_KEY",
+    trackingId: "user_123_premium_upgrade",
+  },
+});
+```
+
+### Check One-Time Payment Status
+
+```typescript
+const status = await stripe.payments.oneTime.checkStatus(
+  "user_123_premium_upgrade"
+);
+
+if (status.status === "paid") {
+  console.log("Payment completed!", {
+    transaction: status.transaction,
+    paidAt: status.paidAt,
+  });
+}
+```
+
+### Status Values
+
+**Subscriptions:**
+
+| Status    | Description                         |
+| --------- | ----------------------------------- |
+| `pending` | Subscription not yet created        |
+| `created` | On-chain, waiting for first payment |
+| `active`  | First payment executed              |
+| `failed`  | Payment failed                      |
+
+**One-Time Payments:**
+
+| Status    | Description                           |
+| --------- | ------------------------------------- |
+| `pending` | Payment not yet executed              |
+| `paid`    | SPL transfer found with matching memo |
+| `expired` | Payment window expired                |
+
+### Key Features
+
+- **Zero API Keys**: No registration, no configuration
+- **USDC Only**: Single currency support
+- **Dual Lookup**: User-based OR gateway-based status checking
+- **Base64URL Encoding**: Compact, shareable checkout URLs
+- **Real-time Status**: Live subscription status via PaymentPolicy
+
+---
+
+## React SDK (`@tributary-so/sdk-react`)
+
+Pre-built payment components for React applications.
+
+### Installation
+
+```bash
+pnpm install @tributary-so/sdk-react @solana/web3.js @coral-xyz/anchor
+```
+
+### Subscription Button
 
 ```typescript
 import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
+import { PublicKey, BN } from "@solana/web3.js";
+
 <SubscriptionButton
-  amount={new BN("10000000")}
-  token={new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")} // USDC mint
+  amount={new BN("10000000")} // 10 USDC
+  token={new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")}
   recipient={recipient}
   gateway={gateway}
-  interval={PaymentInterval.Weekly}
+  interval={PaymentInterval.Monthly}
   maxRenewals={12}
-  memo={`Monthly donation to ${repository}`}
-  label="Donate $10/month"
-  radius="sm"
-  size="lg"
+  memo="Monthly subscription"
+  label="Subscribe for $10/month"
   executeImmediately={true}
-  className="px-6 py-3 font-semibold bg-gradient-to-r from-[#9945FF] to-[#14F195] border-0 font-bold text-xl px-6 py-3 text-black"
-  onSuccess={(tx) => console.log("Donation successful:", tx)}
-  onError={(err) => console.error("Donation failed:", err)}
+  onSuccess={(tx) => console.log("Success:", tx)}
+  onError={(err) => console.error("Failed:", err)}
 />;
+```
+
+### Payment Intervals
+
+```typescript
+enum PaymentInterval {
+  Daily,
+  Weekly,
+  Monthly,
+  Quarterly,
+  SemiAnnually,
+  Annually,
+}
+```
+
+---
+
+## x402 SDK (`@tributary-so/x402`)
+
+HTTP 402 payment protocol implementation for micropayments.
+
+### Installation
+
+```bash
+pnpm install @tributary-so/x402 @tributary-so/sdk @solana/web3.js express
+```
+
+### Express Middleware
+
+```typescript
+import { createX402Middleware } from "@tributary-so/x402";
+import { Tributary } from "@tributary-so/sdk";
+
+const tributary = new Tributary(connection, wallet);
+
+const middleware = createX402Middleware({
+  scheme: "deferred", // or "x402://payg"
+  network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  amount: 100,
+  recipient: process.env.RECIPIENT_WALLET!,
+  gateway: process.env.GATEWAY!,
+  tokenMint: process.env.TOKEN_MINT!,
+  paymentFrequency: "monthly",
+  jwtSecret: process.env.JWT_SECRET!,
+  sdk: tributary,
+  connection,
+});
+
+app.use("/api/premium", middleware);
+```
+
+### Schemes
+
+| Scheme           | Description               |
+| ---------------- | ------------------------- |
+| `deferred`       | Subscription-based access |
+| `x402://payg`    | Metered pay-as-you-go     |
+| `x402://prepaid` | Credit-based prepayment   |
+
+---
+
+## CLI (`@tributary-so/cli`)
+
+Command-line interface for protocol management. See [Tools](./tools.md) for full documentation.
+
+```bash
+# Create subscription
+tributary-cli -c https://api.mainnet-beta.solana.com -k ~/.config/solana/id.json \
+  create-subscription \
+  -t [TOKEN_MINT] \
+  -r [RECIPIENT] \
+  -g [GATEWAY] \
+  -a 1000000 \
+  -f monthly
 ```

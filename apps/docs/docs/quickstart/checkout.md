@@ -1,211 +1,214 @@
 # Checkout Page Quickstart
 
-This guide shows you how to generate payment URLs for Tributary subscriptions without any frontend code. This approach is perfect for:
+Generate payment URLs for Tributary subscriptions without any frontend code. Perfect for:
 
-- **AI agent monetization** (e.g., service agents accepting payments from customer agents)
-- **Payment links** that can be shared via messaging, email, or chat
-- **Zero UI integration** - let Tributary handle the entire checkout experience
-- **Lando** - The "Stripe for AI Agents" platform built on this method
+- **AI agent monetization** (service agents accepting payments from customer agents)
+- **Payment links** shared via messaging, email, or chat
+- **Zero UI integration** - Tributary handles the checkout experience
+- **Lando** - The "Stripe for AI Agents" platform
 
 ## Prerequisites
 
 - Node.js (v16 or higher)
 - pnpm package manager
-- Basic knowledge of Solana addresses and tokens
 - A recipient wallet address (to receive payments)
 
 ## Step 1: Installation
 
-Install the Tributary payments package:
-
 ```bash
-pnpm install @tributary-so/payments
+pnpm install @tributary-so/payments @tributary-so/sdk @solana/web3.js
 ```
 
-## Step 2: Generate a Payment URL
+## Step 2: Generate Checkout URL
 
-The payments package provides a simple API to encode payment details into a URL that can be shared with customers.
+Use the PaymentsClient to create checkout sessions:
 
 ```typescript
-import { PaymentUrlBuilder } from "@tributary-so/payments";
-import { PublicKey } from "@solana/web3.js";
+import { PaymentsClient } from "@tributary-so/payments";
+import { Connection } from "@solana/web3.js";
+import { Tributary } from "@tributary-so/sdk";
 
-// Configuration
-const recipient = new PublicKey("YOUR_RECIPIENT_WALLET_ADDRESS");
-const gateway = new PublicKey("CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr"); // Tributary gateway
-const amount = 10; // 10 USDC
-const frequency = "monthly"; // weekly, monthly, or custom
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const tributary = new Tributary(connection, wallet);
+const stripe = new PaymentsClient(connection, tributary);
 
-// Create the payment URL
-const paymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: recipient.toString(),
-  gateway: gateway.toString(),
-  amount: amount,
-  frequency: frequency,
-  lineItems: [
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [
     {
       description: "Premium subscription",
-      unitPrice: amount,
+      unitPrice: 10.0, // $10
       quantity: 1,
     },
   ],
-  autoRenew: false,
+  paymentFrequency: "monthly",
+  mode: "subscription",
+  success_url: "https://yourapp.com/success",
+  cancel_url: "https://yourapp.com/cancel",
+  tributaryConfig: {
+    gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
+    recipient: "YOUR_RECIPIENT_WALLET_ADDRESS",
+    trackingId: "unique-tracking-id",
+    autoRenew: true,
+  },
 });
 
-console.log("Payment URL:", paymentUrl);
-```
-
-The output will be a URL like:
-```
-https://checkout.tributary.so/#/subscribe/eyJ0bSI6IkVQakZXZGQ1QXVmcVNTcWVNMnFOMXh6eWJhcEM4RzR3RUdHa1p3eVREdDF2IiwiciI6IlZPWExhTnZwNE9BZVh2RzR3eURvV2p2QVVqVnZ4aENvR3RZM2l0Y3NHRyIsImciOiJDd055YkxWUTNzVm1jWjNRMXZlUzZ4OTlnVVphQUYyZHVORGUzcWJjRU1HCIiwiYSI6IjEwIiwicGYiOiJtb250aGx5IiwibGkiOiJbeyJkZXNjcmlwdGlvbiI6IlByZW1pdW0gc3Vic2NyaXB0aW9uIiwidW5pdFByaWNlIjoxMCwicXVhbnRpdHkiOjF9XQ==...
+console.log("Checkout URL:", session.url);
+// https://checkout.tributary.so/#/subscribe/eyJ0bSI6IkVQakZXZGQ1Q...
 ```
 
 ## Step 3: Share the Payment URL
 
-Once you have the payment URL, you can share it with customers through any channel:
+Once generated, share via any channel:
 
 ```typescript
-// Example: Send via messaging service
-function sendPaymentUrlToCustomer(customerPhone: string, paymentUrl: string) {
-  const message = `Subscribe to our premium service: ${paymentUrl}`;
-  // Send via SMS, WhatsApp, Telegram, etc.
-}
-
-// Example: Send via email
-function sendPaymentUrlViaEmail(customerEmail: string, paymentUrl: string) {
-  const email = {
-    to: customerEmail,
+// Email
+function sendPaymentEmail(email: string, url: string) {
+  sendEmail({
+    to: email,
     subject: "Complete your subscription",
-    body: `Click here to subscribe: ${paymentUrl}`,
-  };
-  // Send via your email service
+    body: `Click here: ${url}`,
+  });
 }
 
-// Example: AI agent scenario (Lando)
-// Service agent sends payment URL to customer agent via chat
-const skillContent = `
-To subscribe to this service, visit:
-${paymentUrl}
+// SMS/Messaging
+function sendPaymentSMS(phone: string, url: string) {
+  sendSMS(phone, `Subscribe: ${url}`);
+}
 
-This will create a ${amount} USDC ${frequency} subscription.
+// AI Agent (Lando)
+const skillContent = `
+Subscribe to this service:
+${url}
+
+$10 USDC monthly subscription.
 `;
 ```
 
-## Step 4: Customer Subscribes
+## Step 4: Monitor Payments
 
-When the customer visits the payment URL:
-
-1. **Lando Checkout Page** displays subscription details
-2. **Wallet Connection** prompts customer to connect their wallet
-3. **Payment Confirmation** customer approves the subscription
-4. **On-chain Subscription** created automatically on Solana
-5. **Confirmation** customer receives confirmation and transaction signature
-
-## Step 5: Monitor Payments
-
-After customers subscribe, you can monitor payments using the Tributary SDK:
+Track subscription status using the SDK:
 
 ```typescript
-import { Tributary } from "@tributary-so/sdk";
-import { Connection } from "@solana/web3.js";
+// Check subscription status
+const status = await stripe.subscriptions.checkStatus({
+  trackingId: "unique-tracking-id",
+  userPublicKey: "USER_PUBLIC_KEY",
+  tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+});
 
-const connection = new Connection("https://api.mainnet-beta.solana.com");
-const tributary = new Tributary(connection);
-
-// Get all subscriptions where you're the recipient
-const subscriptions = await tributary.getPaymentPoliciesByRecipient(recipient);
-console.log("Active subscriptions:", subscriptions);
+console.log("Status:", status.status); // "pending" | "created" | "active"
+console.log("Payments:", status.paymentCount);
+console.log("Next due:", status.nextPaymentDue);
 ```
 
-## Advanced Usage
+## One-Time Payments
 
-### Custom Line Items
+For single, non-recurring payments:
 
 ```typescript
-const paymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: recipient.toString(),
-  gateway: gateway.toString(),
-  amount: 25,
-  frequency: "monthly",
-  lineItems: [
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [
     {
-      description: "Basic plan",
-      unitPrice: 20,
-      quantity: 1,
-    },
-    {
-      description: "Add-on feature",
-      unitPrice: 5,
+      description: "Premium feature access",
+      unitPrice: 50.0,
       quantity: 1,
     },
   ],
+  mode: "payment", // One-time payment
+  success_url: "https://yourapp.com/success",
+  cancel_url: "https://yourapp.com/cancel",
+  tributaryConfig: {
+    recipient: "YOUR_RECIPIENT_WALLET_ADDRESS",
+    trackingId: "order-12345",
+  },
 });
 ```
 
-### Custom Start Time
+Check one-time payment status:
 
 ```typescript
-const paymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: recipient.toString(),
-  gateway: gateway.toString(),
-  amount: 10,
-  frequency: "monthly",
-  startTime: new Date("2026-03-01T00:00:00Z").getTime() / 1000, // Unix timestamp
-});
+const status = await stripe.payments.oneTime.checkStatus("order-12345");
+
+if (status.status === "paid") {
+  console.log("Paid!", {
+    transaction: status.transaction?.signature,
+    amount: status.amount,
+    paidAt: status.paidAt,
+  });
+}
 ```
 
-### One-Time Payments
+## Custom Line Items
 
-For one-time payments (no auto-renewal):
+Add detailed breakdowns:
 
 ```typescript
-const paymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: recipient.toString(),
-  gateway: gateway.toString(),
-  amount: 50,
-  frequency: "once",
-  autoRenew: false,
+const session = await stripe.checkout.sessions.create({
+  // ...
+  line_items: [
+    { description: "Basic plan", unitPrice: 20, quantity: 1 },
+    { description: "Add-on feature", unitPrice: 5, quantity: 1 },
+    { description: "Priority support", unitPrice: 10, quantity: 1 },
+  ],
+  // Total: $35
 });
 ```
 
-### Custom Intervals
+## URL Encoding
+
+Checkout URLs contain Base64URL-encoded data:
+
+**Subscription format:**
+
+```
+https://checkout.tributary.so/#/subscribe/{base64url}
+```
+
+**One-time payment format:**
+
+```
+https://checkout.tributary.so/#/pay/{base64url}
+```
+
+**Encoded fields:**
+
+| Field | Description                             |
+| ----- | --------------------------------------- |
+| `m`   | Mode ("subscription" or "payment")      |
+| `tm`  | Token mint address                      |
+| `r`   | Recipient public key                    |
+| `a`   | Total amount                            |
+| `tid` | Tracking ID                             |
+| `g`   | Gateway public key (subscriptions only) |
+| `ar`  | Auto-renew flag (subscriptions only)    |
+| `pf`  | Payment frequency (subscriptions only)  |
+| `li`  | Line items JSON (optional)              |
+
+## TributaryConfig Reference
+
+### Subscription Mode
 
 ```typescript
-const paymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: recipient.toString(),
-  gateway: gateway.toString(),
-  amount: 10,
-  frequency: "custom",
-  customIntervalSeconds: 604800, // Weekly (7 * 24 * 60 * 60)
-});
+tributaryConfig: {
+  gateway: string;      // Required: Gateway public key
+  recipient: string;    // Required: Recipient wallet address
+  trackingId: string;   // Required: Your unique identifier
+  autoRenew?: boolean;  // Optional: Enable auto-renewal (default: false)
+  memo?: string;        // Optional: Payment memo
+}
 ```
 
-## API Reference
+### One-Time Payment Mode
 
-### PaymentUrlBuilder.buildSubscriptionUrl()
-
-Creates a payment URL for subscriptions.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `token` | string | Yes | Token mint address (e.g., USDC: `"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"`) |
-| `recipient` | string | Yes | Recipient wallet address (to receive payments) |
-| `gateway` | string | Yes | Payment gateway address (use default: `"CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr"`) |
-| `amount` | number | Yes | Payment amount in token units |
-| `frequency` | string | Yes | Payment frequency: `"once"`, `"weekly"`, `"monthly"`, or `"custom"` |
-| `lineItems` | array | No | Array of line item objects for invoice breakdown |
-| `autoRenew` | boolean | No | Enable automatic renewal (default: `false`) |
-| `startTime` | number | No | Unix timestamp for subscription start (optional) |
-| `customIntervalSeconds` | number | No | Custom interval in seconds (required when `frequency="custom"`) |
-
-**Returns:** `string` - The full checkout URL
+```typescript
+tributaryConfig: {
+  recipient: string;    // Required: Recipient wallet address
+  trackingId: string;   // Required: Your unique identifier
+  memo?: string;        // Optional: Payment memo
+}
+```
 
 ## Use Cases
 
@@ -213,92 +216,62 @@ Creates a payment URL for subscriptions.
 
 ```typescript
 // Service agent generates subscription URL
-const serviceAgentPaymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: "SERVICE_AGENT_WALLET",
-  gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
-  amount: 29,
-  frequency: "monthly",
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [{ description: "AI Service Pro", unitPrice: 29, quantity: 1 }],
+  paymentFrequency: "monthly",
+  mode: "subscription",
+  tributaryConfig: {
+    gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
+    recipient: "SERVICE_AGENT_WALLET",
+    trackingId: "agent-service-pro",
+  },
 });
 
-// Customer agent receives URL, visits checkout, subscribes
-// Service agent receives recurring USDC payments automatically
+// Customer agent visits URL, subscribes
+// Service agent receives recurring USDC automatically
 ```
 
 ### Payment Links for Services
 
 ```typescript
-// Generate and share payment links via email, SMS, or chat
-const paymentLink = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: "YOUR_WALLET",
-  gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
-  amount: 99,
-  frequency: "monthly",
+// Generate and share via email/SMS/chat
+const session = await stripe.checkout.sessions.create({
+  payment_method_types: ["tributary"],
+  line_items: [
+    { description: "Consulting Session", unitPrice: 99, quantity: 1 },
+  ],
+  mode: "payment",
+  tributaryConfig: {
+    recipient: "YOUR_WALLET",
+    trackingId: "consulting-session-001",
+  },
 });
 
-// Share with customers
-console.log(`Subscribe here: ${paymentLink}`);
+console.log(`Pay here: ${session.url}`);
 ```
 
-### Flexible Payment Scheduling
+## Testing
+
+Use devnet for testing:
 
 ```typescript
-// Create payment URLs with custom schedules
-const weeklyPayment = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: "YOUR_WALLET",
-  gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
-  amount: 10,
-  frequency: "custom",
-  customIntervalSeconds: 604800, // Weekly
-});
+const connection = new Connection("https://api.devnet.solana.com");
 
-const quarterlyPayment = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: "YOUR_WALLET",
-  gateway: "CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr",
-  amount: 50,
-  frequency: "custom",
-  customIntervalSeconds: 7776000, // Quarterly (90 days)
-});
+// Use devnet-fund wallet
+// Small test amounts recommended
 ```
 
 ## Important Notes
 
-- **Gateway Address:** Use the default gateway `CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr` unless you have a custom gateway
-- **Token Decimals:** Amounts are in token units, not smallest units (USDC uses 6 decimals)
-- **URL Encoding:** The payment details are Base64URL-encoded for safe sharing
-- **Checkout Page:** Customers will see the Lando checkout page at `checkout.tributary.so`
-- **Wallet Required:** Customers need a Solana wallet to complete subscriptions
-
-## Testing
-
-For testing, use Solana devnet:
-
-```typescript
-// Devnet gateway address (if different from mainnet)
-const devnetGateway = new PublicKey("DEVNET_GATEWAY_ADDRESS");
-
-// Test with devnet
-const testPaymentUrl = PaymentUrlBuilder.buildSubscriptionUrl({
-  token: "USDC",
-  recipient: recipient.toString(),
-  gateway: devnetGateway.toString(),
-  amount: 1, // Small test amount
-  frequency: "monthly",
-});
-```
+- **Gateway**: Use `CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr` (default Tributary gateway)
+- **Token Decimals**: Amounts in token units (USDC uses 6 decimals)
+- **Wallet Required**: Customers need a Solana wallet
+- **Non-Custodial**: Funds stay in user wallets
 
 ## Next Steps
 
-- **Explore Payment Types:** Learn about [subscriptions](../subscription-payments.md), [milestones](../milestone-payments.md), and [pay-as-you-go](../pay-as-you-go.md)
-- **Monitor Payments:** Use the [SDK](../sdks.md) to track subscriptions and payments
-- **Build with Lando:** Check out [Lando](https://lando.tributary.so) for AI-to-AI payments
-- **Full SDK Reference:** See [SDKs](../sdks.md) for advanced usage
-
-## Need Help?
-
-- 📖 Read the full [SDK Reference](../sdks.md)
-- ❓ Check our [FAQ](../faq.md)
-- 💬 Join our community on [Discord](https://discord.gg/tributary)
+- [SDK Reference](../sdks.md) - Full SDK documentation
+- [Payment Types](../subscription-payments.md) - Subscriptions, milestones, pay-as-you-go
+- [API Reference](../api/overview.md) - REST and WebSocket APIs
+- [Lando](https://lando.tributary.so) - AI-to-AI payments platform
