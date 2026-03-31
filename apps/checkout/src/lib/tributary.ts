@@ -15,6 +15,31 @@ import * as anchor from "@coral-xyz/anchor";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import config from "../constants";
 
+export interface TokenResponse {
+  token: string;
+  expiresAt: number;
+}
+
+export async function issueSubscriptionToken(
+  walletPublicKey: PublicKey,
+  tokenMint?: string
+): Promise<TokenResponse> {
+  const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      walletPublicKey: walletPublicKey.toString(),
+      tokenMint: tokenMint || config.usdcMint,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to issue token: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
 export type { PaymentFrequency };
 
 export interface SubscriptionPolicy {

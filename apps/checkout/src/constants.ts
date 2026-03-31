@@ -5,6 +5,7 @@ export interface Config {
   programId: string;
   usdcMint: string;
   gateway: string;
+  apiBaseUrl: string;
 }
 
 const config: Config = {
@@ -19,6 +20,7 @@ const config: Config = {
   gateway:
     import.meta.env.VITE_GATEWAY_ADDRESS ||
     "6ntm5rWqDFefET8RFyZV73FcdqxPMbc7Tso3pCMWk4w4",
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "https://api.tributary.so",
 };
 
 export default config;
