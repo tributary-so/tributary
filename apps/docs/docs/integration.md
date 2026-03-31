@@ -147,8 +147,9 @@ app.use(
 
 1. **Learn the Protocol:** [What is Tributary?](./what.md)
 2. **Choose Your Integration:** Review quickstart guides above
-3. **Explore Payment Types:** [Subscriptions](./subscription-payments.md), [Milestones](./milestone-payments.md), [Pay-as-you-go](./pay-as-you-go.md)
-4. **Build:** Check [use cases](./use-cases.md) for inspiration
+3. **JWT Authentication:** [Verify subscriptions after checkout](./jwt-auth.md)
+4. **Explore Payment Types:** [Subscriptions](./subscription-payments.md), [Milestones](./milestone-payments.md), [Pay-as-you-go](./pay-as-you-go.md)
+5. **Build:** Check [use cases](./use-cases.md) for inspiration
 
 ## Need Help?
 

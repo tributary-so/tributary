@@ -54,6 +54,7 @@ nav:
   - Developer Guide:
       - Basics: how.md
       - Integration Options: integration.md
+      - JWT Authentication: jwt-auth.md
       - SDK Integration: quickstart/integration.md
       - React Button: quickstart/button.md
       - Checkout Page Links: quickstart/checkout.md
