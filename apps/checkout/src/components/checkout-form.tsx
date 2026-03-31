@@ -5,7 +5,7 @@ import { SubscriptionParams } from "@tributary-so/payments";
 import { CheckCircle2, Wallet, Loader2, Lock, XCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { createSubscription } from "@/lib/tributary";
+import { createSubscription, issueSubscriptionToken } from "@/lib/tributary";
 import { PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
 import { getTokenSymbol } from "@tributary-so/sdk";
@@ -71,7 +71,18 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       setSuccess(true);
 
       if (sessionData.successUrl) {
-        window.location.href = sessionData.successUrl;
+        try {
+          const { token } = await issueSubscriptionToken(
+            wallet.publicKey!,
+            sessionData.tokenMint
+          );
+          const url = new URL(sessionData.successUrl);
+          url.searchParams.set("token", token);
+          window.location.href = url.toString();
+        } catch (jwtError) {
+          console.warn("Failed to issue JWT token:", jwtError);
+          window.location.href = sessionData.successUrl;
+        }
       }
     } catch (err) {
       toast.error(
