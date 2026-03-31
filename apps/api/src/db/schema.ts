@@ -42,7 +42,22 @@ export const webhooks = pgTable("webhooks", {
     .defaultNow(),
 });
 
+export const signingKeys = pgTable("signing_keys", {
+  kid: text("kid").primaryKey(),
+  privateKey: text("private_key").notNull(),
+  publicJwk: jsonb("public_jwk").notNull(),
+  algorithm: text("algorithm").notNull(),
+  isCurrent: boolean("is_current").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  rotatedAt: timestamp("rotated_at", { withTimezone: true }),
+});
+
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
+export type SigningKey = typeof signingKeys.$inferSelect;
+export type NewSigningKey = typeof signingKeys.$inferInsert;
