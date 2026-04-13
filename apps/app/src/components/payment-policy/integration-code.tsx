@@ -372,7 +372,7 @@ import { BN } from '@coral-xyz/anchor'
                     validated.formData.frequency
                   }`}
                   executeImmediately={true}
-                  className="bg-subscription-600 hover:bg-subscription-700 text-white"
+                  className="bg-primary-600 hover:bg-primary-700 text-white"
                   radius="md"
                   size="md"
                 />
