@@ -218,14 +218,14 @@ jobs:
   landingpage:
     name: Update Landing Page
     needs: [release]
-    if: always() && (github.event.inputs.post_release == 'true')
+    if: always()
     secrets: inherit
     uses: ./.github/workflows/landing-page.yaml
 
   docs:
     name: Update Docs
     needs: [release]
-    if: always() && (github.event.inputs.post_release == 'true')
+    if: always()
     secrets: inherit
     uses: ./.github/workflows/docs.yaml
 
