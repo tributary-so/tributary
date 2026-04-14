@@ -18,7 +18,7 @@ export async function getSubscriptionDetails(options: PolicyLookupOptions) {
   const policies = await tracker.getPaymentPoliciesForOptions(options);
 
   // remove the paddings
-  return policies.map(({ account: account }) => {
+  return policies.map(({ account: account, publicKey }) => {
     let policyType;
     if ("subscription" in account.policyType) {
       policyType = {
@@ -53,6 +53,7 @@ export async function getSubscriptionDetails(options: PolicyLookupOptions) {
       createdAt: account.createdAt.toNumber(),
       updatedAt: account.updatedAt.toNumber(),
       policyType,
+      policyAccount: publicKey,
     };
   });
 }

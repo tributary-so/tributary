@@ -111,6 +111,7 @@ if (status.status === "active") {
 ## Next Steps
 
 - [Integration Options](./integration.md) - Choose your integration method
+- [JWT Authentication](./jwt-auth.md) - Verify subscriptions after checkout
 - [Checkout Quickstart](./quickstart/checkout.md) - Generate payment links
 - [SDK Reference](./sdks.md) - Complete SDK documentation
 - [API Reference](./api/overview.md) - REST & WebSocket APIs

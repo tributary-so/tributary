@@ -107,6 +107,8 @@ export interface TributaryPaymentRecord {
   timestamp: number;
   memo: number[];
   record_id: number;
+  payer?: PublicKey;
+  recipient?: PublicKey;
 }
 
 export interface TributaryProgramConfigCreated {

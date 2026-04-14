@@ -1,7 +1,7 @@
 {
   "name": "@tributary-so/payments",
   "version": "1.0.0",
-  "description": "Stripe-compatible payments SDK for Tributary USDC subscriptions - zero API keys required",
+  "description": "Payments SDK for Tributary USDC subscriptions - zero API keys required",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

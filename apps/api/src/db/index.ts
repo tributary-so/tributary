@@ -10,7 +10,7 @@ export function getDb() {
     throw new Error("DATABASE_URL environment variable is not set");
   }
 
-  if (!client) {
+  if (!client || !db) {
     client = postgres(process.env.DATABASE_URL, {
       max: 1,
       idle_timeout: 20,
