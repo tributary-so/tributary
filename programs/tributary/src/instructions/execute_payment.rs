@@ -495,7 +495,7 @@ impl<'info> ExecutePayment<'info> {
             memo: payment_policy.memo,
             record_id: payment_policy.payment_count,
             payer: user_payment.owner,
-            recipient: recipient_token_account_info.owner.key(),
+            recipient: accounts.recipient_token_account.owner.key(),
         });
 
         msg!(
