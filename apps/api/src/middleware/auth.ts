@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { jwtVerify, importJWK } from "jose";
+import { jwtVerify, importJWK, errors } from "jose";
 import { getSigningKeyByKid } from "../services/jwks";
 
 const JWT_ISSUER = process.env.JWT_ISSUER || "https://api.tributary.so";
@@ -12,6 +12,7 @@ export interface JwtPayload {
   iat: number;
   exp: number;
   subscriptions?: any[];
+  lastPayments?: any[];
   [key: string]: unknown;
 }
 
@@ -37,7 +38,32 @@ export async function requireAuth(
   }
 }
 
-export async function verifyToken(token: string): Promise<JwtPayload> {
+export async function optionalAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Missing Authorization header" });
+      return;
+    }
+
+    const token = authHeader.slice(7);
+    const payload = await verifyToken(token, { allowExpired: true });
+
+    (req as any).jwtPayload = payload;
+    next();
+  } catch (err: any) {
+    res.status(401).json({ error: err.message || "Invalid token" });
+  }
+}
+
+export async function verifyToken(
+  token: string,
+  options?: { allowExpired?: boolean }
+): Promise<JwtPayload> {
   const headerB64 = token.split(".")[0];
   const header = JSON.parse(
     Buffer.from(headerB64, "base64url").toString("utf-8")
@@ -58,10 +84,29 @@ export async function verifyToken(token: string): Promise<JwtPayload> {
 
   const publicKey = await importJWK(signingKey.publicJwk as any, "ES256");
 
-  const { payload } = await jwtVerify(token, publicKey, {
-    issuer: JWT_ISSUER,
-    audience: JWT_AUDIENCE,
-  });
+  try {
+    const { payload } = await jwtVerify(token, publicKey, {
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    });
 
-  return payload as JwtPayload;
+    return payload as JwtPayload;
+  } catch (err) {
+    if (err instanceof errors.JWTExpired && options?.allowExpired) {
+      const payloadB64 = token.split(".")[1];
+      const payload = JSON.parse(
+        Buffer.from(payloadB64, "base64url").toString("utf-8")
+      );
+
+      if (payload.iss !== JWT_ISSUER) {
+        throw new Error("Invalid token issuer");
+      }
+      if (payload.aud !== JWT_AUDIENCE) {
+        throw new Error("Invalid token audience");
+      }
+
+      return payload as JwtPayload;
+    }
+    throw err;
+  }
 }
