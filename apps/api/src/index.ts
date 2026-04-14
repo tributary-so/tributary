@@ -8,9 +8,13 @@ import express from "express";
 import cors from "cors";
 import { createServer } from "http";
 import { requestLogger, errorHandler, notFoundHandler } from "./middleware";
-import apiRoutes from "./routes";
+
 import { WebSocketService } from "./services/websocket";
 import { KafkaPaymentConsumer } from "./services/kafkaConsumer";
+
+import apiRoutes from "./routes";
+import jwksRouter from "./routes/jwks";
+import { startAutoRotationCheck } from "./services/jwks";
 
 const app: express.Express = express();
 const PORT = process.env.PORT || "3002";
@@ -25,35 +29,37 @@ app.use(requestLogger);
 // API routes with /api/v1 prefix
 app.use("/v1", apiRoutes);
 
+app.use("/.well-known/jwks.json", jwksRouter);
+
 // Root endpoint
 app.get("/", (req, res) => {
   res.json({
     name: "Tributary API",
     version: "1.0.0",
     status: "running",
-    endpoints: {
-      health: "/v1/health",
-      skill: "/v1/skill/:encoded",
-      subscriptionDetails: "/v1/subscriptions/",
-      onetimePayment: "/v1/onetime/:trackingId",
-      events: "/v1/events",
-      tributaryEventNames: "/v1/events/names/tributary",
-      payments: "/v1/events/payments",
-      paymentStats: "/v1/events/payments/stats",
-      policiesCreated: "/v1/events/policies/created",
-      policiesDeleted: "/v1/events/policies/deleted",
-      policyStatusChanged: "/v1/events/policies/status-changed",
-      gatewaysCreated: "/v1/events/gateways/created",
-      gatewaysDeleted: "/v1/events/gateways/deleted",
-      gatewayFeeBpsChanged: "/v1/events/gateways/fee-bps-changed",
-      gatewayFeeRecipientChanged: "/v1/events/gateways/fee-recipient-changed",
-      gatewaySignerChanged: "/v1/events/gateways/signer-changed",
-      referralRewards: "/v1/events/referrals/rewards",
-      userPaymentsCreated: "/v1/events/user-payments/created",
-      webhooks: "/v1/webhooks",
-      webhooksByGateway: "/v1/webhooks/gateway/:gatewayPubkey",
-      webhookById: "/v1/webhooks/:id",
-    },
+    // endpoints: {
+    //   health: "/v1/health",
+    //   skill: "/v1/skill/:encoded",
+    //   subscriptionDetails: "/v1/subscriptions/",
+    //   onetimePayment: "/v1/onetime/:trackingId",
+    //   events: "/v1/events",
+    //   tributaryEventNames: "/v1/events/names/tributary",
+    //   payments: "/v1/events/payments",
+    //   paymentStats: "/v1/events/payments/stats",
+    //   policiesCreated: "/v1/events/policies/created",
+    //   policiesDeleted: "/v1/events/policies/deleted",
+    //   policyStatusChanged: "/v1/events/policies/status-changed",
+    //   gatewaysCreated: "/v1/events/gateways/created",
+    //   gatewaysDeleted: "/v1/events/gateways/deleted",
+    //   gatewayFeeBpsChanged: "/v1/events/gateways/fee-bps-changed",
+    //   gatewayFeeRecipientChanged: "/v1/events/gateways/fee-recipient-changed",
+    //   gatewaySignerChanged: "/v1/events/gateways/signer-changed",
+    //   referralRewards: "/v1/events/referrals/rewards",
+    //   userPaymentsCreated: "/v1/events/user-payments/created",
+    //   webhooks: "/v1/webhooks",
+    //   webhooksByGateway: "/v1/webhooks/gateway/:gatewayPubkey",
+    //   webhookById: "/v1/webhooks/:id",
+    // },
   });
 });
 
@@ -69,6 +75,8 @@ if (require.main === module) {
   const httpServer = createServer(app);
 
   wsService = new WebSocketService(httpServer, REDIS_URL);
+
+  startAutoRotationCheck();
 
   if (KAFKA_BROKERS.length > 0) {
     const consumer = new KafkaPaymentConsumer(KAFKA_BROKERS);

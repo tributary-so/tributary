@@ -5,7 +5,6 @@ import express, { Application } from "express";
 
 jest.mock("../services/token-issuer", () => ({
   issueToken: jest.fn(),
-  refreshToken: jest.fn(),
 }));
 
 jest.mock("../services/subscription", () => ({
@@ -18,12 +17,20 @@ jest.mock("../services/jwks", () => ({
   importPrivateKey: jest.fn(),
 }));
 
+jest.mock("../middleware/rateLimit", () => ({
+  rateLimit: () => (req: any, res: any, next: any) => next(),
+  walletRateLimit: () => (req: any, res: any, next: any) => next(),
+}));
+
+jest.mock("../db", () => ({
+  getDb: jest.fn(() => ({})),
+}));
+
 import tokensRouter from "../routes/tokens";
 import { errorHandler } from "../middleware/errorHandler";
 import * as tokenIssuer from "../services/token-issuer";
 
 const mockIssueToken = tokenIssuer.issueToken as jest.Mock;
-const mockRefreshToken = tokenIssuer.refreshToken as jest.Mock;
 
 function createApp(): Application {
   const app = express();
@@ -109,7 +116,7 @@ describe("POST /v1/tokens/issue", () => {
     );
   });
 
-  it("should pass optional policyAddress to issueToken", async () => {
+  it("should pass optional recipient to issueToken", async () => {
     mockIssueToken.mockResolvedValueOnce({
       token: "jwt-token-abc",
       expiresAt: 1743469200,
@@ -119,15 +126,61 @@ describe("POST /v1/tokens/issue", () => {
       .post("/v1/tokens/issue")
       .send({
         walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR",
-        policyAddress: "DxL3k...",
+        recipient: "BxKpT3mZQ5HgeRZFMfWVBpDCmCN8eYwGmCjL7m9mVq",
       })
       .expect(200);
     expect(mockIssueToken).toHaveBeenCalledWith(
       expect.objectContaining({
-        walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR",
-        policyAddress: "DxL3k...",
+        recipient: "BxKpT3mZQ5HgeRZFMfWVBpDCmCN8eYwGmCjL7m9mVq",
       })
     );
+  });
+
+  it("should pass optional transactionSignature to issueToken", async () => {
+    const validSig =
+      "nQokQxRXc5wmQbzUFsnpMEUxwAhM8rmeWrAhU56L6CNoYACSXsbrcup5g9aHfbe7b5XUKvcsMuvXfySst2JWdZi";
+    mockIssueToken.mockResolvedValueOnce({
+      token: "jwt-token-abc",
+      expiresAt: 1743469200,
+    });
+
+    await request(app)
+      .post("/v1/tokens/issue")
+      .send({
+        walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR",
+        transactionSignature: validSig,
+      })
+      .expect(200);
+    expect(mockIssueToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionSignature: validSig,
+      })
+    );
+  });
+
+  it("should return 400 for invalid transactionSignature format", async () => {
+    const response = await request(app)
+      .post("/v1/tokens/issue")
+      .send({
+        walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR",
+        transactionSignature: "invalid-sig!!!",
+      })
+      .expect(400);
+
+    expect(response.body.error).toContain("transactionSignature");
+  });
+
+  it("should return 404 when no policies found", async () => {
+    mockIssueToken.mockRejectedValueOnce(
+      new Error("No active subscription policies or payments found")
+    );
+
+    const response = await request(app)
+      .post("/v1/tokens/issue")
+      .send({ walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR" })
+      .expect(404);
+
+    expect(response.body.error).toContain("No active");
   });
 
   it("should handle service errors", async () => {
@@ -139,52 +192,5 @@ describe("POST /v1/tokens/issue", () => {
       .post("/v1/tokens/issue")
       .send({ walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR" })
       .expect(500);
-  });
-
-  describe("POST /v1/tokens/refresh", () => {
-    it("should refresh an expired token", async () => {
-      mockRefreshToken.mockResolvedValueOnce({
-        token: "jwt-token-abc",
-        expiresAt: 1746073200,
-      });
-
-      const response = await request(app)
-        .post("/v1/tokens/refresh")
-        .set("Authorization", "Bearer expired-jwt")
-        .expect(200);
-
-      expect(response.body.token).toBeDefined();
-      expect(response.body.expiresAt).toBeDefined();
-    });
-
-    it("should return 401 for missing Authorization header", async () => {
-      const response = await request(app)
-        .post("/v1/tokens/refresh")
-        .expect(401);
-
-      expect(response.body.error).toContain("Missing Authorization header");
-    });
-
-    it("should return 401 for malformed Authorization header", async () => {
-      const response = await request(app)
-        .post("/v1/tokens/refresh")
-        .set("Authorization", "NotBearer sometoken")
-        .expect(401);
-
-      expect(response.body.error).toContain("Missing Authorization header");
-    });
-
-    it("should handle service errors during refresh", async () => {
-      mockRefreshToken.mockRejectedValueOnce(
-        new Error("Failed to read on-chain state")
-      );
-
-      const response = await request(app)
-        .post("/v1/tokens/refresh")
-        .set("Authorization", "Bearer expired-jwt")
-        .expect(500);
-
-      expect(response.body.error).toBe("Failed to refresh token");
-    });
   });
 });
