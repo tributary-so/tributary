@@ -2,7 +2,13 @@
 
 **Open-source, permissionless automated payment infrastructure for Solana**
 
-Tributary brings Web2 subscription simplicity to Web3 with truly automated recurring payments—no manual signing every month, no deposits into contracts, funds flow directly from user token accounts.
+Tributary brings Web2 subscription simplicity to Web3 with truly automated
+recurring payments—no manual signing every month, no deposits into contracts,
+funds flow directly from user token accounts.
+
+It simplifies the payments so that merchants can accept USDC without even
+thinking about blockchain specifics while still retaining the possibility to
+verify, not trust.
 
 ## What is Tributary?
 
@@ -17,19 +23,19 @@ Tributary is a **protocol** that enables automated recurring payments on Solana:
 
 ### ✅ Payment Types
 
-- **Subscriptions** - Fixed recurring payments (daily, weekly, monthly, etc.)
-- **Milestones** - Project-based payments with up to 4 deliverables
-- **Pay-as-you-go** - Usage-based billing with period limits
+- **[Subscriptions](./policies/subscription.md)** - Fixed recurring payments (daily, weekly, monthly, etc.)
+- **[Milestones](./policies/milestone.md)** - Project-based payments with up to 4 deliverables
+- **[Pay-as-you-go](./policies/payasyougo.md)** - Usage-based billing with period limits
 
 ### ✅ Developer Tools
 
-- **TypeScript SDK** - Complete protocol interaction
-- **React SDK** - Pre-built payment components
-- **Payments SDK** - Stripe-compatible checkout (zero API keys)
-- **x402 SDK** - HTTP 402 middleware for API monetization
-- **CLI** - Protocol management tools
-- **REST API** - Query subscriptions, events, manage webhooks
-- **WebSocket API** - Real-time payment notifications
+- **[TypeScript SDK](sdk.md#typescript-sdk-tributary-sosdk)** - Complete protocol interaction
+- **[React SDK](sdk.md#react-sdk-tributary-sosdk-react)** - Pre-built payment components
+- **[Payments SDK](sdk.md#payments-sdk-tributary-sopayments)** - Simple Payments API with hosted checkout page (zero API keys)
+- **[x402 SDK](sdk.md#x402-sdk-tributary-sox402)** - HTTP 402 middleware for API monetization
+- **[CLI](sdk.md#cli-tributary-socli)** - Protocol management tools
+- **[REST API](./api/rest-api.md)** - Query subscriptions, events, manage webhooks
+- **[WebSocket API](./api/websocket.md)** - Real-time payment notifications
 
 ### ✅ Protocol Features
 
@@ -38,76 +44,6 @@ Tributary is a **protocol** that enables automated recurring payments on Solana:
 - **Low Fees** - 1% protocol fee + configurable gateway fees
 - **Action Codes** - Wallet-less payment initiation
 - **Full Control** - Pause, resume, or cancel anytime
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    PAYMENT PROVIDERS                        │
-│   (Build user-facing services, dashboards, integrations)   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    TRIBUTARY SDKs                           │
-│   TypeScript SDK │ React SDK │ Payments SDK │ x402 SDK     │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 TRIBUTARY PROTOCOL                          │
-│   Smart Contracts │ PDA System │ Fee Distribution           │
-│   Program ID: TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    SOLANA BLOCKCHAIN                        │
-│   400ms finality │ Sub-cent fees │ Global access            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Quick Start
-
-### Generate Checkout Link
-
-```bash
-pnpm install @tributary-so/payments @tributary-so/sdk @solana/web3.js
-```
-
-```typescript
-import { PaymentsClient } from "@tributary-so/payments";
-
-const stripe = new PaymentsClient(connection, tributary);
-const session = await stripe.checkout.sessions.create({
-  mode: "subscription",
-  line_items: [{ description: "Pro Plan", unitPrice: 10, quantity: 1 }],
-  paymentFrequency: "monthly",
-  tributaryConfig: { gateway, recipient, trackingId },
-});
-
-console.log(session.url); // Share this link!
-```
-
-### React Component
-
-```tsx
-import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
-
-<SubscriptionButton
-  amount={new BN(10000000)}
-  recipient={recipient}
-  interval={PaymentInterval.Monthly}
-  label="Subscribe $10/month"
-/>;
-```
-
-### REST API
-
-```bash
-# Check subscription status
-curl "https://api.tributary.so/v1/subscriptions?trackingId=my-sub"
-```
 
 ## Why Tributary?
 
@@ -125,20 +61,18 @@ curl "https://api.tributary.so/v1/subscriptions?trackingId=my-sub"
 
 - **Program ID**: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`
 - **Network**: Solana Mainnet & Devnet
-- **USDC Mint**: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
 
 ## Resources
 
+- **Website**: [tributary.so](https://tributary.so)
 - **Documentation**: [docs.tributary.so](https://docs.tributary.so)
 - **GitHub**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
-- **Website**: [tributary.so](https://tributary.so)
 - **Checkout**: [checkout.tributary.so](https://checkout.tributary.so)
 - **API**: [api.tributary.so](https://api.tributary.so)
 
 ## Next Steps
 
 - [What is Tributary?](./what.md) - Understand the protocol
-- [Integration Options](./integration.md) - Choose your integration method
-- [Quickstarts](./quickstart/integration.md) - Get started quickly
-- [SDK Reference](./sdks.md) - Complete SDK documentation
+- [Integration](./integration.md) - Choose your integration method
+- [SDK Reference](./sdk.md) - Complete SDK documentation
 - [API Reference](./api/overview.md) - REST and WebSocket APIs

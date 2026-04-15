@@ -21,7 +21,7 @@ Tributary provides core building blocks:
 | -------------- | ------------------------------- |
 | TypeScript SDK | Complete protocol interaction   |
 | React SDK      | Pre-built payment components    |
-| Payments SDK   | Stripe-compatible checkout      |
+| Payments SDK   | Payments with hosted Checkout   |
 | x402 SDK       | HTTP 402 middleware             |
 | CLI            | Protocol management             |
 | REST API       | Query subscriptions and events  |
@@ -150,9 +150,9 @@ PayAsYouGo {
 
 ## Getting Started
 
-1. **Choose Integration** - [SDK](../sdks.md), [Checkout](../quickstart/checkout.md), or [React Button](../quickstart/button.md)
+1. **Choose Integration** - [SDK](sdk.md), [Checkout](./checkout.md), or [React Button](react-button.md)
 2. **Generate Checkout** - Create payment URLs in seconds
-3. **Monitor Payments** - Use [REST API](../api/overview.md) or WebSockets
+3. **Monitor Payments** - Use [REST API](api/overview.md) or WebSockets
 4. **Build Your Service** - Create payment provider on top of Tributary
 
 ## Resources

@@ -288,7 +288,7 @@ npx tsx client.ts http://localhost:3000/api/premium
 ## Step 5: Verify on Solana Explorer
 
 1. Copy the transaction signature from the output
-2. Visit https://explorer.solana.com/?cluster=devnet
+2. Visit <https://explorer.solana.com/?cluster=devnet>
 3. Search for your transaction
 4. Verify the payment policy was created
 
@@ -318,5 +318,5 @@ Verify the gateway PDA and recipient address are correct in your environment var
 
 - [x402 API Reference](./x402-api-reference.md)
 - [Usage Metering](./x402.md#usage-metering)
-- [Pay-as-you-go Payments](./pay-as-you-go.md)
+- [Pay-as-you-go Payments](./policies/payasyougo.md)
 - [Smart Contract Documentation](./smart-contract.md)
