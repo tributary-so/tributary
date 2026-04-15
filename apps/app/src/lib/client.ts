@@ -35,7 +35,14 @@ export async function createAndSendTransaction(
   }).compileToV0Message()
   const transaction = new VersionedTransaction(messageV0)
   const signedTx = await wallet.signTransaction(transaction)
-  const txId = await connection.sendTransaction(signedTx)
+  const txId = await connection.sendRawTransaction(
+    signedTx.serialize(),
+    // The actual bug is that sendTransaction is being called without {
+    // skipPreflight: true }, and the default RPC behavior with Connection
+    // (commitment "processed" from line 119) can cause the transaction to be
+    // submitted, then the connection internally retries it.
+    { skipPreflight: true },
+  )
   await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
   return txId
 }

@@ -6,11 +6,12 @@ import { CheckCircle2, Wallet, Loader2, Lock, XCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createSubscription, issueSubscriptionToken } from "@/lib/tributary";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
 import { getTokenSymbol } from "@tributary-so/sdk";
-import { Connection } from "@solana/web3.js";
 import config from "@/constants";
+
+const connection = new Connection(config.rpcUrl);
 
 interface CheckoutFormProps {
   sessionData: SubscriptionParams;
@@ -19,6 +20,8 @@ interface CheckoutFormProps {
 export function CheckoutForm({ sessionData }: CheckoutFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
+  const [redirecting, setRedirecting] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false);
   const [showCancelModal, setShowCancelModal] = React.useState(false);
   const [tokenSymbol, setTokenSymbol] = React.useState<string | null>(null);
   const wallet = useWallet();
@@ -29,7 +32,6 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       return;
     }
 
-    const connection = new Connection(config.rpcUrl);
     getTokenSymbol(connection, sessionData.tokenMint)
       .then((symbol) => {
         if (symbol) {
@@ -43,13 +45,13 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
 
   const handleSubmit = async (e: React.UIEvent) => {
     e.preventDefault();
+    if (isLoading || success) return;
     if (!connected || !publicKey) {
       toast.error("Please connect your wallet first");
       return;
     }
 
     setIsLoading(true);
-    setSuccess(false);
 
     try {
       const recipient = new PublicKey(sessionData.recipient);
@@ -69,11 +71,15 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       });
 
       setSuccess(true);
+      setIsLoading(false);
 
       if (sessionData.successUrl) {
+        setRedirecting(true);
+        setConfirming(true);
         try {
           const { token } = await issueSubscriptionToken(
             wallet.publicKey!,
+            recipient,
             sessionData.tokenMint
           );
           const url = new URL(sessionData.successUrl);
@@ -82,9 +88,12 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
         } catch (jwtError) {
           console.warn("Failed to issue JWT token:", jwtError);
           window.location.href = sessionData.successUrl;
+        } finally {
+          setConfirming(false);
         }
       }
     } catch (err) {
+      console.error(err);
       toast.error(
         err instanceof Error ? err.message : "Failed to create subscription"
       );
@@ -114,6 +123,26 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
         </div>
 
         <WalletMultiButton className="w-full h-12 px-6 font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" />
+      </div>
+    );
+  }
+
+  if (redirecting) {
+    return (
+      <div className="space-y-6">
+        <div className="border border-border p-8 text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            {confirming
+              ? "Waiting for payment to confirm..."
+              : "Redirecting..."}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {confirming
+              ? "This may take up to 30 seconds."
+              : "Your subscription is active. You'll be redirected shortly."}
+          </p>
+        </div>
       </div>
     );
   }
