@@ -20,7 +20,8 @@
   "dependencies": {
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
-    "@tributary-so/sdk": "workspace:*"
+    "@tributary-so/sdk": "workspace:*",
+    "jose": "^6.2.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
