@@ -66,10 +66,10 @@ import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const stripe = new PaymentsClient(connection, tributary);
+const payments = new PaymentsClient(connection, tributary);
 
 // Check subscription status
-const status = await stripe.subscriptions.checkStatus({
+const status = await payments.subscriptions.checkStatus({
   trackingId: "my-subscription",
   userPublicKey: "USER_PUBLIC_KEY",
 });

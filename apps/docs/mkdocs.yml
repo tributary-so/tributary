@@ -40,9 +40,8 @@ nav:
       - Architecture:
           - Overview: architecture.md
           - Protocol: smart-contract.md
-          - SDKs: sdks.md
           - Tools: tools.md
-          - Payment Provider Layer: business.md
+          - Providers: providers.md
           - Fees: fees.md
           - Security: security.md
           - Integration: integration.md
@@ -50,18 +49,17 @@ nav:
           - Referral Program: referral-program.md
   - Use Cases: use-cases.md
   - FAQ: faq.md
-  - Payment Providers: providers.md
   - Developer Guide:
       - Basics: how.md
       - Integration Options: integration.md
       - JWT Authentication: jwt-auth.md
-      - SDK Integration: quickstart/integration.md
-      - React Button: quickstart/button.md
-      - Checkout Page Links: quickstart/checkout.md
-      - Payment Policies:
-          - Subscription Payments: subscription-payments.md
-          - Milestone Payments: milestone-payments.md
-          - Pay-as-you-go Payments: pay-as-you-go.md
+      - SDK: sdk.md
+      - React Button: react-button.md
+      - Checkout Page Links: checkout.md
+      - Policy Types:
+          - Subscription Payments: policies/subscription.md
+          - Milestone Payments: policies/milestone.md
+          - Pay-as-you-go Payments: policies/payasyougo.md
       - x402 Payments:
           - Overview: x402.md
           - Getting Started: x402-getting-started.md
@@ -76,6 +74,7 @@ nav:
 plugins:
   # - git-revision-date-localized:
   #     enable_creation_date: true
+  - social
   - search:
   - privacy
   - llmstxt:

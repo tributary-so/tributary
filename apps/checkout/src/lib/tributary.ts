@@ -2,7 +2,9 @@ import {
   Connection,
   PublicKey,
   Transaction,
+  TransactionMessage,
   TransactionSignature,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
@@ -22,22 +24,37 @@ export interface TokenResponse {
 
 export async function issueSubscriptionToken(
   walletPublicKey: PublicKey,
-  tokenMint?: string
+  recipient: PublicKey,
+  tokenMint?: string,
+  timeoutMs: number = 30000
 ): Promise<TokenResponse> {
-  const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      walletPublicKey: walletPublicKey.toString(),
-      tokenMint: tokenMint || config.usdcMint,
-    }),
+  const body = JSON.stringify({
+    walletPublicKey: walletPublicKey.toString(),
+    recipient: recipient.toString(),
+    tokenMint: tokenMint || config.usdcMint,
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to issue token: ${response.statusText}`);
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+
+    if (response.ok) {
+      return response.json();
+    }
+
+    if (response.status === 404 || response.status === 422) {
+      throw new Error(`Failed to issue token: ${response.statusText}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
-  return response.json();
+  throw new Error("Timed out waiting for payment confirmation");
 }
 
 export type { PaymentFrequency };
@@ -63,17 +80,11 @@ export interface CreateSubscriptionParams {
   tokenMint?: string;
 }
 
-interface AnchorWallet {
-  publicKey: PublicKey;
-  signTransaction: (transaction: Transaction) => Promise<Transaction>;
-  signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
-}
-
 async function confirmTransactionWithStatus(
   connection: Connection,
   signature: TransactionSignature,
   commitment: "processed" | "confirmed" | "finalized" = "confirmed",
-  timeout: number = 60000
+  timeout: number = 30000
 ): Promise<any> {
   const start = Date.now();
 
@@ -106,13 +117,7 @@ async function confirmTransactionWithStatus(
 
 function getTributary(wallet: WalletContextState): Tributary {
   const connection = new Connection(config.rpcUrl, "processed");
-  const anchorWallet: AnchorWallet = {
-    ...wallet,
-    publicKey: wallet.publicKey!,
-    signTransaction: wallet.signTransaction!,
-    signAllTransactions: wallet.signAllTransactions!,
-  };
-  return new Tributary(connection, anchorWallet as unknown as anchor.Wallet);
+  return new Tributary(connection, wallet as unknown as anchor.Wallet);
 }
 
 function mapFrequency(
@@ -189,18 +194,25 @@ export async function createSubscription(
     createMemoBuffer(params.memo ?? "tributary checkout", 64),
     undefined,
     undefined,
-    false
+    true
   );
 
-  const transaction = new Transaction().add(...instructions);
-  const { blockhash } =
-    await tributary.program.provider.connection.getLatestBlockhash();
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey!;
+  const { blockhash } = await tributary.connection.getLatestBlockhash();
+  const messageV0 = new TransactionMessage({
+    payerKey: wallet.publicKey,
+    recentBlockhash: blockhash,
+    instructions: instructions,
+  }).compileToV0Message();
+  const transaction = new VersionedTransaction(messageV0);
 
-  const signedTx = await wallet.signTransaction!(transaction);
-  const txid = await tributary.program.provider.connection.sendRawTransaction(
-    signedTx.serialize()
+  const signedTx = await wallet.signTransaction(transaction);
+  const txid = await tributary.connection.sendRawTransaction(
+    signedTx.serialize(),
+    // The actual bug is that sendTransaction is being called without {
+    // skipPreflight: true }, and the default RPC behavior with Connection
+    // (commitment "processed" from line 119) can cause the transaction to be
+    // submitted, then the connection internally retries it.
+    { skipPreflight: true }
   );
   await confirmTransactionWithStatus(tributary.connection, txid, "confirmed");
 

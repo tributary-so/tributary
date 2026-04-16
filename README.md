@@ -100,49 +100,89 @@ Open [http://localhost:5173](http://localhost:5173) for the app or [http://local
 │   │   ├── lib.rs              # Main program entry point
 │   │   ├── instructions/       # Program instructions
 │   │   ├── state/              # Account state definitions
-│   │   ├── policies.rs         # Payment policy types
+│   │   ├── policies/           # Payment policy types
+│   │   ├── constants.rs        # Program constants
+│   │   ├── error.rs            # Custom error types
 │   │   └── utils.rs            # Utility functions
 │   └── Cargo.toml
-├── sdk/                        # TypeScript SDK
-│   ├── src/
-│   │   ├── index.ts            # Main SDK exports
-│   │   ├── sdk.ts              # Core SDK functionality
-│   │   ├── pda.ts              # PDA helpers
-│   │   └── types.ts            # TypeScript types
-│   └── package.json
-├── sdk-react/                  # React components
-│   ├── src/
-│   │   ├── SubscriptionButton.tsx
-│   │   └── index.ts
-│   └── package.json
-├── sdk-x402/                   # HTTP 402 payment middleware
-│   ├── src/
-│   │   ├── middleware.ts       # Express middleware
-│   │   ├── metering.ts         # Usage tracking
-│   │   └── index.ts
-│   └── package.json
-├── app/                        # React frontend application
-│   ├── src/
-│   │   ├── components/         # UI components
-│   │   ├── lib/                # Utilities
-│   │   └── pages/              # Application pages
-│   ├── package.json
-│   └── vite.config.ts
-├── landing/                    # Marketing website
-│   ├── src/
-│   └── package.json
-├── scheduler/                  # Payment execution scheduler
-│   ├── src/
-│   └── Dockerfile
+├── packages/
+│   ├── sdk/                    # TypeScript SDK
+│   │   ├── src/
+│   │   │   ├── index.ts        # Main SDK exports
+│   │   │   ├── sdk.ts          # Core SDK functionality
+│   │   │   ├── pda.ts          # PDA helpers
+│   │   │   ├── token.ts        # Token utilities
+│   │   │   ├── constants.ts    # SDK constants
+│   │   │   ├── types.ts        # TypeScript types
+│   │   │   └── utils.ts        # Utility functions
+│   │   └── package.json
+│   ├── sdk-react/              # React components & hooks
+│   │   ├── src/
+│   │   │   ├── components/     # UI components (SubscriptionButton, etc.)
+│   │   │   ├── hooks/          # React hooks
+│   │   │   └── index.ts
+│   │   └── package.json
+│   ├── sdk-x402/               # HTTP 402 payment middleware
+│   │   ├── src/
+│   │   │   ├── middleware.ts   # Express middleware
+│   │   │   ├── metering.ts     # Usage tracking
+│   │   │   └── index.ts
+│   │   └── package.json
+│   └── payments/               # Higher-level payments client
+│       ├── src/
+│       │   ├── core/           # Core payment logic
+│       │   ├── types/          # Type definitions
+│       │   └── utils/          # Utility functions
+│       └── package.json
+├── apps/
+│   ├── app/                    # Main React application
+│   │   ├── src/
+│   │   │   ├── components/     # UI components
+│   │   │   └── lib/            # Utilities
+│   │   ├── public/             # Static assets
+│   │   └── vite.config.ts
+│   ├── checkout/               # Checkout page application
+│   │   ├── src/
+│   │   │   ├── components/     # Checkout UI components
+│   │   │   ├── lib/            # Tributary wrapper layer
+│   │   │   └── pay-page.tsx    # Payment page
+│   │   └── vite.config.ts
+│   ├── landing/                # Marketing website
+│   │   ├── src/
+│   │   │   ├── components/     # Landing page components
+│   │   │   └── pages/          # Page templates
+│   │   └── vite.config.ts
+│   ├── lando/                  # Lando page
+│   │   └── src/
+│   ├── api/                    # Backend API server
+│   │   ├── src/
+│   │   │   ├── routes/         # API routes
+│   │   │   ├── services/       # Business logic
+│   │   │   ├── middleware/     # Express middleware
+│   │   │   ├── db/             # Database (Drizzle ORM)
+│   │   │   └── types/          # Type definitions
+│   │   ├── drizzle.config.ts
+│   │   └── Dockerfile
+│   ├── scheduler/              # Payment execution scheduler
+│   │   ├── src/
+│   │   └── Dockerfile
+│   ├── cli/                    # CLI management tool
+│   │   └── src/
+│   └── docs/                   # Documentation (MkDocs)
+│       ├── docs/               # Markdown files
+│       ├── gtm/                # Go-to-market materials
+│       ├── hackathon/          # Hackathon scripts
+│       └── mkdocs.yml
 ├── tests/                      # Integration tests
 │   ├── tributary.test.ts       # Full payment flow tests
 │   └── package.json
-├── docs/                       # Documentation (MkDocs)
-│   ├── docs/                   # Markdown files
-│   └── mkdocs.yml
-└── cli/                        # CLI management tool
-    ├── src/
-    └── package.json
+├── specs/                      # Feature specifications
+│   ├── payments.md
+│   └── referral-program.md
+├── branding/                   # Brand assets (logos, etc.)
+├── skills/                     # Agent skills
+│   └── solana-payments/
+└── .github/workflows/          # CI/CD pipelines
 ```
 
 ### Payment Flow Architecture

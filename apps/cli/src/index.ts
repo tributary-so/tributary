@@ -30,7 +30,14 @@ function createSDK(config: WalletConfig): {
   connection: Connection;
 } {
   const connection = new Connection(config.connectionUrl);
-  const keypair = readKeypairFromFile(config.keypath);
+  let keypair: Keypair;
+  try {
+    keypair = readKeypairFromFile(config.keypath);
+  } catch {
+    throw new Error(
+      `Keypair not found at ${config.keypath}. This command requires a keypair. Run 'tributary wallet create' to generate one.`
+    );
+  }
   const wallet = new anchor.Wallet(keypair);
   const sdk = new Tributary(connection, wallet);
   return { sdk, wallet, connection };
@@ -70,12 +77,6 @@ function outputError(message: string, details?: Record<string, unknown>): void {
   } else {
     console.error(`Error: ${message}`);
   }
-}
-
-function truncatePubkey(pubkey: string | PublicKey, length = 8): string {
-  const str = typeof pubkey === "string" ? pubkey : pubkey.toString();
-  if (str.length <= length * 2) return str;
-  return `${str.slice(0, length)}...${str.slice(-length)}`;
 }
 
 async function runCliMode(args: string[]): Promise<void> {
@@ -416,7 +417,7 @@ async function handleWalletCommand(
       break;
     }
     case "balance": {
-      const { connection } = createSDK(config);
+      const connection = new Connection(config.connectionUrl);
       const keypair = readKeypairFromFile(config.keypath);
       const balance = await connection.getBalance(keypair.publicKey);
       output({

@@ -4,15 +4,16 @@ import * as React from "react";
 import { Copy, Check, ExternalLink, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { LineItem, CheckoutSessionManager } from "@tributary-so/payments";
+import config from "@/constants";
 
 export function CheckoutLinkForm() {
   const [copied, setCopied] = React.useState(false);
   const [checkoutUrl, setCheckoutUrl] = React.useState<string>("");
   const [formData, setFormData] = React.useState({
     mode: "subscription" as "subscription" | "payment",
-    tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    tokenMint: config.usdcMint,
     recipient: "",
-    gateway: "6ntm5rWqDFefET8RFyZV73FcdqxPMbc7Tso3pCMWk4w4",
+    gateway: config.gateway,
     amount: "",
     autoRenew: true,
     maxRenewals: "12",
