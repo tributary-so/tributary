@@ -25,6 +25,8 @@ import {
   Wallet,
   KeyRound,
 } from "lucide-react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const paymentTypes = [
   {
@@ -215,6 +217,25 @@ const faqs = [
 ];
 
 export default function Home() {
+  const navigate = useNavigate();
+
+  const scrollToSection = (id: string) => {
+    navigate("/");
+    sessionStorage.setItem("scrollTo", id);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const section = sessionStorage.getItem("scrollTo");
+    if (section) {
+      sessionStorage.removeItem("scrollTo");
+      setTimeout(() => {
+        document
+          .getElementById(section)
+          ?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, []);
   return (
     <main className="mx-auto max-w-5xl px-4">
       {/* ─── 1. Hero ─── */}
@@ -251,7 +272,7 @@ export default function Home() {
               Open App
             </a>
             <a
-              href="#use-cases"
+              onClick={() => scrollToSection("use-cases")}
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
               Explore Use Cases
