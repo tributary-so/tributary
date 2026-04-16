@@ -16,7 +16,6 @@ import {
   ExternalLink,
   Rocket,
   Brain,
-  Award,
   Package,
   Globe,
   DollarSign,
@@ -180,17 +179,6 @@ const roadmap = [
       "Broader ecosystem integrations",
     ],
   },
-];
-
-const founderPoints = [
-  "10+ years in web3",
-  "Worked across multiple top-10 L1 ecosystems",
-  "Full-time Solana for the last 2 years",
-  "Superteam Germany member",
-  "PhD in engineering",
-  "Built and exited multiple companies",
-  "Built and operated mash.fun on Solana",
-  "Colosseum winner",
 ];
 
 const faqs = [
