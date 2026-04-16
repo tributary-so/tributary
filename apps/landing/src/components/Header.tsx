@@ -7,8 +7,10 @@ import logo from "../assets/logo.png";
 
 const navItems = [
   { label: "How It Works", href: "how-it-works" },
-  { label: "Payment Types", href: "payment-solutions" },
-  { label: "Testimonials", href: "testimonials" },
+  { label: "Use Cases", href: "use-cases" },
+  { label: "Checkout", href: "checkout" },
+  { label: "Integrations", href: "integrations" },
+  { label: "Roadmap", href: "roadmap" },
   { label: "FAQ", href: "faq" },
 ];
 
@@ -29,6 +31,18 @@ const products = [
     label: "React Components",
     href: "https://docs.tributary.so/sdk-react",
     description: "Pre-built payment UI components",
+    external: true,
+  },
+  {
+    label: "Checkout",
+    href: "https://checkout.tributary.so",
+    description: "Hosted checkout — accept USDC in minutes",
+    external: true,
+  },
+  {
+    label: "npm Package",
+    href: "https://npmjs.com/package/@tributary-so/sdk",
+    description: "@tributary-so/sdk on npm",
     external: true,
   },
 ];
