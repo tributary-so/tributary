@@ -20,6 +20,8 @@ export default function Home() {
     const manager = new CheckoutSessionManager();
     manager.setBaseUrl("https://checkout.tributary.so/#");
 
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+
     const params: CheckoutParams =
       mode === "subscription"
         ? ({
@@ -32,12 +34,16 @@ export default function Home() {
             maxRenewals: null,
             paymentFrequency: "monthly",
             startTime: null,
+            successUrl: `${baseUrl}#/success`,
+            cancelUrl: `${baseUrl}#/cancel`,
           } as SubscriptionParams)
         : ({
             mode: "payment" as const,
             tokenMint: USDC_MINT,
             recipient,
             amount: parseFloat(amount),
+            successUrl: `${baseUrl}#/success`,
+            cancelUrl: `${baseUrl}#/cancel`,
           } as OneTimeParams);
 
     const generatedUrl = manager.encodeUrl(params);

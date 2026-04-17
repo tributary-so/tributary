@@ -7,6 +7,10 @@ import { getDb } from "../db";
 import { events } from "../db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { decodeMemo } from "@tributary-so/sdk";
+import {
+  type SubscriptionClaim,
+  type PaymentRecord,
+} from "@tributary-so/payments";
 
 const JWT_ISSUER = process.env.JWT_ISSUER || "https://api.tributary.so";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "tributary-checkout";
@@ -15,36 +19,6 @@ const JWT_EXPIRY_BUFFER_MINUTES = parseInt(
   process.env.JWT_EXPIRY_BUFFER_MINUTES || "10",
   10
 );
-
-export interface SubscriptionClaim {
-  policyAddress: string;
-  policyId: number;
-  recipient: string;
-  gateway: string;
-  amount: string;
-  paymentFrequency: string;
-  totalPayments: number;
-  nextPaymentDue: number | null;
-  status: "paid" | "overdue" | "completed";
-  autoRenew: boolean;
-  maxRenewals: number | null;
-  createdAt: number;
-  memo: string;
-}
-
-export interface LastPaymentClaim {
-  signature: string;
-  slot: number;
-  timestamp: number;
-  policyAddress: string;
-  amount: string;
-  tokenMint: string;
-  payer: string;
-  recipient: string;
-  gateway: string;
-  memo: string;
-  recordId: number;
-}
 
 export interface TokenIssueRequest {
   walletPublicKey: string;
@@ -151,7 +125,7 @@ async function getLastPayments(
     tokenMint?: string;
     limit?: number;
   }
-): Promise<LastPaymentClaim[]> {
+): Promise<PaymentRecord[]> {
   const db = getDb();
   const conditions = [
     eq(events.eventName, "tributary_PaymentRecord"),
@@ -277,7 +251,7 @@ export async function issueToken(
     subscriptions = buildSubscriptionClaims(allPolicies);
   }
 
-  let lastPayments: LastPaymentClaim[] = [];
+  let lastPayments: PaymentRecord[] = [];
 
   if (request.transactionSignature) {
     let dbPayments = await getLastPayments(request.walletPublicKey, {

@@ -31,10 +31,11 @@ export interface SubscriptionClaim {
   paymentFrequency: string;
   totalPayments: number;
   nextPaymentDue: number | null;
-  status: string;
+  status: "paid" | "overdue" | "completed";
   autoRenew: boolean;
   maxRenewals: number | null;
   createdAt: number;
+  memo: string;
 }
 
 export interface PaymentRecord {
