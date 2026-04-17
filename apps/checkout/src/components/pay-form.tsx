@@ -5,7 +5,7 @@ import { OneTimeParams } from "@tributary-so/payments";
 import { CheckCircle2, Wallet, Loader2, Lock, XCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { createOneTimePayment } from "@/lib/tributary";
+import { createOneTimePayment, issueOneTimeToken } from "@/lib/tributary";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { toast } from "sonner";
 import { getTokenSymbol } from "@tributary-so/sdk";
@@ -18,6 +18,8 @@ interface PayFormProps {
 export function PayForm({ sessionData }: PayFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
+  const [redirecting, setRedirecting] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false);
   const [showCancelModal, setShowCancelModal] = React.useState(false);
   const [tokenSymbol, setTokenSymbol] = React.useState<string | null>(null);
   const [txSignature, setTxSignature] = React.useState<string | null>(null);
@@ -66,9 +68,26 @@ export function PayForm({ sessionData }: PayFormProps) {
 
       setTxSignature(signature);
       setSuccess(true);
+      setIsLoading(false);
 
       if (sessionData.successUrl) {
-        window.location.href = sessionData.successUrl;
+        setRedirecting(true);
+        setConfirming(true);
+        try {
+          const { token } = await issueOneTimeToken(
+            wallet.publicKey!,
+            signature,
+            sessionData.tokenMint
+          );
+          const url = new URL(sessionData.successUrl);
+          url.searchParams.set("token", token);
+          window.location.href = url.toString();
+        } catch (jwtError) {
+          console.warn("Failed to issue JWT token:", jwtError);
+          throw jwtError;
+        } finally {
+          setConfirming(false);
+        }
       }
     } catch (err) {
       toast.error(
@@ -100,6 +119,26 @@ export function PayForm({ sessionData }: PayFormProps) {
         </div>
 
         <WalletMultiButton className="w-full h-12 px-6 font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" />
+      </div>
+    );
+  }
+
+  if (redirecting) {
+    return (
+      <div className="space-y-6">
+        <div className="border border-border p-8 text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            {confirming
+              ? "Waiting for payment to confirm..."
+              : "Redirecting..."}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {confirming
+              ? "This may take up to 30 seconds."
+              : "Your payment is confirmed. You'll be redirected shortly."}
+          </p>
+        </div>
       </div>
     );
   }

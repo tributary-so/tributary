@@ -1,7 +1,6 @@
 import {
   Connection,
   PublicKey,
-  Transaction,
   TransactionMessage,
   TransactionSignature,
   VersionedTransaction,
@@ -27,13 +26,19 @@ export async function issueSubscriptionToken(
   walletPublicKey: PublicKey,
   recipient: PublicKey,
   tokenMint?: string,
+  trackingId?: string,
   timeoutMs: number = 30000
 ): Promise<TokenResponse> {
-  const body = JSON.stringify({
+  const body: any = {
     walletPublicKey: walletPublicKey.toString(),
     recipient: recipient.toString(),
-    tokenMint: tokenMint || config.usdcMint,
-  });
+  };
+  if (tokenMint) {
+    body.tokenMint = tokenMint.toString();
+  }
+  if (trackingId) {
+    body.trackingId = trackingId.toString();
+  }
 
   const start = Date.now();
 
@@ -41,7 +46,7 @@ export async function issueSubscriptionToken(
     const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body,
+      body: JSON.stringify(body),
     });
 
     if (response.ok) {
@@ -263,6 +268,42 @@ export interface CreateOneTimePaymentParams {
   memo?: string;
   trackingId?: string;
   tokenMint?: string;
+}
+
+export async function issueOneTimeToken(
+  walletPublicKey: PublicKey,
+  transactionSignature: string,
+  tokenMint?: string,
+  timeoutMs: number = 30000
+): Promise<TokenResponse> {
+  const body = JSON.stringify({
+    walletPublicKey: walletPublicKey.toString(),
+    transactionSignature,
+    tokenMint: tokenMint || config.usdcMint,
+  });
+
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const hasMatchingPayment = data.lastPayments?.some(
+        (p: { signature: string }) => p.signature === transactionSignature
+      );
+      if (hasMatchingPayment) {
+        return data;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  throw new Error("Timed out waiting for payment confirmation");
 }
 
 export async function createOneTimePayment(

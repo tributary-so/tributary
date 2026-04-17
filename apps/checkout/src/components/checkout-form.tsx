@@ -80,14 +80,15 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
           const { token } = await issueSubscriptionToken(
             wallet.publicKey!,
             recipient,
-            sessionData.tokenMint
+            sessionData.tokenMint,
+            sessionData.trackingId
           );
           const url = new URL(sessionData.successUrl);
           url.searchParams.set("token", token);
           window.location.href = url.toString();
         } catch (jwtError) {
           console.warn("Failed to issue JWT token:", jwtError);
-          window.location.href = sessionData.successUrl;
+          throw jwtError;
         } finally {
           setConfirming(false);
         }

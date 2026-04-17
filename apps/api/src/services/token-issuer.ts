@@ -26,6 +26,7 @@ export interface TokenIssueRequest {
   policyAddress?: string;
   recipient?: string;
   transactionSignature?: string;
+  trackingId?: string;
 }
 
 export interface TokenResponse {
@@ -219,6 +220,9 @@ export async function issueToken(
   if (request.tokenMint) {
     options.tokenMint = request.tokenMint;
   }
+  if (request.trackingId) {
+    options.trackingId = request.trackingId;
+  }
 
   let oneTimePayment: Awaited<
     ReturnType<typeof verifyTransactionPayment>
@@ -233,16 +237,10 @@ export async function issueToken(
     txPolicyAddress = oneTimePayment.policyAddress ?? null;
   }
 
-  let allPolicies = request.transactionSignature
-    ? []
-    : await getSubscriptionDetails(options);
-
+  let allPolicies = await getSubscriptionDetails(options);
   let subscriptions: SubscriptionClaim[] = [];
 
   if (request.transactionSignature) {
-    if (txPolicyAddress && allPolicies.length === 0) {
-      allPolicies = await getSubscriptionDetails(options);
-    }
     const matching = allPolicies.filter(
       (p: any) => p.policyAccount?.toString() === txPolicyAddress
     );
