@@ -1,24 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckoutParams,
   CheckoutSessionManager,
   OneTimeParams,
   SubscriptionParams,
 } from "@tributary-so/payments";
-
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-const GATEWAY = "6ntm5rWqDFefET8RFyZV73FcdqxPMbc7Tso3pCMWkk4w4";
+import { CHECKOUT_BASE_URL, GATEWAY, USDC_MINT } from "@/constants";
+import { useLocalStorage } from "@/hooks/localstorage";
+import { Banknote } from "lucide-react";
 
 export default function Home() {
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("9.99");
   const [mode, setMode] = useState<"payment" | "subscription">("payment");
+  const [trackingId, setTrackingId] = useLocalStorage("trackingId", "John Doe");
+
+  useEffect(() => {
+    setTrackingId(crypto.randomUUID());
+    console.log(`Using trackingId: ${trackingId}`);
+  }, []);
 
   const handlePaymentRequest = () => {
     if (!recipient || !amount) return;
 
     const manager = new CheckoutSessionManager();
-    manager.setBaseUrl("https://checkout.tributary.so/#");
+    manager.setBaseUrl(`${CHECKOUT_BASE_URL}/#`);
 
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
 
@@ -36,6 +42,7 @@ export default function Home() {
             startTime: null,
             successUrl: `${baseUrl}#/success`,
             cancelUrl: `${baseUrl}#/cancel`,
+            trackingId,
           } as SubscriptionParams)
         : ({
             mode: "payment" as const,
@@ -44,6 +51,7 @@ export default function Home() {
             amount: parseFloat(amount),
             successUrl: `${baseUrl}#/success`,
             cancelUrl: `${baseUrl}#/cancel`,
+            trackingId,
           } as OneTimeParams);
 
     const generatedUrl = manager.encodeUrl(params);
@@ -117,9 +125,9 @@ export default function Home() {
           <button
             onClick={handlePaymentRequest}
             disabled={!recipient || !amount}
-            className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
-            Generate Checkout Link
+            <Banknote className="h-4 w-4" /> Proceed to Payment
           </button>
         </div>
       </section>

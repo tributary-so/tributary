@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/constants";
 import { TributaryJWTPayload } from "@tributary-so/payments";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
@@ -7,9 +8,7 @@ export async function decodeJwt(
   try {
     const { payload } = await jwtVerify(
       token,
-      createRemoteJWKSet(
-        new URL("https://api.tributary.so/.well-known/jwks.json")
-      ),
+      createRemoteJWKSet(new URL(`${API_BASE_URL}/.well-known/jwks.json`)),
       {
         issuer: "https://api.tributary.so",
         audience: "tributary-checkout",
