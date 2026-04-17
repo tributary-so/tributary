@@ -3,9 +3,6 @@
 import { TributaryCheckoutSession } from "../types/tributary";
 import { ValidationUtils } from "../utils/validation";
 import { PublicKey } from "@solana/web3.js";
-import { Connection } from "@solana/web3.js";
-import { Tributary } from "@tributary-so/sdk";
-// import { PaymentTracker } from "./tracking";
 
 interface LineItem {
   description: string;
@@ -61,18 +58,9 @@ export interface EncodedSessionData {
 
 export class CheckoutSessionManager {
   private BASE_URL = "https://checkout.tributary.so";
-  connection: Connection;
-  tributary?: Tributary;
   // private tracker: PaymentTracker | null;
 
-  constructor(connection?: Connection, tributary?: Tributary) {
-    this.connection =
-      connection || new Connection("https://api.mainnet-beta.solana.com");
-    this.tributary = tributary;
-    // this.tracker = tributary
-    //   ? new PaymentTracker(this.connection, tributary)
-    //   : null;
-  }
+  constructor() {}
 
   public setBaseUrl(url: string) {
     this.BASE_URL = url;
@@ -80,6 +68,7 @@ export class CheckoutSessionManager {
 
   // Create checkout session with encoded URL
   async create(params: any): Promise<TributaryCheckoutSession> {
+    // FIXME: DEPRECATED!
     // Validate input parameters
     ValidationUtils.validateCheckoutSessionParams(params);
 
@@ -172,13 +161,8 @@ export class CheckoutSessionManager {
       : `${this.BASE_URL}/pay/${encoded}`;
   }
 
-  // Encode subscription parameters into compact URL (legacy, for backward compat)
-  encodeSubscriptionUrl(params: SubscriptionParams): string {
-    return this.encodeUrl(params);
-  }
-
   // Decode subscription parameters from URL
-  decodeSubscriptionUrl(encodedData: string): CheckoutParams {
+  decodeUrl(encodedData: string): CheckoutParams {
     // Try Base64URL decoding first
     try {
       const data = this.decodeFromBase64Url(encodedData);
@@ -188,6 +172,15 @@ export class CheckoutSessionManager {
       const error = err as Error;
       throw new Error(`Invalid session data encoding: ${error.message}`);
     }
+  }
+
+  // Encode subscription parameters into compact URL (legacy, for backward compat)
+  encodeSubscriptionUrl(params: SubscriptionParams): string {
+    return this.encodeUrl(params);
+  }
+
+  decodeSubscriptionUrl(encodedData: string): CheckoutParams {
+    return this.decodeUrl(encodedData);
   }
 
   // Base64URL encoding (URL-safe, compact)

@@ -10,8 +10,7 @@ export class PaymentsClient {
 
   constructor(tributary: Tributary) {
     // Zero configuration initialization
-    const connection = tributary.connection;
-    this._checkout = new CheckoutSessionManager(connection, tributary);
+    this._checkout = new CheckoutSessionManager();
     this._onetimeTracker = new OneTimePaymentTracker();
   }
 
