@@ -166,7 +166,6 @@ export class CheckoutSessionManager {
     // Try Base64URL decoding first
     try {
       const data = this.decodeFromBase64Url(encodedData);
-      console.log(data);
       return this.validateDecodedData(data);
     } catch (err) {
       const error = err as Error;
