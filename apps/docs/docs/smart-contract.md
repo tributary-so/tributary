@@ -1,4 +1,4 @@
-# **Smart Contracts** (`programs/recurring_payments/`)
+# **Smart Contracts** (`programs/tributary/`)
 
 - **Program Config:** Global protocol configuration with protocol fees and emergency controls
 - **Payment Gateway:** Business-specific payment processing with configurable fees and signer authority
@@ -56,47 +56,10 @@ Each variant is exactly 128 bytes for consistent account sizing, enabling seamle
 
 ## Supported Payment Types
 
-### Subscriptions
+| Type              | Description                                      | Docs                                              |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------- |
+| **Subscription**  | Fixed recurring payments at regular intervals    | [Subscription Payments](policies/subscription.md) |
+| **Milestone**     | Project-based payments with up to 4 deliverables | [Milestone Payments](policies/milestone.md)       |
+| **Pay-as-you-go** | Usage-based billing with period limits           | [Pay-as-you-go Payments](policies/payasyougo.md)  |
 
-Recurring payments at fixed intervals (daily, weekly, monthly, etc.) with optional auto-renewal and maximum renewal limits.
-
-### Milestones
-
-Project-based payments with up to 4 configurable milestones. Each milestone has:
-
-- **Amount:** Specific payment amount for that milestone
-- **Timestamp:** When the milestone becomes payable
-- **Release Conditions:** Time-based, manual approval, or automatic
-- **Progress Tracking:** Current milestone and completion status
-
-Perfect for:
-
-- **Freelance work:** Pay as project phases complete
-- **Development contracts:** Milestone-based software delivery
-- **Consulting engagements:** Deliverable-based compensation
-- **Content creation:** Episode/release-based payments
-
-### Pay-as-you-go
-
-Flexible usage-based payments where service providers can claim funds up to a maximum chunk amount within each billing period. Period totals automatically reset, enabling just-in-time funding for variable usage patterns.
-
-- **Period Limits:** Maximum amount allowed per billing period
-- **Chunk Claims:** Configurable maximum per individual payment
-- **Automatic Resets:** Period counters reset when time expires
-- **Usage Tracking:** Current period total and remaining allowance
-
-Perfect for:
-
-- **AI Agents:** LLM providers claiming based on token usage
-- **API Services:** Pay-per-call with periodic limits
-- **Cloud Resources:** Usage-based infrastructure costs
-- **SaaS Platforms:** Flexible billing for variable consumption
-
-## Future Payment Types
-
-The extensible design allows for additional payment schemes:
-
-- **Installments:** Scheduled partial payments (buy-now-pay-later)
-- **Usage-based:** Payments tied to consumption metrics
-- **Revenue sharing:** Percentage-based payments from revenue
-- **Escrow services:** Conditional fund releases
+Each type is implemented as a variant of the `PolicyType` enum (128 bytes each for consistent account sizing). See the individual policy docs for fields, configuration, and use cases.

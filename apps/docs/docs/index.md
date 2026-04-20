@@ -1,33 +1,132 @@
-# Welcome to Tributary Protocol
+# Tributary
 
-**Open-source, permissionless automated payment infrastructure for Solana**
+**Open-source payment infrastructure for Solana.** Automated recurring payments that feel like Web2 but live on Web3.
 
-Tributary brings Web2 subscription simplicity to Web3 with truly automated
-recurring payments—no manual signing every month, no deposits into contracts,
-funds flow directly from user token accounts.
+---
 
-It simplifies the payments so that merchants can accept USDC without even
-thinking about blockchain specifics while still retaining the possibility to
-verify, not trust.
+## Why We Built This
 
-## What is Tributary?
+Recurring payments are the backbone of modern business — subscriptions, retainers, utility billing. Yet in Web3, they're still a mess.
 
-Tributary is a **protocol** that enables automated recurring payments on Solana:
+**Users** have to manually sign a transaction every single billing cycle. Miss one? Service stops. **Businesses** can't count on predictable revenue when payments depend on someone remembering to click "confirm." And the existing "solutions"? Most require locking funds in a smart contract, which is just a fancy way of saying _you give up control_.
 
-- **Open-source smart contracts** for automated payments using token delegation
-- **Developer SDKs** for easy integration (TypeScript, React, Payments)
-- **Permissionless access** - anyone can build on top
-- **Multiple payment types** - subscriptions, milestones, pay-as-you-go
+That's not good enough. Web3 users deserve the same "set it and forget it" experience they already have with Netflix or their gym membership — without sacrificing self-custody.
 
-## Key Features
+That's why Tributary exists.
 
-### ✅ Payment Types
+---
 
-- **[Subscriptions](./policies/subscription.md)** - Fixed recurring payments (daily, weekly, monthly, etc.)
-- **[Milestones](./policies/milestone.md)** - Project-based payments with up to 4 deliverables
-- **[Pay-as-you-go](./policies/payasyougo.md)** - Usage-based billing with period limits
+## How It Works
 
-### ✅ Developer Tools
+Tributary uses Solana's native **token delegation**. You grant permission for specific amounts on a specific schedule. The protocol pulls exactly what you approved, when you approved it — nothing more.
+
+- **No deposits.** Your tokens stay in your wallet until a payment is due.
+- **No middleman.** Payments go directly from your wallet to the recipient.
+- **No surprises.** You can pause, resume, or cancel anytime.
+- **No borders.** Anyone, anywhere can pay or accept payments.
+
+Payments settle in under a second with fees measured in fractions of a cent — that's Solana, not magic.
+
+|                 | Tributary           | Traditional                   |
+| --------------- | ------------------- | ----------------------------- |
+| **Setup**       | Seconds             | Days (KYC, bank verification) |
+| **Fees**        | starting at 1%      | 2.9% + 30¢ per transaction    |
+| **Settlement**  | Instant (400ms)     | 2–7 business days             |
+| **Chargebacks** | No                  | Yes                           |
+| **Custody**     | Your wallet, always | Held by a third party         |
+| **Geography**   | No restrictions     | Country-limited               |
+
+---
+
+## What You Get
+
+Three payment models. One protocol. Pick what fits your business.
+
+### Subscriptions
+
+The familiar model. Fixed amount, regular interval.
+
+- Pay the same every week, month, or year
+- Auto-renew or cap the number of renewals
+- Cancel or pause with one click
+
+**Great for:** SaaS tools, memberships, streaming, recurring donations
+
+[Learn more](policies/subscription.md)
+
+### Milestone Payments
+
+Pay for deliverables, not time. Split a project into up to 4 milestones.
+
+- Different amounts per milestone
+- Release on schedule, on approval, or automatically
+- Funds committed upfront but released only as work completes
+
+**Great for:** Freelance projects, consulting, software development, content series
+
+[Learn more](policies/milestone.md)
+
+### Pay-as-you-go
+
+Use first, pay later. Providers claim what you owe within limits you set.
+
+- Set a spending cap per billing period
+- Providers claim incrementally as you consume
+- Periods reset automatically — hard limits enforced on-chain
+
+**Great for:** AI APIs, cloud computing, utility services, anything metered
+
+[Learn more](policies/payasyougo.md)
+
+---
+
+## Who Is It For?
+
+### End Users
+
+One-click setup, total transparency, full control. Every payment is on-chain. Your tokens never leave your wallet. Pause or cancel anytime.
+
+### Developers
+
+Drop in a [React component](react-button.md) and you're done. Need more control? Use the [TypeScript SDK](sdk.md). Going no-code? Generate [checkout links](checkout.md) in seconds. Everything is [open-source](https://github.com/tributary-so/tributary).
+
+### Businesses
+
+Accept recurring payments globally without the KYC bottleneck. Pay ~1% instead of 3%+. Settle instantly. Give your customers a Web2-familiar experience on Web3 rails.
+
+### Payment Providers
+
+Build your own payment service on top of Tributary. Earn fees by running a [Payment Gateway](providers.md). Focus on UX — the protocol handles the complexity.
+
+---
+
+## What Can You Build?
+
+| Idea                  | Payment Type  | How It Works                        |
+| --------------------- | ------------- | ----------------------------------- |
+| Streaming service     | Subscription  | $10/month, auto-renew               |
+| Freelance platform    | Milestones    | Pay per deliverable phase           |
+| AI API gateway        | Pay-as-you-go | Bill per token, capped daily        |
+| Newsletter            | Subscription  | $5/month, cancel anytime            |
+| Consulting engagement | Milestones    | 3-phase project with approval gates |
+| Cloud compute         | Pay-as-you-go | Metered usage with weekly caps      |
+
+More ideas in [Use Cases](use-cases.md).
+
+---
+
+## Get Started
+
+1. **Pick your integration** — [React Button](react-button.md), [TypeScript SDK](sdk.md), or [Checkout Links](checkout.md)
+2. **Choose a payment type** — [Subscription](policies/subscription.md), [Milestone](policies/milestone.md), or [Pay-as-you-go](policies/payasyougo.md)
+3. **Go live** — deploy on Solana mainnet in minutes
+4. **Monitor** — track payments via [REST API](api/rest-api.md) or [WebSocket API](api/websocket.md)
+
+!!! question "Questions?"
+
+    Check the [FAQ](faq.md) or read the [Architecture Overview](architecture.md).
+
+## Developer Tools
 
 - **[TypeScript SDK](sdk.md#typescript-sdk-tributary-sosdk)** - Complete protocol interaction
 - **[React SDK](sdk.md#react-sdk-tributary-sosdk-react)** - Pre-built payment components
@@ -37,42 +136,6 @@ Tributary is a **protocol** that enables automated recurring payments on Solana:
 - **[REST API](./api/rest-api.md)** - Query subscriptions, events, manage webhooks
 - **[WebSocket API](./api/websocket.md)** - Real-time payment notifications
 
-### ✅ Protocol Features
+---
 
-- **Automated Execution** - Payments execute automatically on schedule
-- **Non-Custodial** - Funds stay in user wallets
-- **Low Fees** - 1% protocol fee + configurable gateway fees
-- **Action Codes** - Wallet-less payment initiation
-- **Full Control** - Pause, resume, or cancel anytime
-
-## Why Tributary?
-
-| Feature     | Tributary       | Traditional          |
-| ----------- | --------------- | -------------------- |
-| Setup       | Seconds         | Days (KYC, approval) |
-| Fees        | 1%              | 2.9% + 30¢           |
-| Settlement  | Instant         | 2-7 days             |
-| Chargebacks | No              | Yes                  |
-| Recurring   | Native          | Complex setup        |
-| Custody     | Non-custodial   | Custodial risk       |
-| Global      | No restrictions | Country restrictions |
-
-## Program Details
-
-- **Program ID**: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`
-- **Network**: Solana Mainnet & Devnet
-
-## Resources
-
-- **Website**: [tributary.so](https://tributary.so)
-- **Documentation**: [docs.tributary.so](https://docs.tributary.so)
-- **GitHub**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
-- **Checkout**: [checkout.tributary.so](https://checkout.tributary.so)
-- **API**: [api.tributary.so](https://api.tributary.so)
-
-## Next Steps
-
-- [What is Tributary?](./what.md) - Understand the protocol
-- [Integration](./integration.md) - Choose your integration method
-- [SDK Reference](./sdk.md) - Complete SDK documentation
-- [API Reference](./api/overview.md) - REST and WebSocket APIs
+Tributary provides the foundation. You build the future.

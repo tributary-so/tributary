@@ -1,17 +1,36 @@
 # Basics
 
-Tributary enables automated recurring payments on Solana through token delegation - users approve payments once, and the protocol handles execution automatically.
+Tributary is a protocol for automated recurring payments on Solana. You approve once, payments execute on schedule, your funds never leave your wallet.
 
-## Payment Flow
+---
 
-1. **User Approval** - User delegates spending authority for specific amounts
-2. **Policy Creation** - Payment policies define when and how much to pay
-3. **Automated Execution** - Smart contracts process payments on schedule
-4. **Direct Transfer** - Funds move directly from user wallets to recipients
+## Pick Your Path
+
+What do you want to do?
+
+**I want to accept payments on my site**
+→ [React Button](react-button.md) for a drop-in component, or [Checkout Links](checkout.md) for no-code hosted payment pages.
+
+**I want full control over the payment flow**
+→ [Integration Options](integration.md) to compare approaches, then [SDK Reference](sdk.md) for the complete TypeScript API.
+
+**I want to bill for API usage**
+→ [x402 Payments](x402.md) — HTTP 402 middleware that gates access behind pay-as-you-go or subscription payments.
+
+**I want to monitor and verify payments server-side**
+→ [Payment Tokens (JWT)](jwt-auth.md) to verify active subscriptions, [REST API](api/rest-api.md) to query payment data, or [WebSocket API](api/websocket.md) for real-time notifications.
+
+**I want to build a payment service on top of Tributary**
+→ [Providers](providers.md) for the gateway model, [Architecture](architecture.md) for the full technical picture.
+
+**I want to use the CLI**
+→ [CLI Tools](tools.md) for protocol management from the command line.
+
+---
 
 ## Quick Start
 
-### Generate Checkout Link (5 minutes)
+The fastest path to a working payment:
 
 ```bash
 pnpm install @tributary-so/payments @tributary-so/sdk @solana/web3.js
@@ -37,10 +56,10 @@ const session = await payments.checkout.sessions.create({
   },
 });
 
-console.log(session.url); // Share this link!
+console.log(session.url); // Share this link with your customer
 ```
 
-### Check Status
+Verify the subscription is active:
 
 ```typescript
 const status = await payments.subscriptions.checkStatus({
@@ -53,66 +72,53 @@ if (status.status === "active") {
 }
 ```
 
-## For Different Audiences
+Full details in [Checkout Links](checkout.md) and [Payment Tokens](jwt-auth.md).
 
-### End Users
+---
 
-- Connect Solana wallet (Phantom, Solflare, Backpack)
-- Approve one-time delegation
-- Payments execute automatically
-- Pause, resume, or cancel anytime
+## Reference
 
-### Developers
+|                     |                                                |
+| ------------------- | ---------------------------------------------- |
+| **Program ID**      | `TRibg8W8zmPHQqWtyAD1RxBRXEdyU13Mu6qX1Sg42tJ`  |
+| **USDC Mint**       | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| **Default Gateway** | `CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr` |
 
-- Install SDK: `pnpm install @tributary-so/sdk`
-- Choose integration: Checkout links, React button, or Core SDK
-- Build payment flows in minutes
-- Monitor via REST API or WebSockets
+| Network       | URL                                   |
+| ------------- | ------------------------------------- |
+| Mainnet RPC   | `https://api.mainnet-beta.solana.com` |
+| Devnet RPC    | `https://api.devnet.solana.com`       |
+| Tributary API | `https://api.tributary.so`            |
+| Checkout      | `https://checkout.tributary.so`       |
 
-### Payment Providers
-
-- Build user-facing services on top of Tributary
-- Create dashboards, onboarding, analytics
-- Earn fees on payment volume
-- Focus on UX, not protocol complexity
+---
 
 ## Payment Types
 
-| Type          | Description                             | Status  |
-| ------------- | --------------------------------------- | ------- |
-| Subscriptions | Fixed recurring payments                | ✅ Live |
-| Milestones    | Project-based with up to 4 deliverables | ✅ Live |
-| Pay-as-you-go | Usage-based with period limits          | ✅ Live |
+| Type          | Best For                   | Docs                                              |
+| ------------- | -------------------------- | ------------------------------------------------- |
+| Subscription  | Fixed recurring billing    | [Subscription Payments](policies/subscription.md) |
+| Milestone     | Project-based deliverables | [Milestone Payments](policies/milestone.md)       |
+| Pay-as-you-go | Metered / usage-based      | [Pay-as-you-go Payments](policies/payasyougo.md)  |
 
-## Key Benefits
+---
 
-- **No Fund Lock-Up** - Payments from user wallets, not contracts
-- **True Automation** - One signature enables ongoing payments
-- **Full Control** - Pause, resume, or cancel anytime
-- **Any Token** - Support for all SPL tokens
-- **Transparent** - All transactions on blockchain
-- **Low Fees** - 1% protocol fee + Solana network fees
+## Full Guide Index
 
-## Program Details
-
-- **Program ID**: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`
-- **USDC Mint**: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
-- **Default Gateway**: `CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr`
-
-## Networks
-
-| Network  | RPC URL                               |
-| -------- | ------------------------------------- |
-| Mainnet  | `https://api.mainnet-beta.solana.com` |
-| Devnet   | `https://api.devnet.solana.com`       |
-| API      | `https://api.tributary.so`            |
-| Checkout | `https://checkout.tributary.so`       |
-
-## Next Steps
-
-- [Integration Options](./integration.md) - Choose your integration method
-- [JWT Authentication](./jwt-auth.md) - Verify subscriptions after checkout
-- [Checkout](./checkout.md) - Generate payment links
-- [SDK Reference](./sdk.md) - Complete SDK documentation
-- [API Reference](./api/overview.md) - REST & WebSocket APIs
-- [Use Cases](./use-cases.md) - Business applications
+| Page                                  | What You'll Find                                |
+| ------------------------------------- | ----------------------------------------------- |
+| [Integration Options](integration.md) | Compare all integration methods                 |
+| [SDK Reference](sdk.md)               | TypeScript, React, Payments, x402, CLI packages |
+| [React Button](react-button.md)       | Drop-in `<SubscriptionButton>` component        |
+| [Checkout Links](checkout.md)         | Hosted payment pages, no frontend required      |
+| [Payment Tokens](jwt-auth.md)         | Server-side JWT verification                    |
+| [x402 Payments](x402.md)              | HTTP 402 middleware for API monetization        |
+| [REST API](api/rest-api.md)           | Query subscriptions, events, webhooks           |
+| [WebSocket API](api/websocket.md)     | Real-time payment notifications                 |
+| [Architecture](architecture.md)       | Protocol design and account structure           |
+| [Smart Contract](smart-contract.md)   | On-chain program details                        |
+| [Fees](fees.md)                       | Protocol and gateway fee breakdown              |
+| [Security](security.md)               | Non-custodial model and audit status            |
+| [Providers](providers.md)             | Build a payment gateway                         |
+| [Use Cases](use-cases.md)             | Business applications and examples              |
+| [FAQ](faq.md)                         | Common questions                                |
