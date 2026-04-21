@@ -192,8 +192,7 @@ export const useActionCode = () => {
 
       if (!currentResolvedPubkey || !currentActionCode) {
         throw new Error(
-          `Action code not resolved. ActionCode (ref): ${currentActionCode}, ActionCode (state): ${actionCode}, Pubkey (ref): ${
-            currentResolvedPubkey?.toString() || "null"
+          `Action code not resolved. ActionCode (ref): ${currentActionCode}, ActionCode (state): ${actionCode}, Pubkey (ref): ${currentResolvedPubkey?.toString() || "null"
           }, Pubkey (state): ${resolvedPubkey?.toString() || "null"}`
         );
       }
@@ -216,7 +215,7 @@ export const useActionCode = () => {
           : null;
 
         // Get instructions
-        const instructions = await sdk.createSubscriptionInstruction(
+        const instructions = await sdk.createSubscription(
           params.token,
           currentResolvedPubkey, // Use resolved pubkey from action code
           params.gateway,
