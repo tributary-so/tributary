@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.2",
     "@tributary-so/payments": "workspace:*",
+    "@tributary-so/sdk-react": "workspace:*",
     "framer-motion": "^12.23.22",
     "jose": "^6.2.2",
     "lucide-react": "^0.577.0",

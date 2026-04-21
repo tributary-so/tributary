@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
-import {
-  CheckoutParams,
-  CheckoutSessionManager,
-  OneTimeParams,
-  SubscriptionParams,
-} from "@tributary-so/payments";
 import { CHECKOUT_BASE_URL, GATEWAY, USDC_MINT } from "@/constants";
 import { useLocalStorage } from "@/hooks/localstorage";
+import { useCheckoutSession } from "@tributary-so/sdk-react";
 import { Banknote } from "lucide-react";
 
 export default function Home() {
@@ -14,50 +9,26 @@ export default function Home() {
   const [amount, setAmount] = useState("9.99");
   const [mode, setMode] = useState<"payment" | "subscription">("payment");
   const [trackingId, setTrackingId] = useLocalStorage("trackingId", "John Doe");
+  const { initiate } = useCheckoutSession(CHECKOUT_BASE_URL);
 
   useEffect(() => {
     setTrackingId(crypto.randomUUID());
-    console.log(`Using trackingId: ${trackingId}`);
   }, []);
 
   const handlePaymentRequest = () => {
     if (!recipient || !amount) return;
-
-    const manager = new CheckoutSessionManager();
-    manager.setBaseUrl(`${CHECKOUT_BASE_URL}/#`);
-
-    const baseUrl = `${window.location.origin}${window.location.pathname}`;
-
-    const params: CheckoutParams =
-      mode === "subscription"
-        ? ({
-            mode: "subscription" as const,
-            tokenMint: USDC_MINT,
-            recipient,
-            gateway: GATEWAY,
-            amount: parseFloat(amount),
-            autoRenew: true,
-            maxRenewals: null,
-            paymentFrequency: "monthly",
-            startTime: null,
-            successUrl: `${baseUrl}#/success`,
-            cancelUrl: `${baseUrl}#/cancel`,
-            trackingId,
-          } as SubscriptionParams)
-        : ({
-            mode: "payment" as const,
-            tokenMint: USDC_MINT,
-            recipient,
-            amount: parseFloat(amount),
-            successUrl: `${baseUrl}#/success`,
-            cancelUrl: `${baseUrl}#/cancel`,
-            trackingId,
-          } as OneTimeParams);
-
-    const generatedUrl = manager.encodeUrl(params);
-
-    // navigate to
-    window.location.href = generatedUrl;
+    initiate({
+      mode,
+      tokenMint: USDC_MINT,
+      recipient,
+      gateway: GATEWAY,
+      amount: parseFloat(amount),
+      trackingId,
+      ...(mode === "subscription" && {
+        paymentFrequency: "monthly",
+        autoRenew: true,
+      }),
+    });
   };
 
   return (
@@ -75,21 +46,19 @@ export default function Home() {
           <div className="flex gap-2">
             <button
               onClick={() => setMode("payment")}
-              className={`flex-1 py-2 text-sm border transition-colors ${
-                mode === "payment"
+              className={`flex-1 py-2 text-sm border transition-colors ${mode === "payment"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-background border-border hover:bg-accent text-foreground"
-              }`}
+                }`}
             >
               One-Time
             </button>
             <button
               onClick={() => setMode("subscription")}
-              className={`flex-1 py-2 text-sm border transition-colors ${
-                mode === "subscription"
+              className={`flex-1 py-2 text-sm border transition-colors ${mode === "subscription"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-background border-border hover:bg-accent text-foreground"
-              }`}
+                }`}
             >
               Monthly
             </button>
