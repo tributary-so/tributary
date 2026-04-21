@@ -9,7 +9,7 @@ const BASE58_TX_SIG_RE = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
 
 router.post(
   "/issue",
-  walletRateLimit({ windowMs: 60 * 1000, maxRequests: 10 }),
+  walletRateLimit({ windowMs: 60 * 1000, maxRequests: 200 }),
   asyncHandler(async (req: Request, res: Response) => {
     const {
       walletPublicKey,
