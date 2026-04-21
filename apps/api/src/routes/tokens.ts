@@ -17,6 +17,7 @@ router.post(
       policyAddress,
       recipient,
       transactionSignature,
+      trackingId,
     } = req.body;
 
     if (!walletPublicKey || typeof walletPublicKey !== "string") {
@@ -60,6 +61,7 @@ router.post(
         policyAddress,
         recipient,
         transactionSignature,
+        trackingId,
       });
 
       res.json(result);

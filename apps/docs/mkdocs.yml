@@ -34,49 +34,42 @@ theme:
 
 nav:
   - Home: index.md
-  - Protocol:
-      - What is Tributary?: what.md
-      - Why Tributary?: why.md
-      - Architecture:
-          - Overview: architecture.md
-          - Protocol: smart-contract.md
-          - Tools: tools.md
-          - Providers: providers.md
-          - Fees: fees.md
-          - Security: security.md
-          - Integration: integration.md
-          - Network Effect: networkeffect.md
-          - Referral Program: referral-program.md
   - Use Cases: use-cases.md
   - FAQ: faq.md
   - Developer Guide:
       - Basics: how.md
       - Integration Options: integration.md
-      - JWT Authentication: jwt-auth.md
       - SDK: sdk.md
       - React Button: react-button.md
-      - Checkout Page Links: checkout.md
-      - Policy Types:
-          - Subscription Payments: policies/subscription.md
-          - Milestone Payments: policies/milestone.md
-          - Pay-as-you-go Payments: policies/payasyougo.md
-      - x402 Payments:
-          - Overview: x402.md
-          - Getting Started: x402-getting-started.md
-          - API Reference: x402-api-reference.md
-      - API Reference:
+      - CLI Tools: tools.md
+      - Payments:
+          - Checkout Page Links: checkout.md
+          - Payment Token: jwt-auth.md
+          - x402 Payments:
+              - Overview: x402.md
+              - Getting Started: x402-getting-started.md
+              - API Reference: x402-api-reference.md
+      - API Server:
           - Overview: api/overview.md
           - REST API: api/rest-api.md
           - WebSocket API: api/websocket.md
           - Examples: api/examples.md
-      - Contributions: contributions.md
+      - Protocol:
+          - Overview: architecture.md
+          - Contract: smart-contract.md
+          - Providers: providers.md
+          - Fees: fees.md
+          - Referral Program: referral-program.md
+          - Security: security.md
+          - Policy Types:
+              - Subscription Payments: policies/subscription.md
+              - Milestone Payments: policies/milestone.md
+              - Pay-as-you-go Payments: policies/payasyougo.md
 
 plugins:
-  # - git-revision-date-localized:
-  #     enable_creation_date: true
-  - social
+  - social:
   - search:
-  - privacy
+  - privacy:
   - llmstxt:
       full_output: llms-full.txt
       sections:
@@ -90,8 +83,8 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji ""
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg ""
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -103,8 +96,9 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          format:
 
+            !!python/name:pymdownx.superfences.fence_code_format ""
 extra:
   social:
     - icon: fontawesome/brands/github

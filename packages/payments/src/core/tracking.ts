@@ -6,7 +6,7 @@ import {
   Keypair,
   GetProgramAccountsFilter,
 } from "@solana/web3.js";
-import { Tributary, PaymentPolicy } from "@tributary-so/sdk";
+import { Tributary, PaymentPolicy, encodeMemo } from "@tributary-so/sdk";
 
 export interface SubscriptionStatus {
   subscriptionCreated: boolean;
@@ -94,11 +94,7 @@ export class PaymentTracker {
   async getPaymentPoliciesForOptions(
     options: PolicyLookupOptions
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
-    let filters: GetProgramAccountsFilter[] = [
-      {
-        dataSize: 586,
-      },
-    ];
+    let filters: GetProgramAccountsFilter[] = [];
     if (options.walletPublicKey && options.tokenMint) {
       const userPayment = this._tributary.getUserPaymentPda(
         new PublicKey(options.walletPublicKey),
@@ -130,11 +126,16 @@ export class PaymentTracker {
     if (options.trackingId) {
       filters.push({
         memcmp: {
-          offset: 8 + 32 + 32 + 32 + 129 + 1, // Skip discriminator + user_payment + recipient + policyType + status
-          // NOTE: this is prefixed based filtering, if needed exact, one might use
-          // bs58.encode(encodeMemo(options.trackingId, 64)) instead but i didn't get it to work so far
-          bytes: bs58.encode(Buffer.from(options.trackingId)),
+          offset: 8 + 32 + 32 + 32 + 118,
+          bytes: bs58.encode(encodeMemo(options.trackingId, 64)),
         },
+      });
+    }
+    if (filters.length < 4) {
+      // 4 is max number of filters on RPC. It's safest to ignore the dataSize
+      //   instead of any of the other ones
+      filters.push({
+        dataSize: 586,
       });
     }
     return await this._tributary.program.account.paymentPolicy.all(filters);

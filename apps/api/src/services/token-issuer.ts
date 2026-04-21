@@ -7,6 +7,10 @@ import { getDb } from "../db";
 import { events } from "../db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { decodeMemo } from "@tributary-so/sdk";
+import {
+  type SubscriptionClaim,
+  type PaymentRecord,
+} from "@tributary-so/payments";
 
 const JWT_ISSUER = process.env.JWT_ISSUER || "https://api.tributary.so";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "tributary-checkout";
@@ -16,42 +20,13 @@ const JWT_EXPIRY_BUFFER_MINUTES = parseInt(
   10
 );
 
-export interface SubscriptionClaim {
-  policyAddress: string;
-  policyId: number;
-  recipient: string;
-  gateway: string;
-  amount: string;
-  paymentFrequency: string;
-  totalPayments: number;
-  nextPaymentDue: number | null;
-  status: "paid" | "overdue" | "completed";
-  autoRenew: boolean;
-  maxRenewals: number | null;
-  createdAt: number;
-  memo: string;
-}
-
-export interface LastPaymentClaim {
-  signature: string;
-  slot: number;
-  timestamp: number;
-  policyAddress: string;
-  amount: string;
-  tokenMint: string;
-  payer: string;
-  recipient: string;
-  gateway: string;
-  memo: string;
-  recordId: number;
-}
-
 export interface TokenIssueRequest {
   walletPublicKey: string;
   tokenMint?: string;
   policyAddress?: string;
   recipient?: string;
   transactionSignature?: string;
+  trackingId?: string;
 }
 
 export interface TokenResponse {
@@ -151,7 +126,7 @@ async function getLastPayments(
     tokenMint?: string;
     limit?: number;
   }
-): Promise<LastPaymentClaim[]> {
+): Promise<PaymentRecord[]> {
   const db = getDb();
   const conditions = [
     eq(events.eventName, "tributary_PaymentRecord"),
@@ -245,6 +220,9 @@ export async function issueToken(
   if (request.tokenMint) {
     options.tokenMint = request.tokenMint;
   }
+  if (request.trackingId) {
+    options.trackingId = request.trackingId;
+  }
 
   let oneTimePayment: Awaited<
     ReturnType<typeof verifyTransactionPayment>
@@ -259,16 +237,10 @@ export async function issueToken(
     txPolicyAddress = oneTimePayment.policyAddress ?? null;
   }
 
-  let allPolicies = request.transactionSignature
-    ? []
-    : await getSubscriptionDetails(options);
-
+  let allPolicies = await getSubscriptionDetails(options);
   let subscriptions: SubscriptionClaim[] = [];
 
   if (request.transactionSignature) {
-    if (txPolicyAddress && allPolicies.length === 0) {
-      allPolicies = await getSubscriptionDetails(options);
-    }
     const matching = allPolicies.filter(
       (p: any) => p.policyAccount?.toString() === txPolicyAddress
     );
@@ -277,7 +249,7 @@ export async function issueToken(
     subscriptions = buildSubscriptionClaims(allPolicies);
   }
 
-  let lastPayments: LastPaymentClaim[] = [];
+  let lastPayments: PaymentRecord[] = [];
 
   if (request.transactionSignature) {
     let dbPayments = await getLastPayments(request.walletPublicKey, {

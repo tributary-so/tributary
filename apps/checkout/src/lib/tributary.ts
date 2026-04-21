@@ -1,7 +1,6 @@
 import {
   Connection,
   PublicKey,
-  Transaction,
   TransactionMessage,
   TransactionSignature,
   VersionedTransaction,
@@ -16,6 +15,7 @@ import {
 import * as anchor from "@coral-xyz/anchor";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import config from "../constants";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 
 export interface TokenResponse {
   token: string;
@@ -26,13 +26,19 @@ export async function issueSubscriptionToken(
   walletPublicKey: PublicKey,
   recipient: PublicKey,
   tokenMint?: string,
+  trackingId?: string,
   timeoutMs: number = 30000
 ): Promise<TokenResponse> {
-  const body = JSON.stringify({
+  const body: any = {
     walletPublicKey: walletPublicKey.toString(),
     recipient: recipient.toString(),
-    tokenMint: tokenMint || config.usdcMint,
-  });
+  };
+  if (tokenMint) {
+    body.tokenMint = tokenMint.toString();
+  }
+  if (trackingId) {
+    body.trackingId = trackingId.toString();
+  }
 
   const start = Date.now();
 
@@ -40,7 +46,7 @@ export async function issueSubscriptionToken(
     const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body,
+      body: JSON.stringify(body),
     });
 
     if (response.ok) {
@@ -116,7 +122,7 @@ async function confirmTransactionWithStatus(
 }
 
 function getTributary(wallet: WalletContextState): Tributary {
-  const connection = new Connection(config.rpcUrl, "processed");
+  const connection = new Connection(config.rpcUrl, "confirmed");
   return new Tributary(connection, wallet as unknown as anchor.Wallet);
 }
 
@@ -205,16 +211,28 @@ export async function createSubscription(
   }).compileToV0Message();
   const transaction = new VersionedTransaction(messageV0);
 
-  const signedTx = await wallet.signTransaction(transaction);
-  const txid = await tributary.connection.sendRawTransaction(
-    signedTx.serialize(),
-    // The actual bug is that sendTransaction is being called without {
-    // skipPreflight: true }, and the default RPC behavior with Connection
-    // (commitment "processed" from line 119) can cause the transaction to be
-    // submitted, then the connection internally retries it.
-    { skipPreflight: true }
-  );
-  await confirmTransactionWithStatus(tributary.connection, txid, "confirmed");
+  let txid: TransactionSignature;
+  let signedTx;
+
+  try {
+    signedTx = await wallet.signTransaction(transaction);
+    txid = await tributary.connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: true,
+    });
+  } catch (sendError: any) {
+    const errorMsg = sendError?.message || sendError?.toString() || "";
+    if (errorMsg.includes("This transaction has already been processed")) {
+      console.warn(
+        "Transaction may have already been sent, attempting to confirm via status"
+      );
+
+      txid = bs58.encode(signedTx.signatures[0]);
+    } else {
+      throw sendError;
+    }
+  }
+
+  await confirmTransactionWithStatus(tributary.connection, txid!, "confirmed");
 
   const userPayment = await getUserPayment(wallet, tokenMint);
 
@@ -252,6 +270,42 @@ export interface CreateOneTimePaymentParams {
   tokenMint?: string;
 }
 
+export async function issueOneTimeToken(
+  walletPublicKey: PublicKey,
+  transactionSignature: string,
+  tokenMint?: string,
+  timeoutMs: number = 30000
+): Promise<TokenResponse> {
+  const body = JSON.stringify({
+    walletPublicKey: walletPublicKey.toString(),
+    transactionSignature,
+    tokenMint: tokenMint || config.usdcMint,
+  });
+
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const hasMatchingPayment = data.lastPayments?.some(
+        (p: { signature: string }) => p.signature === transactionSignature
+      );
+      if (hasMatchingPayment) {
+        return data;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  throw new Error("Timed out waiting for payment confirmation");
+}
+
 export async function createOneTimePayment(
   params: CreateOneTimePaymentParams
 ): Promise<TransactionSignature> {
@@ -273,17 +327,35 @@ export async function createOneTimePayment(
     createMemoBuffer(memo, 64)
   );
 
-  const transaction = new Transaction().add(transferIx);
-  const { blockhash } =
-    await tributary.program.provider.connection.getLatestBlockhash();
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey!;
+  const { blockhash } = await tributary.connection.getLatestBlockhash();
+  const messageV0 = new TransactionMessage({
+    payerKey: wallet.publicKey!,
+    recentBlockhash: blockhash,
+    instructions: [transferIx],
+  }).compileToV0Message();
+  const transaction = new VersionedTransaction(messageV0);
 
-  const signedTx = await wallet.signTransaction!(transaction);
-  const txid = await tributary.program.provider.connection.sendRawTransaction(
-    signedTx.serialize()
-  );
-  await confirmTransactionWithStatus(tributary.connection, txid, "confirmed");
+  let txid: TransactionSignature;
+  let signedTx;
+
+  try {
+    signedTx = await wallet.signTransaction!(transaction);
+    txid = await tributary.program.provider.connection.sendRawTransaction(
+      signedTx.serialize()
+    );
+  } catch (sendError: any) {
+    const errorMsg = sendError?.message || sendError?.toString() || "";
+    if (errorMsg.includes("This transaction has already been processed")) {
+      console.warn(
+        "Transaction may have already been sent, attempting to confirm via status"
+      );
+      txid = bs58.encode(signedTx!.signatures[0]);
+    } else {
+      throw sendError;
+    }
+  }
+
+  await confirmTransactionWithStatus(tributary.connection, txid!, "confirmed");
 
   return txid;
 }

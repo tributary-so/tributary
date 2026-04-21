@@ -3,7 +3,8 @@
 Enable viral user acquisition through a simplified referral system where rewards are funded entirely from gateway fees with fixed percentage splits across referral tiers.
 
 !!! tip "Quick Start"
-The referral program is **automatically enabled** for all gateways. Users earn rewards for inviting others, and gateways benefit from viral growth.
+
+    The referral program is **automatically enabled** for all gateways. Users earn rewards for inviting others, and gateways benefit from viral growth.
 
 ## Overview
 
@@ -56,7 +57,8 @@ const chain = await sdk.getReferralChain(payer, gateway);
 ```
 
 !!! important "Critical: Account Order Matters"
-The SDK returns `[L1, L2, L3]` but the Rust program **reverses the reward assignment**. This is intentional and follows the spec:
+
+    The SDK returns `[L1, L2, L3]` but the Rust program **reverses the reward assignment**. This is intentional and follows the spec:
 
     - `level1_referrer` (60%) = L3 (original referrer - index 2)
     - `level2_referrer` (30%) = L2 (middle - index 1)
@@ -179,7 +181,8 @@ let level3_referrer = referral_accounts[0]; // L1 (immediate) → 10%
 ```
 
 !!! warning "Common Bug"
-If you manually pass accounts in the wrong order, rewards will be assigned incorrectly. Always use `getReferralChain()` to get the correct order.
+
+    If you manually pass accounts in the wrong order, rewards will be assigned incorrectly. Always use `getReferralChain()` to get the correct order.
 
 ### Chain Validation
 
@@ -252,7 +255,8 @@ async updateGatewayReferralSettings(
 ```
 
 !!! tip "Gateway Tip"
-Start with conservative referral allocation (e.g., 25%) and increase as you see viral growth.
+
+    Start with conservative referral allocation (e.g., 25%) and increase as you see viral growth.
 
 ## Architecture
 

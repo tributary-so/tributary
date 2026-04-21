@@ -6,7 +6,6 @@ node_modules
 test-ledger
 .yarn
 
-**/lib
 **/dist
 
 # bv (beads viewer) local config and caches
@@ -18,3 +17,5 @@ apps/docs/env
 
 apps/lando-remotion/build
 .env
+apps/cli/lib/
+apps/docs/.cache/

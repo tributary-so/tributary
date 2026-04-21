@@ -6,7 +6,7 @@ Tributary offers multiple ways to integrate automated payments. Choose the metho
 
 ### 1. Payments SDK 🛒
 
-_Best for: Quick checkout links with zero API keys_
+Best for: Quick checkout links with zero API keys
 
 - Use `@tributary-so/payments` for simplified payments via hosted checkout page
 - Generate shareable payment URLs
@@ -31,7 +31,7 @@ const session = await payments.checkout.sessions.create({
 
 ### 2. Direct SDK Integration 💻
 
-_Best for: Full programmatic control and custom flows_
+Best for: Full programmatic control and custom flows
 
 - Use `@tributary-so/sdk` for complete protocol interaction
 - Build custom payment UI and logic
@@ -51,7 +51,7 @@ const instructions = await tributary.createSubscriptionInstruction(/*...*/);
 
 ### 3. React Button 🚀
 
-_Best for: Fast integration in React applications_
+Best for: Fast integration in React applications
 
 - Use `@tributary-so/sdk-react` for pre-built components
 - Drop-in subscription buttons with minimal code
@@ -75,7 +75,7 @@ import { SubscriptionButton } from "@tributary-so/sdk-react";
 
 ### 4. REST API 📡
 
-_Best for: Backend integration and real-time notifications_
+Best for: Backend integration and real-time notifications
 
 - Query subscription status and payment events
 - WebSocket notifications for payment events
@@ -96,7 +96,7 @@ socket.emit("subscribe", { trackingId: "my-sub" });
 
 ### 5. x402 HTTP Payments 🌐
 
-_Best for: API monetization and micropayments_
+Best for: API monetization and micropayments
 
 - Express.js middleware for HTTP 402 payments
 - Subscription or pay-as-you-go billing
@@ -145,7 +145,7 @@ app.use(
 
 ## Next Steps
 
-1. **Learn the Protocol:** [What is Tributary?](./what.md)
+1. **Learn the Protocol:** [Tributary Overview](./index.md)
 2. **Choose Your Integration:** Review quickstart guides above
 3. **JWT Authentication:** [Verify subscriptions after checkout](./jwt-auth.md)
 4. **Explore Payment Types:** [Subscriptions](./policies/subscription.md), [Milestones](./policies/milestone.md), [Pay-as-you-go](./policies/payasyougo.md)

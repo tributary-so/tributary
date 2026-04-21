@@ -15,6 +15,7 @@ import { decodeMemo } from "@tributary-so/sdk";
 export async function getSubscriptionDetails(options: PolicyLookupOptions) {
   const connection = getConnection();
   const tracker = new PaymentTracker(connection);
+  options.trackingId = undefined;
   const policies = await tracker.getPaymentPoliciesForOptions(options);
 
   // remove the paddings

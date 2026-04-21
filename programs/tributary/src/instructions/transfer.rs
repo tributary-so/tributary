@@ -47,8 +47,8 @@ impl<'info> TransferTokens<'info> {
             timestamp: clock.unix_timestamp,
             memo,
             record_id: 0,
-            payer: ctx.accounts.from.key(),
-            recipient: ctx.accounts.to.key(),
+            payer: ctx.accounts.from.owner.key(),
+            recipient: ctx.accounts.to.owner.key(),
         });
 
         msg!(
