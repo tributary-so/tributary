@@ -2,13 +2,12 @@
 
 import { CheckoutSessionManager } from "./session";
 import { OneTimePaymentTracker } from "./onetime";
-import { Tributary } from "@tributary-so/sdk";
 
 export class PaymentsClient {
   private _checkout: CheckoutSessionManager;
   private _onetimeTracker: OneTimePaymentTracker;
 
-  constructor(tributary: Tributary) {
+  constructor() {
     // Zero configuration initialization
     this._checkout = new CheckoutSessionManager();
     this._onetimeTracker = new OneTimePaymentTracker();
