@@ -39,16 +39,21 @@ nav:
   - Developer Guide:
       - Basics: how.md
       - Integration Options: integration.md
-      - SDK: sdk.md
-      - React Button: react-button.md
-      - CLI Tools: tools.md
-      - Payments:
-          - Checkout Page Links: checkout.md
-          - Payment Token: jwt-auth.md
+      - SDKs:
+          - Tributary SDK: sdk.md
+          - React SDK:
+              - Installation: sdk-react/index.md
+              - Quick Buttons: sdk-react/buttons.md
+              - Hooks: sdk-react/hooks.md
+              - Common Patterns: sdk-react/common.md
           - x402 Payments:
               - Overview: x402.md
               - Getting Started: x402-getting-started.md
               - API Reference: x402-api-reference.md
+      - CLI Tools: tools.md
+      - Payments:
+          - Checkout Page Links: checkout.md
+          - Payment Token: jwt-auth.md
       - API Server:
           - Overview: api/overview.md
           - REST API: api/rest-api.md
@@ -96,9 +101,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format:
-
-            !!python/name:pymdownx.superfences.fence_code_format ""
+          format: !!python/name:pymdownx.superfences.fence_code_format ""
 extra:
   social:
     - icon: fontawesome/brands/github

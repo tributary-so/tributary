@@ -88,7 +88,7 @@ One-click setup, total transparency, full control. Every payment is on-chain. Yo
 
 ### Developers
 
-Drop in a [React component](react-button.md) and you're done. Need more control? Use the [TypeScript SDK](sdk.md). Going no-code? Generate [checkout links](checkout.md) in seconds. Everything is [open-source](https://github.com/tributary-so/tributary).
+Drop in a [React component or hook](sdk-react/index.md) and you're done. Need more control? Use the [TypeScript SDK](sdk.md). Going no-code? Generate [checkout links](checkout.md) in seconds. Everything is [open-source](https://github.com/tributary-so/tributary).
 
 ### Businesses
 
@@ -117,7 +117,7 @@ More ideas in [Use Cases](use-cases.md).
 
 ## Get Started
 
-1. **Pick your integration** — [React Button](react-button.md), [TypeScript SDK](sdk.md), or [Checkout Links](checkout.md)
+1. **Pick your integration** — [React SDK](sdk-react/index.md), [TypeScript SDK](sdk.md), or [Checkout Links](checkout.md)
 2. **Choose a payment type** — [Subscription](policies/subscription.md), [Milestone](policies/milestone.md), or [Pay-as-you-go](policies/payasyougo.md)
 3. **Go live** — deploy on Solana mainnet in minutes
 4. **Monitor** — track payments via [REST API](api/rest-api.md) or [WebSocket API](api/websocket.md)
@@ -129,7 +129,7 @@ More ideas in [Use Cases](use-cases.md).
 ## Developer Tools
 
 - **[TypeScript SDK](sdk.md#typescript-sdk-tributary-sosdk)** - Complete protocol interaction
-- **[React SDK](sdk.md#react-sdk-tributary-sosdk-react)** - Pre-built payment components
+- **[React SDK](sdk-react/index.md)** - Pre-built payment components and React hooks
 - **[Payments SDK](sdk.md#payments-sdk-tributary-sopayments)** - Simple Payments API with hosted checkout page (zero API keys)
 - **[x402 SDK](sdk.md#x402-sdk-tributary-sox402)** - HTTP 402 middleware for API monetization
 - **[CLI](sdk.md#cli-tributary-socli)** - Protocol management tools
