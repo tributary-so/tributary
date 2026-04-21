@@ -53,10 +53,6 @@ export async function issueSubscriptionToken(
       return response.json();
     }
 
-    if (response.status === 404 || response.status === 422) {
-      throw new Error(`Failed to issue token: ${response.statusText}`);
-    }
-
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
@@ -292,13 +288,7 @@ export async function issueOneTimeToken(
     });
 
     if (response.ok) {
-      const data = await response.json();
-      const hasMatchingPayment = data.lastPayments?.some(
-        (p: { signature: string }) => p.signature === transactionSignature
-      );
-      if (hasMatchingPayment) {
-        return data;
-      }
+      return response.json();
     }
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }

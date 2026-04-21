@@ -36,6 +36,7 @@ function buildSubscriptionPayload(
         autoRenew: true,
         maxRenewals: null,
         createdAt: Math.floor(Date.now() / 1000) - 86400 * 30,
+        memo: "foobar"
       },
     ],
     lastPayments: [

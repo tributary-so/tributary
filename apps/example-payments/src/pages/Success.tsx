@@ -1,26 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
-import { type TributaryJWTPayload } from "@tributary-so/payments";
-import { decodeJwt } from "../lib/jwt";
+import { useTributaryToken } from "@tributary-so/sdk-react";
 
 export default function Success() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-
-  const [payload, setPayload] = useState<TributaryJWTPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    decodeJwt(token).then((result) => {
-      setPayload(result);
-      setLoading(false);
-    });
-  }, [token]);
+  const { token, payload, loading } = useTributaryToken();
 
   if (loading) {
     return (
@@ -60,7 +43,7 @@ export default function Success() {
           <CheckCircle2 className="h-14 w-14 text-emerald-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Payment Successful</h1>
           <p className="text-muted-foreground text-sm">
-            Your subscription has been created and verified on Solana.
+            Your payment has verified on Solana.
           </p>
         </div>
 

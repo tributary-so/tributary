@@ -11,3 +11,7 @@
   --md-footer-fg-color--light: #000000;
   --md-footer-fg-color--lighter: #000000;
 }
+
+.md-nav__list {
+  margin-left: 10px;
+}

@@ -9,7 +9,7 @@ Tributary is a protocol for automated recurring payments on Solana. You approve 
 What do you want to do?
 
 **I want to accept payments on my site**
-→ [React Button](react-button.md) for a drop-in component, or [Checkout Links](checkout.md) for no-code hosted payment pages.
+→ [React SDK](sdk-react/index.md) for drop-in components and hooks, or [Checkout Links](checkout.md) for no-code hosted payment pages.
 
 **I want full control over the payment flow**
 → [Integration Options](integration.md) to compare approaches, then [SDK Reference](sdk.md) for the complete TypeScript API.
@@ -109,7 +109,7 @@ Full details in [Checkout Links](checkout.md) and [Payment Tokens](jwt-auth.md).
 | ------------------------------------- | ----------------------------------------------- |
 | [Integration Options](integration.md) | Compare all integration methods                 |
 | [SDK Reference](sdk.md)               | TypeScript, React, Payments, x402, CLI packages |
-| [React Button](react-button.md)       | Drop-in `<SubscriptionButton>` component        |
+| [React SDK](sdk-react/index.md)             | Components, hooks, and payment buttons          |
 | [Checkout Links](checkout.md)         | Hosted payment pages, no frontend required      |
 | [Payment Tokens](jwt-auth.md)         | Server-side JWT verification                    |
 | [x402 Payments](x402.md)              | HTTP 402 middleware for API monetization        |

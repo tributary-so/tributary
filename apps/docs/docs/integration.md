@@ -49,27 +49,38 @@ const instructions = await tributary.createSubscriptionInstruction(/*...*/);
 
 ---
 
-### 3. React Button 🚀
+### 3. React SDK ⚛️
 
 Best for: Fast integration in React applications
 
-- Use `@tributary-so/sdk-react` for pre-built components
-- Drop-in subscription buttons with minimal code
-- Built-in wallet integration and error handling
+- Use `@tributary-so/sdk-react` for pre-built components and hooks
+- Drop-in payment buttons (subscription, milestone, pay-as-you-go)
+- React hooks for full control over the payment flow
+- Built-in wallet integration, transaction handling, and error states
 - Ideal for web apps and dashboards
 
 ```tsx
-import { SubscriptionButton } from "@tributary-so/sdk-react";
+import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
 
 <SubscriptionButton
   amount={new BN(10000000)}
   recipient={recipient}
+  gateway={gateway}
   interval={PaymentInterval.Monthly}
   label="Subscribe $10/month"
 />;
 ```
 
-👉 **Get Started:** [Button Integration](react-button.md)
+Or use hooks for custom UI:
+
+```tsx
+import { useCreateSubscription } from "@tributary-so/sdk-react";
+
+const { createSubscription, loading, error } = useCreateSubscription();
+const result = await createSubscription({ amount, recipient, gateway, interval, ... });
+```
+
+👉 **Get Started:** [React SDK](sdk-react/index.md)
 
 ---
 
@@ -128,20 +139,20 @@ app.use(
 | AI agent monetization    | Payments SDK         |
 | Custom payment UI        | Direct SDK           |
 | Complex payment logic    | Direct SDK           |
-| React web app            | React Button         |
+| React web app            | React SDK            |
 | Backend-only integration | REST API             |
 | API monetization         | x402                 |
 | Real-time notifications  | REST API + WebSocket |
 
 ## SDK Packages
 
-| Package                   | Purpose                   |
-| ------------------------- | ------------------------- |
-| `@tributary-so/sdk`       | Core protocol interaction |
-| `@tributary-so/payments`  | Simplified payments SDK   |
-| `@tributary-so/sdk-react` | React components          |
-| `@tributary-so/x402`      | HTTP 402 middleware       |
-| `@tributary-so/cli`       | Command-line tools        |
+| Package                   | Purpose                    |
+| ------------------------- | -------------------------- |
+| `@tributary-so/sdk`       | Core protocol interaction  |
+| `@tributary-so/payments`  | Simplified payments SDK    |
+| `@tributary-so/sdk-react` | React components and hooks |
+| `@tributary-so/x402`      | HTTP 402 middleware        |
+| `@tributary-so/cli`       | Command-line tools         |
 
 ## Next Steps
 
