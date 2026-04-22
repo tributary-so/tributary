@@ -1,4 +1,5 @@
 import { SignJWT } from "jose";
+import { randomUUID } from "crypto";
 import { getCurrentSigningKey, importPrivateKey } from "./jwks";
 import { getSubscriptionDetails } from "./subscription";
 import { verifyTransactionPayment } from "./tx-verifier";
@@ -30,7 +31,9 @@ export interface TokenIssueRequest {
 }
 
 export interface TokenResponse {
+  /** JWT string — consumers MUST validate exp from the decoded token, not from expiresAt */
   token: string;
+  /** Convenience timestamp — do NOT use as sole expiry check */
   expiresAt: number;
 }
 
@@ -309,6 +312,8 @@ export async function issueToken(
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(expiresAt)
+    .setNotBefore(Math.floor(Date.now() / 1000))
+    .setJti(randomUUID())
     .sign(privateKey);
 
   return { token: jwt, expiresAt };

@@ -21,7 +21,8 @@ function buildSubscriptionPayload(
     aud: "tributary-checkout",
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 3600,
-    kid: "test-key-1",
+    nbf: Math.floor(Date.now() / 1000),
+    jti: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
     subscriptions: [
       {
         policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
@@ -36,7 +37,7 @@ function buildSubscriptionPayload(
         autoRenew: true,
         maxRenewals: null,
         createdAt: Math.floor(Date.now() / 1000) - 86400 * 30,
-        memo: "foobar"
+        memo: "foobar",
       },
     ],
     lastPayments: [
@@ -67,7 +68,8 @@ function buildOneTimePayload(
     aud: "tributary-checkout",
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 3600,
-    kid: "test-key-1",
+    nbf: Math.floor(Date.now() / 1000),
+    jti: "550e8400-e29b-41d4-a716-446655440000",
     subscriptions: [],
     lastPayments: [
       {
@@ -90,7 +92,7 @@ function buildOneTimePayload(
 
 function createVerifier(verifyResult: TributaryJWTPayload): TributaryVerifier {
   const verifier = new TributaryVerifier({ baseUrl: "https://mock.local" });
-  (verifier as any).verify = jest.fn().mockResolvedValue(verifyResult);
+  (verifier as any).verify = jest.fn().mockResolvedValue(verifyResult as never);
   return verifier;
 }
 
@@ -204,9 +206,9 @@ describe("TributaryVerifier", () => {
       ).rejects.toThrow(PaymentVerificationError);
     });
 
-    it("should match memo by substring inclusion", async () => {
+    it("should match memo exactly after trimming whitespace", async () => {
       const payload = buildOneTimePayload();
-      payload.lastPayments[0].memo = "trib_order_12345_item";
+      payload.lastPayments[0].memo = "  trib_order_12345_item  ";
       const verifier = createVerifier(payload);
 
       const payment = await verifier.verifyPayment("mock-token", {
@@ -215,7 +217,7 @@ describe("TributaryVerifier", () => {
         memo: "trib_order_12345_item",
       });
 
-      expect(payment.memo).toBe("trib_order_12345_item");
+      expect(payment.memo).toBe("  trib_order_12345_item  ");
     });
 
     it("should include details in error when no match found", async () => {
@@ -380,6 +382,34 @@ describe("TributaryVerifier", () => {
       const err = new SubscriptionVerificationError("test");
       expect(err.name).toBe("SubscriptionVerificationError");
       expect(err.message).toBe("test");
+    });
+  });
+
+  describe("payload validation", () => {
+    it("should reject memo substring matches (exact only)", async () => {
+      const payload = buildOneTimePayload();
+      payload.lastPayments[0].memo = "trib_order_12345_item_extra";
+      const verifier = createVerifier(payload);
+
+      await expect(
+        verifier.verifyPayment("mock-token", {
+          recipient: MOCK_RECIPIENT,
+          wallet: MOCK_WALLET,
+          memo: "trib_order_12345_item",
+        })
+      ).rejects.toThrow(PaymentVerificationError);
+    });
+
+    it("should require jti claim in payload", () => {
+      const payload = buildOneTimePayload();
+      expect(payload.jti).toBeDefined();
+      expect(typeof payload.jti).toBe("string");
+    });
+
+    it("should require nbf claim in payload", () => {
+      const payload = buildOneTimePayload();
+      expect(payload.nbf).toBeDefined();
+      expect(typeof payload.nbf).toBe("number");
     });
   });
 });
