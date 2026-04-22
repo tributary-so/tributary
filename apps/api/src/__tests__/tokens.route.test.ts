@@ -68,13 +68,45 @@ describe("POST /v1/tokens/issue", () => {
     );
   });
 
-  it("should return 400 for missing walletPublicKey", async () => {
+  it("should return 400 when walletPublicKey missing and no trackingId+recipient", async () => {
     const response = await request(app)
       .post("/v1/tokens/issue")
       .send({})
       .expect(400);
 
     expect(response.body.error).toContain("walletPublicKey");
+  });
+
+  it("should return 400 when walletPublicKey missing with only trackingId", async () => {
+    const response = await request(app)
+      .post("/v1/tokens/issue")
+      .send({ trackingId: "abc-123" })
+      .expect(400);
+
+    expect(response.body.error).toContain("walletPublicKey");
+  });
+
+  it("should issue a token with trackingId and recipient (no walletPublicKey)", async () => {
+    mockIssueToken.mockResolvedValueOnce({
+      token: "jwt-token-xyz",
+      expiresAt: 1743469200,
+    });
+
+    const response = await request(app)
+      .post("/v1/tokens/issue")
+      .send({
+        trackingId: "abc-123",
+        recipient: "BxKpT3mZQ5HgeRZFMfWVBpDCmCN8eYwGmCjL7m9mVq",
+      })
+      .expect(200);
+
+    expect(response.body.token).toBeDefined();
+    expect(mockIssueToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trackingId: "abc-123",
+        recipient: "BxKpT3mZQ5HgeRZFMfWVBpDCmCN8eYwGmCjL7m9mVq",
+      })
+    );
   });
 
   it("should return 400 for invalid walletPublicKey length", async () => {

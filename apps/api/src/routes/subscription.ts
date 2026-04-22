@@ -35,10 +35,10 @@ router.get(
     } = req.query;
 
     // Validate that at least one lookup option is provided
-    if ((walletPublicKey && !tokenMint) || (tokenMint && !walletPublicKey)) {
+    if ((walletPublicKey && !tokenMint)) {
       throw new ApiError(
         400,
-        "If you provide either walletPublicKey or tokenMint, you have to provide both!"
+        "If you provide walletPublicKey you also have to provide tokenMint!"
       );
     }
 

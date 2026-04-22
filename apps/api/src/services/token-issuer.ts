@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { getCurrentSigningKey, importPrivateKey } from "./jwks";
 import { getSubscriptionDetails } from "./subscription";
 import { verifyTransactionPayment } from "./tx-verifier";
+import { encodeMemo } from "@tributary-so/sdk";
 import { PolicyLookupOptions } from "@tributary-so/payments";
 import { getDb } from "../db";
 import { events } from "../db/schema";
@@ -22,12 +23,23 @@ const JWT_EXPIRY_BUFFER_MINUTES = parseInt(
 );
 
 export interface TokenIssueRequest {
-  walletPublicKey: string;
+  walletPublicKey?: string;
   tokenMint?: string;
   policyAddress?: string;
   recipient?: string;
   transactionSignature?: string;
   trackingId?: string;
+}
+
+export interface PaymentRecordData {
+  payment_policy: string;
+  gateway: string;
+  amount: number;
+  timestamp: number;
+  memo: number[];
+  record_id: number;
+  payer: string;
+  recipient: string;
 }
 
 export interface TokenResponse {
@@ -121,23 +133,39 @@ function buildSubscriptionClaims(policies: any[]): SubscriptionClaim[] {
 }
 
 async function getLastPayments(
-  walletPublicKey: string,
-  options?: {
+  options: {
+    walletPublicKey?: string,
     recipient?: string;
     policyAddresses?: string[];
     transactionSignature?: string;
     tokenMint?: string;
     limit?: number;
+    trackingId?: string;
   }
 ): Promise<PaymentRecord[]> {
   const db = getDb();
   const conditions = [
     eq(events.eventName, "tributary_PaymentRecord"),
-    sql`${events.data}->>'payer' = ${walletPublicKey}`,
   ];
+
+  if (options.walletPublicKey) {
+    conditions.push(
+      sql`${events.data}->>'payer' = ${options.walletPublicKey}`,
+    )
+  }
 
   if (options?.recipient) {
     conditions.push(sql`${events.data}->>'recipient' = ${options.recipient}`);
+  }
+
+  if (options?.trackingId) {
+    const memoArray = encodeMemo(options.trackingId); // Assuming this returns number[]
+    const jsonArrayString = JSON.stringify(memoArray);
+
+    // Exact match of the entire array (order matters)
+    conditions.push(
+      sql`${events.data}->'memo' = ${jsonArrayString}::jsonb`
+    );
   }
 
   if (options?.transactionSignature) {
@@ -162,9 +190,9 @@ async function getLastPayments(
 
   return results
     .filter((event) => {
-      const data = event.data as any;
+      const data = event.data as PaymentRecordData;
       const payer = data.payer;
-      return payer === walletPublicKey;
+      return !options.walletPublicKey || payer === options.walletPublicKey;
     })
     .map((event) => {
       const data = event.data as any;
@@ -172,20 +200,14 @@ async function getLastPayments(
         signature: event.signature,
         slot: event.slot,
         timestamp: Math.floor(new Date(event.timestamp).getTime() / 1000),
-        policyAddress:
-          data.payment_policy ?? "11111111111111111111111111111111",
-        amount: String(data.amount ?? "0"),
-        tokenMint:
-          options?.tokenMint ?? "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        payer: data.payer ?? walletPublicKey,
-        recipient: data.recipient ?? "",
-        gateway: data.gateway ?? "",
-        memo: data.memo
-          ? typeof data.memo === "string"
-            ? data.memo
-            : decodeMemo(data.memo)
-          : "",
-        recordId: data.record_id ?? 0,
+        policyAddress: data.payment_policy,
+        amount: String(data.amount),
+        tokenMint: data.tokenMint,
+        payer: data.payer,
+        recipient: data.recipient,
+        gateway: data.gateway,
+        memo: decodeMemo(data.memo),
+        recordId: data.record_id,
       };
     });
 }
@@ -214,9 +236,11 @@ function computeExpiration(subscriptions: SubscriptionClaim[]): number {
 export async function issueToken(
   request: TokenIssueRequest
 ): Promise<TokenResponse> {
-  const options: PolicyLookupOptions = {
-    walletPublicKey: request.walletPublicKey,
-  };
+
+  const options: PolicyLookupOptions = {};
+  if (request.walletPublicKey) {
+    options.walletPublicKey = request.walletPublicKey;
+  }
   if (request.recipient) {
     options.recipient = request.recipient;
   }
@@ -254,11 +278,8 @@ export async function issueToken(
 
   let lastPayments: PaymentRecord[] = [];
 
-  if (request.transactionSignature) {
-    let dbPayments = await getLastPayments(request.walletPublicKey, {
-      transactionSignature: request.transactionSignature,
-      tokenMint: request.tokenMint,
-    });
+  if (request.transactionSignature || request.trackingId) {
+    let dbPayments = await getLastPayments(options);
 
     if (dbPayments.length === 0 && oneTimePayment) {
       lastPayments = [
@@ -281,7 +302,8 @@ export async function issueToken(
     }
   } else if (subscriptions.length > 0) {
     const policyAddresses = subscriptions.map((s) => s.policyAddress);
-    lastPayments = await getLastPayments(request.walletPublicKey, {
+    lastPayments = await getLastPayments({
+      walletPublicKey: request.walletPublicKey,
       policyAddresses,
       recipient: request.recipient,
       tokenMint: request.tokenMint,
@@ -307,7 +329,7 @@ export async function issueToken(
 
   const jwt = await new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: "ES256", kid: signingKey.kid, typ: "JWT" })
-    .setSubject(request.walletPublicKey)
+    .setSubject(request.walletPublicKey ?? request.transactionSignature ?? `${request.recipient}-${request.trackingId}`)
     .setIssuer(JWT_ISSUER)
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()

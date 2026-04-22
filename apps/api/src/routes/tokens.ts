@@ -20,11 +20,12 @@ router.post(
       trackingId,
     } = req.body;
 
-    if (!walletPublicKey || typeof walletPublicKey !== "string") {
-      throw new ApiError(400, "Missing or invalid walletPublicKey");
-    }
-
-    if (walletPublicKey.length < 32 || walletPublicKey.length > 44) {
+    if (
+      walletPublicKey !== undefined &&
+      (typeof walletPublicKey !== "string" ||
+        walletPublicKey.length < 32 ||
+        walletPublicKey.length > 44)
+    ) {
       throw new ApiError(400, "Invalid walletPublicKey format");
     }
 
