@@ -4,6 +4,8 @@ For full control over the UI, use hooks directly. Each hook manages its own load
 
 ## `useTributarySDK`
 
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+
 Returns an initialized `Tributary` SDK instance (or `null` if the wallet isn't connected). All other payment hooks depend on this internally — use it when you need raw SDK access.
 
 ```typescript
@@ -24,6 +26,8 @@ function MyComponent() {
 ---
 
 ## `useCreateSubscription`
+
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
 
 Creates a subscription policy. Handles instruction building, transaction signing, and on-chain confirmation.
 
@@ -80,6 +84,8 @@ function SubscribeForm() {
 ---
 
 ## `useCreateMilestone`
+
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
 
 Creates a milestone payment with up to 4 deliverable phases. Each milestone has its own amount and due timestamp.
 
@@ -141,6 +147,8 @@ function MilestoneForm() {
 
 ## `useCreatePayAsYouGo`
 
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+
 Creates a pay-as-you-go policy with a spending cap per period. The provider claims incrementally as the user consumes.
 
 ```typescript
@@ -190,6 +198,8 @@ function PayGoForm() {
 ---
 
 ## `useCheckoutSession`
+
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
 
 Generates checkout URLs or redirects users to the hosted Tributary checkout page. Works for both one-time payments and subscriptions. No wallet connection required — the checkout page handles that.
 
@@ -247,6 +257,8 @@ function CheckoutButton() {
 
 ## `useTributaryToken`
 
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+
 Verifies a Tributary JWT token (e.g., from a checkout callback) and decodes its payload. Use this to confirm an active subscription on the client side.
 
 ```typescript
@@ -288,50 +300,50 @@ const { payload } = useTributaryToken(myJwtToken);
 
 ---
 
-## `useActionCode`
+## `useTrackingId`
 
-Integrates with [Action Codes](https://actioncodes.xyz) for transaction relay via action codes. This enables mobile wallet flows where a user scans a code instead of connecting a browser wallet.
+> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+
+Fetches and verifies a payment token for a given tracking ID. Use this to confirm a user's subscription status on the client side by resolving a tracking ID (set during checkout) to a verified JWT payload.
 
 ```typescript
-import { useActionCode } from "@tributary-so/sdk-react";
+import { useTrackingId } from "@tributary-so/sdk-react";
 
-function MobilePay() {
-  const {
-    actionCode,
-    resolvedPubkey,
-    resolveActionCode,
-    clearActionCode,
-    submitTransaction,
-  } = useActionCode();
+function SubscriptionStatus({ trackingId, recipient }) {
+  const { payload, loading, error, refresh } = useTrackingId(
+    trackingId,
+    recipient,
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  );
 
-  const handleScan = async (code: string) => {
-    const result = await resolveActionCode(code);
-    if (result.success) {
-      console.log("Resolved wallet:", result.pubkey.toString());
-    }
-  };
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+  if (!payload) return <p>No active subscription</p>;
 
-  const handlePay = async () => {
-    const { txSig } = await submitTransaction({
-      amount: new BN(10_000_000),
-      token: USDC_MINT,
-      gateway: GATEWAY,
-      interval: PaymentInterval.Monthly,
-      executeImmediately: true,
-    });
-    console.log("Paid:", txSig);
-  };
-
-  return <button onClick={() => handleScan("...")}>Scan & Pay</button>;
+  return (
+    <div>
+      <p>Status: {payload.status}</p>
+      <p>Tracking ID: {payload.trackingId}</p>
+      <button onClick={refresh}>Refresh</button>
+    </div>
+  );
 }
 ```
 
-**Returns:** `{ actionCode, resolvedPubkey, resolveActionCode, clearActionCode, submitTransaction }`
+**Parameters:**
 
-| Field               | Type                                            | Description                           |
-| ------------------- | ----------------------------------------------- | ------------------------------------- |
-| `actionCode`        | `string \| null`                                | Current action code                   |
-| `resolvedPubkey`    | `PublicKey \| null`                             | Resolved wallet from the code         |
-| `resolveActionCode` | `(code: string) => Promise<{success, pubkey?}>` | Resolve an action code to a pubkey    |
-| `clearActionCode`   | `() => void`                                    | Reset state                           |
-| `submitTransaction` | `(params) => Promise<{ txSig: string }>`        | Build, sign, and relay a subscription |
+| Parameter    | Type     | Required | Description                                        |
+| ------------ | -------- | -------- | -------------------------------------------------- |
+| `trackingId` | `string` | Yes      | Your reference ID set during checkout              |
+| `recipient`  | `string` | Yes      | Recipient wallet address                           |
+| `tokenMint`  | `string` | No       | Token mint address to filter by                    |
+| `baseUrl`    | `string` | No       | API base URL (default: `https://api.tributary.so`) |
+
+**Returns:** `PaymentTokenState`
+
+| Field     | Type                          | Description                      |
+| --------- | ----------------------------- | -------------------------------- |
+| `payload` | `TributaryJWTPayload \| null` | Decoded and verified JWT payload |
+| `loading` | `boolean`                     | Token fetch in progress          |
+| `error`   | `string \| null`              | Error message if fetch failed    |
+| `refresh` | `() => void`                  | Re-trigger the token fetch       |
