@@ -1,9 +1,13 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import Home from "./pages/Home";
 import Success from "./pages/Success";
 import Cancel from "./pages/Cancel";
+import CheckoutDemo from "./pages/CheckoutDemo";
+
+const ReactButtons = lazy(() => import("./pages/ReactButtons"));
 
 export default function App() {
   return (
@@ -11,6 +15,21 @@ export default function App() {
       <Header />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route
+          path="/buttons"
+          element={
+            <Suspense
+              fallback={
+                <div className="text-center py-20 text-muted-foreground">
+                  Loading...
+                </div>
+              }
+            >
+              <ReactButtons />
+            </Suspense>
+          }
+        />
+        <Route path="/checkout" element={<CheckoutDemo />} />
         <Route path="/success" element={<Success />} />
         <Route path="/cancel" element={<Cancel />} />
       </Routes>

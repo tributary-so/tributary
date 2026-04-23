@@ -36,6 +36,10 @@ export default defineConfig({
       output: {
         manualChunks: {
           "solana-vendor": ["@solana/web3.js", "@solana/spl-token"],
+          "wallet-adapter": [
+            "@solana/wallet-adapter-react",
+            "@solana/wallet-adapter-react-ui",
+          ],
         },
       },
     },
