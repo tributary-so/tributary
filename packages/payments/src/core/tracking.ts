@@ -131,13 +131,6 @@ export class PaymentTracker {
         },
       });
     }
-    if (filters.length < 4) {
-      // 4 is max number of filters on RPC. It's safest to ignore the dataSize
-      //   instead of any of the other ones
-      filters.push({
-        dataSize: 586,
-      });
-    }
     return await this._tributary.program.account.paymentPolicy.all(filters);
   }
 }
