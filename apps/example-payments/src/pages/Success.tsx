@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { useTributaryToken } from "@tributary-so/sdk-react";
+import { API_BASE_URL } from "@/constants";
 
 export default function Success() {
-  const { token, payload, loading } = useTributaryToken();
+  const { token, payload, loading } = useTributaryToken(undefined, API_BASE_URL);
 
   if (loading) {
     return (

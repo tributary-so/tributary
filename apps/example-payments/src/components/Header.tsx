@@ -5,15 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import logo from "../assets/logo.png";
 
-const navItems = [
-  { label: "How It Works", href: "how-it-works" },
-  { label: "Use Cases", href: "use-cases" },
-  { label: "Checkout", href: "checkout" },
-  { label: "Integrations", href: "integrations" },
-  { label: "Roadmap", href: "roadmap" },
-  { label: "FAQ", href: "faq" },
-];
-
 const products = [
   {
     label: "Documentation",
@@ -48,26 +39,6 @@ const products = [
 ];
 
 export function Header() {
-  const navigate = useNavigate();
-
-  const scrollToSection = (id: string) => {
-    navigate("/");
-    sessionStorage.setItem("scrollTo", id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    const section = sessionStorage.getItem("scrollTo");
-    if (section) {
-      sessionStorage.removeItem("scrollTo");
-      setTimeout(() => {
-        document
-          .getElementById(section)
-          ?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    }
-  }, []);
-
   return (
     <header className="py-6">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
@@ -79,15 +50,6 @@ export function Header() {
         </Link>
         <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row md:items-center md:justify-end md:gap-6">
           <nav className="flex flex-wrap items-center gap-4 text-muted-foreground text-xs uppercase tracking-[0.12em]">
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                className="transition-colors hover:text-foreground hover:cursor-pointer"
-                onClick={() => scrollToSection(item.href)}
-              >
-                {item.label}
-              </a>
-            ))}
             <div className="relative group">
               <button className="flex items-center gap-1 transition-colors hover:text-foreground">
                 DEVELOPERS

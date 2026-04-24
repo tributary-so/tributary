@@ -1,5 +1,4 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -11,15 +10,14 @@ import {
   SolflareWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import SubscriptionButtonExample from "./SubscriptionButtonExample";
-import "./index.css";
+import SubscriptionButtonExample from "@/components/SubscriptionButtonExampe";
 
 const endpoint = import.meta.env.VITE_SOLANA_API ?? clusterApiUrl("devnet");
-console.log(`Using endpoint: ${endpoint}`);
 const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
+console.log(`Using endpoint: ${endpoint}`);
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+const CheckoutDemo: React.FC = () => {
+  return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
@@ -27,5 +25,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
-  </React.StrictMode>
-);
+  );
+}
+
+export default CheckoutDemo;

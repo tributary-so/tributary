@@ -1,103 +1,45 @@
-import { useEffect, useState } from "react";
-import { CHECKOUT_BASE_URL, GATEWAY, USDC_MINT } from "@/constants";
-import { useLocalStorage } from "@/hooks/localstorage";
-import { useCheckoutSession } from "@tributary-so/sdk-react";
-import { Banknote } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CreditCard, MousePointerClick } from "lucide-react";
 
 export default function Home() {
-  const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("9.99");
-  const [mode, setMode] = useState<"payment" | "subscription">("payment");
-  const [trackingId, setTrackingId] = useLocalStorage("trackingId", "John Doe");
-  const { initiate } = useCheckoutSession(CHECKOUT_BASE_URL);
-
-  useEffect(() => {
-    setTrackingId(crypto.randomUUID());
-  }, []);
-
-  const handlePaymentRequest = () => {
-    if (!recipient || !amount) return;
-    initiate({
-      mode,
-      tokenMint: USDC_MINT,
-      recipient,
-      gateway: GATEWAY,
-      amount: parseFloat(amount),
-      trackingId,
-      ...(mode === "subscription" && {
-        paymentFrequency: "monthly",
-        autoRenew: true,
-      }),
-    });
-  };
-
   return (
     <main className="mx-auto max-w-5xl px-4">
-      <section className="py-20">
-        <h1 className="text-2xl font-bold mb-2">Payments API Example</h1>
-        <p className="text-muted-foreground mb-8 text-sm">
-          Generate a checkout link using{" "}
-          <code className="bg-muted px-1.5 py-0.5 text-xs">
-            @tributary-so/payments
-          </code>
+      <section className="py-20 flex flex-col items-center text-center">
+        <h1 className="text-3xl font-bold mb-2">Tributary Examples</h1>
+        <p className="text-muted-foreground mb-12 text-sm max-w-md">
+          Explore integration patterns for accepting USDC payments on Solana.
         </p>
 
-        <div className="max-w-md space-y-5">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("payment")}
-              className={`flex-1 py-2 text-sm border transition-colors ${mode === "payment"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-accent text-foreground"
-                }`}
-            >
-              One-Time
-            </button>
-            <button
-              onClick={() => setMode("subscription")}
-              className={`flex-1 py-2 text-sm border transition-colors ${mode === "subscription"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border hover:bg-accent text-foreground"
-                }`}
-            >
-              Monthly
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-widest mb-1.5">
-              Recipient Address
-            </label>
-            <input
-              type="text"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              placeholder="Solana wallet address"
-              className="w-full px-3 py-2 text-sm bg-background border border-border focus:border-primary focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-widest mb-1.5">
-              Amount (USDC)
-            </label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              step="0.01"
-              min="0"
-              className="w-full px-3 py-2 text-sm bg-background border border-border focus:border-primary focus:outline-none"
-            />
-          </div>
-
-          <button
-            onClick={handlePaymentRequest}
-            disabled={!recipient || !amount}
-            className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+          <Link
+            to="/checkout"
+            className="group flex flex-col items-center gap-4 border border-border p-8 hover:border-primary hover:bg-muted/50 transition-colors"
           >
-            <Banknote className="h-4 w-4" /> Proceed to Payment
-          </button>
+            <CreditCard className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Checkout Demo</h2>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Generate a hosted checkout link using{" "}
+                <code className="bg-muted px-1 py-0.5">payments API</code>. No
+                wallet connection required.
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            to="/buttons"
+            className="group flex flex-col items-center gap-4 border border-border p-8 hover:border-primary hover:bg-muted/50 transition-colors"
+          >
+            <MousePointerClick className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
+            <div>
+              <h2 className="text-lg font-semibold mb-1">React Buttons</h2>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Drop-in payment &amp; subscription buttons using{" "}
+                <code className="bg-muted px-1 py-0.5">sdk-react</code>.
+                Requires wallet connection.
+              </p>
+            </div>
+          </Link>
         </div>
       </section>
     </main>

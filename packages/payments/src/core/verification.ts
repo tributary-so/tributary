@@ -58,7 +58,8 @@ export interface TributaryJWTPayload {
   aud: string;
   iat: number;
   exp: number;
-  kid: string;
+  jti: string;
+  nbf: number;
   subscriptions: SubscriptionClaim[];
   lastPayments: PaymentRecord[];
 }
@@ -104,8 +105,10 @@ export class TributaryVerifier {
 
   async verify(token: string): Promise<TributaryJWTPayload> {
     const { payload } = await jwtVerify(token, this.jwks, {
+      algorithms: ["ES256"],
       issuer: this.issuer,
       audience: this.audience,
+      clockTolerance: "30s",
     });
     return payload as unknown as TributaryJWTPayload;
   }
@@ -127,7 +130,7 @@ export class TributaryVerifier {
       (p) =>
         p.recipient === options.recipient &&
         p.payer === options.wallet &&
-        (p.memo === options.memo || p.memo.includes(options.memo))
+        p.memo.trim() === options.memo.trim()
     );
 
     if (!match) {
@@ -176,7 +179,7 @@ export class TributaryVerifier {
       (p) =>
         p.recipient === options.recipient &&
         p.payer === options.wallet &&
-        (p.memo === options.memo || p.memo.includes(options.memo))
+        p.memo.trim() === options.memo.trim()
     );
 
     if (!paymentMatch && options.memo) {

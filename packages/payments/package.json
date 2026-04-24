@@ -13,7 +13,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "jest",
+    "test": "jest --testPathIgnorePatterns='verification.e2e.test.ts'",
+    "test:e2e": "npx tsx --test src/core/verification.e2e.test.ts",
     "lint": "exit 0",
     "prepack": "pnpm run build"
   },

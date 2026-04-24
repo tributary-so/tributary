@@ -387,24 +387,6 @@ PayAsYouGo {
 
 **Examples:** Cloud computing, API calls, AI token usage, pay-per-click advertising
 
-## Action Codes Integration
-
-🛳️ **Shipped! Tributary now supports Action Codes!** Trigger secure Solana payments without requiring a wallet. Generate a one-time code on <http://actioncode.app>, review & approve in wallet elsewhere - always in control. Docs: <http://docs.actioncodes.org> @actioncodesorg
-
-**Key Benefits:**
-
-- **Wallet-less initiation**: Generate payment codes without wallet connection
-- **Secure approval**: Review and approve in trusted wallet environment
-- **One-time use**: Each code is single-use for enhanced security
-- **Cross-platform**: Generate on any device, approve on any wallet
-- **Full control**: Users always maintain final approval authority
-
-**Action Codes + Payment Types:**
-
-- **Subscriptions**: Generate codes for initial setup
-- **Milestones**: Create codes for manual milestone approval
-- **Pay-as-you-go**: Enable wallet-less top-up and limit increases
-
 ## Business Applications
 
 Tributary's three payment models support diverse business use cases:
@@ -644,15 +626,26 @@ app.post("/api/chat", (req, res) => {
 
 ## Competitive Landscape
 
-| Solution    | Custody       | Payment Types | UX        | Solana Native | Status          |
-| ----------- | ------------- | ------------- | --------- | ------------- | --------------- |
-| Tributary   | Non-custodial | 3 types       | Excellent | Yes           | Production      |
-| Squads Grid | Non-custodial | smart account | Good      | Yes           | Multi-sig focus |
-| Helio       | Custodial     | 1 type        | Good      | Yes           | Custody risk    |
-| Superfluid  | Non-custodial | 1 type        | Good      | No            | Wrong chain     |
-| Manual      | Manual        | Limited       | Poor      | No            | Status quo      |
+### Payment Protocols
 
-**Tributary Advantage**: Only solution offering multiple payment types (Subscriptions, Milestones, Pay-as-you-go) with native Solana integration and non-custodial security.
+| Solution   | Custody       | Payment Types  | UX        | Solana Native | Status       |
+| ---------- | ------------- | -------------- | --------- | ------------- | ------------ |
+| Tributary  | Non-custodial | 3 types + upto | Excellent | Yes           | Production   |
+| Helio      | Custodial     | 1 type         | Good      | Yes           | Custody risk |
+| Superfluid | Non-custodial | 1 type         | Good      | No            | Wrong chain  |
+| Manual     | Manual        | Limited        | Poor      | No            | Status quo   |
+
+### Smart Wallet Infrastructure (Adjacent Layer)
+
+| Solution | Custody       | Payment Types     | Key Strength                                            | Relation to Tributary                             |
+| -------- | ------------- | ----------------- | ------------------------------------------------------- | ------------------------------------------------- |
+| Squads   | Non-custodial | Grid (stablecoin) | M-of-N multisig, $10B+ TVL, formally verified           | Complementary — team/DAO treasury mgmt            |
+| LazorKit | Non-custodial | None (app-level)  | Passkey-native, gasless UX via Kora paymaster           | Complementary — consumer auth layer               |
+| Swig     | Non-custodial | None (app-level)  | 65K roles, cross-chain identity, on-chain policy engine | Complementary — AI agent/developer access control |
+
+These smart wallets solve _who can authorize_; Tributary solves _what gets paid and when_. They compose naturally: Squads vault + Tributary scheduling = DAO recurring payments; LazorKit passkey + Tributary = gasless consumer subscriptions; Swig roles + Tributary pay-as-you-go = scoped AI agent billing.
+
+**Tributary Advantage**: Only solution offering multiple payment types (Subscriptions, Milestones, Pay-as-you-go, Up-to) with native Solana integration and non-custodial security. Smart wallets lack payment scheduling, milestone tracking, usage metering, and HTTP 402 — Tributary lacks access control, gas abstraction, and multi-party auth. The winning play is integration, not competition.
 
 ## Key Differentiators
 

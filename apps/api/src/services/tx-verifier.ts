@@ -75,7 +75,7 @@ function decodePaymentRecord(data: Buffer): DecodedPaymentRecord {
 
 export async function verifyTransactionPayment(
   signature: string,
-  expectedWallet: string
+  expectedWallet?: string
 ): Promise<OneTimePaymentClaim> {
   const connection = getConnection();
 
@@ -107,7 +107,7 @@ export async function verifyTransactionPayment(
 
     const decoded = decodePaymentRecord(eventData.subarray(8));
 
-    if (decoded.payer.toBase58() !== expectedWallet) {
+    if (expectedWallet && decoded.payer.toBase58() !== expectedWallet) {
       throw new Error("PaymentRecord payer does not match walletPublicKey");
     }
 
