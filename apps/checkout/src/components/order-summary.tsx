@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { ChevronDown, Package, Clock } from "lucide-react";
 import { CheckoutParams } from "@tributary-so/payments";
-import { getTokenSymbol } from "@tributary-so/sdk";
+import { getTokenSymbol } from "@/lib/utils";
 import { Connection } from "@solana/web3.js";
 import config from "@/constants";
 

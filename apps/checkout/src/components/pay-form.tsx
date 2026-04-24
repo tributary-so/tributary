@@ -8,7 +8,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createOneTimePayment, issueOneTimeToken } from "@/lib/tributary";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { toast } from "sonner";
-import { getTokenSymbol } from "@tributary-so/sdk";
+import { getTokenSymbol } from "@/lib/utils";
 import config from "@/constants";
 
 interface PayFormProps {

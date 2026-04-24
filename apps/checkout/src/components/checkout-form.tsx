@@ -8,7 +8,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createSubscription, issueSubscriptionToken } from "@/lib/tributary";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
-import { getTokenSymbol } from "@tributary-so/sdk";
+import { getTokenSymbol } from "@/lib/utils";
 import config from "@/constants";
 
 const connection = new Connection(config.rpcUrl);
