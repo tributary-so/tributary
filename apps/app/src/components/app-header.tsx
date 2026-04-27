@@ -8,9 +8,10 @@ import { ClusterUiSelect } from './cluster/cluster-ui'
 const navItems = [{ label: 'Docs', href: 'https://docs.tributary.so' }]
 
 const hackathons = [
-  { label: 'Cypherpunk', href: '/hackathon' },
   { label: 'x402', href: '/x402' },
   { label: 'Agent', href: '/agent' },
+  { label: 'Cypherpunk', href: '/hackathon' },
+  { label: 'Frontier', href: '/frontier' },
 ]
 
 function ThemeToggle() {

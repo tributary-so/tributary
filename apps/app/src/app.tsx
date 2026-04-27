@@ -10,6 +10,7 @@ const Account = lazy(() => import('@/components/account/account-page'))
 const HackathonCypherpunk = lazy(() => import('@/components/presentation/presentation-feature'))
 const HackathonX402 = lazy(() => import('@/components/presentation/x402-presentation-feature'))
 const HackathonLando = lazy(() => import('@/components/presentation/lando-presentation-feature'))
+const JwtDeck = lazy(() => import('@/components/presentation/jwt-presentation'))
 const ReferalProgram = lazy(() => import('@/components/referral-program/ReferralProgramPage'))
 
 function LoadingFallback() {
@@ -37,6 +38,7 @@ export function App() {
               <Route path="hackathon" element={<HackathonCypherpunk />} />
               <Route path="x402" element={<HackathonX402 />} />
               <Route path="agent" element={<HackathonLando />} />
+              <Route path="frontier" element={<JwtDeck />} />
               <Route path="referral" element={<ReferalProgram />} />
             </Routes>
           </Suspense>
