@@ -51,6 +51,10 @@ pub fn calculate_next_payment_due(
             }
         }
         PaymentFrequency::Custom(interval_seconds) => {
+            require!(
+                *interval_seconds <= i64::MAX as u64,
+                TributaryError::InvalidFrequency
+            );
             // Add custom interval in seconds
             while next_due <= current_timestamp {
                 next_due = next_due

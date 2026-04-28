@@ -131,7 +131,9 @@ impl PolicyStrategy for MilestoneStrategy {
                 ..
             } => {
                 // Move to next milestone
-                *current_milestone += 1;
+                *current_milestone = current_milestone
+                    .checked_add(1)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
 
                 // If we've completed all milestones, pause policy
                 if *current_milestone >= *total_milestones {

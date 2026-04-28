@@ -1,5 +1,6 @@
 use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
+use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
 #[instruction(policy_id: u32)]
@@ -15,8 +16,7 @@ pub struct DeletePaymentPolicy<'info> {
     )]
     pub user_payment: Account<'info, UserPayment>,
 
-    /// CHECK: This is the token mint for the payment
-    pub token_mint: UncheckedAccount<'info>,
+    pub token_mint: Account<'info, Mint>,
 
     #[account(
         mut,

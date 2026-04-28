@@ -1,17 +1,19 @@
 use crate::{constants::*, error::TributaryError, policies::*, state::*};
-use anchor_lang::{prelude::*, solana_program::program_option::COption};
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount as LegacyTokenAccount;
+use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-/// Context for referral reward distribution
 struct ReferralContext<'a, 'info> {
     remaining_accounts: &'info [AccountInfo<'info>],
     user_token_account_info: AccountInfo<'info>,
     payments_delegate_info: AccountInfo<'info>,
     token_program_info: AccountInfo<'info>,
+    mint_info: AccountInfo<'info>,
+    mint_decimals: u8,
     signer_seeds: &'a [&'a [&'a [u8]]],
     expected_mint: Pubkey,
-    payment_policy_key: Pubkey,
     gateway_key: Pubkey,
+    payment_policy_key: Pubkey,
     payment_amount: u64,
     timestamp: i64,
 }
@@ -23,7 +25,7 @@ fn process_referral_rewards<'a, 'info>(
     gateway_fee: u64,
     referral_allocation_bps: u16,
     referral_tiers_bps: &[u16; 3],
-) -> Result<()> {
+) -> Result<u64> {
     let referral_pool = gateway_fee
         .checked_mul(referral_allocation_bps as u64)
         .ok_or(TributaryError::ArithmeticOverflow)?
@@ -31,7 +33,7 @@ fn process_referral_rewards<'a, 'info>(
         .ok_or(TributaryError::ArithmeticOverflow)?;
 
     if referral_pool == 0 {
-        return Ok(());
+        return Ok(referral_pool);
     }
 
     let level1_reward = referral_pool
@@ -54,10 +56,10 @@ fn process_referral_rewards<'a, 'info>(
 
     // Parse remaining accounts into referral and token accounts
     let (referral_accounts, token_accounts) =
-        parse_remaining_accounts(ctx.remaining_accounts, ctx.expected_mint)?;
+        parse_remaining_accounts(ctx.remaining_accounts, ctx.expected_mint, ctx.gateway_key)?;
 
     if referral_accounts.is_empty() {
-        return Ok(());
+        return Ok(0);
     }
 
     let level1_referrer: Option<&AccountLoader<ReferralAccount>> = referral_accounts.last();
@@ -104,7 +106,7 @@ fn process_referral_rewards<'a, 'info>(
         level3_reward
     );
 
-    Ok(())
+    return Ok(referral_pool);
 }
 
 /// Parse remaining accounts into referral AccountLoaders and token account infos
@@ -112,6 +114,7 @@ fn process_referral_rewards<'a, 'info>(
 fn parse_remaining_accounts<'info>(
     remaining_accounts: &'info [AccountInfo<'info>],
     expected_mint: Pubkey,
+    gateway_key: Pubkey,
 ) -> Result<(
     Vec<AccountLoader<'info, ReferralAccount>>,
     Vec<(Pubkey, AccountInfo<'info>)>,
@@ -122,18 +125,17 @@ fn parse_remaining_accounts<'info>(
     for acc in remaining_accounts {
         if acc.data_len() == ReferralAccount::SIZE {
             if let Ok(loader) = AccountLoader::<ReferralAccount>::try_from(acc) {
-                // Verify we can actually load it (validates discriminator)
-                if loader.load().is_ok() {
-                    referral_accounts.push(loader);
-                } else {
-                    return Err(TributaryError::ReferrerAccountInvalid.into());
+                let gateway_check = loader.load().map(|data| data.gateway);
+                match gateway_check {
+                    Ok(gw) if gw == gateway_key => referral_accounts.push(loader),
+                    Ok(_) => return Err(TributaryError::ReferrerAccountInvalid.into()),
+                    Err(_) => return Err(TributaryError::ReferrerAccountInvalid.into()),
                 }
             } else {
                 return Err(TributaryError::ReferrerAccountInvalid.into());
             }
-        } else if acc.data_len() == 165 {
-            // TokenAccount::LEN {
-            if let Ok(token_acc) = Account::<TokenAccount>::try_from(acc.as_ref()) {
+        } else if acc.data_len() >= 165 {
+            if let Ok(token_acc) = Account::<LegacyTokenAccount>::try_from(acc.as_ref()) {
                 if token_acc.mint == expected_mint {
                     token_accounts.push((token_acc.owner, acc.clone()));
                 } else {
@@ -180,9 +182,9 @@ fn transfer_referral_reward<'info>(
             .find(|(owner, _)| *owner == referrer_pubkey)
             .ok_or(TributaryError::MissingReferralAta)?;
 
-        // Transfer the reward
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.user_token_account_info.clone(),
+            mint: ctx.mint_info.clone(),
             to: ata_info.clone(),
             authority: ctx.payments_delegate_info.clone(),
         };
@@ -191,7 +193,7 @@ fn transfer_referral_reward<'info>(
             cpi_accounts,
             ctx.signer_seeds,
         );
-        token::transfer(cpi_ctx, reward)?;
+        token_interface::transfer_checked(cpi_ctx, reward, ctx.mint_decimals)?;
 
         // Update total_earned in the ReferralAccount
         let mut referral_account = loader.load_mut()?;
@@ -205,12 +207,14 @@ fn transfer_referral_reward<'info>(
 }
 
 pub fn token_account_has_delegate(
-    token_account: &TokenAccount,
+    delegate: &anchor_lang::solana_program::program_option::COption<Pubkey>,
     expected_delegate: &Pubkey,
 ) -> bool {
-    match token_account.delegate {
-        COption::Some(delegate) => delegate == *expected_delegate,
-        COption::None => false,
+    match delegate {
+        anchor_lang::solana_program::program_option::COption::Some(delegate) => {
+            delegate == expected_delegate
+        }
+        anchor_lang::solana_program::program_option::COption::None => false,
     }
 }
 
@@ -269,32 +273,37 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
-        constraint = token_account_has_delegate(&user_token_account, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
+        constraint = token_account_has_delegate(&user_token_account.delegate, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         constraint = recipient_token_account.mint == user_payment.token_mint,
         constraint = recipient_token_account.owner == payment_policy.recipient,
+        constraint = recipient_token_account.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
+        constraint = recipient_token_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
-    pub recipient_token_account: Account<'info, TokenAccount>,
+    pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         constraint = gateway_fee_account.mint == user_payment.token_mint,
         constraint = gateway_fee_account.owner == gateway.fee_recipient,
+        constraint = gateway_fee_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
-    pub gateway_fee_account: Account<'info, TokenAccount>,
+    pub gateway_fee_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         constraint = protocol_fee_account.mint == user_payment.token_mint,
         constraint = protocol_fee_account.owner == config.fee_recipient,
     )]
-    pub protocol_fee_account: Account<'info, TokenAccount>,
+    pub protocol_fee_account: InterfaceAccount<'info, TokenAccount>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> ExecutePayment<'info> {
@@ -318,6 +327,8 @@ impl<'info> ExecutePayment<'info> {
         let protocol_fee_account_info = accounts.protocol_fee_account.to_account_info();
         let payments_delegate_info = accounts.payments_delegate.to_account_info();
         let token_program_info = accounts.token_program.to_account_info();
+        let mint_info = accounts.mint.to_account_info();
+        let mint_decimals = accounts.mint.decimals;
         let payments_delegate_bump = ctx.bumps.payments_delegate;
         let expected_mint = accounts.user_token_account.mint;
 
@@ -358,7 +369,7 @@ impl<'info> ExecutePayment<'info> {
         }
 
         // Calculate fees (same calculation for both modes)
-        let gateway_fee = payment_amount
+        let mut gateway_fee = payment_amount
             .checked_mul(gateway.gateway_fee_bps as u64)
             .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
@@ -412,38 +423,15 @@ impl<'info> ExecutePayment<'info> {
         let signer_seeds = &[&seeds[..]];
 
         if recipient_amount > 0 {
-            let cpi_accounts = Transfer {
+            let cpi_accounts = TransferChecked {
                 from: user_token_account_info.clone(),
+                mint: mint_info.clone(),
                 to: recipient_token_account_info.clone(),
                 authority: payments_delegate_info.clone(),
             };
             let cpi_ctx =
                 CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
-            token::transfer(cpi_ctx, recipient_amount)?;
-        }
-
-        // Transfer gateway fee
-        if gateway_fee > 0 {
-            let cpi_accounts = Transfer {
-                from: user_token_account_info.clone(),
-                to: gateway_fee_account_info.clone(),
-                authority: payments_delegate_info.clone(),
-            };
-            let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
-            token::transfer(cpi_ctx, gateway_fee)?;
-        }
-
-        // Transfer protocol fee
-        if protocol_fee > 0 {
-            let cpi_accounts = Transfer {
-                from: user_token_account_info.clone(),
-                to: protocol_fee_account_info.clone(),
-                authority: payments_delegate_info.clone(),
-            };
-            let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
-            token::transfer(cpi_ctx, protocol_fee)?;
+            token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
         }
 
         // Process referral rewards if enabled
@@ -453,19 +441,50 @@ impl<'info> ExecutePayment<'info> {
                 user_token_account_info: user_token_account_info.clone(),
                 payments_delegate_info: payments_delegate_info.clone(),
                 token_program_info: token_program_info.clone(),
+                mint_info: mint_info.clone(),
+                mint_decimals,
                 signer_seeds,
                 expected_mint,
-                payment_policy_key,
                 gateway_key: gateway.key(),
+                payment_policy_key,
                 payment_amount,
                 timestamp: clock.unix_timestamp,
             };
-            process_referral_rewards(
+            let referral_pool = process_referral_rewards(
                 referral_ctx,
                 gateway_fee,
                 gateway.referral_allocation_bps,
                 &gateway.referral_tiers_bps,
             )?;
+
+            // deduct the referral reward from the gateway's rewards
+            gateway_fee -= referral_pool;
+        }
+
+        // Transfer gateway fee
+        if gateway_fee > 0 {
+            let cpi_accounts = TransferChecked {
+                from: user_token_account_info.clone(),
+                mint: mint_info.clone(),
+                to: gateway_fee_account_info.clone(),
+                authority: payments_delegate_info.clone(),
+            };
+            let cpi_ctx =
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+            token_interface::transfer_checked(cpi_ctx, gateway_fee, mint_decimals)?;
+        }
+
+        // Transfer protocol fee
+        if protocol_fee > 0 {
+            let cpi_accounts = TransferChecked {
+                from: user_token_account_info.clone(),
+                mint: mint_info.clone(),
+                to: protocol_fee_account_info.clone(),
+                authority: payments_delegate_info.clone(),
+            };
+            let cpi_ctx =
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+            token_interface::transfer_checked(cpi_ctx, protocol_fee, mint_decimals)?;
         }
 
         payment_policy.total_paid = payment_policy
