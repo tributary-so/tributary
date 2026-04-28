@@ -21,7 +21,14 @@ const GATEWAY = new PublicKey("CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr");
   maxRenewals={12}
   memo="Pro subscription"
   executeImmediately={true}
+  fetchToken={true}
+  tokenIssuerConfig={{
+    apiBaseUrl: "https://api.tributary.so",
+    trackingId: "your-tracking-id",
+  }}
   label="Subscribe $10/month"
+  radius="lg"
+  size="lg"
   onSuccess={(result) => console.log("Success:", result.txId)}
   onError={(err) => console.error("Failed:", err)}
 />;
@@ -29,23 +36,28 @@ const GATEWAY = new PublicKey("CwNybLVQ3sVmcZ3Q1veS6x99gUZcAF2duNDe3qbcEMGr");
 
 ### SubscriptionButton Props
 
-| Prop                 | Type               | Required | Description                                                 |
-| -------------------- | ------------------ | -------- | ----------------------------------------------------------- |
-| `amount`             | `BN`               | Yes      | Payment amount in smallest token units (USDC: 6 decimals)   |
-| `token`              | `PublicKey`        | Yes      | Token mint address                                          |
-| `recipient`          | `PublicKey`        | Yes      | Recipient wallet address                                    |
-| `gateway`            | `PublicKey`        | Yes      | Payment gateway address                                     |
-| `interval`           | `PaymentInterval`  | Yes      | Payment frequency                                           |
-| `custom_interval`    | `number`           | No       | Custom interval in seconds (required if interval is Custom) |
-| `maxRenewals`        | `number`           | No       | Maximum renewals (null = unlimited)                         |
-| `memo`               | `string`           | No       | Payment memo                                                |
-| `startTime`          | `number`           | No       | Start timestamp (null = now)                                |
-| `executeImmediately` | `boolean`          | No       | Execute first payment now (default: true)                   |
-| `label`              | `string`           | No       | Button text (default: "Subscribe")                          |
-| `className`          | `string`           | No       | CSS classes                                                 |
-| `disabled`           | `boolean`          | No       | Disable button                                              |
-| `onSuccess`          | `(result) => void` | No       | Success callback with `{ txId, instructions }`              |
-| `onError`            | `(error) => void`  | No       | Error callback                                              |
+| Prop                 | Type               | Required | Description                                                                         |
+| -------------------- | ------------------ | -------- | ----------------------------------------------------------------------------------- |
+| `amount`             | `BN`               | Yes      | Payment amount in smallest token units (USDC: 6 decimals)                           |
+| `token`              | `PublicKey`        | Yes      | Token mint address                                                                  |
+| `recipient`          | `PublicKey`        | Yes      | Recipient wallet address                                                            |
+| `gateway`            | `PublicKey`        | Yes      | Payment gateway address                                                             |
+| `interval`           | `PaymentInterval`  | Yes      | Payment frequency                                                                   |
+| `custom_interval`    | `number`           | No       | Custom interval in seconds (required if interval is Custom)                         |
+| `maxRenewals`        | `number`           | No       | Maximum renewals (null = unlimited)                                                 |
+| `memo`               | `string`           | No       | Payment memo                                                                        |
+| `startTime`          | `Date`             | No       | Start date (null = now)                                                             |
+| `approvalAmount`     | `BN`               | No       | Token approval amount                                                               |
+| `executeImmediately` | `boolean`          | No       | Execute first payment now (default: true)                                           |
+| `fetchToken`         | `boolean`          | No       | Fetch token info from issuer API before creating subscription (default: false)      |
+| `tokenIssuerConfig`  | `object`           | No       | Token issuer config: `{ apiBaseUrl: string, trackingId?: string }`                  |
+| `label`              | `string`           | No       | Button text (default: "Subscribe")                                                  |
+| `className`          | `string`           | No       | CSS classes                                                                         |
+| `disabled`           | `boolean`          | No       | Disable button                                                                      |
+| `radius`             | `string`           | No       | Button radius: `"none"` \| `"sm"` \| `"md"` \| `"lg"` \| `"full"` (default: "none") |
+| `size`               | `string`           | No       | Button size: `"sm"` \| `"md"` \| `"lg"` (default: "lg")                             |
+| `onSuccess`          | `(result) => void` | No       | Success callback with `{ txId, instructions }`                                      |
+| `onError`            | `(error) => void`  | No       | Error callback                                                                      |
 
 ## MilestoneButton
 
