@@ -124,11 +124,7 @@ export type Tributary = {
           }
         },
         {
-          "name": "newFeeRecipient",
-          "docs": [
-            "be used to derive the associated token account from. So we don't have to check anything",
-            "really, FIXME: do we?"
-          ]
+          "name": "newFeeRecipient"
         },
         {
           "name": "config",
@@ -1074,6 +1070,9 @@ export type Tributary = {
           "writable": true
         },
         {
+          "name": "mint"
+        },
+        {
           "name": "recipientTokenAccount",
           "writable": true
         },
@@ -1161,6 +1160,9 @@ export type Tributary = {
           "writable": true
         },
         {
+          "name": "mint"
+        },
+        {
           "name": "to",
           "writable": true
         },
@@ -1169,8 +1171,7 @@ export type Tributary = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         }
       ],
       "args": [
@@ -1718,6 +1719,11 @@ export type Tributary = {
       "code": 6034,
       "name": "tokenMintMismatch",
       "msg": "Token mint mismatch between accounts"
+    },
+    {
+      "code": 6035,
+      "name": "transferHookNotSupported",
+      "msg": "Token-2022 TransferHook mints are not currently supported"
     }
   ],
   "types": [

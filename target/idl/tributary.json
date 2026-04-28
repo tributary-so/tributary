@@ -118,11 +118,7 @@
           }
         },
         {
-          "name": "new_fee_recipient",
-          "docs": [
-            "be used to derive the associated token account from. So we don't have to check anything",
-            "really, FIXME: do we?"
-          ]
+          "name": "new_fee_recipient"
         },
         {
           "name": "config",
@@ -1068,6 +1064,9 @@
           "writable": true
         },
         {
+          "name": "mint"
+        },
+        {
           "name": "recipient_token_account",
           "writable": true
         },
@@ -1155,6 +1154,9 @@
           "writable": true
         },
         {
+          "name": "mint"
+        },
+        {
           "name": "to",
           "writable": true
         },
@@ -1163,8 +1165,7 @@
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "token_program"
         }
       ],
       "args": [
@@ -1712,6 +1713,11 @@
       "code": 6034,
       "name": "TokenMintMismatch",
       "msg": "Token mint mismatch between accounts"
+    },
+    {
+      "code": 6035,
+      "name": "TransferHookNotSupported",
+      "msg": "Token-2022 TransferHook mints are not currently supported"
     }
   ],
   "types": [

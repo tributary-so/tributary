@@ -1326,6 +1326,7 @@ export class Tributary {
       gatewayFeeAccount: gatewayFeeAccount,
       protocolFeeAccount: protocolFeeAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
+      mint: _tokenMint,
     };
 
     // Build instruction with remaining accounts for referrals
@@ -2145,7 +2146,8 @@ export class Tributary {
     from: PublicKey,
     to: PublicKey,
     amount: BN,
-    memo: string | number[]
+    memo: string | number[],
+    mint: PublicKey
   ): Promise<TransactionInstruction> {
     const memoBytes = typeof memo === "string" ? encodeMemo(memo, 64) : memo;
 
@@ -2162,6 +2164,7 @@ export class Tributary {
         to,
         authority: this.provider.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
+        mint,
       })
       .instruction();
   }

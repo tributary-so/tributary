@@ -64,7 +64,7 @@ describe("Tributary", () => {
         lamports: amount * LAMPORTS_PER_SOL,
       })
     );
-    const signature = await provider.sendAndConfirm(transaction, null, {
+    await provider.sendAndConfirm(transaction, null, {
       commitment: "processed" as Commitment,
     });
   }
@@ -570,7 +570,6 @@ describe("Tributary", () => {
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
-      const testIntervalSeconds = new anchor.BN(86400); // 1 day
       const testMemo = new Uint8Array(64).fill(0);
       Buffer.from("executeImmediately test").copy(testMemo);
       const testPaymentFrequency = { daily: {} };
@@ -648,7 +647,6 @@ describe("Tributary", () => {
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
-      const testIntervalSeconds = new anchor.BN(86400); // 1 day
       const testMemo = new Uint8Array(64).fill(0);
       Buffer.from("executeImmediately test").copy(testMemo);
       const testPaymentFrequency = { daily: {} };
@@ -2829,7 +2827,7 @@ describe("Tributary", () => {
       );
       const initialProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
 
       // Execute payment
@@ -2861,7 +2859,7 @@ describe("Tributary", () => {
       // Verify NO protocol fee was charged (admin balance unchanged)
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
         parseInt(initialProtocolFeeRecipientBalance.value.amount)
@@ -2959,7 +2957,7 @@ describe("Tributary", () => {
       );
       const initialProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
 
       // Execute payment - should use global 100 bps protocol fee
@@ -2992,7 +2990,7 @@ describe("Tributary", () => {
       // Verify protocol fee WAS charged
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
         parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolFee
@@ -3082,7 +3080,8 @@ describe("Tributary", () => {
         transferUserTokenAccount,
         transferRecipientTokenAccount,
         transferAmount,
-        "one-time payment #12345"
+        "one-time payment #12345",
+        tokenMint
       );
 
       const tx = new Transaction().add(transferIx);
@@ -3114,7 +3113,8 @@ describe("Tributary", () => {
           transferUserTokenAccount,
           transferRecipientTokenAccount,
           new anchor.BN(0),
-          "zero amount test"
+          "zero amount test",
+          tokenMint
         );
 
         const tx = new Transaction().add(transferIx);
@@ -3143,7 +3143,8 @@ describe("Tributary", () => {
           transferUserTokenAccount,
           transferRecipientTokenAccount,
           excessiveAmount,
-          "insufficient balance test"
+          "insufficient balance test",
+          tokenMint
         );
 
         const tx = new Transaction().add(transferIx);
@@ -3189,7 +3190,8 @@ describe("Tributary", () => {
           transferUserTokenAccount,
           differentTokenAccount,
           new anchor.BN(100000),
-          "mint mismatch test"
+          "mint mismatch test",
+          tokenMint
         );
 
         const tx = new Transaction().add(transferIx);
@@ -3214,7 +3216,8 @@ describe("Tributary", () => {
           transferUserTokenAccount,
           transferRecipientTokenAccount,
           new anchor.BN(100000),
-          "unauthorized transfer test"
+          "unauthorized transfer test",
+          tokenMint
         );
 
         const tx = new Transaction().add(transferIx);
@@ -3241,7 +3244,8 @@ describe("Tributary", () => {
         transferUserTokenAccount,
         transferRecipientTokenAccount,
         transferAmount,
-        ""
+        "",
+        tokenMint
       );
 
       const tx = new Transaction().add(transferIx);
@@ -3272,7 +3276,8 @@ describe("Tributary", () => {
         transferUserTokenAccount,
         transferRecipientTokenAccount,
         transferAmount,
-        "Invoice #INV-2024-001234: Payment for services rendered"
+        "Invoice #INV-2024-001234: Payment for services rendered",
+        tokenMint
       );
 
       const tx = new Transaction().add(transferIx);
@@ -3305,7 +3310,8 @@ describe("Tributary", () => {
           transferUserTokenAccount,
           transferRecipientTokenAccount,
           new anchor.BN(transferAmounts[i]),
-          `batch transfer #${i + 1}`
+          `batch transfer #${i + 1}`,
+          tokenMint
         );
 
         const tx = new Transaction().add(transferIx);
