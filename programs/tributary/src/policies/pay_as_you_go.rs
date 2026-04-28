@@ -69,32 +69,12 @@ impl PolicyStrategy for PayAsYouGoStrategy {
 
     fn update_policy_state(
         &mut self,
-        payment_policy: &mut PaymentPolicy,
-        current_time: i64,
+        _payment_policy: &mut PaymentPolicy,
+        _current_time: i64,
     ) -> Result<()> {
-        match &mut payment_policy.policy_type {
-            PolicyType::PayAsYouGo {
-                period_length_seconds,
-                current_period_start,
-                current_period_total,
-                ..
-            } => {
-                require!(
-                    *period_length_seconds <= i64::MAX as u64,
-                    TributaryError::InvalidInterval
-                );
-
-                // Check if we need to reset period
-                let period_end = *current_period_start + *period_length_seconds as i64;
-                if current_time >= period_end {
-                    // Reset period
-                    *current_period_start = current_time;
-                    *current_period_total = 0;
-                }
-                Ok(())
-            }
-            _ => err!(TributaryError::InvalidAmount),
-        }
+        // Period management handled entirely by validate_payment_constraints
+        // + update_period_total to avoid duplicated reset logic.
+        Ok(())
     }
 
     fn should_pause_policy(&self, _payment_policy: &PaymentPolicy) -> bool {

@@ -1,69 +1,88 @@
 use crate::{error::TributaryError, PaymentFrequency};
 use anchor_lang::prelude::*;
 
-/// Calculate the next payment due date based on payment frequency
+/// Validate that a Token-2022 mint does not have a TransferHook extension configured.
+/// Legacy SPL Token mints are always allowed (no extensions possible).
+pub fn validate_mint_no_transfer_hook(mint_info: &AccountInfo) -> Result<()> {
+    if *mint_info.owner != anchor_spl::token_2022::ID {
+        return Ok(());
+    }
+
+    let data = mint_info
+        .try_borrow_data()
+        .map_err(|_| TributaryError::InvalidTokenAccount)?;
+
+    use anchor_spl::token_2022::spl_token_2022::{
+        extension::{transfer_hook::TransferHook, BaseStateWithExtensions, StateWithExtensions},
+        state::Mint as Token2022Mint,
+    };
+
+    if let Ok(state) = StateWithExtensions::<Token2022Mint>::unpack(&data) {
+        if state.get_extension::<TransferHook>().is_ok() {
+            return Err(TributaryError::TransferHookNotSupported.into());
+        }
+    }
+
+    Ok(())
+}
+
+const MAX_MONTHLY_ITERATIONS: u32 = 1200;
+
+/// Calculate the next payment due date based on payment frequency.
+/// Fixed-interval frequencies (Daily, Weekly, Custom) use O(1) arithmetic.
+/// Variable-interval frequencies (Monthly, Quarterly, etc.) use a bounded loop.
 pub fn calculate_next_payment_due(
     current_due: i64,
     frequency: &PaymentFrequency,
     current_timestamp: i64,
 ) -> Result<i64> {
-    let mut next_due = current_due;
+    if current_due > current_timestamp {
+        return Ok(current_due);
+    }
 
     match frequency {
-        PaymentFrequency::Daily => {
-            // Add 24 hours (86400 seconds)
-            while next_due <= current_timestamp {
-                next_due = next_due
-                    .checked_add(86400)
-                    .ok_or(TributaryError::ArithmeticOverflow)?;
-            }
-        }
-        PaymentFrequency::Weekly => {
-            // Add 7 days (604800 seconds)
-            while next_due <= current_timestamp {
-                next_due = next_due
-                    .checked_add(604800)
-                    .ok_or(TributaryError::ArithmeticOverflow)?;
-            }
-        }
-        PaymentFrequency::Monthly => {
-            // Add one month, maintaining the same day
-            while next_due <= current_timestamp {
-                next_due = add_months(next_due, 1)?;
-            }
-        }
-        PaymentFrequency::Quarterly => {
-            // Add 3 months, maintaining the same day
-            while next_due <= current_timestamp {
-                next_due = add_months(next_due, 3)?;
-            }
-        }
-        PaymentFrequency::SemiAnnually => {
-            // Add 6 months, maintaining the same day
-            while next_due <= current_timestamp {
-                next_due = add_months(next_due, 6)?;
-            }
-        }
-        PaymentFrequency::Annually => {
-            // Add 12 months, maintaining the same day
-            while next_due <= current_timestamp {
-                next_due = add_months(next_due, 12)?;
-            }
-        }
+        PaymentFrequency::Daily => skip_fixed_interval(current_due, current_timestamp, 86400),
+        PaymentFrequency::Weekly => skip_fixed_interval(current_due, current_timestamp, 604800),
+        PaymentFrequency::Monthly => skip_months(current_due, current_timestamp, 1),
+        PaymentFrequency::Quarterly => skip_months(current_due, current_timestamp, 3),
+        PaymentFrequency::SemiAnnually => skip_months(current_due, current_timestamp, 6),
+        PaymentFrequency::Annually => skip_months(current_due, current_timestamp, 12),
         PaymentFrequency::Custom(interval_seconds) => {
+            require!(*interval_seconds > 0, TributaryError::InvalidFrequency);
             require!(
                 *interval_seconds <= i64::MAX as u64,
                 TributaryError::InvalidFrequency
             );
-            // Add custom interval in seconds
-            while next_due <= current_timestamp {
-                next_due = next_due
-                    .checked_add(*interval_seconds as i64)
-                    .ok_or(TributaryError::ArithmeticOverflow)?;
-            }
+            skip_fixed_interval(current_due, current_timestamp, *interval_seconds as i64)
         }
     }
+}
 
+fn skip_fixed_interval(current_due: i64, current_timestamp: i64, interval: i64) -> Result<i64> {
+    let elapsed = current_timestamp.saturating_sub(current_due);
+    let intervals_to_skip = (elapsed / interval)
+        .checked_add(1)
+        .ok_or(TributaryError::ArithmeticOverflow)?;
+    current_due
+        .checked_add(
+            intervals_to_skip
+                .checked_mul(interval)
+                .ok_or(TributaryError::ArithmeticOverflow)?,
+        )
+        .ok_or(TributaryError::ArithmeticOverflow.into())
+}
+
+fn skip_months(current_due: i64, current_timestamp: i64, months: i32) -> Result<i64> {
+    let mut next_due = current_due;
+    let mut iterations = 0u32;
+    while next_due <= current_timestamp {
+        require!(
+            iterations < MAX_MONTHLY_ITERATIONS,
+            TributaryError::ArithmeticOverflow
+        );
+        next_due = add_months(next_due, months)?;
+        iterations = iterations.saturating_add(1);
+    }
     Ok(next_due)
 }
 

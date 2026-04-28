@@ -124,6 +124,9 @@ fn parse_remaining_accounts<'info>(
 
     for acc in remaining_accounts {
         if acc.data_len() == ReferralAccount::SIZE {
+            if !acc.is_writable {
+                return Err(TributaryError::ReferrerMustBeWritable.into());
+            }
             if let Ok(loader) = AccountLoader::<ReferralAccount>::try_from(acc) {
                 let gateway_check = loader.load().map(|data| data.gateway);
                 match gateway_check {
@@ -274,6 +277,9 @@ pub struct ExecutePayment<'info> {
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
         constraint = token_account_has_delegate(&user_token_account.delegate, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
+        constraint = user_token_account.key() != recipient_token_account.key() @ TributaryError::InvalidAmount,
+        constraint = user_token_account.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
+        constraint = user_token_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
     pub user_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -457,8 +463,9 @@ impl<'info> ExecutePayment<'info> {
                 &gateway.referral_tiers_bps,
             )?;
 
-            // deduct the referral reward from the gateway's rewards
-            gateway_fee -= referral_pool;
+            gateway_fee = gateway_fee
+                .checked_sub(referral_pool)
+                .ok_or(TributaryError::ArithmeticOverflow)?;
         }
 
         // Transfer gateway fee
@@ -489,7 +496,7 @@ impl<'info> ExecutePayment<'info> {
 
         payment_policy.total_paid = payment_policy
             .total_paid
-            .checked_add(payment_amount)
+            .checked_add(total_amount_from_user)
             .ok_or(TributaryError::ArithmeticOverflow)?;
         payment_policy.payment_count = payment_policy
             .payment_count
