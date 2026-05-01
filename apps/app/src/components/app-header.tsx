@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { ChevronDown, Moon, Sun } from 'lucide-react'
 import { WalletButton } from '@/components/solana/solana-provider'
@@ -75,6 +75,9 @@ export function AppHeader() {
       }, 100)
     }
   }, [])
+
+  const location = useLocation()
+  if (location.pathname == '/frontier') return
 
   return (
     <header className="py-6">
