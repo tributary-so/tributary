@@ -98,10 +98,21 @@ jobs:
           fi
           if echo "$CHANGED_FILES" | grep -q "^packages/sdk/"; then
             HAS_SDK=1
+            # require rebuild when sdk changes!
+            HAS_API=1
+            HAS_APP=1
+            HAS_CHECKOUT=1
+            HAS_CLI=1
+            HAS_PAYMENTS=1
+            HAS_SCHEDULER=1
+            HAS_SDK_REACT=1
+            HAS_SDK_X402=1
             echo "::notice::SDK changed"
           fi
           if echo "$CHANGED_FILES" | grep -q "^packages/payments/"; then
             HAS_PAYMENTS=1
+            # require rebuild when payments changes!
+            HAS_CHECKOUT=1
             echo "::notice::Payments changed"
           fi
           if echo "$CHANGED_FILES" | grep -q "^packages/sdk-react/"; then
