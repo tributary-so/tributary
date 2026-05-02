@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 import logo from "../assets/logo.png";
 
 const products = [
