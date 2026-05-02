@@ -33,6 +33,10 @@ jobs:
         working-directory: ./packages/sdk-react
         run: pnpm run build
 
+      - name: Build SDK-payments
+        working-directory: ./packages/payments
+        run: pnpm run build
+
       - name: Build App
         working-directory: ./apps/app
         run: pnpm run build
