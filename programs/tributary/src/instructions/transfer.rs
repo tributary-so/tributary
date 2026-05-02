@@ -42,9 +42,7 @@ pub struct TransferTokens<'info> {
     #[account(
         mut,
         constraint = from.mint == to.mint @ TributaryError::TokenMintMismatch,
-        constraint = to.key() != from.key() @ TributaryError::InvalidAmount,
-        constraint = to.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
-        constraint = to.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
+        constraint = to.key() != from.key() @ TributaryError::DistinctPubKeysRequired,
     )]
     pub to: InterfaceAccount<'info, TokenAccount>,
 
@@ -52,7 +50,6 @@ pub struct TransferTokens<'info> {
         mut,
         constraint = gateway_fee_account.mint == from.mint @ TributaryError::TokenMintMismatch,
         constraint = gateway_fee_account.owner == gateway.fee_recipient,
-        constraint = gateway_fee_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
     pub gateway_fee_account: InterfaceAccount<'info, TokenAccount>,
 

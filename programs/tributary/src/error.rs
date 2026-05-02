@@ -76,4 +76,6 @@ pub enum TributaryError {
     TokenMintMismatch,
     #[msg("Token-2022 TransferHook mints are not currently supported")]
     TransferHookNotSupported,
+    #[msg("Distinct Pubkeys required!")]
+    DistinctPubKeysRequired,
 }
