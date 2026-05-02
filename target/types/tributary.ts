@@ -1775,6 +1775,11 @@ export type Tributary = {
       "code": 6035,
       "name": "transferHookNotSupported",
       "msg": "Token-2022 TransferHook mints are not currently supported"
+    },
+    {
+      "code": 6036,
+      "name": "distinctPubKeysRequired",
+      "msg": "Distinct Pubkeys required!"
     }
   ],
   "types": [

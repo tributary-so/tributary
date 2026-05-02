@@ -1769,6 +1769,11 @@
       "code": 6035,
       "name": "TransferHookNotSupported",
       "msg": "Token-2022 TransferHook mints are not currently supported"
+    },
+    {
+      "code": 6036,
+      "name": "DistinctPubKeysRequired",
+      "msg": "Distinct Pubkeys required!"
     }
   ],
   "types": [

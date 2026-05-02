@@ -73,9 +73,6 @@ pub struct ExecutePayment<'info> {
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
         constraint = token_account_has_delegate(&user_token_account.delegate, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
-        constraint = user_token_account.key() != recipient_token_account.key() @ TributaryError::InvalidAmount,
-        constraint = user_token_account.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
-        constraint = user_token_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
     pub user_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -86,8 +83,6 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = recipient_token_account.mint == user_payment.token_mint,
         constraint = recipient_token_account.owner == payment_policy.recipient,
-        constraint = recipient_token_account.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
-        constraint = recipient_token_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -95,7 +90,6 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = gateway_fee_account.mint == user_payment.token_mint,
         constraint = gateway_fee_account.owner == gateway.fee_recipient,
-        constraint = gateway_fee_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
     pub gateway_fee_account: InterfaceAccount<'info, TokenAccount>,
 
