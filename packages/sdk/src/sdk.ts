@@ -1824,11 +1824,7 @@ export class Tributary {
   async getAllPaymentPolicies(): Promise<
     Array<{ publicKey: PublicKey; account: PaymentPolicy }>
   > {
-    return await this.program.account.paymentPolicy.all([
-      {
-        dataSize: 586,
-      },
-    ]);
+    return await this.program.account.paymentPolicy.all([]);
   }
 
   /**
@@ -1838,11 +1834,7 @@ export class Tributary {
   async getAllUserPayments(): Promise<
     Array<{ publicKey: PublicKey; account: UserPayment }>
   > {
-    return await this.program.account.userPayment.all([
-      {
-        dataSize: 382,
-      },
-    ]);
+    return await this.program.account.userPayment.all([]);
   }
 
   /**
@@ -1854,9 +1846,6 @@ export class Tributary {
     owner: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: UserPayment }>> {
     return await this.program.account.userPayment.all([
-      {
-        dataSize: 382,
-      },
       {
         memcmp: {
           offset: 8, // Skip discriminator
@@ -1888,9 +1877,6 @@ export class Tributary {
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
-        dataSize: 586,
-      },
-      {
         memcmp: {
           offset: 8 + 32, // Skip discriminator
           bytes: user.toBase58(),
@@ -1909,9 +1895,6 @@ export class Tributary {
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
-        dataSize: 586,
-      },
-      {
         memcmp: {
           offset: 8 + 32 + 32, // Skip discriminator + user_payment + recipient
           bytes: gateway.toBase58(),
@@ -1929,9 +1912,6 @@ export class Tributary {
     userPayment: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
-      {
-        dataSize: 586,
-      },
       {
         memcmp: {
           offset: 8, // Skip discriminator
@@ -1956,9 +1936,6 @@ export class Tributary {
       tokenMint
     ).address;
     return await this.program.account.paymentPolicy.all([
-      {
-        dataSize: 586,
-      },
       {
         memcmp: {
           offset: 8, // Skip discriminator
