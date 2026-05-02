@@ -1150,6 +1150,52 @@
       ],
       "accounts": [
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "PaymentGateway"
+              }
+            ]
+          }
+        },
+        {
           "name": "from",
           "writable": true
         },
@@ -1161,11 +1207,16 @@
           "writable": true
         },
         {
-          "name": "authority",
-          "signer": true
+          "name": "gateway_fee_account",
+          "writable": true
         },
         {
-          "name": "token_program"
+          "name": "protocol_fee_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [

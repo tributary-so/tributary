@@ -2142,31 +2142,172 @@ export class Tributary {
     throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
   }
 
+  /**
+   * Executes a one-time token transfer with protocol and gateway fee distribution.
+   * The amount parameter is the GROSS amount - the total that leaves the user's wallet.
+   * Fees are deducted from this amount: recipient gets (amount - gateway_fee - protocol_fee).
+   *
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway account (PDA)
+   * @param amount - GROSS amount to transfer (total leaving user's wallet, fees included)
+   * @param memo - Memo string or 64-byte array to include with the payment
+   * @param referralCode - Optional 6-character referral code for referral rewards
+   * @returns Array of transaction instructions (ATA creation + transfer)
+   */
   async transfer(
-    from: PublicKey,
-    to: PublicKey,
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
     amount: BN,
     memo: string | number[],
-    mint: PublicKey
-  ): Promise<TransactionInstruction> {
-    const memoBytes = typeof memo === "string" ? encodeMemo(memo, 64) : memo;
+    referralCode?: string
+  ): Promise<TransactionInstruction[]> {
+    const instructions: TransactionInstruction[] = [];
+    const authority = this.provider.publicKey;
 
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const fromAta = getAssociatedTokenAddressSync(tokenMint, authority);
+    const toAta = getAssociatedTokenAddressSync(tokenMint, recipient);
+
+    const gatewayAccount = await this.getPaymentGateway(gateway);
+    if (!gatewayAccount) {
+      throw new Error("Gateway not found");
+    }
+    const config = await this.getProgramConfig(configPda);
+    if (!config) {
+      throw new Error("Program config not found");
+    }
+
+    // Recipient ATA
+    const recipientAccountInfo = await this.connection.getAccountInfo(toAta);
+    if (!recipientAccountInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          authority,
+          toAta,
+          recipient,
+          tokenMint,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
+      );
+    }
+
+    // Gateway fee account ATA
+    const gatewayFeeAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gatewayAccount.feeRecipient
+    );
+    const gatewayFeeInfo = await this.connection.getAccountInfo(
+      gatewayFeeAccount
+    );
+    if (!gatewayFeeInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          authority,
+          gatewayFeeAccount,
+          gatewayAccount.feeRecipient,
+          tokenMint,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
+      );
+    }
+
+    // Protocol fee account ATA
+    const protocolFeeAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      config.feeRecipient
+    );
+    const protocolFeeInfo = await this.connection.getAccountInfo(
+      protocolFeeAccount
+    );
+    if (!protocolFeeInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          authority,
+          protocolFeeAccount,
+          config.feeRecipient,
+          tokenMint,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
+      );
+    }
+
+    const memoBytes = typeof memo === "string" ? encodeMemo(memo, 64) : memo;
     if (memoBytes.length !== 64) {
       throw new Error("Memo must be exactly 64 bytes");
     }
-
     const memoArray = memoBytes as [number, ...number[]] & { length: 64 };
 
-    return await this.program.methods
+    const accounts = {
+      authority,
+      config: configPda,
+      gateway,
+      from: fromAta,
+      mint: tokenMint,
+      to: toAta,
+      gatewayFeeAccount,
+      protocolFeeAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+
+    let transferIx = await this.program.methods
       .transfer(amount, memoArray)
-      .accountsStrict({
-        from,
-        to,
-        authority: this.provider.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint,
-      })
+      .accountsStrict(accounts)
       .instruction();
+
+    // Build referral chain if referral code provided and referrals enabled
+    if (
+      referralCode &&
+      gatewayAccount.featureFlags &&
+      gatewayAccount.referralAllocationBps > 0
+    ) {
+      const referralEnabled = (gatewayAccount.featureFlags & 1) === 1;
+      if (referralEnabled) {
+        const referralChain = await this.getReferralChain(authority, gateway);
+        const referralAccounts = referralChain.filter(
+          (ref): ref is PublicKey => ref !== null
+        );
+
+        if (referralAccounts.length > 0) {
+          const remainingAccounts = [];
+          for (const referrer of referralAccounts) {
+            remainingAccounts.push({
+              pubkey: referrer,
+              isWritable: true,
+              isSigner: false,
+            });
+          }
+          for (const referrer of referralAccounts) {
+            const referrerAccount = await this.getReferralAccount(referrer);
+            if (!referrerAccount) {
+              throw new Error("Missing referral account for referrer");
+            }
+            remainingAccounts.push({
+              pubkey: getAssociatedTokenAddressSync(
+                tokenMint,
+                referrerAccount.owner
+              ),
+              isWritable: true,
+              isSigner: false,
+            });
+          }
+
+          transferIx = await this.program.methods
+            .transfer(amount, memoArray)
+            .accountsStrict(accounts)
+            .remainingAccounts(remainingAccounts)
+            .instruction();
+        }
+      }
+    }
+
+    instructions.push(transferIx);
+    return instructions;
   }
 }
 

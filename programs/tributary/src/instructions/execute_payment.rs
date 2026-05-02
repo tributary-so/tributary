@@ -1,215 +1,14 @@
-use crate::{constants::*, error::TributaryError, policies::*, state::*};
+use crate::{
+    constants::*,
+    error::TributaryError,
+    policies::*,
+    state::*,
+    utils::{process_referral_rewards, AuthorityMode, ReferralContext},
+};
 use anchor_lang::prelude::*;
-use anchor_lang::{prelude::*, solana_program::program_option::COption};
+use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::Token;
-use anchor_spl::token::TokenAccount as LegacyTokenAccount;
-use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
-
-struct ReferralContext<'a, 'info> {
-    remaining_accounts: &'info [AccountInfo<'info>],
-    user_token_account_info: AccountInfo<'info>,
-    payments_delegate_info: AccountInfo<'info>,
-    token_program_info: AccountInfo<'info>,
-    mint_info: AccountInfo<'info>,
-    mint_decimals: u8,
-    signer_seeds: &'a [&'a [&'a [u8]]],
-    expected_mint: Pubkey,
-    gateway_key: Pubkey,
-    payment_policy_key: Pubkey,
-    payment_amount: u64,
-    timestamp: i64,
-}
-
-/// Process referral rewards - extracted to reduce stack frame size
-#[inline(never)]
-fn process_referral_rewards<'a, 'info>(
-    ctx: ReferralContext<'a, 'info>,
-    gateway_fee: u64,
-    referral_allocation_bps: u16,
-    referral_tiers_bps: &[u16; 3],
-) -> Result<u64> {
-    let referral_pool = gateway_fee
-        .checked_mul(referral_allocation_bps as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    if referral_pool == 0 {
-        return Ok(referral_pool);
-    }
-
-    let level1_reward = referral_pool
-        .checked_mul(referral_tiers_bps[0] as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    let level2_reward = referral_pool
-        .checked_mul(referral_tiers_bps[1] as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    let level3_reward = referral_pool
-        .checked_mul(referral_tiers_bps[2] as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    // Parse remaining accounts into referral and token accounts
-    let (referral_accounts, token_accounts) =
-        parse_remaining_accounts(ctx.remaining_accounts, ctx.expected_mint, ctx.gateway_key)?;
-
-    if referral_accounts.is_empty() {
-        return Ok(0);
-    }
-
-    let level1_referrer: Option<&AccountLoader<ReferralAccount>> = referral_accounts.last();
-    let mut level2_referrer: Option<&AccountLoader<ReferralAccount>> = None;
-    let mut level3_referrer: Option<&AccountLoader<ReferralAccount>> = None;
-    if referral_accounts.len() == 3 {
-        level2_referrer = referral_accounts.get(referral_accounts.len().saturating_sub(2));
-        level3_referrer = referral_accounts.first();
-    } else if referral_accounts.len() == 2 {
-        level2_referrer = referral_accounts.first();
-    }
-
-    emit!(ReferralRewardDistributedRecord {
-        payment_policy: ctx.payment_policy_key,
-        gateway: ctx.gateway_key,
-        payment_amount: ctx.payment_amount,
-        timestamp: ctx.timestamp,
-        rewards: [
-            level1_referrer.map(|loader| ReferralReward {
-                pubkey: loader.key(),
-                reward: level1_reward,
-            }),
-            level2_referrer.map(|loader| ReferralReward {
-                pubkey: loader.key(),
-                reward: level2_reward,
-            }),
-            level3_referrer.map(|loader| ReferralReward {
-                pubkey: loader.key(),
-                reward: level3_reward,
-            }),
-        ],
-    });
-
-    // Transfer rewards and update total_earned
-    transfer_referral_reward(&ctx, &token_accounts, level1_referrer, level1_reward)?;
-    transfer_referral_reward(&ctx, &token_accounts, level2_referrer, level2_reward)?;
-    transfer_referral_reward(&ctx, &token_accounts, level3_referrer, level3_reward)?;
-
-    msg!(
-        "Referral pool: {} (L1: {}, L2: {}, L3: {})",
-        referral_pool,
-        level1_reward,
-        level2_reward,
-        level3_reward
-    );
-
-    return Ok(referral_pool);
-}
-
-/// Parse remaining accounts into referral AccountLoaders and token account infos
-#[inline(never)]
-fn parse_remaining_accounts<'info>(
-    remaining_accounts: &'info [AccountInfo<'info>],
-    expected_mint: Pubkey,
-    gateway_key: Pubkey,
-) -> Result<(
-    Vec<AccountLoader<'info, ReferralAccount>>,
-    Vec<(Pubkey, AccountInfo<'info>)>,
-)> {
-    let mut referral_accounts = Vec::new();
-    let mut token_accounts = Vec::new();
-
-    for acc in remaining_accounts {
-        if acc.data_len() == ReferralAccount::SIZE {
-            if !acc.is_writable {
-                return Err(TributaryError::ReferrerMustBeWritable.into());
-            }
-            if let Ok(loader) = AccountLoader::<ReferralAccount>::try_from(acc) {
-                let gateway_check = loader.load().map(|data| data.gateway);
-                match gateway_check {
-                    Ok(gw) if gw == gateway_key => referral_accounts.push(loader),
-                    Ok(_) => return Err(TributaryError::ReferrerAccountInvalid.into()),
-                    Err(_) => return Err(TributaryError::ReferrerAccountInvalid.into()),
-                }
-            } else {
-                return Err(TributaryError::ReferrerAccountInvalid.into());
-            }
-        } else if acc.data_len() >= 165 {
-            if let Ok(token_acc) = Account::<LegacyTokenAccount>::try_from(acc.as_ref()) {
-                if token_acc.mint == expected_mint {
-                    token_accounts.push((token_acc.owner, acc.clone()));
-                } else {
-                    return Err(TributaryError::ReferrerATAInvalid.into());
-                }
-            } else {
-                return Err(TributaryError::ReferrerATAInvalid.into());
-            }
-        }
-    }
-
-    if referral_accounts.len() != token_accounts.len() {
-        msg!(
-            "We have {} referrals vs {} atas",
-            referral_accounts.len(),
-            token_accounts.len()
-        );
-        return Err(TributaryError::MismatchAtaReferralAccountNumbers.into());
-    }
-
-    Ok((referral_accounts, token_accounts))
-}
-
-/// Transfer reward to a single referrer and update their total_earned.
-/// Fails if a ReferralAccount is provided but no matching ATA is found.
-#[inline(never)]
-fn transfer_referral_reward<'info>(
-    ctx: &ReferralContext<'_, 'info>,
-    token_accounts: &[(Pubkey, AccountInfo<'info>)],
-    referral_loader: Option<&AccountLoader<'info, ReferralAccount>>,
-    reward: u64,
-) -> Result<()> {
-    if reward == 0 {
-        return Ok(());
-    }
-
-    if let Some(loader) = referral_loader {
-        // Get the referral account owner to find their token account
-        let referrer_pubkey = loader.load()?.owner;
-
-        // Find the ATA whose owner matches the ReferralAccount owner - fail if missing
-        let (_, ata_info) = token_accounts
-            .iter()
-            .find(|(owner, _)| *owner == referrer_pubkey)
-            .ok_or(TributaryError::MissingReferralAta)?;
-
-        let cpi_accounts = TransferChecked {
-            from: ctx.user_token_account_info.clone(),
-            mint: ctx.mint_info.clone(),
-            to: ata_info.clone(),
-            authority: ctx.payments_delegate_info.clone(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(
-            ctx.token_program_info.clone(),
-            cpi_accounts,
-            ctx.signer_seeds,
-        );
-        token_interface::transfer_checked(cpi_ctx, reward, ctx.mint_decimals)?;
-
-        // Update total_earned in the ReferralAccount
-        let mut referral_account = loader.load_mut()?;
-        referral_account.total_earned = referral_account
-            .total_earned
-            .checked_add(reward)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-    }
-
-    Ok(())
-}
+use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
 
 pub fn token_account_has_delegate(delegate: &COption<Pubkey>, expected_delegate: &Pubkey) -> bool {
     match delegate {
@@ -429,12 +228,12 @@ impl<'info> ExecutePayment<'info> {
         if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
             let referral_ctx = ReferralContext {
                 remaining_accounts,
-                user_token_account_info: user_token_account_info.clone(),
-                payments_delegate_info: payments_delegate_info.clone(),
-                token_program_info: token_program_info.clone(),
+                source_token_account: user_token_account_info.clone(),
+                authority_info: payments_delegate_info.clone(),
+                authority_mode: AuthorityMode::PdaSigner(signer_seeds),
+                token_program: token_program_info.clone(),
                 mint_info: mint_info.clone(),
                 mint_decimals,
-                signer_seeds,
                 expected_mint,
                 gateway_key: gateway.key(),
                 payment_policy_key,

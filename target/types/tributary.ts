@@ -1156,6 +1156,52 @@ export type Tributary = {
       ],
       "accounts": [
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
           "name": "from",
           "writable": true
         },
@@ -1167,11 +1213,16 @@ export type Tributary = {
           "writable": true
         },
         {
-          "name": "authority",
-          "signer": true
+          "name": "gatewayFeeAccount",
+          "writable": true
         },
         {
-          "name": "tokenProgram"
+          "name": "protocolFeeAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
