@@ -72,18 +72,25 @@ export default function SlideInfrastructure() {
         ))}
       </div>
 
-      <motion.div
-        className="flex gap-8 text-xs text-muted-foreground"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.8 }}
-      >
-        <span>1% protocol fee</span>
-        <span className="text-border">+</span>
-        <span>Your configurable gateway fee</span>
-        <span className="text-border">|</span>
-        <span>Fully open source</span>
-      </motion.div>
+      <div className="max-w-2xl w-full grid grid-cols-2 gap-3">
+        {[
+          { title: 'Gateway Registration', desc: 'Register as a gateway with configurable fees and signer keys' },
+          { title: 'Protocol-Level Fees', desc: '1% protocol fee + your own custom gateway fee' },
+          { title: 'Non-Custodial', desc: '$0 TVL risk — we provide the logic, you provide the service' },
+          { title: 'Open-Source', desc: 'Self-hostable and extensible for any payment product' },
+        ].map((feat, i) => (
+          <motion.div
+            key={feat.title}
+            className="border border-border bg-muted/10 px-4 py-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.8 + i * 0.08 }}
+          >
+            <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">{feat.title}</div>
+            <div className="text-xs text-muted-foreground">{feat.desc}</div>
+          </motion.div>
+        ))}
+      </div>
     </div>
   )
 }

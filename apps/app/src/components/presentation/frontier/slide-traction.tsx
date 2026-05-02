@@ -82,7 +82,16 @@ export default function SlideTraction() {
       </div>
 
       <motion.p
-        className="text-xs text-muted-foreground/40 italic mt-6"
+        className="text-xs text-muted-foreground/60 mt-6 text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.9 }}
+      >
+        Inbound demand from RPC providers, API products, and LLM services.
+      </motion.p>
+
+      <motion.p
+        className="text-xs text-muted-foreground/40 italic mt-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 1 }}

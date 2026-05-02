@@ -79,6 +79,9 @@ export default function SlideCTA() {
           </div>
           <div className="text-xs text-muted-foreground">Stripe made internet payments invisible.</div>
           <div className="text-xs text-muted-foreground">We do the same for Solana.</div>
+          <div className="mt-3 text-xs text-emerald-400/80">
+            Looking for design partners, ecosystem grants, and teams that want to charge stablecoins.
+          </div>
         </div>
         <QRCodeGenerator url="https://tributary.so" text="" size="100px" />
       </motion.div>
