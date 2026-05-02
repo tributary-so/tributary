@@ -7,10 +7,8 @@ import logo from "../assets/logo.png";
 
 const navItems = [
   { label: "How It Works", href: "how-it-works" },
+  { label: "Payment Models", href: "payment-models" },
   { label: "Use Cases", href: "use-cases" },
-  { label: "Checkout", href: "checkout" },
-  { label: "Integrations", href: "integrations" },
-  { label: "Roadmap", href: "roadmap" },
   { label: "FAQ", href: "faq" },
 ];
 
@@ -36,7 +34,7 @@ const products = [
   {
     label: "Checkout",
     href: "https://checkout.tributary.so",
-    description: "Hosted checkout — accept USDC in minutes",
+    description: "Hosted checkout. Accept USDC in minutes",
     external: true,
   },
   {
@@ -70,7 +68,7 @@ export function Header() {
 
   return (
     <header className="py-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between">
         <Link className="inline-flex text-primary items-center gap-3" to="/">
           <img src={logo} alt="Tributary Logo" className="h-4 w-4" />
           <span className="font-semibold text-xs uppercase tracking-[0.3em]">
@@ -133,7 +131,7 @@ export function Header() {
           </nav>
           <a
             href="https://app.tributary.so"
-            className="text-sm border border-primary border p-2 rounded-lg"
+            className="text-sm border border-primary px-3 py-1.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             OPEN APP
           </a>

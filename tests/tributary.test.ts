@@ -64,7 +64,7 @@ describe("Tributary", () => {
         lamports: amount * LAMPORTS_PER_SOL,
       })
     );
-    const signature = await provider.sendAndConfirm(transaction, null, {
+    await provider.sendAndConfirm(transaction, null, {
       commitment: "processed" as Commitment,
     });
   }
@@ -570,7 +570,6 @@ describe("Tributary", () => {
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
-      const testIntervalSeconds = new anchor.BN(86400); // 1 day
       const testMemo = new Uint8Array(64).fill(0);
       Buffer.from("executeImmediately test").copy(testMemo);
       const testPaymentFrequency = { daily: {} };
@@ -648,7 +647,6 @@ describe("Tributary", () => {
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
-      const testIntervalSeconds = new anchor.BN(86400); // 1 day
       const testMemo = new Uint8Array(64).fill(0);
       Buffer.from("executeImmediately test").copy(testMemo);
       const testPaymentFrequency = { daily: {} };
@@ -2829,7 +2827,7 @@ describe("Tributary", () => {
       );
       const initialProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
 
       // Execute payment
@@ -2861,7 +2859,7 @@ describe("Tributary", () => {
       // Verify NO protocol fee was charged (admin balance unchanged)
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
         parseInt(initialProtocolFeeRecipientBalance.value.amount)
@@ -2959,7 +2957,7 @@ describe("Tributary", () => {
       );
       const initialProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
 
       // Execute payment - should use global 100 bps protocol fee
@@ -2992,7 +2990,7 @@ describe("Tributary", () => {
       // Verify protocol fee WAS charged
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
-          await getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
         parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolFee
@@ -3031,7 +3029,16 @@ describe("Tributary", () => {
     let transferUser: Keypair;
     let transferUserTokenAccount: PublicKey;
     let transferRecipient: Keypair;
-    let transferRecipientTokenAccount: PublicKey;
+
+    const PROTOCOL_FEE_BPS = 100;
+    const GATEWAY_FEE_BPS = 100;
+
+    function calcFees(grossAmount: number) {
+      const gatewayFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
+      const protocolFee = Math.floor((grossAmount * PROTOCOL_FEE_BPS) / 10000);
+      const recipientAmount = grossAmount - gatewayFee - protocolFee;
+      return { gatewayFee, protocolFee, recipientAmount };
+    }
 
     beforeAll(async () => {
       transferUser = Keypair.generate();
@@ -3049,7 +3056,7 @@ describe("Tributary", () => {
         transferUser.publicKey
       );
 
-      transferRecipientTokenAccount = await createAssociatedTokenAccount(
+      await createAssociatedTokenAccount(
         connection,
         admin,
         tokenMint,
@@ -3072,20 +3079,26 @@ describe("Tributary", () => {
       const initialUserBalance = await connection.getTokenAccountBalance(
         transferUserTokenAccount
       );
+      const recipientAta = getAssociatedTokenAddressSync(
+        tokenMint,
+        transferRecipient.publicKey
+      );
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
       );
 
       const transferAmount = new anchor.BN(500000);
+      const { recipientAmount } = calcFees(transferAmount.toNumber());
 
-      const transferIx = await sdk.transfer(
-        transferUserTokenAccount,
-        transferRecipientTokenAccount,
+      const instructions = await sdk.transfer(
+        tokenMint,
+        transferRecipient.publicKey,
+        gatewayPDA,
         transferAmount,
         "one-time payment #12345"
       );
 
-      const tx = new Transaction().add(transferIx);
+      const tx = new Transaction().add(...instructions);
       await sendAndConfirmTransaction(connection, tx, [transferUser], {
         commitment: "processed" as Commitment,
       });
@@ -3094,12 +3107,11 @@ describe("Tributary", () => {
         transferUserTokenAccount
       );
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
       );
 
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
-        parseInt(initialRecipientBalance.value.amount) +
-          transferAmount.toNumber()
+        parseInt(initialRecipientBalance.value.amount) + recipientAmount
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
         parseInt(initialUserBalance.value.amount) - transferAmount.toNumber()
@@ -3110,14 +3122,15 @@ describe("Tributary", () => {
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 
       try {
-        const transferIx = await sdk.transfer(
-          transferUserTokenAccount,
-          transferRecipientTokenAccount,
+        const instructions = await sdk.transfer(
+          tokenMint,
+          transferRecipient.publicKey,
+          gatewayPDA,
           new anchor.BN(0),
           "zero amount test"
         );
 
-        const tx = new Transaction().add(transferIx);
+        const tx = new Transaction().add(...instructions);
         await sendAndConfirmTransaction(connection, tx, [transferUser], {
           commitment: "processed" as Commitment,
         });
@@ -3139,14 +3152,15 @@ describe("Tributary", () => {
       );
 
       try {
-        const transferIx = await sdk.transfer(
-          transferUserTokenAccount,
-          transferRecipientTokenAccount,
+        const instructions = await sdk.transfer(
+          tokenMint,
+          transferRecipient.publicKey,
+          gatewayPDA,
           excessiveAmount,
           "insufficient balance test"
         );
 
-        const tx = new Transaction().add(transferIx);
+        const tx = new Transaction().add(...instructions);
         await sendAndConfirmTransaction(connection, tx, [transferUser], {
           commitment: "processed" as Commitment,
         });
@@ -3157,7 +3171,7 @@ describe("Tributary", () => {
       }
     });
 
-    test("Transfer fails with mismatched token mints", async () => {
+    test("Transfer works with different token mint", async () => {
       const differentMint = await createMint(
         connection,
         mintAuthority,
@@ -3166,7 +3180,14 @@ describe("Tributary", () => {
         6
       );
 
-      const differentTokenAccount = await createAssociatedTokenAccount(
+      await createAssociatedTokenAccount(
+        connection,
+        admin,
+        differentMint,
+        transferUser.publicKey
+      );
+
+      await createAssociatedTokenAccount(
         connection,
         admin,
         differentMint,
@@ -3177,151 +3198,220 @@ describe("Tributary", () => {
         connection,
         mintAuthority,
         differentMint,
-        differentTokenAccount,
+        getAssociatedTokenAddressSync(differentMint, transferUser.publicKey),
         mintAuthority,
         1000000n
       );
 
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 
-      try {
-        const transferIx = await sdk.transfer(
-          transferUserTokenAccount,
-          differentTokenAccount,
-          new anchor.BN(100000),
-          "mint mismatch test"
-        );
-
-        const tx = new Transaction().add(transferIx);
-        await sendAndConfirmTransaction(connection, tx, [transferUser], {
-          commitment: "processed" as Commitment,
-        });
-
-        assert(false, "Expected transfer to fail with mismatched mints");
-      } catch (error: any) {
-        expect(error.message).toContain("TokenMintMismatch");
-      }
-    });
-
-    test("Transfer fails when non-owner tries to transfer", async () => {
-      const nonOwner = Keypair.generate();
-      await fund(nonOwner.publicKey, 5);
-
-      await sdk.updateWallet(new anchor.Wallet(nonOwner));
-
-      try {
-        const transferIx = await sdk.transfer(
-          transferUserTokenAccount,
-          transferRecipientTokenAccount,
-          new anchor.BN(100000),
-          "unauthorized transfer test"
-        );
-
-        const tx = new Transaction().add(transferIx);
-        await sendAndConfirmTransaction(connection, tx, [nonOwner], {
-          commitment: "processed" as Commitment,
-        });
-
-        assert(false, "Expected transfer to fail for non-owner");
-      } catch (error: any) {
-        expect(error.message).toContain("Unauthorized");
-      }
-    });
-
-    test("Transfer with empty memo", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
-
+      const recipientAta = getAssociatedTokenAddressSync(
+        differentMint,
+        transferRecipient.publicKey
+      );
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
       );
 
       const transferAmount = new anchor.BN(100000);
+      const { recipientAmount } = calcFees(transferAmount.toNumber());
 
-      const transferIx = await sdk.transfer(
-        transferUserTokenAccount,
-        transferRecipientTokenAccount,
+      const instructions = await sdk.transfer(
+        differentMint,
+        transferRecipient.publicKey,
+        gatewayPDA,
         transferAmount,
-        ""
+        "different mint transfer"
       );
 
-      const tx = new Transaction().add(transferIx);
+      const tx = new Transaction().add(...instructions);
       await sendAndConfirmTransaction(connection, tx, [transferUser], {
         commitment: "processed" as Commitment,
       });
 
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
+      );
+      expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
+        parseInt(initialRecipientBalance.value.amount) + recipientAmount
+      );
+    });
+
+    test("Transfer succeeds for any user with token account", async () => {
+      const nonOwner = Keypair.generate();
+      await fund(nonOwner.publicKey, 5);
+
+      await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        nonOwner.publicKey
+      );
+
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        getAssociatedTokenAddressSync(tokenMint, nonOwner.publicKey),
+        mintAuthority,
+        1000000n
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(nonOwner));
+
+      const recipientAta = getAssociatedTokenAddressSync(
+        tokenMint,
+        transferRecipient.publicKey
+      );
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientAta
+      );
+
+      const transferAmount = new anchor.BN(50000);
+      const { recipientAmount } = calcFees(transferAmount.toNumber());
+
+      const instructions = await sdk.transfer(
+        tokenMint,
+        transferRecipient.publicKey,
+        gatewayPDA,
+        transferAmount,
+        "new user transfer"
+      );
+
+      const tx = new Transaction().add(...instructions);
+      await sendAndConfirmTransaction(connection, tx, [nonOwner], {
+        commitment: "processed" as Commitment,
+      });
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientAta
+      );
+      expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
+        parseInt(initialRecipientBalance.value.amount) + recipientAmount
+      );
+    });
+
+    test("Transfer with empty memo", async () => {
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
+      const recipientAta = getAssociatedTokenAddressSync(
+        tokenMint,
+        transferRecipient.publicKey
+      );
+      const initialRecipientBalance = await connection.getTokenAccountBalance(
+        recipientAta
+      );
+
+      const transferAmount = new anchor.BN(100000);
+      const { recipientAmount } = calcFees(transferAmount.toNumber());
+
+      const instructions = await sdk.transfer(
+        tokenMint,
+        transferRecipient.publicKey,
+        gatewayPDA,
+        transferAmount,
+        ""
+      );
+
+      const tx = new Transaction().add(...instructions);
+      await sendAndConfirmTransaction(connection, tx, [transferUser], {
+        commitment: "processed" as Commitment,
+      });
+
+      const finalRecipientBalance = await connection.getTokenAccountBalance(
+        recipientAta
       );
 
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
-        parseInt(initialRecipientBalance.value.amount) +
-          transferAmount.toNumber()
+        parseInt(initialRecipientBalance.value.amount) + recipientAmount
       );
     });
 
     test("Transfer with full 64-byte memo", async () => {
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 
+      const recipientAta = getAssociatedTokenAddressSync(
+        tokenMint,
+        transferRecipient.publicKey
+      );
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
       );
 
       const transferAmount = new anchor.BN(250000);
+      const { recipientAmount } = calcFees(transferAmount.toNumber());
 
-      const transferIx = await sdk.transfer(
-        transferUserTokenAccount,
-        transferRecipientTokenAccount,
+      const instructions = await sdk.transfer(
+        tokenMint,
+        transferRecipient.publicKey,
+        gatewayPDA,
         transferAmount,
         "Invoice #INV-2024-001234: Payment for services rendered"
       );
 
-      const tx = new Transaction().add(transferIx);
+      const tx = new Transaction().add(...instructions);
       await sendAndConfirmTransaction(connection, tx, [transferUser], {
         commitment: "processed" as Commitment,
       });
 
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
       );
 
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
-        parseInt(initialRecipientBalance.value.amount) +
-          transferAmount.toNumber()
+        parseInt(initialRecipientBalance.value.amount) + recipientAmount
       );
     });
 
     test("Multiple sequential transfers", async () => {
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 
+      const recipientAta = getAssociatedTokenAddressSync(
+        tokenMint,
+        transferRecipient.publicKey
+      );
       const initialRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
+      );
+      const initialUserBalance = await connection.getTokenAccountBalance(
+        transferUserTokenAccount
       );
 
       const transferAmounts = [100000, 200000, 150000];
-      let totalTransferred = 0;
+      let totalGross = 0;
+      let totalRecipient = 0;
 
       for (let i = 0; i < transferAmounts.length; i++) {
-        const transferIx = await sdk.transfer(
-          transferUserTokenAccount,
-          transferRecipientTokenAccount,
+        const { recipientAmount } = calcFees(transferAmounts[i]);
+        totalGross += transferAmounts[i];
+        totalRecipient += recipientAmount;
+
+        const instructions = await sdk.transfer(
+          tokenMint,
+          transferRecipient.publicKey,
+          gatewayPDA,
           new anchor.BN(transferAmounts[i]),
           `batch transfer #${i + 1}`
         );
 
-        const tx = new Transaction().add(transferIx);
+        const tx = new Transaction().add(...instructions);
         await sendAndConfirmTransaction(connection, tx, [transferUser], {
           commitment: "processed" as Commitment,
         });
-
-        totalTransferred += transferAmounts[i];
       }
 
       const finalRecipientBalance = await connection.getTokenAccountBalance(
-        transferRecipientTokenAccount
+        recipientAta
+      );
+      const finalUserBalance = await connection.getTokenAccountBalance(
+        transferUserTokenAccount
       );
 
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
-        parseInt(initialRecipientBalance.value.amount) + totalTransferred
+        parseInt(initialRecipientBalance.value.amount) + totalRecipient
+      );
+      expect(parseInt(finalUserBalance.value.amount)).toEqual(
+        parseInt(initialUserBalance.value.amount) - totalGross
       );
     });
   });

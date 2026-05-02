@@ -1,215 +1,18 @@
-use crate::{constants::*, error::TributaryError, policies::*, state::*};
-use anchor_lang::{prelude::*, solana_program::program_option::COption};
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use crate::{
+    constants::*,
+    error::TributaryError,
+    policies::*,
+    state::*,
+    utils::{process_referral_rewards, AuthorityMode, ReferralContext},
+};
+use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_option::COption;
+use anchor_spl::token::Token;
+use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
 
-/// Context for referral reward distribution
-struct ReferralContext<'a, 'info> {
-    remaining_accounts: &'info [AccountInfo<'info>],
-    user_token_account_info: AccountInfo<'info>,
-    payments_delegate_info: AccountInfo<'info>,
-    token_program_info: AccountInfo<'info>,
-    signer_seeds: &'a [&'a [&'a [u8]]],
-    expected_mint: Pubkey,
-    payment_policy_key: Pubkey,
-    gateway_key: Pubkey,
-    payment_amount: u64,
-    timestamp: i64,
-}
-
-/// Process referral rewards - extracted to reduce stack frame size
-#[inline(never)]
-fn process_referral_rewards<'a, 'info>(
-    ctx: ReferralContext<'a, 'info>,
-    gateway_fee: u64,
-    referral_allocation_bps: u16,
-    referral_tiers_bps: &[u16; 3],
-) -> Result<()> {
-    let referral_pool = gateway_fee
-        .checked_mul(referral_allocation_bps as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    if referral_pool == 0 {
-        return Ok(());
-    }
-
-    let level1_reward = referral_pool
-        .checked_mul(referral_tiers_bps[0] as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    let level2_reward = referral_pool
-        .checked_mul(referral_tiers_bps[1] as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    let level3_reward = referral_pool
-        .checked_mul(referral_tiers_bps[2] as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    // Parse remaining accounts into referral and token accounts
-    let (referral_accounts, token_accounts) =
-        parse_remaining_accounts(ctx.remaining_accounts, ctx.expected_mint)?;
-
-    if referral_accounts.is_empty() {
-        return Ok(());
-    }
-
-    let level1_referrer: Option<&AccountLoader<ReferralAccount>> = referral_accounts.last();
-    let mut level2_referrer: Option<&AccountLoader<ReferralAccount>> = None;
-    let mut level3_referrer: Option<&AccountLoader<ReferralAccount>> = None;
-    if referral_accounts.len() == 3 {
-        level2_referrer = referral_accounts.get(referral_accounts.len().saturating_sub(2));
-        level3_referrer = referral_accounts.first();
-    } else if referral_accounts.len() == 2 {
-        level2_referrer = referral_accounts.first();
-    }
-
-    emit!(ReferralRewardDistributedRecord {
-        payment_policy: ctx.payment_policy_key,
-        gateway: ctx.gateway_key,
-        payment_amount: ctx.payment_amount,
-        timestamp: ctx.timestamp,
-        rewards: [
-            level1_referrer.map(|loader| ReferralReward {
-                pubkey: loader.key(),
-                reward: level1_reward,
-            }),
-            level2_referrer.map(|loader| ReferralReward {
-                pubkey: loader.key(),
-                reward: level2_reward,
-            }),
-            level3_referrer.map(|loader| ReferralReward {
-                pubkey: loader.key(),
-                reward: level3_reward,
-            }),
-        ],
-    });
-
-    // Transfer rewards and update total_earned
-    transfer_referral_reward(&ctx, &token_accounts, level1_referrer, level1_reward)?;
-    transfer_referral_reward(&ctx, &token_accounts, level2_referrer, level2_reward)?;
-    transfer_referral_reward(&ctx, &token_accounts, level3_referrer, level3_reward)?;
-
-    msg!(
-        "Referral pool: {} (L1: {}, L2: {}, L3: {})",
-        referral_pool,
-        level1_reward,
-        level2_reward,
-        level3_reward
-    );
-
-    Ok(())
-}
-
-/// Parse remaining accounts into referral AccountLoaders and token account infos
-#[inline(never)]
-fn parse_remaining_accounts<'info>(
-    remaining_accounts: &'info [AccountInfo<'info>],
-    expected_mint: Pubkey,
-) -> Result<(
-    Vec<AccountLoader<'info, ReferralAccount>>,
-    Vec<(Pubkey, AccountInfo<'info>)>,
-)> {
-    let mut referral_accounts = Vec::new();
-    let mut token_accounts = Vec::new();
-
-    for acc in remaining_accounts {
-        if acc.data_len() == ReferralAccount::SIZE {
-            if let Ok(loader) = AccountLoader::<ReferralAccount>::try_from(acc) {
-                // Verify we can actually load it (validates discriminator)
-                if loader.load().is_ok() {
-                    referral_accounts.push(loader);
-                } else {
-                    return Err(TributaryError::ReferrerAccountInvalid.into());
-                }
-            } else {
-                return Err(TributaryError::ReferrerAccountInvalid.into());
-            }
-        } else if acc.data_len() == 165 {
-            // TokenAccount::LEN {
-            if let Ok(token_acc) = Account::<TokenAccount>::try_from(acc.as_ref()) {
-                if token_acc.mint == expected_mint {
-                    token_accounts.push((token_acc.owner, acc.clone()));
-                } else {
-                    return Err(TributaryError::ReferrerATAInvalid.into());
-                }
-            } else {
-                return Err(TributaryError::ReferrerATAInvalid.into());
-            }
-        }
-    }
-
-    if referral_accounts.len() != token_accounts.len() {
-        msg!(
-            "We have {} referrals vs {} atas",
-            referral_accounts.len(),
-            token_accounts.len()
-        );
-        return Err(TributaryError::MismatchAtaReferralAccountNumbers.into());
-    }
-
-    Ok((referral_accounts, token_accounts))
-}
-
-/// Transfer reward to a single referrer and update their total_earned.
-/// Fails if a ReferralAccount is provided but no matching ATA is found.
-#[inline(never)]
-fn transfer_referral_reward<'info>(
-    ctx: &ReferralContext<'_, 'info>,
-    token_accounts: &[(Pubkey, AccountInfo<'info>)],
-    referral_loader: Option<&AccountLoader<'info, ReferralAccount>>,
-    reward: u64,
-) -> Result<()> {
-    if reward == 0 {
-        return Ok(());
-    }
-
-    if let Some(loader) = referral_loader {
-        // Get the referral account owner to find their token account
-        let referrer_pubkey = loader.load()?.owner;
-
-        // Find the ATA whose owner matches the ReferralAccount owner - fail if missing
-        let (_, ata_info) = token_accounts
-            .iter()
-            .find(|(owner, _)| *owner == referrer_pubkey)
-            .ok_or(TributaryError::MissingReferralAta)?;
-
-        // Transfer the reward
-        let cpi_accounts = Transfer {
-            from: ctx.user_token_account_info.clone(),
-            to: ata_info.clone(),
-            authority: ctx.payments_delegate_info.clone(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(
-            ctx.token_program_info.clone(),
-            cpi_accounts,
-            ctx.signer_seeds,
-        );
-        token::transfer(cpi_ctx, reward)?;
-
-        // Update total_earned in the ReferralAccount
-        let mut referral_account = loader.load_mut()?;
-        referral_account.total_earned = referral_account
-            .total_earned
-            .checked_add(reward)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-    }
-
-    Ok(())
-}
-
-pub fn token_account_has_delegate(
-    token_account: &TokenAccount,
-    expected_delegate: &Pubkey,
-) -> bool {
-    match token_account.delegate {
-        COption::Some(delegate) => delegate == *expected_delegate,
+pub fn token_account_has_delegate(delegate: &COption<Pubkey>, expected_delegate: &Pubkey) -> bool {
+    match delegate {
+        COption::Some(delegate) => delegate == expected_delegate,
         COption::None => false,
     }
 }
@@ -269,30 +72,39 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
-        constraint = token_account_has_delegate(&user_token_account, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
+        constraint = token_account_has_delegate(&user_token_account.delegate, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
+        constraint = user_token_account.key() != recipient_token_account.key() @ TributaryError::InvalidAmount,
+        constraint = user_token_account.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
+        constraint = user_token_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account()]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
         constraint = recipient_token_account.mint == user_payment.token_mint,
         constraint = recipient_token_account.owner == payment_policy.recipient,
+        constraint = recipient_token_account.key() != gateway_fee_account.key() @ TributaryError::InvalidAmount,
+        constraint = recipient_token_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
-    pub recipient_token_account: Account<'info, TokenAccount>,
+    pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         constraint = gateway_fee_account.mint == user_payment.token_mint,
         constraint = gateway_fee_account.owner == gateway.fee_recipient,
+        constraint = gateway_fee_account.key() != protocol_fee_account.key() @ TributaryError::InvalidAmount,
     )]
-    pub gateway_fee_account: Account<'info, TokenAccount>,
+    pub gateway_fee_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         constraint = protocol_fee_account.mint == user_payment.token_mint,
         constraint = protocol_fee_account.owner == config.fee_recipient,
     )]
-    pub protocol_fee_account: Account<'info, TokenAccount>,
+    pub protocol_fee_account: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -318,6 +130,8 @@ impl<'info> ExecutePayment<'info> {
         let protocol_fee_account_info = accounts.protocol_fee_account.to_account_info();
         let payments_delegate_info = accounts.payments_delegate.to_account_info();
         let token_program_info = accounts.token_program.to_account_info();
+        let mint_info = accounts.mint.to_account_info();
+        let mint_decimals = accounts.mint.decimals;
         let payments_delegate_bump = ctx.bumps.payments_delegate;
         let expected_mint = accounts.user_token_account.mint;
 
@@ -358,7 +172,7 @@ impl<'info> ExecutePayment<'info> {
         }
 
         // Calculate fees (same calculation for both modes)
-        let gateway_fee = payment_amount
+        let mut gateway_fee = payment_amount
             .checked_mul(gateway.gateway_fee_bps as u64)
             .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
@@ -407,70 +221,79 @@ impl<'info> ExecutePayment<'info> {
             crate::error::TributaryError::InsufficientBalance
         );
 
-        // Transfer to recipient
         let seeds = &[PAYMENTS_SEED, &[payments_delegate_bump]];
         let signer_seeds = &[&seeds[..]];
-
-        if recipient_amount > 0 {
-            let cpi_accounts = Transfer {
-                from: user_token_account_info.clone(),
-                to: recipient_token_account_info.clone(),
-                authority: payments_delegate_info.clone(),
-            };
-            let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
-            token::transfer(cpi_ctx, recipient_amount)?;
-        }
-
-        // Transfer gateway fee
-        if gateway_fee > 0 {
-            let cpi_accounts = Transfer {
-                from: user_token_account_info.clone(),
-                to: gateway_fee_account_info.clone(),
-                authority: payments_delegate_info.clone(),
-            };
-            let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
-            token::transfer(cpi_ctx, gateway_fee)?;
-        }
-
-        // Transfer protocol fee
-        if protocol_fee > 0 {
-            let cpi_accounts = Transfer {
-                from: user_token_account_info.clone(),
-                to: protocol_fee_account_info.clone(),
-                authority: payments_delegate_info.clone(),
-            };
-            let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
-            token::transfer(cpi_ctx, protocol_fee)?;
-        }
 
         // Process referral rewards if enabled
         if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
             let referral_ctx = ReferralContext {
                 remaining_accounts,
-                user_token_account_info: user_token_account_info.clone(),
-                payments_delegate_info: payments_delegate_info.clone(),
-                token_program_info: token_program_info.clone(),
-                signer_seeds,
+                source_token_account: user_token_account_info.clone(),
+                authority_info: payments_delegate_info.clone(),
+                authority_mode: AuthorityMode::PdaSigner(signer_seeds),
+                token_program: token_program_info.clone(),
+                mint_info: mint_info.clone(),
+                mint_decimals,
                 expected_mint,
-                payment_policy_key,
                 gateway_key: gateway.key(),
+                payment_policy_key,
                 payment_amount,
                 timestamp: clock.unix_timestamp,
             };
-            process_referral_rewards(
+            let referral_pool = process_referral_rewards(
                 referral_ctx,
                 gateway_fee,
                 gateway.referral_allocation_bps,
                 &gateway.referral_tiers_bps,
             )?;
+
+            gateway_fee = gateway_fee
+                .checked_sub(referral_pool)
+                .ok_or(TributaryError::ArithmeticOverflow)?;
+        }
+
+        // Transfer to recipient
+        if recipient_amount > 0 {
+            let cpi_accounts = TransferChecked {
+                from: user_token_account_info.clone(),
+                mint: mint_info.clone(),
+                to: recipient_token_account_info.clone(),
+                authority: payments_delegate_info.clone(),
+            };
+            let cpi_ctx =
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+            token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
+        }
+
+        // Transfer gateway fee
+        if gateway_fee > 0 {
+            let cpi_accounts = TransferChecked {
+                from: user_token_account_info.clone(),
+                mint: mint_info.clone(),
+                to: gateway_fee_account_info.clone(),
+                authority: payments_delegate_info.clone(),
+            };
+            let cpi_ctx =
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+            token_interface::transfer_checked(cpi_ctx, gateway_fee, mint_decimals)?;
+        }
+
+        // Transfer protocol fee
+        if protocol_fee > 0 {
+            let cpi_accounts = TransferChecked {
+                from: user_token_account_info.clone(),
+                mint: mint_info.clone(),
+                to: protocol_fee_account_info.clone(),
+                authority: payments_delegate_info.clone(),
+            };
+            let cpi_ctx =
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+            token_interface::transfer_checked(cpi_ctx, protocol_fee, mint_decimals)?;
         }
 
         payment_policy.total_paid = payment_policy
             .total_paid
-            .checked_add(payment_amount)
+            .checked_add(total_amount_from_user)
             .ok_or(TributaryError::ArithmeticOverflow)?;
         payment_policy.payment_count = payment_policy
             .payment_count

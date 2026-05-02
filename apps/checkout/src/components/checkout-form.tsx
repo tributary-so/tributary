@@ -5,10 +5,11 @@ import { SubscriptionParams } from "@tributary-so/payments";
 import { CheckCircle2, Wallet, Loader2, Lock, XCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+// TODO: consider refactoring to use sdk-react hook instead of local tributary.ts + manual JWT flow
 import { createSubscription, issueSubscriptionToken } from "@/lib/tributary";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
-import { getTokenSymbol } from "@tributary-so/sdk";
+import { getTokenSymbol } from "@/lib/utils";
 import config from "@/constants";
 
 const connection = new Connection(config.rpcUrl);

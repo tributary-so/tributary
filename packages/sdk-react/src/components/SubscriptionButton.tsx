@@ -20,6 +20,11 @@ export interface SubscriptionButtonProps {
   startTime?: Date;
   approvalAmount?: BN;
   executeImmediately?: boolean;
+  fetchToken?: boolean;
+  tokenIssuerConfig?: {
+    apiBaseUrl: string;
+    trackingId?: string;
+  };
   label?: string;
   className?: string;
   disabled?: boolean;
@@ -41,6 +46,8 @@ export function SubscriptionButton({
   startTime,
   approvalAmount,
   executeImmediately = true,
+  fetchToken = false,
+  tokenIssuerConfig,
   label = "Subscribe",
   className = "",
   disabled = false,
@@ -65,6 +72,11 @@ export function SubscriptionButton({
         startTime,
         approvalAmount,
         executeImmediately,
+        fetchToken,
+        tokenIssuerConfig: tokenIssuerConfig ?? {
+          apiBaseUrl: "https://api.tributary.so",
+          trackingId: undefined,
+        },
       });
       onSuccess?.(result);
     } catch (err) {
@@ -77,14 +89,17 @@ export function SubscriptionButton({
   return (
     <div className="flex flex-col items-center gap-2">
       <Button
-        onClick={handleClick}
+        onPress={handleClick}
         disabled={isDisabled}
         className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border border-transparent shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
         radius={radius}
         size={size}
       >
-        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-        {loading ? "Creating Subscription..." : label}
+        {loading ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          label ?? "Creating Subscription..."
+        )}
       </Button>
     </div>
   );

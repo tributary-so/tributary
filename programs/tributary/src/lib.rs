@@ -111,7 +111,11 @@ pub mod tributary {
         UpdateGatewayProtocolFee::handle_update_gateway_protocol_fee(ctx, args)
     }
 
-    pub fn transfer(ctx: Context<TransferTokens>, amount: u64, memo: [u8; 64]) -> Result<()> {
+    pub fn transfer<'info>(
+        ctx: Context<'_, '_, 'info, 'info, TransferTokens<'info>>,
+        amount: u64,
+        memo: [u8; 64],
+    ) -> Result<()> {
         TransferTokens::handler(ctx, amount, memo)
     }
 }

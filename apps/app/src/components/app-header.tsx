@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { ChevronDown, Moon, Sun } from 'lucide-react'
 import { WalletButton } from '@/components/solana/solana-provider'
@@ -8,9 +8,10 @@ import { ClusterUiSelect } from './cluster/cluster-ui'
 const navItems = [{ label: 'Docs', href: 'https://docs.tributary.so' }]
 
 const hackathons = [
-  { label: 'Cypherpunk', href: '/hackathon' },
   { label: 'x402', href: '/x402' },
   { label: 'Agent', href: '/agent' },
+  { label: 'Cypherpunk', href: '/hackathon' },
+  { label: 'Frontier', href: '/frontier' },
 ]
 
 function ThemeToggle() {
@@ -74,6 +75,9 @@ export function AppHeader() {
       }, 100)
     }
   }, [])
+
+  const location = useLocation()
+  if (location.pathname == '/frontier') return
 
   return (
     <header className="py-6">

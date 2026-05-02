@@ -97,7 +97,38 @@ export function useCreateSubscription(): UseCreateSubscriptionReturn {
         lastValidBlockHeight,
       });
 
-      return { txId, instructions };
+      const result: CreateSubscriptionResult = { txId, instructions };
+
+      if (params.fetchToken && params.tokenIssuerConfig) {
+        const { apiBaseUrl, trackingId } = params.tokenIssuerConfig;
+        const body: Record<string, string> = {
+          walletPublicKey: wallet.publicKey.toString(),
+          recipient: params.recipient.toString(),
+        };
+        if (params.token) body.tokenMint = params.token.toString();
+        if (trackingId) body.trackingId = trackingId;
+
+        const start = Date.now();
+        const timeoutMs = 30000;
+        while (Date.now() - start < timeoutMs) {
+          const response = await fetch(`${apiBaseUrl}/v1/tokens/issue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            result.token = data.token;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+        if (!result.token) {
+          throw new Error("Timed out waiting for payment confirmation token");
+        }
+      }
+
+      return result;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Unknown error occurred";

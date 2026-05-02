@@ -124,11 +124,7 @@ export type Tributary = {
           }
         },
         {
-          "name": "newFeeRecipient",
-          "docs": [
-            "be used to derive the associated token account from. So we don't have to check anything",
-            "really, FIXME: do we?"
-          ]
+          "name": "newFeeRecipient"
         },
         {
           "name": "config",
@@ -1074,6 +1070,9 @@ export type Tributary = {
           "writable": true
         },
         {
+          "name": "mint"
+        },
+        {
           "name": "recipientTokenAccount",
           "writable": true
         },
@@ -1157,16 +1156,69 @@ export type Tributary = {
       ],
       "accounts": [
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
           "name": "from",
           "writable": true
+        },
+        {
+          "name": "mint"
         },
         {
           "name": "to",
           "writable": true
         },
         {
-          "name": "authority",
-          "signer": true
+          "name": "gatewayFeeAccount",
+          "writable": true
+        },
+        {
+          "name": "protocolFeeAccount",
+          "writable": true
         },
         {
           "name": "tokenProgram",
@@ -1718,6 +1770,11 @@ export type Tributary = {
       "code": 6034,
       "name": "tokenMintMismatch",
       "msg": "Token mint mismatch between accounts"
+    },
+    {
+      "code": 6035,
+      "name": "transferHookNotSupported",
+      "msg": "Token-2022 TransferHook mints are not currently supported"
     }
   ],
   "types": [

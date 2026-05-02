@@ -15,6 +15,9 @@ pub struct ChangeGatewaySigner<'info> {
     pub gateway: Account<'info, PaymentGateway>,
 
     /// CHECK: The new signer that will be authorized to execute payments
+    #[account(
+        constraint = new_signer.key() != Pubkey::default() @ TributaryError::InvalidAmount
+    )]
     pub new_signer: UncheckedAccount<'info>,
 
     #[account(

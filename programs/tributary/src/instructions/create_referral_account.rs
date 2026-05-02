@@ -36,31 +36,53 @@ impl<'info> CreateReferralAccount<'info> {
     ) -> Result<()> {
         let clock = Clock::get()?;
 
-        // Validate referral code format (alphanumeric)
         for &byte in &referral_code {
             match byte {
-                b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' => {} // Valid
+                b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' => {}
                 _ => return err!(TributaryError::InvalidReferralCode),
             }
         }
 
-        // Check if referral account already exists at this PDA
-        if ctx.accounts.referral_account.load().is_ok() {
-            return err!(TributaryError::ReferralAccountAlreadyExists);
-        }
+        let new_referral_key = ctx.accounts.referral_account.key();
+        let new_owner = ctx.accounts.owner.key();
+        let gateway_key = ctx.accounts.gateway.key();
 
         let mut referrer = Pubkey::default();
+        let mut referrer_count = 0u32;
 
-        // Check remaining accounts for a valid referrer ReferralAccount
         for account_info in ctx.remaining_accounts.iter() {
-            // Try to load as AccountLoader<ReferralAccount>
             if let Ok(loader) = AccountLoader::<ReferralAccount>::try_from(account_info) {
-                if loader.load().is_ok() {
+                let data = loader
+                    .load()
+                    .map_err(|_| TributaryError::CouldNotDeserializeReferrer)?;
+
+                require!(
+                    data.gateway == gateway_key,
+                    TributaryError::ReferrerAccountInvalid
+                );
+
+                require!(
+                    data.owner != new_owner,
+                    TributaryError::CircularReferralChain
+                );
+
+                require!(
+                    data.referrer != new_referral_key,
+                    TributaryError::CircularReferralChain
+                );
+
+                referrer_count = referrer_count.saturating_add(1);
+
+                if referrer == Pubkey::default() {
                     referrer = *account_info.key;
-                    break;
                 }
             }
         }
+
+        require!(
+            referrer_count <= 3,
+            TributaryError::MaxReferralDepthExceeded
+        );
 
         // Initialize the referral account using load_init for zero_copy
         let mut referral_account = ctx.accounts.referral_account.load_init()?;

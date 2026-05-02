@@ -118,11 +118,7 @@
           }
         },
         {
-          "name": "new_fee_recipient",
-          "docs": [
-            "be used to derive the associated token account from. So we don't have to check anything",
-            "really, FIXME: do we?"
-          ]
+          "name": "new_fee_recipient"
         },
         {
           "name": "config",
@@ -1068,6 +1064,9 @@
           "writable": true
         },
         {
+          "name": "mint"
+        },
+        {
           "name": "recipient_token_account",
           "writable": true
         },
@@ -1151,16 +1150,69 @@
       ],
       "accounts": [
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "PaymentGateway"
+              }
+            ]
+          }
+        },
+        {
           "name": "from",
           "writable": true
+        },
+        {
+          "name": "mint"
         },
         {
           "name": "to",
           "writable": true
         },
         {
-          "name": "authority",
-          "signer": true
+          "name": "gateway_fee_account",
+          "writable": true
+        },
+        {
+          "name": "protocol_fee_account",
+          "writable": true
         },
         {
           "name": "token_program",
@@ -1712,6 +1764,11 @@
       "code": 6034,
       "name": "TokenMintMismatch",
       "msg": "Token mint mismatch between accounts"
+    },
+    {
+      "code": 6035,
+      "name": "TransferHookNotSupported",
+      "msg": "Token-2022 TransferHook mints are not currently supported"
     }
   ],
   "types": [

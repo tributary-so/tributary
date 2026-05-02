@@ -11,6 +11,11 @@ export enum PaymentInterval {
   Custom = "custom",
 }
 
+export interface TokenIssuerConfig {
+  apiBaseUrl: string;
+  trackingId?: string;
+}
+
 export interface CreateSubscriptionParams {
   amount: BN;
   token: PublicKey;
@@ -23,11 +28,14 @@ export interface CreateSubscriptionParams {
   startTime?: Date;
   approvalAmount?: BN;
   executeImmediately?: boolean;
+  fetchToken?: boolean;
+  tokenIssuerConfig?: TokenIssuerConfig;
 }
 
 export interface CreateSubscriptionResult {
   txId: string;
   instructions: any[];
+  token?: string;
 }
 
 export interface CreateMilestoneParams {

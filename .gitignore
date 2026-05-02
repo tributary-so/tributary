@@ -19,3 +19,6 @@ apps/lando-remotion/build
 .env
 apps/cli/lib/
 apps/docs/.cache/
+apps/scheduler/lib/
+apps/cli/keypair.json
+coverage

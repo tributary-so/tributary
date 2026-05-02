@@ -23,8 +23,12 @@ pub fn validate_payg_policy(
         TributaryError::InvalidAmount
     );
 
-    // Validate period_length_seconds is greater than zero
     require!(period_length_seconds > 0, TributaryError::InvalidInterval);
+
+    require!(
+        period_length_seconds <= i64::MAX as u64,
+        TributaryError::InvalidInterval
+    );
 
     Ok(())
 }
@@ -65,27 +69,12 @@ impl PolicyStrategy for PayAsYouGoStrategy {
 
     fn update_policy_state(
         &mut self,
-        payment_policy: &mut PaymentPolicy,
-        current_time: i64,
+        _payment_policy: &mut PaymentPolicy,
+        _current_time: i64,
     ) -> Result<()> {
-        match &mut payment_policy.policy_type {
-            PolicyType::PayAsYouGo {
-                period_length_seconds,
-                current_period_start,
-                current_period_total,
-                ..
-            } => {
-                // Check if we need to reset period
-                let period_end = *current_period_start + *period_length_seconds as i64;
-                if current_time >= period_end {
-                    // Reset period
-                    *current_period_start = current_time;
-                    *current_period_total = 0;
-                }
-                Ok(())
-            }
-            _ => err!(TributaryError::InvalidAmount),
-        }
+        // Period management handled entirely by validate_payment_constraints
+        // + update_period_total to avoid duplicated reset logic.
+        Ok(())
     }
 
     fn should_pause_policy(&self, _payment_policy: &PaymentPolicy) -> bool {
@@ -112,24 +101,30 @@ impl PayAsYouGoStrategy {
                 current_period_total,
                 ..
             } => {
-                // Check if we need to reset period
-                let period_end = *current_period_start + *period_length_seconds as i64;
+                require!(
+                    *period_length_seconds <= i64::MAX as u64,
+                    TributaryError::InvalidInterval
+                );
+
+                let period_end = current_period_start
+                    .checked_add(*period_length_seconds as i64)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
                 let current_period_total = if current_time >= period_end {
-                    // Period has expired, reset to 0 for this payment
                     0
                 } else {
                     *current_period_total
                 };
 
-                // Validate chunk amount doesn't exceed max_chunk_amount
                 require!(
                     payment_amount <= *max_chunk_amount,
                     TributaryError::InvalidAmount
                 );
 
-                // Validate period limit won't be exceeded
+                let new_total = current_period_total
+                    .checked_add(payment_amount)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
                 require!(
-                    current_period_total + payment_amount <= *max_amount_per_period,
+                    new_total <= *max_amount_per_period,
                     TributaryError::InvalidAmount
                 );
 
@@ -153,15 +148,21 @@ impl PayAsYouGoStrategy {
                 current_period_total,
                 ..
             } => {
-                // Check if we need to reset period
-                let period_end = *current_period_start + *period_length_seconds as i64;
+                require!(
+                    *period_length_seconds <= i64::MAX as u64,
+                    TributaryError::InvalidInterval
+                );
+
+                let period_end = current_period_start
+                    .checked_add(*period_length_seconds as i64)
+                    .ok_or(TributaryError::ArithmeticOverflow)?;
                 if current_time >= period_end {
-                    // Reset period
                     *current_period_start = current_time;
                     *current_period_total = payment_amount;
                 } else {
-                    // Update period total
-                    *current_period_total += payment_amount;
+                    *current_period_total = current_period_total
+                        .checked_add(payment_amount)
+                        .ok_or(TributaryError::ArithmeticOverflow)?;
                 }
                 Ok(())
             }

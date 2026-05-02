@@ -27,6 +27,9 @@ pub struct CreatePaymentGateway<'info> {
     pub config: Account<'info, ProgramConfig>,
 
     /// CHECK: This is the fee recipient account that will receive gateway fees
+    #[account(
+        constraint = fee_recipient.key() != Pubkey::default() @ TributaryError::InvalidAmount
+    )]
     pub fee_recipient: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,

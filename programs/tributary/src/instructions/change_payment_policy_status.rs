@@ -1,5 +1,6 @@
 use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
+use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
 #[instruction(policy_id: u32)]
@@ -14,8 +15,7 @@ pub struct ChangePaymentPolicyStatus<'info> {
     )]
     pub user_payment: Account<'info, UserPayment>,
 
-    /// CHECK: This is the token mint for the payment
-    pub token_mint: UncheckedAccount<'info>,
+    pub token_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -47,8 +47,14 @@ impl<'info> ChangePaymentPolicyStatus<'info> {
         let user_payment = &mut ctx.accounts.user_payment;
         let clock = Clock::get()?;
 
-        // Update policy status
         let old_status = payment_policy.status.clone();
+
+        match (&old_status, &new_status) {
+            (PaymentStatus::Active, PaymentStatus::Paused)
+            | (PaymentStatus::Paused, PaymentStatus::Active) => {}
+            _ => return err!(TributaryError::InvalidPolicyStatusTransition),
+        }
+
         payment_policy.status = new_status.clone();
         payment_policy.updated_at = clock.unix_timestamp;
 

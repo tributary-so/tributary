@@ -45,9 +45,41 @@ jobs:
           anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
           node_version: 22
 
-      - name: Run Anchor tests
-        uses: solana-developers/github-actions/run-tests@v0.2.5
+      - name: Cache node_modules
+        uses: actions/cache@v3
         with:
-          solana_version: ${{ inputs.solana_version || steps.versions.outputs.solana_version }}
-          anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
-          program: tributary
+          path: ./node_modules/
+          key: node-modules-${{ runner.os }}-build-v0.1-${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}-${{ inputs.solana_version || steps.versions.outputs.solana_version }}
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-directories: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            test-ledger/
+          shared-key: "anchor-test-${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}-${{ inputs.solana_version || steps.versions.outputs.solana_version }}"
+
+      - name: Run Anchor Tests
+        shell: bash
+        env:
+          CARGO_INCREMENTAL: 1
+          CARGO_NET_RETRY: 10
+          RUST_BACKTRACE: 1
+        run: |
+          echo "Running tests for program: tributary"
+                  FEATURES="${{ inputs.features }}"
+          if [ ! -z "$FEATURES" ]; then
+            FEATURES="--features $FEATURES"
+          fi
+
+          anchor test -- $FEATURES
+
+      - name: Check Test Results
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          echo "Tests failed! Check the logs above for details."
+          exit 1

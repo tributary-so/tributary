@@ -5,7 +5,6 @@ import {
   TransactionSignature,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
   Tributary,
   PaymentFrequency,
@@ -305,23 +304,23 @@ export async function createOneTimePayment(
   const tokenMint = new PublicKey(tokenMintStr || config.usdcMint);
   const amountInSmallestUnits = await amountToBN(amount, tokenMint.toString());
 
-  const fromAta = getAssociatedTokenAddressSync(tokenMint, wallet.publicKey!);
-  const toAta = getAssociatedTokenAddressSync(tokenMint, recipientWallet);
-
   const memo = params.memo || params.trackingId || "tributary payment";
+  const gateway = new PublicKey(config.gateway);
 
   const transferIx = await tributary.transfer(
-    fromAta,
-    toAta,
+    tokenMint,
+    recipientWallet,
+    gateway,
     amountInSmallestUnits,
     createMemoBuffer(memo, 64)
+    // FIXME: need to add the entire referral code logic here!
   );
 
   const { blockhash } = await tributary.connection.getLatestBlockhash();
   const messageV0 = new TransactionMessage({
     payerKey: wallet.publicKey!,
     recentBlockhash: blockhash,
-    instructions: [transferIx],
+    instructions: transferIx,
   }).compileToV0Message();
   const transaction = new VersionedTransaction(messageV0);
 

@@ -36,6 +36,8 @@ pub struct CreateUserPayment<'info> {
 impl<'info> CreateUserPayment<'info> {
     /// Create a new user payment account for given owner and token mint.
     pub fn handler_create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
+        crate::utils::validate_mint_no_transfer_hook(&ctx.accounts.token_mint.to_account_info())?;
+
         let user_payment = &mut ctx.accounts.user_payment;
         let clock = Clock::get()?;
 
