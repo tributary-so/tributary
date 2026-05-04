@@ -47,6 +47,95 @@
       name="twitter:image"
       content="https://app.tributary.so/banner1200.png"
     />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Tributary",
+      "url": "https://tributary.so",
+      "description": "Automated recurring payments on Solana using token delegation. Supports Subscriptions, Milestones, Pay-as-you-go, and UpTo payment models.",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "1% protocol fee per transaction. No monthly charges."
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Tributary",
+        "url": "https://tributary.so"
+      },
+      "featureList": [
+        "Automated recurring payments",
+        "Non-custodial token delegation",
+        "Subscriptions, Milestones, Pay-as-you-go, UpTo",
+        "x402 HTTP 402 integration",
+        "Action Codes for wallet-less payments",
+        "Hosted checkout page",
+        "TypeScript SDK and React components"
+      ]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Tributary?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports four payment models: Subscriptions, Milestones, Pay-as-you-go, and UpTo."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does token delegation work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Users sign a single transaction to delegate tokens to Tributary's smart contract. The protocol executes payments automatically without locking funds in escrow. Users retain full custody and can revoke delegation anytime."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I accept USDC without Solana code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use Tributary's hosted checkout page. Your user pays via checkout.tributary.so, then lands back on your site with a JWT. You verify the JWT with any standard library—no Solana SDK, no RPC, no keypairs needed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Tributary secure?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Funds remain in your wallet. Tributary only has delegated authority for specific amounts. Open-source, audited, revocable anytime. Full CI/CD pipeline with comprehensive testing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can users cancel subscriptions?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Absolutely. Users have full control and can pause, resume, or cancel anytime through wallet or dApp."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is x402 integration?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle, ideal for API monetization."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
