@@ -1,4 +1,4 @@
-import{j as e}from"./ui-vendor-B2X5WbDO.js";import{c as r,L as s}from"./index-CXQD0tdW.js";import{P as i}from"./play-C0e6o0BQ.js";import"./wallet-adapter-D_H_yQhn.js";import"./solana-vendor-BAPdOs64.js";/**
+import{j as e}from"./ui-vendor-B2X5WbDO.js";import{c as r,L as s}from"./index-FSe2uQPq.js";import{P as i}from"./play-CNY166DB.js";import"./wallet-adapter-D_H_yQhn.js";import"./solana-vendor-BAPdOs64.js";/**
  * @license lucide-react v0.544.0 - ISC
  *
  * This source code is licensed under the ISC license.
