@@ -23,6 +23,14 @@ const TWEETS: Tweet[] = [
     url: "https://x.com/CosmicDude3000/status/2049758492064395743",
   },
   {
+    id: "2050647741039272212",
+    author: "Harshit",
+    handle: "Harshitaturs",
+    text: "NOW THAT'S SOME INTERSTING STUFF!!",
+    date: "May 2, 2026",
+    url: "https://x.com/Harshitaturs/status/2050647741039272212",
+  },
+  {
     id: "2047557841481851266",
     author: "rok420.eth",
     handle: "Grok420",
