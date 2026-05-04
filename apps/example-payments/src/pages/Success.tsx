@@ -2,9 +2,13 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { useTributaryToken } from "@tributary-so/sdk-react";
 import { API_BASE_URL } from "@/constants";
+import { PaymentDetails } from "@/components/PaymentDetails";
 
 export default function Success() {
-  const { token, payload, loading } = useTributaryToken(undefined, API_BASE_URL);
+  const { token, payload, loading } = useTributaryToken(
+    undefined,
+    API_BASE_URL
+  );
 
   if (loading) {
     return (
@@ -49,6 +53,8 @@ export default function Success() {
         </div>
 
         <div className="max-w-2xl mx-auto space-y-6">
+          <PaymentDetails payload={payload} />
+
           <div className="text-center pt-4">
             <Link
               to="/"
