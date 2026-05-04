@@ -4,14 +4,14 @@ const layers = [
   { web2: 'Visa / Mastercard', tributary: 'On-chain protocol', label: 'Payment Rail' },
   { web2: 'Stripe, Adyen, PayPal', tributary: 'Your registered gateway', label: 'Processor' },
   { web2: 'Stripe Checkout', tributary: 'Hosted checkout page', label: 'Checkout' },
-  { web2: 'Webhook signature', tributary: 'JWT + JWKS + onchain', label: 'Verification' },
+  { web2: 'Webhook signature', tributary: 'JWT + JWKS + On chain', label: 'Verification' },
 ]
 
 export default function SlideInfrastructure() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
       <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground/50 mb-4"
+        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -86,7 +86,7 @@ export default function SlideInfrastructure() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.8 + i * 0.08 }}
           >
-            <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">{feat.title}</div>
+            <div className="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-1">{feat.title}</div>
             <div className="text-xs text-muted-foreground">{feat.desc}</div>
           </motion.div>
         ))}

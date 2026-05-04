@@ -42,13 +42,17 @@ export default function SlideTitle() {
         <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5">
           Frontier Hackathon
         </span>
-        <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-border text-muted-foreground">
-          Colosseum 2026
-        </span>
+        <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-border text-muted-foreground flex gap-2">
+          <span><img src="/frontier/superteam.png" className="w-4 h-4 rounded" /></span>
+          <span>
+            Berlin Demo Day
+          </span>
+        </div>
+
       </motion.div>
 
       <motion.p
-        className="text-sm text-muted-foreground/50 italic max-w-md"
+        className="text-sm text-muted-foreground italic max-w-md"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.65 }}
@@ -57,7 +61,7 @@ export default function SlideTitle() {
       </motion.p>
 
       <motion.div
-        className="absolute bottom-8 text-muted-foreground/30 text-xs uppercase tracking-[0.2em]"
+        className="absolute bottom-8 text-muted-foreground text-xs uppercase tracking-[0.2em]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.8 }}

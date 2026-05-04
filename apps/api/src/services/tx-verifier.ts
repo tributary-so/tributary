@@ -1,36 +1,12 @@
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { getConnection, getMintDecimals, convertAmountToFloat } from "./solana";
-interface OneTimePaymentClaim {
-  signature: string;
-  slot: number;
-  blockTime: number;
-  amount: string;
-  tokenMint: string;
-  payer: string;
-  recipient: string;
-  memo: string | null;
-  policyAddress?: string;
-  gateway?: string;
-  recordId?: number;
-}
 import { bytesToString } from "../db/events";
+import { OneTimePaymentClaim, DecodedPaymentRecord } from "../types"
 
+const PROGRAM_LOG_PREFIX = "Program data: ";
 const PAYMENT_RECORD_DISCRIMINATOR = Buffer.from([
   42, 100, 253, 124, 170, 186, 231, 186,
 ]);
-
-const PROGRAM_LOG_PREFIX = "Program data: ";
-
-interface DecodedPaymentRecord {
-  payment_policy: PublicKey;
-  gateway: PublicKey;
-  amount: bigint;
-  timestamp: bigint;
-  memo: number[];
-  record_id: number;
-  payer: PublicKey;
-  recipient: PublicKey;
-}
 
 function decodePaymentRecord(data: Buffer): DecodedPaymentRecord {
   let offset = 0;

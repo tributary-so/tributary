@@ -3,32 +3,13 @@ import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { getDb } from "../db";
 import { signingKeys } from "../db/schema";
 import { eq, gt, and, or, isNull } from "drizzle-orm";
+import { JwkKey, SigningKeyRecord } from "../types";
 
 const KEY_ROTATION_DAYS = parseInt(process.env.KEY_ROTATION_DAYS || "30", 10);
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
-export interface SigningKeyRecord {
-  kid: string;
-  privateKey: string;
-  publicJwk: Record<string, unknown>;
-  algorithm: string;
-  isCurrent: boolean;
-  createdAt: Date | null;
-  expiresAt: Date | null;
-  rotatedAt: Date | null;
-}
-
-interface JwkKey {
-  kty: string;
-  crv: string;
-  kid: string;
-  alg: string;
-  use: string;
-  x: string;
-  y: string;
-}
 
 function getEncryptionKey(): string | undefined {
   return process.env.SIGNING_KEY_ENCRYPTION_KEY;

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import webfontDownload from "vite-plugin-webfont-dl";
+import Sitemap from 'vite-plugin-sitemap'
 
 export default defineConfig({
   plugins: [
@@ -10,6 +11,7 @@ export default defineConfig({
       "https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap",
     ]),
     react(),
+    Sitemap({ hostname: 'https://tributary.so' }),
   ],
   resolve: {
     alias: {

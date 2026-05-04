@@ -13,7 +13,7 @@ const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.co
  * @returns Solana Connection instance
  */
 export function getConnection(): Connection {
-  return new Connection(SOLANA_RPC);
+  return new Connection(SOLANA_RPC, "processed");
 }
 
 /**

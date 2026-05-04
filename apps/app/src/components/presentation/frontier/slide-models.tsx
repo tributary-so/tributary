@@ -39,7 +39,7 @@ export default function SlideModels() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
       <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground/50 mb-4"
+        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -72,30 +72,32 @@ export default function SlideModels() {
         {models.map((model, i) => (
           <motion.div
             key={model.name}
-            className={`border ${model.border} bg-gradient-to-br ${model.accent} p-6 relative overflow-hidden`}
+            className={`border ${model.border} bg-linear-to-br ${model.accent} p-6 relative overflow-hidden`}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
           >
             <div
-              className={`absolute top-3 right-4 text-3xl font-bold ${model.text} opacity-20`}
+              className={`absolute top-3 right-4 text-3xl font-bold ${model.text} opacity-50`}
               style={{ fontFamily: 'var(--font-secondary)' }}
             >
               {model.icon}
             </div>
             <div className={`text-xs uppercase tracking-[0.2em] font-bold ${model.text} mb-2`}>{model.name}</div>
-            <div className="text-sm text-muted-foreground">{model.desc}</div>
+            <div className="text-sm text-foreground">{model.desc}</div>
           </motion.div>
         ))}
       </div>
 
       <motion.p
-        className="text-xs text-muted-foreground/40 italic mt-8"
+        className="text-xs text-muted-foreground italic mt-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.8 }}
       >
-        One program. Four models. Unlimited policies per user.
+        <p className="ml-1">
+          One program. Currently four models. Extensible undefinitely. Unlimited policies per user.
+        </p>
       </motion.p>
     </div>
   )
