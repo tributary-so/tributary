@@ -1,17 +1,7 @@
 import { getOneTimePaymentByTrackingId } from "../db/queries";
 import { bytesToString } from "../db/events";
+import { OneTimePaymentDetails } from "../types";
 
-export interface OneTimePaymentDetails {
-  trackingId: string;
-  signature: string;
-  slot: number;
-  timestamp: Date;
-  paymentPolicy: string;
-  gateway: string;
-  amount: number;
-  memo: string;
-  recordId: number;
-}
 
 export async function getOneTimePaymentDetails(
   trackingId: string,

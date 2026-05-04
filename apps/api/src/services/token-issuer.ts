@@ -7,6 +7,7 @@ import { encodeMemo } from "@tributary-so/sdk";
 import { PolicyLookupOptions } from "@tributary-so/payments";
 import { getDb } from "../db";
 import { events } from "../db/schema";
+import { OneTimePaymentClaim } from "../types"
 import { eq, desc, and, sql } from "drizzle-orm";
 import { decodeMemo } from "@tributary-so/sdk";
 import {
@@ -251,9 +252,7 @@ export async function issueToken(
     options.trackingId = request.trackingId;
   }
 
-  let oneTimePayment: Awaited<
-    ReturnType<typeof verifyTransactionPayment>
-  > | null = null;
+  let oneTimePayment: OneTimePaymentClaim | null = null;
   let txPolicyAddress: string | null = null;
 
   if (request.transactionSignature) {
