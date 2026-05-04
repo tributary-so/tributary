@@ -48,7 +48,7 @@ const variants = {
 function SlideFallback() {
   return (
     <div className="flex items-center justify-center h-full w-full">
-      <div className="text-muted-foreground/30 text-xs uppercase tracking-[0.3em]">...</div>
+      <div className="text-muted-foreground text-xs uppercase tracking-[0.3em]">...</div>
     </div>
   )
 }
@@ -107,7 +107,7 @@ export default function Frontier() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="w-full h-full"
+            className="w-full h-full [zoom:1.5]"
           >
             <Suspense fallback={<SlideFallback />}>
               <CurrentSlide />
@@ -116,7 +116,7 @@ export default function Frontier() {
         </AnimatePresence>
       </div>
 
-      <div className="absolute top-4 right-4 flex items-center gap-2 text-xs text-muted-foreground/50">
+      <div className="absolute top-4 right-4 flex items-center gap-2 text-xs text-muted-foreground">
         <span className="font-mono">
           {String(current + 1).padStart(2, '0')}/{String(slides.length).padStart(2, '0')}
         </span>
@@ -131,9 +131,8 @@ export default function Frontier() {
             aria-label={`Go to slide ${index + 1}: ${slideLabels[index]}`}
           >
             <div
-              className={`h-1 transition-all duration-300 ${
-                index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40'
-              }`}
+              className={`h-1 transition-all duration-300 ${index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
+                }`}
             />
             <span className="absolute -top-5 text-[8px] uppercase tracking-wider text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all whitespace-nowrap">
               {slideLabels[index]}

@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 
 const stats = [
-  { value: '$33T', label: 'Stablecoin Volume 2025', highlight: true },
   { value: '$15T', label: 'Visa Volume 2025', highlight: false },
+  { value: '$33T', label: 'Stablecoin Volume 2025', highlight: true },
   { value: '$56T', label: 'Projected by 2030', highlight: false },
 ]
 
@@ -36,16 +36,20 @@ export default function SlideMarket() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        $2.9T in stablecoin payments in 2025. Projected $56T by 2030. Recurring billing on Solana: zero.
+        <p>
+          $2.9T in stablecoin payments in 2025. Projected $56T by 2030.
+        </p>
+        <p>
+          Recurring billing on Solana: <span className="text-orange-400 font-bold">zero</span>.
+        </p>
       </motion.p>
 
       <div className="flex gap-6 mb-8">
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
-            className={`flex flex-col items-center px-6 py-4 border ${
-              stat.highlight ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
-            }`}
+            className={`flex flex-col items-center px-6 py-4 border ${stat.highlight ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
+              }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
@@ -68,7 +72,7 @@ export default function SlideMarket() {
         transition={{ duration: 0.4, delay: 0.6 }}
       >
         {[
-          'Stripe ($70B+), PayPal, Adyen — all built on recurring billing',
+          'Stripe ($70B+), PayPal, Adyen. Built on recurring billing',
           'Stripe just added USDC on Solana. Shopify merchants accept crypto.',
           'Solana conquered DeFi. Commerce needs subscriptions.',
         ].map((point, i) => (

@@ -25,7 +25,7 @@ export default function SlideFlow() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
       <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground/50 mb-4"
+        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -40,7 +40,9 @@ export default function SlideFlow() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Sign once. Pay automatically.
+        Sign once.
+        <br />
+        <span className="text-emerald-600">Pay automatically.</span>
         <br />
         <span className="text-emerald-400">Verify anywhere.</span>
       </motion.h2>
@@ -97,12 +99,12 @@ export default function SlideFlow() {
       </motion.div>
 
       <motion.p
-        className="text-xs text-muted-foreground/40 italic mt-6"
+        className="text-xs text-muted-foreground italic mt-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.85 }}
       >
-        The entire payment flow without importing a single blockchain library.
+        The entire payment flow <span className="underline">without importing a single blockchain library</span>.
       </motion.p>
     </div>
   )

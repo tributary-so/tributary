@@ -1,23 +1,24 @@
 import { motion } from 'framer-motion'
 
 const metrics = [
-  { value: '10+', label: 'Integrations', accent: false },
+  { value: '3 / 10+', label: 'Integrations', accent: false },
   { value: '4K+', label: 'Transfers executed', accent: false },
+  { value: '15%', label: 'M.o.M growth', accent: false },
   { value: '$0', label: 'Marketing spent', accent: true },
   { value: '$0', label: 'Raised', accent: true },
 ]
 
 const integrations = [
-  { name: 'yumi.finance', desc: 'Loan repayments. Integrated in 2 days.' },
-  { name: 'Allowly.app', desc: 'Pocket money for kids and AI agents.' },
-  { name: 'contribute.so', desc: 'Patreon for creators, USDC on Solana.' },
+  { name: 'yumi.finance', desc: 'Loan repayments. Integrated in 2 days.', type: 'milestone' },
+  { name: 'allowly.app', desc: 'Pocket money for kids and AI agents.', type: 'pay-as-you-go' },
+  { name: 'contribute.so', desc: 'Patreon for creators, USDC on Solana.', type: 'subscriptions' },
 ]
 
 export default function SlideTraction() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
       <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground/50 mb-4"
+        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -34,7 +35,7 @@ export default function SlideTraction() {
       >
         Zero marketing.
         <br />
-        <span className="text-emerald-400">Products found us.</span>
+        <span className="text-emerald-400">Builders found us.</span>
       </motion.h2>
 
       <motion.p
@@ -70,19 +71,22 @@ export default function SlideTraction() {
         {integrations.map((integration, i) => (
           <motion.div
             key={integration.name}
-            className="flex-1 border border-border bg-muted/10 p-4"
+            className="relative flex-1 border border-border bg-muted p-4"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
           >
-            <div className="text-xs font-semibold text-foreground mb-1">{integration.name}</div>
+            <span className="text-[10px] absolute -top-0 right-0 px-1.5 py-0.5 border border-t-0 border-r-0 border-amber-800/30 bg-amber-700/20 text-amber-900/60">
+              {integration.type}
+            </span>
+            <div className="text-xs font-semibold text-foreground mb-1 -mt-1">{integration.name}</div>
             <div className="text-[10px] text-muted-foreground">{integration.desc}</div>
           </motion.div>
         ))}
       </div>
 
       <motion.p
-        className="text-xs text-muted-foreground/60 mt-6 text-center"
+        className="text-xs text-muted-foreground mt-6 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.9 }}
@@ -91,7 +95,7 @@ export default function SlideTraction() {
       </motion.p>
 
       <motion.p
-        className="text-xs text-muted-foreground/40 italic mt-3"
+        className="text-xs text-muted-foreground italic mt-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 1 }}

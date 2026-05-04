@@ -2,21 +2,23 @@ import { motion } from 'framer-motion'
 
 const bio = [
   'Dr.-Ing. Fabian Schuh — PhD Communications Engineer, 10+ years Web3',
-  'BitShares (committee), Steemit (founding member), MakerDAO (advisor)',
-  '5+ Solana projects: Tributary, Allowly, Contribute.so, Chaoscraft, Polycode',
-  'Rektoff Solana Security Cohort #2 Graduate. Superteam Germany.',
+  '5+ Solana projects: Tributary, Allowly, Contribute.so, Pred. Markets & Perps',
+  'Honourable mention for Radar Submission: repo.trade',
+  'Rektoff Solana Security Cohort Graduate. Superteam Germany.',
+  'Fun fact: Produced >500Mio blocks across 16+ different L1s',
 ]
 
 const team = [
-  { role: 'Advisor', name: 'Stefan, PhD Mathematics' },
-  { role: 'Contributions', name: 'Efe, Superteam Poland' },
+  { role: 'Advisor', name: 'Stefan', extra: 'PhD Mathematics, Full Stack (10yrs)' },
+  { role: 'Contributions', name: 'Ay', extra: 'Design (8yrs)' },
+  { role: 'Contributions', name: 'Efe', extra: 'UX (15+ yrs), Superteam Poland' },
 ]
 
 export default function SlideTeam() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
       <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground/50 mb-4"
+        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -46,7 +48,7 @@ export default function SlideTeam() {
       </motion.p>
 
       <motion.div
-        className="max-w-xl w-full border border-border p-6 mb-6"
+        className="max-w-xl w-full border border-border p-6 mb-2"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
@@ -72,6 +74,7 @@ export default function SlideTeam() {
           >
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{member.role}</div>
             <div className="text-xs font-semibold text-foreground">{member.name}</div>
+            <div className="text-[9px] font-semibold text-muted-foreground">{member.extra}</div>
           </motion.div>
         ))}
       </div>
