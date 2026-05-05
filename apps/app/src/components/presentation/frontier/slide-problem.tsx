@@ -92,10 +92,10 @@ export default function SlideProblem() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.9 }}
       >
-        <p><sup className="text-destructive">*</sup>Memecoins do not generate revenue</p>
-        <p className="ml-1">
-          Every Solana team that wants recurring revenue reinvents this alone. Until now.
+        <p>
+          <sup className="text-destructive">*</sup>Memecoins do not generate revenue
         </p>
+        <p className="ml-1">Every team that wants recurring revenue reinvents this alone. Until now.</p>
       </motion.p>
     </div>
   )

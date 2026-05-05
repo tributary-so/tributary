@@ -2,12 +2,12 @@ import { motion } from 'framer-motion'
 
 const cols = ['', 'Tributary', 'Helio', 'VelaPay']
 const rows = [
-  ['Model', 'Protocol (infra)', 'Payment product', 'Payment product',],
-  ['Custody', 'Non-custodial', 'Non-custodial', 'Privacy (Token-2022)',],
-  ['Payment Types', '4+', '1', '1',],
-  ['Business Layer', 'Yes', 'No', 'No',],
-  ['Self-hostable', 'Yes', 'No', 'No',],
-  ['Mainnet', 'Live', 'Live', 'Not yet',],
+  ['Model', 'Protocol (infra)', 'Payment product', 'Payment product'],
+  ['Custody', 'Non-custodial', 'Non-custodial', 'Privacy (Token-2022)'],
+  ['Payment Types', '4+', '1', '1'],
+  ['Business Layer', 'Yes', 'No', 'No'],
+  ['Self-hostable', 'Yes', 'No', 'No'],
+  ['Mainnet', 'Live', 'Live', 'Not yet'],
 ]
 
 export default function SlideCompetition() {
@@ -31,7 +31,7 @@ export default function SlideCompetition() {
       >
         Others exist.
         <br />
-        <span className="text-emerald-400">None are infrastructure.</span>
+        <span className="text-emerald-400">None let you build your own.</span>
       </motion.h2>
 
       <motion.p
@@ -40,7 +40,7 @@ export default function SlideCompetition() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Two approaches to recurring payments on Solana. Ours is the protocol.
+        Two approaches to recurring payments on Solana. Ours lets anyone build a payment business.
       </motion.p>
 
       <motion.div
@@ -55,12 +55,13 @@ export default function SlideCompetition() {
               {cols.map((col, i) => (
                 <th
                   key={col}
-                  className={`px-3 py-2 text-left uppercase tracking-wider font-semibold border-b border-border ${i === 0
-                    ? 'text-muted-foreground'
-                    : i === 1
+                  className={`px-3 py-2 text-left uppercase tracking-wider font-semibold border-b border-border ${
+                    i === 0
+                      ? 'text-muted-foreground'
+                      : i === 1
                       ? 'text-emerald-400 bg-emerald-500/5'
                       : 'text-muted-foreground bg-muted/20'
-                    }`}
+                  }`}
                 >
                   {col}
                 </th>
@@ -73,12 +74,13 @@ export default function SlideCompetition() {
                 {row.map((cell, ci) => (
                   <td
                     key={ci}
-                    className={`px-3 py-2 ${ci === 0
-                      ? 'font-semibold text-foreground'
-                      : ci === 1
+                    className={`px-3 py-2 ${
+                      ci === 0
+                        ? 'font-semibold text-foreground'
+                        : ci === 1
                         ? 'text-emerald-400 bg-emerald-500/5 font-medium'
                         : 'text-muted-foreground'
-                      }`}
+                    }`}
                   >
                     {cell}
                   </td>
@@ -96,7 +98,7 @@ export default function SlideCompetition() {
         transition={{ duration: 0.4, delay: 0.7 }}
       >
         Helio and VelaPay are payment products. <br />
-        Tributary is the protocol that lets anyone build one.
+        Tributary is the platform that lets anyone build one — and earn from it.
       </motion.p>
     </div>
   )

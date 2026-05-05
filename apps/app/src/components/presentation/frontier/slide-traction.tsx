@@ -9,9 +9,21 @@ const metrics = [
 ]
 
 const integrations = [
-  { name: 'yumi.finance', desc: 'Loan repayments. Integrated in 2 days.', type: 'milestone' },
-  { name: 'allowly.app', desc: 'Pocket money for kids and AI agents.', type: 'pay-as-you-go' },
-  { name: 'contribute.so', desc: 'Patreon for creators, USDC on Solana.', type: 'subscriptions' },
+  {
+    name: 'yumi.finance',
+    desc: 'Automates loan collections for lending platforms — reliable cash flow, zero manual overhead.',
+    type: 'milestones',
+  },
+  {
+    name: 'allowly.app',
+    desc: 'Enables simple recurring transfers for pocket-money apps and AI agents — better user retention.',
+    type: 'pay-as-you-go',
+  },
+  {
+    name: 'contribute.so',
+    desc: 'Powers recurring donations and creator payouts for DAOs — sustainable community engagement.',
+    type: 'subscriptions',
+  },
 ]
 
 export default function SlideTraction() {
@@ -35,7 +47,7 @@ export default function SlideTraction() {
       >
         Zero marketing.
         <br />
-        <span className="text-emerald-400">Builders found us.</span>
+        <span className="text-emerald-400"> Businesses found us.</span>
       </motion.h2>
 
       <motion.p
@@ -79,8 +91,8 @@ export default function SlideTraction() {
             <span className="text-[10px] absolute -top-0 right-0 px-1.5 py-0.5 border border-t-0 border-r-0 border-amber-800/30 bg-amber-700/20 text-amber-900/60">
               {integration.type}
             </span>
-            <div className="text-xs font-semibold text-foreground mb-1 -mt-1">{integration.name}</div>
-            <div className="text-[10px] text-muted-foreground">{integration.desc}</div>
+            <div className="text-xs font-semibold text-foreground mb-1.5">{integration.name}</div>
+            <div className="text-[10px] text-muted-foreground leading-snug">{integration.desc}</div>
           </motion.div>
         ))}
       </div>
@@ -91,7 +103,7 @@ export default function SlideTraction() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.9 }}
       >
-        Inbound demand from RPC providers, API products, and LLM services.
+        Inbound demand from lending platforms, API products, and creator tools.
       </motion.p>
 
       <motion.p
@@ -100,7 +112,7 @@ export default function SlideTraction() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 1 }}
       >
-        For infrastructure, organic pull is the strongest leading indicator.
+        For infrastructure, organic demand is the strongest signal.
       </motion.p>
     </div>
   )

@@ -3,7 +3,8 @@ import { motion } from 'framer-motion'
 const models = [
   {
     name: 'ONE TIME',
-    desc: 'Fixed amount, fixed receiver, paid once.',
+    desc: 'Fixed amount, paid once.',
+    example: 'A checkout button for anything, digital goods, event tickets, one-off purchases.',
     icon: '1x',
     accent: 'from-blue-500/10 to-transparent',
     border: 'border-blue-500/20',
@@ -11,7 +12,8 @@ const models = [
   },
   {
     name: 'SUBSCRIPTION',
-    desc: 'Fixed amount, fixed frequency. Cancel anytime.',
+    desc: 'Same amount, every month. Cancel anytime.',
+    example: 'Netflix-style billing. SaaS products, memberships, premium access ➡ predictable revenue.',
     icon: '~',
     accent: 'from-emerald-500/10 to-transparent',
     border: 'border-emerald-500/20',
@@ -19,7 +21,8 @@ const models = [
   },
   {
     name: 'MILESTONE',
-    desc: 'Up to 4 phases. Escrow-style. Perfect for freelance.',
+    desc: 'Up to 4 phases. Funds locked until work is delivered.',
+    example: 'Pay freelancers in stages. Escrow without the middleman, trust through code, not contracts.',
     icon: '4p',
     accent: 'from-amber-500/10 to-transparent',
     border: 'border-amber-500/20',
@@ -27,7 +30,8 @@ const models = [
   },
   {
     name: 'PAY-AS-YOU-GO',
-    desc: 'Usage-based. Ideal for APIs, agents, metered services.',
+    desc: 'Charge per use. No manual invoicing.',
+    example: 'Per API call, per gigabyte, per action, If you can count it, you can bill for it.',
     icon: '$',
     accent: 'from-purple-500/10 to-transparent',
     border: 'border-purple-500/20',
@@ -54,9 +58,9 @@ export default function SlideModels() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        One delegation,
+        One approval,
         <br />
-        <span className="text-emerald-400">four payment models</span>
+        <span className="text-emerald-400">four ways to get paid</span>
       </motion.h2>
 
       <motion.p
@@ -65,7 +69,7 @@ export default function SlideModels() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        One delegation, unlimited policies. Extending the Solana Token Program.
+        One approval, unlimited policies. Covering every way your business earns.
       </motion.p>
 
       <div className="grid grid-cols-2 gap-4 max-w-3xl w-full">
@@ -84,7 +88,8 @@ export default function SlideModels() {
               {model.icon}
             </div>
             <div className={`text-xs uppercase tracking-[0.2em] font-bold ${model.text} mb-2`}>{model.name}</div>
-            <div className="text-sm text-foreground">{model.desc}</div>
+            <div className="text-sm text-foreground mb-1">{model.desc}</div>
+            <div className="text-[11px] text-muted-foreground leading-snug">{model.example}</div>
           </motion.div>
         ))}
       </div>
@@ -95,9 +100,7 @@ export default function SlideModels() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.8 }}
       >
-        <p className="ml-1">
-          One program. Currently four models. Extensible undefinitely. Unlimited policies per user.
-        </p>
+        <p className="ml-1">One protocol. Four models today. More tomorrow. Unlimited policies per user.</p>
       </motion.p>
     </div>
   )

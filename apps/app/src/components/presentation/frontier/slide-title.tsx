@@ -43,12 +43,11 @@ export default function SlideTitle() {
           Frontier Hackathon
         </span>
         <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-border text-muted-foreground flex gap-2">
-          <span><img src="/frontier/superteam.png" className="w-4 h-4 rounded" /></span>
           <span>
-            Berlin Demo Day
+            <img src="/frontier/superteam.png" className="w-4 h-4 rounded" />
           </span>
+          <span>Berlin Demo Day</span>
         </div>
-
       </motion.div>
 
       <motion.p
@@ -57,7 +56,7 @@ export default function SlideTitle() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.65 }}
       >
-        Don&apos;t trust, verify &mdash; with JWT, no backend required.
+        The missing billing layer for Solana commerce.
       </motion.p>
 
       <motion.div
