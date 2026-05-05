@@ -12,6 +12,7 @@ const HackathonCypherpunk = lazy(() => import('@/components/presentation/present
 const HackathonX402 = lazy(() => import('@/components/presentation/x402-presentation-feature'))
 const HackathonLando = lazy(() => import('@/components/presentation/lando-presentation-feature'))
 const Frontier = lazy(() => import('@/components/presentation/frontier'))
+const Roadshow = lazy(() => import('@/components/presentation/roadshow'))
 const ReferalProgram = lazy(() => import('@/components/referral-program/ReferralProgramPage'))
 
 function LoadingFallback() {
@@ -24,7 +25,7 @@ function LoadingFallback() {
 
 export function App() {
   const location = useLocation()
-  const width = location.pathname == '/frontier' ? '' : 'max-w-5xl'
+  const width = location.pathname == '/frontier' || location.pathname == '/roadshow' ? '' : 'max-w-5xl'
   return (
     <AppProviders>
       <div className="min-h-screen bg-background antialiased font-sans">
@@ -42,6 +43,7 @@ export function App() {
               <Route path="x402" element={<HackathonX402 />} />
               <Route path="agent" element={<HackathonLando />} />
               <Route path="frontier" element={<Frontier />} />
+              <Route path="roadshow" element={<Roadshow />} />
               <Route path="referral" element={<ReferalProgram />} />
             </Routes>
           </Suspense>

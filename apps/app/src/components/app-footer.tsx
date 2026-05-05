@@ -3,7 +3,7 @@ import { useLocation } from 'react-router'
 
 export function AppFooter() {
   const location = useLocation()
-  if (location.pathname == '/frontier') return
+  if (location.pathname == '/frontier' || location.pathname == '/roadshow') return
   return (
     <footer className="border-t border-border/50">
       <div className="mx-auto max-w-5xl px-4 py-12">

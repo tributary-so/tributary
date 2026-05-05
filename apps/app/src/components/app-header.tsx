@@ -11,7 +11,8 @@ const hackathons = [
   { label: 'x402', href: '/x402' },
   { label: 'Agent', href: '/agent' },
   { label: 'Cypherpunk', href: '/hackathon' },
-  { label: 'Frontier', href: '/frontier' },
+  // { label: 'Frontier', href: '/frontier' },
+  // { label: 'Roadshow', href: '/roadshow' },
 ]
 
 function ThemeToggle() {
@@ -77,7 +78,7 @@ export function AppHeader() {
   }, [])
 
   const location = useLocation()
-  if (location.pathname == '/frontier') return
+  if (location.pathname == '/frontier' || location.pathname == '/roadshow') return
 
   return (
     <header className="py-6">
