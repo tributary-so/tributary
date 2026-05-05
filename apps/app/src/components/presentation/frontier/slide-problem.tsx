@@ -2,18 +2,18 @@ import { motion } from 'framer-motion'
 
 const options = [
   {
-    label: 'Off-chain fee',
-    verdict: 'No retention, no recurring revenue',
-    bad: true,
-  },
-  {
-    label: 'On-chain fee',
+    label: 'Contract Fee (Own)',
     verdict: 'Requires smart contract offering',
     bad: true,
   },
   {
-    label: 'Web2 Billing',
-    verdict: 'Off-chain, no crypto composability, ...',
+    label: 'Composability Fee',
+    verdict: 'No retention, no recurring revenue',
+    bad: true,
+  },
+  {
+    label: 'Off-Chain Billing',
+    verdict: 'No stablecoin, no composability, ...',
     bad: true,
   },
 ]

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 
 const metrics = [
-  { value: '3 / 10+', label: 'Integrations', accent: false },
+  { value: '5+', label: 'Integrations', accent: false },
   { value: '4K+', label: 'Transfers executed', accent: false },
   { value: '15%', label: 'M.o.M growth', accent: false },
   { value: '$0', label: 'Marketing spent', accent: true },
