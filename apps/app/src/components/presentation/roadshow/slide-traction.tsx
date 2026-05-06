@@ -6,7 +6,7 @@ const metrics = [
   { value: '5+', label: 'Live integrations', accent: false },
   { value: '>95%', label: 'Test coverage', accent: false },
   { value: '$0', label: 'Marketing spend', accent: true },
-  { value: '0', label: 'Custody risk', accent: false },
+  { value: '$0', label: 'Custody risk', accent: false },
 ]
 
 const integrations = [
@@ -53,9 +53,8 @@ export default function SlideTraction() {
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}
-            className={`flex flex-col items-center px-4 py-3 border ${
-              m.accent ? 'border-amber-500/30 bg-amber-500/5' : 'border-border'
-            }`}
+            className={`flex flex-col items-center px-4 py-3 border ${m.accent ? 'border-amber-500/30 bg-amber-500/5' : 'border-border'
+              }`}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.06 }}

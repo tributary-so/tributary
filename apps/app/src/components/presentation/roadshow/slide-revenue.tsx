@@ -43,24 +43,22 @@ export default function SlideRevenue() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Today: Pre-revenue. Protocol fees enabled, volume growing. 12 months post-audit:
+        Today: Small Revenue. Protocol fees enabled, volume growing. 12 months post-audit:
       </motion.p>
 
       <div className="flex gap-4 mb-8 max-w-3xl w-full">
         {scenarios.map((s, i) => (
           <motion.div
             key={s.label}
-            className={`flex-1 border p-4 ${
-              i === 1 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
-            }`}
+            className={`flex-1 border p-4 ${i === 1 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
+              }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
           >
             <div
-              className={`text-xs uppercase tracking-wider font-bold mb-3 ${
-                i === 1 ? 'text-emerald-400' : 'text-muted-foreground'
-              }`}
+              className={`text-xs uppercase tracking-wider font-bold mb-3 ${i === 1 ? 'text-emerald-400' : 'text-muted-foreground'
+                }`}
             >
               {s.label}
             </div>

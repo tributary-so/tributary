@@ -2,13 +2,12 @@ import { motion } from 'framer-motion'
 
 const cols = ['', 'Tributary', 'Helio', 'Stripe']
 const rows = [
-  ['Model', 'Protocol (infra)', 'Payment product', 'Fiat payment product'],
-  ['Custody', 'Non-custodial', 'Non-custodial', 'Custodial'],
-  ['Payment Types', '5', '1', 'Many (fiat only)'],
-  ['Business Layer', 'Yes — build your own', 'No', 'No'],
+  ['Model', 'Protocol (infra)', 'Payment product', 'Payment product'],
+  ['Custody', 'Non-custodial', 'Non-custodial', 'Privacy (Token-2022)'],
+  ['Payment Types', '4+', '1', '1'],
+  ['Business Layer', 'Yes', 'No', 'No'],
   ['Self-hostable', 'Yes', 'No', 'No'],
-  ['On-chain', 'Solana', 'Solana', 'No'],
-  ['HTTP 402', 'Yes', 'No', 'No'],
+  ['Mainnet', 'Live', 'Live', 'Not yet'],
 ]
 
 const wallets = [
@@ -77,13 +76,12 @@ export default function SlideCompetition() {
               {cols.map((col, i) => (
                 <th
                   key={col}
-                  className={`px-3 py-1.5 text-left uppercase tracking-wider font-semibold border-b border-border ${
-                    i === 0
-                      ? 'text-muted-foreground'
-                      : i === 1
+                  className={`px-3 py-1.5 text-left uppercase tracking-wider font-semibold border-b border-border ${i === 0
+                    ? 'text-muted-foreground'
+                    : i === 1
                       ? 'text-emerald-400 bg-emerald-500/5'
                       : 'text-muted-foreground bg-muted/20'
-                  }`}
+                    }`}
                 >
                   {col}
                 </th>
@@ -96,13 +94,12 @@ export default function SlideCompetition() {
                 {row.map((cell, ci) => (
                   <td
                     key={ci}
-                    className={`px-3 py-1.5 ${
-                      ci === 0
-                        ? 'font-semibold text-foreground'
-                        : ci === 1
+                    className={`px-3 py-1.5 ${ci === 0
+                      ? 'font-semibold text-foreground'
+                      : ci === 1
                         ? 'text-emerald-400 bg-emerald-500/5 font-medium'
                         : 'text-muted-foreground'
-                    }`}
+                      }`}
                   >
                     {cell}
                   </td>

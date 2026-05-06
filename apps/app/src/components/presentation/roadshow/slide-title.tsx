@@ -55,15 +55,6 @@ export default function SlideTitle() {
       >
         Non-custodial recurring payments. Fully built. Deployed. Raising to scale.
       </motion.p>
-
-      <motion.div
-        className="absolute bottom-8 text-muted-foreground text-xs uppercase tracking-[0.2em]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.8 }}
-      >
-        Press &rarr; to continue
-      </motion.div>
     </div>
   )
 }

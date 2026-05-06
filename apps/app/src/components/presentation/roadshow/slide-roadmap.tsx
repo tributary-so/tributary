@@ -7,9 +7,11 @@ const items = [
     label: 'Growth',
     detail: 'takes precedence over dev',
     start: 0,
-    span: 6,
+    span: 7,
     bar: 'bg-emerald-500/25 border border-emerald-500/50',
     text: 'text-emerald-400',
+    boxShadow: 'inset 1px 0 0 0 rgba(16, 185, 129, 0.5)',
+    maskImage: 'linear-gradient(to right, black 80%, transparent 100%)',
     badge: 'ONGOING',
     highlight: true,
   },
@@ -25,7 +27,7 @@ const items = [
     label: 'DevEx & Self-Hosting',
     detail: 'docker-compose, guides',
     start: 1,
-    span: 2,
+    span: 1,
     bar: 'bg-violet-500/20 border border-violet-500/40',
     text: 'text-violet-400',
   },
@@ -41,8 +43,10 @@ const items = [
     label: 'Stripe Billing',
     detail: 'tributary as settlement layer',
     start: 2,
-    span: 3,
+    span: 5,
     bar: 'bg-indigo-500/20 border border-indigo-500/40',
+    boxShadow: 'inset 1px 0 0 0 rgba(99, 102, 241, 0.4)',
+    maskImage: 'linear-gradient(to right, black 80%, transparent 100%)',
     text: 'text-indigo-400',
   },
   {
@@ -56,11 +60,13 @@ const items = [
   {
     label: 'Privacy Layer',
     detail: 'Umbra, C-SPL, or IKA',
-    start: 0,
-    span: 6,
+    start: 3,
+    span: 4,
     bar: 'bg-rose-500/15 border border-rose-500/40',
+    boxShadow: "inset 1px 0 0 0 rgba(244, 63, 94, 0.4), inset -1px 0 0 0 rgba(244, 63, 94, 0.4)",
+    maskImage: 'linear-gradient(to right, black 80%, transparent 100%)',
     text: 'text-rose-400',
-    badge: '6 MO',
+    // badge: '6 MO',
   },
 ]
 
@@ -83,9 +89,7 @@ export default function SlideRoadmap() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        6 months.
-        <br />
-        <span className="text-emerald-400">From protocol to platform.</span>
+        <span className="text-emerald-500">Next 6 months.</span>
       </motion.h2>
 
       <motion.p
@@ -137,6 +141,8 @@ export default function SlideRoadmap() {
                   left: `${(item.start / 6) * 100}%`,
                   width: `${(item.span / 6) * 100}%`,
                   transformOrigin: '0% 50%',
+                  boxShadow: item?.boxShadow,
+                  maskImage: item?.maskImage
                 }}
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}

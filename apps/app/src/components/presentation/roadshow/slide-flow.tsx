@@ -89,7 +89,7 @@ export default function SlideFlow() {
         transition={{ duration: 0.5, delay: 0.7 }}
       >
         <p className="text-sm text-foreground mb-2">
-          <span className="font-bold">The Key Insight:</span> Your server never needs to talk to Solana.
+          <span className="font-bold">The Key Insight:</span> Merchants never need to talk crypto or blockchain.
         </p>
         <p className="text-xs text-muted-foreground">
           Tributary&apos;s Checkout flow means accepting USDC is as simple as verifying a signed token — any language,

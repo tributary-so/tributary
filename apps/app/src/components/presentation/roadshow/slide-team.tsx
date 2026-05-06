@@ -78,16 +78,6 @@ export default function SlideTeam() {
           </motion.div>
         ))}
       </div>
-
-      <motion.div
-        className="flex items-center gap-2 text-xs text-emerald-400"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.7 }}
-      >
-        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-        Scaling to 3 engineers post-seed
-      </motion.div>
     </div>
   )
 }
