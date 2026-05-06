@@ -1,39 +1,66 @@
 import { motion } from 'framer-motion'
 
-const milestones = [
+const MONTHS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6']
+
+const items = [
   {
-    month: 'M 1–2',
-    title: 'Complete Payment Flow',
-    items: [
-      'Up-to payment model in smart contract',
-      'JWT checkout flow (issue, verify, refresh)',
-      'TributaryVerifier in @tributary-so/payments',
-    ],
-    success: 'Accept USDC with <10 lines, zero Solana knowledge',
+    label: 'Growth',
+    detail: 'takes precedence over dev',
+    start: 0,
+    span: 6,
+    bar: 'bg-emerald-500/25 border border-emerald-500/50',
+    text: 'text-emerald-400',
+    badge: 'ONGOING',
+    highlight: true,
   },
   {
-    month: 'M 2–3',
-    title: 'Developer Onboarding',
-    items: ['Copy-paste integration guides', 'Hosted checkout link generation API', 'Merchant dashboard v2'],
-    success: '3+ new merchants from docs alone',
+    label: 'Payment Flows',
+    detail: 'all payment models',
+    start: 0,
+    span: 2,
+    bar: 'bg-sky-500/20 border border-sky-500/40',
+    text: 'text-sky-400',
   },
   {
-    month: 'M 3–4',
-    title: 'Security Audit + x402',
-    items: ['Complete security audit', 'Resolve all findings', 'x402 middleware production-hardened'],
-    success: 'Audit published, findings resolved',
+    label: 'DevEx & Self-Hosting',
+    detail: 'docker-compose, guides',
+    start: 1,
+    span: 2,
+    bar: 'bg-violet-500/20 border border-violet-500/40',
+    text: 'text-violet-400',
   },
   {
-    month: 'M 4–5',
-    title: 'Self-Hosted + Privacy',
-    items: ['Docker Compose self-hosting guide', 'Privacy policy specs (Umbra/Arcium)', 'Self-hostable deployment'],
-    success: 'Enterprise-ready self-hosting',
+    label: 'Contract Audit',
+    detail: 'audit + resolve findings',
+    start: 1,
+    span: 3,
+    bar: 'bg-amber-500/20 border border-amber-500/40',
+    text: 'text-amber-400',
   },
   {
-    month: 'M  5–6',
-    title: 'Growth + Enterprise',
-    items: ['Ecosystem partnerships', 'Conference circuit (Breakpoint)', 'Enterprise integration support'],
-    success: '10+ live merchants, audit complete',
+    label: 'Stripe Billing',
+    detail: 'tributary as settlement layer',
+    start: 2,
+    span: 3,
+    bar: 'bg-indigo-500/20 border border-indigo-500/40',
+    text: 'text-indigo-400',
+  },
+  {
+    label: 'Solana Subscriptions',
+    detail: 'Foundation subscription program',
+    start: 3,
+    span: 3,
+    bar: 'bg-teal-500/20 border border-teal-500/40',
+    text: 'text-teal-400',
+  },
+  {
+    label: 'Privacy Layer',
+    detail: 'Umbra, C-SPL, or IKA',
+    start: 0,
+    span: 6,
+    bar: 'bg-rose-500/15 border border-rose-500/40',
+    text: 'text-rose-400',
+    badge: '6 MO',
   },
 ]
 
@@ -67,51 +94,76 @@ export default function SlideRoadmap() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Focused on product completion, security audit, and developer adoption.
+        Growth-first. Product, security, and adoption follow.
       </motion.p>
 
-      <div className="flex flex-col gap-1">
-        {milestones.map((ms, i) => (
+      <div className="w-full max-w-2xl">
+        <div className="grid grid-cols-[160px_1fr] mb-1">
+          <div />
+          <div className="grid grid-cols-6">
+            {MONTHS.map((m) => (
+              <div
+                key={m}
+                className="text-[9px] text-center text-muted-foreground/60 uppercase tracking-wider font-semibold"
+              >
+                {m}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {items.map((item, i) => (
           <motion.div
-            key={ms.month}
-            className="flex-1 border border-border p-2 relative"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 + i * 0.08 }}
+            key={item.label}
+            className={`grid grid-cols-[160px_1fr] gap-2 items-center py-1.5 border-b border-border/30 last:border-0 ${item.highlight ? 'bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400' : ''
+              }`}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
           >
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-400" style={{ fontFamily: 'var(--font-secondary)' }}>
-                {ms.month}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-foreground">{ms.title}</span>
+            <div className="flex flex-col">
+              <span className={`text-[11px] font-semibold ${item.text}`}>{item.label}</span>
+              <span className="text-[9px] text-muted-foreground leading-tight">{item.detail}</span>
             </div>
-            {/*
-            <div className="space-y-1 mb-2">
-              {ms.items.map((item, j) => (
-                <div key={j} className="flex items-start gap-1.5">
-                  <div className="shrink-0 w-0.5 h-0.5 bg-muted-foreground/50 rounded-full mt-1.5" />
-                  <span className="text-[10px] text-muted-foreground leading-snug">{item}</span>
-                </div>
-              ))}
+            <div className="relative h-5">
+              <div className="absolute inset-0 grid grid-cols-6">
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <div key={j} className="border-l border-border/20 first:border-l-0" />
+                ))}
+              </div>
+              <motion.div
+                className={`absolute top-0.5 h-4 rounded-sm ${item.bar} flex items-center overflow-hidden`}
+                style={{
+                  left: `${(item.start / 6) * 100}%`,
+                  width: `${(item.span / 6) * 100}%`,
+                  transformOrigin: '0% 50%',
+                }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
+              >
+                {item.badge && (
+                  <span
+                    className={`text-[7px] font-bold tracking-wider px-1.5 whitespace-nowrap ${item.text} opacity-80`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </motion.div>
             </div>
-            <div className="text-[9px] text-emerald-400/80 italic border-t border-border/50 pt-1.5 mt-1.5">
-              {ms.success}
-            </div>
-          */}
           </motion.div>
         ))}
       </div>
 
       <motion.div
-        className="border border-emerald-500/30 bg-emerald-500/5 px-6 py-3 max-w-2xl text-center mt-6"
+        className="border border-emerald-500/30 bg-emerald-500/5 px-6 py-3 max-w-2xl text-center mt-4"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.8 }}
+        transition={{ duration: 0.5, delay: 1.2 }}
       >
         <p className="text-xs text-foreground">
-          The <span className="font-bold">$50K security audit</span> is the single gate between today&apos;s product and
-          enterprise adoption. With it, integrations move from &ldquo;interesting&rdquo; to
-          &ldquo;production-ready.&rdquo;
+          <span className="font-bold text-emerald-400">Growth takes precedence</span> over all development work. Every
+          item ships faster if adoption demands it.
         </p>
       </motion.div>
     </div>
