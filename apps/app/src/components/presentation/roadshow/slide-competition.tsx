@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 
-const cols = ['', 'Tributary', 'Helio', 'VelaPay']
+const cols = ['', 'Tributary', 'Helio', 'Stripe']
 const rows = [
   ['Model', 'Protocol (infra)', 'Payment product', 'Payment product'],
   ['Custody', 'Non-custodial', 'Non-custodial', 'Privacy (Token-2022)'],
@@ -8,6 +8,27 @@ const rows = [
   ['Business Layer', 'Yes', 'No', 'No'],
   ['Self-hostable', 'Yes', 'No', 'No'],
   ['Mainnet', 'Live', 'Live', 'Not yet'],
+]
+
+const wallets = [
+  {
+    name: 'Squads',
+    what: 'M-of-N multisig, $10B+ secured',
+    gap: 'No subscriptions or scheduling',
+    play: 'Squad vault + Tributary = DAO recurring payments',
+  },
+  {
+    name: 'LazorKit',
+    what: 'Passkey-native wallet, gasless',
+    gap: 'Auth only, no payments',
+    play: 'Passkey login + Tributary = zero-friction consumer subs',
+  },
+  {
+    name: 'Swig',
+    what: '65K-role policy engine',
+    gap: 'Access control only',
+    play: 'Swig roles + Tributary = scoped AI agent billing',
+  },
 ]
 
 export default function SlideCompetition() {
@@ -29,22 +50,22 @@ export default function SlideCompetition() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Others exist.
-        <br />
-        <span className="text-emerald-400">None let you build your own.</span>
+        The moat is
+        <span className="text-emerald-400"> technical.</span>
       </motion.h2>
 
       <motion.p
-        className="text-sm text-muted-foreground mb-8 text-center"
+        className="text-sm text-muted-foreground mb-6 text-center max-w-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Two approaches to recurring payments on Solana. Ours lets anyone build a payment business.
+        Solana&apos;s token delegation means a user can only delegate to one protocol at a time. First-mover is
+        technical lock-in.
       </motion.p>
 
       <motion.div
-        className="max-w-3xl w-full overflow-x-auto"
+        className="max-w-3xl w-full overflow-x-auto mb-6"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
@@ -55,13 +76,12 @@ export default function SlideCompetition() {
               {cols.map((col, i) => (
                 <th
                   key={col}
-                  className={`px-3 py-2 text-left uppercase tracking-wider font-semibold border-b border-border ${
-                    i === 0
-                      ? 'text-muted-foreground'
-                      : i === 1
+                  className={`px-3 py-1.5 text-left uppercase tracking-wider font-semibold border-b border-border ${i === 0
+                    ? 'text-muted-foreground'
+                    : i === 1
                       ? 'text-emerald-400 bg-emerald-500/5'
                       : 'text-muted-foreground bg-muted/20'
-                  }`}
+                    }`}
                 >
                   {col}
                 </th>
@@ -74,13 +94,12 @@ export default function SlideCompetition() {
                 {row.map((cell, ci) => (
                   <td
                     key={ci}
-                    className={`px-3 py-2 ${
-                      ci === 0
-                        ? 'font-semibold text-foreground'
-                        : ci === 1
+                    className={`px-3 py-1.5 ${ci === 0
+                      ? 'font-semibold text-foreground'
+                      : ci === 1
                         ? 'text-emerald-400 bg-emerald-500/5 font-medium'
                         : 'text-muted-foreground'
-                    }`}
+                      }`}
                   >
                     {cell}
                   </td>
@@ -91,15 +110,25 @@ export default function SlideCompetition() {
         </table>
       </motion.div>
 
-      <motion.p
-        className="text-xs text-muted-foreground italic mt-6"
+      <motion.div
+        className="max-w-3xl w-full"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.7 }}
+        transition={{ duration: 0.4, delay: 0.6 }}
       >
-        Helio and VelaPay are payment products. <br />
-        Tributary is the platform that lets anyone build one — and earn from it.
-      </motion.p>
+        <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
+          Smart Wallets — Composable, Not Competitive
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {wallets.map((w) => (
+            <div key={w.name} className="border border-border bg-muted/30 p-3">
+              <div className="text-xs font-bold text-foreground mb-1">{w.name}</div>
+              <div className="text-[10px] text-muted-foreground mb-1">{w.what}</div>
+              <div className="text-[10px] text-emerald-400">{w.play}</div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
     </div>
   )
 }

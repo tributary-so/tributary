@@ -2,85 +2,43 @@ import { useState, useCallback, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-const SlideTitle = lazy(() => import('./frontier/slide-title'))
-const SlideMarket = lazy(() => import('./frontier/slide-market'))
-const SlideProblem = lazy(() => import('./frontier/slide-problem'))
-const SlideFlow = lazy(() => import('./frontier/slide-flow'))
-const SlideModels = lazy(() => import('./frontier/slide-models'))
-const SlideInfrastructure = lazy(() => import('./frontier/slide-infrastructure'))
-const SlideCompetition = lazy(() => import('./frontier/slide-competition'))
-const SlideTraction = lazy(() => import('./frontier/slide-traction'))
-const SlideTeam = lazy(() => import('./frontier/slide-team'))
-const SlideCTA = lazy(() => import('./frontier/slide-cta'))
-
-function SlideDemo() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        Demo
-      </motion.p>
-
-      <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
-        style={{ fontFamily: 'var(--font-secondary)' }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        We made it
-        <br />
-        <span className="text-emerald-400">easy to use</span>
-      </motion.h2>
-    </div>
-  )
-}
-
-function SlideVideo() {
-  return (
-    <div className="w-full h-full overflow-hidden -z-10">
-      <video
-        autoPlay
-        muted
-        playsInline
-        className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover mt-6"
-      >
-        <source src="/frontier-demo.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-    </div>
-  )
-}
+const SlideTitle = lazy(() => import('./themiracle/slide-title'))
+const SlideOpportunity = lazy(() => import('./themiracle/slide-opportunity'))
+const SlideProblem = lazy(() => import('./themiracle/slide-problem'))
+const SlideContribute = lazy(() => import('./themiracle/slide-contribute'))
+const SlideTrack1 = lazy(() => import('./themiracle/slide-track1'))
+const SlideTrack2 = lazy(() => import('./themiracle/slide-track2'))
+const SlideValueTable = lazy(() => import('./themiracle/slide-value-table'))
+const SlideWhyWin = lazy(() => import('./themiracle/slide-why-win'))
+const SlideFlywheel = lazy(() => import('./themiracle/slide-flywheel'))
+const SlideGrowth = lazy(() => import('./themiracle/slide-growth'))
+const SlideCTA = lazy(() => import('./themiracle/slide-cta'))
 
 const slides = [
   SlideTitle,
-  SlideMarket,
+  SlideOpportunity,
   SlideProblem,
-  SlideFlow,
-  SlideDemo,
-  SlideVideo,
-  SlideModels,
-  SlideInfrastructure,
-  SlideCompetition,
-  SlideTraction,
-  SlideTeam,
+  SlideContribute,
+  SlideTrack1,
+  SlideTrack2,
+  SlideValueTable,
+  SlideWhyWin,
+  SlideFlywheel,
+  SlideGrowth,
   SlideCTA,
 ]
 
 const slideLabels = [
   'Title',
-  'Market',
+  'Opportunity',
   'Problem',
-  'Flow',
-  'Models',
-  'Infrastructure',
-  'Competition',
-  'Traction',
-  'Team',
+  'Contribute.so',
+  'Track 1',
+  'Track 2',
+  'Value',
+  'Why This Wins',
+  'Flywheel',
+  'Growth',
   'CTA',
 ]
 
@@ -98,7 +56,7 @@ function SlideFallback() {
   )
 }
 
-export default function Frontier() {
+export default function TheMiracle() {
   const [current, setCurrent] = useState(0)
 
   const next = useCallback(() => setCurrent((p) => (p + 1) % slides.length), [])
@@ -162,12 +120,13 @@ export default function Frontier() {
       </div>
 
       <div className="absolute top-4 right-4 flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="text-[10px] uppercase tracking-wider text-violet-400/60">theMiracle</span>
         <span className="font-mono">
           {String(current + 1).padStart(2, '0')}/{String(slides.length).padStart(2, '0')}
         </span>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
         {slides.map((_, index) => (
           <button
             key={index}
@@ -176,9 +135,8 @@ export default function Frontier() {
             aria-label={`Go to slide ${index + 1}: ${slideLabels[index]}`}
           >
             <div
-              className={`h-1 transition-all duration-300 ${
-                index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
-              }`}
+              className={`h-1 transition-all duration-300 ${index === current ? 'w-6 bg-violet-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
+                }`}
             />
             <span className="absolute -top-5 text-[8px] uppercase tracking-wider text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all whitespace-nowrap">
               {slideLabels[index]}

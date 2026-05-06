@@ -9,13 +9,15 @@ export default function SlideTitle() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <div className="h-px w-12 bg-emerald-400" />
-        <span className="text-emerald-400 text-xs uppercase tracking-[0.3em] font-semibold">Live on Mainnet</span>
-        <div className="h-px w-12 bg-emerald-400" />
+        <div className="h-px w-12 bg-violet-400" />
+        <span className="text-violet-400 text-xs uppercase tracking-[0.3em] font-semibold">
+          Superteam Germany Builder's Track
+        </span>
+        <div className="h-px w-12 bg-violet-400" />
       </motion.div>
 
       <motion.h1
-        className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight text-foreground mb-4"
+        className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-foreground mb-2"
         style={{ fontFamily: 'var(--font-secondary)' }}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -25,12 +27,21 @@ export default function SlideTitle() {
       </motion.h1>
 
       <motion.p
-        className="text-lg sm:text-xl text-muted-foreground tracking-wide mb-8"
+        className="text-lg sm:text-xl text-muted-foreground tracking-wide mb-2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.25 }}
+      >
+        x theMiracle
+      </motion.p>
+
+      <motion.p
+        className="text-sm text-muted-foreground mb-8 max-w-md"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.35 }}
       >
-        Recurring payment rails on Solana.
+        Build the benefit. Win the placement. Fund the ecosystem.
       </motion.p>
 
       <motion.div
@@ -39,36 +50,22 @@ export default function SlideTitle() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
       >
-        <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5">
-          Frontier Hackathon
+        <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-violet-500/30 text-violet-400 bg-violet-500/5">
+          $10K Placement
         </span>
-        {/*
-        <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-border text-muted-foreground flex gap-2">
-          <span>
-            <img src="/frontier/superteam.png" className="w-4 h-4 rounded" />
-          </span>
-          <span>Berlin Demo Day</span>
-        </div>
-        */}
+        <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5">
+          35M Wallets
+        </span>
       </motion.div>
 
       <motion.p
-        className="text-sm text-muted-foreground italic max-w-md"
+        className="text-sm text-muted-foreground italic max-w-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.65 }}
       >
-        The missing billing layer for Solana commerce.
+        One campaign. Two sides of the marketplace. A self-reinforcing flywheel for open-source funding on Solana.
       </motion.p>
-
-      <motion.div
-        className="absolute bottom-8 text-muted-foreground text-xs uppercase tracking-[0.2em]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.8 }}
-      >
-        Press &rarr; to continue
-      </motion.div>
     </div>
   )
 }

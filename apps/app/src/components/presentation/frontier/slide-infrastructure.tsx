@@ -16,7 +16,7 @@ export default function SlideInfrastructure() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        Infrastructure Play
+        The Business Model
       </motion.p>
 
       <motion.h2
@@ -32,28 +32,28 @@ export default function SlideInfrastructure() {
       </motion.h2>
 
       <motion.p
-        className="text-sm text-muted-foreground mb-10 text-center"
+        className="text-sm text-muted-foreground mb-6 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Tributary is the credit card network. You can be Stripe.
+        Tributary is the credit card network. You build the Stripe on top.
       </motion.p>
 
-      <div className="max-w-2xl w-full space-y-0 mb-8">
+      <div className="max-w-2xl w-full space-y-0 mb-4">
         <motion.div
           className="grid grid-cols-3 border border-border"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <div className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-r border-border">
+          <div className="px-4 py-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-r border-border">
             Layer
           </div>
-          <div className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-r border-border">
+          <div className="px-4 py-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-r border-border">
             Web2 Analogy
           </div>
-          <div className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold text-emerald-400 border-b border-border">
+          <div className="px-4 py-1 text-[10px] uppercase tracking-wider font-semibold text-emerald-400 border-b border-border">
             Tributary
           </div>
         </motion.div>
@@ -65,18 +65,18 @@ export default function SlideInfrastructure() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.4 + i * 0.08 }}
           >
-            <div className="px-4 py-3 text-xs font-semibold text-foreground border-r border-border">{layer.label}</div>
-            <div className="px-4 py-3 text-xs text-muted-foreground border-r border-border">{layer.web2}</div>
-            <div className="px-4 py-3 text-xs text-emerald-400 font-medium">{layer.tributary}</div>
+            <div className="px-4 py-2 text-xs font-semibold text-foreground border-r border-border">{layer.label}</div>
+            <div className="px-4 py-2 text-xs text-muted-foreground border-r border-border">{layer.web2}</div>
+            <div className="px-4 py-2 text-xs text-emerald-400 font-medium">{layer.tributary}</div>
           </motion.div>
         ))}
       </div>
 
       <div className="max-w-2xl w-full grid grid-cols-2 gap-3">
         {[
-          { title: 'Gateway Registration', desc: 'Register as a gateway with configurable fees and signer keys' },
-          { title: 'Protocol-Level Fees', desc: '1% protocol fee + your own custom gateway fee' },
-          { title: 'Non-Custodial', desc: '$0 TVL risk — we provide the logic, you provide the service' },
+          { title: 'Register Your Business', desc: 'Set up your gateway with custom fees and branding' },
+          { title: 'Earn on Every Transaction', desc: '1% protocol fee + your own gateway fee on top' },
+          { title: 'Zero Custody Risk', desc: 'We never hold funds — we provide the logic, you provide the service' },
           { title: 'Open-Source', desc: 'Self-hostable and extensible for any payment product' },
         ].map((feat, i) => (
           <motion.div

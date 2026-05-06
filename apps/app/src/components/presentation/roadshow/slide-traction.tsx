@@ -1,29 +1,19 @@
 import { motion } from 'framer-motion'
 
 const metrics = [
-  { value: '5+', label: 'Integrations', accent: false },
-  { value: '4K+', label: 'Transfers executed', accent: false },
-  { value: '15%', label: 'M.o.M growth', accent: false },
-  { value: '$0', label: 'Marketing spent', accent: true },
   { value: '$0', label: 'Raised', accent: true },
+  { value: '4', label: 'npm packages', accent: false },
+  { value: '5+', label: 'Live integrations', accent: false },
+  { value: '>95%', label: 'Test coverage', accent: false },
+  { value: '$0', label: 'Marketing spend', accent: true },
+  { value: '$0', label: 'Custody risk', accent: false },
 ]
 
 const integrations = [
-  {
-    name: 'yumi.finance',
-    desc: 'Automates loan collections for lending platforms — reliable cash flow, zero manual overhead.',
-    type: 'milestones',
-  },
-  {
-    name: 'allowly.app',
-    desc: 'Enables simple recurring transfers for pocket-money apps and AI agents — better user retention.',
-    type: 'pay-as-you-go',
-  },
-  {
-    name: 'contribute.so',
-    desc: 'Powers recurring donations and creator payouts for DAOs — sustainable community engagement.',
-    type: 'subscriptions',
-  },
+  { name: 'Allowly.app', desc: 'Pocket money for kids and AI agents', type: 'pay-as-you-go' },
+  { name: 'Contribute.so', desc: 'Recurring donations platform', type: 'subscriptions' },
+  { name: 'Cash.yumi.finance', desc: 'External payment flows', type: 'milestones' },
+  { name: 'polycode.dev', desc: 'Integration in progress', type: 'in progress' },
 ]
 
 export default function SlideTraction() {
@@ -35,7 +25,7 @@ export default function SlideTraction() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        Traction
+        What&apos;s Built
       </motion.p>
 
       <motion.h2
@@ -45,28 +35,29 @@ export default function SlideTraction() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Zero marketing.
+        Bootstrapped.
         <br />
-        <span className="text-emerald-400"> Businesses found us.</span>
+        <span className="text-emerald-400">Fully deployed. $0 raised.</span>
       </motion.h2>
 
       <motion.p
-        className="text-sm text-muted-foreground mb-8 text-center"
+        className="text-sm text-muted-foreground mb-8 text-center max-w-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        10+ integrations. 4,000+ transfers. Zero marketing.
+        Smart contract live on mainnet. 4 npm packages. 4 applications deployed. Ottersec verified.
       </motion.p>
 
-      <div className="flex gap-4 mb-10">
+      <div className="grid grid-cols-3 gap-3 mb-8 max-w-3xl w-full">
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}
-            className="flex flex-col items-center px-5 py-4 border border-border"
+            className={`flex flex-col items-center px-4 py-3 border ${m.accent ? 'border-amber-500/30 bg-amber-500/5' : 'border-border'
+              }`}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 + i * 0.08 }}
+            transition={{ duration: 0.4, delay: 0.3 + i * 0.06 }}
           >
             <span
               className={`text-2xl font-bold ${m.accent ? 'text-amber-400' : 'text-emerald-400'}`}
@@ -79,40 +70,32 @@ export default function SlideTraction() {
         ))}
       </div>
 
-      <div className="flex gap-3 max-w-2xl w-full">
+      <div className="grid grid-cols-4 gap-3 max-w-3xl w-full">
         {integrations.map((integration, i) => (
           <motion.div
             key={integration.name}
-            className="relative flex-1 border border-border bg-muted p-4"
+            className="relative border border-border bg-muted/30 p-3"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
+            transition={{ duration: 0.4, delay: 0.6 + i * 0.08 }}
           >
-            <span className="text-[10px] absolute -top-0 right-0 px-1.5 py-0.5 border border-t-0 border-r-0 border-amber-800/30 bg-amber-700/20 text-amber-900/60">
+            <span className="text-[9px] absolute -top-0 right-0 px-1.5 py-0.5 border border-t-0 border-r-0 border-amber-800/30 bg-amber-700/20 text-amber-900/60">
               {integration.type}
             </span>
-            <div className="text-xs font-semibold text-foreground mb-1.5">{integration.name}</div>
+            <div className="text-xs font-semibold text-foreground mb-1">{integration.name}</div>
             <div className="text-[10px] text-muted-foreground leading-snug">{integration.desc}</div>
           </motion.div>
         ))}
       </div>
 
       <motion.p
-        className="text-xs text-muted-foreground mt-6 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.9 }}
-      >
-        Inbound demand from lending platforms, API products, and creator tools.
-      </motion.p>
-
-      <motion.p
-        className="text-xs text-muted-foreground italic mt-3"
+        className="text-xs text-muted-foreground italic mt-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 1 }}
       >
-        For infrastructure, organic demand is the strongest signal.
+        Organic demand from businesses — zero BD, zero outreach, zero partnerships. For infrastructure, that&apos;s the
+        right leading indicator.
       </motion.p>
     </div>
   )

@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion'
 
 const stats = [
-  { value: '$15T', label: 'Visa Volume 2025', highlight: false },
   { value: '$33T', label: 'Stablecoin Volume 2025', highlight: true },
   { value: '$56T', label: 'Projected by 2030', highlight: false },
+  { value: '$15T', label: 'Visa Volume 2025', highlight: false },
 ]
 
 export default function SlideMarket() {
@@ -38,7 +38,7 @@ export default function SlideMarket() {
       >
         <p>$2.9T in stablecoin payments in 2025. Projected $56T by 2030.</p>
         <p>
-          Recurring billing on Solana: <span className="text-orange-400 font-bold">zero</span>.
+          Recurring billing on Solana: <span className="text-orange-400 font-bold">zero infrastructure</span>.
         </p>
       </motion.p>
 
@@ -71,9 +71,9 @@ export default function SlideMarket() {
         transition={{ duration: 0.4, delay: 0.6 }}
       >
         {[
-          'Stripe ($70B+), PayPal, Adyen. Built on recurring billing',
-          'Stripe just added USDC on Solana. Shopify merchants accept crypto.',
-          'Crypto has DeFi. Commerce needs subscriptions.',
+          'Stripe ($70B+) built on recurring billing — the missing layer on-chain',
+          'Stripe added USDC on Solana. Shopify merchants already accept crypto.',
+          'Crypto has DeFi. Commerce needs subscriptions, milestones, usage billing.',
         ].map((point, i) => (
           <div key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
             <div className="shrink-0 w-1 h-1 bg-emerald-400 rounded-full mt-2" />

@@ -39,7 +39,8 @@ export default function SlideCTA() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Live. Open source. Looking for partners, grants, and integrations.
+        Live. Open source. Whether you&apos;re a lending platform, SaaS, or DAO — we&apos;ll have you billing in hours,
+        not days.
       </motion.p>
 
       <motion.div
@@ -79,9 +80,9 @@ export default function SlideCTA() {
           </div>
           {/* <div className="text-xs text-muted-foreground">Stripe made internet payments invisible.</div> */}
           {/* <div className="text-xs text-muted-foreground">We do the same for Solana.</div> */}
-          <div className="mt-3 text-xs text-emerald-400/80 font-bold">
-            Looking for teams that want to charge stablecoins.
-          </div>
+          {/* <div className="mt-3 text-xs text-emerald-400/80 font-bold"> */}
+          {/*   Looking for teams that want to charge stablecoins — lending platforms, SaaS, DAOs, and more. */}
+          {/* </div> */}
         </div>
         <QRCodeGenerator url="https://tributary.so" text="" size="100px" />
       </motion.div>

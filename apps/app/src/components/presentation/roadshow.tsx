@@ -2,85 +2,52 @@ import { useState, useCallback, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-const SlideTitle = lazy(() => import('./frontier/slide-title'))
-const SlideMarket = lazy(() => import('./frontier/slide-market'))
-const SlideProblem = lazy(() => import('./frontier/slide-problem'))
-const SlideFlow = lazy(() => import('./frontier/slide-flow'))
-const SlideModels = lazy(() => import('./frontier/slide-models'))
-const SlideInfrastructure = lazy(() => import('./frontier/slide-infrastructure'))
-const SlideCompetition = lazy(() => import('./frontier/slide-competition'))
-const SlideTraction = lazy(() => import('./frontier/slide-traction'))
-const SlideTeam = lazy(() => import('./frontier/slide-team'))
-const SlideCTA = lazy(() => import('./frontier/slide-cta'))
-
-function SlideDemo() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        Demo
-      </motion.p>
-
-      <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
-        style={{ fontFamily: 'var(--font-secondary)' }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        We made it
-        <br />
-        <span className="text-emerald-400">easy to use</span>
-      </motion.h2>
-    </div>
-  )
-}
-
-function SlideVideo() {
-  return (
-    <div className="w-full h-full overflow-hidden -z-10">
-      <video
-        autoPlay
-        muted
-        playsInline
-        className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover mt-6"
-      >
-        <source src="/frontier-demo.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-    </div>
-  )
-}
+const SlideTitle = lazy(() => import('./roadshow/slide-title'))
+const SlideMarket = lazy(() => import('./roadshow/slide-market'))
+const SlideProblem = lazy(() => import('./roadshow/slide-problem'))
+const SlideSolution = lazy(() => import('./roadshow/slide-solution'))
+const SlideArchitecture = lazy(() => import('./roadshow/slide-architecture'))
+const SlideFlow = lazy(() => import('./roadshow/slide-flow'))
+const SlideCompetition = lazy(() => import('./roadshow/slide-competition'))
+const SlideTraction = lazy(() => import('./roadshow/slide-traction'))
+const SlideRevenue = lazy(() => import('./roadshow/slide-revenue'))
+const SlideRoadmap = lazy(() => import('./roadshow/slide-roadmap'))
+const SlideFunds = lazy(() => import('./roadshow/slide-funds'))
+const SlideTeam = lazy(() => import('./roadshow/slide-team'))
+const SlideIP = lazy(() => import('./roadshow/slide-ip'))
+const SlideCTA = lazy(() => import('./roadshow/slide-cta'))
 
 const slides = [
   SlideTitle,
   SlideMarket,
   SlideProblem,
+  SlideSolution,
+  SlideArchitecture,
   SlideFlow,
-  SlideDemo,
-  SlideVideo,
-  SlideModels,
-  SlideInfrastructure,
   SlideCompetition,
   SlideTraction,
+  SlideRevenue,
+  SlideRoadmap,
   SlideTeam,
+  SlideIP,
   SlideCTA,
+  SlideFunds,
 ]
 
 const slideLabels = [
   'Title',
   'Market',
   'Problem',
+  'Solution',
+  'Architecture',
   'Flow',
-  'Models',
-  'Infrastructure',
   'Competition',
   'Traction',
+  'Revenue',
+  'Roadmap',
+  'Funds',
   'Team',
+  'IP & Legal',
   'CTA',
 ]
 
@@ -98,7 +65,7 @@ function SlideFallback() {
   )
 }
 
-export default function Frontier() {
+export default function Roadshow() {
   const [current, setCurrent] = useState(0)
 
   const next = useCallback(() => setCurrent((p) => (p + 1) % slides.length), [])
@@ -167,7 +134,7 @@ export default function Frontier() {
         </span>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
         {slides.map((_, index) => (
           <button
             key={index}
