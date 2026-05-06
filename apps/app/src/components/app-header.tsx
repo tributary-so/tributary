@@ -13,6 +13,7 @@ const hackathons = [
   { label: 'Cypherpunk', href: '/hackathon' },
   // { label: 'Frontier', href: '/frontier' },
   // { label: 'Roadshow', href: '/roadshow' },
+  // { label: 'theMiracle', href: '/the-miracle' },
 ]
 
 function ThemeToggle() {
@@ -78,7 +79,7 @@ export function AppHeader() {
   }, [])
 
   const location = useLocation()
-  if (location.pathname == '/frontier' || location.pathname == '/roadshow') return
+  if (location.pathname == '/frontier' || location.pathname == '/roadshow' || location.pathname == '/the-miracle') return
 
   return (
     <header className="py-6">
@@ -152,19 +153,16 @@ export function AppHeader() {
           aria-label="Toggle menu"
         >
           <span
-            className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${
-              isMenuOpen ? 'rotate-45 translate-y-1' : '-translate-y-0.5'
-            }`}
+            className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${isMenuOpen ? 'rotate-45 translate-y-1' : '-translate-y-0.5'
+              }`}
           ></span>
           <span
-            className={`block w-5 h-0.5 bg-current transition-opacity duration-200 ${
-              isMenuOpen ? 'opacity-0' : 'opacity-100'
-            }`}
+            className={`block w-5 h-0.5 bg-current transition-opacity duration-200 ${isMenuOpen ? 'opacity-0' : 'opacity-100'
+              }`}
           ></span>
           <span
-            className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${
-              isMenuOpen ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'
-            }`}
+            className={`block w-5 h-0.5 bg-current transition-transform duration-200 ${isMenuOpen ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'
+              }`}
           ></span>
         </button>
       </div>
