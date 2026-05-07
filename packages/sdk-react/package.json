@@ -1,5 +1,9 @@
 {
   "name": "@tributary-so/sdk-react",
+  "repository": {
+    "url": "https://github.com/tributary-so/tributary",
+    "type": "git"
+  },
   "license": "MIT",
   "version": "1.6.0",
   "type": "module",

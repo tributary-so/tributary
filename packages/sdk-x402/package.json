@@ -1,5 +1,9 @@
 {
   "name": "@tributary-so/sdk-x402",
+  "repository": {
+    "url": "https://github.com/tributary-so/tributary",
+    "type": "git"
+  },
   "version": "1.5.0",
   "license": "MIT",
   "scripts": {
