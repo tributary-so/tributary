@@ -1,6 +1,6 @@
 {
   "name": "@tributary-so/sdk-x402",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "license": "MIT",
   "scripts": {
     "build": "rm -rf dist && tsc -b",
@@ -11,7 +11,8 @@
     "server": "npx tsx src/server.ts",
     "client": "npx tsx src/client.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "release": "semantic-release"
   },
   "description": "x402 integration for tributary subscriptions on solana",
   "keywords": [

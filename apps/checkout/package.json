@@ -1,14 +1,15 @@
 {
   "name": "@tributary/checkout",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.10.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint . --ext ts,tsx --fix"
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "release": "semantic-release"
   },
   "dependencies": {
     "@radix-ui/themes": "^3.3.0",

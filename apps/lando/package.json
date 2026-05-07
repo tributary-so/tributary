@@ -1,13 +1,14 @@
 {
   "name": "@tributary-so/lando",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.4.0",
   "type": "module",
   "scripts": {
     "dev": "npx vite",
     "build": "tsc && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "semantic-release"
   },
   "dependencies": {
     "@rollup/plugin-inject": "^5.0.5",

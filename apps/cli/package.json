@@ -8,7 +8,8 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "lint": "exit 0;",
-    "lint2": "eslint ."
+    "lint2": "eslint .",
+    "release": "semantic-release"
   },
   "files": [
     "lib"
@@ -18,7 +19,7 @@
     "solana-web3js",
     "typescript"
   ],
-  "version": "1.0.1",
+  "version": "1.8.0",
   "type": "module",
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
