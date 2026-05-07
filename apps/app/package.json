@@ -7,7 +7,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "semantic-release"
   },
   "description": "React + Vite, Tailwind, @solana/web3.js, Wallet Adapter",
   "keywords": [
@@ -18,7 +19,7 @@
     "vite",
     "wallet-adapter"
   ],
-  "version": "1.1.1",
+  "version": "1.14.0",
   "private": true,
   "type": "module",
   "dependencies": {

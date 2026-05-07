@@ -26,6 +26,12 @@ const INTEGRATIONS: Integration[] = [
     founder: "Dr.-Ing. Fabian Schuh",
     url: "https://contribute.so",
     image: "testimony/contributeso.png",
+  }, {
+    name: "Orquestra",
+    description: "Turned our Solana program IDLs into APIs for AI agents and developer apps.",
+    url: "https://orquestra.dev/project/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
+    founder: "Berkay Öztunç",
+    image: "testimony/orquestra.png"
   },
   {
     name: "Contribute.so",

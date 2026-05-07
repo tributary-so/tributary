@@ -8,9 +8,6 @@ export default defineConfig([
     dts: true,
     clean: true,
     sourcemap: true,
-    // we forcefully include our librs into the bundle to avoid
-    // version incompatibilities at the cost of larger bundle sizes
-    noExternal: ["@tributary-so/sdk", "@tributary-so/payments"],
     external: [
       "react",
       "react-dom",
@@ -27,7 +24,6 @@ export default defineConfig([
     clean: false,
     sourcemap: true,
     outExtension: () => ({ js: ".umd.js" }),
-    noExternal: ["@tributary-so/sdk", "@tributary-so/payments"],
     external: [
       "react",
       "react-dom",

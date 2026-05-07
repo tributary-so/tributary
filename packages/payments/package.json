@@ -1,6 +1,6 @@
 {
   "name": "@tributary-so/payments",
-  "version": "1.0.0",
+  "version": "1.9.1",
   "description": "Payments SDK for Tributary USDC subscriptions - zero API keys required",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,8 @@
     "test": "jest --testPathIgnorePatterns='verification.e2e.test.ts'",
     "test:e2e": "npx tsx --test src/core/verification.e2e.test.ts",
     "lint": "exit 0",
-    "prepack": "pnpm run build"
+    "prepack": "pnpm run build",
+    "release": "semantic-release"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.13",

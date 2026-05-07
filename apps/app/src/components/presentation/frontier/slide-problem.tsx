@@ -1,21 +1,18 @@
 import { motion } from 'framer-motion'
 
-const options = [
+const painPoints = [
+  { icon: '01', title: 'Manual Approvals', desc: 'Crypto subscriptions require manual approval every billing cycle' },
   {
-    label: 'Contract Fee (Own)',
-    verdict: 'Requires smart contract offering',
-    bad: true,
+    icon: '02',
+    title: 'Dev Complexity Wall',
+    desc: 'Wallet integrations, RPC nodes, on-chain deserialization — weeks of plumbing',
   },
   {
-    label: 'Composability Fee',
-    verdict: 'No retention, no recurring revenue',
-    bad: true,
+    icon: '03',
+    title: 'No Unified Protocol',
+    desc: 'No single system handles subscriptions, milestones, usage billing, and invoices',
   },
-  {
-    label: 'Off-Chain Billing',
-    verdict: 'No stablecoin, no composability, ...',
-    bad: true,
-  },
+  { icon: '04', title: 'Web2 Avoidance', desc: 'Businesses want USDC but refuse to learn blockchain infrastructure' },
 ]
 
 export default function SlideProblem() {
@@ -37,65 +34,47 @@ export default function SlideProblem() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Solana builders have
+        Recurring payments on Solana
         <br />
-        three options for revenue.
+        <span className="text-muted-foreground">are still not available.</span>
       </motion.h2>
 
       <motion.p
-        className="text-sm text-muted-foreground mb-10 text-center"
+        className="text-sm text-muted-foreground mb-10 text-center max-w-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        None are recurring.
+        Most businesses work around this limitation.
       </motion.p>
 
-      <div className="flex gap-4 mb-10 max-w-2xl w-full">
-        {options.map((opt, i) => (
+      <div className="grid grid-cols-2 gap-4 max-w-3xl w-full mb-8">
+        {painPoints.map((point, i) => (
           <motion.div
-            key={opt.label}
-            className="flex-1 border border-destructive/50 bg-destructive/15 p-5 text-center"
+            key={point.icon}
+            className="border border-destructive/50 bg-destructive/10 p-5"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
           >
-            <div className="text-xs uppercase tracking-wider text-destructive/80 font-semibold mb-2">{opt.label}</div>
-            <div className="text-xs text-muted-foreground">{opt.verdict}</div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg font-bold text-destructive/60" style={{ fontFamily: 'var(--font-secondary)' }}>
+                {point.icon}
+              </span>
+              <span className="text-xs uppercase tracking-wider font-semibold text-destructive/80">{point.title}</span>
+            </div>
+            <div className="text-xs text-muted-foreground leading-snug">{point.desc}</div>
           </motion.div>
         ))}
       </div>
 
-      {/*
-      <motion.div
-        className="border border-emerald-500/30 bg-emerald-500/5 px-8 py-5 max-w-lg text-center"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
-      >
-
-        <p className="font-bold mb-3">
-          yumi.finance needed loan repayments on Solana
-        </p>
-        <p className="text-sm text-foreground mb-2">
-          They found Tributary, evaluated the protocol, and{' '}
-          <span className="text-emerald-400 font-semibold">integrated in 2 days</span> &mdash; with minimal
-          documentation.
-        </p>
-        <p className="text-xs text-muted-foreground">Zero sales effort from our side.</p>
-      </motion.div>
-*/}
-
       <motion.p
-        className="text-xs text-muted-foreground italic mt-6"
+        className="text-xs text-muted-foreground italic"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.9 }}
+        transition={{ duration: 0.4, delay: 0.8 }}
       >
-        <p>
-          <sup className="text-destructive">*</sup>Memecoins do not generate revenue
-        </p>
-        <p className="ml-1">Every team that wants recurring revenue reinvents this alone. Until now.</p>
+        Every team that wants recurring revenue reinvents this alone. Until now.
       </motion.p>
     </div>
   )

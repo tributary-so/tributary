@@ -10,7 +10,7 @@ const links = [
 ]
 
 const contact = [
-  { label: 'Email', value: 'fabian@chainsquad.com' },
+  { label: 'Email', value: 'fabian@tributary.so' },
   { label: 'Telegram', value: '@xeroc' },
   { label: 'Twitter', value: '@xer0c' },
 ]
@@ -36,9 +36,7 @@ export default function SlideCTA() {
       >
         The protocol is built.
         <br />
-        <span className="text-emerald-400">The checkout makes crypto invisible.</span>
-        <br />
-        <span className="text-muted-foreground">The moat is technical.</span>
+        <span className="text-emerald-400">Now we onboard the world.</span>
       </motion.h2>
 
       <motion.p
@@ -47,7 +45,7 @@ export default function SlideCTA() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Now we onboard the world. Raising $176K to complete the security audit and scale developer adoption.
+        Raising $176K to complete the security audit and scale developer adoption.
       </motion.p>
 
       <div className="flex gap-8 max-w-3xl w-full">
@@ -100,7 +98,7 @@ export default function SlideCTA() {
         transition={{ duration: 0.5, delay: 0.7 }}
       >
         <div className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-secondary)' }}>
-          fabian@chainsquad.com
+          fabian@tribtuary.so
         </div>
         <div className="text-xs text-muted-foreground mt-1">Let&apos;s talk.</div>
       </motion.div>
