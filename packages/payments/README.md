@@ -1,6 +1,9 @@
 # @tributary-so/payments
 
-A minimal payments SDK for Tributary on Solana. Supports both recurring subscriptions (via smart contract) and one-time payments (via SPL transfers with memo tracking). Provides essential checkout session functionality with zero API keys required - developers can integrate immediately without registration.
+A minimal payments SDK for Tributary on Solana. Supports both recurring
+subscriptions (via smart contract) and one-time payments (via SPL transfers with
+memo tracking). Provides essential checkout session functionality with zero API
+keys required - developers can integrate immediately without registration.
 
 ## Features
 
