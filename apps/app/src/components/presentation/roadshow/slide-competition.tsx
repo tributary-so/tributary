@@ -15,7 +15,7 @@ const wallets = [
     name: 'Squads',
     what: 'M-of-N multisig, $10B+ secured',
     gap: 'No subscriptions or scheduling',
-    play: 'Squad vault + Tributary = DAO recurring payments',
+    play: 'Squad vault + Tributary = DAO Milestone Payments',
   },
   {
     name: 'LazorKit',

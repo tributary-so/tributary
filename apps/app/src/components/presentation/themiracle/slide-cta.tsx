@@ -10,7 +10,7 @@ const links = [
 ]
 
 const contact = [
-  { label: 'Email', value: 'fabian@chainsquad.com' },
+  { label: 'Email', value: 'fabian@tributary.so' },
   { label: 'Telegram', value: '@xeroc' },
   { label: 'Twitter', value: '@xer0c' },
 ]
@@ -94,7 +94,7 @@ export default function SlideCTA() {
             transition={{ duration: 0.4, delay: 0.6 }}
           >
             <div className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-secondary)' }}>
-              fabian@chainsquad.com
+              fabian@tributary.so
             </div>
             <div className="text-xs text-muted-foreground mt-1">Two tracks. One flywheel. Let's fund the ecosystem.</div>
           </motion.div>

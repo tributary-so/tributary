@@ -8,8 +8,8 @@ const steps = [
   },
   {
     num: '02',
-    title: 'Token Delegation',
-    desc: 'One approval — payments run forever. No reminders, no manual re-auth.',
+    title: 'Accept Payment',
+    desc: 'One approval. Payments run automatically. No reminders, no manual re-auth.',
   },
   {
     num: '03',
@@ -44,7 +44,7 @@ export default function SlideFlow() {
       >
         Sign once.
         <br />
-        <span className="text-emerald-400">Pay forever.</span>
+        <span className="text-emerald-400">Pay automatically.</span>
       </motion.h2>
 
       <motion.p
@@ -53,8 +53,8 @@ export default function SlideFlow() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Token delegation means your customer approves once — every subsequent payment is automatic. No passwords, no
-        card numbers, no manual re-auth.
+        Token delegation means your customer approves once. Every subsequent payment is automatic. No passwords, no
+        card numbers, no manual re-auth. No transaction signing.
       </motion.p>
 
       <div className="flex gap-3 max-w-4xl w-full mb-8">
@@ -92,8 +92,8 @@ export default function SlideFlow() {
           <span className="font-bold">The Key Insight:</span> Merchants never need to talk crypto or blockchain.
         </p>
         <p className="text-xs text-muted-foreground">
-          Tributary&apos;s Checkout flow means accepting USDC is as simple as verifying a signed token — any language,
-          no crypto knowledge required.
+          Tributary&apos;s Checkout flow means accepting stablecoins is as simple as verifying a signed token <br />
+          Any programming language. No crypto knowledge required.
         </p>
       </motion.div>
     </div>

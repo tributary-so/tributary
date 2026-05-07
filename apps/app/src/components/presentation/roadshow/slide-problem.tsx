@@ -34,9 +34,9 @@ export default function SlideProblem() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Accepting payments on Solana
+        Recurring payments on Solana
         <br />
-        <span className="text-muted-foreground">is still too hard.</span>
+        <span className="text-muted-foreground">are still not available.</span>
       </motion.h2>
 
       <motion.p
@@ -45,7 +45,7 @@ export default function SlideProblem() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Most businesses stick with Stripe. The brave ones spend weeks on plumbing instead of shipping.
+        Most businesses work around this limitation.
       </motion.p>
 
       <div className="grid grid-cols-2 gap-4 max-w-3xl w-full mb-8">
