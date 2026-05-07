@@ -58,6 +58,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          pnpm run --filter ./packages/sdk build
+          pnpm run --filter ./packages/payments build
+          pnpm run --filter ./packages/sdk-react build
+          pnpm run --filter ./packages/sdk-x402 build
+
           pnpm run --filter ./packages/sdk release || true
           pnpm run --filter ./packages/payments release || true
           pnpm run --filter ./packages/sdk-react release || true
