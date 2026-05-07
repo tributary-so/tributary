@@ -5,7 +5,6 @@ A minimal payments SDK for Tributary on Solana. Supports both recurring subscrip
 ## Features
 
 - **Zero API Keys**: No registration, no configuration, just install and use
-- **USDC Only**: Single currency support (USDC on Solana)
 - **Tributary Payment Method**: Only supports "tributary" payment method type
 - **Base64URL Encoding**: Compact, URL-safe session encoding for sharing
 - **Dual Payment Modes**: Subscriptions (smart contract) OR one-time payments (SPL transfers)
