@@ -18,6 +18,7 @@ import {
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { Tributary } from "../target/types/tributary";
 import {
+  IWallet,
   PaymentFrequency,
   TributarySDK,
   encodeMemo,
@@ -72,7 +73,7 @@ describe("Tributary", () => {
   beforeAll(async () => {
     // Create Solana Kite connection
     connection = provider.connection;
-    sdk = new TributarySDK(connection, wallet);
+    sdk = new TributarySDK(connection, wallet as IWallet);
 
     // Create wallets
     admin = Keypair.generate();
@@ -2320,18 +2321,18 @@ describe("Tributary", () => {
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-          l1Reward -
-          Math.floor((l1Reward * 100) / 10000)
+        l1Reward -
+        Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-          l2Reward -
-          Math.floor((l2Reward * 100) / 10000)
+        l2Reward -
+        Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-          l3Reward -
-          Math.floor((l3Reward * 100) / 10000)
+        l3Reward -
+        Math.floor((l3Reward * 100) / 10000)
       );
     });
 
