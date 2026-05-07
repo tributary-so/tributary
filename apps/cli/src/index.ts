@@ -3,7 +3,7 @@ import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
 import * as fs from "fs";
 import * as path from "path";
-import { Tributary, PaymentFrequency, encodeMemo } from "@tributary-so/sdk";
+import { IWallet, Tributary, PaymentFrequency, encodeMemo } from "@tributary-so/sdk";
 
 const isAgent = !!process.env.NO_DNA;
 
@@ -26,7 +26,7 @@ function readKeypairFromFile(filePath: string): Keypair {
 
 function createSDK(config: WalletConfig): {
   sdk: Tributary;
-  wallet: anchor.Wallet;
+  wallet: IWallet;
   connection: Connection;
 } {
   const connection = new Connection(config.connectionUrl);
@@ -38,9 +38,8 @@ function createSDK(config: WalletConfig): {
       `Keypair not found at ${config.keypath}. This command requires a keypair. Run 'tributary wallet create' to generate one.`
     );
   }
-  const wallet = new anchor.Wallet(keypair);
-  const sdk = new Tributary(connection, wallet);
-  return { sdk, wallet, connection };
+  const sdk = new Tributary(connection, keypair);
+  return { sdk, wallet: sdk.provider.wallet as IWallet, connection };
 }
 
 function getDefaultConfig(): WalletConfig {
