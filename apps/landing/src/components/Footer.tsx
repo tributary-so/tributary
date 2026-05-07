@@ -1,4 +1,5 @@
 import { Code2, Github, Twitter, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function Footer() {
   return (
@@ -97,7 +98,13 @@ export function Footer() {
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground/60 mt-8 pt-8 border-t border-border/50">
           <div>&copy; 2026 Tributary. Built with &lt;3 on Solana.</div>
-          <div className="flex gap-4 mt-4 md:mt-0">
+          <div className="flex gap-4 items-center mt-4 md:mt-0">
+            <Link
+              to="/terms"
+              className="hover:text-foreground transition-colors"
+            >
+              Terms
+            </Link>
             <a
               href="https://twitter.com/tributaryso"
               target="_blank"
