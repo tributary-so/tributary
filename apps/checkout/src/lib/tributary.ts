@@ -6,6 +6,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import {
+  type IWallet,
   Tributary,
   PaymentFrequency,
   createMemoBuffer,
@@ -118,7 +119,7 @@ async function confirmTransactionWithStatus(
 
 function getTributary(wallet: WalletContextState): Tributary {
   const connection = new Connection(config.rpcUrl, "confirmed");
-  return new Tributary(connection, wallet as unknown as anchor.Wallet);
+  return new Tributary(connection, wallet as unknown as IWallet);
 }
 
 function mapFrequency(

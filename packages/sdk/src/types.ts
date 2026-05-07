@@ -2,6 +2,12 @@ import { PublicKey } from "@solana/web3.js";
 import { type Tributary } from "../../../target/types/tributary.js";
 import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
 
+export type IWallet = {
+  publicKey: PublicKey;
+  signTransaction<T>(tx: T): Promise<T>;
+  signAllTransactions<T>(txs: T[]): Promise<T[]>;
+}
+
 /**
  * Result of a Program Derived Address (PDA) derivation operation.
  * Contains the computed address and the bump seed used to ensure the address is not on the Ed25519 curve.

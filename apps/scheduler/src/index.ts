@@ -46,8 +46,7 @@ class PaymentScheduler {
     }
 
     const connection = new Connection(config.connectionUrl, "confirmed");
-    const wallet = new anchor.Wallet(this.gatewayKeypairs[0]);
-    this.sdk = new TributarySDK(connection, wallet);
+    this.sdk = new TributarySDK(connection, this.gatewayKeypairs[0]);
   }
 
   private loadKeypair(data: string) {
@@ -107,9 +106,8 @@ class PaymentScheduler {
               let milestoneInfo = "";
               if (policy.policyType.milestone) {
                 const m = policy.policyType.milestone;
-                milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${
-                  m.totalMilestones
-                })`;
+                milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${m.totalMilestones
+                  })`;
               }
 
               console.log(

@@ -25,6 +25,7 @@ import {
   getReferralPda,
 } from "./pda";
 import type {
+  IWallet,
   PolicyType,
   PaymentFrequency,
   UserPayment,
@@ -78,13 +79,7 @@ export class Tributary {
    */
   constructor(
     connection: Connection,
-    wallet:
-      | Keypair
-      | {
-          publicKey: PublicKey;
-          signTransaction<T extends any>(tx: T): Promise<T>;
-          signAllTransactions<T extends any>(txs: T[]): Promise<T[]>;
-        }
+    wallet: Keypair | IWallet
   ) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
@@ -92,20 +87,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-            publicKey: wallet.publicKey,
-            signTransaction: <T extends any>(tx: T) => {
-              (tx as any).sign(wallet);
-              return Promise.resolve(tx);
-            },
-            signAllTransactions: <T extends any>(txs: T[]) => {
-              return Promise.resolve(
-                txs.map((tx) => {
-                  (tx as any).sign(wallet);
-                  return tx;
-                })
-              );
-            },
-          }
+          publicKey: wallet.publicKey,
+          signTransaction: <T>(tx: T) => {
+            (tx as any).sign(wallet);
+            return Promise.resolve(tx);
+          },
+          signAllTransactions: <T>(txs: T[]) => {
+            return Promise.resolve(
+              txs.map((tx) => {
+                (tx as any).sign(wallet);
+                return tx;
+              })
+            );
+          },
+        }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
