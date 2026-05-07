@@ -12,7 +12,7 @@
     "client": "npx tsx src/client.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "release": "semantic-release"
+    "release": "semantic-release -e semantic-release-monorepo"
   },
   "description": "x402 integration for tributary subscriptions on solana",
   "keywords": [
