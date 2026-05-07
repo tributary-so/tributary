@@ -17,7 +17,7 @@
     "test:e2e": "npx tsx --test src/core/verification.e2e.test.ts",
     "lint": "exit 0",
     "prepack": "pnpm run build",
-    "release": "semantic-release"
+    "release": "semantic-release -e semantic-release-monorepo"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.13",

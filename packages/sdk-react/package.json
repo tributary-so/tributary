@@ -11,7 +11,7 @@
     "build": "pnpm run clean && tsup",
     "prepack": "pnpm run build",
     "dev": "vite",
-    "release": "semantic-release"
+    "release": "semantic-release -e semantic-release-monorepo"
   },
   "dependencies": {
     "@actioncodes/sdk": "^2.0.18",

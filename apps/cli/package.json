@@ -9,7 +9,7 @@
     "format:check": "prettier --check src",
     "lint": "exit 0;",
     "lint2": "eslint .",
-    "release": "semantic-release"
+    "release": "semantic-release -e semantic-release-monorepo"
   },
   "files": [
     "lib"

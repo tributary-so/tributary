@@ -12,7 +12,7 @@
     "manager": "npx tsx src/manager.ts",
     "prepack": "pnpm run build",
     "docs": "typedoc",
-    "release": "semantic-release"
+    "release": "semantic-release -e semantic-release-monorepo"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
