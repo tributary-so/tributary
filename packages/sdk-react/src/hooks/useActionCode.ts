@@ -7,7 +7,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { BN, Wallet } from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 import { Tributary } from "@tributary-so/sdk";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { createPaymentFrequency } from "./useCreateSubscription";
@@ -30,14 +30,14 @@ export const useActionCode = () => {
         return sdkRef.current;
       }
 
-      const w: Wallet = {
+      const w = {
         payer: new Keypair({
           publicKey: pubkey.toBuffer(),
           secretKey: new Uint8Array(32),
         }),
         publicKey: pubkey,
-        signTransaction: (tx) => tx as any,
-        signAllTransactions: () => Promise.resolve([]),
+        signTransaction: (tx: any) => Promise.resolve(tx),
+        signAllTransactions: (txs: any[]) => Promise.resolve(txs),
       };
 
       sdkRef.current = new Tributary(connection, w);
@@ -192,7 +192,8 @@ export const useActionCode = () => {
 
       if (!currentResolvedPubkey || !currentActionCode) {
         throw new Error(
-          `Action code not resolved. ActionCode (ref): ${currentActionCode}, ActionCode (state): ${actionCode}, Pubkey (ref): ${currentResolvedPubkey?.toString() || "null"
+          `Action code not resolved. ActionCode (ref): ${currentActionCode}, ActionCode (state): ${actionCode}, Pubkey (ref): ${
+            currentResolvedPubkey?.toString() || "null"
           }, Pubkey (state): ${resolvedPubkey?.toString() || "null"}`
         );
       }
