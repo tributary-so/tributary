@@ -829,5 +829,4 @@ MIT License - see [LICENSE](../LICENSE) file for details.
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/tributary-so/tributary/issues)
-- **Discord**: Community discussions and support
 - **Twitter**: [@tributary_so](https://twitter.com/tributary_so)
