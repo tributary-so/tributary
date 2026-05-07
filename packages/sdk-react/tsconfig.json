@@ -12,16 +12,32 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "target": "esnext",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "outDir": "./lib",
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./src/*"],
-      "@tributary-so/sdk": ["../sdk/src"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@tributary-so/sdk": [
+        "../sdk/src"
+      ],
+      "@tributary-so/payments": [
+        "../payements/src"
+      ]
     }
   },
-  "exclude": ["node_modules", "tests"]
+  "exclude": [
+    "node_modules",
+    "tests"
+  ]
 }
