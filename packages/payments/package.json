@@ -1,6 +1,6 @@
 {
   "name": "@tributary-so/payments",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Payments SDK for Tributary USDC subscriptions - zero API keys required",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
