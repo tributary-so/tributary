@@ -1,5 +1,9 @@
 {
   "name": "@tributary-so/payments",
+  "repository": {
+    "url": "https://github.com/tributary-so/tributary",
+    "type": "git"
+  },
   "version": "1.9.2",
   "description": "Payments SDK for Tributary USDC subscriptions - zero API keys required",
   "main": "dist/index.js",
