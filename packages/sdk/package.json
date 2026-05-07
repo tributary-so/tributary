@@ -2,7 +2,7 @@
   "name": "@tributary-so/sdk",
   "license": "MIT",
   "private": false,
-  "version": "1.11.1",
+  "version": "1.11.2",
   "type": "module",
   "scripts": {
     "lint": "exit 0",
