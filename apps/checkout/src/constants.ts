@@ -23,6 +23,4 @@ const config: Config = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "https://api.tributary.so",
 };
 
-console.log(config);
-
 export default config;
