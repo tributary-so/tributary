@@ -53,39 +53,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Release (Dry Run)
-        if: inputs.dry_run
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "========================================="
-          echo "Semantic Release - Dry Run Mode"
-          echo "========================================="
-          echo "No actual releases will be published."
-          echo "No git tags will be created."
-          echo "No NPM packages will be published."
-          echo "========================================="
-          pnpm -r --workspace-concurrency=1 run release -- --dry-run --debug
-
       - name: Release (Production)
         if: ${{ !inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: "oidc"
           NPM_CONFIG_PROVENANCE: true
-        run: pnpm -r --workspace-concurrency=1 run release -- --debug
-
-      - name: Show release result
-        if: ${{ always() }}
         run: |
-          echo "========================================="
-          echo "Release workflow completed"
-          echo "========================================="
-          echo "Check the Actions tab for release notes and published packages"
-          echo ""
-          echo "Packages published:"
-          git tag -l "@tributary-so/sdk-v*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No SDK tags yet"
-          git tag -l "@tributary-so/sdk-react-v*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No SDK-React tags yet"
-          git tag -l "@tributary-so/sdk-x402-v*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No SDK-x402 tags yet"
-          git tag -l "@tributary-so/payments-v*" --sort=-version:refname 2>/dev/null | head -5 || echo "  No Payments tags yet"
-          echo "========================================="
+          pnpm run --filter ./packages/sdk release || true
+          pnpm run --filter ./packages/payments release || true
+          pnpm run --filter ./packages/sdk-react release || true
+          pnpm run --filter ./packages/sdk-x402 release || true
+          pnpm run --filter ./app/cli release || true
