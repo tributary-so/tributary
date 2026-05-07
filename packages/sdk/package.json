@@ -1,6 +1,9 @@
 {
   "name": "@tributary-so/sdk",
-  "url": "https://github.com/tributary-so/tributary",
+  "repository": {
+    "url": "https://github.com/tributary-so/tributary",
+    "type": "git"
+  },
   "license": "MIT",
   "private": false,
   "version": "1.11.2",
