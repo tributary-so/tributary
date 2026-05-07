@@ -199,7 +199,7 @@
           "changelogFile": "CHANGELOG.md"
         }
       ],
-      "@semantic-release/npm",
+      "@anolilab/semantic-release-pnpm",
       [
         "@semantic-release/git",
         {
@@ -207,7 +207,7 @@
             "package.json",
             "CHANGELOG.md"
           ],
-          "message": "chore(release): ${nextRelease.version} [skip ci]"
+          "message": "chore(release): @tributary-so/sdk-${nextRelease.version} [skip ci]"
         }
       ]
     ]

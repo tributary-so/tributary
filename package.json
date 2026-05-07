@@ -10,6 +10,7 @@
     "concurrently": "^9.2.1"
   },
   "devDependencies": {
+    "@anolilab/semantic-release-pnpm": "^8.1.9",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/release-notes-generator": "^14.1.0",
@@ -170,7 +171,7 @@
           "changelogFile": "CHANGELOG.md"
         }
       ],
-      "@semantic-release/npm",
+      "@anolilab/semantic-release-pnpm",
       [
         "@semantic-release/git",
         {
