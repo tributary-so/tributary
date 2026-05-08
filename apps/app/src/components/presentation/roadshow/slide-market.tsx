@@ -71,9 +71,9 @@ export default function SlideMarket() {
         transition={{ duration: 0.4, delay: 0.6 }}
       >
         {[
-          'Stripe ($70B+) built on recurring billing — the missing layer on-chain',
+          'Stripe ($70B+) built on recurring billing',
           'Stripe added USDC on Solana. Shopify merchants already accept crypto.',
-          'Crypto has DeFi. Commerce needs subscriptions, milestones, usage billing.',
+          'Crypto has DeFi. Commerce needs automated recurring payments',
         ].map((point, i) => (
           <div key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
             <div className="shrink-0 w-1 h-1 bg-emerald-400 rounded-full mt-2" />

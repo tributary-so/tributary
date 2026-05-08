@@ -42,7 +42,7 @@ export default function SlideTitle() {
         <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5">
           Seed Round
         </span>
-        <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-border text-muted-foreground">
+        <span className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] border border-border text-muted-foreground font-extrabold">
           $176K
         </span>
       </motion.div>
@@ -53,7 +53,8 @@ export default function SlideTitle() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.65 }}
       >
-        Non-custodial recurring payments. Fully built. Deployed. Raising to scale.
+        Non-custodial recurring payments. Fully built. Deployed.
+        <br /> Raising to scale.
       </motion.p>
     </div>
   )

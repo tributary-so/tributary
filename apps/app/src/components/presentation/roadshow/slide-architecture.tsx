@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 const layers = [
   { web2: 'Visa / Mastercard', tributary: 'On-chain program (Rust)', label: 'Payment Rail' },
   { web2: 'Stripe, Adyen', tributary: 'Your registered gateway', label: 'Processor' },
-  { web2: 'Stripe Checkout', tributary: 'Hosted + self-hosted checkout', label: 'Checkout' },
+  { web2: 'Stripe Checkout', tributary: '(Self-)Hosted checkout', label: 'Checkout' },
   { web2: 'Webhook signature', tributary: 'JWT + JWKS + On-chain verify', label: 'Verification' },
-  { web2: 'Stripe SDK', tributary: 'TS SDK + React + x402 + Stripe-compatible', label: 'SDK' },
+  { web2: 'Stripe SDK', tributary: 'TS + React + x402 + payments', label: 'SDK' },
 ]
 
 const components = [
@@ -13,7 +13,7 @@ const components = [
   { name: 'TypeScript SDK', status: 'Live', detail: '@tributary-so/sdk' },
   { name: 'React Components', status: 'Live', detail: '@tributary-so/sdk-react' },
   { name: 'HTTP 402 Middleware', status: 'Live', detail: '@tributary-so/sdk-x402' },
-  { name: 'Stripe-Compatible SDK', status: 'Live', detail: '@tributary-so/payments' },
+  { name: 'Payments SDK', status: 'Live', detail: '@tributary-so/payments' },
   { name: 'Hosted Checkout', status: 'Live', detail: 'checkout.tributary.so' },
   { name: 'API Server', status: 'Live', detail: 'REST + WebSocket + Kafka' },
   { name: 'Event Indexer', status: 'Live', detail: 'Real-time on-chain indexing' },

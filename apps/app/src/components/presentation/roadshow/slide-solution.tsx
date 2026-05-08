@@ -22,7 +22,7 @@ const models = [
   {
     name: 'PAY-AS-YOU-GO',
     desc: 'Charge per use. No manual invoicing.',
-    example: 'API calls, compute, usage-based billing — if you can count it, bill for it.',
+    example: 'API calls, compute, tokens, usage-based billing — if you can count it, bill for it.',
     icon: '$',
     accent: 'from-purple-500/10 to-transparent',
     border: 'border-purple-500/20',
@@ -127,12 +127,12 @@ export default function SlideSolution() {
       </div>
 
       <motion.p
-        className="text-xs text-muted-foreground italic mt-6"
+        className="text-muted-foreground italic mt-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.8 }}
       >
-        Your server never needs to talk to Solana. Accept USDC in 3 lines of code.
+        That's five models today. More tomorrow.
       </motion.p>
     </div>
   )

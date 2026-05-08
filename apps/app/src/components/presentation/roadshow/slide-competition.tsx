@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 
-const cols = ['', 'Tributary', 'Helio', 'Stripe']
+const cols = ['', 'Tributary', 'Helio', 'VelaPay']
 const rows = [
   ['Model', 'Protocol (infra)', 'Payment product', 'Payment product'],
   ['Custody', 'Non-custodial', 'Non-custodial', 'Privacy (Token-2022)'],
@@ -50,8 +50,9 @@ export default function SlideCompetition() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        The moat is
-        <span className="text-emerald-400"> technical.</span>
+        Others exist.
+        <br />
+        <span className="text-emerald-400">None let you build your own.</span>
       </motion.h2>
 
       <motion.p
@@ -76,12 +77,13 @@ export default function SlideCompetition() {
               {cols.map((col, i) => (
                 <th
                   key={col}
-                  className={`px-3 py-1.5 text-left uppercase tracking-wider font-semibold border-b border-border ${i === 0
-                    ? 'text-muted-foreground'
-                    : i === 1
+                  className={`px-3 py-1.5 text-left uppercase tracking-wider font-semibold border-b border-border ${
+                    i === 0
+                      ? 'text-muted-foreground'
+                      : i === 1
                       ? 'text-emerald-400 bg-emerald-500/5'
                       : 'text-muted-foreground bg-muted/20'
-                    }`}
+                  }`}
                 >
                   {col}
                 </th>
@@ -94,12 +96,13 @@ export default function SlideCompetition() {
                 {row.map((cell, ci) => (
                   <td
                     key={ci}
-                    className={`px-3 py-1.5 ${ci === 0
-                      ? 'font-semibold text-foreground'
-                      : ci === 1
+                    className={`px-3 py-1.5 ${
+                      ci === 0
+                        ? 'font-semibold text-foreground'
+                        : ci === 1
                         ? 'text-emerald-400 bg-emerald-500/5 font-medium'
                         : 'text-muted-foreground'
-                      }`}
+                    }`}
                   >
                     {cell}
                   </td>
