@@ -51,104 +51,104 @@
     />
 
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Tributary",
-      "url": "https://tributary.so",
-      "logo": "https://tributary.so/logo.svg",
-      "description": "The recurring payment protocol for Solana. Non-custodial automated subscriptions, milestone payments, pay-as-you-go billing, and one-time payments via SPL token delegation. Live on mainnet with hosted checkout, JWT verification, and x402 HTTP 402 integration.",
-      "applicationCategory": "FinanceApplication",
-      "operatingSystem": "Web",
-      "browserRequirements": "Requires JavaScript. Requires a Solana wallet for payment setup.",
-      "softwareVersion": "1.0",
-      "releaseNotes": "Live on Solana mainnet. Four payment models: Subscriptions, Milestones, Pay-as-you-go, and One-time.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD",
-        "description": "1% protocol fee per transaction. No monthly charges. No setup fees."
-      },
-      "author": {
-        "@type": "Organization",
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
         "name": "Tributary",
         "url": "https://tributary.so",
         "logo": "https://tributary.so/logo.svg",
-        "sameAs": [
-          "https://twitter.com/tributary_so",
-          "https://github.com/tributary-so"
-        ]
-      },
-      "featureList": [
-        "Automated recurring payments on Solana",
-        "Non-custodial token delegation — funds stay in your wallet",
-        "Four payment models: Subscriptions, Milestones, Pay-as-you-go, One-time",
-        "Hosted checkout page — accept USDC without Solana code",
-        "JWT verification — verify payments without a backend",
-        "x402 HTTP 402 integration for API monetization",
-        "Action Codes for wallet-less payment initiation",
-        "TypeScript SDK, React components, and CLI manager",
-        "Solana mainnet live — 400ms finality, sub-cent fees"
-      ],
-      "screenshot": "https://app.tributary.so/banner1200.png"
-    }
+        "description": "The recurring payment protocol for Solana. Non-custodial automated subscriptions, milestone payments, pay-as-you-go billing, and one-time payments via SPL token delegation. Live on mainnet with hosted checkout, JWT verification, and x402 HTTP 402 integration.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "browserRequirements": "Requires JavaScript. Requires a Solana wallet for payment setup.",
+        "softwareVersion": "1.0",
+        "releaseNotes": "Live on Solana mainnet. Four payment models: Subscriptions, Milestones, Pay-as-you-go, and One-time.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "1% protocol fee per transaction. No monthly charges. No setup fees."
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Tributary",
+          "url": "https://tributary.so",
+          "logo": "https://tributary.so/logo.svg",
+          "sameAs": [
+            "https://twitter.com/tributary_so",
+            "https://github.com/tributary-so"
+          ]
+        },
+        "featureList": [
+          "Automated recurring payments on Solana",
+          "Non-custodial token delegation — funds stay in your wallet",
+          "Four payment models: Subscriptions, Milestones, Pay-as-you-go, One-time",
+          "Hosted checkout page — accept USDC without Solana code",
+          "JWT verification — verify payments without a backend",
+          "x402 HTTP 402 integration for API monetization",
+          "Action Codes for wallet-less payment initiation",
+          "TypeScript SDK, React components, and CLI manager",
+          "Solana mainnet live — 400ms finality, sub-cent fees"
+        ],
+        "screenshot": "https://app.tributary.so/banner1200.png"
+      }
     </script>
 
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is Tributary?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Tributary is a Solana-native payment protocol enabling automated, non-custodial recurring payments through token delegation. It supports four payment models: Subscriptions, Milestones, Pay-as-you-go, and One-time. Live on Solana mainnet with 400ms finality and sub-cent fees."
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Tributary?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Tributary is a Solana-native payment protocol enabling automated, non-custodial recurring payments through token delegation. It supports four payment models: Subscriptions, Milestones, Pay-as-you-go, and One-time. Live on Solana mainnet with 400ms finality and sub-cent fees."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does token delegation work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Users sign a single transaction to delegate tokens to Tributary's on-chain program. The protocol executes payments automatically on schedule without locking funds in escrow. Users retain full custody — funds stay in their wallet until a payment is due. Delegation can be revoked anytime."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I accept USDC without Solana code?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use Tributary's hosted checkout page at checkout.tributary.so. Your user signs once through the checkout, then lands back on your site with a JWT. You verify the JWT with any standard library — no Solana SDK, no RPC provider, no keypairs needed. One React hook is all it takes."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Tributary secure?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Tributary is fully non-custodial — $0 TVL risk. Funds remain in user wallets. The protocol only holds delegated authority for specific amounts and schedules. Open-source, verifiable on-chain, and revocable anytime. Full CI/CD pipeline with comprehensive testing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can users cancel subscriptions?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Absolutely. Users have full control and can pause, resume, or cancel any payment policy anytime through their wallet or dApp. No lock-in, no penalty."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is x402 integration?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Tributary powers x402 (HTTP 402 Payment Required) for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle — ideal for API monetization, AI agent billing, and pay-per-use services."
+            }
           }
-        },
-        {
-          "@type": "Question",
-          "name": "How does token delegation work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Users sign a single transaction to delegate tokens to Tributary's on-chain program. The protocol executes payments automatically on schedule without locking funds in escrow. Users retain full custody — funds stay in their wallet until a payment is due. Delegation can be revoked anytime."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How do I accept USDC without Solana code?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Use Tributary's hosted checkout page at checkout.tributary.so. Your user signs once through the checkout, then lands back on your site with a JWT. You verify the JWT with any standard library — no Solana SDK, no RPC provider, no keypairs needed. One React hook is all it takes."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is Tributary secure?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Tributary is fully non-custodial — $0 TVL risk. Funds remain in user wallets. The protocol only holds delegated authority for specific amounts and schedules. Open-source, verifiable on-chain, and revocable anytime. Full CI/CD pipeline with comprehensive testing."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can users cancel subscriptions?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Absolutely. Users have full control and can pause, resume, or cancel any payment policy anytime through their wallet or dApp. No lock-in, no penalty."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What is x402 integration?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Tributary powers x402 (HTTP 402 Payment Required) for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle — ideal for API monetization, AI agent billing, and pay-per-use services."
-          }
-        }
-      ]
-    }
+        ]
+      }
     </script>
   </head>
   <body>
@@ -159,5 +159,61 @@
       data-domain="tributary.so"
       src="https://p.chainsquad.com/js/script.js"
     ></script>
+    <div style="display: none; visibility: hidden" hidden>
+      <a
+        href="https://www.tinystartups.com/startup/tributary"
+        target="_blank"
+        rel="noopener"
+        style="
+          display: inline-flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 22px 14px 18px;
+          border-radius: 14px;
+          text-decoration: none;
+          font-family: 'Inter', system-ui, sans-serif;
+          background: linear-gradient(#fff, #fff) padding-box,
+            linear-gradient(90deg, #3525e6, #d81fe0, #22b8f0) border-box;
+          border: 2px solid transparent;
+          color: #0e0b1f;
+        "
+      >
+        <svg width="56" height="56" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="tsg" x1=".1" y1="0" x2=".9" y2="1">
+              <stop offset="0%" stop-color="#3525E6" />
+              <stop offset="55%" stop-color="#D81FE0" />
+              <stop offset="100%" stop-color="#22B8F0" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M50 6C52 32 68 48 94 50C68 52 52 68 50 94C48 68 32 52 6 50C32 48 48 32 50 6Z"
+            fill="url(#tsg)"
+          />
+        </svg>
+        <span style="display: flex; flex-direction: column; line-height: 1.15">
+          <span
+            style="
+              font-family: monospace;
+              font-size: 9px;
+              font-weight: 600;
+              letter-spacing: 0.18em;
+              text-transform: uppercase;
+              color: #6a6585;
+            "
+          >
+            Launched on
+          </span>
+          <span
+            style="font-size: 22px; font-weight: 800; letter-spacing: -0.025em"
+          >
+            Tiny Startups
+          </span>
+          <span style="font-size: 11px; color: #6a6585; margin-top: 4px">
+            tinystartups.com
+          </span>
+        </span>
+      </a>
+    </div>
   </body>
 </html>
