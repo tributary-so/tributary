@@ -9,21 +9,10 @@ const metrics = [
 ]
 
 const integrations = [
-  {
-    name: 'yumi.finance',
-    desc: 'Automates loan collections for lending platforms — reliable cash flow, zero manual overhead.',
-    type: 'milestones',
-  },
-  {
-    name: 'allowly.app',
-    desc: 'Enables simple recurring transfers for pocket-money apps and AI agents — better user retention.',
-    type: 'pay-as-you-go',
-  },
-  {
-    name: 'contribute.so',
-    desc: 'Powers recurring donations and creator payouts for DAOs — sustainable community engagement.',
-    type: 'subscriptions',
-  },
+  { name: 'Allowly.app', desc: 'Pocket money for kids and AI agents', type: 'pay-as-you-go' },
+  { name: 'Contribute.so', desc: 'Recurring donations platform', type: 'subscriptions' },
+  { name: 'Cash.yumi.finance', desc: 'External payment flows', type: 'milestones' },
+  { name: 'polycode.dev', desc: 'Integration in progress', type: 'in progress' },
 ]
 
 export default function SlideTraction() {
@@ -45,18 +34,18 @@ export default function SlideTraction() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Zero marketing.
+        Bootstrapped.
         <br />
-        <span className="text-emerald-400"> Businesses found us.</span>
+        <span className="text-emerald-400">Fully deployed. $0 raised.</span>
       </motion.h2>
 
       <motion.p
-        className="text-sm text-muted-foreground mb-8 text-center"
+        className="text-sm text-muted-foreground mb-8 text-center max-w-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        10+ integrations. 4,000+ transfers. Zero marketing.
+        Smart contract live on mainnet.
       </motion.p>
 
       <div className="flex gap-4 mb-10">
@@ -96,15 +85,6 @@ export default function SlideTraction() {
           </motion.div>
         ))}
       </div>
-
-      <motion.p
-        className="text-xs text-muted-foreground mt-6 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.9 }}
-      >
-        Inbound demand from lending platforms, API products, and creator tools.
-      </motion.p>
 
       <motion.p
         className="text-xs text-muted-foreground italic mt-3"

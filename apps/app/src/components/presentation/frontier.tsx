@@ -59,16 +59,16 @@ function SlideVideo() {
 const slides = [
   SlideTitle,
   SlideMarket,
-  SlideProblem,
-  SlideFlow,
+  SlideModels,
   SlideDemo,
   SlideVideo,
-  SlideModels,
   SlideInfrastructure,
-  SlideCompetition,
   SlideTraction,
   SlideTeam,
   SlideCTA,
+  SlideProblem,
+  SlideFlow,
+  SlideCompetition,
 ]
 
 const slideLabels = [
@@ -176,9 +176,8 @@ export default function Frontier() {
             aria-label={`Go to slide ${index + 1}: ${slideLabels[index]}`}
           >
             <div
-              className={`h-1 transition-all duration-300 ${
-                index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
-              }`}
+              className={`h-1 transition-all duration-300 ${index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
+                }`}
             />
             <span className="absolute -top-5 text-[8px] uppercase tracking-wider text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all whitespace-nowrap">
               {slideLabels[index]}

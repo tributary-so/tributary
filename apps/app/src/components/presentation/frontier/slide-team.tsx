@@ -86,7 +86,7 @@ export default function SlideTeam() {
         transition={{ duration: 0.4, delay: 0.7 }}
       >
         <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-        Scaling to 3 engineers post-seed
+        Scaling to 3 person team post-seed
       </motion.div>
     </div>
   )
