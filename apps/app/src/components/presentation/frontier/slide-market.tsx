@@ -46,9 +46,8 @@ export default function SlideMarket() {
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
-            className={`flex flex-col items-center px-6 py-4 border ${
-              stat.highlight ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
-            }`}
+            className={`flex flex-col items-center px-6 py-4 border ${stat.highlight ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
+              }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
@@ -71,9 +70,9 @@ export default function SlideMarket() {
         transition={{ duration: 0.4, delay: 0.6 }}
       >
         {[
-          'Stripe ($70B+), PayPal, Adyen. Built on recurring billing',
-          'Stripe just added USDC on Solana. Shopify merchants accept crypto.',
-          'Crypto has DeFi. Commerce needs subscriptions.',
+          'Stripe ($70B+) proved subscriptions work.',
+          'Solana made stablecoins fast.',
+          'Who’s going to connect the dots?',
         ].map((point, i) => (
           <div key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
             <div className="shrink-0 w-1 h-1 bg-emerald-400 rounded-full mt-2" />
