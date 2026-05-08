@@ -1,18 +1,18 @@
 import { motion } from 'framer-motion'
 
 const painPoints = [
-  { icon: '01', title: 'Manual Approvals', desc: 'Crypto subscriptions require manual approval every billing cycle' },
+  { icon: '01', title: 'Manual Approvals', desc: 'Yes, you have to approve every single month. Like it’s 1999.' },
   {
     icon: '02',
     title: 'Dev Complexity Wall',
-    desc: 'Wallet integrations, RPC nodes, on-chain deserialization — weeks of plumbing',
+    desc: 'Weeks of plumbing. RPC nodes. Deserialization. Good luck.',
   },
   {
     icon: '03',
     title: 'No Unified Protocol',
-    desc: 'No single system handles subscriptions, milestones, usage billing, and invoices',
+    desc: 'Subscriptions? Milestones? Usage billing? Pick one — you can’t.',
   },
-  { icon: '04', title: 'Web2 Avoidance', desc: 'Businesses want USDC but refuse to learn blockchain infrastructure' },
+  { icon: '04', title: 'Web2 Avoidance', desc: 'Love USDC. Hate learning blockchain. So… nothing happens' },
 ]
 
 export default function SlideProblem() {
@@ -45,7 +45,7 @@ export default function SlideProblem() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Most businesses work around this limitation.
+        Businesses are doing gymnastics instead.
       </motion.p>
 
       <div className="grid grid-cols-2 gap-4 max-w-3xl w-full mb-8">

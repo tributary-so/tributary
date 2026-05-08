@@ -80,7 +80,9 @@ export default function SlideSolution() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Users approve once via token delegation — payments run forever. One approval, unlimited policies.
+        Users approve once via token delegation — payments run automatically.
+        <br />
+        One approval, unlimited policies.
       </motion.p>
 
       <div className="grid grid-cols-3 gap-3 max-w-3xl w-full mb-2">
