@@ -24,6 +24,7 @@ import TerminalCard from "../components/TerminalCard";
 import TwitterWall from "@/components/TwitterWall";
 import HowToRecurring from "@/components/HowToRecurring";
 import IntegrationsWall from "@/components/IntegrationsWall";
+import Mentions from "@/components/Mentions";
 
 const features = [
   {
@@ -1066,6 +1067,10 @@ if (payload.lastPayments.length > 0) {
           </div>
         </div>
       </section>
+
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Mentions />
+      </div>
     </main>
   );
 }
