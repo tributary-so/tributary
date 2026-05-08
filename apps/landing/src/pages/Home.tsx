@@ -1068,7 +1068,7 @@ if (payload.lastPayments.length > 0) {
         </div>
       </section>
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+      <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
         <Mentions />
       </div>
     </main>

@@ -17,6 +17,12 @@ const MENTIONS: Mention[] = [
     alt: "Launched on Fazier",
     width: 120,
   },
+  {
+    url: "https://www.foundrlist.com/product/tributary?utm_source=badge&utm_medium=embed",
+    src: "https://www.foundrlist.com/api/badge/tributary",
+    alt: "Featured on FoundrList",
+    width: 150,
+  },
 ];
 
 function TinyStartupsBadge() {

@@ -59,11 +59,11 @@ const items = [
   },
   {
     label: 'Privacy Layer',
-    detail: 'Umbra, C-SPL, or IKA',
+    detail: 'C-SPL (Arcium), Umbra, or IKA',
     start: 3,
     span: 4,
     bar: 'bg-rose-500/15 border border-rose-500/40',
-    boxShadow: "inset 1px 0 0 0 rgba(244, 63, 94, 0.4), inset -1px 0 0 0 rgba(244, 63, 94, 0.4)",
+    boxShadow: 'inset 1px 0 0 0 rgba(244, 63, 94, 0.4), inset -1px 0 0 0 rgba(244, 63, 94, 0.4)',
     maskImage: 'linear-gradient(to right, black 80%, transparent 100%)',
     text: 'text-rose-400',
     // badge: '6 MO',
@@ -119,8 +119,9 @@ export default function SlideRoadmap() {
         {items.map((item, i) => (
           <motion.div
             key={item.label}
-            className={`grid grid-cols-[160px_1fr] gap-2 items-center py-1.5 border-b border-border/30 last:border-0 ${item.highlight ? 'bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400' : ''
-              }`}
+            className={`grid grid-cols-[160px_1fr] gap-2 items-center py-1.5 border-b border-border/30 last:border-0 ${
+              item.highlight ? 'bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400' : ''
+            }`}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
@@ -142,7 +143,7 @@ export default function SlideRoadmap() {
                   width: `${(item.span / 6) * 100}%`,
                   transformOrigin: '0% 50%',
                   boxShadow: item?.boxShadow,
-                  maskImage: item?.maskImage
+                  maskImage: item?.maskImage,
                 }}
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
