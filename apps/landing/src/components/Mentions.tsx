@@ -29,6 +29,12 @@ const MENTIONS: Mention[] = [
     alt: "Featured on Devhunt",
     width: 800,
   },
+  {
+    url: "https://peerpush.net/p/tributary",
+    src: "https://peerpush.net/p/tributary/badge.png",
+    alt: "Tributary on PeerPush",
+    width: 230,
+  },
 ];
 
 function TinyStartupsBadge() {
