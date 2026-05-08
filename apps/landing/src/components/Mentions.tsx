@@ -23,6 +23,18 @@ const MENTIONS: Mention[] = [
     alt: "Featured on FoundrList",
     width: 150,
   },
+  {
+    url: "https://devhunt.org/tool/tributary",
+    src: "/devhunt.svg",
+    alt: "Featured on Devhunt",
+    width: 800,
+  },
+  {
+    url: "https://peerpush.net/p/tributary",
+    src: "https://peerpush.net/p/tributary/badge.png",
+    alt: "Tributary on PeerPush",
+    width: 230,
+  },
 ];
 
 function TinyStartupsBadge() {
@@ -37,7 +49,6 @@ function TinyStartupsBadge() {
         fontFamily: "Inter, system-ui, sans-serif",
         background:
           "linear-gradient(#fff,#fff) padding-box, linear-gradient(90deg, #3525E6, #D81FE0, #22B8F0) border-box",
-        border: "2px solid transparent",
         color: "#0E0B1F",
       }}
     >
