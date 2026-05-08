@@ -50,15 +50,17 @@ export default function SlideRevenue() {
         {scenarios.map((s, i) => (
           <motion.div
             key={s.label}
-            className={`flex-1 border p-4 ${i === 1 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
-              }`}
+            className={`flex-1 border p-4 ${
+              i === 1 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-muted/30'
+            }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
           >
             <div
-              className={`text-xs uppercase tracking-wider font-bold mb-3 ${i === 1 ? 'text-emerald-400' : 'text-muted-foreground'
-                }`}
+              className={`text-xs uppercase tracking-wider font-bold mb-3 ${
+                i === 1 ? 'text-emerald-400' : 'text-muted-foreground'
+              }`}
             >
               {s.label}
             </div>
@@ -108,8 +110,7 @@ export default function SlideRevenue() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.9 }}
       >
-        The key variable isn&apos;t fee percentage; merchant count is. That&apos;s what the next 6 months of developer
-        onboarding builds toward.
+        The key variable is merchant count! That&apos;s what the next 6 months of developer onboarding builds toward.
       </motion.p>
     </div>
   )

@@ -29,9 +29,9 @@ const slides = [
   SlideRevenue,
   SlideRoadmap,
   SlideTeam,
-  SlideIP,
   SlideCTA,
   SlideFunds,
+  SlideIP,
 ]
 
 const slideLabels = [
