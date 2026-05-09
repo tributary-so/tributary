@@ -45,7 +45,7 @@ export default function SlideCTA() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Raising $176K to complete the security audit and scale developer adoption.
+        Raising seed to complete the security audit and scale developer adoption.
       </motion.p>
 
       <div className="flex gap-8 max-w-3xl w-full">
