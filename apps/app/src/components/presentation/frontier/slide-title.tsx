@@ -30,7 +30,7 @@ export default function SlideTitle() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.35 }}
       >
-        Recurring payment rails on Solana.
+        Recurring payment rails for Solana.
       </motion.p>
 
       <motion.div
@@ -49,15 +49,6 @@ export default function SlideTitle() {
           <span>Berlin Demo Day</span>
         </div>
       </motion.div>
-
-      <motion.p
-        className="text-sm text-muted-foreground italic max-w-md"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.65 }}
-      >
-        The missing billing layer for Solana commerce.
-      </motion.p>
     </div>
   )
 }
