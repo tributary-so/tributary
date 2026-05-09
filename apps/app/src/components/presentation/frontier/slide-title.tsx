@@ -3,16 +3,6 @@ import { motion } from 'framer-motion'
 export default function SlideTitle() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full text-center px-8">
-      <motion.div
-        className="mb-6 flex items-center gap-3"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="h-px w-12 bg-emerald-400" />
-        <span className="text-emerald-400 text-xs uppercase tracking-[0.3em] font-semibold">Live on Mainnet</span>
-        <div className="h-px w-12 bg-emerald-400" />
-      </motion.div>
 
       <motion.h1
         className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight text-foreground mb-4"
@@ -30,7 +20,7 @@ export default function SlideTitle() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.35 }}
       >
-        Recurring payment rails on Solana.
+        Recurring payment rails for Solana.
       </motion.p>
 
       <motion.div
@@ -49,15 +39,6 @@ export default function SlideTitle() {
           <span>Berlin Demo Day</span>
         </div>
       </motion.div>
-
-      <motion.p
-        className="text-sm text-muted-foreground italic max-w-md"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.65 }}
-      >
-        The missing billing layer for Solana commerce.
-      </motion.p>
     </div>
   )
 }

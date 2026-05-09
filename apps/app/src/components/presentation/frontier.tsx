@@ -3,42 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const SlideTitle = lazy(() => import('./frontier/slide-title'))
-const SlideMarket = lazy(() => import('./frontier/slide-market'))
-const SlideProblem = lazy(() => import('./frontier/slide-problem'))
-const SlideFlow = lazy(() => import('./frontier/slide-flow'))
-const SlideModels = lazy(() => import('./frontier/slide-models'))
-const SlideInfrastructure = lazy(() => import('./frontier/slide-infrastructure'))
-const SlideCompetition = lazy(() => import('./frontier/slide-competition'))
+const SlideGap = lazy(() => import('./frontier/slide-market'))
+const SlideWhyNow = lazy(() => import('./frontier/slide-problem'))
+const SlideSolution = lazy(() => import('./frontier/slide-flow'))
+const SlideEasy = lazy(() => import('./frontier/slide-models'))
 const SlideTraction = lazy(() => import('./frontier/slide-traction'))
+const SlideBusiness = lazy(() => import('./frontier/slide-tam'))
 const SlideTeam = lazy(() => import('./frontier/slide-team'))
 const SlideCTA = lazy(() => import('./frontier/slide-cta'))
-
-function SlideDemo() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        Demo
-      </motion.p>
-
-      <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
-        style={{ fontFamily: 'var(--font-secondary)' }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        We made it
-        <br />
-        <span className="text-emerald-400">easy to use</span>
-      </motion.h2>
-    </div>
-  )
-}
 
 function SlideVideo() {
   return (
@@ -58,30 +30,28 @@ function SlideVideo() {
 
 const slides = [
   SlideTitle,
-  SlideMarket,
-  SlideModels,
-  SlideDemo,
+  SlideGap,
+  SlideWhyNow,
+  SlideSolution,
+  SlideEasy,
   SlideVideo,
-  SlideInfrastructure,
   SlideTraction,
+  SlideBusiness,
   SlideTeam,
-  SlideCTA,
-  SlideProblem,
-  SlideFlow,
-  SlideCompetition,
+  SlideCTA
 ]
 
 const slideLabels = [
   'Title',
-  'Market',
-  'Problem',
-  'Flow',
-  'Models',
-  'Infrastructure',
-  'Competition',
+  'Gap',
+  'Why Now',
+  'Solution',
+  'Easy',
+  'Why Solana',
   'Traction',
+  'TAM',
+  'Business Model',
   'Team',
-  'CTA',
 ]
 
 const variants = {

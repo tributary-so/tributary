@@ -11,21 +11,13 @@ const metrics = [
 const integrations = [
   { name: 'Allowly.app', desc: 'Pocket money for kids and AI agents', type: 'pay-as-you-go' },
   { name: 'Contribute.so', desc: 'Recurring donations platform', type: 'subscriptions' },
-  { name: 'Cash.yumi.finance', desc: 'External payment flows', type: 'milestones' },
+  { name: 'yumi.finance', desc: 'External payment flows', type: 'milestones' },
   { name: 'polycode.dev', desc: 'Integration in progress', type: 'in progress' },
 ]
 
 export default function SlideTraction() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        Traction
-      </motion.p>
 
       <motion.h2
         className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
@@ -34,9 +26,9 @@ export default function SlideTraction() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Bootstrapped.
+        Built part-time.
         <br />
-        <span className="text-emerald-400">Fully deployed. $0 raised.</span>
+        <span className="text-emerald-400">Now full-time.</span>
       </motion.h2>
 
       <motion.p
@@ -45,7 +37,7 @@ export default function SlideTraction() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        Smart contract live on mainnet.
+        Smart contract live on mainnet. GTM launched
       </motion.p>
 
       <div className="flex gap-4 mb-10">
@@ -68,6 +60,14 @@ export default function SlideTraction() {
         ))}
       </div>
 
+      <motion.p
+        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
+        Example Integrations
+      </motion.p>
       <div className="flex gap-3 max-w-2xl w-full">
         {integrations.map((integration, i) => (
           <motion.div
@@ -85,15 +85,6 @@ export default function SlideTraction() {
           </motion.div>
         ))}
       </div>
-
-      <motion.p
-        className="text-xs text-muted-foreground italic mt-3"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 1 }}
-      >
-        For infrastructure, organic demand is the strongest signal.
-      </motion.p>
     </div>
   )
 }
