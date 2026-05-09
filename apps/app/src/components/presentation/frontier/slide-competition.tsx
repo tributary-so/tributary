@@ -1,102 +1,53 @@
 import { motion } from 'framer-motion'
 
-const cols = ['', 'Tributary', 'Helio', 'VelaPay']
-const rows = [
-  ['Model', 'Protocol (infra)', 'Payment product', 'Payment product'],
-  ['Custody', 'Non-custodial', 'Non-custodial', 'Privacy (Token-2022)'],
-  ['Payment Types', '5+', '1', '1'],
-  ['Business Layer', 'Yes', 'No', 'No'],
-  ['Self-hostable', 'Yes', 'No', 'No'],
-  ['Mainnet', 'Live', 'Live', 'Not yet'],
+const segments = [
+  { name: 'RPC subscriptions', color: 'bg-emerald-500' },
+  { name: 'LLM / AI APIs', color: 'bg-emerald-400' },
+  { name: 'DePIN networks', color: 'bg-teal-500' },
+  { name: 'Agentic commerce', color: 'bg-cyan-500' },
+  { name: 'SaaS / Fintech', color: 'bg-blue-500' },
+  { name: 'Creator economy', color: 'bg-violet-500' },
+  { name: 'Gaming platforms', color: 'bg-purple-500' },
+  { name: 'NFT marketplaces', color: 'bg-fuchsia-500' },
 ]
 
 export default function SlideCompetition() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        Competitive Landscape
-      </motion.p>
-
       <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
+        className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-8 text-center leading-tight"
         style={{ fontFamily: 'var(--font-secondary)' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        Others exist.
+        Every recurring payment
         <br />
-        <span className="text-emerald-400">None let you build your own.</span>
+        <span className="text-emerald-400">on Solana.</span>
       </motion.h2>
 
-      <motion.p
-        className="text-sm text-muted-foreground mb-8 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-      >
-        Two approaches to recurring payments on Solana. Ours lets anyone build a payment business.
-      </motion.p>
-
-      <motion.div
-        className="max-w-3xl w-full overflow-x-auto"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <table className="w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              {cols.map((col, i) => (
-                <th
-                  key={col}
-                  className={`px-3 py-2 text-left uppercase tracking-wider font-semibold border-b border-border ${i === 0
-                      ? 'text-muted-foreground'
-                      : i === 1
-                        ? 'text-emerald-400 bg-emerald-500/5'
-                        : 'text-muted-foreground bg-muted/20'
-                    }`}
-                >
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, ri) => (
-              <tr key={ri} className="border-b border-border/50">
-                {row.map((cell, ci) => (
-                  <td
-                    key={ci}
-                    className={`px-3 py-2 ${ci === 0
-                        ? 'font-semibold text-foreground'
-                        : ci === 1
-                          ? 'text-emerald-400 bg-emerald-500/5 font-medium'
-                          : 'text-muted-foreground'
-                      }`}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </motion.div>
+      <div className="flex flex-col gap-2 max-w-md w-full">
+        {segments.map((seg, i) => (
+          <motion.div
+            key={seg.name}
+            className="flex items-center gap-3"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 + i * 0.06 }}
+          >
+            <div className={`w-3 h-3 ${seg.color} rounded-sm shrink-0`} />
+            <span className="text-sm text-foreground">{seg.name}</span>
+          </motion.div>
+        ))}
+      </div>
 
       <motion.p
-        className="text-xs text-muted-foreground italic mt-6"
+        className="text-xs text-muted-foreground italic mt-6 text-center max-w-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.7 }}
+        transition={{ duration: 0.4, delay: 0.9 }}
       >
-        Helio and VelaPay are payment products. <br />
-        Tributary is the platform that lets anyone build one — and earn from it.
+        Every Solana builder currently charging monthly USDC manually.
       </motion.p>
     </div>
   )

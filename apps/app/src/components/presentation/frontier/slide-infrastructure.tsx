@@ -1,54 +1,49 @@
 import { motion } from 'framer-motion'
 
+const reasons = [
+  { icon: '$', title: 'Micro-billing', desc: 'Subscriptions at $0.99 — transaction cost makes it possible' },
+  { icon: '<1s', title: 'Sub-second finality', desc: 'Instant payment confirmation' },
+  { icon: '{ }', title: 'Developer experience', desc: 'Best DX in crypto expands the market' },
+]
+
 export default function SlideInfrastructure() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        The Business Model
-      </motion.p>
-
       <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
+        className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-4 text-center leading-tight"
         style={{ fontFamily: 'var(--font-secondary)' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        We&apos;re the rails.
+        Only Solana
         <br />
-        <span className="text-emerald-400">You&apos;re Payments.</span>
+        <span className="text-emerald-400">makes this work.</span>
       </motion.h2>
 
-      <motion.p
-        className="text-sm text-muted-foreground mb-6 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
+      <motion.div
+        className="mb-8"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.25 }}
       >
-        Tributary is the credit card network. You build the Stripe on top.
-      </motion.p>
+        <img src="/solana-logomark.svg" alt="Solana" className="w-16 h-16 mx-auto" />
+      </motion.div>
 
-      <div className="max-w-2xl w-full grid grid-cols-2 gap-3">
-        {[
-          { title: 'Register Your Business', desc: 'Set up your gateway with custom fees and branding' },
-          { title: 'Earn on Every Transaction', desc: '1% protocol fee + your own gateway fee on top' },
-          { title: 'Zero Custody Risk', desc: 'We never hold funds — we provide the logic, you provide the service' },
-          { title: 'Open-Source', desc: 'Self-hostable and extensible for any payment product' },
-        ].map((feat, i) => (
+      <div className="flex gap-4 max-w-2xl w-full">
+        {reasons.map((r, i) => (
           <motion.div
-            key={feat.title}
-            className="border border-border bg-muted/10 px-4 py-3"
-            initial={{ opacity: 0, y: 10 }}
+            key={r.title}
+            className="flex-1 border border-border bg-muted/10 p-5 text-center"
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.8 + i * 0.08 }}
+            transition={{ duration: 0.4, delay: 0.4 + i * 0.1 }}
           >
-            <div className="text-xs uppercase tracking-wider text-emerald-600 font-bold mb-1">{feat.title}</div>
-            <div className="text-xs text-muted-foreground">{feat.desc}</div>
+            <div className="text-2xl font-bold text-emerald-400 mb-2" style={{ fontFamily: 'var(--font-secondary)' }}>
+              {r.icon}
+            </div>
+            <div className="text-xs uppercase tracking-wider font-semibold text-foreground mb-1">{r.title}</div>
+            <div className="text-[10px] text-muted-foreground leading-snug">{r.desc}</div>
           </motion.div>
         ))}
       </div>

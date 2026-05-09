@@ -1,37 +1,48 @@
 import { motion } from 'framer-motion'
 
-const steps = [
-  {
-    num: '01',
-    title: 'Checkout Link',
-    desc: 'Your customer clicks a link and signs once.',
-  },
-  {
-    num: '02',
-    title: 'Payment Authorized',
-    desc: 'No passwords, no card numbers — just a single wallet signature.',
-  },
-  {
-    num: '03',
-    title: 'Verify & Done',
-    desc: 'You get instant proof of payment. Your customer never returns to this page.',
-  },
-]
+import { useState } from "react";
+
+function USDCConfirmDialog() {
+  const [confirmed, setConfirmed] = useState(false);
+
+  return (
+    <div className="bg-white border border-gray-600 rounded-2xl p-7">
+      <div className="flex items-baseline justify-between mb-6">
+        <span className="text-4xl font-medium text-gray-900">5 USDC</span>
+        <span className="text-base text-gray-400">/ month</span>
+      </div>
+
+      <div className="border-t border-gray-100 pt-5 mb-6 flex flex-col gap-5">
+        <div className="flex justify-between text-sm gap-2">
+          <span className="text-gray-400">Billed monthly, up to</span>
+          <span className="text-gray-900 font-medium">12 payments</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">Future payments</span>
+          <span className="text-gray-900 font-medium">55 USDC</span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setConfirmed(true)}
+        disabled={confirmed}
+        className="w-full py-3 text-sm font-medium rounded-lg transition-opacity disabled:opacity-50 bg-emerald-600 text-gray-300 hover:opacity-85"
+      >
+        {confirmed ? "✓ Authorized" : "Confirm"}
+      </button>
+
+      <p className="text-xs text-gray-800 text-center mt-2.5">
+        Cancel anytime in the future
+      </p>
+    </div>
+  );
+}
 
 export default function SlideFlow() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
-      <motion.p
-        className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        The Flow
-      </motion.p>
-
       <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
+        className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-8 text-center leading-tight"
         style={{ fontFamily: 'var(--font-secondary)' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -39,49 +50,35 @@ export default function SlideFlow() {
       >
         Sign once.
         <br />
-        <span className="text-emerald-600">Pay automatically.</span>
-        <br />
-        <span className="text-emerald-400">Verify anywhere.</span>
+        <span className="text-emerald-400">Pay automatically.</span>
       </motion.h2>
 
-      <motion.p
-        className="text-sm text-muted-foreground mb-8 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-      >
-        Send your customer to checkout. Get back a confirmed payment. Done.
-      </motion.p>
-
-      <div className="flex gap-4 max-w-4xl w-full mb-8">
-        {steps.map((step, i) => (
-          <motion.div
-            key={step.num}
-            className="flex-1 border border-border bg-muted"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 + i * 0.12 }}
-          >
-            <div className="px-4 py-3 flex items-center gap-3">
-              <span className="text-lg font-bold text-emerald-400" style={{ fontFamily: 'var(--font-secondary)' }}>
-                {step.num}
-              </span>
-              <div>
-                <div className="text-xs font-semibold text-foreground uppercase tracking-wider">{step.title}</div>
-                <div className="text-[10px] text-muted-foreground">{step.desc}</div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-2 gap-6">
+        <motion.div
+          className="max-w-md w-full rounded overflow-hidden shadow-emerald-500/5"
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <USDCConfirmDialog />
+        </motion.div>
+        <motion.div
+          className="max-w-md w-full rounded overflow-hidden shadow-emerald-500/5"
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <img src="/frontier/sign-tx-small.png" width="280" />
+        </motion.div>
       </div>
 
       <motion.p
-        className="text-xs text-muted-foreground italic mt-6"
+        className="text-xs text-muted-foreground mt-6 italic"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.85 }}
+        transition={{ duration: 0.4, delay: 0.7 }}
       >
-        No blockchain libraries required. Works with any frontend framework.
+        One signature. Recurring payments run automatically after that.
       </motion.p>
     </div>
   )
