@@ -9,6 +9,7 @@ const SlideSolution = lazy(() => import('./frontier/slide-flow'))
 const SlideEasy = lazy(() => import('./frontier/slide-models'))
 const SlideTraction = lazy(() => import('./frontier/slide-traction'))
 const SlideBusiness = lazy(() => import('./frontier/slide-tam'))
+const SlideBusinessFull = lazy(() => import('./frontier/slide-tam-full'))
 const SlideTeam = lazy(() => import('./frontier/slide-team'))
 const SlideCTA = lazy(() => import('./frontier/slide-cta'))
 
@@ -21,7 +22,7 @@ function SlideVideo() {
         playsInline
         className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover mt-6"
       >
-        <source src="/frontier-demo.mp4" type="video/mp4" />
+        <source src="/frontier/demo.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
     </div>
@@ -33,12 +34,13 @@ const slides = [
   SlideGap,
   SlideWhyNow,
   SlideSolution,
-  SlideEasy,
   SlideVideo,
+  SlideEasy,
   SlideTraction,
   SlideBusiness,
   SlideTeam,
-  SlideCTA
+  SlideCTA,
+  SlideBusinessFull,
 ]
 
 const slideLabels = [
@@ -146,8 +148,9 @@ export default function Frontier() {
             aria-label={`Go to slide ${index + 1}: ${slideLabels[index]}`}
           >
             <div
-              className={`h-1 transition-all duration-300 ${index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
-                }`}
+              className={`h-1 transition-all duration-300 ${
+                index === current ? 'w-6 bg-emerald-400' : 'w-1.5 bg-muted-foreground/80 hover:bg-muted-foreground/40'
+              }`}
             />
             <span className="absolute -top-5 text-[8px] uppercase tracking-wider text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all whitespace-nowrap">
               {slideLabels[index]}

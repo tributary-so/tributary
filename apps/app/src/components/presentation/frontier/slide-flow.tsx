@@ -1,21 +1,21 @@
 import { motion } from 'framer-motion'
 
-import { useState } from "react";
+import { useState } from 'react'
 
 function USDCConfirmDialog() {
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmed, setConfirmed] = useState(false)
 
   return (
     <div className="bg-white border border-gray-600 rounded-2xl p-7">
-      <div className="flex items-baseline justify-between mb-6">
-        <span className="text-4xl font-medium text-gray-900">5 USDC</span>
-        <span className="text-base text-gray-400">/ month</span>
+      <div className="flex items-baseline justify-end  mb-4">
+        <span className="text-4xl font-medium text-gray-900 pr-2">5 </span>
+        <span className="text-base text-gray-400">USDC/month</span>
       </div>
 
       <div className="border-t border-gray-100 pt-5 mb-6 flex flex-col gap-5">
         <div className="flex justify-between text-sm gap-2">
-          <span className="text-gray-400">Billed monthly, up to</span>
-          <span className="text-gray-900 font-medium">12 payments</span>
+          <span className="text-gray-400">renewals</span>
+          <span className="text-gray-900 font-medium">12 months</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Future payments</span>
@@ -28,14 +28,12 @@ function USDCConfirmDialog() {
         disabled={confirmed}
         className="w-full py-3 text-sm font-medium rounded-lg transition-opacity disabled:opacity-50 bg-emerald-600 text-gray-300 hover:opacity-85"
       >
-        {confirmed ? "✓ Authorized" : "Confirm"}
+        {confirmed ? '✓ Authorized' : 'Confirm'}
       </button>
 
-      <p className="text-xs text-gray-800 text-center mt-2.5">
-        Cancel anytime in the future
-      </p>
+      <p className="text-xs text-gray-800 text-center mt-2.5">Cancel anytime in the future</p>
     </div>
-  );
+  )
 }
 
 export default function SlideFlow() {

@@ -18,7 +18,6 @@ const integrations = [
 export default function SlideTraction() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-8">
-
       <motion.h2
         className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 text-center leading-tight"
         style={{ fontFamily: 'var(--font-secondary)' }}
@@ -66,7 +65,7 @@ export default function SlideTraction() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        Example Integrations
+        Integrations Today
       </motion.p>
       <div className="flex gap-3 max-w-2xl w-full">
         {integrations.map((integration, i) => (
