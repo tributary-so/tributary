@@ -6,7 +6,8 @@ const SlideTitle = lazy(() => import('./frontier/slide-title'))
 const SlideGap = lazy(() => import('./frontier/slide-market'))
 const SlideWhyNow = lazy(() => import('./frontier/slide-problem'))
 const SlideSolution = lazy(() => import('./frontier/slide-flow'))
-const SlideEasy = lazy(() => import('./frontier/slide-models'))
+const SlideModels = lazy(() => import('./frontier/slide-models'))
+const SlideEasy = lazy(() => import('./frontier/slide-dx'))
 const SlideTraction = lazy(() => import('./frontier/slide-traction'))
 const SlideBusiness = lazy(() => import('./frontier/slide-tam'))
 const SlideBusinessFull = lazy(() => import('./frontier/slide-tam-full'))
@@ -40,6 +41,7 @@ const slides = [
   SlideBusiness,
   SlideTeam,
   SlideCTA,
+  SlideModels,
   SlideBusinessFull,
 ]
 
