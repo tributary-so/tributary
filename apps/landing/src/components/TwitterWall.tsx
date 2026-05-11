@@ -78,6 +78,30 @@ const TWEETS: Tweet[] = [
     date: "Apr 16, 2026",
     url: "https://x.com/SteveCleanBrook/status/2044810256304242812",
   },
+  {
+    id: "2052749629071016115",
+    author: "Jonas Hahn",
+    handle: "SolPlay_jonas",
+    text: "The legend :D",
+    date: "May 8, 2026",
+    url: "https://x.com/SolPlay_jonas/status/2052749629071016115",
+  },
+  {
+    id: "2052747622339809431",
+    author: "High Tower",
+    handle: "htwtech_",
+    text: "this changes everything no more clunky payment rails solana’s hitting different now",
+    date: "May 8, 2026",
+    url: "https://x.com/htwtech_/status/2052747622339809431",
+  },
+  {
+    id: "2052744078299947110",
+    author: "Avii",
+    handle: "AviiWeb3",
+    text: "this is slick as hell",
+    date: "May 8, 2026",
+    url: "https://x.com/AviiWeb3/status/2052744078299947110",
+  },
 ];
 
 // Repeat enough times to fill wide screens seamlessly (2 copies for loop)

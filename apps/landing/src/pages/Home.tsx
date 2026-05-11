@@ -17,90 +17,16 @@ import {
   Users,
   ArrowRightLeft,
   Wallet,
+  BriefcaseBusiness,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TerminalCard from "../components/TerminalCard";
 import TwitterWall from "@/components/TwitterWall";
 import HowToRecurring from "@/components/HowToRecurring";
 import IntegrationsWall from "@/components/IntegrationsWall";
 import Mentions from "@/components/Mentions";
-
-const features = [
-  {
-    id: "checkout",
-    label: "Hosted Checkout",
-    heading: "Accept payments in minutes. No code.",
-    desc: "Generate payment links at checkout.tributary.so. Specify your wallet, amount, and frequency. User pays, lands back on your site with a JWT. You are now a merchant accepting USDC. No deployed infrastructure, no Solana code.",
-    bullets: [
-      "No-code setup",
-      "Payment links",
-      "Success redirects",
-      "Tracking IDs",
-    ],
-    language: "tsx" as const,
-    code: `import { useCheckoutSession } from "@tributary-so/sdk-react";
-
-const { initiate } = useCheckoutSession();
-
-initiate({
-  mode: "subscription",
-  amount: 10,
-  paymentFrequency: "monthly",
-});`,
-  },
-  {
-    id: "jwt",
-    label: "Verification Hook",
-    heading: "Accept USDC without touching Solana.",
-    desc: "Your user pays via checkout. Lands back on your site with a signed JWT. You verify it with any standard JWT library. Subscription status, payment history, amounts. All cryptographically signed, on-chain verifiable. Zero Solana code on your side.",
-    bullets: [
-      "No Solana SDK",
-      "No RPC calls",
-      "3 lines to verify",
-      "ES256 signed",
-    ],
-    language: "ts" as const,
-    code: `import { useTributaryToken } from "@tributary-so/sdk-react";
-
-const { token, payload, loading } = useTributaryToken();
-
-// payload.status === "paid"
-// payload.subscriptions[0].amount === "10.00"`,
-  },
-  {
-    id: "self-host",
-    label: "Self-Hostable",
-    heading: "Your infrastructure. Your rules.",
-    desc: "Every component is open source and self-hostable. Checkout page, API server, indexer, signing keys, facilitator. All of it. Start with our hosted path, migrate when it makes sense. The JWT verification code stays the same.",
-    bullets: ["Checkout page", "API server", "Event indexer", "Signing keys"],
-    language: "bash" as const,
-    code: `$ git clone https://github.com/tributary-so/tributary
-$ cd tributary/apps/checkout
-$ pnpm run dev
-
-# Self-host the entire stack:
-#  - Checkout page
-#  - API server
-#  - Event indexer
-
-# Or use the hosted path at checkout.tributary.so`,
-  },
-  {
-    id: "open-source",
-    label: "Open Source",
-    heading: "Fork it. Audit it. Extend it.",
-    desc: "Tributary is fully open source under MIT license. Every smart contract, every SDK, every component. Audit the on-chain programs, run your own instance, or build a custom payment product on top. The protocol is the product.",
-    bullets: ["MIT licensed", "4 SDKs", "Mainnet deployed"],
-    language: "bash" as const,
-    code: `$ npm install @tributary-so/sdk
-$ npm install @tributary-so/sdk-react
-$ npm install @tributary-so/sdk-x402
-
-# Program ID: TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
-# Source: github.com/tributary-so/tributary`,
-  },
-];
+import HowToProcessor from "@/components/HowToProcessor";
 
 const checklistItems = [
   {
@@ -132,7 +58,7 @@ const fnList = [
   },
   {
     fn: "Verify",
-    desc: "JWT + JWKS verification, no webhooks needed",
+    desc: "JWT + JWKS verification, confirm subscription details",
   },
   {
     fn: "Earn",
@@ -273,7 +199,6 @@ const faqs = [
 ];
 
 export default function Home() {
-  const [activeFeature, setActiveFeature] = useState(features[0]);
   const navigate = useNavigate();
 
   const scrollToSection = (id: string) => {
@@ -346,6 +271,7 @@ export default function Home() {
         //
       </div>
 
+      {/* ── How It Works ── */}
       <section id="how-it-works" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
@@ -360,28 +286,9 @@ export default function Home() {
             need to be locked in escrow.
           </p>
         </div>
-        <HowToRecurring />
-        <div className="mt-12 border border-border bg-muted/10 p-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <Terminal className="h-10 w-10 text-primary shrink-0" />
-            <div className="flex-1 space-y-2">
-              <h3 className="font-bold">Simple Integration</h3>
-              <p className="text-sm text-muted-foreground">
-                Drop pre-built React components into your app. Accept
-                subscription payments immediately with just a few lines of code.
-              </p>
-            </div>
-            <a
-              href="https://docs.tributary.so/sdk-react"
-              className="border bg-background hover:bg-muted/50 inline-flex items-center gap-2 px-4 py-2 text-sm transition-all shrink-0"
-            >
-              View SDK Docs <ArrowRight className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
+        <HowToProcessor />
       </section>
 
-      {/* ── How It Works ── */}
       <div
         className="font-mono text-sm text-muted-foreground/30 select-none"
         aria-hidden="true"
@@ -402,7 +309,8 @@ export default function Home() {
           <p className="text-muted-foreground leading-relaxed text-[15px]">
             A single token delegation powers subscriptions, milestones,
             pay-as-you-go billing, and one-time payments. Unlimited policies per
-            user. Extending the Solana Token Program, not replacing it.
+            user. More models to be implemented in the future. Extending the
+            Solana Token Program, not replacing it.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -470,64 +378,7 @@ export default function Home() {
             everything. Or don&apos;t. Our hosted path has you covered.
           </p>
         </div>
-        <div className="grid md:grid-cols-[220px_1fr] gap-12 items-start">
-          <nav className="flex flex-col md:sticky md:top-24">
-            {features.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setActiveFeature(f)}
-                className={`text-left px-4 py-3.5 text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${
-                  activeFeature.id === f.id
-                    ? "text-foreground bg-card border border-border"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 flex-shrink-0 transition-colors ${
-                    activeFeature.id === f.id
-                      ? "bg-primary"
-                      : "bg-muted-foreground/30"
-                  }`}
-                />
-                {f.label}
-              </button>
-            ))}
-          </nav>
-          <div className="space-y-7">
-            <div>
-              <h3 className="text-2xl font-bold text-foreground mb-3 leading-snug">
-                {activeFeature.heading}
-              </h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {activeFeature.desc}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {activeFeature.bullets.map((b) => (
-                <span
-                  key={b}
-                  className="flex items-center gap-1.5 text-sm text-foreground bg-muted/50 border border-border/50 px-3 py-1.5"
-                >
-                  <span className="w-1.5 h-1.5 bg-primary flex-shrink-0" />
-                  {b}
-                </span>
-              ))}
-            </div>
-            <TerminalCard
-              filename={
-                activeFeature.id === "jwt"
-                  ? "verify.ts"
-                  : activeFeature.id === "self-host"
-                  ? "terminal"
-                  : activeFeature.id === "checkout"
-                  ? "App.tsx"
-                  : "terminal"
-              }
-              code={activeFeature.code}
-              language="typescript"
-            />
-          </div>
-        </div>
+        <HowToRecurring />
         <div className="mt-12 border border-border bg-muted/10 p-8">
           <div className="flex flex-col md:flex-row md:items-center gap-6">
             <Terminal className="h-10 w-10 text-primary shrink-0" />
@@ -675,75 +526,40 @@ if (payload.lastPayments.length > 0) {
             integration. More gateways = more volume = more valuable protocol.
           </p>
         </div>
-        <div className="grid md:grid-cols-2 gap-16 md:gap-20 items-center">
-          <div className="order-2 md:order-1 space-y-4">
-            <div className="border border-border/50 bg-muted/10 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50 bg-muted/20">
-                    <th className="text-left px-4 py-3 font-semibold text-foreground">
-                      Layer
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
-                      Web2
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-accent">
-                      Tributary
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ["Payment Rail", "Visa / Mastercard", "On-chain protocol"],
-                    ["Processor", "Stripe / Adyen / Paypal", "Your gateway"],
-                    ["Checkout", "Stripe UI", "Hosted checkout"],
-                    ["Verification", "Webhook sig", "JWT + JWKS or On-chain"],
-                  ].map(([layer, web2, tributary]) => (
-                    <tr
-                      key={layer}
-                      className="border-b border-border/30 last:border-0"
-                    >
-                      <td className="px-4 py-3 font-medium text-foreground">
-                        {layer}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {web2}
-                      </td>
-                      <td className="px-4 py-3 text-accent">{tributary}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul className="space-y-1 text-xs text-muted-foreground">
-              <li>1% protocol fee + your gateway fee.</li>
-              <li>Non-custodial. $0 TVL risk.</li>
-              <li>Open source. Fork it. Own it.</li>
-            </ul>
-          </div>
+        <div className="tems-center">
           <div className="space-y-8 order-1 md:order-2">
-            <ul className="space-y-4">
+            <ul className="space-y-8">
               {fnList.map(({ fn, desc }) => (
-                <li key={fn} className="flex items-start gap-3">
-                  <code className="text-xs bg-muted/50 border border-accent/20 text-accent px-2.5 py-1 font-mono flex-shrink-0 mt-0.5">
-                    {fn}
-                  </code>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {desc}
-                  </p>
+                <li key={fn}>
+                  <div className="border-l-3 border-purple-800 pl-4">
+                    <h3 className="text-lg font-semibold font-mono text-purple-600 mb-1 tracking-widest">
+                      {fn}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {desc}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+        <div className="mt-12 border border-border bg-muted/10 p-8">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <BriefcaseBusiness className="h-10 w-10 text-primary shrink-0" />
+            <div className="flex-1 space-y-2">
+              <h3 className="font-bold">Build your Tributary Business</h3>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>1% protocol fee + your gateway fee.</li>
+                <li>Non-custodial. $0 TVL risk.</li>
+                <li>Open source. Fork it. Own it.</li>
+              </ul>
+            </div>
             <a
               href="https://docs.tributary.so"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-accent font-medium group"
+              className="border bg-background hover:bg-muted/50 inline-flex items-center gap-2 px-4 py-2 text-sm transition-all shrink-0"
             >
-              <span>Build your gateway</span>
-              <span className="transition-transform group-hover:translate-x-1">
-                &rarr;
-              </span>
+              Read the docs <ArrowRight className="h-3 w-3" />
             </a>
           </div>
         </div>
@@ -790,6 +606,7 @@ if (payload.lastPayments.length > 0) {
       </div>
 
       {/* ── Developer Quick Links ── */}
+      {/*
       <section id="quick-links" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
@@ -858,6 +675,8 @@ if (payload.lastPayments.length > 0) {
         //
       </div>
 
+      */}
+
       <section id="trusted-by" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
@@ -883,6 +702,7 @@ if (payload.lastPayments.length > 0) {
       </div>
 
       {/* ── Final CTA ── */}
+      {/*
       <section
         id="cta-top"
         className="max-w-4xl mx-auto px-6 pb-8 text-center py-16"
@@ -905,7 +725,7 @@ if (payload.lastPayments.length > 0) {
             Read the Docs
           </a>
           <Link
-            to="mailto:team@tributary.so"
+            to="mailto:info@tributary.so"
             className="btn-secondary text-base px-8 py-4"
           >
             Contact / Integrate
@@ -919,6 +739,7 @@ if (payload.lastPayments.length > 0) {
       >
         //
       </div>
+      */}
 
       {/* ─── Who Is Using It ─── */}
       <section id="integrations" className="py-16">
@@ -1059,7 +880,7 @@ if (payload.lastPayments.length > 0) {
               Try Checkout
             </a>
             <a
-              href="mailto:team@tributary.so"
+              href="mailto:info@tributary.so"
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
               Contact / Integrate
