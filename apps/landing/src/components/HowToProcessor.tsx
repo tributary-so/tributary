@@ -1,5 +1,3 @@
-import { Terminal, ArrowRight } from "lucide-react";
-
 const steps = [
   {
     num: "1",
