@@ -26,7 +26,6 @@ export default function SlideMarket() {
         <span className="text-muted-foreground">Solana has nothing.</span>
       </motion.h2>
       <div className="flex flex-col justify-center h-full w-full px-8 py-6 max-w-3xl mx-auto">
-
         {/* Web2 section */}
         <motion.div
           className="text-[9px] uppercase tracking-[0.25em] text-muted-foreground mb-2"
@@ -34,7 +33,7 @@ export default function SlideMarket() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.0 }}
         >
-          Web2 — annual payment volume
+          Web2 — annual recurring payment volume
         </motion.div>
 
         <div className="flex flex-col gap-2.5 mb-6">
@@ -46,9 +45,7 @@ export default function SlideMarket() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: item.delay }}
             >
-              <span className="w-[90px] text-sm text-muted-foreground text-right shrink-0">
-                {item.name}
-              </span>
+              <span className="w-[90px] text-sm text-muted-foreground text-right shrink-0">{item.name}</span>
               <div className="flex-1 relative h-7 flex items-center">
                 <motion.div
                   className="h-7 bg-emerald-500 rounded-[4px] origin-left absolute left-0"
@@ -83,7 +80,7 @@ export default function SlideMarket() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.38 }}
         >
-          Web3 — annual payment volume
+          Web3 — annual recurringrecurring payment volume
         </motion.div>
 
         <div className="flex flex-col gap-2.5 mb-4">
@@ -126,9 +123,7 @@ export default function SlideMarket() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.65 }}
         >
-          <span className="w-[90px] text-sm font-medium text-foreground text-right shrink-0">
-            Solana
-          </span>
+          <span className="w-[90px] text-sm font-medium text-foreground text-right shrink-0">Solana</span>
           <div className="flex-1 border-[1.5px] border-dashed border-border rounded-lg px-4 py-3 flex items-center gap-3 bg-muted/40">
             {/* X icon — inline SVG to avoid icon library dependency */}
             <svg
@@ -148,9 +143,7 @@ export default function SlideMarket() {
               <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
             </svg>
             <div>
-              <div className="text-sm font-medium text-destructive leading-tight">
-                No native solution
-              </div>
+              <div className="text-sm font-medium text-destructive leading-tight">No native solution</div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 No subscription processor exists on Solana today
               </div>

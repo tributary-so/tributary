@@ -13,9 +13,7 @@ export default function SlideModels() {
       >
         We made it simple.
         <br />
-        <span className="text-emerald-400">
-          5 lines of code.
-        </span>
+        <span className="text-emerald-400">5 lines of code.</span>
       </motion.h2>
 
       <div className="grid grid-cols-2 gap-1">
@@ -58,7 +56,14 @@ return <h1>Subscription Active</h1>;
           </motion.div>
         </div>
       </div>
-
+      <motion.p
+        className="text-xs text-muted-foreground mt-6 italic"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.7 }}
+      >
+        Integrate in mere minutes, not days. Blockchain experience optional.
+      </motion.p>
     </div>
   )
 }
