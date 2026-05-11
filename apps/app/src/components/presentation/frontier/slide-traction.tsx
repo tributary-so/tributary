@@ -27,7 +27,7 @@ export default function SlideTraction() {
       >
         Built part-time.
         <br />
-        <span className="text-emerald-400">Now full-time.</span>
+        <span className="text-emerald-400">Growing full-time.</span>
       </motion.h2>
 
       <motion.p
