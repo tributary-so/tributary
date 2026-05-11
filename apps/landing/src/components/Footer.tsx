@@ -95,16 +95,32 @@ export function Footer() {
               </li>
             </ul>
           </div>
+          <div>
+            <div className="font-medium text-sm mb-4">More</div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>
+                <Link
+                  to="/terms"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Terms
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="mailto:info@tributary.so"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Contact
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
+
         <div className="flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground/60 mt-8 pt-8 border-t border-border/50">
           <div>&copy; 2026 Tributary. Built with &lt;3 on Solana.</div>
           <div className="flex gap-4 items-center mt-4 md:mt-0">
-            <Link
-              to="/terms"
-              className="hover:text-foreground transition-colors"
-            >
-              Terms
-            </Link>
             <a
               href="https://twitter.com/tributaryso"
               target="_blank"

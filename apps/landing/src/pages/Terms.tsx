@@ -219,7 +219,7 @@ export default function Terms() {
               href="mailto:info@tributary.so"
               className="text-primary hover:underline"
             >
-              team@tributary.so
+              info@tributary.so
             </a>
           </p>
         </section>
