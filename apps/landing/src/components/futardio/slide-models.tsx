@@ -52,7 +52,7 @@ const models = [
 
 export default function SlideModels() {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
+    <div className="flex flex-col items-center justify-center h-full w-full px-3 sm:px-8">
       <motion.p
         className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
@@ -87,7 +87,7 @@ export default function SlideModels() {
         One approval, unlimited policies.
       </motion.p>
 
-      <div className="grid grid-cols-3 gap-3 max-w-5xl w-full mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-5xl w-full mb-2">
         {models.slice(0, 3).map((model, i) => (
           <motion.div
             key={model.name}
@@ -114,7 +114,7 @@ export default function SlideModels() {
           </motion.div>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-3 max-w-3xl w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full">
         {models.slice(3).map((model, i) => (
           <motion.div
             key={model.name}

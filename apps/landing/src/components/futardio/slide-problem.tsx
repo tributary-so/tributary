@@ -27,8 +27,7 @@ const PAD_B = 48;
 const CHART_W = SVG_W - PAD_L - PAD_R;
 const CHART_H = SVG_H - PAD_T - PAD_B;
 
-const toY = (val: number) =>
-  PAD_T + CHART_H - (val / MAX_VAL) * CHART_H;
+const toY = (val: number) => PAD_T + CHART_H - (val / MAX_VAL) * CHART_H;
 
 const GROUP_W = CHART_W / DATA.length;
 const BAR_GAP = 4;
@@ -53,10 +52,10 @@ export default function SlideProblem() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
+    <div className="flex flex-col items-center justify-center h-full w-full px-3 sm:px-8">
       <motion.h2
-        className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-6 text-center leading-tight"
-        style={{ fontFamily: 'var(--font-secondary)' }}
+        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6 text-center leading-tight"
+        style={{ fontFamily: "var(--font-secondary)" }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -72,21 +71,17 @@ export default function SlideProblem() {
         }}
       >
         {/* Legend */}
-        <div style={{ display: "flex", gap: 20, marginBottom: 12, marginTop: 6 }}>
+        <div className="flex gap-5 mb-3 mt-1.5">
           {[
             { label: "Visa", color: VISA_CLR },
             { label: "Stablecoins", color: STBL_CLR },
           ].map(({ label, color }) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div key={label} className="flex items-center gap-1.5">
               <span
-                style={{
-                  width: 10, height: 10,
-                  borderRadius: "50%",
-                  background: color,
-                  display: "inline-block",
-                }}
+                className="w-2.5 h-2.5 rounded-full inline-block"
+                style={{ background: color }}
               />
-              <span style={{ fontSize: 13, color: "#555" }}>{label}</span>
+              <span className="text-[13px] text-muted-foreground">{label}</span>
             </div>
           ))}
         </div>
@@ -103,12 +98,16 @@ export default function SlideProblem() {
             return (
               <g key={t}>
                 <line
-                  x1={PAD_L} y1={y}
-                  x2={PAD_L + CHART_W} y2={y}
-                  stroke="#e0e0dc" strokeWidth={1}
+                  x1={PAD_L}
+                  y1={y}
+                  x2={PAD_L + CHART_W}
+                  y2={y}
+                  stroke="#e0e0dc"
+                  strokeWidth={1}
                 />
                 <text
-                  x={PAD_L - 8} y={y + 4}
+                  x={PAD_L - 8}
+                  y={y + 4}
                   textAnchor="end"
                   fontSize={12}
                   fill="#999"
@@ -148,7 +147,11 @@ export default function SlideProblem() {
                         duration: 0.45,
                         ease: [0.22, 1, 0.36, 1],
                       }}
-                      style={{ transformOrigin: `${visaX + BAR_W / 2}px ${PAD_T + CHART_H}px` }}
+                      style={{
+                        transformOrigin: `${visaX + BAR_W / 2}px ${
+                          PAD_T + CHART_H
+                        }px`,
+                      }}
                     />
                   )}
                 </AnimatePresence>
@@ -171,7 +174,11 @@ export default function SlideProblem() {
                         ease: [0.22, 1, 0.36, 1],
                         delay: 0.06,
                       }}
-                      style={{ transformOrigin: `${stblX + BAR_W / 2}px ${PAD_T + CHART_H}px` }}
+                      style={{
+                        transformOrigin: `${stblX + BAR_W / 2}px ${
+                          PAD_T + CHART_H
+                        }px`,
+                      }}
                     />
                   )}
                 </AnimatePresence>
@@ -192,16 +199,20 @@ export default function SlideProblem() {
 
           {/* Baseline */}
           <line
-            x1={PAD_L} y1={PAD_T + CHART_H}
-            x2={PAD_L + CHART_W} y2={PAD_T + CHART_H}
-            stroke="#ccc" strokeWidth={1}
+            x1={PAD_L}
+            y1={PAD_T + CHART_H}
+            x2={PAD_L + CHART_W}
+            y2={PAD_T + CHART_H}
+            stroke="#ccc"
+            strokeWidth={1}
           />
         </svg>
 
         {/* Source */}
-        <p style={{ fontSize: 11, color: "#aaa", marginTop: 0 }}>
-          Source: Bitwise Asset Management with data from Artemis and Visa.
-          Data from January 1, 2018 to December 31, 2025 (most recently reported data for Visa).
+        <p className="text-[11px] text-muted-foreground mt-0">
+          Source: Bitwise Asset Management with data from Artemis and Visa. Data
+          from January 1, 2018 to December 31, 2025 (most recently reported data
+          for Visa).
         </p>
       </div>
       <motion.p
