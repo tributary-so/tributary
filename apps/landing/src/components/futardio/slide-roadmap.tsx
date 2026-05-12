@@ -73,9 +73,9 @@ const items = [
 
 export default function SlideRoadmap() {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
+    <div className="flex flex-col items-center justify-center h-full w-full px-3 sm:px-8">
       <div className="w-full max-w-4xl">
-        <div className="grid grid-cols-[160px_1fr] mb-1">
+        <div className="hidden sm:grid grid-cols-[160px_1fr] mb-1">
           <div />
           <div className="grid grid-cols-6">
             {MONTHS.map((m) => (
@@ -92,7 +92,7 @@ export default function SlideRoadmap() {
         {items.map((item, i) => (
           <motion.div
             key={item.label}
-            className={`grid grid-cols-[160px_1fr] gap-2 items-center py-1.5 border-b border-border/30 last:border-0 ${
+            className={`flex flex-col sm:grid sm:grid-cols-[160px_1fr] gap-1 sm:gap-2 items-start sm:items-center py-1.5 border-b border-border/30 last:border-0 ${
               item.highlight
                 ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
                 : ""

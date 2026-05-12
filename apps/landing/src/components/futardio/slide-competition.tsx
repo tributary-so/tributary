@@ -33,7 +33,7 @@ const wallets = [
 
 export default function SlideCompetition() {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-8">
+    <div className="flex flex-col items-center justify-center h-full w-full px-3 sm:px-8">
       <motion.p
         className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
         initial={{ opacity: 0 }}
@@ -122,7 +122,7 @@ export default function SlideCompetition() {
         <div className="text-sm uppercase tracking-wider font-semibold text-muted-foreground mb-2">
           Smart Wallets — Composable, Not Competitive
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {wallets.map((w) => (
             <div key={w.name} className="border border-border bg-muted/30 p-3">
               <div className="text-sm font-bold text-foreground mb-1">

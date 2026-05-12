@@ -442,7 +442,7 @@ export default function Futardio() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between max-w-6xl w-full border-t border-border pt-4 pb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between max-w-6xl w-full gap-4 border-t border-border pt-4 pb-6">
             <div className="text-xs text-muted-foreground">
               Total:{" "}
               <span
@@ -452,7 +452,7 @@ export default function Futardio() {
                 $176,000
               </span>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 w-full sm:w-auto">
               <div className="border border-border bg-muted/10 px-3 py-1.5 text-center">
                 <div className="uppercase tracking-wider text-muted-foreground">
                   Monthly Burn
