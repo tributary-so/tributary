@@ -49,7 +49,7 @@ function TinyStartupsBadge() {
       href="https://www.tinystartups.com/startup/tributary"
       target="_blank"
       rel="noopener noreferrer"
-      className="transition-transform hover:scale-105 gap-2 px-3 py-1 rounded-lg"
+      className="transition-transform hover:scale-105 gap-2 px-3 py-1 rounded-lg grayscale opacity-60 hover:grayscale-0 hover:opacity-90"
       style={{
         textDecoration: "none",
         fontFamily: "Inter, system-ui, sans-serif",

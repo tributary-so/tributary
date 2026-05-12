@@ -48,7 +48,7 @@ const FutardioBanner: React.FC = () => {
       }}
     >
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+      <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/50 to-black/70" />
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl px-4 sm:px-6 py-4 md:py-6 lg:py-8">
@@ -63,12 +63,12 @@ const FutardioBanner: React.FC = () => {
 
           {/* Main Title */}
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 leading-tight tracking-tight">
-            Futards, <span className="gradient-text">Join the raise</span>
+            Futards, <span className="text-purple-500">Join the raise</span>
           </h2>
 
           {/* Subtitle */}
           <p className="text-sm md:text-base text-neutral-200 mb-6 leading-relaxed max-w-2xl mx-auto">
-            $130K raise · 72 hours · Full refund if target not met
+            $176K raise · 7 days · Full refund if target not met
           </p>
 
           {/* Countdown Timer */}
@@ -77,7 +77,7 @@ const FutardioBanner: React.FC = () => {
               Sale ends in
             </p>
             <div className="flex items-center justify-center gap-2 md:gap-3">
-              <div className="glass-card px-3 py-2 rounded-lg min-w-[60px] md:min-w-[70px]">
+              <div className="glass-card px-3 py-2 rounded-lg min-w-15 md:min-w-17.5">
                 <span className="block text-lg md:text-xl lg:text-2xl font-mono font-bold tabular-nums">
                   {timeLeft.days}
                 </span>
@@ -86,7 +86,7 @@ const FutardioBanner: React.FC = () => {
                 </span>
               </div>
               <span className="text-xl font-light text-neutral-200">:</span>
-              <div className="glass-card px-3 py-2 rounded-lg min-w-[60px] md:min-w-[70px]">
+              <div className="glass-card px-3 py-2 rounded-lg min-w-15 md:min-w-17.5">
                 <span className="block text-lg md:text-xl lg:text-2xl font-mono font-bold tabular-nums">
                   {String(timeLeft.hours).padStart(2, "0")}
                 </span>
@@ -95,7 +95,7 @@ const FutardioBanner: React.FC = () => {
                 </span>
               </div>
               <span className="text-xl font-light text-neutral-200">:</span>
-              <div className="glass-card px-3 py-2 rounded-lg min-w-[60px] md:min-w-[70px]">
+              <div className="glass-card px-3 py-2 rounded-lg min-w-15 md:min-w-17.5">
                 <span className="block text-lg md:text-xl lg:text-2xl font-mono font-bold tabular-nums">
                   {String(timeLeft.minutes).padStart(2, "0")}
                 </span>
@@ -104,7 +104,7 @@ const FutardioBanner: React.FC = () => {
                 </span>
               </div>
               <span className="text-xl font-light text-neutral-200">:</span>
-              <div className="glass-card px-3 py-2 rounded-lg min-w-[60px] md:min-w-[70px]">
+              <div className="glass-card px-3 py-2 rounded-lg min-w-15 md:min-w-17.5">
                 <span className="block text-lg md:text-xl lg:text-2xl font-mono font-bold tabular-nums text-purple-400">
                   {String(timeLeft.seconds).padStart(2, "0")}
                 </span>
@@ -124,7 +124,7 @@ const FutardioBanner: React.FC = () => {
               href="https://www.futard.io/launch/"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2"
+              className="text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer"
             >
               <FiExternalLink className="w-4 h-4" />
               <span>Participate on Futardio</span>
@@ -135,7 +135,7 @@ const FutardioBanner: React.FC = () => {
               href="https://t.me/tributaryso"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2"
+              className="text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2 cursor-pointer"
             >
               <FaTelegram className="w-4 h-4" />
               <span>Join Telegram</span>
