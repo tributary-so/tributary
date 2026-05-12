@@ -87,6 +87,15 @@ const TWEETS: Tweet[] = [
     url: "https://x.com/SolPlay_jonas/status/2052749629071016115",
   },
   {
+    id: "1994405927588684221",
+    author: "Superteam Earn",
+    handle: "SuperteamEarn",
+    date: "Nov 28, 2025",
+    url: "https://x.com/SuperteamEarn/status/1994405927588684221",
+    text: `🏆 @xer0c — @tributaryso
+Recurring payments on Solana with one signature — subscriptions, donations, and more, powered by token delegation.`,
+  },
+  {
     id: "2052747622339809431",
     author: "High Tower",
     handle: "htwtech_",
