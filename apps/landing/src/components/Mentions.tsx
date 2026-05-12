@@ -5,6 +5,12 @@ interface Mention {
   width?: number;
 }
 
+type Endorser = {
+  name: string;
+  url: string;
+  mark: React.ReactNode;
+};
+
 const MENTIONS: Mention[] = [
   {
     url: "https://www.uneed.best/tool/tributary",
@@ -77,21 +83,160 @@ function TinyStartupsBadge() {
   );
 }
 
-export default function Mentions() {
+const endorsers: Endorser[] = [
+  {
+    name: "SuperteamDE",
+    url: "https://x.com/SuperteamDE/status/2042135477218897995",
+    mark: (
+      <img
+        width="16"
+        height="20"
+        aria-hidden="true"
+        className="rounded-2xl"
+        src="/superteamde.png"
+      />
+    ),
+  },
+  {
+    name: "OwnershipFM",
+    url: "https://x.com/ownershipfm/status/2045866066463584586",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        className="rounded-4xl"
+        src="/ownershipfm.jpg"
+      />
+    ),
+  },
+  {
+    name: "Corbits",
+    url: "https://x.com/corbitsdev/status/1999763496964383007",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        className="rounded-2xl"
+        src="/corbits.jpg"
+      />
+    ),
+  },
+  {
+    name: "Adevar Labs",
+    url: "https://x.com/SuperteamEarn/status/1994405867224178834",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        className="rounded-2xl"
+        src="/adevarlabs.jpg"
+      />
+    ),
+  },
+  {
+    name: "Superteam Earn",
+    url: "https://x.com/SuperteamEarn/status/1994405867224178834",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        className="rounded-2xl"
+        src="/superteamearn.jpg"
+      />
+    ),
+  },
+  {
+    name: "Superteam",
+    url: "https://x.com/SuperteamEarn/status/1994405927588684221",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        className="rounded-2xl"
+        src="/superteam.jpg"
+      />
+    ),
+  },
+  // {
+  //   name: "Solana Foundation",
+  //   url: "https://x.com/SolPlay_jonas/status/2052741790852165641",
+  //   mark: (
+  //     <img
+  //       width="16"
+  //       height="16"
+  //       aria-hidden="true"
+  //       src="/solanaLogoMark.svg"
+  //     />
+  //   ),
+  // },
+];
+
+function Endorsements() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-6 grayscale opacity-60 hover:grayscale-0 hover:opacity-90 transition-all duration-300 [&>a]:h-10 [&>a]:flex [&>a]:items-center [&_img]:h-10 [&_img]:w-auto [&_img]:object-contain [&_svg]:h-10 [&_svg]:w-auto">
-      {MENTIONS.map((mention) => (
-        <a
-          key={mention.url}
-          href={mention.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="transition-transform hover:scale-105"
+    <ul
+      className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5"
+      role="list"
+    >
+      {endorsers.map((e) => (
+        <li
+          key={e.name}
+          className="grayscale opacity-60 hover:grayscale-0 hover:opacity-90 transition-all duration-300 [&>a]:h-10 [&>a]:flex [&>a]:items-center [&_img]:h-10 [&_img]:w-auto [&_img]:object-contain [&_svg]:h-10 [&_svg]:w-auto"
         >
-          <img src={mention.src} alt={mention.alt} width={mention.width} />
-        </a>
+          <a
+            href={e.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-neutral-300 dark:text-neutral-700 hover:text-neutral-500 dark:hover:text-neutral-400 transition-colors duration-200"
+          >
+            <span className="shrink-0">{e.mark}</span>
+            <span className="font-mono text-[13px] font-medium whitespace-nowrap">
+              {e.name}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Launches() {
+  return (
+    <ul className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5 gap-6 ">
+      {MENTIONS.map((mention) => (
+        <li
+          key={mention.url}
+          className="grayscale opacity-60 hover:grayscale-0 hover:opacity-90 transition-all duration-300 [&>a]:h-10 [&>a]:flex [&>a]:items-center [&_img]:h-10 [&_img]:w-auto [&_img]:object-contain [&_svg]:h-10 [&_svg]:w-auto"
+        >
+          <a
+            href={mention.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-transform hover:scale-105"
+          >
+            <img src={mention.src} alt={mention.alt} width={mention.width} />
+          </a>
+        </li>
       ))}
       <TinyStartupsBadge />
-    </div>
+    </ul>
+  );
+}
+
+export default function Mentions() {
+  return (
+    <section className="w-full py-8">
+      <p className="text-center text-[11px] font-mono tracking-widest uppercase text-neutral-400 dark:text-neutral-600 mb-6 select-none">
+        Endorsements, Mentions &amp; Launches
+      </p>
+      <div className="space-y-6">
+        <Endorsements />
+        <Launches />
+      </div>
+    </section>
   );
 }

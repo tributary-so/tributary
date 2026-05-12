@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+//import { Link } from "react-router-dom";
 import {
   RefreshCw,
   Target,
@@ -11,12 +11,12 @@ import {
   ArrowRight,
   ShoppingCart,
   HelpCircle,
-  ExternalLink,
+  //ExternalLink,
   Brain,
   DollarSign,
   Users,
-  ArrowRightLeft,
-  Wallet,
+  //ArrowRightLeft,
+  //Wallet,
   BriefcaseBusiness,
 } from "lucide-react";
 import { useEffect } from "react";
