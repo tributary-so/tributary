@@ -1,10 +1,13 @@
+import { Lightbulb } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { FaTelegram } from "react-icons/fa6";
 import { FiExternalLink, FiArrowRight } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
 const FutardioBanner: React.FC = () => {
+  const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState({
-    days: 2,
+    days: 3,
     hours: 5,
     minutes: 45,
     seconds: 28,
@@ -13,9 +16,7 @@ const FutardioBanner: React.FC = () => {
   // Countdown timer logic
   useEffect(() => {
     // Set the target date (3 days from now for demo purposes)
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 3);
-    targetDate.setHours(16, 0, 0, 0); // 4 PM UTC
+    const targetDate = new Date(2026, 4, 18, 15, 0, 0);
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
@@ -113,21 +114,32 @@ const FutardioBanner: React.FC = () => {
                 </span>
               </div>
             </div>
-            <p className="text-[10px] text-neutral-200 font-mono mt-2 tracking-wide  justify-center flex items-center">
-              Ends Sat Mar 14 · 16:00 UTC · 9:30 PM IST · 12 PM ET · 9 AM PT
+            <p className="text-sm text-neutral-200 font-mono mt-2 tracking-wide  justify-center flex items-center">
+              Ends Mon May 25 · 14:59:59 UTC
             </p>
           </div>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <a
-              href="https://www.futard.io/launch/"
+              onClick={() => navigate("/futardio")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2 bg-accent/60 hover:bg-accent/80 text-white rounded-lg transition-colors cursor-pointer"
+            >
+              <Lightbulb className="w-4 h-4" />
+              <span>Deck</span>
+              <FiArrowRight className="w-4 h-4" />
+            </a>
+
+            <a
+              href="https://www.futard.io/launch/99vD3p7e5p4vStrn4mX5Uzrqg9A4bica3wisAUQygG6B"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer"
             >
               <FiExternalLink className="w-4 h-4" />
-              <span>Participate on Futardio</span>
+              <span>Futardio Raise</span>
               <FiArrowRight className="w-4 h-4" />
             </a>
 

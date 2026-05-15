@@ -16,8 +16,8 @@ const items = [
     highlight: true,
   },
   {
-    label: "Payment Flows",
-    detail: "all payment models",
+    label: "Checkout Flow",
+    detail: "for all payment models",
     start: 0,
     span: 2,
     bar: "bg-sky-500/20 border border-sky-500/40",
@@ -25,7 +25,7 @@ const items = [
   },
   {
     label: "DevEx & Self-Hosting",
-    detail: "docker-compose, guides",
+    detail: "docker-compose, starter kits, guides",
     start: 1,
     span: 1,
     bar: "bg-violet-500/20 border border-violet-500/40",
@@ -74,8 +74,8 @@ const items = [
 export default function SlideRoadmap() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-3 sm:px-8">
-      <div className="w-full max-w-4xl">
-        <div className="hidden sm:grid grid-cols-[160px_1fr] mb-1">
+      <div className="w-full max-w-5xl">
+        <div className="hidden sm:grid grid-cols-[360px_1fr] mb-1">
           <div />
           <div className="grid grid-cols-6">
             {MONTHS.map((m) => (
@@ -92,11 +92,10 @@ export default function SlideRoadmap() {
         {items.map((item, i) => (
           <motion.div
             key={item.label}
-            className={`flex flex-col sm:grid sm:grid-cols-[160px_1fr] gap-1 sm:gap-2 items-start sm:items-center py-1.5 border-b border-border/30 last:border-0 ${
-              item.highlight
-                ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
-                : ""
-            }`}
+            className={`flex flex-col sm:grid sm:grid-cols-[360px_1fr] gap-1 sm:gap-2 items-start sm:items-center py-1.5 border-b border-border/30 last:border-0 ${item.highlight
+              ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
+              : ""
+              }`}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
@@ -119,7 +118,7 @@ export default function SlideRoadmap() {
                 ))}
               </div>
               <motion.div
-                className={`absolute top-0.5 h-4 rounded-sm ${item.bar} flex items-center overflow-hidden`}
+                className={`absolute top-0.5 h-8 rounded-sm ${item.bar} flex items-center overflow-hidden`}
                 style={{
                   left: `${(item.start / 6) * 100}%`,
                   width: `${(item.span / 6) * 100}%`,
@@ -133,7 +132,7 @@ export default function SlideRoadmap() {
               >
                 {item.badge && (
                   <span
-                    className={`text-[7px] font-bold tracking-wider px-1.5 whitespace-nowrap ${item.text} opacity-80`}
+                    className={`text-xs font-bold tracking-wider px-1.5 whitespace-nowrap ${item.text} opacity-80`}
                   >
                     {item.badge}
                   </span>
@@ -145,7 +144,7 @@ export default function SlideRoadmap() {
       </div>
 
       <motion.div
-        className="border border-emerald-500/30 bg-emerald-500/5 px-6 py-3 max-w-4xl text-center mt-4"
+        className="border border-emerald-500/30 bg-emerald-500/5 px-6 py-3 max-w-5xl text-center mt-4"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, delay: 1.2 }}

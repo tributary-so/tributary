@@ -1,4 +1,3 @@
-import FutardioBanner from "@/components/futardio-banner";
 import SlideCompetition from "@/components/futardio/slide-competition";
 import SlideMarket from "@/components/futardio/slide-market";
 import SlideModels from "@/components/futardio/slide-models";
@@ -6,20 +5,15 @@ import SlideProblem from "@/components/futardio/slide-problem";
 import SlideRoadmap from "@/components/futardio/slide-roadmap";
 import SlideCTA from "@/components/futardio/slide-tam";
 import SlideTraction from "@/components/futardio/slide-traction";
+import Mentions from "@/components/Mentions";
 import {
-  TrendingUp,
-  Shield,
   CheckCircle2,
   DollarSign,
   ExternalLink,
-  Code2,
   Users,
-  Target,
-  Lock,
-  Calendar,
-  Eye,
-  Layers,
 } from "lucide-react";
+import FabianSchuhProfile from "../components/futardio/cv";
+import { FiArrowRight, FiExternalLink } from "react-icons/fi";
 
 const builtComponents = [
   { name: "Smart Contract", status: "Mainnet" },
@@ -84,12 +78,12 @@ const useOfFunds = [
   {
     category: "Engineering & Development",
     total: "$48,000",
-    monthly: "$8,000",
+    monthly: "$4,000",
   },
   {
-    category: "Marketing & Developer Growth",
+    category: "Growth, Events & Developer Experience",
     total: "$48,000",
-    monthly: "$8,000",
+    monthly: "$6,000",
   },
   { category: "Operations (infra, legal)", total: "$6,000", monthly: "$1,000" },
   {
@@ -140,7 +134,6 @@ const hackathonLinks = {
 export default function Futardio() {
   return (
     <>
-      <FutardioBanner />
       <main className="mx-auto max-w-6xl px-4">
         {/* ─── Hero ─── */}
         <section className="py-20">
@@ -158,6 +151,9 @@ export default function Futardio() {
               Non-custodial recurring payments on Solana. Fully built and
               deployed.
             </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Mentions />
           </div>
         </section>
 
@@ -318,6 +314,9 @@ export default function Futardio() {
               <span className="text-foreground">Traction & </span>
               <span className="gradient-text">Integrations</span>
             </h2>
+            <p className="text-muted-foreground leading-relaxed text-[15px]">
+              The base protocol is live on mainnet. Now making people are of it and onboarding builders.
+            </p>
           </div>
           <div className="mb-8 border border-border/50 bg-muted/10 p-6">
             <SlideTraction />
@@ -354,6 +353,11 @@ export default function Futardio() {
               <span className="text-foreground">Payment </span>
               <span className="gradient-text">Protocols</span>
             </h2>
+            <p className="text-muted-foreground leading-relaxed text-[15px]">
+              Solana's token delegation model means a user can only delegate to
+              one protocol at a time. Once a user approves Tributary, every
+              recurring payment flows through this protocol.
+            </p>
           </div>
           <div className="mt-8 border border-border/50 bg-muted/10 p-6">
             <SlideCompetition />
@@ -369,114 +373,6 @@ export default function Futardio() {
                 unlocks a market segment Tributary can't reach alone.
               </p>
             </div>
-            <div className="border border-accent/20 bg-accent/5 p-6">
-              <p className="text-sm text-foreground">
-                <strong>The Moat:</strong> Solana's token delegation model means
-                a user can only delegate to one protocol at a time.{" "}
-                <strong>
-                  First-mover here is a technical lock-in, not a marketing
-                  claim.
-                </strong>{" "}
-                Once a user approves Tributary, every recurring payment flows
-                through this protocol. Smart wallets increase the surface area
-                for that lock-in by bringing more users and agents on-chain.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <div
-          className="font-mono text-sm text-muted-foreground/30 select-none"
-          aria-hidden="true"
-        >
-          //
-        </div>
-
-        {/* ─── Use of Funds ─── */}
-        <section className="py-16">
-          <div className="mb-8 max-w-3xl space-y-3">
-            <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-              Use of Funds
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              <span className="text-foreground">6 months runway. </span>
-              <span className="gradient-text">
-                Focused on growth and developer adoption.
-              </span>
-            </h2>
-          </div>
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 pr-4 text-muted-foreground font-medium">
-                    Category
-                  </th>
-                  <th className="text-right py-3 pr-4 text-muted-foreground font-medium">
-                    Total
-                  </th>
-                  <th className="text-right py-3 text-muted-foreground font-medium">
-                    Monthly
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {useOfFunds.map((f, index) => (
-                  <tr
-                    key={f.category}
-                    className={`border-b border-border/50 ${
-                      index == 0
-                        ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
-                        : ""
-                    }`}
-                  >
-                    <td className="py-3 pr-4 pl-2">{f.category}</td>
-                    <td className="py-3 pr-4 text-right font-mono">
-                      {f.total}
-                    </td>
-                    <td className="py-3 pr-2 text-right font-mono text-muted-foreground">
-                      {f.monthly}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between max-w-6xl w-full gap-4 border-t border-border pt-4 pb-6">
-            <div className="text-xs text-muted-foreground">
-              Total:{" "}
-              <span
-                className="text-lg font-bold text-emerald-400"
-                style={{ fontFamily: "var(--font-secondary)" }}
-              >
-                $176,000
-              </span>
-            </div>
-            <div className="flex gap-4 w-full sm:w-auto">
-              <div className="border border-border bg-muted/10 px-3 py-1.5 text-center">
-                <div className="uppercase tracking-wider text-muted-foreground">
-                  Monthly Burn
-                </div>
-                <div className="text-xs font-bold text-foreground">
-                  ~$16K/mo
-                </div>
-              </div>
-              <div className="border border-border bg-muted/10 px-3 py-1.5 text-center">
-                <div className="uppercase tracking-wider text-muted-foreground">
-                  Runway
-                </div>
-                <div className="text-xs font-bold text-foreground">
-                  6 months
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="border-l-3 border-primary/60 pl-4">
-            <p className="text-sm text-muted-foreground">
-              The $50K security audit is the single gate between today's product
-              and enterprise adoption. With it, integrations move from
-              "interesting" to "production-ready."
-            </p>
           </div>
         </section>
 
@@ -491,68 +387,85 @@ export default function Futardio() {
         <section className="py-16">
           <div className="mb-8 max-w-3xl space-y-3">
             <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-              Revenue
+              $TRY Token
             </p>
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              <span className="text-foreground">Revenue </span>
-              <span className="gradient-text">Path</span>
+              <span className="gradient-text">Token </span>
+              <span className="text-foreground">Structure</span>
             </h2>
           </div>
           <div className="border border-border/50 bg-muted/10 p-6 mb-4">
             <SlideCTA />
           </div>
-          <div className="grid md:grid-cols-2 gap-12 mb-10">
+          <div className="grid md:grid-cols-2 gap-12">
             <div className="space-y-6">
-              <div>
-                <h3 className="font-bold mb-2">Today</h3>
-                <p className="text-muted-foreground text-sm">
-                  Small-revenue. Protocol is live, 10k USDC in total volume.
+              <h3 className="font-bold mb-8">Revenue Mechanics</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground space-y-8">
+                <li className="flex items-start gap-2">
+                  <DollarSign className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="text-muted-foreground">
+                      <div className="gradient-text font-bold">
+                        Protocol Fees
+                      </div>
+                      <div className="font-mono text-sm">
+                        1% of every transfer<sup className="text-emerald-800">*</sup>, auto-deposited to treasury
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <DollarSign className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="text-muted-foreground">
+                      <div className="gradient-text font-bold">
+                        Business Fees
+                      </div>
+                      <div className="font-mono text-sm">
+                        additional variable fee managed and earned by businesses
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <DollarSign className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="text-muted-foreground">
+                      <div className="gradient-text font-bold">
+                        No custodial risk
+                      </div>
+                      <div className="font-mono text-sm">
+                        no working capital needed, 0$ TVL by design
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+              <div className="border-l-3 border-primary/60 pl-4">
+                <p className="text-sm text-muted-foreground">
+                  The opportunity is there, as is the market.
                 </p>
               </div>
-              <div>
-                <h3 className="font-bold mb-2">Revenue Mechanics</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <DollarSign className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Every on-chain payment: 1% protocol fee, auto-deposited to
-                    treasury
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Layers className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Fee split: protocol treasury + gateway operator
-                    (configurable)
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    No custodial risk, no working capital needed
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold mb-2">Path to First Dollars</h3>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>Each merchant integration = recurring payment volume</li>
-                  <li>
-                    1 SaaS business charging 100 users $10/month = $10K/month
-                    volume = $100/month to treasury
-                  </li>
-                  <li>10 such businesses = $1K/month</li>
-                  <li className="text-foreground font-medium">
-                    This is the floor, not the ceiling — and it compounds with
-                    every integration
-                  </li>
-                </ul>
+              <div className="mb-6 flex">
+                <div>
+                  <sup className="mr-3 text-emerald-800">*</sup>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  To boost growth, we allow to reduce protocol fees for limited time on a per business basis.
+                </div>
               </div>
             </div>
             <div className="space-y-6">
               <h3 className="font-bold">
-                Revenue Scenarios (12 months post-audit)
+                Revenue Scenarios
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {revenueScenarios.map((s) => (
                   <div
                     key={s.label}
-                    className="border border-border/50 hover:border-primary/30 transition-all p-5"
+                    className="border border-border/50 hover:border-primary/30 transition-all p-3"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm">{s.label}</span>
@@ -588,9 +501,99 @@ export default function Futardio() {
             </div>
           </div>
 
-          <div className="border-l-3 border-primary/60 pl-4 mb-6">
+        </section>
+
+        <div
+          className="font-mono text-sm text-muted-foreground/30 select-none"
+          aria-hidden="true"
+        >
+          //
+        </div>
+
+
+        {/* ─── Use of Funds ─── */}
+        <section className="py-16">
+          <div className="mb-8 max-w-3xl space-y-3">
+            <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+              Use of Funds
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+              <span className="text-foreground">6 months runway. </span>
+              <span className="gradient-text">
+                Focused on growth and developer adoption.
+              </span>
+            </h2>
+          </div>
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 pr-4 text-muted-foreground font-medium">
+                    Category
+                  </th>
+                  <th className="text-right py-3 pr-4 text-muted-foreground font-medium">
+                    Total
+                  </th>
+                  <th className="text-right py-3 text-muted-foreground font-medium">
+                    Monthly
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {useOfFunds.map((f, index) => (
+                  <tr
+                    key={f.category}
+                    className={`border-b border-border/50 ${index == 0
+                      ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
+                      : ""
+                      }`}
+                  >
+                    <td className="py-3 pr-4 pl-2">{f.category}</td>
+                    <td className="py-3 pr-4 text-right font-mono">
+                      {f.total}
+                    </td>
+                    <td className="py-3 pr-2 text-right font-mono text-muted-foreground">
+                      {f.monthly}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between max-w-6xl w-full gap-4 border-t border-border pt-4 pb-6">
+            <div className="text-xs text-muted-foreground">
+              Total:{" "}
+              <span
+                className="text-lg font-bold text-emerald-400"
+                style={{ fontFamily: "var(--font-secondary)" }}
+              >
+                $176,000
+              </span>
+            </div>
+            <div className="flex gap-4 w-full sm:w-auto">
+              <div className="border border-border bg-muted/10 px-3 py-1.5 text-center">
+                <div className="uppercase tracking-wider text-muted-foreground">
+                  Monthly Burn
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  ~$11K/mo
+                </div>
+              </div>
+              <div className="border border-border bg-muted/10 px-3 py-1.5 text-center">
+                <div className="uppercase tracking-wider text-muted-foreground">
+                  Runway
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  6 months
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="border-l-3 border-primary/60 pl-4">
             <p className="text-sm text-muted-foreground">
-              The opportunity is there, as is the market.
+              The $50K security audit is the single gate between today's product
+              and enterprise adoption. With it, integrations move from
+              "interesting" to "production-ready."
             </p>
           </div>
         </section>
@@ -617,6 +620,7 @@ export default function Futardio() {
             <SlideRoadmap />
           </div>
 
+          {/*
           <div className="space-y-8">
             <div>
               <h3 className="font-bold flex items-center gap-2 mb-3">
@@ -719,6 +723,7 @@ export default function Futardio() {
               </div>
             </div>
           </div>
+          */}
         </section>
 
         <div
@@ -735,50 +740,11 @@ export default function Futardio() {
               Team
             </p>
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              <span className="text-foreground">Solo Builder, </span>
-              <span className="gradient-text">Veteran Track Record</span>
+              <span className="text-foreground">Fabian Schuh{" "}</span>
+              <span className="gradient-text">Dr.-Ing.</span>
             </h2>
           </div>
-          <div className="border border-border/50 p-6 mb-6">
-            <h3 className="text-xl font-bold mb-3">Fabian Schuh, Dr.-Ing.</h3>
-            <p className="text-muted-foreground text-sm mb-6">
-              PhD Communications Engineer, 10+ years Web3, 26+ shipped projects.
-              Built the entire protocol solo with zero funding.
-            </p>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-xs text-muted-foreground uppercase tracking-[0.12em] mb-2">
-                  4+ Successful Exits
-                </h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>Steemit (founding member)</li>
-                  <li>MakerDAO (advisor)</li>
-                  <li>Cryptonomex</li>
-                  <li>Relay.md</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-xs text-muted-foreground uppercase tracking-[0.12em] mb-2">
-                  5+ Operational Solana Projects
-                </h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>Allowly.app</li>
-                  <li>Contribute.so</li>
-                  <li>Tributary</li>
-                  <li>Chaoscraft, Polycode, repo.trade</li>
-                </ul>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Rektoff Solana Security Cohort#2 Graduate, SuperteamGermany
-                  Member
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="border-l-3 border-primary/60 pl-4">
-            <p className="text-sm text-foreground font-medium">
-              This is a crypto veteran who shipped a complete protocol with $0.
-            </p>
-          </div>
+          <FabianSchuhProfile />
         </section>
 
         <div
@@ -921,25 +887,22 @@ export default function Futardio() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
+                href="https://www.futard.io/launch/99vD3p7e5p4vStrn4mX5Uzrqg9A4bica3wisAUQygG6B"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm md:text-base px-6 py-3 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white transition-colors cursor-pointer"
+              >
+                <FiExternalLink className="w-4 h-4" />
+                <span>Futardio Raise</span>
+                <FiArrowRight className="w-4 h-4" />
+              </a>
+
+              <a
                 href="mailto:fabian@tributary.so"
-                className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
+                className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
               >
                 <Users className="h-4 w-4" />
                 Get in Touch
-              </a>
-              <a
-                href="https://docs.tributary.so"
-                className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-              >
-                <Code2 className="h-4 w-4" />
-                Read the Docs
-              </a>
-              <a
-                href="https://app.tributary.so"
-                className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
-              >
-                <Eye className="h-4 w-4" />
-                Try the App
               </a>
             </div>
           </div>

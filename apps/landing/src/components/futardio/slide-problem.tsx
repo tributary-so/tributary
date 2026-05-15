@@ -148,9 +148,8 @@ export default function SlideProblem() {
                         ease: [0.22, 1, 0.36, 1],
                       }}
                       style={{
-                        transformOrigin: `${visaX + BAR_W / 2}px ${
-                          PAD_T + CHART_H
-                        }px`,
+                        transformOrigin: `${visaX + BAR_W / 2}px ${PAD_T + CHART_H
+                          }px`,
                       }}
                     />
                   )}
@@ -175,9 +174,8 @@ export default function SlideProblem() {
                         delay: 0.06,
                       }}
                       style={{
-                        transformOrigin: `${stblX + BAR_W / 2}px ${
-                          PAD_T + CHART_H
-                        }px`,
+                        transformOrigin: `${stblX + BAR_W / 2}px ${PAD_T + CHART_H
+                          }px`,
                       }}
                     />
                   )}

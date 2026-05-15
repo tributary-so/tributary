@@ -27,6 +27,7 @@ import HowToRecurring from "@/components/HowToRecurring";
 import IntegrationsWall from "@/components/IntegrationsWall";
 import Mentions from "@/components/Mentions";
 import HowToProcessor from "@/components/HowToProcessor";
+import FutardioBanner from "@/components/futardio-banner";
 
 const checklistItems = [
   {
@@ -198,7 +199,16 @@ const faqs = [
   },
 ];
 
-export default function Home() {
+export default function HomeFutardio() {
+  return (
+    <>
+      <FutardioBanner />
+      <HomeContent />
+    </>
+  )
+}
+
+export function HomeContent() {
   const navigate = useNavigate();
 
   const scrollToSection = (id: string) => {
@@ -225,7 +235,7 @@ export default function Home() {
         <div className="flex flex-col gap-6 text-center lg:text-left lg:items-start">
           <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/5 px-3 py-1.5 text-accent text-xs font-mono">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            Live on Solana mainnet since October 2025
+            Live on Solana mainnet
           </div>
           <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl lg:text-5xl">
             <span className="text-foreground">The payment protocol</span>
@@ -410,7 +420,7 @@ export default function Home() {
       <section id="jwt-checkout" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Chcekout
+            Checkout
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
             <span className="text-foreground">
