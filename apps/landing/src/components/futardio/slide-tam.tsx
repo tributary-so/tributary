@@ -20,7 +20,7 @@ export default function SlideCTA() {
       >
         <span className="text-emerald-400">1% protocol fee</span>
         <br />
-        <span className="text-muted-foreground">x</span>% business fee
+        <span className="text-muted-foreground">variable</span> business fee
       </motion.h2>
 
       <motion.p
