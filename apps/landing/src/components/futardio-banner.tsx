@@ -16,7 +16,7 @@ const FutardioBanner: React.FC = () => {
   // Countdown timer logic
   useEffect(() => {
     // Set the target date (3 days from now for demo purposes)
-    const targetDate = new Date(Date.UTC(2026, 4, 18, 15, 0, 0));
+    const targetDate = new Date(Date.UTC(2026, 4, 18 + 7, 15, 0, 0));
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
