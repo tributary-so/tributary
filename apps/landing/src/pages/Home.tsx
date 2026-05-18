@@ -193,6 +193,11 @@ const faqs = [
       "Absolutely. Users have full control and can pause, resume, or cancel anytime through wallet or dApp.",
   },
   {
+    question: "How can I get my business ready?",
+    answer:
+      "Head over to the onboarding link in the developers drop down in the navigation and complete the form!",
+  },
+  {
     question: "What is x402 integration?",
     answer:
       "Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle, ideal for API monetization.",
@@ -205,7 +210,7 @@ export default function HomeFutardio() {
       <FutardioBanner />
       <HomeContent />
     </>
-  )
+  );
 }
 
 export function HomeContent() {
@@ -259,16 +264,18 @@ export function HomeContent() {
               View Docs
             </a>
             <a
-              href="https://app.tributary.so"
-              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              Open App
-            </a>
-            <a
               onClick={() => scrollToSection("use-cases")}
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
               Explore Use Cases
+            </a>
+            <a
+              href="https://tally.so/r/RGbbGl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-accent/60 hover:bg-accent/80 text-white shadow-2xs inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
+            >
+              Business Onboarding <ArrowRight className="h-3 w-3" />
             </a>
           </div>
         </div>
@@ -565,6 +572,14 @@ if (payload.lastPayments.length > 0) {
                 <li>Open source. Fork it. Own it.</li>
               </ul>
             </div>
+            <a
+              href="https://tally.so/r/RGbbGl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
+            >
+              Onboarding Form <ArrowRight className="h-3 w-3" />
+            </a>
             <a
               href="https://docs.tributary.so"
               className="border bg-background hover:bg-muted/50 inline-flex items-center gap-2 px-4 py-2 text-sm transition-all shrink-0"

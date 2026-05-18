@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ExternalLink, Play, BookOpen, Code, Heart, Github, PlusCircle } from 'lucide-react'
+import { ExternalLink, Play, BookOpen, Code, Heart, Github, PlusCircle, BriefcaseBusiness } from 'lucide-react'
 
 const actions = [
   {
@@ -93,12 +93,22 @@ export default function DashboardFeature() {
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Link
-              to="/quickstart"
+              to="/quickstart4"
               className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
             >
               <Play className="h-4 w-4" />
               Get Started
             </Link>
+            <a
+              href="https://tally.so/r/RGbbGl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
+            >
+              <BriefcaseBusiness className="h-4 w-4" />
+              Business Onboarding
+            </a>
+
             <a
               href="https://docs.tributary.so"
               target="_blank"
