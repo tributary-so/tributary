@@ -20,6 +20,12 @@ const products = [
     external: true,
   },
   {
+    label: "Business Onboarding",
+    href: "https://tally.so/r/RGbbGl",
+    description: "Onboarding Form for Buinesses",
+    external: true,
+  },
+  {
     label: "SDK Reference",
     href: "https://docs.tributary.so/sdk",
     description: "TypeScript SDK documentation",
@@ -67,7 +73,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="py-6">
+    <header className="relative z-50 py-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between">
         <Link className="inline-flex text-primary items-center gap-3" to="/">
           <img src={logo} alt="Tributary Logo" className="h-4 w-4" />
