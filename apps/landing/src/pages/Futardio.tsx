@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import FabianSchuhProfile from "../components/futardio/cv";
 import { FiArrowRight, FiExternalLink } from "react-icons/fi";
+import FutardioBanner from "@/components/futardio-banner";
 
 const builtComponents = [
   { name: "Smart Contract", status: "Mainnet" },
@@ -134,6 +135,7 @@ const hackathonLinks = {
 export default function Futardio() {
   return (
     <>
+      <FutardioBanner />
       <main className="mx-auto max-w-6xl px-4">
         {/* ─── Hero ─── */}
         <section className="py-20">
