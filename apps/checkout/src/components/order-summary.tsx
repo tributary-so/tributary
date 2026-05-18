@@ -107,8 +107,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                         {item.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Qty {item.quantity} x{" "}
-                        {(item.unitPrice / 100).toFixed(2)}{" "}
+                        Qty {item.quantity} x {item.unitPrice.toFixed(2)}{" "}
                         {tokenSymbol ||
                           `${sessionData.tokenMint.slice(
                             0,
@@ -117,7 +116,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                       </p>
                     </div>
                     <span className="font-medium text-foreground text-sm">
-                      {((item.quantity * item.unitPrice) / 100).toFixed(2)}{" "}
+                      {(item.quantity * item.unitPrice).toFixed(2)}{" "}
                       {tokenSymbol ||
                         `${sessionData.tokenMint.slice(
                           0,
