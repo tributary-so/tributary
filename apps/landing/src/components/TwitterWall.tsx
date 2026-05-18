@@ -31,6 +31,16 @@ const TWEETS: Tweet[] = [
     url: "https://x.com/Harshitaturs/status/2050647741039272212",
   },
   {
+    url: "https://x.com/kru_tweets/status/2056383865091162332",
+    id: "2056383865091162332",
+    author: "kur | Umbra",
+    handle: "kru_tweets",
+    date: "May 18m 2026",
+    text: `Honestly, this is the exact agenda behind what we’re trying to do with @UmbraPrivacy.
+
+It warms my heart to see you guys following the same path that Umbra, Avici, Solomon, and the rest of us have walked, especially with the governance side of things on @futarddotio. Seriously excited to see how @tributaryso does there. Wishing you guys the absolute best, kill it!`
+  },
+  {
     id: "2047557841481851266",
     author: "rok420.eth",
     handle: "Grok420",
