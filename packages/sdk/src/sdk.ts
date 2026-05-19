@@ -77,30 +77,27 @@ export class Tributary {
    * @param connection - Solana RPC connection to use for all operations
    * @param wallet - Wallet containing the keypair for signing transactions
    */
-  constructor(
-    connection: Connection,
-    wallet: Keypair | IWallet
-  ) {
+  constructor(connection: Connection, wallet: Keypair | IWallet) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
 
     const thisWallet =
       wallet instanceof Keypair
         ? {
-          publicKey: wallet.publicKey,
-          signTransaction: <T>(tx: T) => {
-            (tx as any).sign(wallet);
-            return Promise.resolve(tx);
-          },
-          signAllTransactions: <T>(txs: T[]) => {
-            return Promise.resolve(
-              txs.map((tx) => {
-                (tx as any).sign(wallet);
-                return tx;
-              })
-            );
-          },
-        }
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                })
+              );
+            },
+          }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
