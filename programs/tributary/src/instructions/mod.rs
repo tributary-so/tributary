@@ -11,6 +11,7 @@ pub mod delete_payment_policy;
 pub mod execute_payment;
 pub mod initialize;
 pub mod transfer;
+pub mod update_gateway_feature_flags;
 pub mod update_gateway_protocol_fee;
 pub mod update_gateway_referral_settings;
 
@@ -27,5 +28,6 @@ pub use delete_payment_policy::*;
 pub use execute_payment::*;
 pub use initialize::*;
 pub use transfer::*;
+pub use update_gateway_feature_flags::*;
 pub use update_gateway_protocol_fee::*;
 pub use update_gateway_referral_settings::*;

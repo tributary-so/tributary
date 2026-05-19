@@ -124,8 +124,9 @@ impl<'info> ExecutePayment<'info> {
         let protocol_fee_account_info = accounts.protocol_fee_account.to_account_info();
         let payments_delegate_info = accounts.payments_delegate.to_account_info();
         let token_program_info = accounts.token_program.to_account_info();
-        let mint_info = accounts.mint.to_account_info();
+        let mint_pubkey = accounts.mint.key();
         let mint_decimals = accounts.mint.decimals;
+        let mint_info = accounts.mint.to_account_info();
         let payments_delegate_bump = ctx.bumps.payments_delegate;
         let expected_mint = accounts.user_token_account.mint;
 
@@ -313,6 +314,7 @@ impl<'info> ExecutePayment<'info> {
             record_id: payment_policy.payment_count,
             payer: user_payment.owner,
             recipient: accounts.recipient_token_account.owner.key(),
+            token_mint: mint_pubkey,
         });
 
         msg!(

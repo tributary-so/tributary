@@ -41,9 +41,9 @@ impl<'info> UpdateGatewayProtocolFee<'info> {
         let gateway = &mut ctx.accounts.gateway;
 
         if args.use_custom_protocol_fee {
-            gateway.feature_flags |= 0x04;
+            gateway.feature_flags |= PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
         } else {
-            gateway.feature_flags &= !0x04;
+            gateway.feature_flags &= !PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
         }
 
         require!(
@@ -54,7 +54,7 @@ impl<'info> UpdateGatewayProtocolFee<'info> {
 
         msg!(
             "Gateway protocol fee updated: use_custom_protocol_fee={}, custom_protocol_fee_bps={}",
-            gateway.feature_flags & 0x04 != 0,
+            gateway.feature_flags & PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE != 0,
             gateway.custom_protocol_fee_bps
         );
 

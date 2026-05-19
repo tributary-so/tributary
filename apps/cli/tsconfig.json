@@ -1,22 +1,17 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "strict": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "checkJs": true,
-    "allowJs": true,
+    "types": ["node", "jest"], // Make sure jest is included only once
+    "skipLibCheck": true, // Temporarily bypass library type checking
     "declaration": true,
-    "declarationMap": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "lib": ["es2020"],
-    "target": "es2020",
-    "module": "es2020",
-    "moduleResolution": "bundler",
-    "types": ["node"],
-    "outDir": "./dist"
+    "module": "Node16",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "target": "es2022",
+    "moduleResolution": "node16"
   },
-  "exclude": ["node_modules", "tests", "eslint.config.js"]
+  "include": ["./src/**/*"],
+  "ts-node": {
+    "esm": true
+  }
 }

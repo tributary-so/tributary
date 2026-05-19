@@ -8,6 +8,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { createOneTimePayment, issueOneTimeToken } from "@/lib/tributary";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { getTokenSymbol } from "@/lib/utils";
 import config from "@/constants";
 
@@ -25,6 +26,7 @@ export function PayForm({ sessionData }: PayFormProps) {
   const [txSignature, setTxSignature] = React.useState<string | null>(null);
   const wallet = useWallet();
   const { connected, connecting, publicKey } = wallet;
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     if (!sessionData.tokenMint) {
@@ -70,24 +72,29 @@ export function PayForm({ sessionData }: PayFormProps) {
       setSuccess(true);
       setIsLoading(false);
 
-      if (sessionData.successUrl) {
-        setRedirecting(true);
-        setConfirming(true);
-        try {
-          const { token } = await issueOneTimeToken(
-            wallet.publicKey!,
-            signature,
-            sessionData.tokenMint
-          );
+      setRedirecting(true);
+      setConfirming(true);
+      try {
+        const { token } = await issueOneTimeToken(
+          wallet.publicKey!,
+          signature,
+          sessionData.tokenMint
+        );
+
+        if (sessionData.successUrl) {
           const url = new URL(sessionData.successUrl);
           url.searchParams.set("token", token);
           window.location.href = url.toString();
-        } catch (jwtError) {
-          console.warn("Failed to issue JWT token:", jwtError);
-          throw jwtError;
-        } finally {
-          setConfirming(false);
+        } else {
+          navigate(`/success?token=${encodeURIComponent(token)}`);
         }
+      } catch (jwtError) {
+        console.warn("Failed to issue JWT token:", jwtError);
+        if (sessionData.successUrl) {
+          throw jwtError;
+        }
+      } finally {
+        setConfirming(false);
       }
     } catch (err) {
       toast.error(
@@ -102,7 +109,7 @@ export function PayForm({ sessionData }: PayFormProps) {
     if (sessionData.cancelUrl) {
       window.location.href = sessionData.cancelUrl;
     } else {
-      setShowCancelModal(true);
+      navigate("/cancel");
     }
   };
 

@@ -4,12 +4,13 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 #[instruction(referral_code: [u8; 6])]
 pub struct CreateReferralAccount<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
+    /// CHECK: The owner account - does NOT need to sign
+    #[account()]
+    pub owner: AccountInfo<'info>,
 
     #[account(
         init,
-        payer = owner,
+        payer = fee_payer,
         space = ReferralAccount::SIZE,
         seeds = [REFERRAL_SEED, gateway.key().as_ref(), referral_code.as_slice()],
         bump
@@ -27,6 +28,9 @@ pub struct CreateReferralAccount<'info> {
     pub config: Account<'info, ProgramConfig>,
 
     pub system_program: Program<'info, System>,
+
+    #[account(mut)]
+    pub fee_payer: Signer<'info>,
 }
 
 impl<'info> CreateReferralAccount<'info> {

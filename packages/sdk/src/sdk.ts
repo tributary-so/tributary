@@ -34,6 +34,7 @@ import type {
   ProgramConfig,
   ReferralAccount,
 } from "./types.js";
+import { GATEWAY_FEATURES } from "./constants";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -77,30 +78,27 @@ export class Tributary {
    * @param connection - Solana RPC connection to use for all operations
    * @param wallet - Wallet containing the keypair for signing transactions
    */
-  constructor(
-    connection: Connection,
-    wallet: Keypair | IWallet
-  ) {
+  constructor(connection: Connection, wallet: Keypair | IWallet) {
     this.connection = connection;
     this.programId = new PublicKey(IDL.address);
 
     const thisWallet =
       wallet instanceof Keypair
         ? {
-          publicKey: wallet.publicKey,
-          signTransaction: <T>(tx: T) => {
-            (tx as any).sign(wallet);
-            return Promise.resolve(tx);
-          },
-          signAllTransactions: <T>(txs: T[]) => {
-            return Promise.resolve(
-              txs.map((tx) => {
-                (tx as any).sign(wallet);
-                return tx;
-              })
-            );
-          },
-        }
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                })
+              );
+            },
+          }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
@@ -147,7 +145,8 @@ export class Tributary {
    * @returns Transaction instruction to create the user payment account
    */
   async createUserPayment(
-    tokenMint: PublicKey
+    tokenMint: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
@@ -157,6 +156,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       owner: owner,
+      feePayer: feePayer ?? owner,
       config: configPda,
       tokenAccount: getAssociatedTokenAddressSync(tokenMint, owner),
       tokenMint: tokenMint,
@@ -181,7 +181,8 @@ export class Tributary {
   async createReferralAccount(
     gateway: PublicKey,
     referralCode: string,
-    referrer?: PublicKey
+    referrer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
 
@@ -203,6 +204,7 @@ export class Tributary {
 
     const accounts: any = {
       owner: owner,
+      feePayer: feePayer ?? owner,
       referralAccount: referralAccountPda,
       gateway: gateway,
       config: configPda,
@@ -414,7 +416,8 @@ export class Tributary {
     maxRenewals: number | null,
     paymentFrequency: PaymentFrequency,
     memo: number[],
-    startTime?: BN | null
+    startTime?: BN | null,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -439,6 +442,7 @@ export class Tributary {
     };
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
@@ -473,7 +477,8 @@ export class Tributary {
     maxAmountPerPeriod: BN,
     maxChunkAmount: BN,
     periodLengthSeconds: BN,
-    memo: number[]
+    memo: number[],
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -512,6 +517,7 @@ export class Tributary {
     };
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
@@ -546,7 +552,8 @@ export class Tributary {
     milestoneAmounts: BN[],
     milestoneTimestamps: BN[],
     releaseCondition: number,
-    memo: number[]
+    memo: number[],
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -613,6 +620,7 @@ export class Tributary {
 
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
@@ -657,7 +665,8 @@ export class Tributary {
     startTime?: BN | null,
     approvalAmount?: BN,
     executeImmediately?: boolean,
-    referralCode?: string
+    referralCode?: string,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -732,6 +741,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       config: configPda,
       userPayment: userPaymentPda,
       recipient: recipient,
@@ -839,7 +849,8 @@ export class Tributary {
     memo: number[],
     approvalAmount?: BN,
     executeImmediately?: boolean,
-    referralCode?: string
+    referralCode?: string,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -942,6 +953,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       config: configPda,
       userPayment: userPaymentPda,
       recipient: recipient,
@@ -1044,7 +1056,8 @@ export class Tributary {
     periodLengthSeconds: BN,
     memo: number[],
     approvalAmount?: BN,
-    referralCode?: string
+    referralCode?: string,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -1119,6 +1132,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       config: configPda,
       userPayment: userPaymentPda,
       recipient: recipient,
@@ -1362,7 +1376,8 @@ export class Tributary {
       gatewayAccount.referralAllocationBps > 0
     ) {
       // Check if bit 0 is set (referral enabled)
-      const referralEnabled = (gatewayAccount.featureFlags & 1) === 1;
+      const referralEnabled =
+        (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
 
       if (referralEnabled && _user) {
         // Build the referral chain
@@ -1798,6 +1813,72 @@ export class Tributary {
       })
       .accountsStrict(accounts)
       .instruction();
+  }
+
+  /**
+   * Sets the raw feature_flags byte on a gateway (authority-only).
+   * Bit 2 (CUSTOM_PROTOCOL_FEE) is protected and cannot be changed here —
+   * use updateGatewayCustomProtocolFee for that.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param featureFlags - Raw feature flags byte (only bits 0-1 are applied)
+   * @returns Transaction instruction
+   */
+  async updateGatewayFeatureFlags(
+    gatewayAuthority: PublicKey,
+    featureFlags: number
+  ): Promise<TransactionInstruction> {
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+
+    const validMask = GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT;
+    if ((featureFlags & ~validMask) !== 0 && featureFlags !== 0) {
+      throw new Error(
+        "Invalid feature flags — only REFERRAL and NET_AMOUNT bits can be set via this method"
+      );
+    }
+
+    const accounts = {
+      authority: gatewayAuthority,
+      gateway: gatewayPda,
+    };
+
+    return await this.program.methods
+      .updateGatewayFeatureFlags({ featureFlags })
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Enables a specific feature flag on a gateway.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param flag - One of GATEWAY_FEATURES values
+   * @returns Transaction instruction
+   */
+  async enableGatewayFeature(
+    gatewayAuthority: PublicKey,
+    flag: number
+  ): Promise<TransactionInstruction> {
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const gateway = await this.getPaymentGateway(gatewayPda);
+    if (!gateway) throw new Error("Gateway not found");
+    const newFlags = gateway.featureFlags | flag;
+    return this.updateGatewayFeatureFlags(gatewayAuthority, newFlags);
+  }
+
+  /**
+   * Disables a specific feature flag on a gateway.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param flag - One of GATEWAY_FEATURES values
+   * @returns Transaction instruction
+   */
+  async disableGatewayFeature(
+    gatewayAuthority: PublicKey,
+    flag: number
+  ): Promise<TransactionInstruction> {
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const gateway = await this.getPaymentGateway(gatewayPda);
+    if (!gateway) throw new Error("Gateway not found");
+    const newFlags = gateway.featureFlags & ~flag;
+    return this.updateGatewayFeatureFlags(gatewayAuthority, newFlags);
   }
 
   // Query methods
@@ -2263,7 +2344,8 @@ export class Tributary {
       gatewayAccount.featureFlags &&
       gatewayAccount.referralAllocationBps > 0
     ) {
-      const referralEnabled = (gatewayAccount.featureFlags & 1) === 1;
+      const referralEnabled =
+        (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
       if (referralEnabled) {
         const referralChain = await this.getReferralChain(authority, gateway);
         const referralAccounts = referralChain.filter(

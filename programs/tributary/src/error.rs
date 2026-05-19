@@ -78,4 +78,6 @@ pub enum TributaryError {
     TransferHookNotSupported,
     #[msg("Distinct Pubkeys required!")]
     DistinctPubKeysRequired,
+    #[msg("Invalid feature flags")]
+    InvalidFeatureFlags,
 }

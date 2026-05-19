@@ -439,9 +439,7 @@
       ],
       "accounts": [
         {
-          "name": "user",
-          "writable": true,
-          "signer": true
+          "name": "user"
         },
         {
           "name": "user_payment",
@@ -534,6 +532,11 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": [
@@ -570,9 +573,7 @@
       ],
       "accounts": [
         {
-          "name": "owner",
-          "writable": true,
-          "signer": true
+          "name": "owner"
         },
         {
           "name": "referral_account",
@@ -630,6 +631,11 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": [
@@ -658,9 +664,7 @@
       ],
       "accounts": [
         {
-          "name": "owner",
-          "writable": true,
-          "signer": true
+          "name": "owner"
         },
         {
           "name": "user_payment",
@@ -722,6 +726,11 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -1231,6 +1240,59 @@
               "u8",
               64
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_gateway_feature_flags",
+      "discriminator": [
+        132,
+        186,
+        249,
+        7,
+        77,
+        97,
+        16,
+        213
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateGatewayFeatureFlagsArgs"
+            }
           }
         }
       ]
@@ -1774,6 +1836,11 @@
       "code": 6036,
       "name": "DistinctPubKeysRequired",
       "msg": "Distinct Pubkeys required!"
+    },
+    {
+      "code": 6037,
+      "name": "InvalidFeatureFlags",
+      "msg": "Invalid feature flags"
     }
   ],
   "types": [
@@ -2365,6 +2432,10 @@
           {
             "name": "recipient",
             "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
           }
         ]
       }
@@ -2778,6 +2849,18 @@
                 3
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateGatewayFeatureFlagsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feature_flags",
+            "type": "u8"
           }
         ]
       }

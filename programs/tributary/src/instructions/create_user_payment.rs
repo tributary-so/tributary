@@ -4,12 +4,13 @@ use anchor_spl::token::{Mint, TokenAccount};
 
 #[derive(Accounts)]
 pub struct CreateUserPayment<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
+    /// CHECK: The owner account - does NOT need to sign
+    #[account()]
+    pub owner: AccountInfo<'info>,
 
     #[account(
         init,
-        payer = owner,
+        payer = fee_payer,
         space = UserPayment::SIZE,
         seeds = [USER_PAYMENT_SEED, owner.key().as_ref(), token_mint.key().as_ref()],
         bump
@@ -31,6 +32,9 @@ pub struct CreateUserPayment<'info> {
     pub config: Account<'info, ProgramConfig>,
 
     pub system_program: Program<'info, System>,
+
+    #[account(mut)]
+    pub fee_payer: Signer<'info>,
 }
 
 impl<'info> CreateUserPayment<'info> {

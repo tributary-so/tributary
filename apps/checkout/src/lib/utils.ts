@@ -12,3 +12,9 @@ export async function getTokenSymbol(connection: any, mintAddress: any) {
   }
   return gts(connection, mintAddress);
 }
+
+export const rawToHuman = (raw: string, decimals = 6): number => {
+  const n = parseInt(raw, 10);
+  if (isNaN(n)) return 0;
+  return n / Math.pow(10, decimals);
+};

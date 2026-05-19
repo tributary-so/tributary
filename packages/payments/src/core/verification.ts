@@ -41,15 +41,16 @@ export interface SubscriptionClaim {
 export interface PaymentRecord {
   signature: string;
   slot: number;
-  timestamp: number;
+  // part of the event
   policyAddress: string;
-  amount: string;
-  tokenMint: string;
-  payer: string;
-  recipient: string;
   gateway: string;
+  amount: string;
+  timestamp: number;
   memo: string;
   recordId: number;
+  payer: string;
+  recipient: string;
+  tokenMint: string;
 }
 
 export interface TributaryJWTPayload {

@@ -26,12 +26,14 @@ const INTEGRATIONS: Integration[] = [
     founder: "Dr.-Ing. Fabian Schuh",
     url: "https://contribute.so",
     image: "testimony/contributeso.png",
-  }, {
+  },
+  {
     name: "Orquestra",
-    description: "Turned our Solana program IDLs into APIs for AI agents and developer apps.",
+    description:
+      "Turned our Solana program IDLs into APIs for AI agents and developer apps.",
     url: "https://orquestra.dev/project/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
     founder: "Berkay Öztunç",
-    image: "testimony/orquestra.png"
+    image: "testimony/orquestra.png",
   },
   {
     name: "Contribute.so",
@@ -39,6 +41,28 @@ const INTEGRATIONS: Integration[] = [
     founder: "Dr.-Ing. Fabian Schuh",
     url: "https://contribute.so",
     image: "testimony/contributeso.png",
+  },
+  {
+    name: "Contribute.so",
+    description: "Solving Treasury inflow via Tributary",
+    founder: "Sarthi Bborkar",
+    url: "https://fundwise.fun",
+    image: "testimony/fundwise.jpg",
+  },
+  {
+    name: "Unseal",
+    description: "Turning any URL into a paid access link.",
+    founder: "Efe",
+    url: "https://unseal.link",
+    image: "testimony/unseal.jpg",
+  },
+  {
+    name: "Zero Mobile",
+    description:
+      "A wallet that can do more. — Built to be your new and only payments app ever.",
+    founder: "josh | Zero",
+    url: "https://www.zeromobile.site/",
+    image: "testimony/zeromobile.jpg",
   },
 ];
 
