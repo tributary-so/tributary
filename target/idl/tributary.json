@@ -439,9 +439,7 @@
       ],
       "accounts": [
         {
-          "name": "user",
-          "writable": true,
-          "signer": true
+          "name": "user"
         },
         {
           "name": "user_payment",
@@ -534,6 +532,11 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": [
@@ -570,9 +573,7 @@
       ],
       "accounts": [
         {
-          "name": "owner",
-          "writable": true,
-          "signer": true
+          "name": "owner"
         },
         {
           "name": "referral_account",
@@ -630,6 +631,11 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": [
@@ -658,9 +664,7 @@
       ],
       "accounts": [
         {
-          "name": "owner",
-          "writable": true,
-          "signer": true
+          "name": "owner"
         },
         {
           "name": "user_payment",
@@ -722,6 +726,11 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -2364,6 +2373,10 @@
           },
           {
             "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
             "type": "pubkey"
           }
         ]

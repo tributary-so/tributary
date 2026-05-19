@@ -4,8 +4,9 @@ use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
 pub struct CreatePaymentPolicy<'info> {
-    #[account(mut)]
-    pub user: Signer<'info>,
+    /// CHECK: The owner account - does NOT need to sign
+    #[account()]
+    pub user: AccountInfo<'info>,
 
     #[account(
         mut,
@@ -37,7 +38,7 @@ pub struct CreatePaymentPolicy<'info> {
 
     #[account(
         init,
-        payer = user,
+        payer = fee_payer,
         space = PaymentPolicy::SIZE,
         seeds = [
             PAYMENT_POLICY_SEED,
@@ -49,6 +50,9 @@ pub struct CreatePaymentPolicy<'info> {
     pub payment_policy: Account<'info, PaymentPolicy>,
 
     pub system_program: Program<'info, System>,
+
+    #[account(mut)]
+    pub fee_payer: Signer<'info>,
 }
 
 impl<'info> CreatePaymentPolicy<'info> {

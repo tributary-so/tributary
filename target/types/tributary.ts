@@ -445,9 +445,7 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "user",
-          "writable": true,
-          "signer": true
+          "name": "user"
         },
         {
           "name": "userPayment",
@@ -540,6 +538,11 @@ export type Tributary = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "feePayer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": [
@@ -576,9 +579,7 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "owner",
-          "writable": true,
-          "signer": true
+          "name": "owner"
         },
         {
           "name": "referralAccount",
@@ -636,6 +637,11 @@ export type Tributary = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "feePayer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": [
@@ -664,9 +670,7 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "owner",
-          "writable": true,
-          "signer": true
+          "name": "owner"
         },
         {
           "name": "userPayment",
@@ -728,6 +732,11 @@ export type Tributary = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "feePayer",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -2370,6 +2379,10 @@ export type Tributary = {
           },
           {
             "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenMint",
             "type": "pubkey"
           }
         ]
