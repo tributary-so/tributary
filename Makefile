@@ -45,7 +45,7 @@ mainnet_deploy:
 	solana -k ${DEPLOY_KEY_PATH} balance
 
 publish_idl:
-	anchor idl upgrade -f target/idl/tributary.json --provider.cluster mainnet --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
+	anchor idl upgrade -f target/idl/tributary.json --provider.cluster $(SOLANA_API) --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
 
 submit-verifable-build:
 	yes | solana-verify verify-from-repo --remote \
