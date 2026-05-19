@@ -144,7 +144,8 @@ export class Tributary {
    * @returns Transaction instruction to create the user payment account
    */
   async createUserPayment(
-    tokenMint: PublicKey
+    tokenMint: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
@@ -154,6 +155,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       owner: owner,
+      feePayer: feePayer ?? owner,
       config: configPda,
       tokenAccount: getAssociatedTokenAddressSync(tokenMint, owner),
       tokenMint: tokenMint,
@@ -178,7 +180,8 @@ export class Tributary {
   async createReferralAccount(
     gateway: PublicKey,
     referralCode: string,
-    referrer?: PublicKey
+    referrer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
 
@@ -200,6 +203,7 @@ export class Tributary {
 
     const accounts: any = {
       owner: owner,
+      feePayer: feePayer ?? owner,
       referralAccount: referralAccountPda,
       gateway: gateway,
       config: configPda,
@@ -411,7 +415,8 @@ export class Tributary {
     maxRenewals: number | null,
     paymentFrequency: PaymentFrequency,
     memo: number[],
-    startTime?: BN | null
+    startTime?: BN | null,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -436,6 +441,7 @@ export class Tributary {
     };
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
@@ -470,7 +476,8 @@ export class Tributary {
     maxAmountPerPeriod: BN,
     maxChunkAmount: BN,
     periodLengthSeconds: BN,
-    memo: number[]
+    memo: number[],
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -509,6 +516,7 @@ export class Tributary {
     };
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
@@ -543,7 +551,8 @@ export class Tributary {
     milestoneAmounts: BN[],
     milestoneTimestamps: BN[],
     releaseCondition: number,
-    memo: number[]
+    memo: number[],
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -610,6 +619,7 @@ export class Tributary {
 
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       userPayment: userPaymentPda,
       recipient: recipient,
       tokenMint: tokenMint,
@@ -654,7 +664,8 @@ export class Tributary {
     startTime?: BN | null,
     approvalAmount?: BN,
     executeImmediately?: boolean,
-    referralCode?: string
+    referralCode?: string,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -729,6 +740,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       config: configPda,
       userPayment: userPaymentPda,
       recipient: recipient,
@@ -836,7 +848,8 @@ export class Tributary {
     memo: number[],
     approvalAmount?: BN,
     executeImmediately?: boolean,
-    referralCode?: string
+    referralCode?: string,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -939,6 +952,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       config: configPda,
       userPayment: userPaymentPda,
       recipient: recipient,
@@ -1041,7 +1055,8 @@ export class Tributary {
     periodLengthSeconds: BN,
     memo: number[],
     approvalAmount?: BN,
-    referralCode?: string
+    referralCode?: string,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -1116,6 +1131,7 @@ export class Tributary {
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
       user: user,
+      feePayer: feePayer ?? user,
       config: configPda,
       userPayment: userPaymentPda,
       recipient: recipient,
