@@ -11,6 +11,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
 import { getTokenSymbol } from "@/lib/utils";
 import config from "@/constants";
+import { useNavigate } from "react-router-dom";
 
 const connection = new Connection(config.rpcUrl);
 
@@ -26,6 +27,7 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
   const [showCancelModal, setShowCancelModal] = React.useState(false);
   const [tokenSymbol, setTokenSymbol] = React.useState<string | null>(null);
   const wallet = useWallet();
+  const navigate = useNavigate();
   const { connected, connecting, publicKey } = wallet;
 
   React.useEffect(() => {
@@ -73,26 +75,30 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
 
       setSuccess(true);
       setIsLoading(false);
+      setRedirecting(true);
+      setConfirming(true);
 
-      if (sessionData.successUrl) {
-        setRedirecting(true);
-        setConfirming(true);
-        try {
-          const { token } = await issueSubscriptionToken(
-            wallet.publicKey!,
-            recipient,
-            sessionData.tokenMint,
-            sessionData.trackingId
-          );
+      try {
+        const { token } = await issueSubscriptionToken(
+          wallet.publicKey!,
+          recipient,
+          sessionData.tokenMint,
+          sessionData.trackingId
+        );
+        if (sessionData.successUrl) {
           const url = new URL(sessionData.successUrl);
           url.searchParams.set("token", token);
           window.location.href = url.toString();
-        } catch (jwtError) {
-          console.warn("Failed to issue JWT token:", jwtError);
-          throw jwtError;
-        } finally {
-          setConfirming(false);
+        } else {
+          navigate(`/success?token=${encodeURIComponent(token)}`);
         }
+      } catch (jwtError) {
+        console.warn("Failed to issue JWT token:", jwtError);
+        if (sessionData.successUrl) {
+          throw jwtError;
+        }
+      } finally {
+        setConfirming(false);
       }
     } catch (err) {
       console.error(err);
@@ -109,6 +115,7 @@ export function CheckoutForm({ sessionData }: CheckoutFormProps) {
       window.location.href = sessionData.cancelUrl;
     } else {
       setShowCancelModal(true);
+      navigate("/cancel");
     }
   };
 

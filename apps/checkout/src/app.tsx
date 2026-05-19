@@ -6,6 +6,8 @@ import { AppHeader } from "./components/app-header";
 import { AppFooter } from "./components/app-footer";
 import { Landing } from "./landing";
 import { PayPage } from "./pay-page";
+import { SuccessPage } from "./pages/success-page";
+import { CancelPage } from "./pages/cancel-page";
 
 function LoadingFallback() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/subscribe/*" element={<PayPage />} />
             <Route path="/pay/*" element={<PayPage />} />
+            <Route path="/success" element={<SuccessPage />} />
+            <Route path="/cancel" element={<CancelPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
