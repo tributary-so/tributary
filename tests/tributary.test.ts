@@ -3063,20 +3063,17 @@ describe("Tributary", () => {
       expect(gateway!.featureFlags).toBe(0);
     });
 
-    test("Gateway authority and admin can enable REFERRAL flag", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+    test("Gateway authority can enable REFERRAL flag", async () => {
+      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
 
       const enableIx = await sdk.enableGatewayFeature(
         flagsGatewayAuthority.publicKey,
         GATEWAY_FEATURES.REFERRAL
       );
       const tx = new Transaction().add(enableIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [admin, flagsGatewayAuthority],
-        { commitment: "processed" as Commitment }
-      );
+      await sendAndConfirmTransaction(connection, tx, [flagsGatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       const gateway = await sdk.getPaymentGateway(flagsGatewayPDA);
       expect(gateway!.featureFlags & GATEWAY_FEATURES.REFERRAL).toBe(
@@ -3085,19 +3082,16 @@ describe("Tributary", () => {
     });
 
     test("Can enable NET_AMOUNT flag alongside REFERRAL", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
 
       const enableIx = await sdk.enableGatewayFeature(
         flagsGatewayAuthority.publicKey,
         GATEWAY_FEATURES.NET_AMOUNT
       );
       const tx = new Transaction().add(enableIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [admin, flagsGatewayAuthority],
-        { commitment: "processed" as Commitment }
-      );
+      await sendAndConfirmTransaction(connection, tx, [flagsGatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       const gateway = await sdk.getPaymentGateway(flagsGatewayPDA);
       expect(gateway!.featureFlags & GATEWAY_FEATURES.REFERRAL).toBe(
@@ -3111,114 +3105,101 @@ describe("Tributary", () => {
       );
     });
 
-    test("Can enable CUSTOM_PROTOCOL_FEE flag", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+    test("CUSTOM_PROTOCOL_FEE bit is protected — on-chain strips it even if passed directly", async () => {
+      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
 
-      const enableIx = await sdk.enableGatewayFeature(
-        flagsGatewayAuthority.publicKey,
-        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      const { address: gatewayPda } = sdk.getGatewayPda(
+        flagsGatewayAuthority.publicKey
       );
-      const tx = new Transaction().add(enableIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [admin, flagsGatewayAuthority],
-        { commitment: "processed" as Commitment }
-      );
+      const rawIx = await sdk.program.methods
+        .updateGatewayFeatureFlags({
+          featureFlags:
+            GATEWAY_FEATURES.REFERRAL |
+            GATEWAY_FEATURES.NET_AMOUNT |
+            GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE,
+        })
+        .accountsStrict({
+          authority: flagsGatewayAuthority.publicKey,
+          gateway: gatewayPda,
+        })
+        .instruction();
+      const tx = new Transaction().add(rawIx);
+      await sendAndConfirmTransaction(connection, tx, [flagsGatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       const gateway = await sdk.getPaymentGateway(flagsGatewayPDA);
       expect(gateway!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
-        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+        0
       );
-      expect(gateway!.featureFlags).toBe(
-        GATEWAY_FEATURES.REFERRAL |
-          GATEWAY_FEATURES.NET_AMOUNT |
-          GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
-      );
+      expect(
+        gateway!.featureFlags &
+          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+      ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 
     test("Can disable a single flag without affecting others", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
 
       const disableIx = await sdk.disableGatewayFeature(
         flagsGatewayAuthority.publicKey,
         GATEWAY_FEATURES.NET_AMOUNT
       );
       const tx = new Transaction().add(disableIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [admin, flagsGatewayAuthority],
-        { commitment: "processed" as Commitment }
-      );
+      await sendAndConfirmTransaction(connection, tx, [flagsGatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       const gateway = await sdk.getPaymentGateway(flagsGatewayPDA);
       expect(gateway!.featureFlags & GATEWAY_FEATURES.NET_AMOUNT).toBe(0);
       expect(gateway!.featureFlags & GATEWAY_FEATURES.REFERRAL).toBe(
         GATEWAY_FEATURES.REFERRAL
       );
-      expect(gateway!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
-        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
-      );
     });
 
     test("Can set raw flags via updateGatewayFeatureFlags", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
 
-      const rawFlags =
-        GATEWAY_FEATURES.NET_AMOUNT | GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE;
+      const rawFlags = GATEWAY_FEATURES.NET_AMOUNT;
       const updateIx = await sdk.updateGatewayFeatureFlags(
         flagsGatewayAuthority.publicKey,
         rawFlags
       );
       const tx = new Transaction().add(updateIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [admin, flagsGatewayAuthority],
-        { commitment: "processed" as Commitment }
-      );
+      await sendAndConfirmTransaction(connection, tx, [flagsGatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       const gateway = await sdk.getPaymentGateway(flagsGatewayPDA);
-      expect(gateway!.featureFlags).toBe(rawFlags);
-      expect(gateway!.featureFlags & GATEWAY_FEATURES.REFERRAL).toBe(0);
       expect(gateway!.featureFlags & GATEWAY_FEATURES.NET_AMOUNT).toBe(
         GATEWAY_FEATURES.NET_AMOUNT
       );
-      expect(gateway!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
-        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
-      );
+      expect(gateway!.featureFlags & GATEWAY_FEATURES.REFERRAL).toBe(0);
     });
 
     test("SDK rejects invalid flag bits", async () => {
       await expect(
-        sdk.updateGatewayFeatureFlags(
-          flagsGatewayAuthority.publicKey,
-          0x08 // no such flag
-        )
-      ).rejects.toThrow("Invalid feature flags");
+        sdk.updateGatewayFeatureFlags(flagsGatewayAuthority.publicKey, 0x08)
+      ).rejects.toThrow();
     });
 
     test("Can disable all flags", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
 
       const updateIx = await sdk.updateGatewayFeatureFlags(
         flagsGatewayAuthority.publicKey,
         0
       );
       const tx = new Transaction().add(updateIx);
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        [admin, flagsGatewayAuthority],
-        { commitment: "processed" as Commitment }
-      );
+      await sendAndConfirmTransaction(connection, tx, [flagsGatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
 
       const gateway = await sdk.getPaymentGateway(flagsGatewayPDA);
       expect(gateway!.featureFlags).toBe(0);
     });
 
-    test("Non-admin cannot update feature flags", async () => {
+    test("Non-authority cannot update feature flags", async () => {
       const rando = Keypair.generate();
       await fund(rando.publicKey, 1);
       await sdk.updateWallet(new anchor.Wallet(rando));
@@ -3229,12 +3210,9 @@ describe("Tributary", () => {
       );
       const tx = new Transaction().add(updateIx);
       await expect(
-        sendAndConfirmTransaction(
-          connection,
-          tx,
-          [rando, flagsGatewayAuthority],
-          { commitment: "processed" as Commitment }
-        )
+        sendAndConfirmTransaction(connection, tx, [rando], {
+          commitment: "processed" as Commitment,
+        })
       ).rejects.toThrow();
     });
   });

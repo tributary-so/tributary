@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::error::TributaryError;
-use crate::state::{PaymentGateway, ProgramConfig};
+use crate::state::PaymentGateway;
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -17,15 +17,8 @@ pub struct UpdateGatewayFeatureFlags<'info> {
         constraint = gateway.authority == authority.key() @ TributaryError::Unauthorized
     )]
     pub gateway: Box<Account<'info, PaymentGateway>>,
+
     pub authority: Signer<'info>,
-    #[account(
-        seeds = [CONFIG_SEED],
-        bump = config.bump,
-        constraint = config.admin == admin.key() @ TributaryError::Unauthorized
-    )]
-    pub config: Box<Account<'info, ProgramConfig>>,
-    #[account(mut)]
-    pub admin: Signer<'info>,
 }
 
 impl<'info> UpdateGatewayFeatureFlags<'info> {
@@ -43,7 +36,10 @@ impl<'info> UpdateGatewayFeatureFlags<'info> {
             TributaryError::InvalidFeatureFlags
         );
 
-        gateway.feature_flags = args.feature_flags;
+        let protected_bit = gateway.feature_flags & PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
+        gateway.feature_flags = (args.feature_flags
+            & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
+            | protected_bit;
 
         msg!(
             "Gateway feature flags updated: flags={}",

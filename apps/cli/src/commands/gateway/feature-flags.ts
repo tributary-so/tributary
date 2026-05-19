@@ -1,10 +1,8 @@
 import * as anchor from '@coral-xyz/anchor'
 import {Flags} from '@oclif/core'
-import {sendAndConfirmTransaction, Transaction} from '@solana/web3.js'
 import {GATEWAY_FEATURES} from '@tributary-so/sdk'
 
 import {BaseCommand} from '../../lib/base-command.js'
-import {readKeypairFromFile} from '../../lib/utils.js'
 
 const FLAG_NAMES = Object.keys(GATEWAY_FEATURES) as (keyof typeof GATEWAY_FEATURES)[]
 
@@ -17,19 +15,14 @@ function resolveFlag(input: string): null | number {
 }
 
 export default class GatewayFeatureFlags extends BaseCommand {
-  static description = 'Update gateway feature flags (requires admin + authority signers)'
+  static description = 'Update gateway feature flags (gateway authority only; CUSTOM_PROTOCOL_FEE is admin-only)'
   static examples = [
-    '<%= config.bin %> <%= command.id %> --authority-keypath auth.json --enable REFERRAL',
-    '<%= config.bin %> <%= command.id %> --authority-keypath auth.json --disable REFERRAL',
-    '<%= config.bin %> <%= command.id %> --authority-keypath auth.json --set 0x03',
+    '<%= config.bin %> <%= command.id %> --enable REFERRAL',
+    '<%= config.bin %> <%= command.id %> --disable REFERRAL',
+    '<%= config.bin %> <%= command.id %> --set 0x03',
   ]
   static flags = {
     ...BaseCommand.baseFlags,
-    'authority-keypath': Flags.string({
-      char: 'a',
-      description: 'Path to gateway authority keypair file',
-      required: true,
-    }),
     disable: Flags.string({
       char: 'd',
       description: `Feature flag to disable (${FLAG_NAMES.join(', ')}), or hex value`,
@@ -49,10 +42,9 @@ export default class GatewayFeatureFlags extends BaseCommand {
 
   public async run(): Promise<void> {
     const {flags} = await this.parse(GatewayFeatureFlags)
-    const authorityKeypair = readKeypairFromFile(flags['authority-keypath'])
 
     const sdk = await this.getSDK()
-    const authorityPubkey = authorityKeypair.publicKey
+    const authorityPubkey = sdk.provider.publicKey
 
     let instruction: anchor.web3.TransactionInstruction
 
@@ -72,12 +64,8 @@ export default class GatewayFeatureFlags extends BaseCommand {
       this.error('Specify --enable, --disable, or --set')
     }
 
-    const tx = new Transaction().add(instruction)
-    const adminKeypair = readKeypairFromFile(flags.keypath)
-    const signature = await sendAndConfirmTransaction(sdk.provider.connection as anchor.web3.Connection, tx, [
-      adminKeypair,
-      authorityKeypair,
-    ])
+    const tx = new anchor.web3.Transaction().add(instruction)
+    const signature = await sdk.provider.sendAndConfirm(tx)
 
     this.output({
       authority: authorityPubkey.toString(),

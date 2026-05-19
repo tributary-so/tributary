@@ -1816,36 +1816,29 @@ export class Tributary {
   }
 
   /**
-   * Sets the raw feature_flags byte on a gateway.
-   * Both the gateway authority and protocol admin must sign.
-   * Use the individual enable/disable helpers for a safer API.
+   * Sets the raw feature_flags byte on a gateway (authority-only).
+   * Bit 2 (CUSTOM_PROTOCOL_FEE) is protected and cannot be changed here —
+   * use updateGatewayCustomProtocolFee for that.
    * @param gatewayAuthority - Public key of the gateway authority
-   * @param featureFlags - Raw feature flags byte (combination of GATEWAY_FEATURES bits)
+   * @param featureFlags - Raw feature flags byte (only bits 0-1 are applied)
    * @returns Transaction instruction
    */
   async updateGatewayFeatureFlags(
     gatewayAuthority: PublicKey,
     featureFlags: number
   ): Promise<TransactionInstruction> {
-    const admin = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
-    const { address: configPda } = getConfigPda(this.programId);
 
-    const validMask =
-      GATEWAY_FEATURES.REFERRAL |
-      GATEWAY_FEATURES.NET_AMOUNT |
-      GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE;
-    if ((featureFlags & ~validMask) !== 0) {
+    const validMask = GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT;
+    if ((featureFlags & ~validMask) !== 0 && featureFlags !== 0) {
       throw new Error(
-        "Invalid feature flags — only REFERRAL, NET_AMOUNT, and CUSTOM_PROTOCOL_FEE bits are allowed"
+        "Invalid feature flags — only REFERRAL and NET_AMOUNT bits can be set via this method"
       );
     }
 
     const accounts = {
-      admin,
       authority: gatewayAuthority,
       gateway: gatewayPda,
-      config: configPda,
     };
 
     return await this.program.methods
