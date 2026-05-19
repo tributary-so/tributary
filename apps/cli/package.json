@@ -1,27 +1,19 @@
 {
   "name": "@tributary-so/cli",
   "private": false,
-  "scripts": {
-    "build": "tsup",
-    "ci": "pnpm run build && pnpm run lint && pnpm run format:check",
-    "dev": "node --loader ts-node/esm src/index.ts",
-    "format": "prettier --write src",
-    "format:check": "prettier --check src",
-    "lint": "exit 0;",
-    "lint2": "eslint .",
-    "release": "semantic-release -e semantic-release-monorepo"
-  },
-  "files": [
-    "lib"
-  ],
-  "description": "Keeper to run payments",
-  "keywords": [
-    "solana-web3js",
-    "typescript"
-  ],
+  "description": "Tributary command line tool",
   "version": "1.8.0",
-  "type": "module",
+  "author": "Fabian Schuh",
+  "bin": {
+    "cli": "./bin/run.js",
+    "tributary": "./bin/run.js",
+    "@tributary-so/cli": "./bin/run.js"
+  },
+  "bugs": "https://github.com/tributary-so/tributary/issues",
   "dependencies": {
+    "@oclif/core": "^4",
+    "@oclif/plugin-help": "^6",
+    "@oclif/plugin-plugins": "^5",
     "@coral-xyz/anchor": "^0.31.0",
     "@solana/spl-token": "^0.4.12",
     "@solana/web3.js": "^1.98.0",
@@ -29,29 +21,85 @@
     "bn.js": "^5.2.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.35.0",
-    "@types/bn.js": "^5.1.6",
-    "@types/node": "^24.5.2",
-    "esbuild-fix-imports-plugin": "^1.0.23",
-    "eslint": "^9.35.0",
-    "globals": "^16.4.0",
-    "prettier": "^2.6.2",
-    "ts-node": "^10.9.2",
-    "tsup": "^8.0.0",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.44.0"
+    "@eslint/compat": "^1",
+    "@oclif/prettier-config": "^0.2.1",
+    "@oclif/test": "^4",
+    "@types/chai": "^4",
+    "@types/mocha": "^10",
+    "@types/node": "^18",
+    "chai": "^4",
+    "eslint": "^9",
+    "eslint-config-oclif": "^6",
+    "eslint-config-prettier": "^10",
+    "mocha": "^11",
+    "oclif": "^4",
+    "shx": "^0.3.3",
+    "ts-node": "^10",
+    "typescript": "^5"
   },
-  "main": "./lib/index.js",
   "engines": {
     "node": ">=18.0.0"
   },
-  "bin": {
-    "tributary": "./lib/index.js",
-    "@tributary-so/cli": "./lib/index.js"
+  "files": [
+    "./bin",
+    "./dist",
+    "./oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/tributary-so/tributary",
+  "keywords": [
+    "oclif"
+  ],
+  "license": "MIT",
+  "main": "dist/index.js",
+  "type": "module",
+  "oclif": {
+    "bin": "cli",
+    "dirname": "cli",
+    "commands": "./dist/commands",
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-plugins"
+    ],
+    "topicSeparator": " ",
+    "topics": {
+      "wallet": {
+        "description": "Wallet management - keypair creation, import, and balance queries"
+      },
+      "program": {
+        "description": "Protocol configuration - program initialization and config queries"
+      },
+      "user": {
+        "description": "User Payment accounts - create, list, and inspect user payment state"
+      },
+      "gateway": {
+        "description": "Payment gateway management - create, configure, and inspect gateways"
+      },
+      "subscription": {
+        "description": "Subscription payment policies - create, list, pause, resume, and delete"
+      },
+      "payments": {
+        "description": "Payment execution - trigger recurring payment processing"
+      },
+      "referral": {
+        "description": "Referral system - create referral accounts and query referral chains"
+      },
+      "pda": {
+        "description": "PDA utilities - derive program addresses for all account types"
+      }
+    }
   },
-  "publishConfig": {
-    "access": "public"
+  "repository": "tributary-so/tributary",
+  "scripts": {
+    "build": "shx rm -rf dist && tsc -b",
+    "lint": "eslint",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "posttest": "pnpm run lint",
+    "prepack": "oclif manifest && oclif readme",
+    "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "version": "oclif readme && git add README.md",
+    "release": "semantic-release -e semantic-release-monorepo"
   },
+  "types": "dist/index.d.ts",
   "release": {
     "extends": "semantic-release-monorepo",
     "branches": [
