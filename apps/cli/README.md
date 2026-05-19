@@ -1,397 +1,470 @@
-cli
-=================
+# @tributary-so/cli
 
-Tributary command line tool
+A command-line interface for managing Tributary recurring payments on Solana. This CLI provides comprehensive tools for creating payment gateways, managing subscriptions, executing payments, and administering the Tributary protocol.
 
+## Overview
 
-[![oclif](https://img.shields.io/badge/cli-oclif-brightgreen.svg)](https://oclif.io)
-[![Version](https://img.shields.io/npm/v/cli.svg)](https://npmjs.org/package/cli)
-[![Downloads/week](https://img.shields.io/npm/dw/cli.svg)](https://npmjs.org/package/cli)
+Tributary is an automated recurring payments system built on Solana that provides Web2 subscription UX with Web3 transparency. The CLI serves as the primary interface for:
 
+- **Payment Gateway Management**: Create and configure payment gateways with custom fees and settings
+- **Subscription Management**: Set up recurring payment policies with flexible scheduling
+- **Payment Execution**: Process pending payments automatically or on-demand
+- **Protocol Administration**: Initialize and manage the Tributary program
+- **PDA Utilities**: Generate and inspect Program Derived Addresses for debugging
 
-<!-- toc -->
-* [Usage](#usage)
-* [Commands](#commands)
-<!-- tocstop -->
-# Usage
-<!-- usage -->
-```sh-session
-$ npm install -g @tributary-so/cli
-$ cli COMMAND
-running command...
-$ cli (--version)
-@tributary-so/cli/0.0.0 linux-x64 node-v25.9.0
-$ cli --help [COMMAND]
-USAGE
-  $ cli COMMAND
-...
-```
-<!-- usagestop -->
-# Commands
-<!-- commands -->
-* [`cli hello PERSON`](#cli-hello-person)
-* [`cli hello world`](#cli-hello-world)
-* [`cli help [COMMAND]`](#cli-help-command)
-* [`cli plugins`](#cli-plugins)
-* [`cli plugins add PLUGIN`](#cli-plugins-add-plugin)
-* [`cli plugins:inspect PLUGIN...`](#cli-pluginsinspect-plugin)
-* [`cli plugins install PLUGIN`](#cli-plugins-install-plugin)
-* [`cli plugins link PATH`](#cli-plugins-link-path)
-* [`cli plugins remove [PLUGIN]`](#cli-plugins-remove-plugin)
-* [`cli plugins reset`](#cli-plugins-reset)
-* [`cli plugins uninstall [PLUGIN]`](#cli-plugins-uninstall-plugin)
-* [`cli plugins unlink [PLUGIN]`](#cli-plugins-unlink-plugin)
-* [`cli plugins update`](#cli-plugins-update)
+## Tech Stack
 
-## `cli hello PERSON`
+- **Language**: TypeScript (ES2020 target)
+- **Runtime**: Node.js
+- **CLI Framework**: Commander.js
+- **Blockchain**: Solana Web3.js
+- **Smart Contracts**: Anchor Framework
+- **Build Tool**: TypeScript Compiler
+- **Linting**: ESLint with React hooks and refresh plugins
+- **Formatting**: Prettier
 
-Say hello
+## Prerequisites
 
-```
-USAGE
-  $ cli hello PERSON -f <value>
+- Node.js 20 or higher
+- A Solana RPC endpoint (mainnet-beta, devnet, or local validator)
+- Solana CLI tools (for keypair management)
+- Access to a funded Solana wallet
 
-ARGUMENTS
-  PERSON  Person to say hello to
+## Installation
 
-FLAGS
-  -f, --from=<value>  (required) Who is saying hello
+### From Source
 
-DESCRIPTION
-  Say hello
+```bash
+# Clone the repository
+git clone https://github.com/your-org/tributary.git
+cd tributary
 
-EXAMPLES
-  $ cli hello friend --from oclif
-  hello friend from oclif! (./src/commands/hello/index.ts)
+# Install dependencies for the CLI package
+cd cli
+pnpm install
+
+# Build the CLI
+pnpm run build
 ```
 
-_See code: [src/commands/hello/index.ts](https://github.com/tributary-so/tributary/blob/v0.0.0/src/commands/hello/index.ts)_
+### Global Installation
 
-## `cli hello world`
-
-Say hello world
-
-```
-USAGE
-  $ cli hello world
-
-DESCRIPTION
-  Say hello world
-
-EXAMPLES
-  $ cli hello world
-  hello world! (./src/commands/hello/world.ts)
+```bash
+# Build and link globally
+cd cli
+pnpm run build
+npm link
 ```
 
-_See code: [src/commands/hello/world.ts](https://github.com/tributary-so/tributary/blob/v0.0.0/src/commands/hello/world.ts)_
+## Quick Start
 
-## `cli help [COMMAND]`
+1. **Set up your environment:**
 
-Display help for cli.
+```bash
+# Create a keypair for testing
+solana-keygen new --outfile ~/.config/solana/id.json
 
-```
-USAGE
-  $ cli help [COMMAND...] [-n]
-
-ARGUMENTS
-  [COMMAND...]  Command to show help for.
-
-FLAGS
-  -n, --nested-commands  Include all nested commands in the output.
-
-DESCRIPTION
-  Display help for cli.
+# Fund your wallet on devnet
+solana airdrop 2 ~/.config/solana/id.json --url https://api.devnet.solana.com
 ```
 
-_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/6.2.49/src/commands/help.ts)_
+2. **Initialize the program (admin only):**
 
-## `cli plugins`
-
-List installed plugins.
-
-```
-USAGE
-  $ cli plugins [--json] [--core]
-
-FLAGS
-  --core  Show core plugins.
-
-GLOBAL FLAGS
-  --json  Format output as json.
-
-DESCRIPTION
-  List installed plugins.
-
-EXAMPLES
-  $ cli plugins
+```bash
+tributary-cli -c https://api.devnet.solana.com -k ~/.config/solana/id.json \
+  initialize -a [ADMIN_PUBKEY]
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/index.ts)_
+3. **Create a payment gateway:**
 
-## `cli plugins add PLUGIN`
-
-Installs a plugin into cli.
-
-```
-USAGE
-  $ cli plugins add PLUGIN... [--json] [-f] [-h] [-s | -v]
-
-ARGUMENTS
-  PLUGIN...  Plugin to install.
-
-FLAGS
-  -f, --force    Force npm to fetch remote resources even if a local copy exists on disk.
-  -h, --help     Show CLI help.
-  -s, --silent   Silences npm output.
-  -v, --verbose  Show verbose npm output.
-
-GLOBAL FLAGS
-  --json  Format output as json.
-
-DESCRIPTION
-  Installs a plugin into cli.
-
-  Uses npm to install plugins.
-
-  Installation of a user-installed plugin will override a core plugin.
-
-  Use the CLI_NPM_LOG_LEVEL environment variable to set the npm loglevel.
-  Use the CLI_NPM_REGISTRY environment variable to set the npm registry.
-
-ALIASES
-  $ cli plugins add
-
-EXAMPLES
-  Install a plugin from npm registry.
-
-    $ cli plugins add myplugin
-
-  Install a plugin from a github url.
-
-    $ cli plugins add https://github.com/someuser/someplugin
-
-  Install a plugin from a github slug.
-
-    $ cli plugins add someuser/someplugin
+```bash
+tributary-cli -c https://api.devnet.solana.com -k ~/.config/solana/id.json \
+  create-gateway \
+  -a [AUTHORITY_PUBKEY] \
+  -f 500 \
+  -r [FEE_RECIPIENT_PUBKEY] \
+  -n "My Gateway" \
+  -u "https://mygateway.com"
 ```
 
-## `cli plugins:inspect PLUGIN...`
+4. **Create a subscription:**
 
-Displays installation properties of a plugin.
-
-```
-USAGE
-  $ cli plugins inspect PLUGIN...
-
-ARGUMENTS
-  PLUGIN...  [default: .] Plugin to inspect.
-
-FLAGS
-  -h, --help     Show CLI help.
-  -v, --verbose
-
-GLOBAL FLAGS
-  --json  Format output as json.
-
-DESCRIPTION
-  Displays installation properties of a plugin.
-
-EXAMPLES
-  $ cli plugins inspect myplugin
+```bash
+tributary-cli -c https://api.devnet.solana.com -k ~/.config/solana/id.json \
+  create-subscription \
+  -t [TOKEN_MINT_PUBKEY] \
+  -r [RECIPIENT_PUBKEY] \
+  -g [GATEWAY_PUBKEY] \
+  -a 1000000 \
+  -m "Monthly subscription"
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/inspect.ts)_
+## Global Options
 
-## `cli plugins install PLUGIN`
+All commands require these global options:
 
-Installs a plugin into cli.
+| Option                       | Description               | Example                               |
+| ---------------------------- | ------------------------- | ------------------------------------- |
+| `-c, --connection-url <url>` | Solana RPC connection URL | `https://api.mainnet-beta.solana.com` |
+| `-k, --keypath <path>`       | Path to keypair JSON file | `~/.config/solana/id.json`            |
 
-```
-USAGE
-  $ cli plugins install PLUGIN... [--json] [-f] [-h] [-s | -v]
+## Commands
 
-ARGUMENTS
-  PLUGIN...  Plugin to install.
+### Program Administration
 
-FLAGS
-  -f, --force    Force npm to fetch remote resources even if a local copy exists on disk.
-  -h, --help     Show CLI help.
-  -s, --silent   Silences npm output.
-  -v, --verbose  Show verbose npm output.
+#### `initialize`
 
-GLOBAL FLAGS
-  --json  Format output as json.
+Initialize the Tributary program with admin configuration.
 
-DESCRIPTION
-  Installs a plugin into cli.
-
-  Uses npm to install plugins.
-
-  Installation of a user-installed plugin will override a core plugin.
-
-  Use the CLI_NPM_LOG_LEVEL environment variable to set the npm loglevel.
-  Use the CLI_NPM_REGISTRY environment variable to set the npm registry.
-
-ALIASES
-  $ cli plugins add
-
-EXAMPLES
-  Install a plugin from npm registry.
-
-    $ cli plugins install myplugin
-
-  Install a plugin from a github url.
-
-    $ cli plugins install https://github.com/someuser/someplugin
-
-  Install a plugin from a github slug.
-
-    $ cli plugins install someuser/someplugin
+```bash
+tributary-cli initialize -a [ADMIN_PUBKEY]
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/install.ts)_
+**Options:**
 
-## `cli plugins link PATH`
+- `-a, --admin <pubkey>`: Admin public key (required)
 
-Links a plugin into the CLI for development.
+### Payment Gateway Management
 
-```
-USAGE
-  $ cli plugins link PATH [-h] [--install] [-v]
+#### `create-gateway`
 
-ARGUMENTS
-  PATH  [default: .] path to plugin
+Create a new payment gateway with custom settings.
 
-FLAGS
-  -h, --help          Show CLI help.
-  -v, --verbose
-      --[no-]install  Install dependencies after linking the plugin.
-
-DESCRIPTION
-  Links a plugin into the CLI for development.
-
-  Installation of a linked plugin will override a user-installed or core plugin.
-
-  e.g. If you have a user-installed or core plugin that has a 'hello' command, installing a linked plugin with a 'hello'
-  command will override the user-installed or core plugin implementation. This is useful for development work.
-
-
-EXAMPLES
-  $ cli plugins link myplugin
+```bash
+tributary-cli create-gateway \
+  -a [AUTHORITY_PUBKEY] \
+  -f 500 \
+  -r [FEE_RECIPIENT_PUBKEY] \
+  -n "My Gateway" \
+  -u "https://mygateway.com" \
+  [--admin-keypath ~/.config/solana/admin-keypair.json]
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/link.ts)_
+**Options:**
 
-## `cli plugins remove [PLUGIN]`
+- `-a, --authority <pubkey>`: Gateway authority public key (required)
+- `-f, --fee-bps <number>`: Gateway fee in basis points (required)
+- `-r, --fee-recipient <pubkey>`: Fee recipient public key (required)
+- `-n, --name <string>`: Gateway name (required)
+- `-u, --url <string>`: Gateway URL (required)
+- `--admin-keypath <path>`: Admin keypair path (defaults to main keypath)
 
-Removes a plugin from the CLI.
+#### `delete-gateway`
 
-```
-USAGE
-  $ cli plugins remove [PLUGIN...] [-h] [-v]
+Delete an existing payment gateway.
 
-ARGUMENTS
-  [PLUGIN...]  plugin to uninstall
-
-FLAGS
-  -h, --help     Show CLI help.
-  -v, --verbose
-
-DESCRIPTION
-  Removes a plugin from the CLI.
-
-ALIASES
-  $ cli plugins unlink
-  $ cli plugins remove
-
-EXAMPLES
-  $ cli plugins remove myplugin
+```bash
+tributary-cli delete-gateway -a [AUTHORITY_PUBKEY]
 ```
 
-## `cli plugins reset`
+#### `change-gateway-signer`
 
-Remove all user-installed and linked plugins.
+Update the signer for a payment gateway.
 
-```
-USAGE
-  $ cli plugins reset [--hard] [--reinstall]
-
-FLAGS
-  --hard       Delete node_modules and package manager related files in addition to uninstalling plugins.
-  --reinstall  Reinstall all plugins after uninstalling.
+```bash
+tributary-cli change-gateway-signer \
+  -a [AUTHORITY_PUBKEY] \
+  -s [NEW_SIGNER_PUBKEY]
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/reset.ts)_
+#### `change-gateway-fee-recipient`
 
-## `cli plugins uninstall [PLUGIN]`
+Update the fee recipient for a payment gateway.
 
-Removes a plugin from the CLI.
-
-```
-USAGE
-  $ cli plugins uninstall [PLUGIN...] [-h] [-v]
-
-ARGUMENTS
-  [PLUGIN...]  plugin to uninstall
-
-FLAGS
-  -h, --help     Show CLI help.
-  -v, --verbose
-
-DESCRIPTION
-  Removes a plugin from the CLI.
-
-ALIASES
-  $ cli plugins unlink
-  $ cli plugins remove
-
-EXAMPLES
-  $ cli plugins uninstall myplugin
+```bash
+tributary-cli change-gateway-fee-recipient \
+  -a [AUTHORITY_PUBKEY] \
+  -r [NEW_FEE_RECIPIENT_PUBKEY]
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/uninstall.ts)_
+#### `change-gateway-fee-bps`
 
-## `cli plugins unlink [PLUGIN]`
+Update the gateway fee in basis points.
 
-Removes a plugin from the CLI.
-
-```
-USAGE
-  $ cli plugins unlink [PLUGIN...] [-h] [-v]
-
-ARGUMENTS
-  [PLUGIN...]  plugin to uninstall
-
-FLAGS
-  -h, --help     Show CLI help.
-  -v, --verbose
-
-DESCRIPTION
-  Removes a plugin from the CLI.
-
-ALIASES
-  $ cli plugins unlink
-  $ cli plugins remove
-
-EXAMPLES
-  $ cli plugins unlink myplugin
+```bash
+tributary-cli change-gateway-fee-bps \
+  -a [AUTHORITY_PUBKEY] \
+  -f 750
 ```
 
-## `cli plugins update`
+#### `update-gateway-referral-settings`
 
-Update installed plugins.
+Configure referral program settings.
 
-```
-USAGE
-  $ cli plugins update [-h] [-v]
-
-FLAGS
-  -h, --help     Show CLI help.
-  -v, --verbose
-
-DESCRIPTION
-  Update installed plugins.
+```bash
+tributary-cli update-gateway-referral-settings \
+  -a [AUTHORITY_PUBKEY] \
+  -f 1 \
+  -l 500 \
+  -t "100,50,25"
 ```
 
-_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/update.ts)_
-<!-- commandsstop -->
+**Options:**
+
+- `-f, --feature-flags <number>`: Feature flags (bit 0 = referral enabled)
+- `-l, --referral-allocation-bps <number>`: Referral allocation in basis points
+- `-t, --referral-tiers-bps <string>`: Comma-separated tier BPS (L1,L2,L3)
+
+#### `update-gateway-protocol-fee`
+
+Update custom protocol fee settings (admin only).
+
+```bash
+tributary-cli update-gateway-protocol-fee \
+  -a [AUTHORITY_PUBKEY] \
+  -u true \
+  -f 150 \
+  --admin-keypath ~/.config/solana/admin-keypair.json
+```
+
+### Subscription Management
+
+#### `create-user-payment`
+
+Create a user payment account for a specific token.
+
+```bash
+tributary-cli create-user-payment -t [TOKEN_MINT_PUBKEY]
+```
+
+#### `create-subscription`
+
+Create a recurring payment subscription.
+
+```bash
+tributary-cli create-subscription \
+  -t [TOKEN_MINT_PUBKEY] \
+  -r [RECIPIENT_PUBKEY] \
+  -g [GATEWAY_PUBKEY] \
+  -a 1000000 \
+  -m "Monthly subscription" \
+  [--auto-renew] \
+  [--max-renewals 12] \
+  [-f monthly] \
+  [--start-time 1704067200] \
+  [--execute-immediately]
+```
+
+**Options:**
+
+- `-t, --token-mint <pubkey>`: Token mint public key (required)
+- `-r, --recipient <pubkey>`: Payment recipient public key (required)
+- `-g, --gateway <pubkey>`: Payment gateway public key (required)
+- `-a, --amount <number>`: Payment amount in token base units (required)
+- `-m, --memo <string>`: Payment memo (default: "")
+- `--auto-renew`: Enable auto-renewal (default: true)
+- `--max-renewals <number>`: Maximum number of renewals
+- `-f, --frequency <string>`: Payment frequency (default: "monthly")
+  - Options: `daily`, `weekly`, `monthly`, `quarterly`, `semiAnnually`, `annually`
+- `--start-time <number>`: Start time as Unix timestamp
+- `--execute-immediately`: Execute first payment immediately
+
+### Payment Execution
+
+#### `execute-payment`
+
+Execute a pending payment for a user payment account.
+
+```bash
+tributary-cli execute-payment -u [USER_PAYMENT_PDA]
+```
+
+**Options:**
+
+- `-u, --user-payment <pubkey>`: User payment account public key (required)
+
+### Inspection & Utilities
+
+#### `list-gateways`
+
+List all payment gateways.
+
+```bash
+tributary-cli list-gateways
+```
+
+#### `list-user-payments`
+
+List all user payment accounts.
+
+```bash
+tributary-cli list-user-payments
+```
+
+#### `list-policies-by-owner`
+
+List all payment policies for a specific owner.
+
+```bash
+tributary-cli list-policies-by-owner -o [OWNER_PUBKEY]
+```
+
+#### `list-payment-policies`
+
+List all payment policies grouped by user payment.
+
+```bash
+tributary-cli list-payment-policies
+```
+
+### PDA Utilities
+
+#### `get-config-pda`
+
+Get the program configuration PDA.
+
+```bash
+tributary-cli get-config-pda
+```
+
+#### `get-gateway-pda`
+
+Get a gateway PDA for a specific authority.
+
+```bash
+tributary-cli get-gateway-pda -a [AUTHORITY_PUBKEY]
+```
+
+#### `get-user-payment-pda`
+
+Get a user payment PDA for a user and token mint.
+
+```bash
+tributary-cli get-user-payment-pda \
+  -u [USER_PUBKEY] \
+  -t [TOKEN_MINT_PUBKEY]
+```
+
+#### `get-payment-policy-pda`
+
+Get a payment policy PDA for a user payment and policy ID.
+
+```bash
+tributary-cli get-payment-policy-pda \
+  -u [USER_PAYMENT_PUBKEY] \
+  -p 1
+```
+
+#### `get-payments-delegate-pda`
+
+Get the payments delegate PDA.
+
+```bash
+tributary-cli get-payments-delegate-pda
+```
+
+## Development
+
+### Building
+
+```bash
+# Build the CLI
+pnpm run build
+
+# Build in watch mode
+pnpm run dev
+```
+
+### Testing
+
+```bash
+# Run linting
+pnpm run lint
+
+# Fix linting issues
+pnpm run lint:fix
+
+# Format code
+pnpm run format
+
+# Check formatting
+pnpm run format:check
+
+# Run full CI suite
+pnpm run ci
+```
+
+### Project Structure
+
+```
+cli/
+├── src/
+│   └── index.ts          # Main CLI entry point
+├── dist/                 # Compiled JavaScript output
+├── package.json          # Package configuration
+├── tsconfig.json         # TypeScript configuration
+├── eslint.config.js      # ESLint configuration
+└── README.md            # This file
+```
+
+### Key Dependencies
+
+- **`@tributary-so/sdk`**: Tributary SDK for Solana interactions
+- **`commander`**: Command-line interface framework
+- **`@solana/web3.js`**: Solana Web3 JavaScript API
+- **`@coral-xyz/anchor`**: Anchor framework for Solana programs
+
+## Environment Variables
+
+The CLI reads configuration from command-line options rather than environment variables. However, you may want to set these for your shell environment:
+
+```bash
+# Solana CLI configuration
+export SOLANA_RPC_URL="https://api.devnet.solana.com"
+
+# Default keypair path
+export SOLANA_KEYPAIR_PATH="~/.config/solana/id.json"
+```
+
+## Error Handling
+
+The CLI provides detailed error messages for common issues:
+
+- **Connection errors**: Verify your RPC URL is accessible
+- **Keypair errors**: Ensure your keypair file exists and is properly formatted
+- **Insufficient funds**: Check your wallet balance for transaction fees
+- **Permission errors**: Verify you have authority over the accounts you're modifying
+
+## Troubleshooting
+
+### Common Issues
+
+**"Error reading keypair"**
+
+- Ensure the keypair file exists at the specified path
+- Verify the JSON format is correct (array of numbers)
+
+**"Transaction simulation failed"**
+
+- Check your wallet has sufficient SOL for transaction fees
+- Verify account ownership and permissions
+- Ensure the program is properly initialized
+
+**"Account not found"**
+
+- Confirm PDAs are correct using the PDA utility commands
+- Check that prerequisite accounts (gateways, user payments) exist
+
+### Debug Mode
+
+For additional debugging information, you can inspect transaction signatures and account states using the Solana CLI:
+
+```bash
+# Check transaction status
+solana confirm [TRANSACTION_SIGNATURE]
+
+# Inspect account data
+solana account [ACCOUNT_PUBKEY]
+```
+
+## Contributing
+
+1. Follow the established code style (TypeScript strict mode, Prettier formatting)
+2. Add comprehensive error handling for new commands
+3. Update this README when adding new features
+4. Test commands on devnet before mainnet deployment
+
+## License
+
+MIT</content>
+<parameter name="filePath">/home/xeroc/projects/Tributary/tributary/cli/README.md
