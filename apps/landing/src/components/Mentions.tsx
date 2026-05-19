@@ -162,6 +162,92 @@ const endorsers: Endorser[] = [
       />
     ),
   },
+  {
+    name: " Solana Builders Club ",
+    url: "https://solanabuilders.club/",
+    mark: (
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 709 709"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlnsXlink="http://www.w3.org/1999/xlink"
+        xmlSpace="preserve"
+        style={{
+          fillRule: "evenodd",
+          clipRule: "evenodd",
+          strokeMiterlimit: 10,
+        }}
+      >
+        <g id="BACKGROUND"></g>
+        <g
+          id="Artboard1"
+          transform="matrix(0.972985,0,0,0.982432,-333.733974,-553.109108)"
+        >
+          <rect
+            x={343}
+            y={563}
+            width={728}
+            height={721}
+            style={{ fill: "none" }}
+          />
+          <g
+            id="OBJECTS"
+            transform="matrix(4.282353,0,0,4.241176,-9.523294,-10.067765)"
+          >
+            <g transform="matrix(1,0,0,1,117.16035,269.212917)">
+              <path
+                d="M0,-98.2C-7.9,-88.7 -2.9,-73.8 -4.4,-63.5C-6,-53.2 -12.2,-49.1 -12.2,-49.1C-12.2,-49.1 -6,-45 -4.4,-34.7C-2.9,-24.4 -7.9,-9.5 0,-0C2.6,3.1 5.7,4.6 8.6,5.4C11.3,6 13.1,8.4 13.1,11.2C13.1,14.7 10.1,17.6 6.5,17.2C-13.5,14.9 -19.5,1.4 -18.5,-15.7C-17.6,-29.9 -19.9,-37.3 -23.9,-40.2C-26.6,-42.1 -28.5,-45 -28.5,-48.3L-28.5,-49.9C-28.5,-53.2 -26.6,-56.1 -23.9,-58C-19.9,-60.8 -17.6,-68.2 -18.5,-82.5C-19.5,-99.6 -13.5,-113.1 6.5,-115.4C10.1,-115.8 13.1,-112.9 13.1,-109.4C13.1,-106.6 11.3,-104.2 8.6,-103.5C5.7,-102.8 2.6,-101.3 0,-98.2"
+                style={{ fill: "rgb(45,44,44)", fillRule: "nonzero" }}
+              />
+            </g>
+            <g transform="matrix(1,0,0,1,217.48065,269.212917)">
+              <path
+                d="M0,-98.2C7.9,-88.7 2.9,-73.8 4.4,-63.5C6,-53.2 12.2,-49.1 12.2,-49.1C12.2,-49.1 6,-45 4.4,-34.7C2.9,-24.4 7.9,-9.5 0,-0C-2.6,3.1 -5.7,4.6 -8.6,5.4C-11.3,6 -13.1,8.4 -13.1,11.2C-13.1,14.7 -10.1,17.6 -6.5,17.2C13.5,14.9 19.5,1.4 18.5,-15.7C17.6,-29.9 19.9,-37.3 23.9,-40.2C26.6,-42.1 28.5,-45 28.5,-48.3L28.5,-49.9C28.5,-53.2 26.6,-56.1 23.9,-58C19.9,-60.8 17.6,-68.2 18.5,-82.5C19.5,-99.6 13.5,-113.1 -6.5,-115.4C-10.1,-115.8 -13.1,-112.9 -13.1,-109.4C-13.1,-106.6 -11.3,-104.2 -8.6,-103.5C-5.7,-102.8 -2.6,-101.3 0,-98.2"
+                style={{ fill: "rgb(45,44,44)", fillRule: "nonzero" }}
+              />
+            </g>
+            <g transform="matrix(0,-1,-1,0,139.93255,186.759117)">
+              <path
+                d="M-16.6,-16.6C-25.8,-16.6 -33.2,-9.2 -33.2,0C-33.2,9.2 -25.8,16.6 -16.6,16.6C-7.4,16.6 0,9.2 0,0C0,-9.2 -7.4,-16.6 -16.6,-16.6"
+                style={{ fill: "rgb(45,44,44)", fillRule: "nonzero" }}
+              />
+            </g>
+            <g transform="matrix(0,-1,-1,0,194.70755,186.759117)">
+              <path
+                d="M-16.6,-16.6C-25.8,-16.6 -33.2,-9.2 -33.2,0C-33.2,9.2 -25.8,16.6 -16.6,16.6C-7.4,16.6 0,9.2 0,0C0,-9.2 -7.4,-16.6 -16.6,-16.6"
+                style={{ fill: "rgb(45,44,44)", fillRule: "nonzero" }}
+              />
+            </g>
+            <g transform="matrix(1,0,0,1,152.24285,192.832517)">
+              <path
+                d="M0,12C0,12 2.8,0 15.1,0C27.4,0 30.2,12 30.2,12"
+                style={{
+                  fill: "none",
+                  fillRule: "nonzero",
+                  stroke: "rgb(45,44,44)",
+                  strokeWidth: "3px",
+                }}
+              />
+            </g>
+            <g transform="matrix(1,0,0,1,181.27315,253.467717)">
+              <path
+                d="M0,-9.1C0,-9.1 -2.6,0 -14,0C-25.3,0 -27.9,-9.1 -27.9,-9.1"
+                style={{
+                  fill: "none",
+                  fillRule: "nonzero",
+                  stroke: "rgb(45,44,44)",
+                  strokeWidth: "4px",
+                  strokeLinecap: "round",
+                }}
+              />
+            </g>
+          </g>
+        </g>
+      </svg>
+    ),
+  },
   // {
   //   name: "Solana Foundation",
   //   url: "https://x.com/SolPlay_jonas/status/2052741790852165641",
@@ -194,7 +280,7 @@ function Endorsements() {
             className="flex items-center gap-2 text-neutral-300 dark:text-neutral-700 hover:text-neutral-500 dark:hover:text-neutral-400 transition-colors duration-200"
           >
             <span className="shrink-0">{e.mark}</span>
-            <span className="font-mono text-[13px] font-medium whitespace-nowrap">
+            <span className="font-mono text-[13px] font-medium whitespace-nowrap text-neutral-800 hover:text-black">
               {e.name}
             </span>
           </a>
