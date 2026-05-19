@@ -56,6 +56,14 @@ const INTEGRATIONS: Integration[] = [
     url: "https://unseal.link",
     image: "testimony/unseal.jpg",
   },
+  {
+    name: "Zero Mobile",
+    description:
+      "A wallet that can do more. — Built to be your new and only payments app ever.",
+    founder: "josh | Zero",
+    url: "https://www.zeromobile.site/",
+    image: "testimony/zeromobile.jpg",
+  },
 ];
 
 // Repeat enough times to fill wide screens seamlessly (2 copies for loop)
