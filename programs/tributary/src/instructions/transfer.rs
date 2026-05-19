@@ -77,6 +77,7 @@ impl<'info> TransferTokens<'info> {
         let gateway = &accounts.gateway;
         let clock = Clock::get()?;
         let mint_decimals = accounts.mint.decimals;
+        let mint_key = accounts.mint.key();
 
         let from_info = accounts.from.to_account_info();
         let mint_info = accounts.mint.to_account_info();
@@ -185,6 +186,7 @@ impl<'info> TransferTokens<'info> {
             record_id: 0,
             payer: accounts.from.owner,
             recipient: accounts.to.owner.key(),
+            token_mint: mint_key,
         });
 
         msg!(

@@ -12,6 +12,7 @@ pub struct PaymentRecord {
     pub record_id: u32,
     pub payer: Pubkey,
     pub recipient: Pubkey,
+    pub token_mint: Pubkey,
 }
 
 /// An event that is thrown when program is initialized
