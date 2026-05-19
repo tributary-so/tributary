@@ -65,6 +65,10 @@ impl PaymentGateway {
 }
 
 impl PaymentGateway {
+    pub const FEATURE_REFERRAL: u8 = 0x01;
+    pub const FEATURE_NET_AMOUNT: u8 = 0x02;
+    pub const FEATURE_CUSTOM_PROTOCOL_FEE: u8 = 0x04;
+
     /// Validate that referral tier percentages sum to 100% (10000 bps)
     pub fn validate_referral_tiers(&self) -> Result<()> {
         if self.referral_tiers_bps.len() != 3 {
@@ -79,18 +83,18 @@ impl PaymentGateway {
 
     /// Check if the referral program feature is enabled
     pub fn is_referral_enabled(&self) -> bool {
-        self.feature_flags & 0x01 != 0
+        self.feature_flags & Self::FEATURE_REFERRAL != 0
     }
 
     /// Check if amount is net (recipient receives exactly payment_amount, fees added on top)
     /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
     pub fn is_amount_net(&self) -> bool {
-        self.feature_flags & 0x02 != 0
+        self.feature_flags & Self::FEATURE_NET_AMOUNT != 0
     }
 
     /// Check if custom protocol fee feature is enabled
     /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
     pub fn is_custom_protocol_fee_enabled(&self) -> bool {
-        self.feature_flags & 0x04 != 0
+        self.feature_flags & Self::FEATURE_CUSTOM_PROTOCOL_FEE != 0
     }
 }

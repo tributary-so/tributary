@@ -39,8 +39,10 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
         // Only allow modifying bits 0 and 1 (referral and net mode)
         // Bit 2 (custom protocol fee) is reserved for protocol admin only
         if let Some(flags) = args.feature_flags {
-            let protected_bit = gateway.feature_flags & 0x04;
-            gateway.feature_flags = (flags & 0x03) | protected_bit;
+            let protected_bit = gateway.feature_flags & PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
+            gateway.feature_flags = (flags
+                & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
+                | protected_bit;
         }
 
         // Update referral allocation if provided

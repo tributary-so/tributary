@@ -1251,6 +1251,82 @@ export type Tributary = {
       ]
     },
     {
+      "name": "updateGatewayFeatureFlags",
+      "discriminator": [
+        132,
+        186,
+        249,
+        7,
+        77,
+        97,
+        16,
+        213
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "updateGatewayFeatureFlagsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "updateGatewayProtocolFee",
       "discriminator": [
         64,
@@ -1789,6 +1865,11 @@ export type Tributary = {
       "code": 6036,
       "name": "distinctPubKeysRequired",
       "msg": "Distinct Pubkeys required!"
+    },
+    {
+      "code": 6037,
+      "name": "invalidFeatureFlags",
+      "msg": "Invalid feature flags"
     }
   ],
   "types": [
@@ -2797,6 +2878,18 @@ export type Tributary = {
                 3
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "updateGatewayFeatureFlagsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "featureFlags",
+            "type": "u8"
           }
         ]
       }

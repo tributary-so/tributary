@@ -111,6 +111,13 @@ pub mod tributary {
         UpdateGatewayProtocolFee::handle_update_gateway_protocol_fee(ctx, args)
     }
 
+    pub fn update_gateway_feature_flags(
+        ctx: Context<UpdateGatewayFeatureFlags>,
+        args: UpdateGatewayFeatureFlagsArgs,
+    ) -> Result<()> {
+        UpdateGatewayFeatureFlags::handle_update_gateway_feature_flags(ctx, args)
+    }
+
     pub fn transfer<'info>(
         ctx: Context<'_, '_, 'info, 'info, TransferTokens<'info>>,
         amount: u64,

@@ -34,6 +34,7 @@ import type {
   ProgramConfig,
   ReferralAccount,
 } from "./types.js";
+import { GATEWAY_FEATURES } from "./constants";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -1375,7 +1376,8 @@ export class Tributary {
       gatewayAccount.referralAllocationBps > 0
     ) {
       // Check if bit 0 is set (referral enabled)
-      const referralEnabled = (gatewayAccount.featureFlags & 1) === 1;
+      const referralEnabled =
+        (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
 
       if (referralEnabled && _user) {
         // Build the referral chain
@@ -1811,6 +1813,79 @@ export class Tributary {
       })
       .accountsStrict(accounts)
       .instruction();
+  }
+
+  /**
+   * Sets the raw feature_flags byte on a gateway.
+   * Both the gateway authority and protocol admin must sign.
+   * Use the individual enable/disable helpers for a safer API.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param featureFlags - Raw feature flags byte (combination of GATEWAY_FEATURES bits)
+   * @returns Transaction instruction
+   */
+  async updateGatewayFeatureFlags(
+    gatewayAuthority: PublicKey,
+    featureFlags: number
+  ): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const validMask =
+      GATEWAY_FEATURES.REFERRAL |
+      GATEWAY_FEATURES.NET_AMOUNT |
+      GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE;
+    if ((featureFlags & ~validMask) !== 0) {
+      throw new Error(
+        "Invalid feature flags — only REFERRAL, NET_AMOUNT, and CUSTOM_PROTOCOL_FEE bits are allowed"
+      );
+    }
+
+    const accounts = {
+      admin,
+      authority: gatewayAuthority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .updateGatewayFeatureFlags({ featureFlags })
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Enables a specific feature flag on a gateway.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param flag - One of GATEWAY_FEATURES values
+   * @returns Transaction instruction
+   */
+  async enableGatewayFeature(
+    gatewayAuthority: PublicKey,
+    flag: number
+  ): Promise<TransactionInstruction> {
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const gateway = await this.getPaymentGateway(gatewayPda);
+    if (!gateway) throw new Error("Gateway not found");
+    const newFlags = gateway.featureFlags | flag;
+    return this.updateGatewayFeatureFlags(gatewayAuthority, newFlags);
+  }
+
+  /**
+   * Disables a specific feature flag on a gateway.
+   * @param gatewayAuthority - Public key of the gateway authority
+   * @param flag - One of GATEWAY_FEATURES values
+   * @returns Transaction instruction
+   */
+  async disableGatewayFeature(
+    gatewayAuthority: PublicKey,
+    flag: number
+  ): Promise<TransactionInstruction> {
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const gateway = await this.getPaymentGateway(gatewayPda);
+    if (!gateway) throw new Error("Gateway not found");
+    const newFlags = gateway.featureFlags & ~flag;
+    return this.updateGatewayFeatureFlags(gatewayAuthority, newFlags);
   }
 
   // Query methods
@@ -2276,7 +2351,8 @@ export class Tributary {
       gatewayAccount.featureFlags &&
       gatewayAccount.referralAllocationBps > 0
     ) {
-      const referralEnabled = (gatewayAccount.featureFlags & 1) === 1;
+      const referralEnabled =
+        (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
       if (referralEnabled) {
         const referralChain = await this.getReferralChain(authority, gateway);
         const referralAccounts = referralChain.filter(
