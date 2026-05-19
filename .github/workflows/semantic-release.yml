@@ -68,3 +68,5 @@ jobs:
           pnpm run --filter ./packages/sdk-react release || true
           pnpm run --filter ./packages/sdk-x402 release || true
           pnpm run --filter ./app/cli release || true
+
+          pnpm run --filter ./programs/tributary release || true
