@@ -38,7 +38,7 @@ const TWEETS: Tweet[] = [
     date: "May 18m 2026",
     text: `Honestly, this is the exact agenda behind what we’re trying to do with @UmbraPrivacy.
 
-It warms my heart to see you guys following the same path that Umbra, Avici, Solomon, and the rest of us have walked, especially with the governance side of things on @futarddotio. Seriously excited to see how @tributaryso does there. Wishing you guys the absolute best, kill it!`
+It warms my heart to see you guys following the same path that Umbra, Avici, Solomon, and the rest of us have walked, especially with the governance side of things on @futarddotio. Seriously excited to see how @tributaryso does there. Wishing you guys the absolute best, kill it!`,
   },
   {
     id: "2047557841481851266",
@@ -120,6 +120,15 @@ Recurring payments on Solana with one signature — subscriptions, donations, an
     text: "this is slick as hell",
     date: "May 8, 2026",
     url: "https://x.com/AviiWeb3/status/2052744078299947110",
+  },
+  {
+    url: "https://x.com/beharefe/status/2056638542743286249",
+    id: "2056638542743286249",
+    author: "Efe",
+    handle: "beharefe",
+    date: "May 19, 2026",
+    text: `Was looking for easy Solana native checkout solution. Ofcourse as first tried Solana Pay, Helio, but that mixed things up because also Moonpay? It was really not intuitive dev process. Finally decided to go with custom implementation, unless saw @tributaryso
+ 🤗 easy, fast, solid`,
   },
 ];
 
