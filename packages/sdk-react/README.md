@@ -829,4 +829,10 @@ MIT License - see [LICENSE](../LICENSE) file for details.
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/tributary-so/tributary/issues)
-- **Twitter**: [@tributary_so](https://twitter.com/tributary_so)
+- **Twitter**: [@tributaryso](https://twitter.com/tributaryso)
+
+## Bump
+
+Sometimes, we need to bump this repo to bring in changes from the SDK and
+trigger a release in CI. For this we require a change in this folder. Forcing
+that change with a period..
