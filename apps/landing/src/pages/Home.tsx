@@ -204,7 +204,7 @@ const faqs = [
   },
 ];
 
-export default function HomeFutardio() {
+export function HomeFutardio() {
   return (
     <>
       <FutardioBanner />
@@ -213,7 +213,7 @@ export default function HomeFutardio() {
   );
 }
 
-export function HomeContent() {
+export default function HomeContent() {
   const navigate = useNavigate();
 
   const scrollToSection = (id: string) => {
