@@ -43,7 +43,7 @@ const INTEGRATIONS: Integration[] = [
     image: "testimony/contributeso.png",
   },
   {
-    name: "Contribute.so",
+    name: "Fundwise",
     description: "Solving Treasury inflow via Tributary",
     founder: "Sarthi Bborkar",
     url: "https://fundwise.fun",
@@ -63,6 +63,14 @@ const INTEGRATIONS: Integration[] = [
     founder: "josh | Zero",
     url: "https://www.zeromobile.site/",
     image: "testimony/zeromobile.jpg",
+  },
+  {
+    name: "Zerion",
+    description:
+      "As a winner during a hackathon sidetrack, Zerion celebrated its Tributary integration as a victory",
+    founder: "Gyan 高言",
+    url: "https://x.com/gyan_w3b/status/2060406565627453930",
+    image: "testimony/zerion.jpg",
   },
 ];
 

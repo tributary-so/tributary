@@ -1,0 +1,12 @@
+# Surfpool configuration for Tributary
+# See: https://docs.surfpool.run
+
+[toolchain]
+package_manager = "pnpm"
+
+[network]
+rpc_url = "https://api.mainnet-beta.solana.com"
+ws_url = "wss://api.mainnet-beta.solana.com"
+
+[test]
+startup_wait = 20000
