@@ -130,6 +130,18 @@ Recurring payments on Solana with one signature — subscriptions, donations, an
     text: `Was looking for easy Solana native checkout solution. Ofcourse as first tried Solana Pay, Helio, but that mixed things up because also Moonpay? It was really not intuitive dev process. Finally decided to go with custom implementation, unless saw @tributaryso
  🤗 easy, fast, solid`,
   },
+  {
+    url: "https://x.com/gyan_w3b/status/2060406664147443851",
+    id: "2060406664147443851",
+    author: "Gyan 高言",
+    handle: "@gyan_w3b",
+    date: "May 29, 2026",
+    text: `🥉 3rd · $300 — @tributaryso by @xer0c
+
+An automated recurring payments protocol on Solana that brings Web2 subscription UX to Web3 using token delegation. Supports subscriptions, milestone payments, and pay-as-you-go models with full user control to pause, resume, or cancel at any time.
+
+check it out here http://tributary.so`,
+  },
 ];
 
 // Repeat enough times to fill wide screens seamlessly (2 copies for loop)
