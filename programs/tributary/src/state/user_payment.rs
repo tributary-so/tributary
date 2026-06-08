@@ -25,8 +25,10 @@ pub struct UserPayment {
     /// Total number of policies ever created for this user/mint combination
     /// This field only increases and is used to prevent policy ID reuse
     pub created_policies_count: u32,
+    /// Account that paid rent for this account (receives rent on close)
+    pub rent_payer: Pubkey,
     /// Reserved space for future extensions
-    pub padding: [u8; 252],
+    pub padding: [u8; 220],
 }
 
 impl UserPayment {
@@ -40,5 +42,6 @@ impl UserPayment {
         8 + // updated_at: i64
         1 + // is_active: bool
         1 + // bump: u8
-        252; // padding: [u8; 252]
+        32 + // rent_payer: Pubkey
+        220; // padding: [u8; 220]
 }

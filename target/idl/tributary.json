@@ -907,6 +907,13 @@
               }
             ]
           }
+        },
+        {
+          "name": "rent_payer",
+          "docs": [
+            "Only used when stored rent_payer != Pubkey::default()."
+          ],
+          "writable": true
         }
       ],
       "args": [
@@ -915,6 +922,88 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "delete_user_payment",
+      "discriminator": [
+        208,
+        129,
+        72,
+        168,
+        92,
+        75,
+        82,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "rent_payer",
+          "docs": [
+            "Only used when stored rent_payer != Pubkey::default()."
+          ],
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
     },
     {
       "name": "execute_payment",
@@ -1649,6 +1738,19 @@
         34,
         21
       ]
+    },
+    {
+      "name": "UserPaymentDeleted",
+      "discriminator": [
+        208,
+        115,
+        168,
+        26,
+        86,
+        179,
+        246,
+        36
+      ]
     }
   ],
   "errors": [
@@ -1841,6 +1943,16 @@
       "code": 6037,
       "name": "InvalidFeatureFlags",
       "msg": "Invalid feature flags"
+    },
+    {
+      "code": 6038,
+      "name": "HasActivePolicies",
+      "msg": "Cannot delete user payment with active policies"
+    },
+    {
+      "code": 6039,
+      "name": "InvalidRentPayer",
+      "msg": "Invalid rent payer"
     }
   ],
   "types": [
@@ -2272,6 +2384,13 @@
             "type": "u8"
           },
           {
+            "name": "rent_payer",
+            "docs": [
+              "Account that paid rent for this account (receives rent on close)"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -2279,7 +2398,7 @@
             "type": {
               "array": [
                 "u8",
-                255
+                223
               ]
             }
           }
@@ -3007,6 +3126,13 @@
             "type": "u32"
           },
           {
+            "name": "rent_payer",
+            "docs": [
+              "Account that paid rent for this account (receives rent on close)"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -3014,7 +3140,7 @@
             "type": {
               "array": [
                 "u8",
-                252
+                220
               ]
             }
           }
@@ -3039,6 +3165,29 @@
           },
           {
             "name": "token_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserPaymentDeleted",
+      "docs": [
+        "An event that is thrown when a user payment account is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user_payment",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "rent_payer",
             "type": "pubkey"
           }
         ]

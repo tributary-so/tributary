@@ -54,6 +54,7 @@ impl<'info> CreateUserPayment<'info> {
         user_payment.updated_at = clock.unix_timestamp;
         user_payment.is_active = true;
         user_payment.bump = ctx.bumps.user_payment;
+        user_payment.rent_payer = ctx.accounts.fee_payer.key();
 
         emit!(UserPaymentCreated {
             owner: user_payment.owner,

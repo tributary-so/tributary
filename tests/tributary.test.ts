@@ -3607,4 +3607,80 @@ describe("Tributary", () => {
       );
     });
   });
+
+  describe("Full cleanup - delete all policies and user payment", () => {
+    test("Delete all remaining payment policies for user", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const userPayment = await sdk.getUserPayment(userPaymentPDA);
+      expect(userPayment).not.toBeNull();
+      expect(userPayment!.activePoliciesCount).toBeGreaterThan(0);
+
+      const createdCount = userPayment!.createdPoliciesCount;
+
+      const deletePolicy = async (policyId: number) => {
+        const [policyPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("payment_policy"),
+            userPaymentPDA.toBuffer(),
+            new anchor.BN(policyId).toArrayLike(Buffer, "le", 4),
+          ],
+          program.programId
+        );
+
+        const existing = await sdk.getPaymentPolicy(policyPda);
+        if (!existing) return;
+
+        const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyId);
+        const tx = new Transaction().add(deleteIx);
+        await sendAndConfirmTransaction(connection, tx, [user], {
+          commitment: "processed" as Commitment,
+        });
+
+        const afterDelete = await sdk.getPaymentPolicy(policyPda);
+        expect(afterDelete).toBeNull();
+      };
+
+      const promises = [];
+      for (let policyId = 1; policyId <= createdCount; policyId++) {
+        promises.push(deletePolicy(policyId));
+      }
+      await Promise.all(promises);
+
+      const finalUserPayment = await sdk.getUserPayment(userPaymentPDA);
+      expect(finalUserPayment!.activePoliciesCount).toBe(0);
+    });
+
+    test("Delete user payment account returns rent to owner", async () => {
+      const userPayment = await sdk.getUserPayment(userPaymentPDA);
+      expect(userPayment).not.toBeNull();
+      expect(userPayment!.activePoliciesCount).toBe(0);
+
+      const { address: configPda } = sdk.getConfigPda();
+
+      const ownerBalanceBefore = await connection.getBalance(user.publicKey);
+
+      const deleteUserPaymentIx = await program.methods
+        .deleteUserPayment()
+        .accountsStrict({
+          owner: user.publicKey,
+          userPayment: userPaymentPDA,
+          tokenMint: tokenMint,
+          rentPayer: user.publicKey,
+          config: configPda,
+        })
+        .instruction();
+
+      const tx = new Transaction().add(deleteUserPaymentIx);
+      await sendAndConfirmTransaction(connection, tx, [user], {
+        commitment: "processed" as Commitment,
+      });
+
+      const deletedAccount = await sdk.getUserPayment(userPaymentPDA);
+      expect(deletedAccount).toBeNull();
+
+      const ownerBalanceAfter = await connection.getBalance(user.publicKey);
+      expect(ownerBalanceAfter).toBeGreaterThan(ownerBalanceBefore);
+    });
+  });
 });

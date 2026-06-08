@@ -78,6 +78,10 @@ pub mod tributary {
         DeletePaymentPolicy::handler_delete_payment_policy(ctx, policy_id)
     }
 
+    pub fn delete_user_payment(ctx: Context<DeleteUserPayment>) -> Result<()> {
+        DeleteUserPayment::handler_delete_user_payment(ctx)
+    }
+
     pub fn delete_payment_gateway(ctx: Context<DeletePaymentGateway>) -> Result<()> {
         DeletePaymentGateway::handler_delete_payment_gateway(ctx)
     }

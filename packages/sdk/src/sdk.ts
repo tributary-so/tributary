@@ -1654,6 +1654,7 @@ export class Tributary {
       userPayment: userPaymentPda,
       tokenMint: tokenMint,
       paymentPolicy: paymentPolicyPda,
+      rentPayer: owner,
     };
 
     return await this.program.methods

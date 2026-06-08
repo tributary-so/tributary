@@ -200,8 +200,10 @@ pub struct PaymentPolicy {
     pub policy_id: u32,
     /// PDA bump seed for address derivation
     pub bump: u8,
+    /// Account that paid rent for this account (receives rent on close)
+    pub rent_payer: Pubkey,
     /// Reserved space for future extensions
-    pub padding: [u8; 255],
+    pub padding: [u8; 223],
 }
 
 impl PaymentPolicy {
@@ -218,5 +220,6 @@ impl PaymentPolicy {
         8 + // updated_at: i64
         4 + // policy_id: u32
         1 + // bump: u8
-        255; // padding: [u8; 255]
+        32 + // rent_payer: Pubkey
+        223; // padding: [u8; 223]
 }

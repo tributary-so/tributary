@@ -80,4 +80,8 @@ pub enum TributaryError {
     DistinctPubKeysRequired,
     #[msg("Invalid feature flags")]
     InvalidFeatureFlags,
+    #[msg("Cannot delete user payment with active policies")]
+    HasActivePolicies,
+    #[msg("Invalid rent payer")]
+    InvalidRentPayer,
 }
