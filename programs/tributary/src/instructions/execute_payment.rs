@@ -142,6 +142,7 @@ impl<'info> ExecutePayment<'info> {
 
         let up_key = user_payment.key();
         let pd_key = accounts.payments_delegate.key();
+        let user_payment_info = user_payment.to_account_info();
 
         let delegate = accounts.user_token_account.delegate.clone();
         let up_owner = user_payment.owner;
@@ -156,7 +157,7 @@ impl<'info> ExecutePayment<'info> {
                     up_mint.as_ref().to_vec(),
                     vec![up_bump],
                 ];
-                (seeds, accounts.user_payment.to_account_info())
+                (seeds, user_payment_info.clone())
             }
             COption::Some(d) if d == &pd_key => {
                 let seeds: Vec<Vec<u8>> =

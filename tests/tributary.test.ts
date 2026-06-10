@@ -3728,13 +3728,6 @@ describe("Tributary", () => {
         program.programId
       );
 
-      const recipientAta2 = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        recipient.publicKey
-      );
-
       await sdk.updateWallet(new anchor.Wallet(migrateUser));
       const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
       await sendAndConfirmTransaction(
@@ -3795,14 +3788,14 @@ describe("Tributary", () => {
       const tokenAcc = await getAccount(connection, migrateUserTokenAccount);
       expect(tokenAcc.delegate).toEqual(migratePaymentsDelegate);
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
       const executeIxs = await sdk.executePayment(migratePolicy1PDA);
       await sendAndConfirmTransaction(
         connection,
         new Transaction()
           .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
           .add(...executeIxs),
-        [gatewayAuthority],
+        [gatewayExecutionSigner],
         { commitment: "processed" as Commitment }
       );
 
@@ -3865,14 +3858,14 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
       const executeIxs = await sdk.executePayment(migratePolicy2PDA);
       await sendAndConfirmTransaction(
         connection,
         new Transaction()
           .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
           .add(...executeIxs),
-        [gatewayAuthority],
+        [gatewayExecutionSigner],
         { commitment: "processed" as Commitment }
       );
 
@@ -3931,14 +3924,14 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
       const executeIxs = await sdk.executePayment(policy3PDA);
       await sendAndConfirmTransaction(
         connection,
         new Transaction()
           .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
           .add(...executeIxs),
-        [gatewayAuthority],
+        [gatewayExecutionSigner],
         { commitment: "processed" as Commitment }
       );
 
@@ -3988,7 +3981,7 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
       try {
         const executeIxs = await sdk.executePayment(noDelegatePolicyPDA);
         await sendAndConfirmTransaction(
@@ -3996,7 +3989,7 @@ describe("Tributary", () => {
           new Transaction()
             .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
             .add(...executeIxs),
-          [gatewayAuthority],
+          [gatewayExecutionSigner],
           { commitment: "processed" as Commitment }
         );
         assert(false, "Expected payment to fail with no delegate");
