@@ -12,6 +12,8 @@ import {
   createMint,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccount,
+  createAssociatedTokenAccountInstruction,
+  createMintToInstruction,
   mintTo,
   approve,
   revoke,
@@ -73,6 +75,64 @@ describe("Tributary", () => {
     });
   }
 
+  async function batchFund(pairs: [PublicKey, number][]): Promise<void> {
+    const transaction = new anchor.web3.Transaction();
+    for (const [account, amount] of pairs) {
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: provider.wallet.publicKey,
+          toPubkey: account,
+          lamports: amount * LAMPORTS_PER_SOL,
+        })
+      );
+    }
+    await provider.sendAndConfirm(transaction, null, {
+      commitment: "processed" as Commitment,
+    });
+  }
+
+  async function batchCreateATAs(
+    ownerPublicKeys: PublicKey[]
+  ): Promise<PublicKey[]> {
+    const ataAddresses = ownerPublicKeys.map((owner) =>
+      getAssociatedTokenAddressSync(tokenMint, owner)
+    );
+    const tx = new Transaction();
+    for (let i = 0; i < ownerPublicKeys.length; i++) {
+      tx.add(
+        createAssociatedTokenAccountInstruction(
+          admin.publicKey,
+          ataAddresses[i],
+          ownerPublicKeys[i],
+          tokenMint
+        )
+      );
+    }
+    await provider.sendAndConfirm(tx, [admin], {
+      commitment: "processed" as Commitment,
+    });
+    return ataAddresses;
+  }
+
+  async function batchMintTo(
+    targets: { address: PublicKey; amount: bigint }[]
+  ): Promise<void> {
+    const tx = new Transaction();
+    for (const target of targets) {
+      tx.add(
+        createMintToInstruction(
+          tokenMint,
+          target.address,
+          mintAuthority.publicKey,
+          target.amount
+        )
+      );
+    }
+    await provider.sendAndConfirm(tx, [mintAuthority], {
+      commitment: "processed" as Commitment,
+    });
+  }
+
   beforeAll(async () => {
     // Create Solana Kite connection
     connection = provider.connection;
@@ -93,14 +153,14 @@ describe("Tributary", () => {
       program.programId
     );
 
-    await Promise.all([
-      fund(admin.publicKey, 10),
-      fund(user.publicKey, 10),
-      fund(mintAuthority.publicKey, 10),
-      fund(gatewayAuthority.publicKey, 10),
-      fund(feeRecipient.publicKey, 1),
-      fund(gatewayExecutionSigner.publicKey, 10),
-      fund(recipient.publicKey, 1),
+    await batchFund([
+      [admin.publicKey, 10],
+      [user.publicKey, 10],
+      [mintAuthority.publicKey, 10],
+      [gatewayAuthority.publicKey, 10],
+      [feeRecipient.publicKey, 1],
+      [gatewayExecutionSigner.publicKey, 10],
+      [recipient.publicKey, 1],
     ]);
 
     // Create token mint
@@ -166,28 +226,13 @@ describe("Tributary", () => {
       program.programId
     );
 
-    // Create recipient token account
-    recipientTokenAccount = await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      recipient.publicKey
-    );
-
-    // Create fee recipient token accounts (SDK will handle ATA creation automatically)
-    await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      feeRecipient.publicKey
-    );
-
-    await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      admin.publicKey // config.fee_recipient
-    );
+    // Create recipient, fee recipient, and admin token accounts in one tx
+    const [recipientATA, feeRecipientATA, adminATA] = await batchCreateATAs([
+      recipient.publicKey,
+      feeRecipient.publicKey,
+      admin.publicKey,
+    ]);
+    recipientTokenAccount = recipientATA;
 
     expect(program.programId.toString()).toEqual(
       "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
@@ -1955,70 +2000,27 @@ describe("Tributary", () => {
       referrerL3 = Keypair.generate();
       payer = Keypair.generate();
 
-      await Promise.all([
-        fund(referrerL1.publicKey, 5),
-        fund(referrerL2.publicKey, 5),
-        fund(referrerL3.publicKey, 5),
-        fund(payer.publicKey, 5),
+      await batchFund([
+        [referrerL1.publicKey, 5],
+        [referrerL2.publicKey, 5],
+        [referrerL3.publicKey, 5],
+        [payer.publicKey, 5],
       ]);
 
-      l1TokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        referrerL1.publicKey
-      );
-      l2TokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        referrerL2.publicKey
-      );
-      l3TokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        referrerL3.publicKey
-      );
-      payerTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        payer.publicKey
-      );
+      [l1TokenAccount, l2TokenAccount, l3TokenAccount, payerTokenAccount] =
+        await batchCreateATAs([
+          referrerL1.publicKey,
+          referrerL2.publicKey,
+          referrerL3.publicKey,
+          payer.publicKey,
+        ]);
 
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        l1TokenAccount,
-        mintAuthority,
-        1000000n
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        l2TokenAccount,
-        mintAuthority,
-        1000000n
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        l3TokenAccount,
-        mintAuthority,
-        1000000n
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        payerTokenAccount,
-        mintAuthority,
-        2000000n
-      );
+      await batchMintTo([
+        { address: l1TokenAccount, amount: 1000000n },
+        { address: l2TokenAccount, amount: 1000000n },
+        { address: l3TokenAccount, amount: 1000000n },
+        { address: payerTokenAccount, amount: 2000000n },
+      ]);
     });
 
     test("Create referral accounts for L3 referrers and payer", async () => {
@@ -2232,18 +2234,13 @@ describe("Tributary", () => {
     });
 
     test("Execute subscription payment with referral rewards", async () => {
-      const initialL1Balance = await connection.getTokenAccountBalance(
-        l1TokenAccount
-      );
-      const initialL2Balance = await connection.getTokenAccountBalance(
-        l2TokenAccount
-      );
-      const initialL3Balance = await connection.getTokenAccountBalance(
-        l3TokenAccount
-      );
-      const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientTokenAccount
-      );
+      const [initialL1Balance, initialL2Balance, initialL3Balance, initialRecipientBalance] =
+        await Promise.all([
+          connection.getTokenAccountBalance(l1TokenAccount),
+          connection.getTokenAccountBalance(l2TokenAccount),
+          connection.getTokenAccountBalance(l3TokenAccount),
+          connection.getTokenAccountBalance(recipientTokenAccount),
+        ]);
 
       const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
 
@@ -2312,15 +2309,11 @@ describe("Tributary", () => {
         (referralPool * gateway!.referralTiersBps[2]) / 10000
       );
 
-      const finalL1Balance = await connection.getTokenAccountBalance(
-        l1TokenAccount
-      );
-      const finalL2Balance = await connection.getTokenAccountBalance(
-        l2TokenAccount
-      );
-      const finalL3Balance = await connection.getTokenAccountBalance(
-        l3TokenAccount
-      );
+      const [finalL1Balance, finalL2Balance, finalL3Balance] = await Promise.all([
+        connection.getTokenAccountBalance(l1TokenAccount),
+        connection.getTokenAccountBalance(l2TokenAccount),
+        connection.getTokenAccountBalance(l3TokenAccount),
+      ]);
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
@@ -2341,22 +2334,14 @@ describe("Tributary", () => {
 
     test("Setup Referral program with only L1 referrer", async () => {
       singleRefpayer = Keypair.generate();
-      await fund(singleRefpayer.publicKey, 5);
+      await batchFund([[singleRefpayer.publicKey, 5]]);
 
-      const singlePayerTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        singleRefpayer.publicKey
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        singlePayerTokenAccount,
-        mintAuthority,
-        100000000n
-      );
+      const [singlePayerTokenAccount] = await batchCreateATAs([
+        singleRefpayer.publicKey,
+      ]);
+      await batchMintTo([
+        { address: singlePayerTokenAccount, amount: 100000000n },
+      ]);
 
       await sdk.updateWallet(new anchor.Wallet(singleRefpayer));
       const createPayerIx = await sdk.createReferralAccount(
@@ -2467,19 +2452,19 @@ describe("Tributary", () => {
 
     test("Referral program disabled - no rewards distributed", async () => {
       const newGatewayAuthority = Keypair.generate();
-      await fund(newGatewayAuthority.publicKey, 5);
+      const newFeeRecipient = Keypair.generate();
+      const noReferralPayer = Keypair.generate();
+
+      await batchFund([
+        [newGatewayAuthority.publicKey, 5],
+        [newFeeRecipient.publicKey, 1],
+        [noReferralPayer.publicKey, 5],
+      ]);
+
+      await batchCreateATAs([newFeeRecipient.publicKey]);
 
       const { address: newGatewayPDA } = sdk.getGatewayPda(
         newGatewayAuthority.publicKey
-      );
-
-      const newFeeRecipient = Keypair.generate();
-      await fund(newFeeRecipient.publicKey, 1);
-      await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        newFeeRecipient.publicKey
       );
 
       await sdk.updateWallet(new anchor.Wallet(admin));
@@ -2495,23 +2480,12 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      const noReferralPayer = Keypair.generate();
-      await fund(noReferralPayer.publicKey, 5);
-
-      const noRefPayerTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        noReferralPayer.publicKey
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        noRefPayerTokenAccount,
-        mintAuthority,
-        1000000n
-      );
+      const [noRefPayerTokenAccount] = await batchCreateATAs([
+        noReferralPayer.publicKey,
+      ]);
+      await batchMintTo([
+        { address: noRefPayerTokenAccount, amount: 1000000n },
+      ]);
 
       const { address: noRefPayerUserPaymentPDA } = sdk.getUserPaymentPda(
         noReferralPayer.publicKey,
@@ -2592,22 +2566,14 @@ describe("Tributary", () => {
     test("Create subscription using existing referral code", async () => {
       // Create a new user for this test
       const subscriptionUser = Keypair.generate();
-      await fund(subscriptionUser.publicKey, 5);
+      await batchFund([[subscriptionUser.publicKey, 5]]);
 
-      const subscriptionUserTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        subscriptionUser.publicKey
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        subscriptionUserTokenAccount,
-        mintAuthority,
-        1000000n
-      );
+      const [subscriptionUserTokenAccount] = await batchCreateATAs([
+        subscriptionUser.publicKey,
+      ]);
+      await batchMintTo([
+        { address: subscriptionUserTokenAccount, amount: 1000000n },
+      ]);
 
       // Verify the referral account was created
       const referralCode = "PAYER3";
@@ -2680,18 +2646,22 @@ describe("Tributary", () => {
       const customFeeFeeRecipient = Keypair.generate();
 
       try {
-        await Promise.all([
-          fund(customFeeGatewayAuthority.publicKey, 5),
-          fund(customFeeUser.publicKey, 5),
-          fund(customFeeFeeRecipient.publicKey, 5),
+        await batchFund([
+          [customFeeGatewayAuthority.publicKey, 5],
+          [customFeeUser.publicKey, 5],
+          [customFeeFeeRecipient.publicKey, 5],
         ]);
 
-        await createAssociatedTokenAccount(
-          connection,
-          admin,
-          tokenMint,
-          customFeeFeeRecipient.publicKey
-        );
+        const [customFeeFeeRecipientATA, customFeeUserATA] =
+          await batchCreateATAs([
+            customFeeFeeRecipient.publicKey,
+            customFeeUser.publicKey,
+          ]);
+        customFeeUserTokenAccount = customFeeUserATA;
+
+        await batchMintTo([
+          { address: customFeeUserTokenAccount, amount: 1000000n },
+        ]);
 
         await sdk.updateWallet(new anchor.Wallet(admin));
         const createGatewayIx = await sdk.createPaymentGateway(
@@ -2708,21 +2678,6 @@ describe("Tributary", () => {
         customFeeGatewayPDA = sdk.getGatewayPda(
           customFeeGatewayAuthority.publicKey
         ).address;
-
-        customFeeUserTokenAccount = await createAssociatedTokenAccount(
-          connection,
-          admin,
-          tokenMint,
-          customFeeUser.publicKey
-        );
-        await mintTo(
-          connection,
-          mintAuthority,
-          tokenMint,
-          customFeeUserTokenAccount,
-          mintAuthority,
-          1000000n
-        );
 
         customFeeRecipientTokenAccount = recipientTokenAccount;
 
@@ -2826,13 +2781,13 @@ describe("Tributary", () => {
       expect(gateway!.featureFlags & 0x04).toBe(4);
 
       // Get initial balances
-      const initialRecipientBalance = await connection.getTokenAccountBalance(
-        customFeeRecipientTokenAccount
-      );
-      const initialProtocolFeeRecipientBalance =
-        await connection.getTokenAccountBalance(
-          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
-        );
+      const [initialRecipientBalance, initialProtocolFeeRecipientBalance] =
+        await Promise.all([
+          connection.getTokenAccountBalance(customFeeRecipientTokenAccount),
+          connection.getTokenAccountBalance(
+            getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          ),
+        ]);
 
       // Execute payment
       await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
@@ -2956,13 +2911,13 @@ describe("Tributary", () => {
       );
 
       // Get initial balances
-      const initialRecipientBalance = await connection.getTokenAccountBalance(
-        customFeeRecipientTokenAccount
-      );
-      const initialProtocolFeeRecipientBalance =
-        await connection.getTokenAccountBalance(
-          getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
-        );
+      const [initialRecipientBalance, initialProtocolFeeRecipientBalance] =
+        await Promise.all([
+          connection.getTokenAccountBalance(customFeeRecipientTokenAccount),
+          connection.getTokenAccountBalance(
+            getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
+          ),
+        ]);
 
       // Execute payment - should use global 100 bps protocol fee
       await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
@@ -3038,8 +2993,10 @@ describe("Tributary", () => {
       flagsGatewayAuthority = Keypair.generate();
       flagsFeeRecipient = Keypair.generate();
 
-      await fund(flagsGatewayAuthority.publicKey, 5);
-      await fund(flagsFeeRecipient.publicKey, 1);
+      await batchFund([
+        [flagsGatewayAuthority.publicKey, 5],
+        [flagsFeeRecipient.publicKey, 1],
+      ]);
 
       await sdk.updateWallet(new anchor.Wallet(admin));
       const createIx = await sdk.createPaymentGateway(
@@ -3238,48 +3195,32 @@ describe("Tributary", () => {
       transferUser = Keypair.generate();
       transferRecipient = Keypair.generate();
 
-      await Promise.all([
-        fund(transferUser.publicKey, 5),
-        fund(transferRecipient.publicKey, 5),
+      await batchFund([
+        [transferUser.publicKey, 5],
+        [transferRecipient.publicKey, 5],
       ]);
 
-      transferUserTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        transferUser.publicKey
-      );
+      [transferUserTokenAccount] = await batchCreateATAs([
+        transferUser.publicKey,
+        transferRecipient.publicKey,
+      ]);
 
-      await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        transferRecipient.publicKey
-      );
-
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        transferUserTokenAccount,
-        mintAuthority,
-        10000000n
-      );
+      await batchMintTo([
+        { address: transferUserTokenAccount, amount: 10000000n },
+      ]);
     });
 
     test("Execute simple transfer with memo", async () => {
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 
-      const initialUserBalance = await connection.getTokenAccountBalance(
-        transferUserTokenAccount
-      );
       const recipientAta = getAssociatedTokenAddressSync(
         tokenMint,
         transferRecipient.publicKey
       );
-      const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientAta
-      );
+      const [initialUserBalance, initialRecipientBalance] = await Promise.all([
+        connection.getTokenAccountBalance(transferUserTokenAccount),
+        connection.getTokenAccountBalance(recipientAta),
+      ]);
 
       const transferAmount = new anchor.BN(500000);
       const { recipientAmount } = calcFees(transferAmount.toNumber());
@@ -3297,12 +3238,10 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      const finalUserBalance = await connection.getTokenAccountBalance(
-        transferUserTokenAccount
-      );
-      const finalRecipientBalance = await connection.getTokenAccountBalance(
-        recipientAta
-      );
+      const [finalUserBalance, finalRecipientBalance] = await Promise.all([
+        connection.getTokenAccountBalance(transferUserTokenAccount),
+        connection.getTokenAccountBalance(recipientAta),
+      ]);
 
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
         parseInt(initialRecipientBalance.value.amount) + recipientAmount
@@ -3374,35 +3313,46 @@ describe("Tributary", () => {
         6
       );
 
-      await createAssociatedTokenAccount(
-        connection,
-        admin,
+      const userAta = getAssociatedTokenAddressSync(
         differentMint,
         transferUser.publicKey
       );
-
-      await createAssociatedTokenAccount(
-        connection,
-        admin,
-        differentMint,
-        transferRecipient.publicKey
-      );
-
-      await mintTo(
-        connection,
-        mintAuthority,
-        differentMint,
-        getAssociatedTokenAddressSync(differentMint, transferUser.publicKey),
-        mintAuthority,
-        1000000n
-      );
-
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
-
       const recipientAta = getAssociatedTokenAddressSync(
         differentMint,
         transferRecipient.publicKey
       );
+
+      const ataTx = new Transaction();
+      ataTx.add(
+        createAssociatedTokenAccountInstruction(
+          admin.publicKey,
+          userAta,
+          transferUser.publicKey,
+          differentMint
+        )
+      );
+      ataTx.add(
+        createAssociatedTokenAccountInstruction(
+          admin.publicKey,
+          recipientAta,
+          transferRecipient.publicKey,
+          differentMint
+        )
+      );
+      ataTx.add(
+        createMintToInstruction(
+          differentMint,
+          userAta,
+          mintAuthority.publicKey,
+          1000000n
+        )
+      );
+      await sendAndConfirmTransaction(connection, ataTx, [admin, mintAuthority], {
+        commitment: "processed" as Commitment,
+      });
+
+      await sdk.updateWallet(new anchor.Wallet(transferUser));
+
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientAta
       );
@@ -3433,23 +3383,10 @@ describe("Tributary", () => {
 
     test("Transfer succeeds for any user with token account", async () => {
       const nonOwner = Keypair.generate();
-      await fund(nonOwner.publicKey, 5);
+      await batchFund([[nonOwner.publicKey, 5]]);
 
-      await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        nonOwner.publicKey
-      );
-
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        getAssociatedTokenAddressSync(tokenMint, nonOwner.publicKey),
-        mintAuthority,
-        1000000n
-      );
+      const [nonOwnerAta] = await batchCreateATAs([nonOwner.publicKey]);
+      await batchMintTo([{ address: nonOwnerAta, amount: 1000000n }]);
 
       await sdk.updateWallet(new anchor.Wallet(nonOwner));
 
@@ -3564,12 +3501,10 @@ describe("Tributary", () => {
         tokenMint,
         transferRecipient.publicKey
       );
-      const initialRecipientBalance = await connection.getTokenAccountBalance(
-        recipientAta
-      );
-      const initialUserBalance = await connection.getTokenAccountBalance(
-        transferUserTokenAccount
-      );
+      const [initialRecipientBalance, initialUserBalance] = await Promise.all([
+        connection.getTokenAccountBalance(recipientAta),
+        connection.getTokenAccountBalance(transferUserTokenAccount),
+      ]);
 
       const transferAmounts = [100000, 200000, 150000];
       let totalGross = 0;
@@ -3594,12 +3529,10 @@ describe("Tributary", () => {
         });
       }
 
-      const finalRecipientBalance = await connection.getTokenAccountBalance(
-        recipientAta
-      );
-      const finalUserBalance = await connection.getTokenAccountBalance(
-        transferUserTokenAccount
-      );
+      const [finalRecipientBalance, finalUserBalance] = await Promise.all([
+        connection.getTokenAccountBalance(recipientAta),
+        connection.getTokenAccountBalance(transferUserTokenAccount),
+      ]);
 
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
         parseInt(initialRecipientBalance.value.amount) + totalRecipient
@@ -3696,23 +3629,14 @@ describe("Tributary", () => {
 
     beforeAll(async () => {
       migrateUser = Keypair.generate();
-      await fund(migrateUser.publicKey, 10);
+      await batchFund([[migrateUser.publicKey, 10]]);
 
-      migrateUserTokenAccount = await createAssociatedTokenAccount(
-        connection,
-        admin,
-        tokenMint,
-        migrateUser.publicKey
-      );
-
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        migrateUserTokenAccount,
-        mintAuthority,
-        10_000_000n
-      );
+      [migrateUserTokenAccount] = await batchCreateATAs([
+        migrateUser.publicKey,
+      ]);
+      await batchMintTo([
+        { address: migrateUserTokenAccount, amount: 10_000_000n },
+      ]);
 
       [migrateUserPaymentPDA] = PublicKey.findProgramAddressSync(
         [
