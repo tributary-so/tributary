@@ -14,6 +14,8 @@ import {
   createAssociatedTokenAccount,
   mintTo,
   approve,
+  revoke,
+  getAccount,
 } from "@solana/spl-token";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { Tributary } from "../target/types/tributary";
@@ -3681,6 +3683,373 @@ describe("Tributary", () => {
 
       const ownerBalanceAfter = await connection.getBalance(user.publicKey);
       expect(ownerBalanceAfter).toBeGreaterThan(ownerBalanceBefore);
+    });
+  });
+
+  describe("Delegate Migration: global PDA -> UserPayment PDA", () => {
+    let migrateUser: Keypair;
+    let migrateUserTokenAccount: PublicKey;
+    let migrateUserPaymentPDA: PublicKey;
+    let migratePolicy1PDA: PublicKey;
+    let migratePolicy2PDA: PublicKey;
+    let migratePaymentsDelegate: PublicKey;
+
+    beforeAll(async () => {
+      migrateUser = Keypair.generate();
+      await fund(migrateUser.publicKey, 10);
+
+      migrateUserTokenAccount = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        migrateUser.publicKey
+      );
+
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        migrateUserTokenAccount,
+        mintAuthority,
+        10_000_000n
+      );
+
+      [migrateUserPaymentPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("user_payment"),
+          migrateUser.publicKey.toBuffer(),
+          tokenMint.toBuffer(),
+        ],
+        program.programId
+      );
+
+      [migratePaymentsDelegate] = PublicKey.findProgramAddressSync(
+        [Buffer.from("payments")],
+        program.programId
+      );
+
+      const recipientAta2 = await createAssociatedTokenAccount(
+        connection,
+        admin,
+        tokenMint,
+        recipient.publicKey
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createUserPaymentIx),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+    });
+
+    test("v0: Execute payment with global payments_delegate PDA", async () => {
+      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("v0 delegate test").copy(memo);
+
+      const paymentFrequency = { daily: {} };
+      const amount = new anchor.BN(5000);
+      const startTime = Math.floor(Date.now() / 1000) - 7200;
+
+      const createPolicyIx = await sdk.getCreateSubscriptionPolicyInstruction(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        amount,
+        true,
+        null,
+        paymentFrequency,
+        Array.from(memo),
+        new anchor.BN(startTime)
+      );
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createPolicyIx),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+
+      [migratePolicy1PDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          migrateUserPaymentPDA.toBuffer(),
+          new anchor.BN(1).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      await approve(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migratePaymentsDelegate,
+        migrateUser,
+        10_000_000
+      );
+
+      const tokenAcc = await getAccount(connection, migrateUserTokenAccount);
+      expect(tokenAcc.delegate).toEqual(migratePaymentsDelegate);
+
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      const executeIxs = await sdk.executePayment(migratePolicy1PDA);
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction()
+          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
+          .add(...executeIxs),
+        [gatewayAuthority],
+        { commitment: "processed" as Commitment }
+      );
+
+      const policy = await sdk.getPaymentPolicy(migratePolicy1PDA);
+      expect(policy!.paymentCount).toBe(1);
+      expect(policy!.totalPaid.toNumber()).toBe(5000);
+    });
+
+    test("v1: Execute payment with UserPayment PDA as delegate", async () => {
+      await revoke(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migrateUser
+      );
+
+      await approve(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migrateUserPaymentPDA,
+        migrateUser,
+        10_000_000
+      );
+
+      const tokenAcc = await getAccount(connection, migrateUserTokenAccount);
+      expect(tokenAcc.delegate).toEqual(migrateUserPaymentPDA);
+
+      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+
+      const memo2 = new Uint8Array(64).fill(0);
+      Buffer.from("v1 delegate test").copy(memo2);
+
+      const startTime = Math.floor(Date.now() / 1000) - 7200;
+      const createPolicy2Ix = await sdk.getCreateSubscriptionPolicyInstruction(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(3000),
+        true,
+        null,
+        { daily: {} },
+        Array.from(memo2),
+        new anchor.BN(startTime)
+      );
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createPolicy2Ix),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+
+      [migratePolicy2PDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          migrateUserPaymentPDA.toBuffer(),
+          new anchor.BN(2).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      const executeIxs = await sdk.executePayment(migratePolicy2PDA);
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction()
+          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
+          .add(...executeIxs),
+        [gatewayAuthority],
+        { commitment: "processed" as Commitment }
+      );
+
+      const policy2 = await sdk.getPaymentPolicy(migratePolicy2PDA);
+      expect(policy2!.paymentCount).toBe(1);
+      expect(policy2!.totalPaid.toNumber()).toBe(3000);
+    });
+
+    test("Migration: existing policy still works after switching to UserPayment PDA delegate", async () => {
+      const policy1 = await sdk.getPaymentPolicy(migratePolicy1PDA);
+      const paymentCountBefore = policy1!.paymentCount;
+
+      const startTime3 = Math.floor(Date.now() / 1000) - 7200;
+      const memo3 = new Uint8Array(64).fill(0);
+      Buffer.from("migration test").copy(memo3);
+
+      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      const changeStatusIx = await sdk.changePaymentPolicyStatus(tokenMint, 1, {
+        paused: {},
+      });
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(changeStatusIx),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+
+      const memo4 = new Uint8Array(64).fill(0);
+      Buffer.from("migration policy 3").copy(memo4);
+
+      const createPolicy3Ix = await sdk.getCreateSubscriptionPolicyInstruction(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(2000),
+        true,
+        null,
+        { daily: {} },
+        Array.from(memo4),
+        new anchor.BN(startTime3)
+      );
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createPolicy3Ix),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+
+      const [policy3PDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          migrateUserPaymentPDA.toBuffer(),
+          new anchor.BN(3).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      const executeIxs = await sdk.executePayment(policy3PDA);
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction()
+          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
+          .add(...executeIxs),
+        [gatewayAuthority],
+        { commitment: "processed" as Commitment }
+      );
+
+      const policy3 = await sdk.getPaymentPolicy(policy3PDA);
+      expect(policy3!.paymentCount).toBe(1);
+      expect(policy3!.totalPaid.toNumber()).toBe(2000);
+    });
+
+    test("Fails: no delegate set on token account", async () => {
+      await revoke(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migrateUser
+      );
+
+      const startTime = Math.floor(Date.now() / 1000) - 7200;
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("no delegate test").copy(memo);
+
+      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      const createPolicyIx = await sdk.getCreateSubscriptionPolicyInstruction(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(1000),
+        true,
+        null,
+        { daily: {} },
+        Array.from(memo),
+        new anchor.BN(startTime)
+      );
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createPolicyIx),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+
+      const [noDelegatePolicyPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("payment_policy"),
+          migrateUserPaymentPDA.toBuffer(),
+          new anchor.BN(4).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      try {
+        const executeIxs = await sdk.executePayment(noDelegatePolicyPDA);
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction()
+            .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
+            .add(...executeIxs),
+          [gatewayAuthority],
+          { commitment: "processed" as Commitment }
+        );
+        assert(false, "Expected payment to fail with no delegate");
+      } catch (error: any) {
+        expect(error.message).toContain("No or incorrect delegate set in ata");
+      }
+
+      await approve(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migrateUserPaymentPDA,
+        migrateUser,
+        10_000_000
+      );
+    });
+
+    test("SDK migrateDelegate transitions from old to new PDA", async () => {
+      await revoke(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migrateUser
+      );
+
+      await approve(
+        connection,
+        migrateUser,
+        migrateUserTokenAccount,
+        migratePaymentsDelegate,
+        migrateUser,
+        5_000_000
+      );
+
+      let tokenAcc = await getAccount(connection, migrateUserTokenAccount);
+      expect(tokenAcc.delegate).toEqual(migratePaymentsDelegate);
+
+      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      const migrateIxs = await sdk.migrateDelegate(
+        tokenMint,
+        new anchor.BN(10_000_000)
+      );
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(...migrateIxs),
+        [migrateUser],
+        { commitment: "processed" as Commitment }
+      );
+
+      tokenAcc = await getAccount(connection, migrateUserTokenAccount);
+      expect(tokenAcc.delegate).toEqual(migrateUserPaymentPDA);
+      expect(Number(tokenAcc.delegatedAmount)).toBe(10_000_000);
     });
   });
 });

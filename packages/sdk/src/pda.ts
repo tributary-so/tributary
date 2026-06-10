@@ -81,9 +81,8 @@ export function getPaymentPolicyPda(
 }
 
 /**
- * Derives the Payments Delegate PDA.
- * This PDA acts as the delegate authority for token accounts, allowing the program
- * to pull funds for recurring payments after user approval.
+ * Derives the Payments Delegate PDA (legacy global delegate).
+ * @deprecated Use UserPayment PDA as the delegate instead. This PDA is kept for backward compatibility with existing delegations.
  * @param programId - The PublicKey of the Tributary program
  * @returns Object containing the PDA address and bump seed
  */
