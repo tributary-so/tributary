@@ -8,7 +8,7 @@
     "lint": "rustftmp src/**/*.rs",
     "release": "semantic-release"
   },
-  "version": "1.7.0",
+  "version": "1.8.0",
   "release": {
     "extends": "semantic-release-monorepo",
     "branches": [
