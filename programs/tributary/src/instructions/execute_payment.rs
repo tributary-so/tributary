@@ -12,7 +12,14 @@ use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
 
 pub fn token_account_has_delegate(delegate: &COption<Pubkey>, expected_delegate: &Pubkey) -> bool {
     match delegate {
-        COption::Some(delegate) => delegate == expected_delegate,
+        COption::Some(d) => d == expected_delegate,
+        COption::None => false,
+    }
+}
+
+pub fn token_account_has_any_delegate(delegate: &COption<Pubkey>, keys: &[&Pubkey]) -> bool {
+    match delegate {
+        COption::Some(d) => keys.iter().any(|k| d == *k),
         COption::None => false,
     }
 }
@@ -72,7 +79,10 @@ pub struct ExecutePayment<'info> {
         mut,
         constraint = user_token_account.key() == user_payment.token_account,
         constraint = user_token_account.mint == user_payment.token_mint,
-        constraint = token_account_has_delegate(&user_token_account.delegate, &payments_delegate.key()) @ crate::error::TributaryError::NoDelegateSet,
+        constraint = token_account_has_any_delegate(
+            &user_token_account.delegate,
+            &[&payments_delegate.key(), &user_payment.key()]
+        ) @ crate::error::TributaryError::NoDelegateSet,
     )]
     pub user_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -129,6 +139,36 @@ impl<'info> ExecutePayment<'info> {
         let mint_info = accounts.mint.to_account_info();
         let payments_delegate_bump = ctx.bumps.payments_delegate;
         let expected_mint = accounts.user_token_account.mint;
+
+        let up_key = user_payment.key();
+        let pd_key = accounts.payments_delegate.key();
+        let user_payment_info = user_payment.to_account_info();
+
+        let delegate = accounts.user_token_account.delegate.clone();
+        let up_owner = user_payment.owner;
+        let up_mint = user_payment.token_mint;
+        let up_bump = user_payment.bump;
+
+        let (seeds_vec, authority_info): (Vec<Vec<u8>>, AccountInfo<'info>) = match &delegate {
+            COption::Some(d) if d == &up_key => {
+                let seeds: Vec<Vec<u8>> = vec![
+                    USER_PAYMENT_SEED.to_vec(),
+                    up_owner.as_ref().to_vec(),
+                    up_mint.as_ref().to_vec(),
+                    vec![up_bump],
+                ];
+                (seeds, user_payment_info.clone())
+            }
+            COption::Some(d) if d == &pd_key => {
+                let seeds: Vec<Vec<u8>> =
+                    vec![PAYMENTS_SEED.to_vec(), vec![payments_delegate_bump]];
+                (seeds, payments_delegate_info.clone())
+            }
+            _ => return Err(TributaryError::NoDelegateSet.into()),
+        };
+
+        let seed_slices: Vec<&[u8]> = seeds_vec.iter().map(|s| s.as_slice()).collect();
+        let signer_seeds: &[&[u8]] = &seed_slices;
 
         // Get appropriate strategy for policy type
         let mut strategy = crate::policies::get_policy_strategy(payment_policy)?;
@@ -216,16 +256,15 @@ impl<'info> ExecutePayment<'info> {
             crate::error::TributaryError::InsufficientBalance
         );
 
-        let seeds = &[PAYMENTS_SEED, &[payments_delegate_bump]];
-        let signer_seeds = &[&seeds[..]];
+        let seeds = &[signer_seeds];
 
         // Process referral rewards if enabled
         if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
             let referral_ctx = ReferralContext {
                 remaining_accounts,
                 source_token_account: user_token_account_info.clone(),
-                authority_info: payments_delegate_info.clone(),
-                authority_mode: AuthorityMode::PdaSigner(signer_seeds),
+                authority_info: authority_info.clone(),
+                authority_mode: AuthorityMode::PdaSigner(seeds),
                 token_program: token_program_info.clone(),
                 mint_info: mint_info.clone(),
                 mint_decimals,
@@ -247,42 +286,39 @@ impl<'info> ExecutePayment<'info> {
                 .ok_or(TributaryError::ArithmeticOverflow)?;
         }
 
-        // Transfer to recipient
         if recipient_amount > 0 {
             let cpi_accounts = TransferChecked {
                 from: user_token_account_info.clone(),
                 mint: mint_info.clone(),
                 to: recipient_token_account_info.clone(),
-                authority: payments_delegate_info.clone(),
+                authority: authority_info.clone(),
             };
             let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
             token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
         }
 
-        // Transfer gateway fee
         if gateway_fee > 0 {
             let cpi_accounts = TransferChecked {
                 from: user_token_account_info.clone(),
                 mint: mint_info.clone(),
                 to: gateway_fee_account_info.clone(),
-                authority: payments_delegate_info.clone(),
+                authority: authority_info.clone(),
             };
             let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
             token_interface::transfer_checked(cpi_ctx, gateway_fee, mint_decimals)?;
         }
 
-        // Transfer protocol fee
         if protocol_fee > 0 {
             let cpi_accounts = TransferChecked {
                 from: user_token_account_info.clone(),
                 mint: mint_info.clone(),
                 to: protocol_fee_account_info.clone(),
-                authority: payments_delegate_info.clone(),
+                authority: authority_info.clone(),
             };
             let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
             token_interface::transfer_checked(cpi_ctx, protocol_fee, mint_decimals)?;
         }
 
