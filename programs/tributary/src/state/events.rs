@@ -140,6 +140,7 @@ pub struct ComposablePolicyCreated {
     pub memo: [u8; 64],
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,
+    pub has_validation_pda: bool,
 }
 
 /// An event that is thrown when a composable policy is executed

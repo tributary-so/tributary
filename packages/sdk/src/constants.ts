@@ -48,4 +48,6 @@ export const SEEDS = {
   REFERRAL: "referral",
   /** Seed for composable policy PDAs */
   COMPOSABLE_POLICY: "composable_policy",
+  /** Seed for validation PDAs (stores assertion data for composable policies with validation) */
+  VALIDATION_PDA: "composable_validation",
 } as const;

@@ -565,6 +565,10 @@ export type Tributary = {
           }
         },
         {
+          "name": "validationPda",
+          "writable": true
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -596,12 +600,16 @@ export type Tributary = {
           }
         },
         {
-          "name": "validationConfig",
-          "type": {
-            "defined": {
-              "name": "validationConfig"
-            }
-          }
+          "name": "validationProgram",
+          "type": "pubkey"
+        },
+        {
+          "name": "numValidationAccounts",
+          "type": "u8"
+        },
+        {
+          "name": "validationData",
+          "type": "bytes"
         }
       ]
     },
@@ -2655,6 +2663,26 @@ export type Tributary = {
     },
     {
       "code": 6047,
+      "name": "validationPdaMismatch",
+      "msg": "Validation PDA does not match derived address"
+    },
+    {
+      "code": 6048,
+      "name": "validationDataTooLarge",
+      "msg": "Validation data exceeds maximum size"
+    },
+    {
+      "code": 6049,
+      "name": "validationDataRequired",
+      "msg": "Validation program set but no data provided"
+    },
+    {
+      "code": 6050,
+      "name": "validationNotRequired",
+      "msg": "Validation not configured but data was provided"
+    },
+    {
+      "code": 6051,
       "name": "composablePolicyNotFound",
       "msg": "Composable policy not found"
     }
@@ -2832,7 +2860,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                74
+                200
               ]
             }
           }
@@ -2899,6 +2927,10 @@ export type Tributary = {
                 "name": "validationConfig"
               }
             }
+          },
+          {
+            "name": "hasValidationPda",
+            "type": "bool"
           }
         ]
       }
@@ -4381,19 +4413,6 @@ export type Tributary = {
           {
             "name": "numValidationAccounts",
             "type": "u8"
-          },
-          {
-            "name": "validationDataLen",
-            "type": "u16"
-          },
-          {
-            "name": "validationData",
-            "type": {
-              "array": [
-                "u8",
-                128
-              ]
-            }
           }
         ]
       }

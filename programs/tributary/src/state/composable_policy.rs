@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 pub const COMPOSABLE_DISCRIMINATOR: u8 = 1;
 pub const COMPOSABLE_VERSION: u8 = 1;
 pub const MAX_BYTE_RANGE_CHECKS: usize = 4;
-pub const VALIDATION_DATA_SIZE: usize = 128;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ByteRangeCheck {
@@ -142,16 +141,10 @@ impl ForwardConfig {
 pub struct ValidationConfig {
     pub validation_program: Pubkey,
     pub num_validation_accounts: u8,
-    pub validation_data_len: u16,
-    pub validation_data: [u8; VALIDATION_DATA_SIZE],
 }
 
 impl ValidationConfig {
-    pub const SIZE: usize = 32 + // validation_program: Pubkey
-        1 + // num_validation_accounts: u8
-        2 + // validation_data_len: u16
-        VALIDATION_DATA_SIZE; // validation_data: [u8; 128]
-                              // = 163 bytes
+    pub const SIZE: usize = 32 + 1; // = 33 bytes
 }
 
 impl Default for ValidationConfig {
@@ -159,8 +152,6 @@ impl Default for ValidationConfig {
         Self {
             validation_program: Pubkey::default(),
             num_validation_accounts: 0,
-            validation_data_len: 0,
-            validation_data: [0u8; VALIDATION_DATA_SIZE],
         }
     }
 }
@@ -186,7 +177,7 @@ pub struct ComposablePolicy {
     pub created_at: i64,
     pub updated_at: i64,
     pub state_padding: [u8; 32],
-    pub padding: [u8; 74],
+    pub padding: [u8; 200],
 }
 
 impl ComposablePolicy {
@@ -211,6 +202,5 @@ impl ComposablePolicy {
         8 + // created_at: i64
         8 + // updated_at: i64
         32 + // state_padding: [u8; 32]
-        74; // padding: [u8; 74]
-            // ≈ 760 bytes total
+        200; // padding: [u8; 200]
 }

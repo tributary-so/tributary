@@ -131,3 +131,27 @@ export type ByteRangeCheck = IdlTypes<Tributary>["byteRangeCheck"];
  * Tracks whether a composable policy is active, paused, or completed.
  */
 export type PolicyStatus = IdlTypes<Tributary>["policyStatus"];
+
+/**
+ * Validation PDA account structure.
+ * Stores assertion data for composable policies with external validation.
+ * Not IDL-derived — manually defined since ValidationPda is initialized via invoke_signed.
+ */
+export interface ValidationPdaAccount {
+  /** Length of stored validation data */
+  dataLen: number;
+  /** Raw validation data (up to 1024 bytes) */
+  data: Buffer;
+}
+
+/**
+ * Parse a ValidationPda account from raw on-chain data.
+ * Layout: 8 (Anchor discriminator) + 2 (data_len u16) + data
+ */
+export function parseValidationPda(data: Buffer): ValidationPdaAccount {
+  const dataLen = data.readUInt16LE(8);
+  return {
+    dataLen,
+    data: data.subarray(10, 10 + dataLen),
+  };
+}

@@ -136,9 +136,19 @@ pub mod tributary {
         schedule: ScheduleType,
         memo: [u8; 64],
         forward_config: ForwardConfig,
-        validation_config: ValidationConfig,
+        validation_program: Pubkey,
+        num_validation_accounts: u8,
+        validation_data: Vec<u8>,
     ) -> Result<()> {
-        CreateComposablePolicy::handler(ctx, schedule, memo, forward_config, validation_config)
+        CreateComposablePolicy::handler(
+            ctx,
+            schedule,
+            memo,
+            forward_config,
+            validation_program,
+            num_validation_accounts,
+            validation_data,
+        )
     }
 
     pub fn execute_composable<'info>(

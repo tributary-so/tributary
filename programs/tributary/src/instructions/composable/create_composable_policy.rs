@@ -45,6 +45,10 @@ pub struct CreateComposablePolicy<'info> {
     )]
     pub config: Box<Account<'info, ProgramConfig>>,
 
+    /// CHECK: Optional ValidationPDA — validated and init'd in handler
+    #[account(mut)]
+    pub validation_pda: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -54,7 +58,9 @@ impl<'info> CreateComposablePolicy<'info> {
         schedule: ScheduleType,
         memo: [u8; 64],
         forward_config: ForwardConfig,
-        validation_config: ValidationConfig,
+        validation_program: Pubkey,
+        num_validation_accounts: u8,
+        validation_data: Vec<u8>,
     ) -> Result<()> {
         // Validate schedule
         schedule.validate()?;
@@ -80,10 +86,29 @@ impl<'info> CreateComposablePolicy<'info> {
         }
 
         // Validate ValidationConfig
-        if validation_config.validation_program != Pubkey::default() {
+        let has_validation = validation_program != Pubkey::default();
+
+        if has_validation {
             require!(
-                ALLOWED_VALIDATION_PROGRAMS.contains(&validation_config.validation_program),
+                ALLOWED_VALIDATION_PROGRAMS.contains(&validation_program),
                 TributaryError::InvalidValidationProgram
+            );
+            require!(
+                !validation_data.is_empty(),
+                TributaryError::ValidationDataRequired
+            );
+            require!(
+                validation_data.len() <= MAX_VALIDATION_DATA_SIZE,
+                TributaryError::ValidationDataTooLarge
+            );
+            require!(
+                num_validation_accounts <= 10,
+                TributaryError::InvalidValidationProgram
+            );
+        } else {
+            require!(
+                validation_data.is_empty(),
+                TributaryError::ValidationNotRequired
             );
         }
 
@@ -106,7 +131,10 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.schedule = schedule;
         composable_policy.memo = memo;
         composable_policy.forward_config = forward_config;
-        composable_policy.validation_config = validation_config;
+        composable_policy.validation_config = ValidationConfig {
+            validation_program,
+            num_validation_accounts,
+        };
         composable_policy.recipient = ctx.accounts.fee_payer.key(); // recipient defaults to gateway signer for now
         composable_policy.total_input = 0;
         composable_policy.total_output = 0;
@@ -115,7 +143,52 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.created_at = clock.unix_timestamp;
         composable_policy.updated_at = clock.unix_timestamp;
         composable_policy.state_padding = [0u8; 32];
-        composable_policy.padding = [0u8; 74];
+        composable_policy.padding = [0u8; 200];
+
+        if has_validation {
+            let validation_pda_key = Pubkey::find_program_address(
+                &[VALIDATION_PDA_SEED, composable_policy.key().as_ref()],
+                ctx.program_id,
+            );
+            require!(
+                ctx.accounts.validation_pda.key() == validation_pda_key.0,
+                TributaryError::ValidationPdaMismatch
+            );
+
+            let space = ValidationPda::space_for(validation_data.len());
+            let rent = Rent::get()?;
+            let lamports = rent.minimum_balance(space);
+
+            let fee_payer_info = ctx.accounts.fee_payer.to_account_info();
+            let validation_pda_info = ctx.accounts.validation_pda.to_account_info();
+
+            let seeds: Vec<Vec<u8>> = vec![
+                VALIDATION_PDA_SEED.to_vec(),
+                composable_policy.key().as_ref().to_vec(),
+                vec![validation_pda_key.1],
+            ];
+            let seed_slices: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
+
+            anchor_lang::solana_program::program::invoke_signed(
+                &anchor_lang::solana_program::system_instruction::create_account(
+                    &fee_payer_info.key(),
+                    &validation_pda_info.key(),
+                    lamports,
+                    space as u64,
+                    ctx.program_id,
+                ),
+                &[fee_payer_info.clone(), validation_pda_info.clone()],
+                &[&seed_slices],
+            )?;
+
+            // Write data
+            let mut account_data = validation_pda_info.try_borrow_mut_data()?;
+            let disc: &[u8] = &ValidationPda::DISCRIMINATOR;
+            account_data[..8].copy_from_slice(disc);
+            let data_len_u16 = validation_data.len() as u16;
+            account_data[8..10].copy_from_slice(&data_len_u16.to_le_bytes());
+            account_data[10..10 + validation_data.len()].copy_from_slice(&validation_data);
+        }
 
         let user_payment = &mut ctx.accounts.user_payment;
         user_payment.created_composable_count = policy_id;
@@ -133,6 +206,7 @@ impl<'info> CreateComposablePolicy<'info> {
             memo: composable_policy.memo,
             forward_config: composable_policy.forward_config.clone(),
             validation_config: composable_policy.validation_config.clone(),
+            has_validation_pda: has_validation,
         });
 
         msg!(

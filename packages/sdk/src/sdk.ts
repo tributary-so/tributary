@@ -25,6 +25,7 @@ import {
   getComposablePolicyPda,
   getPaymentsDelegatePda,
   getReferralPda,
+  getValidationPda,
 } from "./pda";
 import type {
   IWallet,
@@ -2006,17 +2007,22 @@ export class Tributary {
    * @param schedule - Schedule configuration defining execution timing
    * @param memo - Memo string to include with the policy (max 64 bytes)
    * @param forwardConfig - Token forwarding configuration
-   * @param validationConfig - Validation rules for execution
+   * @param validationProgram - Validation program pubkey (PublicKey.default for no validation)
+   * @param numValidationAccounts - Number of validation accounts (0 if no validation)
+   * @param validationData - Validation assertion data (empty Buffer if no validation)
+   * @param feePayer - Optional fee payer (defaults to provider wallet)
    * @returns Transaction instruction to create the composable policy
    */
   async getCreateComposablePolicyInstruction(
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
-    schedule: any, // ScheduleType — will be typed once IDL is regenerated
+    schedule: any,
     memo: string,
-    forwardConfig: any, // ForwardConfig
-    validationConfig: any, // ValidationConfig
+    forwardConfig: any,
+    validationProgram: PublicKey = PublicKey.default,
+    numValidationAccounts: number = 0,
+    validationData: Buffer = Buffer.alloc(0),
     feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
@@ -2027,7 +2033,6 @@ export class Tributary {
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
     let policyId: number = 1;
     if (userPayment) {
-      // Use createdComposableCount if it exists on the account, otherwise fall back
       policyId =
         (userPayment as any).createdComposableCount !== undefined
           ? (userPayment as any).createdComposableCount + 1
@@ -2040,15 +2045,18 @@ export class Tributary {
     );
     const memoBytes = encodeMemo(memo);
 
+    const { address: validationPdaAddress } = getValidationPda(
+      composablePolicyPda.address,
+      this.programId
+    );
+
     const accounts = {
-      user: user,
       feePayer: feePayer ?? user,
+      composablePolicy: composablePolicyPda.address,
       userPayment: userPaymentPda,
-      recipient: recipient,
-      tokenMint: tokenMint,
       gateway: gateway,
       config: configPda,
-      composablePolicy: composablePolicyPda.address,
+      validationPda: validationPdaAddress,
       systemProgram: SystemProgram.programId,
     };
 
@@ -2057,7 +2065,9 @@ export class Tributary {
         schedule,
         memoBytes,
         forwardConfig,
-        validationConfig
+        validationProgram,
+        numValidationAccounts,
+        validationData
       )
       .accountsStrict(accounts)
       .instruction();
@@ -2124,10 +2134,27 @@ export class Tributary {
       systemProgram: SystemProgram.programId,
     };
 
+    const hasValidation =
+      policy.validationConfig.validationProgram !== undefined &&
+      policy.validationConfig.validationProgram.toString() !==
+        PublicKey.default.toString();
+
+    let resolvedRemaining = remainingAccounts ?? [];
+    if (hasValidation) {
+      const { address: validationPdaAddress } = getValidationPda(
+        composablePolicy,
+        this.programId
+      );
+      resolvedRemaining = [
+        { pubkey: validationPdaAddress, isSigner: false, isWritable: false },
+        ...resolvedRemaining,
+      ];
+    }
+
     return await this.program.methods
       .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
       .accountsStrict(accounts)
-      .remainingAccounts(remainingAccounts ?? [])
+      .remainingAccounts(resolvedRemaining)
       .instruction();
   }
 
@@ -2205,10 +2232,37 @@ export class Tributary {
       rentPayer: owner,
     };
 
-    return await this.program.methods
+    const policy: any = await this.program.account.composablePolicy.fetch(
+      composablePolicyPda
+    );
+
+    const hasValidation =
+      policy.validationConfig.validationProgram !== undefined &&
+      policy.validationConfig.validationProgram.toString() !==
+        PublicKey.default.toString();
+
+    const remainingAccounts: any[] = [];
+    if (hasValidation) {
+      const { address: validationPdaAddress } = getValidationPda(
+        composablePolicyPda,
+        this.programId
+      );
+      remainingAccounts.push({
+        pubkey: validationPdaAddress,
+        isSigner: false,
+        isWritable: true,
+      });
+    }
+
+    const tx = await this.program.methods
       .deleteComposablePolicy(policyId)
-      .accountsStrict(accounts)
-      .instruction();
+      .accountsStrict(accounts);
+
+    if (remainingAccounts.length > 0) {
+      tx.remainingAccounts(remainingAccounts);
+    }
+
+    return tx.instruction();
   }
 
   // Query methods

@@ -266,65 +266,86 @@ impl<'info> ExecuteComposable<'info> {
             .composable_policy
             .validation_config
             .validation_program;
-        if validation_program != Pubkey::default() {
+        let num_val_accounts = ctx
+            .accounts
+            .composable_policy
+            .validation_config
+            .num_validation_accounts as usize;
+
+        let forward_accounts_start = if validation_program != Pubkey::default() {
             let remaining = ctx.remaining_accounts;
-            let num_val_accounts = ctx
-                .accounts
-                .composable_policy
-                .validation_config
-                .num_validation_accounts as usize;
-            if num_val_accounts > 0 && !remaining.is_empty() {
-                let val_data_len = ctx
-                    .accounts
+            require!(!remaining.is_empty(), TributaryError::ValidationPdaMismatch);
+
+            // Derive and verify ValidationPDA
+            let val_pda_key = Pubkey::find_program_address(
+                &[
+                    VALIDATION_PDA_SEED,
+                    ctx.accounts.composable_policy.key().as_ref(),
+                ],
+                ctx.program_id,
+            );
+            require!(
+                remaining[0].key() == val_pda_key.0,
+                TributaryError::ValidationPdaMismatch
+            );
+
+            // Read assertion data from ValidationPDA
+            let val_pda_info = &remaining[0];
+            let val_pda_data = val_pda_info.try_borrow_data()?;
+            let data_len = u16::from_le_bytes([val_pda_data[8], val_pda_data[9]]) as usize;
+            let val_data = val_pda_data[10..10 + data_len].to_vec();
+
+            // CPI to validation program with accounts from remaining[1..1+N]
+            let val_accounts_end = 1 + num_val_accounts;
+            require!(
+                remaining.len() >= val_accounts_end,
+                TributaryError::ValidationPdaMismatch
+            );
+
+            let val_accounts: Vec<AccountInfo<'info>> = remaining[1..val_accounts_end]
+                .iter()
+                .map(|a| a.clone())
+                .collect();
+
+            let seeds: Vec<Vec<u8>> = vec![
+                COMPOSABLE_POLICY_SEED.to_vec(),
+                ctx.accounts
                     .composable_policy
-                    .validation_config
-                    .validation_data_len as usize;
-                let val_data = &ctx
-                    .accounts
+                    .user_payment
+                    .as_ref()
+                    .to_vec(),
+                ctx.accounts
                     .composable_policy
-                    .validation_config
-                    .validation_data[..val_data_len];
+                    .policy_id
+                    .to_le_bytes()
+                    .to_vec(),
+                vec![ctx.accounts.composable_policy.bump],
+            ];
+            let seed_slices: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
+            let signer_seeds: &[&[u8]] = &seed_slices;
 
-                let val_accounts = &remaining[..num_val_accounts.min(remaining.len())];
-                let seeds: Vec<Vec<u8>> = vec![
-                    COMPOSABLE_POLICY_SEED.to_vec(),
-                    ctx.accounts
-                        .composable_policy
-                        .user_payment
-                        .as_ref()
-                        .to_vec(),
-                    ctx.accounts
-                        .composable_policy
-                        .policy_id
-                        .to_le_bytes()
-                        .to_vec(),
-                    vec![ctx.accounts.composable_policy.bump],
-                ];
-                let seed_slices: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
-                let signer_seeds: &[&[u8]] = &seed_slices;
+            let instruction = anchor_lang::solana_program::instruction::Instruction {
+                program_id: validation_program,
+                accounts: val_accounts
+                    .iter()
+                    .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
+                        pubkey: *a.key,
+                        is_signer: a.is_signer,
+                        is_writable: a.is_writable,
+                    })
+                    .collect(),
+                data: val_data,
+            };
+            anchor_lang::solana_program::program::invoke_signed(
+                &instruction,
+                &val_accounts,
+                &[signer_seeds],
+            )?;
 
-                let cpi_accounts: Vec<AccountInfo<'info>> =
-                    val_accounts.iter().map(|a| a.clone()).collect();
-
-                let instruction = anchor_lang::solana_program::instruction::Instruction {
-                    program_id: validation_program,
-                    accounts: cpi_accounts
-                        .iter()
-                        .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
-                            pubkey: *a.key,
-                            is_signer: a.is_signer,
-                            is_writable: a.is_writable,
-                        })
-                        .collect(),
-                    data: val_data.to_vec(),
-                };
-                anchor_lang::solana_program::program::invoke_signed(
-                    &instruction,
-                    &cpi_accounts,
-                    &[signer_seeds],
-                )?;
-            }
-        }
+            val_accounts_end
+        } else {
+            0
+        };
 
         // ── Step 3: Calculate fees ────────────────────────────────────
         let gateway = &ctx.accounts.gateway;
@@ -450,13 +471,8 @@ impl<'info> ExecuteComposable<'info> {
         // ── Step 7: Forward CPI (via remaining_accounts) ──────────────
         let forward_config = &ctx.accounts.composable_policy.forward_config;
         let remaining = ctx.remaining_accounts;
-        // Validation accounts come first; forward accounts come after
-        let num_val_accounts = ctx
-            .accounts
-            .composable_policy
-            .validation_config
-            .num_validation_accounts as usize;
-        let forward_accounts_start = num_val_accounts.min(remaining.len());
+        // Validation accounts come first (or ValidationPDA + its accounts); forward accounts come after
+        let forward_accounts_start = forward_accounts_start.min(remaining.len());
         if forward_accounts_start < remaining.len() {
             let forward_account_infos: Vec<AccountInfo<'info>> = remaining
                 [forward_accounts_start..]

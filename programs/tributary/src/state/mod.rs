@@ -8,6 +8,7 @@ pub mod referral_account;
 pub mod referral_account_map;
 pub mod token_account_map;
 pub mod user_payment;
+pub mod validation_pda;
 
 pub use composable_policy::*;
 pub use events::*;
@@ -19,3 +20,4 @@ pub use referral_account::*;
 pub use referral_account_map::*;
 pub use token_account_map::*;
 pub use user_payment::*;
+pub use validation_pda::*;

@@ -13,25 +13,28 @@ import {
   createMint,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccount,
+  createAssociatedTokenAccountIdempotent,
   mintTo,
   approve,
 } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
 import { SEEDS, IWallet, Tributary as TributarySDK } from "../packages/sdk/src";
-import assert = require("assert");
+import assert from "assert";
 import { Buffer } from "buffer";
 
-// ── Whitelisted program pubkeys from on-chain constants.rs ──────────────
-// Meteora DLMM: Pubkey::new_from_array([4, 233, ...])
 const METEORA_DLMM_PUBKEY = new PublicKey(
   "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
 );
-// Lighthouse: Pubkey::new_from_array([27, 132, ...])
 const LIGHTHOUSE_PUBKEY = new PublicKey(
   "2rQnHupkzPLnMpEKiL4YknBTPQJiNvECzkRCucYHC4UM"
 );
+const ADMIN_KEYPAIR = [
+  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
+  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
+  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
+  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
+];
 
-// ── Composable Policy PDA helper ────────────────────────────────────────
 function getComposablePolicyPda(
   userPayment: PublicKey,
   policyId: number,
@@ -47,9 +50,17 @@ function getComposablePolicyPda(
   );
 }
 
-// ── Default helpers ─────────────────────────────────────────────────────
+function getValidationPda(
+  composablePolicy: PublicKey,
+  programId: PublicKey
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(SEEDS.VALIDATION_PDA), composablePolicy.toBuffer()],
+    programId
+  );
+}
+
 function defaultByteRangeChecks(): any[] {
-  // 4 ByteRangeCheck slots — first one is a discriminator check at offset 0
   return [
     { offset: 0, length: 8, expected: new Array(8).fill(0) },
     { offset: 0, length: 0, expected: new Array(8).fill(0) },
@@ -70,15 +81,6 @@ function defaultForwardConfig(
     forwardFlags: 0,
     numDataChecks: 1,
     dataChecks: defaultByteRangeChecks(),
-  };
-}
-
-function defaultValidationConfig(): any {
-  return {
-    validationProgram: PublicKey.default,
-    numValidationAccounts: 0,
-    validationDataLen: 0,
-    validationData: new Array(128).fill(0),
   };
 }
 
@@ -105,7 +107,7 @@ describe("Composable Policies", () => {
   let sdk: TributarySDK;
 
   // ── Keypairs ──────────────────────────────────────────────────────────
-  let admin: Keypair;
+  const admin = Keypair.fromSecretKey(Uint8Array.from(ADMIN_KEYPAIR));
   let user: Keypair;
   let mintAuthority: Keypair;
   let gatewayAuthority: Keypair;
@@ -137,7 +139,6 @@ describe("Composable Policies", () => {
   beforeAll(async () => {
     sdk = new TributarySDK(connection, wallet as IWallet);
 
-    admin = Keypair.generate();
     user = Keypair.generate();
     mintAuthority = Keypair.generate();
     gatewayAuthority = Keypair.generate();
@@ -174,7 +175,7 @@ describe("Composable Policies", () => {
 
     // User token account (input mint)
     userTokenAccount = getAssociatedTokenAddressSync(tokenMint, user.publicKey);
-    await createAssociatedTokenAccount(
+    await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
       tokenMint,
@@ -212,7 +213,7 @@ describe("Composable Policies", () => {
     );
 
     // Recipient token account — for composable, recipient = gateway signer
-    gatewaySignerTokenAccount = await createAssociatedTokenAccount(
+    gatewaySignerTokenAccount = await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
       tokenMint,
@@ -220,13 +221,13 @@ describe("Composable Policies", () => {
     );
 
     // Fee recipient token accounts
-    await createAssociatedTokenAccount(
+    await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
       tokenMint,
       feeRecipient.publicKey
     );
-    await createAssociatedTokenAccount(
+    await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
       tokenMint,
@@ -236,15 +237,19 @@ describe("Composable Policies", () => {
 
   // ── Bootstrap: init program, create user payment, create gateway ──────
   beforeAll(async () => {
-    // Init program
-    await sdk.updateWallet(new anchor.Wallet(admin));
-    const initIx = await sdk.initialize(admin.publicKey);
-    await sendAndConfirmTransaction(
-      connection,
-      new Transaction().add(initIx),
-      [admin],
-      { commitment: "processed" as Commitment }
-    );
+    try {
+      // Init program
+      await sdk.updateWallet(new anchor.Wallet(admin));
+      const initIx = await sdk.initialize(admin.publicKey);
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(initIx),
+        [admin],
+        { commitment: "processed" as Commitment }
+      );
+    } catch {
+      // might fail if we already did all of this through tributary.test
+    }
 
     // Create user payment
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -277,7 +282,6 @@ describe("Composable Policies", () => {
   //  1. Create composable policy — timed schedule, no validation
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — timed schedule, no validation", async () => {
-    // Use gateway signer as fee_payer (required by the program)
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
@@ -285,13 +289,12 @@ describe("Composable Policies", () => {
       userPaymentBefore!.createdComposableCount ?? 0;
 
     const now = Math.floor(Date.now() / 1000);
-    const nextDue = now + 30 * 24 * 3600; // 30 days from now
+    const nextDue = now + 30 * 24 * 3600;
     const schedule = defaultTimedSchedule(1_000_000, nextDue);
     const memo = new Array(64).fill(0);
     Buffer.from("Test composable").copy(Buffer.from(memo));
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    const validationConfig = defaultValidationConfig();
 
     const composablePolicyId = composableCountBefore + 1;
     const [composablePolicyPDA] = getComposablePolicyPda(
@@ -300,14 +303,27 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const ix = await program.methods
-      .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        PublicKey.default,
+        0,
+        Buffer.alloc(0)
+      )
       .accountsStrict({
         feePayer: gatewayAuthority.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
+        validationPda: validationPdaAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -319,7 +335,6 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Verify account data
     const policy = await program.account.composablePolicy.fetch(
       composablePolicyPDA
     );
@@ -339,12 +354,10 @@ describe("Composable Policies", () => {
       PublicKey.default
     );
 
-    // Verify schedule stored correctly
     expect(policy.schedule.timed.amount.toNumber()).toBe(1_000_000);
     expect(policy.schedule.timed.autoRenew).toBe(true);
     expect(policy.schedule.timed.maxExecutions).toBeNull();
 
-    // Verify user_payment counters
     const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
     expect(userPaymentAfter!.createdComposableCount).toBe(composablePolicyId);
     expect(userPaymentAfter!.activeComposableCount).toBe(
@@ -367,6 +380,11 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const now = Math.floor(Date.now() / 1000);
     const schedule = defaultTimedSchedule(500_000, now + 86400);
 
@@ -375,25 +393,24 @@ describe("Composable Policies", () => {
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
-    // Lighthouse as validation program with some data
-    const validationData = new Array(128).fill(0);
-    Buffer.from("lighthouse-assert-data").copy(Buffer.from(validationData));
-
-    const validationConfig = {
-      validationProgram: LIGHTHOUSE_PUBKEY,
-      numValidationAccounts: 1,
-      validationDataLen: 24,
-      validationData: validationData,
-    };
+    const validationData = Buffer.from("lighthouse-assert-data");
 
     const ix = await program.methods
-      .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        LIGHTHOUSE_PUBKEY,
+        1,
+        validationData
+      )
       .accountsStrict({
         feePayer: gatewayAuthority.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
+        validationPda: validationPdaAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -413,8 +430,21 @@ describe("Composable Policies", () => {
       LIGHTHOUSE_PUBKEY
     );
     expect(policy.validationConfig.numValidationAccounts).toBe(1);
-    expect(policy.validationConfig.validationDataLen).toBe(24);
     expect(policy.status).toEqual({ active: {} });
+
+    // Verify ValidationPDA was created with correct data
+    const validationPdaAccount = await connection.getAccountInfo(
+      validationPdaAddress
+    );
+    expect(validationPdaAccount).not.toBeNull();
+    // Data layout: 8 (discriminator) + 2 (data_len u16) + data
+    const dataLen = validationPdaAccount!.data.readUInt16LE(8);
+    expect(dataLen).toBe(validationData.length);
+    const storedData = validationPdaAccount!.data.slice(
+      10,
+      10 + validationData.length
+    );
+    expect(Buffer.from(storedData)).toEqual(validationData);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -432,26 +462,36 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const now = Math.floor(Date.now() / 1000);
     const schedule = defaultTimedSchedule(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
-    // Random non-whitelisted pubkey
     const rogueProgram = Keypair.generate().publicKey;
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     forwardConfig.targetProgram = rogueProgram;
 
-    const validationConfig = defaultValidationConfig();
-
     try {
       const ix = await program.methods
-        .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+        .createComposablePolicy(
+          schedule,
+          memo,
+          forwardConfig,
+          PublicKey.default,
+          0,
+          Buffer.alloc(0)
+        )
         .accountsStrict({
           feePayer: gatewayAuthority.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
+          validationPda: validationPdaAddress,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -484,29 +524,35 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const now = Math.floor(Date.now() / 1000);
     const schedule = defaultTimedSchedule(100_000, now + 86400);
     const memo = new Array(64).fill(0);
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
-    // Random non-whitelisted validation program (not default and not Lighthouse)
     const rogueValidation = Keypair.generate().publicKey;
-    const validationConfig = {
-      validationProgram: rogueValidation,
-      numValidationAccounts: 0,
-      validationDataLen: 0,
-      validationData: new Array(128).fill(0),
-    };
 
     try {
       const ix = await program.methods
-        .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+        .createComposablePolicy(
+          schedule,
+          memo,
+          forwardConfig,
+          rogueValidation,
+          0,
+          Buffer.from("some-data")
+        )
         .accountsStrict({
           feePayer: gatewayAuthority.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
+          validationPda: validationPdaAddress,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -539,24 +585,35 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const now = Math.floor(Date.now() / 1000);
     const schedule = defaultTimedSchedule(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    forwardConfig.numDataChecks = 0; // INVALID: must be >= 1
-
-    const validationConfig = defaultValidationConfig();
+    forwardConfig.numDataChecks = 0;
 
     try {
       const ix = await program.methods
-        .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+        .createComposablePolicy(
+          schedule,
+          memo,
+          forwardConfig,
+          PublicKey.default,
+          0,
+          Buffer.alloc(0)
+        )
         .accountsStrict({
           feePayer: gatewayAuthority.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
+          validationPda: validationPdaAddress,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -578,7 +635,6 @@ describe("Composable Policies", () => {
   //  7. Change composable status — Active to Paused
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Active to Paused", async () => {
-    // First create a fresh composable policy for this test
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
@@ -590,22 +646,33 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const now = Math.floor(Date.now() / 1000);
     const schedule = defaultTimedSchedule(100_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Status test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    const validationConfig = defaultValidationConfig();
 
-    // Create
     const createIx = await program.methods
-      .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        PublicKey.default,
+        0,
+        Buffer.alloc(0)
+      )
       .accountsStrict({
         feePayer: gatewayAuthority.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
+        validationPda: validationPdaAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -617,13 +684,11 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Verify Active
     let policy = await program.account.composablePolicy.fetch(
       composablePolicyPDA
     );
     expect(policy.status).toEqual({ active: {} });
 
-    // Pause — owner (user) signs
     await sdk.updateWallet(new anchor.Wallet(user));
 
     const pauseIx = await program.methods
@@ -696,7 +761,6 @@ describe("Composable Policies", () => {
   //  6. Delete composable policy
   // ══════════════════════════════════════════════════════════════════════
   test("Delete composable policy", async () => {
-    // Create a new policy, pause it, then delete it
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
@@ -707,6 +771,12 @@ describe("Composable Policies", () => {
       composablePolicyId,
       program.programId
     );
+
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
 
     const now = Math.floor(Date.now() / 1000);
@@ -714,17 +784,23 @@ describe("Composable Policies", () => {
     const memo = new Array(64).fill(0);
     Buffer.from("Delete test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    const validationConfig = defaultValidationConfig();
 
-    // Create
     const createIx = await program.methods
-      .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        PublicKey.default,
+        0,
+        Buffer.alloc(0)
+      )
       .accountsStrict({
         feePayer: gatewayAuthority.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
+        validationPda: validationPdaAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -736,13 +812,11 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Verify it's Active, then pause
     let policy = await program.account.composablePolicy.fetch(
       composablePolicyPDA
     );
     expect(policy.status).toEqual({ active: {} });
 
-    // Pause first (can only delete non-Active policies)
     await sdk.updateWallet(new anchor.Wallet(user));
 
     const pauseIx = await program.methods
@@ -763,7 +837,6 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Now delete
     const deleteIx = await program.methods
       .deleteComposablePolicy(composablePolicyId)
       .accountsStrict({
@@ -771,7 +844,7 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         composablePolicy: composablePolicyPDA,
         config: configPDA,
-        rentPayer: gatewayAuthority.publicKey, // was fee_payer at creation
+        rentPayer: gatewayAuthority.publicKey,
       })
       .instruction();
 
@@ -782,13 +855,11 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Verify account closed
     const policyAfter = await program.account.composablePolicy.fetchNullable(
       composablePolicyPDA
     );
     expect(policyAfter).toBeNull();
 
-    // Verify active_composable_count decremented
     const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
     expect(userPaymentAfter!.activeComposableCount).toBe(activeBefore);
   });
@@ -797,8 +868,6 @@ describe("Composable Policies", () => {
   //  9. Execute composable — byte range check fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — byte range check fails", async () => {
-    // Create a composable policy with a specific byte-range check
-    // then attempt to execute with instruction_data that doesn't match
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
@@ -810,14 +879,17 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    // Set up a schedule that is due now (start in the past)
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const pastTime = Math.floor(Date.now() / 1000) - 3600;
     const schedule = defaultTimedSchedule(100_000, pastTime);
 
     const memo = new Array(64).fill(0);
     Buffer.from("ByteCheck test").copy(Buffer.from(memo));
 
-    // Byte-range check: offset 0, length 8, expected [1,2,3,4,5,6,7,8]
     const expectedBytes = [1, 2, 3, 4, 5, 6, 7, 8];
     const dataChecks = defaultByteRangeChecks();
     dataChecks[0] = {
@@ -836,17 +908,22 @@ describe("Composable Policies", () => {
       dataChecks: dataChecks,
     };
 
-    const validationConfig = defaultValidationConfig();
-
-    // Create policy
     const createIx = await program.methods
-      .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        PublicKey.default,
+        0,
+        Buffer.alloc(0)
+      )
       .accountsStrict({
         feePayer: gatewayAuthority.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
+        validationPda: validationPdaAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -858,20 +935,17 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Set up token delegation
     await approve(
       connection,
       user,
       userTokenAccount,
       paymentsDelegate,
       user,
-      10_000_000 // 10 tokens
+      10_000_000
     );
 
-    // Attempt execution with WRONG instruction_data
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    // Wrong data: all zeros instead of [1,2,3,4,5,6,7,8]
     const wrongInstructionData = Buffer.from(new Array(32).fill(0));
 
     try {
@@ -922,7 +996,6 @@ describe("Composable Policies", () => {
   //  10. Execute composable — paused policy fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — paused policy fails", async () => {
-    // Create a new policy, pause it, then attempt execution
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
@@ -934,23 +1007,34 @@ describe("Composable Policies", () => {
       program.programId
     );
 
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
     const pastTime = Math.floor(Date.now() / 1000) - 3600;
     const schedule = defaultTimedSchedule(100_000, pastTime);
 
     const memo = new Array(64).fill(0);
     Buffer.from("Paused exec test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    const validationConfig = defaultValidationConfig();
 
-    // Create
     const createIx = await program.methods
-      .createComposablePolicy(schedule, memo, forwardConfig, validationConfig)
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        PublicKey.default,
+        0,
+        Buffer.alloc(0)
+      )
       .accountsStrict({
         feePayer: gatewayAuthority.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
+        validationPda: validationPdaAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -962,7 +1046,6 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Pause it
     await sdk.updateWallet(new anchor.Wallet(user));
 
     const pauseIx = await program.methods
@@ -983,7 +1066,6 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    // Attempt execution on paused policy — should fail at the account validation stage
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
     try {
@@ -1028,5 +1110,123 @@ describe("Composable Policies", () => {
     } catch (error: any) {
       expect(error.message).toContain("PolicyPaused");
     }
+  });
+
+  test("Delete composable policy with validation — closes ValidationPDA", async () => {
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+    const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+    const composablePolicyId =
+      (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+    const [composablePolicyPDA] = getComposablePolicyPda(
+      userPaymentPDA,
+      composablePolicyId,
+      program.programId
+    );
+
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
+    const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
+
+    const now = Math.floor(Date.now() / 1000);
+    const schedule = defaultTimedSchedule(50_000, now + 86400);
+    const memo = new Array(64).fill(0);
+    Buffer.from("Delete+Val test").copy(Buffer.from(memo));
+    const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+    const validationData = Buffer.from("validation-assertion-data-here");
+
+    // Create with validation
+    const createIx = await program.methods
+      .createComposablePolicy(
+        schedule,
+        memo,
+        forwardConfig,
+        LIGHTHOUSE_PUBKEY,
+        2,
+        validationData
+      )
+      .accountsStrict({
+        feePayer: gatewayAuthority.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(createIx),
+      [gatewayAuthority],
+      { commitment: "processed" as Commitment }
+    );
+
+    // Verify ValidationPDA exists
+    const valPdaBefore = await connection.getAccountInfo(validationPdaAddress);
+    expect(valPdaBefore).not.toBeNull();
+
+    // Pause
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    const pauseIx = await program.methods
+      .changeComposableStatus(composablePolicyId, { paused: {} })
+      .accountsStrict({
+        owner: user.publicKey,
+        userPayment: userPaymentPDA,
+        composablePolicy: composablePolicyPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+      })
+      .instruction();
+
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(pauseIx),
+      [user],
+      { commitment: "processed" as Commitment }
+    );
+
+    // Delete with ValidationPDA as remaining_accounts[0]
+    const deleteIx = await program.methods
+      .deleteComposablePolicy(composablePolicyId)
+      .accountsStrict({
+        owner: user.publicKey,
+        userPayment: userPaymentPDA,
+        composablePolicy: composablePolicyPDA,
+        config: configPDA,
+        rentPayer: gatewayAuthority.publicKey,
+      })
+      .remainingAccounts([
+        {
+          pubkey: validationPdaAddress,
+          isSigner: false,
+          isWritable: true,
+        },
+      ])
+      .instruction();
+
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(deleteIx),
+      [user],
+      { commitment: "processed" as Commitment }
+    );
+
+    // Both accounts should be closed
+    const policyAfter = await program.account.composablePolicy.fetchNullable(
+      composablePolicyPDA
+    );
+    expect(policyAfter).toBeNull();
+
+    const valPdaAfter = await connection.getAccountInfo(validationPdaAddress);
+    expect(valPdaAfter).toBeNull();
+
+    const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
+    expect(userPaymentAfter!.activeComposableCount).toBe(activeBefore);
   });
 });

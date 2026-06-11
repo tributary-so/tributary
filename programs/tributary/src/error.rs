@@ -98,6 +98,14 @@ pub enum TributaryError {
     InvalidDelegateVersion,
     #[msg("Must have at least one byte range check")]
     InsufficientByteRangeChecks,
+    #[msg("Validation PDA does not match derived address")]
+    ValidationPdaMismatch,
+    #[msg("Validation data exceeds maximum size")]
+    ValidationDataTooLarge,
+    #[msg("Validation program set but no data provided")]
+    ValidationDataRequired,
+    #[msg("Validation not configured but data was provided")]
+    ValidationNotRequired,
     #[msg("Composable policy not found")]
     ComposablePolicyNotFound,
 }

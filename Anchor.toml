@@ -24,7 +24,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "anchor run test-cargo && anchor run test-integration"
+test = "anchor run test-cargo && anchor run test-integration && anchor run test-composable"
 test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
 test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"

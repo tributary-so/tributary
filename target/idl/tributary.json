@@ -559,6 +559,10 @@
           }
         },
         {
+          "name": "validation_pda",
+          "writable": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -590,12 +594,16 @@
           }
         },
         {
-          "name": "validation_config",
-          "type": {
-            "defined": {
-              "name": "ValidationConfig"
-            }
-          }
+          "name": "validation_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "num_validation_accounts",
+          "type": "u8"
+        },
+        {
+          "name": "validation_data",
+          "type": "bytes"
         }
       ]
     },
@@ -2649,6 +2657,26 @@
     },
     {
       "code": 6047,
+      "name": "ValidationPdaMismatch",
+      "msg": "Validation PDA does not match derived address"
+    },
+    {
+      "code": 6048,
+      "name": "ValidationDataTooLarge",
+      "msg": "Validation data exceeds maximum size"
+    },
+    {
+      "code": 6049,
+      "name": "ValidationDataRequired",
+      "msg": "Validation program set but no data provided"
+    },
+    {
+      "code": 6050,
+      "name": "ValidationNotRequired",
+      "msg": "Validation not configured but data was provided"
+    },
+    {
+      "code": 6051,
       "name": "ComposablePolicyNotFound",
       "msg": "Composable policy not found"
     }
@@ -2826,7 +2854,7 @@
             "type": {
               "array": [
                 "u8",
-                74
+                200
               ]
             }
           }
@@ -2893,6 +2921,10 @@
                 "name": "ValidationConfig"
               }
             }
+          },
+          {
+            "name": "has_validation_pda",
+            "type": "bool"
           }
         ]
       }
@@ -4375,19 +4407,6 @@
           {
             "name": "num_validation_accounts",
             "type": "u8"
-          },
-          {
-            "name": "validation_data_len",
-            "type": "u16"
-          },
-          {
-            "name": "validation_data",
-            "type": {
-              "array": [
-                "u8",
-                128
-              ]
-            }
           }
         ]
       }

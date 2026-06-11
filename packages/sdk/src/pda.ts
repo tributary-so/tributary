@@ -119,6 +119,24 @@ export function getPaymentsDelegatePda(programId: PublicKey): PdaResult {
 }
 
 /**
+ * Derives the Validation PDA for a composable policy.
+ * Stores assertion data for composable policies configured with external validation.
+ * @param composablePolicy - The PublicKey of the composable policy account
+ * @param programId - The PublicKey of the Tributary program
+ * @returns Object containing the PDA address and bump seed
+ */
+export function getValidationPda(
+  composablePolicy: PublicKey,
+  programId: PublicKey
+): PdaResult {
+  const [address, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from(SEEDS.VALIDATION_PDA), composablePolicy.toBuffer()],
+    programId
+  );
+  return { address, bump };
+}
+
+/**
  * Derives a Referral Account PDA for a specific gateway and referral code.
  * Each referral code within a gateway has its own PDA to track the referral account.
  * @param gateway - The PublicKey of the payment gateway
