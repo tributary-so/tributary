@@ -50,7 +50,7 @@ export default function SlideMarket() {
               </span>
               <div className="flex-1 relative h-7 flex items-center">
                 <motion.div
-                  className="h-7 bg-emerald-500 rounded-[4px] origin-left absolute left-0"
+                  className="h-7 bg-purple-500 rounded-[4px] origin-left absolute left-0"
                   style={{ width: `${item.pct}%` }}
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}

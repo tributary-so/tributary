@@ -15,7 +15,7 @@ const DATA = [
 const MAX_VAL = 35;
 const Y_TICKS = [0, 5, 10, 15, 20, 25, 30, 35];
 const VISA_CLR = "#2d3142";
-const STBL_CLR = "#5ecb8d";
+const STBL_CLR = "hsl(var(--primary))";
 
 // Layout constants (SVG coordinate space)
 const SVG_W = 780;
@@ -53,6 +53,7 @@ export default function SlideProblem() {
 
   return (
     <div className="flex flex-col items-center justify-center h-full w-full px-3 sm:px-8">
+      {/*
       <motion.h2
         className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6 text-center leading-tight"
         style={{ fontFamily: "var(--font-secondary)" }}
@@ -62,8 +63,9 @@ export default function SlideProblem() {
       >
         Stablecoins are booming.
         <br />
-        <span className="text-emerald-400">Subscriptions are next.</span>
+        <span className="gradient-text">Subscriptions are next.</span>
       </motion.h2>
+ */}
       <div
         style={{
           maxWidth: 600,
@@ -148,8 +150,9 @@ export default function SlideProblem() {
                         ease: [0.22, 1, 0.36, 1],
                       }}
                       style={{
-                        transformOrigin: `${visaX + BAR_W / 2}px ${PAD_T + CHART_H
-                          }px`,
+                        transformOrigin: `${visaX + BAR_W / 2}px ${
+                          PAD_T + CHART_H
+                        }px`,
                       }}
                     />
                   )}
@@ -174,8 +177,9 @@ export default function SlideProblem() {
                         delay: 0.06,
                       }}
                       style={{
-                        transformOrigin: `${stblX + BAR_W / 2}px ${PAD_T + CHART_H
-                          }px`,
+                        transformOrigin: `${stblX + BAR_W / 2}px ${
+                          PAD_T + CHART_H
+                        }px`,
                       }}
                     />
                   )}
