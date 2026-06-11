@@ -23,3 +23,4 @@ apps/scheduler/lib/
 apps/cli/keypair.json
 coverage
 .surfpool
+apps/docs/site/
