@@ -85,7 +85,7 @@ function defaultValidationConfig(): any {
 function defaultTimedSchedule(amount: number, nextDue: number): any {
   return {
     timed: {
-      amount: amount,
+      amount: new anchor.BN(amount),
       autoRenew: true,
       maxExecutions: null,
       frequency: { monthly: {} },
