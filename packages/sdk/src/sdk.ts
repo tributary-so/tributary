@@ -22,6 +22,7 @@ import {
   getGatewayPda,
   getUserPaymentPda,
   getPaymentPolicyPda,
+  getComposablePolicyPda,
   getPaymentsDelegatePda,
   getReferralPda,
 } from "./pda";
@@ -34,6 +35,11 @@ import type {
   PaymentGateway,
   ProgramConfig,
   ReferralAccount,
+  ComposablePolicy,
+  ScheduleType,
+  ForwardConfig,
+  ValidationConfig,
+  PolicyStatus,
 } from "./types.js";
 import { GATEWAY_FEATURES } from "./constants";
 import {
@@ -1975,6 +1981,234 @@ export class Tributary {
     if (!gateway) throw new Error("Gateway not found");
     const newFlags = gateway.featureFlags & ~flag;
     return this.updateGatewayFeatureFlags(gatewayAuthority, newFlags);
+  }
+
+  // ─── Composable Policy Methods ─────────────────────────────────────────
+
+  /**
+   * Gets a Composable Policy PDA for the specified user payment and policy ID.
+   * @param userPayment - Public key of the user's payment PDA
+   * @param policyId - Unique identifier for the composable policy
+   * @returns PdaResult containing the PDA address and bump
+   */
+  getComposablePolicyPda(userPayment: PublicKey, policyId: number) {
+    return getComposablePolicyPda(userPayment, policyId, this.programId);
+  }
+
+  /**
+   * Gets a transaction instruction to create a composable payment policy.
+   * Composable policies allow execution of arbitrary instructions alongside
+   * optional token forwards, enabling use cases like automated DCA, liquidation
+   * protection, and cross-protocol interactions.
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payments
+   * @param gateway - Public key of the gateway that will execute payments
+   * @param schedule - Schedule configuration defining execution timing
+   * @param memo - Memo string to include with the policy (max 64 bytes)
+   * @param forwardConfig - Token forwarding configuration
+   * @param validationConfig - Validation rules for execution
+   * @returns Transaction instruction to create the composable policy
+   */
+  async getCreateComposablePolicyInstruction(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    schedule: any, // ScheduleType — will be typed once IDL is regenerated
+    memo: string,
+    forwardConfig: any, // ForwardConfig
+    validationConfig: any, // ValidationConfig
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      // Use createdComposableCount if it exists on the account, otherwise fall back
+      policyId =
+        (userPayment as any).createdComposableCount !== undefined
+          ? (userPayment as any).createdComposableCount + 1
+          : userPayment.createdPoliciesCount + 1;
+    }
+
+    const composablePolicyPda = this.getComposablePolicyPda(
+      userPaymentPda,
+      policyId
+    );
+    const memoBytes = encodeMemo(memo);
+
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      composablePolicy: composablePolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    return await this.program.methods
+      .createComposablePolicy(
+        schedule,
+        memoBytes,
+        forwardConfig,
+        validationConfig
+      )
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Gets a transaction instruction to execute a composable payment.
+   * Executes the composable policy by running the provided instruction data
+   * and optionally forwarding tokens.
+   * @param composablePolicy - Public key of the composable policy account
+   * @param instructionData - Buffer containing the instruction data to execute
+   * @param forwardAmount - Optional amount of tokens to forward (null if no forward)
+   * @param remainingAccounts - Additional accounts required by the instruction
+   * @returns Transaction instruction to execute the composable payment
+   */
+  async executeComposable(
+    composablePolicy: PublicKey,
+    instructionData: Buffer,
+    forwardAmount?: BN | null,
+    remainingAccounts?: any[]
+  ): Promise<TransactionInstruction> {
+    const policy: any = await this.program.account.composablePolicy.fetch(
+      composablePolicy
+    );
+    const userPayment: UserPayment =
+      await this.program.account.userPayment.fetch(policy.userPayment);
+    const gateway: PaymentGateway =
+      await this.program.account.paymentGateway.fetch(policy.gateway);
+    const { address: configPda } = getConfigPda(this.programId);
+    const config: ProgramConfig =
+      await this.program.account.programConfig.fetch(configPda);
+
+    const userTokenAccount = getAssociatedTokenAddressSync(
+      userPayment.tokenMint,
+      userPayment.owner
+    );
+    const recipientTokenAccount = getAssociatedTokenAddressSync(
+      policy.forwardConfig.inputMint,
+      policy.recipient
+    );
+    const gatewayFeeAccount = getAssociatedTokenAddressSync(
+      userPayment.tokenMint,
+      gateway.feeRecipient
+    );
+    const protocolFeeAccount = getAssociatedTokenAddressSync(
+      userPayment.tokenMint,
+      config.feeRecipient
+    );
+
+    const accounts = {
+      composablePolicy: composablePolicy,
+      paymentsDelegate: this.getPaymentsDelegatePda().address,
+      userPayment: policy.userPayment,
+      gateway: policy.gateway,
+      config: configPda,
+      userTokenAccount,
+      mint: policy.forwardConfig.inputMint,
+      recipientTokenAccount,
+      gatewayFeeAccount,
+      protocolFeeAccount,
+      feePayer: this.provider.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    };
+
+    return await this.program.methods
+      .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
+      .accountsStrict(accounts)
+      .remainingAccounts(remainingAccounts ?? [])
+      .instruction();
+  }
+
+  /**
+   * Changes the status of a composable policy (active, paused, or completed).
+   * Only the policy owner can change the status.
+   * @param tokenMint - Public key of the token mint
+   * @param policyId - ID of the composable policy to modify
+   * @param newStatus - New status for the policy
+   * @returns Transaction instruction to change the composable policy status
+   */
+  async changeComposablePolicyStatus(
+    tokenMint: PublicKey,
+    policyId: number,
+    newStatus: any // PolicyStatus — will be typed once IDL is regenerated
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: composablePolicyPda } = this.getComposablePolicyPda(
+      userPaymentPda,
+      policyId
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
+    // Fetch the policy to find its gateway
+    const policy = await this.program.account.composablePolicy.fetch(
+      composablePolicyPda
+    );
+
+    const accounts = {
+      owner: owner,
+      config: configPda,
+      userPayment: userPaymentPda,
+      composablePolicy: composablePolicyPda,
+      gateway: policy.gateway,
+    };
+
+    return await this.program.methods
+      .changeComposableStatus(policyId, newStatus)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Deletes a composable policy permanently.
+   * Only the policy owner can delete their composable policies.
+   * @param tokenMint - Public key of the token mint
+   * @param policyId - ID of the composable policy to delete
+   * @returns Transaction instruction to delete the composable policy
+   */
+  async deleteComposablePolicy(
+    tokenMint: PublicKey,
+    policyId: number
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: composablePolicyPda } = this.getComposablePolicyPda(
+      userPaymentPda,
+      policyId
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      owner: owner,
+      config: configPda,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      composablePolicy: composablePolicyPda,
+      rentPayer: owner,
+    };
+
+    return await this.program.methods
+      .deleteComposablePolicy(policyId)
+      .accountsStrict(accounts)
+      .instruction();
   }
 
   // Query methods

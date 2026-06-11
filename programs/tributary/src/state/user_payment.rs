@@ -27,8 +27,11 @@ pub struct UserPayment {
     pub created_policies_count: u32,
     /// Account that paid rent for this account (receives rent on close)
     pub rent_payer: Pubkey,
+    pub active_composable_count: u32,
+    pub created_composable_count: u32,
+    pub delegate_version: u8,
     /// Reserved space for future extensions
-    pub padding: [u8; 220],
+    pub padding: [u8; 209],
 }
 
 impl UserPayment {
@@ -38,10 +41,13 @@ impl UserPayment {
         32 + // token_mint: Pubkey
         4 + // active_policies_count: u32
         4 + // created_policies_count: u32
+        4 + // active_composable_count: u32
+        4 + // created_composable_count: u32
+        1 + // delegate_version: u8
         8 + // created_at: i64
         8 + // updated_at: i64
         1 + // is_active: bool
         1 + // bump: u8
         32 + // rent_payer: Pubkey
-        220; // padding: [u8; 220]
+        209; // padding: [u8; 209]
 }

@@ -106,20 +106,13 @@ TypeScript SDK in `sdk/` with dual compatibility:
 import { Tributary } from "@tributary-so/sdk"; // Main SDK class
 ```
 
-Includes manager CLI in `sdk/manager.ts` for all program operations and PDA utilities.
-
-## Verified Deployment
-
-**Critical:** Use verifiable builds for on-chain verification.
-
-[Read more about deployments.](./DEPLOYMENT.md)
-
 ## Testing
-
-| Layer       | Location | Framework     | Command       |
-| ----------- | -------- | ------------- | ------------- |
-| Integration | `tests/` | Jest + Anchor | `anchor test` |
 
 ```bash
 anchor test
 ```
+
+## Beans
+
+**IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
+When making a commit, include the relevant bean IDs in the commit message

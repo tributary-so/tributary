@@ -27,6 +27,7 @@ wallet = "~/.config/solana/id.json"
 test = "anchor run test-cargo && anchor run test-integration"
 test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
+test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"
 test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
 
 [test]

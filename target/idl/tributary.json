@@ -8,6 +8,133 @@
   },
   "instructions": [
     {
+      "name": "change_composable_status",
+      "discriminator": [
+        131,
+        68,
+        92,
+        37,
+        58,
+        83,
+        46,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "UserPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "composable_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment"
+              },
+              {
+                "kind": "arg",
+                "path": "policy_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "policy_id",
+          "type": "u32"
+        },
+        {
+          "name": "new_status",
+          "type": {
+            "defined": {
+              "name": "PolicyStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "change_gateway_fee_bps",
       "discriminator": [
         129,
@@ -324,6 +451,149 @@
           "type": {
             "defined": {
               "name": "PaymentStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_composable_policy",
+      "discriminator": [
+        91,
+        126,
+        51,
+        215,
+        160,
+        248,
+        142,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "docs": [
+            "Gateway signer - pays rent and must match gateway.signer"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "composable_policy",
+          "writable": true
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "UserPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "UserPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "PaymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "schedule",
+          "type": {
+            "defined": {
+              "name": "ScheduleType"
+            }
+          }
+        },
+        {
+          "name": "memo",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "forward_config",
+          "type": {
+            "defined": {
+              "name": "ForwardConfig"
+            }
+          }
+        },
+        {
+          "name": "validation_config",
+          "type": {
+            "defined": {
+              "name": "ValidationConfig"
             }
           }
         }
@@ -736,6 +1006,126 @@
       "args": []
     },
     {
+      "name": "delete_composable_policy",
+      "discriminator": [
+        215,
+        70,
+        252,
+        65,
+        78,
+        5,
+        226,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "UserPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "composable_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment"
+              },
+              {
+                "kind": "arg",
+                "path": "policy_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "policy_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "delete_payment_gateway",
       "discriminator": [
         222,
@@ -1004,6 +1394,209 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "execute_composable",
+      "discriminator": [
+        27,
+        168,
+        44,
+        123,
+        153,
+        39,
+        164,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "docs": [
+            "Gateway signer, user, or recipient — whoever triggers execution"
+          ],
+          "signer": true
+        },
+        {
+          "name": "payments_delegate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "composable_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "composable_policy.user_payment",
+                "account": "ComposablePolicy"
+              },
+              {
+                "kind": "account",
+                "path": "composable_policy.policy_id",
+                "account": "ComposablePolicy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_payment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "UserPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "UserPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "PaymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "gateway_fee_account",
+          "writable": true
+        },
+        {
+          "name": "protocol_fee_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "instruction_data",
+          "type": "bytes"
+        },
+        {
+          "name": "forward_amount",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
     },
     {
       "name": "execute_payment",
@@ -1517,6 +2110,19 @@
   ],
   "accounts": [
     {
+      "name": "ComposablePolicy",
+      "discriminator": [
+        221,
+        46,
+        214,
+        155,
+        83,
+        198,
+        252,
+        148
+      ]
+    },
+    {
       "name": "PaymentGateway",
       "discriminator": [
         200,
@@ -1583,6 +2189,58 @@
     }
   ],
   "events": [
+    {
+      "name": "ComposableExecuted",
+      "discriminator": [
+        146,
+        55,
+        146,
+        151,
+        90,
+        224,
+        15,
+        186
+      ]
+    },
+    {
+      "name": "ComposablePolicyCreated",
+      "discriminator": [
+        226,
+        211,
+        183,
+        34,
+        49,
+        252,
+        234,
+        138
+      ]
+    },
+    {
+      "name": "ComposablePolicyDeleted",
+      "discriminator": [
+        169,
+        239,
+        45,
+        185,
+        214,
+        246,
+        249,
+        6
+      ]
+    },
+    {
+      "name": "ComposablePolicyStatusChanged",
+      "discriminator": [
+        60,
+        30,
+        170,
+        131,
+        32,
+        190,
+        81,
+        96
+      ]
+    },
     {
       "name": "GatewayFeeBpsChanged",
       "discriminator": [
@@ -1953,9 +2611,393 @@
       "code": 6039,
       "name": "InvalidRentPayer",
       "msg": "Invalid rent payer"
+    },
+    {
+      "code": 6040,
+      "name": "InvalidForwardProgram",
+      "msg": "Forward program not whitelisted"
+    },
+    {
+      "code": 6041,
+      "name": "InvalidValidationProgram",
+      "msg": "Validation program not whitelisted"
+    },
+    {
+      "code": 6042,
+      "name": "ByteRangeCheckFailed",
+      "msg": "Byte range check failed"
+    },
+    {
+      "code": 6043,
+      "name": "InsufficientOutputAmount",
+      "msg": "Insufficient output amount after forward CPI"
+    },
+    {
+      "code": 6044,
+      "name": "ComposableNotEnabled",
+      "msg": "Composable policies not enabled for this gateway"
+    },
+    {
+      "code": 6045,
+      "name": "InvalidDelegateVersion",
+      "msg": "Invalid delegate version for composable policies"
+    },
+    {
+      "code": 6046,
+      "name": "InsufficientByteRangeChecks",
+      "msg": "Must have at least one byte range check"
+    },
+    {
+      "code": 6047,
+      "name": "ComposablePolicyNotFound",
+      "msg": "Composable policy not found"
     }
   ],
   "types": [
+    {
+      "name": "ByteRangeCheck",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offset",
+            "type": "u8"
+          },
+          {
+            "name": "length",
+            "type": "u8"
+          },
+          {
+            "name": "expected",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ComposableExecuted",
+      "docs": [
+        "An event that is thrown when a composable policy is executed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composable_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "input_amount",
+            "type": "u64"
+          },
+          {
+            "name": "output_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "record_id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ComposablePolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "discriminator",
+            "type": "u8"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "user_payment",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "PolicyStatus"
+              }
+            }
+          },
+          {
+            "name": "rent_payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "schedule",
+            "type": {
+              "defined": {
+                "name": "ScheduleType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "forward_config",
+            "type": {
+              "defined": {
+                "name": "ForwardConfig"
+              }
+            }
+          },
+          {
+            "name": "validation_config",
+            "type": {
+              "defined": {
+                "name": "ValidationConfig"
+              }
+            }
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_input",
+            "type": "u64"
+          },
+          {
+            "name": "total_output",
+            "type": "u64"
+          },
+          {
+            "name": "payment_count",
+            "type": "u32"
+          },
+          {
+            "name": "policy_id",
+            "type": "u32"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "state_padding",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                74
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ComposablePolicyCreated",
+      "docs": [
+        "An event that is thrown when a composable policy is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composable_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "user_payment",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_id",
+            "type": "u32"
+          },
+          {
+            "name": "schedule",
+            "type": {
+              "defined": {
+                "name": "ScheduleType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "forward_config",
+            "type": {
+              "defined": {
+                "name": "ForwardConfig"
+              }
+            }
+          },
+          {
+            "name": "validation_config",
+            "type": {
+              "defined": {
+                "name": "ValidationConfig"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ComposablePolicyDeleted",
+      "docs": [
+        "An event that is thrown when a composable policy is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composable_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "user_payment",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_id",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ComposablePolicyStatusChanged",
+      "docs": [
+        "An event that is thrown when a composable policy status is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composable_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_status",
+            "type": {
+              "defined": {
+                "name": "PolicyStatus"
+              }
+            }
+          },
+          {
+            "name": "new_status",
+            "type": {
+              "defined": {
+                "name": "PolicyStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForwardConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "input_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "output_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_output_amount",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "forward_flags",
+            "type": "u8"
+          },
+          {
+            "name": "num_data_checks",
+            "type": "u8"
+          },
+          {
+            "name": "data_checks",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "ByteRangeCheck"
+                  }
+                },
+                4
+              ]
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "GatewayFeeBpsChanged",
       "docs": [
@@ -2579,6 +3621,23 @@
       }
     },
     {
+      "name": "PolicyStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Paused"
+          },
+          {
+            "name": "Completed"
+          }
+        ]
+      }
+    },
+    {
       "name": "PolicyType",
       "docs": [
         "The PolicyType enum implements different payment schemes. The initial policy",
@@ -2973,6 +4032,105 @@
       }
     },
     {
+      "name": "ScheduleType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Timed",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              },
+              {
+                "name": "auto_renew",
+                "type": "bool"
+              },
+              {
+                "name": "max_executions",
+                "type": {
+                  "option": "u32"
+                }
+              },
+              {
+                "name": "frequency",
+                "type": {
+                  "defined": {
+                    "name": "PaymentFrequency"
+                  }
+                }
+              },
+              {
+                "name": "next_execution_due",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "Milestone",
+            "fields": [
+              {
+                "name": "amounts",
+                "type": {
+                  "array": [
+                    "u64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "timestamps",
+                "type": {
+                  "array": [
+                    "i64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "current",
+                "type": "u8"
+              },
+              {
+                "name": "release_condition",
+                "type": "u8"
+              },
+              {
+                "name": "total",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "Usage",
+            "fields": [
+              {
+                "name": "max_amount_per_period",
+                "type": "u64"
+              },
+              {
+                "name": "max_chunk_amount",
+                "type": "u64"
+              },
+              {
+                "name": "period_length_seconds",
+                "type": "u64"
+              },
+              {
+                "name": "current_period_start",
+                "type": "i64"
+              },
+              {
+                "name": "current_period_total",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "UpdateGatewayFeatureFlagsArgs",
       "type": {
         "kind": "struct",
@@ -3133,6 +4291,18 @@
             "type": "pubkey"
           },
           {
+            "name": "active_composable_count",
+            "type": "u32"
+          },
+          {
+            "name": "created_composable_count",
+            "type": "u32"
+          },
+          {
+            "name": "delegate_version",
+            "type": "u8"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -3140,7 +4310,7 @@
             "type": {
               "array": [
                 "u8",
-                220
+                209
               ]
             }
           }
@@ -3189,6 +4359,35 @@
           {
             "name": "rent_payer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidationConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "validation_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "num_validation_accounts",
+            "type": "u8"
+          },
+          {
+            "name": "validation_data_len",
+            "type": "u16"
+          },
+          {
+            "name": "validation_data",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
           }
         ]
       }

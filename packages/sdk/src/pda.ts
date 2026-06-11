@@ -81,6 +81,30 @@ export function getPaymentPolicyPda(
 }
 
 /**
+ * Derives a Composable Policy PDA for a specific composable payment policy.
+ * Composable policies allow execution of arbitrary instructions alongside payments.
+ * @param userPayment - The PublicKey of the user's payment PDA
+ * @param policyId - The unique identifier for this composable policy within the user's account
+ * @param programId - The PublicKey of the Tributary program
+ * @returns Object containing the PDA address and bump seed
+ */
+export function getComposablePolicyPda(
+  userPayment: PublicKey,
+  policyId: number,
+  programId: PublicKey
+): PdaResult {
+  const [address, bump] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(SEEDS.COMPOSABLE_POLICY),
+      userPayment.toBuffer(),
+      new BN(policyId).toArrayLike(Buffer, "le", 4),
+    ],
+    programId
+  );
+  return { address, bump };
+}
+
+/**
  * Derives the Payments Delegate PDA (legacy global delegate).
  * @deprecated Use UserPayment PDA as the delegate instead. This PDA is kept for backward compatibility with existing delegations.
  * @param programId - The PublicKey of the Tributary program

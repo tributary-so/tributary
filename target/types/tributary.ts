@@ -14,6 +14,133 @@ export type Tributary = {
   },
   "instructions": [
     {
+      "name": "changeComposableStatus",
+      "discriminator": [
+        131,
+        68,
+        92,
+        37,
+        58,
+        83,
+        46,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "arg",
+                "path": "policyId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "policyId",
+          "type": "u32"
+        },
+        {
+          "name": "newStatus",
+          "type": {
+            "defined": {
+              "name": "policyStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "changeGatewayFeeBps",
       "discriminator": [
         129,
@@ -330,6 +457,149 @@ export type Tributary = {
           "type": {
             "defined": {
               "name": "paymentStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createComposablePolicy",
+      "discriminator": [
+        91,
+        126,
+        51,
+        215,
+        160,
+        248,
+        142,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "feePayer",
+          "docs": [
+            "Gateway signer - pays rent and must match gateway.signer"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "userPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "schedule",
+          "type": {
+            "defined": {
+              "name": "scheduleType"
+            }
+          }
+        },
+        {
+          "name": "memo",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "forwardConfig",
+          "type": {
+            "defined": {
+              "name": "forwardConfig"
+            }
+          }
+        },
+        {
+          "name": "validationConfig",
+          "type": {
+            "defined": {
+              "name": "validationConfig"
             }
           }
         }
@@ -742,6 +1012,126 @@ export type Tributary = {
       "args": []
     },
     {
+      "name": "deleteComposablePolicy",
+      "discriminator": [
+        215,
+        70,
+        252,
+        65,
+        78,
+        5,
+        226,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "arg",
+                "path": "policyId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rentPayer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "policyId",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "deletePaymentGateway",
       "discriminator": [
         222,
@@ -1010,6 +1400,209 @@ export type Tributary = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "executeComposable",
+      "discriminator": [
+        27,
+        168,
+        44,
+        123,
+        153,
+        39,
+        164,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "feePayer",
+          "docs": [
+            "Gateway signer, user, or recipient — whoever triggers execution"
+          ],
+          "signer": true
+        },
+        {
+          "name": "paymentsDelegate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "composable_policy.user_payment",
+                "account": "composablePolicy"
+              },
+              {
+                "kind": "account",
+                "path": "composable_policy.policy_id",
+                "account": "composablePolicy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "userPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "userTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "recipientTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "gatewayFeeAccount",
+          "writable": true
+        },
+        {
+          "name": "protocolFeeAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "instructionData",
+          "type": "bytes"
+        },
+        {
+          "name": "forwardAmount",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
     },
     {
       "name": "executePayment",
@@ -1523,6 +2116,19 @@ export type Tributary = {
   ],
   "accounts": [
     {
+      "name": "composablePolicy",
+      "discriminator": [
+        221,
+        46,
+        214,
+        155,
+        83,
+        198,
+        252,
+        148
+      ]
+    },
+    {
       "name": "paymentGateway",
       "discriminator": [
         200,
@@ -1589,6 +2195,58 @@ export type Tributary = {
     }
   ],
   "events": [
+    {
+      "name": "composableExecuted",
+      "discriminator": [
+        146,
+        55,
+        146,
+        151,
+        90,
+        224,
+        15,
+        186
+      ]
+    },
+    {
+      "name": "composablePolicyCreated",
+      "discriminator": [
+        226,
+        211,
+        183,
+        34,
+        49,
+        252,
+        234,
+        138
+      ]
+    },
+    {
+      "name": "composablePolicyDeleted",
+      "discriminator": [
+        169,
+        239,
+        45,
+        185,
+        214,
+        246,
+        249,
+        6
+      ]
+    },
+    {
+      "name": "composablePolicyStatusChanged",
+      "discriminator": [
+        60,
+        30,
+        170,
+        131,
+        32,
+        190,
+        81,
+        96
+      ]
+    },
     {
       "name": "gatewayFeeBpsChanged",
       "discriminator": [
@@ -1959,9 +2617,393 @@ export type Tributary = {
       "code": 6039,
       "name": "invalidRentPayer",
       "msg": "Invalid rent payer"
+    },
+    {
+      "code": 6040,
+      "name": "invalidForwardProgram",
+      "msg": "Forward program not whitelisted"
+    },
+    {
+      "code": 6041,
+      "name": "invalidValidationProgram",
+      "msg": "Validation program not whitelisted"
+    },
+    {
+      "code": 6042,
+      "name": "byteRangeCheckFailed",
+      "msg": "Byte range check failed"
+    },
+    {
+      "code": 6043,
+      "name": "insufficientOutputAmount",
+      "msg": "Insufficient output amount after forward CPI"
+    },
+    {
+      "code": 6044,
+      "name": "composableNotEnabled",
+      "msg": "Composable policies not enabled for this gateway"
+    },
+    {
+      "code": 6045,
+      "name": "invalidDelegateVersion",
+      "msg": "Invalid delegate version for composable policies"
+    },
+    {
+      "code": 6046,
+      "name": "insufficientByteRangeChecks",
+      "msg": "Must have at least one byte range check"
+    },
+    {
+      "code": 6047,
+      "name": "composablePolicyNotFound",
+      "msg": "Composable policy not found"
     }
   ],
   "types": [
+    {
+      "name": "byteRangeCheck",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offset",
+            "type": "u8"
+          },
+          {
+            "name": "length",
+            "type": "u8"
+          },
+          {
+            "name": "expected",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "composableExecuted",
+      "docs": [
+        "An event that is thrown when a composable policy is executed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "inputAmount",
+            "type": "u64"
+          },
+          {
+            "name": "outputAmount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "recordId",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "discriminator",
+            "type": "u8"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "policyStatus"
+              }
+            }
+          },
+          {
+            "name": "rentPayer",
+            "type": "pubkey"
+          },
+          {
+            "name": "schedule",
+            "type": {
+              "defined": {
+                "name": "scheduleType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "forwardConfig",
+            "type": {
+              "defined": {
+                "name": "forwardConfig"
+              }
+            }
+          },
+          {
+            "name": "validationConfig",
+            "type": {
+              "defined": {
+                "name": "validationConfig"
+              }
+            }
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "totalInput",
+            "type": "u64"
+          },
+          {
+            "name": "totalOutput",
+            "type": "u64"
+          },
+          {
+            "name": "paymentCount",
+            "type": "u32"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "updatedAt",
+            "type": "i64"
+          },
+          {
+            "name": "statePadding",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                74
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicyCreated",
+      "docs": [
+        "An event that is thrown when a composable policy is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          },
+          {
+            "name": "schedule",
+            "type": {
+              "defined": {
+                "name": "scheduleType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "forwardConfig",
+            "type": {
+              "defined": {
+                "name": "forwardConfig"
+              }
+            }
+          },
+          {
+            "name": "validationConfig",
+            "type": {
+              "defined": {
+                "name": "validationConfig"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicyDeleted",
+      "docs": [
+        "An event that is thrown when a composable policy is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicyStatusChanged",
+      "docs": [
+        "An event that is thrown when a composable policy status is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldStatus",
+            "type": {
+              "defined": {
+                "name": "policyStatus"
+              }
+            }
+          },
+          {
+            "name": "newStatus",
+            "type": {
+              "defined": {
+                "name": "policyStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "forwardConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "targetProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "inputMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "outputMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "minOutputAmount",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "forwardFlags",
+            "type": "u8"
+          },
+          {
+            "name": "numDataChecks",
+            "type": "u8"
+          },
+          {
+            "name": "dataChecks",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "byteRangeCheck"
+                  }
+                },
+                4
+              ]
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "gatewayFeeBpsChanged",
       "docs": [
@@ -2585,6 +3627,23 @@ export type Tributary = {
       }
     },
     {
+      "name": "policyStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "active"
+          },
+          {
+            "name": "paused"
+          },
+          {
+            "name": "completed"
+          }
+        ]
+      }
+    },
+    {
       "name": "policyType",
       "docs": [
         "The PolicyType enum implements different payment schemes. The initial policy",
@@ -2979,6 +4038,105 @@ export type Tributary = {
       }
     },
     {
+      "name": "scheduleType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "timed",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              },
+              {
+                "name": "autoRenew",
+                "type": "bool"
+              },
+              {
+                "name": "maxExecutions",
+                "type": {
+                  "option": "u32"
+                }
+              },
+              {
+                "name": "frequency",
+                "type": {
+                  "defined": {
+                    "name": "paymentFrequency"
+                  }
+                }
+              },
+              {
+                "name": "nextExecutionDue",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "milestone",
+            "fields": [
+              {
+                "name": "amounts",
+                "type": {
+                  "array": [
+                    "u64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "timestamps",
+                "type": {
+                  "array": [
+                    "i64",
+                    4
+                  ]
+                }
+              },
+              {
+                "name": "current",
+                "type": "u8"
+              },
+              {
+                "name": "releaseCondition",
+                "type": "u8"
+              },
+              {
+                "name": "total",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "usage",
+            "fields": [
+              {
+                "name": "maxAmountPerPeriod",
+                "type": "u64"
+              },
+              {
+                "name": "maxChunkAmount",
+                "type": "u64"
+              },
+              {
+                "name": "periodLengthSeconds",
+                "type": "u64"
+              },
+              {
+                "name": "currentPeriodStart",
+                "type": "i64"
+              },
+              {
+                "name": "currentPeriodTotal",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "updateGatewayFeatureFlagsArgs",
       "type": {
         "kind": "struct",
@@ -3139,6 +4297,18 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
+            "name": "activeComposableCount",
+            "type": "u32"
+          },
+          {
+            "name": "createdComposableCount",
+            "type": "u32"
+          },
+          {
+            "name": "delegateVersion",
+            "type": "u8"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -3146,7 +4316,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                220
+                209
               ]
             }
           }
@@ -3195,6 +4365,35 @@ export type Tributary = {
           {
             "name": "rentPayer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "validationConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "validationProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "numValidationAccounts",
+            "type": "u8"
+          },
+          {
+            "name": "validationDataLen",
+            "type": "u16"
+          },
+          {
+            "name": "validationData",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
           }
         ]
       }

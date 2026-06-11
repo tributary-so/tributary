@@ -1,4 +1,6 @@
+use super::composable_policy::{ForwardConfig, ScheduleType, ValidationConfig};
 use super::payment_policy::{PaymentStatus, PolicyType};
+use super::policy_header::PolicyStatus;
 use anchor_lang::prelude::*;
 
 /// An event that is thrown when a payment takes place
@@ -124,4 +126,45 @@ pub struct ReferralRewardDistributedRecord {
     pub payment_amount: u64,
     pub timestamp: i64,
     pub rewards: [Option<ReferralReward>; 3],
+}
+
+/// An event that is thrown when a composable policy is created
+#[event]
+pub struct ComposablePolicyCreated {
+    pub composable_policy: Pubkey,
+    pub user_payment: Pubkey,
+    pub gateway: Pubkey,
+    pub recipient: Pubkey,
+    pub policy_id: u32,
+    pub schedule: ScheduleType,
+    pub memo: [u8; 64],
+    pub forward_config: ForwardConfig,
+    pub validation_config: ValidationConfig,
+}
+
+/// An event that is thrown when a composable policy is executed
+#[event]
+pub struct ComposableExecuted {
+    pub composable_policy: Pubkey,
+    pub gateway: Pubkey,
+    pub input_amount: u64,
+    pub output_amount: u64,
+    pub timestamp: i64,
+    pub record_id: u32,
+}
+
+/// An event that is thrown when a composable policy status is changed
+#[event]
+pub struct ComposablePolicyStatusChanged {
+    pub composable_policy: Pubkey,
+    pub old_status: PolicyStatus,
+    pub new_status: PolicyStatus,
+}
+
+/// An event that is thrown when a composable policy is deleted
+#[event]
+pub struct ComposablePolicyDeleted {
+    pub composable_policy: Pubkey,
+    pub user_payment: Pubkey,
+    pub policy_id: u32,
 }

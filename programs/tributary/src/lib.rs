@@ -9,6 +9,7 @@ pub mod constants;
 pub mod error;
 pub mod instructions;
 pub mod policies;
+pub mod shared;
 pub mod state;
 pub mod utils;
 
@@ -128,6 +129,39 @@ pub mod tributary {
         memo: [u8; 64],
     ) -> Result<()> {
         TransferTokens::handler(ctx, amount, memo)
+    }
+
+    pub fn create_composable_policy(
+        ctx: Context<CreateComposablePolicy>,
+        schedule: ScheduleType,
+        memo: [u8; 64],
+        forward_config: ForwardConfig,
+        validation_config: ValidationConfig,
+    ) -> Result<()> {
+        CreateComposablePolicy::handler(ctx, schedule, memo, forward_config, validation_config)
+    }
+
+    pub fn execute_composable<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteComposable<'info>>,
+        instruction_data: Vec<u8>,
+        forward_amount: Option<u64>,
+    ) -> Result<()> {
+        ExecuteComposable::handler(ctx, instruction_data, forward_amount)
+    }
+
+    pub fn delete_composable_policy(
+        ctx: Context<DeleteComposablePolicy>,
+        policy_id: u32,
+    ) -> Result<()> {
+        DeleteComposablePolicy::handler(ctx, policy_id)
+    }
+
+    pub fn change_composable_status(
+        ctx: Context<ChangeComposableStatus>,
+        policy_id: u32,
+        new_status: PolicyStatus,
+    ) -> Result<()> {
+        ChangeComposableStatus::handler(ctx, policy_id, new_status)
     }
 }
 

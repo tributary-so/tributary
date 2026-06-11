@@ -84,4 +84,20 @@ pub enum TributaryError {
     HasActivePolicies,
     #[msg("Invalid rent payer")]
     InvalidRentPayer,
+    #[msg("Forward program not whitelisted")]
+    InvalidForwardProgram,
+    #[msg("Validation program not whitelisted")]
+    InvalidValidationProgram,
+    #[msg("Byte range check failed")]
+    ByteRangeCheckFailed,
+    #[msg("Insufficient output amount after forward CPI")]
+    InsufficientOutputAmount,
+    #[msg("Composable policies not enabled for this gateway")]
+    ComposableNotEnabled,
+    #[msg("Invalid delegate version for composable policies")]
+    InvalidDelegateVersion,
+    #[msg("Must have at least one byte range check")]
+    InsufficientByteRangeChecks,
+    #[msg("Composable policy not found")]
+    ComposablePolicyNotFound,
 }

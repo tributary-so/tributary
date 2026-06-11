@@ -6,7 +6,7 @@ export type IWallet = {
   publicKey: PublicKey;
   signTransaction<T>(tx: T): Promise<T>;
   signAllTransactions<T>(txs: T[]): Promise<T[]>;
-}
+};
 
 /**
  * Result of a Program Derived Address (PDA) derivation operation.
@@ -59,6 +59,13 @@ export type UserPayment = IdlAccounts<Tributary>["userPayment"];
  */
 export type PaymentPolicy = IdlAccounts<Tributary>["paymentPolicy"];
 
+/**
+ * Composable policy account structure.
+ * Defines a composable payment policy that can execute arbitrary instructions
+ * alongside optional token forwards.
+ */
+export type ComposablePolicy = IdlAccounts<Tributary>["composablePolicy"];
+
 // IDL-derived types - These types are automatically generated from the Anchor IDL
 // and represent enums and structs used within the Tributary program.
 
@@ -91,3 +98,36 @@ export type PaymentRecord = IdlTypes<Tributary>["paymentRecord"];
  * Tracks a user's referral code, referrer chain, and earned rewards.
  */
 export type ReferralAccount = IdlAccounts<Tributary>["referralAccount"];
+
+// Composable policy types - These types will resolve once the IDL is regenerated
+// after `anchor build`. They resolve to `any` until the IDL includes them.
+
+/**
+ * Schedule type for composable policies.
+ * Defines when and how composable policy executions occur.
+ */
+export type ScheduleType = IdlTypes<Tributary>["scheduleType"];
+
+/**
+ * Forward configuration for composable policies.
+ * Specifies token forwarding behavior during composable execution.
+ */
+export type ForwardConfig = IdlTypes<Tributary>["forwardConfig"];
+
+/**
+ * Validation configuration for composable policies.
+ * Defines validation rules applied during composable execution.
+ */
+export type ValidationConfig = IdlTypes<Tributary>["validationConfig"];
+
+/**
+ * Byte range check for composable policy validation.
+ * Specifies a range of bytes to validate in instruction data.
+ */
+export type ByteRangeCheck = IdlTypes<Tributary>["byteRangeCheck"];
+
+/**
+ * Status of a composable policy.
+ * Tracks whether a composable policy is active, paused, or completed.
+ */
+export type PolicyStatus = IdlTypes<Tributary>["policyStatus"];
