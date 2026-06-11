@@ -913,6 +913,13 @@ export type Tributary = {
               }
             ]
           }
+        },
+        {
+          "name": "rentPayer",
+          "docs": [
+            "Only used when stored rent_payer != Pubkey::default()."
+          ],
+          "writable": true
         }
       ],
       "args": [
@@ -921,6 +928,88 @@ export type Tributary = {
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "deleteUserPayment",
+      "discriminator": [
+        208,
+        129,
+        72,
+        168,
+        92,
+        75,
+        82,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint"
+        },
+        {
+          "name": "rentPayer",
+          "docs": [
+            "Only used when stored rent_payer != Pubkey::default()."
+          ],
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
     },
     {
       "name": "executePayment",
@@ -1655,6 +1744,19 @@ export type Tributary = {
         34,
         21
       ]
+    },
+    {
+      "name": "userPaymentDeleted",
+      "discriminator": [
+        208,
+        115,
+        168,
+        26,
+        86,
+        179,
+        246,
+        36
+      ]
     }
   ],
   "errors": [
@@ -1847,6 +1949,16 @@ export type Tributary = {
       "code": 6037,
       "name": "invalidFeatureFlags",
       "msg": "Invalid feature flags"
+    },
+    {
+      "code": 6038,
+      "name": "hasActivePolicies",
+      "msg": "Cannot delete user payment with active policies"
+    },
+    {
+      "code": 6039,
+      "name": "invalidRentPayer",
+      "msg": "Invalid rent payer"
     }
   ],
   "types": [
@@ -2278,6 +2390,13 @@ export type Tributary = {
             "type": "u8"
           },
           {
+            "name": "rentPayer",
+            "docs": [
+              "Account that paid rent for this account (receives rent on close)"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -2285,7 +2404,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                255
+                223
               ]
             }
           }
@@ -3013,6 +3132,13 @@ export type Tributary = {
             "type": "u32"
           },
           {
+            "name": "rentPayer",
+            "docs": [
+              "Account that paid rent for this account (receives rent on close)"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -3020,7 +3146,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                252
+                220
               ]
             }
           }
@@ -3045,6 +3171,29 @@ export type Tributary = {
           },
           {
             "name": "tokenMint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "userPaymentDeleted",
+      "docs": [
+        "An event that is thrown when a user payment account is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "rentPayer",
             "type": "pubkey"
           }
         ]

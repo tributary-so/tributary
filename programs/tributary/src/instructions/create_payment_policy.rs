@@ -116,6 +116,7 @@ impl<'info> CreatePaymentPolicy<'info> {
         payment_policy.updated_at = clock.unix_timestamp;
         payment_policy.policy_id = policy_id;
         payment_policy.bump = ctx.bumps.payment_policy;
+        payment_policy.rent_payer = ctx.accounts.fee_payer.key();
 
         emit!(PaymentPolicyCreated {
             user_payment: payment_policy.user_payment,

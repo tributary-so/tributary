@@ -102,6 +102,14 @@ pub struct PaymentGatewayDeleted {
     pub name: [u8; 32],
 }
 
+/// An event that is thrown when a user payment account is deleted
+#[event]
+pub struct UserPaymentDeleted {
+    pub user_payment: Pubkey,
+    pub owner: Pubkey,
+    pub rent_payer: Pubkey,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ReferralReward {
     pub pubkey: Pubkey,

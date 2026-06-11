@@ -61,3 +61,9 @@ verifiable_build:
 	solana-verify get-executable-hash ./target/deploy/tributary.so
 	make mainnet_deploy
 	solana-verify get-program-hash -u $(SOLANA_API) $(PROGRAM_ID)
+
+build:
+	pnpm run -r --filter "./programs/*" build
+	pnpm run -r --filter "./packages/*" build
+	pnpm run -r --filter "./apps/*" build
+	make -C apps/docs build

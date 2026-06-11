@@ -11,6 +11,7 @@ import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   createApproveInstruction,
+  createRevokeInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -777,6 +778,8 @@ export class Tributary {
 
     // Set up approval if needed
     const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const userPaymentDelegate = userPaymentPda;
+    const delegate = userPaymentDelegate;
     let needsApproval = false;
 
     const tokenAccountInfo = await this.connection.getParsedAccountInfo(
@@ -791,9 +794,17 @@ export class Tributary {
 
       if (!currentDelegate) {
         needsApproval = true;
-      } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
         needsApproval = true;
-      } else if (currentDelegatedAmount < finalApprovalAmount.toNumber()) {
+      } else if (
+        currentDelegate === delegate.toString() &&
+        currentDelegatedAmount < finalApprovalAmount.toNumber()
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
         needsApproval = true;
       }
     } else {
@@ -801,12 +812,14 @@ export class Tributary {
     }
 
     if (needsApproval) {
+      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
-        paymentsDelegatePda,
+        delegate,
         user,
         finalApprovalAmount
       );
+      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -984,8 +997,9 @@ export class Tributary {
       finalApprovalAmount = existingApproval.add(newApproval);
     }
 
-    // Set up approval if needed
     const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const userPaymentDelegate = userPaymentPda;
+    const delegate = userPaymentDelegate;
     let needsApproval = false;
 
     const tokenAccountInfo = await this.connection.getParsedAccountInfo(
@@ -1000,9 +1014,17 @@ export class Tributary {
 
       if (!currentDelegate) {
         needsApproval = true;
-      } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
         needsApproval = true;
-      } else if (currentDelegatedAmount !== finalApprovalAmount.toString()) {
+      } else if (
+        currentDelegate === delegate.toString() &&
+        currentDelegatedAmount !== finalApprovalAmount.toString()
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
         needsApproval = true;
       }
     } else {
@@ -1010,12 +1032,14 @@ export class Tributary {
     }
 
     if (needsApproval) {
+      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
-        paymentsDelegatePda,
+        delegate,
         user,
         finalApprovalAmount
       );
+      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1165,8 +1189,9 @@ export class Tributary {
       finalApprovalAmount = existingApproval.add(newApproval);
     }
 
-    // Set up approval if needed
     const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const userPaymentDelegate = userPaymentPda;
+    const delegate = userPaymentDelegate;
     let needsApproval = false;
 
     const tokenAccountInfo = await this.connection.getParsedAccountInfo(
@@ -1181,9 +1206,17 @@ export class Tributary {
 
       if (!currentDelegate) {
         needsApproval = true;
-      } else if (currentDelegate !== paymentsDelegatePda.toString()) {
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
         needsApproval = true;
-      } else if (currentDelegatedAmount !== finalApprovalAmount.toString()) {
+      } else if (
+        currentDelegate === delegate.toString() &&
+        currentDelegatedAmount !== finalApprovalAmount.toString()
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
         needsApproval = true;
       }
     } else {
@@ -1191,12 +1224,14 @@ export class Tributary {
     }
 
     if (needsApproval) {
+      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
-        paymentsDelegatePda,
+        delegate,
         user,
         finalApprovalAmount
       );
+      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1580,8 +1615,68 @@ export class Tributary {
     );
   }
 
+  private getRevokeInstruction(
+    ownerTokenAccount: PublicKey,
+    owner: PublicKey
+  ): TransactionInstruction {
+    return createRevokeInstruction(
+      ownerTokenAccount,
+      owner,
+      [],
+      TOKEN_PROGRAM_ID
+    );
+  }
+
   /**
-   * Gets the Payments Delegate PDA used for token delegation.
+   * Migrates token delegation from the legacy global payments_delegate PDA
+   * to the per-user UserPayment PDA. Revokes the old delegate, then approves
+   * the new one with the specified amount.
+   * @param tokenMint - Public key of the token mint
+   * @param approvalAmount - Amount to approve for the new delegate
+   * @returns Array of [revoke, approve] transaction instructions
+   */
+  async migrateDelegate(
+    tokenMint: PublicKey,
+    approvalAmount: BN
+  ): Promise<TransactionInstruction[]> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, owner);
+    const { address: legacyDelegate } = this.getPaymentsDelegatePda();
+
+    const instructions: TransactionInstruction[] = [];
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+
+      if (currentDelegate === legacyDelegate.toString()) {
+        instructions.push(this.getRevokeInstruction(ownerTokenAccount, owner));
+      }
+    }
+
+    instructions.push(
+      this.getApprovalInstruction(
+        ownerTokenAccount,
+        userPaymentPda,
+        owner,
+        approvalAmount
+      )
+    );
+
+    return instructions;
+  }
+
+  /**
+   * Gets the Payments Delegate PDA used for token delegation (legacy).
+   * @deprecated Use UserPayment PDA as delegate instead. This is kept for backward compatibility.
    * @returns PdaResult containing the PDA address and bump
    */
   getPaymentsDelegatePda() {
@@ -1654,6 +1749,7 @@ export class Tributary {
       userPayment: userPaymentPda,
       tokenMint: tokenMint,
       paymentPolicy: paymentPolicyPda,
+      rentPayer: owner,
     };
 
     return await this.program.methods
