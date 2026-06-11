@@ -1,3 +1,5 @@
+# [@tributary-so/sdk-react-v1.6.7](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-react-v1.6.6...@tributary-so/sdk-react-v1.6.7) (2026-06-11)
+
 # [@tributary-so/sdk-react-v1.6.6](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-react-v1.6.5...@tributary-so/sdk-react-v1.6.6) (2026-05-21)
 
 # [@tributary-so/sdk-react-v1.6.5](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-react-v1.6.4...@tributary-so/sdk-react-v1.6.5) (2026-05-07)
