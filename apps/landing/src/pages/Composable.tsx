@@ -2,12 +2,8 @@
 
 import { motion } from "framer-motion";
 import {
-  ArrowDown,
   ArrowUpRight,
   Mail,
-  PenLine,
-  Wallet,
-  Handshake,
   BarChart3,
   Coins,
   Heart,
@@ -16,9 +12,16 @@ import {
   Users,
   Bot,
   Skull,
+  Building2,
+  Landmark,
+  Gift,
+  Briefcase,
+  Cpu,
+  Globe,
+  Lock,
+  Sprout,
 } from "lucide-react";
 import SlideProblem from "@/components/futardio/slide-problem";
-import SlideMarket from "@/components/futardio/slide-market";
 import FabianSchuhProfile from "@/components/futardio/cv";
 
 function Divider() {
@@ -51,7 +54,7 @@ function SlideHero() {
           </span>
           <br />
           <span className="gradient-text">
-            Tributary makes it programmable.
+            Tributary makes it self-driving.
           </span>
         </h1>
 
@@ -83,110 +86,269 @@ function SlideHero() {
   );
 }
 
-// ─── Slide: The Big Idea ──────────────────────────────────────────────────────
-function SlideIdea() {
-  const phrases = [
-    { label: "a signature", Icon: PenLine },
-    { label: "a wallet", Icon: Wallet },
-    { label: "a human", Icon: Handshake },
-  ];
-  return (
-    <section className="py-16">
-      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Problem</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          Every payment still requires{" "}
-          <span className="gradient-text">a human.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Stablecoins solved moving value. They did not solve automating it.
-          Money is digital — but it still can't act on its own.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-        <motion.div
-          className="border border-border/50 bg-muted/10 p-8 space-y-4"
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
-        >
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold">
-            Today
-          </p>
-          <div className="space-y-3">
-            {phrases.map((p, i) => (
-              <div key={p.label} className="flex items-center gap-3">
-                <p.Icon className="h-5 w-5 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground">{p.label}</span>
-                {i < phrases.length - 1 && (
-                  <span className="ml-auto text-muted-foreground/30 text-xs font-mono">
-                    ↓
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground pt-2 border-t border-border/30">
-            Result: money is digital but not programmable.
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="border border-primary/30 bg-primary/5 p-8 space-y-4"
-          initial={{ opacity: 0, x: 20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          viewport={{ once: true }}
-        >
-          <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
-            Tomorrow
-          </p>
-          <div className="space-y-2">
-            <div className="font-mono text-sm text-foreground">
-              <span className="text-muted-foreground">Approve</span>
-              <ArrowDown
-                className="h-6 w-6 text-primary ml-4"
-                strokeWidth={2.5}
-              />
-              <span className="gradient-text">Any Financial Action</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground pt-2 border-t border-primary/20">
-            Users define intent. The protocol executes. No signature required.
-          </p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: Stablecoin Growth Chart ──────────────────────────────────────────
+// ─── Slide: Market Forces ────────────────────────────────────────────────────
 function SlideGrowth() {
   return (
     <section className="py-16">
       <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
         <SectionLabel>Market Opportunity</SectionLabel>
         <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Stablecoins </span>
-          <span className="gradient-text">already beat Visa.</span>
-          <br />
-          <span className="text-muted-foreground">
-            Most of it still isn't automated.
-          </span>
+          <span className="text-foreground">$316B in stablecoins. </span>
+          <span className="gradient-text">Zero automation.</span>
         </h2>
         <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Stablecoin volume hit $33T in 2025 — up 72% YoY, dwarfing Visa's
-          $16.7T. Yet the vast majority of those transactions were manually
-          triggered. No schedules. No conditions. No automation. That's the gap
-          Tributary closes.
+          $316B market cap. Solana alone holds $15.2B. Stablecoin volume hit
+          $33T in 2025 — dwarfing Visa's $16.7T. Yet the vast majority was
+          manually triggered. No schedules. No conditions. No automation. The
+          Solana Foundation confirmed this gap — they shipped their own
+          delegation primitive for recurring payments. The market validated the
+          thesis before Tributary raised a single dollar.
         </p>
       </div>
 
       <div className="border border-border/50 bg-muted/10 p-6">
         <SlideProblem />
       </div>
+    </section>
+  );
+}
+
+// ─── Slide: Pain (Vignettes) ─────────────────────────────────────────────────
+function SlidePain() {
+  const vignettes = [
+    {
+      Icon: Building2,
+      title: "DAO Treasury",
+      scenario: "$50M portfolio. Market moves at 2am.",
+      pain: "Someone needs to wake up, check prices, sign a rebalancing transaction. Every time. Manually. Or the portfolio drifts.",
+    },
+    {
+      Icon: Bot,
+      title: "AI Agent",
+      scenario: "Needs compute. Wants to pay for API calls.",
+      pain: "Can't do it without your private key. Hand over full wallet access — or the agent can't function autonomously.",
+    },
+    {
+      Icon: TrendingUp,
+      title: "DeFi Trader",
+      scenario: "Wants to DCA $200 into SOL every Monday.",
+      pain: "Open DEX, connect wallet, approve, swap, sign. Every single week. Set a calendar reminder. Hope you remember.",
+    },
+  ];
+
+  return (
+    <section className="py-16">
+      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
+        <SectionLabel>The Pain</SectionLabel>
+        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+          Money that can't act on its own{" "}
+          <span className="gradient-text">is money that can't scale.</span>
+        </h2>
+        <p className="text-muted-foreground text-[15px] leading-relaxed">
+          Every financial automation that exists in traditional finance — direct
+          debits, stop-losses, limit orders, automated investing — is either
+          impossible on-chain or requires giving up custody.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+        {vignettes.map((v, i) => (
+          <motion.div
+            key={v.title}
+            className="border border-border/50 bg-muted/10 p-6 space-y-3"
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.1 }}
+            viewport={{ once: true }}
+          >
+            <v.Icon className="h-5 w-5 text-muted-foreground" />
+            <div className="text-sm font-bold text-foreground">{v.title}</div>
+            <div className="text-xs text-muted-foreground italic">
+              {v.scenario}
+            </div>
+            <div className="text-xs text-foreground leading-relaxed">
+              {v.pain}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Slide: Dream ─────────────────────────────────────────────────────────────
+function SlideDream() {
+  const dreams = [
+    {
+      title: "DAO rebalances automatically",
+      desc: "Only when the oracle confirms a 5% drift. Only within approved parameters. Non-custodial the whole time.",
+    },
+    {
+      title: "AI agent pays for compute",
+      desc: "Within a $50/day budget. No private keys. No custody. Scoped authority you approved once.",
+    },
+    {
+      title: "$200 into SOL every Monday",
+      desc: "Just happens. No reminders. No manual swaps. No signing.",
+    },
+  ];
+
+  return (
+    <section className="py-16">
+      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
+        <SectionLabel>The Dream</SectionLabel>
+        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+          What if money could act within{" "}
+          <span className="gradient-text">boundaries you set?</span>
+        </h2>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+        {dreams.map((d, i) => (
+          <motion.div
+            key={d.title}
+            className="border border-primary/30 bg-primary/5 p-6 space-y-3"
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.1 }}
+            viewport={{ once: true }}
+          >
+            <div className="text-sm font-bold text-foreground">{d.title}</div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              {d.desc}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="mt-6 max-w-3xl mx-auto text-center lg:text-left lg:mx-0">
+        <p className="text-sm text-foreground font-medium">
+          One approval. Rules you define. Money moves within your boundaries.
+        </p>
+        <p className="text-sm text-primary font-bold mt-1">
+          Non-custodial. Always.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ─── Slide: The Missing Primitive ────────────────────────────────────────────
+function SlidePrimitive() {
+  return (
+    <section className="py-16">
+      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
+        <SectionLabel>The Solution</SectionLabel>
+        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+          <span className="text-foreground">
+            Tributary: the composable automation layer for{" "}
+          </span>
+          <span className="gradient-text">self-driving money.</span>
+        </h2>
+        <p className="text-muted-foreground text-[15px] leading-relaxed">
+          The core primitive: three layers, infinite compositions. Users
+          delegate spending authority once. Tributary never holds funds — it
+          pulls within approved limits and routes through any on-chain program.
+        </p>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-0 border border-border/50 max-w-5xl mx-auto">
+        {[
+          {
+            step: "WHEN",
+            title: "Trigger Condition",
+            color: "text-primary",
+            border: "border-primary/20",
+            bg: "bg-primary/5",
+            items: [
+              "Time / schedule",
+              "Price oracle",
+              "Wallet balance",
+              "Governance outcome",
+              "Custom logic",
+            ],
+          },
+          {
+            step: "PULL",
+            title: "Value Transfer",
+            color: "text-amber-400",
+            border: "border-amber-500/20",
+            bg: "bg-amber-500/5",
+            items: [
+              "Fixed amount",
+              "Variable / usage-based",
+              "Percentage",
+              "Capped (up-to)",
+              "Multi-token",
+            ],
+          },
+          {
+            step: "ROUTE",
+            title: "Destination",
+            color: "text-purple-400",
+            border: "border-purple-500/20",
+            bg: "bg-purple-500/5",
+            items: [
+              "Wallet",
+              "Jupiter (swap)",
+              "Meteora / Raydium",
+              "Staking / yield",
+              "Any Solana program",
+            ],
+          },
+        ].map((s, i) => (
+          <motion.div
+            key={s.step}
+            className={`p-6 border-r border-border/30 last:border-r-0 ${s.bg}`}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.1 }}
+            viewport={{ once: true }}
+          >
+            <div
+              className={`text-3xl font-bold ${s.color} mb-1`}
+              style={{ fontFamily: "var(--font-secondary, monospace)" }}
+            >
+              {s.step}
+            </div>
+            <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4">
+              {s.title}
+            </div>
+            <ul className="space-y-1.5">
+              {s.items.map((item) => (
+                <li
+                  key={item}
+                  className="text-sm text-foreground flex items-center gap-2"
+                >
+                  <span
+                    className={`w-1 h-1 rounded-full ${s.color.replace(
+                      "text-",
+                      "bg-"
+                    )} shrink-0`}
+                  />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div
+        className="mt-4 border border-primary/30 bg-primary/5 px-6 py-4 max-w-5xl mx-auto"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        viewport={{ once: true }}
+      >
+        <p className="text-sm text-foreground">
+          <span className="font-bold gradient-text">WHEN → PULL → ROUTE</span>{" "}
+          transforms a payment protocol into a composable automation layer.
+          Conditional execution via validation CPI gates. Instruction-level
+          security on every forward call. Not a payment product — a primitive
+          anyone can build on.
+        </p>
+      </motion.div>
     </section>
   );
 }
@@ -331,122 +493,6 @@ function SlideBuilt() {
   );
 }
 
-// ─── Slide: The Missing Primitive ────────────────────────────────────────────
-function SlidePrimitive() {
-  return (
-    <section className="py-16">
-      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Next Layer</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">One approval should unlock </span>
-          <span className="gradient-text">any financial action.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Recurring payments proved the model. The real opportunity is the
-          primitive underneath it: composable, programmable money flows — where
-          users define intent and the protocol executes.
-        </p>
-      </div>
-
-      <div className="grid sm:grid-cols-3 gap-0 border border-border/50 max-w-5xl mx-auto">
-        {[
-          {
-            step: "WHEN",
-            title: "Trigger Condition",
-            color: "text-primary",
-            border: "border-primary/20",
-            bg: "bg-primary/5",
-            items: [
-              "Time / schedule",
-              "Price oracle",
-              "Wallet balance",
-              "Governance outcome",
-              "Custom logic",
-            ],
-          },
-          {
-            step: "PULL",
-            title: "Value Transfer",
-            color: "text-amber-400",
-            border: "border-amber-500/20",
-            bg: "bg-amber-500/5",
-            items: [
-              "Fixed amount",
-              "Variable / usage-based",
-              "Percentage",
-              "Capped (up-to)",
-              "Multi-token",
-            ],
-          },
-          {
-            step: "ROUTE",
-            title: "Destination",
-            color: "text-purple-400",
-            border: "border-purple-500/20",
-            bg: "bg-purple-500/5",
-            items: [
-              "Wallet",
-              "Jupiter (swap)",
-              "Meteora / Raydium",
-              "Staking / yield",
-              "Any Solana program",
-            ],
-          },
-        ].map((s, i) => (
-          <motion.div
-            key={s.step}
-            className={`p-6 border-r border-border/30 last:border-r-0 ${s.bg}`}
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.1 }}
-            viewport={{ once: true }}
-          >
-            <div
-              className={`text-3xl font-bold ${s.color} mb-1`}
-              style={{ fontFamily: "var(--font-secondary, monospace)" }}
-            >
-              {s.step}
-            </div>
-            <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4">
-              {s.title}
-            </div>
-            <ul className="space-y-1.5">
-              {s.items.map((item) => (
-                <li
-                  key={item}
-                  className="text-sm text-foreground flex items-center gap-2"
-                >
-                  <span
-                    className={`w-1 h-1 rounded-full ${s.color.replace(
-                      "text-",
-                      "bg-"
-                    )} shrink-0`}
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        ))}
-      </div>
-
-      <motion.div
-        className="mt-4 border border-primary/30 bg-primary/5 px-6 py-4 max-w-5xl mx-auto"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-        viewport={{ once: true }}
-      >
-        <p className="text-sm text-foreground">
-          <span className="font-bold gradient-text">WHEN → PULL → ROUTE</span>{" "}
-          transforms a payment protocol into a programmable money protocol. This
-          is the composable automation layer.
-        </p>
-      </motion.div>
-    </section>
-  );
-}
-
 // ─── Slide: What Builders Can Build ──────────────────────────────────────────
 const BUILDER_APPS = [
   {
@@ -489,6 +535,41 @@ const BUILDER_APPS = [
     name: "Crypto Inheritance",
     desc: "Designate heirs. If activity stops, assets transfer. No surrendering keys.",
   },
+  {
+    Icon: Landmark,
+    name: "Treasury Automation",
+    desc: "Rebalance when allocation drifts. No 3am multisig calls.",
+  },
+  {
+    Icon: Gift,
+    name: "Creator Platforms",
+    desc: "Patreon for crypto. Platform takes a cut, non-custodial.",
+  },
+  {
+    Icon: Briefcase,
+    name: "SaaS Billing Resellers",
+    desc: "Paddle for Solana. Stripe-for-crypto as a service.",
+  },
+  {
+    Icon: Cpu,
+    name: "Machine-to-Machine",
+    desc: "Services settle with services. Per-call, per-compute, trustless.",
+  },
+  {
+    Icon: Globe,
+    name: "Cross-Chain Automation",
+    desc: "CCTP integration. Automate USDC across chains.",
+  },
+  {
+    Icon: Lock,
+    name: "Cold Storage Allowance",
+    desc: "Funds stay in cold storage. Claim an allowance monthly for expenses.",
+  },
+  {
+    Icon: Sprout,
+    name: "Yield Strategies",
+    desc: "Auto-compound, auto-rebalance into higher yield. Set and forget.",
+  },
 ];
 
 function SlideBuilders() {
@@ -515,7 +596,8 @@ function SlideBuilders() {
             className="border border-border/50 bg-muted/10 hover:border-primary/30 hover:bg-primary/5 p-4 space-y-2"
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.35, delay: i * 0.06 }}
+            transition={{ duration: 0.35, delay: i * 0.04 }}
+            viewport={{ once: true }}
           >
             <app.Icon className="h-6 w-6 text-primary" />
             <div className="text-sm font-bold text-foreground">{app.name}</div>
@@ -527,102 +609,9 @@ function SlideBuilders() {
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground italic max-w-3xl mx-auto text-center lg:text-left lg:mx-0">
-        These are the ideas we have today. Every builder who integrates
-        Tributary expands the ecosystem — and every product they ship generates
-        protocol volume.
+        Each composition is a new product. Each product flows through Tributary.
+        Each flow earns protocol fees. Not one business — an ecosystem.
       </p>
-    </section>
-  );
-}
-
-// ─── Slide: Market (Futardio-style centered bars) ─────────────────────────────
-function MarketOpportunity() {
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Market Gap</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Web2 has Stripe.</span>
-          <br />
-          <span className="text-muted-foreground">Solana has nothing.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Automated payments are a multi-hundred-billion dollar market in Web2.
-          On-chain equivalents on Solana? Zero. The EVM alternatives are small,
-          siloed, and incompatible with Solana's architecture.
-        </p>
-      </div>
-
-      <div className="border border-border/50 bg-muted/10 p-6">
-        <SlideMarket />
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: Why Now ───────────────────────────────────────────────────────────
-function SlideWhyNow() {
-  const steps = [
-    { label: "TCP/IP", sub: "Transport layer", year: "1970s" },
-    { label: "Cloud Platforms", sub: "Compute layer", year: "2000s" },
-    { label: "DeFi", sub: "Finance layer", year: "2020" },
-    { label: "Delegated Spending", sub: "Intent primitive", year: "2020" },
-    {
-      label: "Tributary",
-      sub: "Automation layer",
-      year: "Now",
-      highlight: true,
-    },
-  ];
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Timing</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">The delegation layer exists.</span>
-          <br />
-          <span className="gradient-text">Now comes the automation layer.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Solana recently standardized delegated spending. Major ecosystem
-          participants aligned on the primitive. The market has reached
-          consensus: automated money movement is infrastructure. Tributary
-          builds the layer on top.
-        </p>
-      </div>
-
-      <div className="max-w-4xl mx-auto">
-        <div className="flex flex-wrap gap-0 justify-center">
-          {steps.map((s, i) => (
-            <motion.div
-              key={s.label}
-              className={`flex flex-col justify-between border border-border/40 p-4 min-w-[120px] flex-1 ${
-                s.highlight ? "border-primary/50 bg-primary/5" : "bg-muted/5"
-              }`}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.08 }}
-              viewport={{ once: true }}
-            >
-              <div>
-                <div
-                  className={`text-sm font-bold ${
-                    s.highlight ? "gradient-text" : "text-foreground"
-                  }`}
-                >
-                  {s.label}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 leading-snug">
-                  {s.sub}
-                </div>
-              </div>
-              <div className="mt-3 text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">
-                {s.year}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }
@@ -668,9 +657,8 @@ function SlideCompetition() {
           <span className="gradient-text">None let you build your own.</span>
         </h2>
         <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Solana's token delegation means a user can only delegate to one
-          protocol at a time. First-mover is technical lock-in. Being composable
-          means becoming infrastructure — not a competitor.
+          Others build payment products. Tributary is infrastructure — a
+          composable automation layer anyone can build on.
         </p>
       </div>
 
@@ -962,7 +950,7 @@ function SlideRoadmap() {
     },
     {
       label: "Composable Layer (WHEN/PULL/ROUTE)",
-      detail: "programmable money primitive",
+      detail: "self-driving money primitive",
       start: 2,
       span: 5,
       bar: "bg-indigo-500/20 border border-indigo-500/40",
@@ -1088,6 +1076,125 @@ function SlideRoadmap() {
   );
 }
 
+// ─── Slide: The Ask ───────────────────────────────────────────────────────────
+function SlideAsk() {
+  const allocation = [
+    {
+      pct: "~30%",
+      label: "Security Audit",
+      desc: "Enterprise-ready contract. Adevar grant covers partial.",
+    },
+    {
+      pct: "~27%",
+      label: "Composable Layer",
+      desc: "Ship WHEN→PULL→ROUTE. Payment protocol → composable platform.",
+    },
+    {
+      pct: "~27%",
+      label: "Growth & Dev Adoption",
+      desc: "SDK improvements, integration guides, self-hosting.",
+    },
+    {
+      pct: "~16%",
+      label: "Operations",
+      desc: "Infrastructure, legal, liquidity pool.",
+    },
+  ];
+
+  const milestones = [
+    {
+      month: "M3",
+      label: "Audit complete",
+      signal: "Enterprise-ready contract",
+    },
+    {
+      month: "M6",
+      label: "Composable layer live",
+      signal: "First third-party non-payment products",
+    },
+    {
+      month: "M9",
+      label: "15+ integrations",
+      signal: "Recurring protocol revenue visible",
+    },
+    {
+      month: "M12",
+      label: "Seed on real metrics",
+      signal: "Composable volume growing, ecosystem emerging",
+    },
+  ];
+
+  return (
+    <section className="py-16">
+      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
+        <SectionLabel>The Ask</SectionLabel>
+        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+          <span className="text-foreground">Raising </span>
+          <span className="gradient-text">&lt;$250K pre-seed.</span>
+        </h2>
+        <p className="text-muted-foreground text-[15px] leading-relaxed">
+          The protocol is built. The market is validated. 4,000+ payments prove
+          the primitive works. This completes the audit, ships the composable
+          layer, and validates recurring protocol revenue.
+        </p>
+      </div>
+
+      <div className="grid sm:grid-cols-4 gap-3 mb-8 max-w-5xl mx-auto">
+        {allocation.map((a, i) => (
+          <motion.div
+            key={a.label}
+            className="border border-border/50 bg-muted/10 p-4"
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: i * 0.08 }}
+            viewport={{ once: true }}
+          >
+            <div className="text-2xl font-bold gradient-text">{a.pct}</div>
+            <div className="text-sm font-bold text-foreground mt-1">
+              {a.label}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 leading-snug">
+              {a.desc}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="max-w-5xl mx-auto">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-3">
+          12-Month Arc
+        </p>
+        <div className="grid sm:grid-cols-4 gap-0 border border-border/50">
+          {milestones.map((m, i) => (
+            <motion.div
+              key={m.month}
+              className={`p-4 border-r border-border/30 last:border-r-0 ${
+                i === milestones.length - 1
+                  ? "border-primary/30 bg-primary/5"
+                  : ""
+              }`}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: i * 0.1 }}
+              viewport={{ once: true }}
+            >
+              <div className="text-xs font-mono text-muted-foreground/50">
+                {m.month}
+              </div>
+              <div className="text-sm font-bold text-foreground mt-1">
+                {m.label}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {m.signal}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Slide: Team ─────────────────────────────────────────────────────────────
 function SlideTeam() {
   return (
@@ -1129,7 +1236,7 @@ function SlideCTA() {
           Stablecoins made money digital.
           <br />
           <span className="gradient-text">
-            Tributary makes it programmable.
+            Tributary makes it self-driving.
           </span>
         </motion.h2>
         <motion.p
@@ -1174,19 +1281,17 @@ export default function TributaryComposablePitch() {
     <main className="mx-auto max-w-6xl px-4">
       <SlideHero />
       <Divider />
-      <SlideIdea />
-      <Divider />
       <SlideGrowth />
       <Divider />
-      <SlideBuilt />
+      <SlidePain />
+      <Divider />
+      <SlideDream />
       <Divider />
       <SlidePrimitive />
       <Divider />
+      <SlideBuilt />
+      <Divider />
       <SlideBuilders />
-      <Divider />
-      <MarketOpportunity />
-      <Divider />
-      <SlideWhyNow />
       <Divider />
       <SlideCompetition />
       <Divider />
@@ -1195,6 +1300,8 @@ export default function TributaryComposablePitch() {
       <SlideModel />
       <Divider />
       <SlideRoadmap />
+      <Divider />
+      <SlideAsk />
       <Divider />
       <SlideTeam />
       <Divider />
