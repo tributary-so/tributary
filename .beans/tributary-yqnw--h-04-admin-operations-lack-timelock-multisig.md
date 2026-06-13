@@ -1,14 +1,14 @@
 ---
 # tributary-yqnw
 title: 'H-04: Admin Operations Lack Timelock / Multisig'
-status: todo
+status: scrapped
 type: task
 priority: high
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:13:58Z
 parent: tributary-4kt4
 ---
 

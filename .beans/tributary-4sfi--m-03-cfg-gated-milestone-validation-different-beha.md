@@ -1,14 +1,14 @@
 ---
 # tributary-4sfi
 title: 'M-03: Cfg-Gated Milestone Validation — Different Behavior on Mainnet vs. Devnet'
-status: todo
+status: scrapped
 type: task
 priority: normal
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:19:54Z
 parent: tributary-4kt4
 ---
 

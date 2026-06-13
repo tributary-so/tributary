@@ -1,14 +1,14 @@
 ---
 # tributary-as09
 title: 'M-01: Manual Account Close — Bypasses Anchor Safety Checks'
-status: todo
+status: scrapped
 type: task
 priority: normal
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:17:00Z
 parent: tributary-4kt4
 ---
 

@@ -1,14 +1,14 @@
 ---
 # tributary-vb3i
 title: 'H-02: No Owner Signature on create_user_payment — Griefing Vector'
-status: todo
+status: scrapped
 type: task
 priority: high
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:12:25Z
 parent: tributary-4kt4
 ---
 

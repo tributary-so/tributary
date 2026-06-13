@@ -1,14 +1,14 @@
 ---
 # tributary-l4sv
 title: 'H-03: No User Signature on create_payment_policy — Unauthorized Subscription Creation'
-status: todo
+status: scrapped
 type: task
 priority: high
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:13:19Z
 parent: tributary-4kt4
 ---
 

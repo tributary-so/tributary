@@ -1,14 +1,14 @@
 ---
 # tributary-w2uz
 title: 'L-02: Standalone Transfer Instruction — Unbounded Admin Withdrawal'
-status: todo
+status: scrapped
 type: task
 priority: low
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:28:33Z
 parent: tributary-4kt4
 ---
 

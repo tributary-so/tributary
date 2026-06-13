@@ -1,14 +1,14 @@
 ---
 # tributary-o20o
 title: 'M-02: Manual Discriminator Write — validation_pda Bypasses Anchor init'
-status: todo
+status: scrapped
 type: task
 priority: normal
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-13T06:20:14Z
 parent: tributary-4kt4
 ---
 
