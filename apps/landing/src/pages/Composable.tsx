@@ -59,8 +59,8 @@ function SlideHero() {
         </h1>
 
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          The composable automation layer for Solana. One approval. Unlimited
-          financial products.
+          Recurring payments live on mainnet today. The composable automation
+          layer is next. One approval. Unlimited financial products.
         </p>
 
         <div className="flex flex-wrap gap-3 mt-2 justify-center lg:justify-start">
@@ -257,6 +257,7 @@ function SlidePrimitive() {
           {
             step: "WHEN",
             title: "Trigger Condition",
+            status: "ROADMAP",
             color: "text-primary",
             border: "border-primary/20",
             bg: "bg-primary/5",
@@ -271,6 +272,7 @@ function SlidePrimitive() {
           {
             step: "PULL",
             title: "Value Transfer",
+            status: "LIVE",
             color: "text-amber-400",
             border: "border-amber-500/20",
             bg: "bg-amber-500/5",
@@ -278,13 +280,13 @@ function SlidePrimitive() {
               "Fixed amount",
               "Variable / usage-based",
               "Percentage",
-              "Capped (up-to)",
-              "Multi-token",
+              "Any token",
             ],
           },
           {
             step: "ROUTE",
             title: "Destination",
+            status: "ROADMAP",
             color: "text-purple-400",
             border: "border-purple-500/20",
             bg: "bg-purple-500/5",
@@ -311,8 +313,17 @@ function SlidePrimitive() {
             >
               {s.step}
             </div>
-            <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4">
+            <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4 flex items-center gap-2">
               {s.title}
+              <span
+                className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
+                  s.status === "LIVE"
+                    ? "text-accent border border-accent/30"
+                    : "text-muted-foreground/60 border border-border"
+                }`}
+              >
+                {s.status === "LIVE" ? "● LIVE" : "ROADMAP"}
+              </span>
             </div>
             <ul className="space-y-1.5">
               {s.items.map((item) => (
@@ -342,11 +353,12 @@ function SlidePrimitive() {
         viewport={{ once: true }}
       >
         <p className="text-sm text-foreground">
-          <span className="font-bold gradient-text">WHEN → PULL → ROUTE</span>{" "}
-          transforms a payment protocol into a composable automation layer.
-          Conditional execution via validation CPI gates. Instruction-level
-          security on every forward call. Not a payment product — a primitive
-          anyone can build on.
+          <span className="font-bold text-amber-400">PULL is live</span> —
+          recurring payments on mainnet today.{" "}
+          <span className="font-bold gradient-text">WHEN → ROUTE</span> extend
+          it into a composable automation layer. Conditional execution via
+          validation CPI gates. Instruction-level security on every forward
+          call. That's the roadmap — the foundation is already running.
         </p>
       </motion.div>
     </section>
@@ -462,13 +474,6 @@ function SlideBuilt() {
               border: "border-blue-500/20",
               bg: "bg-blue-500/5",
             },
-            {
-              name: "UP-TO",
-              desc: "Cap-based — x402 aligned, perfect for AI agents",
-              color: "text-rose-400",
-              border: "border-rose-500/20",
-              bg: "bg-rose-500/5",
-            },
           ].map((m) => (
             <div
               key={m.name}
@@ -576,16 +581,17 @@ function SlideBuilders() {
   return (
     <section className="py-16">
       <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Composability</SectionLabel>
+        <SectionLabel>Composability — What Becomes Possible</SectionLabel>
         <h2 className="text-3xl md:text-4xl font-bold leading-tight">
           <span className="text-foreground">One primitive. </span>
           <span className="gradient-text">Infinite products.</span>
         </h2>
         <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Stripe didn't predict Shopify. AWS didn't predict Airbnb. Ethereum
-          didn't predict Uniswap. Infrastructure wins because developers
-          innovate faster than platform owners. The best products built on
-          Tributary will be built by other developers.
+          None of these exist yet — they become trivial when WHEN→PULL→ROUTE
+          ships. Stripe didn't predict Shopify. AWS didn't predict Airbnb.
+          Ethereum didn't predict Uniswap. Infrastructure wins because
+          developers innovate faster than platform owners. The best products
+          built on Tributary will be built by other developers.
         </p>
       </div>
 
@@ -617,6 +623,8 @@ function SlideBuilders() {
 }
 
 // ─── Slide: Competition ───────────────────────────────────────────────────────
+{
+  /*
 function SlideCompetition() {
   const cols = ["", "Tributary", "Helio", "VelaPay"];
   const rows = [
@@ -724,6 +732,8 @@ function SlideCompetition() {
     </section>
   );
 }
+*/
+}
 
 // ─── Slide: Traction ─────────────────────────────────────────────────────────
 function SlideTraction() {
@@ -746,16 +756,24 @@ function SlideTraction() {
   return (
     <section className="py-16">
       <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Traction</SectionLabel>
+        <SectionLabel>Traction — Payments Layer Only</SectionLabel>
         <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          Built part-time.
+          <span className="text-foreground">The tip of the iceberg.</span>
           <br />
-          <span className="gradient-text">Growing full-time.</span>
+          <span className="gradient-text">And it's already moving.</span>
         </h2>
-        <p className="text-muted-foreground text-[15px]">
-          Smart contract live on mainnet. GTM launched. Real builders
-          integrating.
+        <p className="text-muted-foreground text-[15px] leading-relaxed">
+          Every number below comes from the payments layer alone — before
+          composability ships. Subscriptions, milestones, pay-as-you-go on
+          mainnet. Real integrations. Real volume. A fraction of what Tributary
+          becomes when WHEN→PULL→ROUTE goes live.
         </p>
+      </div>
+
+      <div className="mb-3 text-center lg:text-left">
+        <span className="inline-block text-[10px] font-mono tracking-wider text-amber-400/70 border border-amber-500/20 px-2 py-1">
+          ▸ PAYMENTS ONLY · COMPOSABILITY NOT YET LIVE
+        </span>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-10 justify-center lg:justify-start">
@@ -782,9 +800,13 @@ function SlideTraction() {
         ))}
       </div>
 
-      <h3 className="text-lg font-bold mb-4 text-center lg:text-left">
+      <h3 className="text-lg font-bold mb-1 text-center lg:text-left">
         Integrations
       </h3>
+      <p className="text-xs text-muted-foreground italic mb-4 text-center lg:text-left">
+        All payments-layer integrations — composability unlocks an entirely new
+        category of builders.
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {integrations.map((i) => (
           <div
@@ -1292,8 +1314,8 @@ export default function TributaryComposablePitch() {
       <SlideBuilt />
       <Divider />
       <SlideBuilders />
-      <Divider />
-      <SlideCompetition />
+      {/* <Divider /> */}
+      {/* <SlideCompetition /> */}
       <Divider />
       <SlideTraction />
       <Divider />
