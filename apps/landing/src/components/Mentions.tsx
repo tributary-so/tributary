@@ -275,18 +275,18 @@ const endorsers: Endorser[] = [
       </svg>
     ),
   },
-  // {
-  //   name: "Solana Foundation",
-  //   url: "https://x.com/SolPlay_jonas/status/2052741790852165641",
-  //   mark: (
-  //     <img
-  //       width="16"
-  //       height="16"
-  //       aria-hidden="true"
-  //       src="/solanaLogoMark.svg"
-  //     />
-  //   ),
-  // },
+  {
+    name: "Solana Payments",
+    url: "https://x.com/xer0c/status/2064638732230086837",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        src="/solanaLogoMark.svg"
+      />
+    ),
+  },
 ];
 
 function Endorsements() {

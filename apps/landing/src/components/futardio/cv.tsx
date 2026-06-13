@@ -3,7 +3,6 @@ import { BriefcaseBusiness, CheckCheck, Crown } from "lucide-react";
 export default function FabianSchuhProfile() {
   return (
     <div className="space-y-8">
-
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
@@ -27,8 +26,8 @@ export default function FabianSchuhProfile() {
         </p>
         <p className="text-sm text-gray-600 leading-relaxed">
           Veteran builder. PhD engineer turned crypto founder. From low-latency
-          comms research to shipping low-latency, full-stack blockchain protocols, DeFi
-          platforms, and AI agent systems.
+          comms research to shipping low-latency, full-stack blockchain
+          protocols, DeFi platforms, and AI agent systems.
         </p>
       </section>
 
@@ -78,7 +77,8 @@ export default function FabianSchuhProfile() {
               </p>
               <p className="text-xs  leading-relaxed">
                 One of the first developers ever paid via on-chain worker
-                proposal. Token holders approved his salary through governance. Pioneered the model.
+                proposal. Token holders approved his salary through governance.
+                Pioneered the model.
               </p>
             </div>
           </div>
@@ -87,9 +87,7 @@ export default function FabianSchuhProfile() {
 
       {/* ── Exits ── */}
       <section className="space-y-3">
-        <p className="text-xs font-medium uppercase tracking-widest ">
-          Exits
-        </p>
+        <p className="text-xs font-medium uppercase tracking-widest ">Exits</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {[
             ["Steemit", "Founding member · Python lead"],
@@ -116,15 +114,12 @@ export default function FabianSchuhProfile() {
         <p className="text-xs font-medium uppercase tracking-widest ">
           Why Fabian to raise funds for a DAO
         </p>
-
-        <div className="bg-gray-50 py-4 leading-relaxed">
-          <span className="font-medium ">
-            Arguably the most uniquely qualified individual in Web3
-          </span>{" "}
-          to lead a project's transition into a DAO. He not only participated
-          in decentralized governance, he even architected systems that let DAOs
+        <p className="bg-gray-50 p-4 leading-relaxed">
+          Arguably the most uniquely qualified individual in Web3 to lead a
+          project's transition into a DAO. He not only participated in
+          decentralized governance, he even architected systems that let DAOs
           function as sustainable, unmanned companies.
-        </div>
+        </p>
       </section>
     </div>
   );
