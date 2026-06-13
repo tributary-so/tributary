@@ -2,8 +2,6 @@ use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
-const CLOSE_DISCRIMINATOR: [u8; 8] = [u8::MAX; 8];
-
 #[derive(Accounts)]
 #[instruction(policy_id: u32)]
 pub struct DeletePaymentPolicy<'info> {
@@ -69,10 +67,6 @@ impl<'info> DeletePaymentPolicy<'info> {
         let rent_refund_target = destination.key();
 
         let info = payment_policy.to_account_info();
-        {
-            let mut data = info.try_borrow_mut_data()?;
-            data[..8].copy_from_slice(&CLOSE_DISCRIMINATOR);
-        }
         **destination.try_borrow_mut_lamports()? = destination
             .lamports()
             .checked_add(info.lamports())
