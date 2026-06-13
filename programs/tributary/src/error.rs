@@ -108,4 +108,8 @@ pub enum TributaryError {
     ValidationNotRequired,
     #[msg("Composable policy not found")]
     ComposablePolicyNotFound,
+    #[msg("At least one ByteRangeCheck must start at offset 0 to pin the instruction selector")]
+    DiscriminatorCheckRequired,
+    #[msg("Only the upgrade authority can initialize the program")]
+    UnauthorizedInitializer,
 }

@@ -32,3 +32,6 @@ test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
 
 [test]
 startup_wait = 20000
+
+# This deploys the program using --upgradeable-program, and the initial upgrade authority will be set to provider.wallet
+upgradeable = true

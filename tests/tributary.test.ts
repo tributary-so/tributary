@@ -248,12 +248,20 @@ describe("Tributary", () => {
     // Update SDK to use admin wallet for this operation
     await sdk.updateWallet(new anchor.Wallet(admin));
 
-    const initIx = await sdk.initialize(admin.publicKey);
+    const initIx = await sdk.initialize(
+      provider.wallet.publicKey,
+      admin.publicKey
+    );
     const tx = new Transaction().add(initIx);
 
-    await sendAndConfirmTransaction(connection, tx, [admin], {
-      commitment: "processed" as Commitment,
-    });
+    await sendAndConfirmTransaction(
+      connection,
+      tx,
+      [provider.wallet.payer!, admin],
+      {
+        commitment: "processed" as Commitment,
+      }
+    );
 
     const configAccount = await sdk.getProgramConfig(configPDA);
 
@@ -2239,13 +2247,17 @@ describe("Tributary", () => {
     });
 
     test("Execute subscription payment with referral rewards", async () => {
-      const [initialL1Balance, initialL2Balance, initialL3Balance, initialRecipientBalance] =
-        await Promise.all([
-          connection.getTokenAccountBalance(l1TokenAccount),
-          connection.getTokenAccountBalance(l2TokenAccount),
-          connection.getTokenAccountBalance(l3TokenAccount),
-          connection.getTokenAccountBalance(recipientTokenAccount),
-        ]);
+      const [
+        initialL1Balance,
+        initialL2Balance,
+        initialL3Balance,
+        initialRecipientBalance,
+      ] = await Promise.all([
+        connection.getTokenAccountBalance(l1TokenAccount),
+        connection.getTokenAccountBalance(l2TokenAccount),
+        connection.getTokenAccountBalance(l3TokenAccount),
+        connection.getTokenAccountBalance(recipientTokenAccount),
+      ]);
 
       const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
 
@@ -2314,11 +2326,12 @@ describe("Tributary", () => {
         (referralPool * gateway!.referralTiersBps[2]) / 10000
       );
 
-      const [finalL1Balance, finalL2Balance, finalL3Balance] = await Promise.all([
-        connection.getTokenAccountBalance(l1TokenAccount),
-        connection.getTokenAccountBalance(l2TokenAccount),
-        connection.getTokenAccountBalance(l3TokenAccount),
-      ]);
+      const [finalL1Balance, finalL2Balance, finalL3Balance] =
+        await Promise.all([
+          connection.getTokenAccountBalance(l1TokenAccount),
+          connection.getTokenAccountBalance(l2TokenAccount),
+          connection.getTokenAccountBalance(l3TokenAccount),
+        ]);
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
@@ -3352,9 +3365,14 @@ describe("Tributary", () => {
           1000000n
         )
       );
-      await sendAndConfirmTransaction(connection, ataTx, [admin, mintAuthority], {
-        commitment: "processed" as Commitment,
-      });
+      await sendAndConfirmTransaction(
+        connection,
+        ataTx,
+        [admin, mintAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
 
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 

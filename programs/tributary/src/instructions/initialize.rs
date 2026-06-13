@@ -1,8 +1,11 @@
-use crate::{state::*, CONFIG_SEED};
+use crate::{error::TributaryError, state::*, CONFIG_SEED};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
     #[account(mut)]
     pub admin: Signer<'info>,
 
@@ -14,6 +17,11 @@ pub struct Initialize<'info> {
         bump
     )]
     pub config: Account<'info, ProgramConfig>,
+
+    /// CHECK: Program data account containing upgrade authority info.
+    /// Enforces that only the upgrade authority can initialize the protocol.
+    #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()) @ TributaryError::UnauthorizedInitializer)]
+    pub program_data: Account<'info, ProgramData>,
 
     pub system_program: Program<'info, System>,
 }

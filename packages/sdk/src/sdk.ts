@@ -133,14 +133,27 @@ export class Tributary {
    * @param admin - Public key of the protocol administrator
    * @returns Transaction instruction to initialize the protocol
    */
-  async initialize(admin: PublicKey): Promise<TransactionInstruction> {
+  async initialize(
+    authority: PublicKey,
+    admin: PublicKey
+  ): Promise<TransactionInstruction> {
     const { address: configPda } = getConfigPda(this.programId);
+    const [programDataAddress] = PublicKey.findProgramAddressSync(
+      [this.programId.toBytes()],
+      new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+    );
+    const accountInfo = await this.connection.getAccountInfo(
+      programDataAddress
+    );
+    if (!accountInfo) throw new Error("Program data account not found");
 
     return await this.program.methods
       .initialize()
       .accountsStrict({
         admin,
         config: configPda,
+        authority,
+        programData: programDataAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();

@@ -1805,6 +1805,11 @@
       ],
       "accounts": [
         {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "admin",
           "writable": true,
           "signer": true
@@ -1827,6 +1832,12 @@
               }
             ]
           }
+        },
+        {
+          "name": "program_data",
+          "docs": [
+            "Enforces that only the upgrade authority can initialize the protocol."
+          ]
         },
         {
           "name": "system_program",
@@ -2679,6 +2690,16 @@
       "code": 6051,
       "name": "ComposablePolicyNotFound",
       "msg": "Composable policy not found"
+    },
+    {
+      "code": 6052,
+      "name": "DiscriminatorCheckRequired",
+      "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
+    },
+    {
+      "code": 6053,
+      "name": "UnauthorizedInitializer",
+      "msg": "Only the upgrade authority can initialize the program"
     }
   ],
   "types": [

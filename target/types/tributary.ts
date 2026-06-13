@@ -1811,6 +1811,11 @@ export type Tributary = {
       ],
       "accounts": [
         {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "admin",
           "writable": true,
           "signer": true
@@ -1833,6 +1838,12 @@ export type Tributary = {
               }
             ]
           }
+        },
+        {
+          "name": "programData",
+          "docs": [
+            "Enforces that only the upgrade authority can initialize the protocol."
+          ]
         },
         {
           "name": "systemProgram",
@@ -2685,6 +2696,16 @@ export type Tributary = {
       "code": 6051,
       "name": "composablePolicyNotFound",
       "msg": "Composable policy not found"
+    },
+    {
+      "code": 6052,
+      "name": "discriminatorCheckRequired",
+      "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
+    },
+    {
+      "code": 6053,
+      "name": "unauthorizedInitializer",
+      "msg": "Only the upgrade authority can initialize the program"
     }
   ],
   "types": [

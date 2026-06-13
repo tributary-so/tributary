@@ -75,6 +75,8 @@ impl<'info> CreateComposablePolicy<'info> {
             TributaryError::InsufficientByteRangeChecks
         );
         // Validate each ByteRangeCheck is sane (offset + length doesn't overflow u8)
+        // and at least one check pins the Anchor discriminator at offset 0.
+        let mut covers_discriminator = false;
         for i in 0..forward_config.num_data_checks as usize {
             let check = &forward_config.data_checks[i];
             require!(
@@ -83,7 +85,14 @@ impl<'info> CreateComposablePolicy<'info> {
                     .map_or(false, |v| v <= 1024),
                 TributaryError::ByteRangeCheckFailed
             );
+            if check.offset == 0 && check.length > 0 {
+                covers_discriminator = true;
+            }
         }
+        require!(
+            covers_discriminator,
+            TributaryError::DiscriminatorCheckRequired
+        );
 
         // Validate ValidationConfig
         let has_validation = validation_program != Pubkey::default();

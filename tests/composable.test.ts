@@ -240,11 +240,14 @@ describe("Composable Policies", () => {
     try {
       // Init program
       await sdk.updateWallet(new anchor.Wallet(admin));
-      const initIx = await sdk.initialize(admin.publicKey);
+      const initIx = await sdk.initialize(
+        provider.wallet.publicKey,
+        admin.publicKey
+      );
       await sendAndConfirmTransaction(
         connection,
         new Transaction().add(initIx),
-        [admin],
+        [provider.wallet.payer!, admin],
         { commitment: "processed" as Commitment }
       );
     } catch {
