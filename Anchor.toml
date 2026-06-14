@@ -29,6 +29,7 @@ test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
 test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"
 test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
+test-topup = "npx jest ./tests/topup-balance.test.ts --preset ts-jest"
 
 [test]
 startup_wait = 20000

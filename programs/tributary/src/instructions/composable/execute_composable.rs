@@ -1,7 +1,9 @@
 use crate::{constants::*, error::TributaryError, state::*, utils::calculate_next_payment_due};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
-use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::associated_token::{
+    create_idempotent, get_associated_token_address_with_program_id, AssociatedToken, Create,
+};
 use anchor_spl::token::Token;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
 
@@ -173,6 +175,11 @@ pub struct ExecuteComposable<'info> {
         constraint = recipient_token_account.owner == composable_policy.recipient,
     )]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    /// CHECK: PDA's intermediate token account (input_mint ATA owned by composable_policy PDA).
+    /// Created lazily via AssociatedToken create_idempotent.
+    #[account(mut)]
+    pub pda_intermediate_token: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -452,15 +459,40 @@ impl<'info> ExecuteComposable<'info> {
             token_interface::transfer_checked(cpi_ctx, protocol_fee, mint_decimals)?;
         }
 
-        // ── Step 5: Claim input — transfer (amount - fees) to intermediate ATA ──
-        // For simplicity, we transfer net_input directly to recipient.
-        // The full intermediate ATA + forward CPI flow requires the target program
-        // accounts to be passed via remaining_accounts, which is handled below.
+        // ── Step 5: Transfer net_input to intermediate ATA, then forward CPI to recipient ──
+        let intermediate_ata = get_associated_token_address_with_program_id(
+            &ctx.accounts.composable_policy.key(),
+            &ctx.accounts.mint.key(),
+            &ctx.accounts.token_program.key(),
+        );
+        require!(
+            ctx.accounts.pda_intermediate_token.key() == intermediate_ata,
+            TributaryError::ValidationPdaMismatch
+        );
+
+        // Step 5a: Create intermediate ATA idempotently (owner = composable_policy PDA)
+        {
+            let create_accounts = Create {
+                payer: ctx.accounts.fee_payer.to_account_info(),
+                associated_token: ctx.accounts.pda_intermediate_token.to_account_info(),
+                authority: ctx.accounts.composable_policy.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new(
+                ctx.accounts.associated_token_program.to_account_info(),
+                create_accounts,
+            );
+            create_idempotent(cpi_ctx)?;
+        }
+
+        // Step 5b: Transfer net_input from user → intermediate ATA
         if net_input > 0 {
             let cpi_accounts = TransferChecked {
                 from: user_token_info.clone(),
                 mint: mint_info.clone(),
-                to: ctx.accounts.recipient_token_account.to_account_info(),
+                to: ctx.accounts.pda_intermediate_token.to_account_info(),
                 authority: authority_info.clone(),
             };
             let cpi_ctx =
@@ -516,6 +548,17 @@ impl<'info> ExecuteComposable<'info> {
                 &forward_account_infos,
                 &[forward_signer_seeds],
             )?;
+        }
+
+        // Verify intermediate ATA is empty after forward CPI
+        {
+            let intermediate_data = ctx.accounts.pda_intermediate_token.try_borrow_data()?;
+            let intermediate_amount =
+                u64::from_le_bytes(intermediate_data[64..72].try_into().unwrap_or([0u8; 8]));
+            require!(
+                intermediate_amount == 0,
+                TributaryError::InsufficientBalance
+            );
         }
 
         // ── Step 8: Sweep output ──────────────────────────────────────

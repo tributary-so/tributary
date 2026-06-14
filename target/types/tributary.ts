@@ -1579,6 +1579,13 @@ export type Tributary = {
           "writable": true
         },
         {
+          "name": "pdaIntermediateToken",
+          "docs": [
+            "Created lazily via AssociatedToken create_idempotent."
+          ],
+          "writable": true
+        },
+        {
           "name": "gatewayFeeAccount",
           "writable": true
         },

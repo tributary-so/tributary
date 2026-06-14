@@ -2121,6 +2121,12 @@ export class Tributary {
       policy.forwardConfig.inputMint,
       policy.recipient
     );
+    const pdaIntermediateToken = getAssociatedTokenAddressSync(
+      policy.forwardConfig.inputMint,
+      composablePolicy,
+      true, // allowOwnerOffCurve — composablePolicy is a PDA
+      TOKEN_PROGRAM_ID
+    );
     const gatewayFeeAccount = getAssociatedTokenAddressSync(
       userPayment.tokenMint,
       gateway.feeRecipient
@@ -2139,6 +2145,7 @@ export class Tributary {
       userTokenAccount,
       mint: policy.forwardConfig.inputMint,
       recipientTokenAccount,
+      pdaIntermediateToken,
       gatewayFeeAccount,
       protocolFeeAccount,
       feePayer: this.provider.publicKey,

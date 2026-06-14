@@ -1573,6 +1573,13 @@
           "writable": true
         },
         {
+          "name": "pda_intermediate_token",
+          "docs": [
+            "Created lazily via AssociatedToken create_idempotent."
+          ],
+          "writable": true
+        },
+        {
           "name": "gateway_fee_account",
           "writable": true
         },
