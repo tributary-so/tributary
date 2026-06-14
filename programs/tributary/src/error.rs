@@ -94,8 +94,6 @@ pub enum TributaryError {
     InsufficientOutputAmount,
     #[msg("Composable policies not enabled for this gateway")]
     ComposableNotEnabled,
-    #[msg("Invalid delegate version for composable policies")]
-    InvalidDelegateVersion,
     #[msg("Must have at least one byte range check")]
     InsufficientByteRangeChecks,
     #[msg("Validation PDA does not match derived address")]
@@ -112,4 +110,10 @@ pub enum TributaryError {
     DiscriminatorCheckRequired,
     #[msg("Only the upgrade authority can initialize the program")]
     UnauthorizedInitializer,
+    #[msg("Intermediate token account address does not match the derived ATA")]
+    IntermediateAccountMismatch,
+    #[msg("Forward CPI requires at least one remaining account")]
+    MissingForwardAccounts,
+    #[msg("Forward CPI produced no output (intermediate output balance is zero)")]
+    ForwardProducedNoOutput,
 }

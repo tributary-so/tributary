@@ -50,6 +50,8 @@ impl<'info> CreateUserPayment<'info> {
         user_payment.token_mint = ctx.accounts.token_mint.key();
         user_payment.active_policies_count = 0;
         user_payment.created_policies_count = 0;
+        user_payment.active_composable_count = 0;
+        user_payment.created_composable_count = 0;
         user_payment.created_at = clock.unix_timestamp;
         user_payment.updated_at = clock.unix_timestamp;
         user_payment.is_active = true;

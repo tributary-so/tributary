@@ -148,8 +148,12 @@ pub struct ComposablePolicyCreated {
 pub struct ComposableExecuted {
     pub composable_policy: Pubkey,
     pub gateway: Pubkey,
+    pub target_program: Pubkey,
     pub input_amount: u64,
     pub output_amount: u64,
+    pub gateway_fee: u64,
+    pub protocol_fee: u64,
+    pub recipient: Pubkey,
     pub timestamp: i64,
     pub record_id: u32,
 }

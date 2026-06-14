@@ -2113,42 +2113,61 @@ export class Tributary {
     const config: ProgramConfig =
       await this.program.account.programConfig.fetch(configPda);
 
+    const inputMint = policy.forwardConfig.inputMint;
+    const outputMint = policy.forwardConfig.outputMint;
+
+    // User's source token account (input mint). Delegation MUST point at
+    // the UserPayment PDA — see COMPOSABLE.md §PDA Seed Summary.
     const userTokenAccount = getAssociatedTokenAddressSync(
-      userPayment.tokenMint,
+      inputMint,
       userPayment.owner
     );
+
+    // Recipient token account (output mint, pre-existing).
     const recipientTokenAccount = getAssociatedTokenAddressSync(
-      policy.forwardConfig.inputMint,
+      outputMint,
       policy.recipient
     );
-    const pdaIntermediateToken = getAssociatedTokenAddressSync(
-      policy.forwardConfig.inputMint,
-      composablePolicy,
-      true, // allowOwnerOffCurve — composablePolicy is a PDA
+
+    // Intermediate ATAs are owned by the UserPayment PDA.
+    const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
+      inputMint,
+      policy.userPayment,
+      true, // allowOwnerOffCurve — UserPayment is a PDA
       TOKEN_PROGRAM_ID
     );
+    const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
+      outputMint,
+      policy.userPayment,
+      true,
+      TOKEN_PROGRAM_ID
+    );
+
+    // Fee accounts are in the OUTPUT mint (fees are output-based).
     const gatewayFeeAccount = getAssociatedTokenAddressSync(
-      userPayment.tokenMint,
+      outputMint,
       gateway.feeRecipient
     );
     const protocolFeeAccount = getAssociatedTokenAddressSync(
-      userPayment.tokenMint,
+      outputMint,
       config.feeRecipient
     );
 
     const accounts = {
       composablePolicy: composablePolicy,
-      paymentsDelegate: this.getPaymentsDelegatePda().address,
       userPayment: policy.userPayment,
       gateway: policy.gateway,
       config: configPda,
       userTokenAccount,
-      mint: policy.forwardConfig.inputMint,
+      mint: inputMint,
+      outputMint,
+      intermediateInputTokenAccount,
+      intermediateOutputTokenAccount,
       recipientTokenAccount,
-      pdaIntermediateToken,
       gatewayFeeAccount,
       protocolFeeAccount,
       feePayer: this.provider.publicKey,
+      paymentsDelegate: this.getPaymentsDelegatePda().address,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,

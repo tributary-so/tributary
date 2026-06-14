@@ -26,7 +26,7 @@ const METEORA_DLMM_PUBKEY = new PublicKey(
   "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
 );
 const LIGHTHOUSE_PUBKEY = new PublicKey(
-  "2rQnHupkzPLnMpEKiL4YknBTPQJiNvECzkRCucYHC4UM"
+  "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95"
 );
 const ADMIN_KEYPAIR = [
   238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
@@ -121,7 +121,8 @@ describe("Composable Policies", () => {
   let gatewayPDA: PublicKey;
   let userPaymentPDA: PublicKey;
   let paymentsDelegate: PublicKey;
-  let gatewaySignerTokenAccount: PublicKey; // token account for gateway signer (= recipient in composable)
+  let gatewaySignerTokenAccount: PublicKey; // token account for gateway signer (= recipient in composable) — OUTPUT mint
+  let gatewaySignerInputTokenAccount: PublicKey; // token account for gateway signer — INPUT mint (still used for some setups)
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
     const tx = new Transaction().add(
@@ -212,15 +213,27 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    // Recipient token account — for composable, recipient = gateway signer
+    // Recipient token account (OUTPUT mint = secondMint) — receives swept output
     gatewaySignerTokenAccount = await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
-      tokenMint,
+      secondMint,
       gatewayAuthority.publicKey
     );
 
-    // Fee recipient token accounts
+    // Also create an INPUT-mint account for the gateway signer (used by some
+    // older assertions / funding paths; harmless to keep around).
+    gatewaySignerInputTokenAccount =
+      await createAssociatedTokenAccountIdempotent(
+        connection,
+        admin,
+        tokenMint,
+        gatewayAuthority.publicKey
+      );
+
+    // Fee recipient token accounts — both INPUT and OUTPUT mint, since the
+    // new flow takes fees from the OUTPUT (secondMint), but legacy code paths
+    // and other tests may still reference input-mint fee accounts.
     await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
@@ -230,7 +243,19 @@ describe("Composable Policies", () => {
     await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
+      secondMint,
+      feeRecipient.publicKey
+    );
+    await createAssociatedTokenAccountIdempotent(
+      connection,
+      admin,
       tokenMint,
+      admin.publicKey
+    );
+    await createAssociatedTokenAccountIdempotent(
+      connection,
+      admin,
+      secondMint,
       admin.publicKey
     );
   });
@@ -942,7 +967,7 @@ describe("Composable Policies", () => {
       connection,
       user,
       userTokenAccount,
-      paymentsDelegate,
+      userPaymentPDA,
       user,
       10_000_000
     );
@@ -956,20 +981,31 @@ describe("Composable Policies", () => {
         .executeComposable(wrongInstructionData, null)
         .accountsStrict({
           feePayer: gatewayAuthority.publicKey,
-          paymentsDelegate: paymentsDelegate,
+          paymentsDelegate,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
           userTokenAccount: userTokenAccount,
           mint: tokenMint,
+          outputMint: secondMint,
+          intermediateInputTokenAccount: getAssociatedTokenAddressSync(
+            tokenMint,
+            userPaymentPDA,
+            true
+          ),
+          intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
+            secondMint,
+            userPaymentPDA,
+            true
+          ),
           recipientTokenAccount: gatewaySignerTokenAccount,
           gatewayFeeAccount: getAssociatedTokenAddressSync(
-            tokenMint,
+            secondMint,
             feeRecipient.publicKey
           ),
           protocolFeeAccount: getAssociatedTokenAddressSync(
-            tokenMint,
+            secondMint,
             admin.publicKey
           ),
           tokenProgram: new PublicKey(
@@ -1076,20 +1112,31 @@ describe("Composable Policies", () => {
         .executeComposable(Buffer.from(new Array(32).fill(0)), null)
         .accountsStrict({
           feePayer: gatewayAuthority.publicKey,
-          paymentsDelegate: paymentsDelegate,
+          paymentsDelegate,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
           userTokenAccount: userTokenAccount,
           mint: tokenMint,
+          outputMint: secondMint,
+          intermediateInputTokenAccount: getAssociatedTokenAddressSync(
+            tokenMint,
+            userPaymentPDA,
+            true
+          ),
+          intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
+            secondMint,
+            userPaymentPDA,
+            true
+          ),
           recipientTokenAccount: gatewaySignerTokenAccount,
           gatewayFeeAccount: getAssociatedTokenAddressSync(
-            tokenMint,
+            secondMint,
             feeRecipient.publicKey
           ),
           protocolFeeAccount: getAssociatedTokenAddressSync(
-            tokenMint,
+            secondMint,
             admin.publicKey
           ),
           tokenProgram: new PublicKey(

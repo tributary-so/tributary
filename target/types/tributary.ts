@@ -1491,6 +1491,12 @@ export type Tributary = {
         },
         {
           "name": "userPayment",
+          "docs": [
+            "UserPayment PDA — also the SOLE signing authority for every token",
+            "op and CPI in this instruction (see COMPOSABLE.md §PDA Seed Summary).",
+            "Owns both intermediate ATAs. The user's source token account MUST",
+            "delegate to this PDA."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -1526,7 +1532,6 @@ export type Tributary = {
         },
         {
           "name": "gateway",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1569,28 +1574,63 @@ export type Tributary = {
         },
         {
           "name": "userTokenAccount",
+          "docs": [
+            "User's source token account. The account MUST have either the",
+            "UserPayment PDA (v1) or the global payments_delegate PDA (v0) set",
+            "as delegate with `delegated_amount >= input_amount`."
+          ],
           "writable": true
         },
         {
-          "name": "mint"
+          "name": "mint",
+          "docs": [
+            "Input mint (== forward_config.input_mint)."
+          ]
+        },
+        {
+          "name": "outputMint",
+          "docs": [
+            "Output mint (== forward_config.output_mint). Required for the",
+            "`transfer_checked` calls on the output leg (fees + sweep)."
+          ]
+        },
+        {
+          "name": "intermediateInputTokenAccount",
+          "docs": [
+            "(input_mint ATA). Created lazily via `create_idempotent`. Funded",
+            "with the full `input_amount`; drained by the forward CPI."
+          ],
+          "writable": true
+        },
+        {
+          "name": "intermediateOutputTokenAccount",
+          "docs": [
+            "(output_mint ATA). Created lazily via `create_idempotent`. Receives",
+            "the forward program's output tokens; fees and sweep are taken from",
+            "here. Must end the instruction at balance 0."
+          ],
+          "writable": true
         },
         {
           "name": "recipientTokenAccount",
-          "writable": true
-        },
-        {
-          "name": "pdaIntermediateToken",
           "docs": [
-            "Created lazily via AssociatedToken create_idempotent."
+            "Recipient's destination token account (output_mint ATA). Must",
+            "pre-exist. Receives the swept output after fees."
           ],
           "writable": true
         },
         {
           "name": "gatewayFeeAccount",
+          "docs": [
+            "Gateway fee account (output_mint)."
+          ],
           "writable": true
         },
         {
           "name": "protocolFeeAccount",
+          "docs": [
+            "Protocol fee account (output_mint)."
+          ],
           "writable": true
         },
         {
@@ -2671,48 +2711,58 @@ export type Tributary = {
     },
     {
       "code": 6045,
-      "name": "invalidDelegateVersion",
-      "msg": "Invalid delegate version for composable policies"
-    },
-    {
-      "code": 6046,
       "name": "insufficientByteRangeChecks",
       "msg": "Must have at least one byte range check"
     },
     {
-      "code": 6047,
+      "code": 6046,
       "name": "validationPdaMismatch",
       "msg": "Validation PDA does not match derived address"
     },
     {
-      "code": 6048,
+      "code": 6047,
       "name": "validationDataTooLarge",
       "msg": "Validation data exceeds maximum size"
     },
     {
-      "code": 6049,
+      "code": 6048,
       "name": "validationDataRequired",
       "msg": "Validation program set but no data provided"
     },
     {
-      "code": 6050,
+      "code": 6049,
       "name": "validationNotRequired",
       "msg": "Validation not configured but data was provided"
     },
     {
-      "code": 6051,
+      "code": 6050,
       "name": "composablePolicyNotFound",
       "msg": "Composable policy not found"
     },
     {
-      "code": 6052,
+      "code": 6051,
       "name": "discriminatorCheckRequired",
       "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
     },
     {
-      "code": 6053,
+      "code": 6052,
       "name": "unauthorizedInitializer",
       "msg": "Only the upgrade authority can initialize the program"
+    },
+    {
+      "code": 6053,
+      "name": "intermediateAccountMismatch",
+      "msg": "Intermediate token account address does not match the derived ATA"
+    },
+    {
+      "code": 6054,
+      "name": "missingForwardAccounts",
+      "msg": "Forward CPI requires at least one remaining account"
+    },
+    {
+      "code": 6055,
+      "name": "forwardProducedNoOutput",
+      "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     }
   ],
   "types": [
@@ -2758,12 +2808,28 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
+            "name": "targetProgram",
+            "type": "pubkey"
+          },
+          {
             "name": "inputAmount",
             "type": "u64"
           },
           {
             "name": "outputAmount",
             "type": "u64"
+          },
+          {
+            "name": "gatewayFee",
+            "type": "u64"
+          },
+          {
+            "name": "protocolFee",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
           },
           {
             "name": "timestamp",
@@ -4365,10 +4431,6 @@ export type Tributary = {
             "type": "u32"
           },
           {
-            "name": "delegateVersion",
-            "type": "u8"
-          },
-          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -4376,7 +4438,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                209
+                210
               ]
             }
           }
