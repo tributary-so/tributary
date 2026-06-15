@@ -2,14 +2,29 @@ use crate::{error::TributaryError, state::*, PaymentFrequency};
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount as LegacyTokenAccount;
 use anchor_spl::token_2022::spl_token_2022::{
-    extension::{transfer_hook::TransferHook, BaseStateWithExtensions, StateWithExtensions},
+    extension::{
+        confidential_transfer::ConfidentialTransferMint, mint_close_authority::MintCloseAuthority,
+        non_transferable::NonTransferable, permanent_delegate::PermanentDelegate,
+        transfer_fee::TransferFeeConfig, transfer_hook::TransferHook, BaseStateWithExtensions,
+        StateWithExtensions,
+    },
     state::Mint as Token2022Mint,
 };
 use anchor_spl::token_interface::{self, TransferChecked};
 
-/// Validate that a Token-2022 mint does not have a TransferHook extension configured.
+/// Validate that a Token-2022 mint is compatible with Tributary.
+///
+/// Rejects mints carrying any of the following extensions, which would break
+/// or interfere with delegated pull-payments:
+///   - ConfidentialTransferMint (amounts hidden from program logic)
+///   - NonTransferable          (transfers forbidden by design)
+///   - PermanentDelegate        (mint authority can seize/reassign at will)
+///   - TransferHook             (arbitrary transfer-time CPI)
+///   - TransferFeeConfig        (fees distort expected amounts)
+///   - MintCloseAuthority       (mint can be closed, breaking continuity)
+///
 /// Legacy SPL Token mints are always allowed (no extensions possible).
-pub fn validate_mint_no_transfer_hook(mint_info: &AccountInfo) -> Result<()> {
+pub fn validate_mint_compatible(mint_info: &AccountInfo) -> Result<()> {
     if *mint_info.owner != anchor_spl::token_2022::ID {
         return Ok(());
     }
@@ -20,7 +35,22 @@ pub fn validate_mint_no_transfer_hook(mint_info: &AccountInfo) -> Result<()> {
 
     if let Ok(state) = StateWithExtensions::<Token2022Mint>::unpack(&data) {
         if state.get_extension::<TransferHook>().is_ok() {
-            return Err(TributaryError::TransferHookNotSupported.into());
+            return Err(TributaryError::UnsupportedTokenExtension.into());
+        }
+        if state.get_extension::<ConfidentialTransferMint>().is_ok() {
+            return Err(TributaryError::UnsupportedTokenExtension.into());
+        }
+        if state.get_extension::<NonTransferable>().is_ok() {
+            return Err(TributaryError::UnsupportedTokenExtension.into());
+        }
+        if state.get_extension::<PermanentDelegate>().is_ok() {
+            return Err(TributaryError::UnsupportedTokenExtension.into());
+        }
+        if state.get_extension::<TransferFeeConfig>().is_ok() {
+            return Err(TributaryError::UnsupportedTokenExtension.into());
+        }
+        if state.get_extension::<MintCloseAuthority>().is_ok() {
+            return Err(TributaryError::UnsupportedTokenExtension.into());
         }
     }
 
