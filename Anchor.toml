@@ -28,6 +28,8 @@ test = "anchor run test-cargo && anchor run test-integration && anchor run test-
 test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
 test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"
+
+# Surfpool tests
 test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
 test-topup = "npx jest ./tests/topup-balance.test.ts --preset ts-jest"
 

@@ -8,7 +8,7 @@ import {
 } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
-import { SEEDS, IWallet, Tributary as TributarySDK } from "../packages/sdk/src";
+import { Tributary as TributarySDK } from "../packages/sdk/src";
 import {
   getConfigPda,
   getGatewayPda,
@@ -21,8 +21,6 @@ import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import assert from "assert";
 import { Buffer } from "buffer";
 
-// ── Constants ────────────────────────────────────────────────────────────
-
 const LIGHTHOUSE_PUBKEY = new PublicKey(
   "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95"
 );
@@ -32,6 +30,12 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 );
+const ADMIN_KEYPAIR = [
+  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
+  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
+  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
+  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
+];
 
 // ── Lighthouse assertion builder ─────────────────────────────────────────
 // Builds a serialized AssertTokenAccount instruction for Lighthouse CPI.
@@ -78,25 +82,20 @@ describe("Composable Topup Balance Flow", () => {
   let surfpool: SurfpoolHelper;
   let sdk: TributarySDK;
 
-  // ── Keypairs ──────────────────────────────────────────────────────────
-  // hotWallet doubles as the gateway authority/signer — the composable
-  // policy recipient defaults to fee_payer (the gateway signer), so making
-  // hotWallet the signer means recipient = hotWallet.
-  let hotWallet: Keypair; // = gatewayAuthority
-  let coldWallet: Keypair; // = user (owns the USDC, has UserPayment PDA)
-  let feeRecipient: Keypair; // gateway fee recipient
-  // admin is the protocol admin (config.fee_recipient)
-  // We reuse the provider wallet as admin for initialize.
+  const admin = Keypair.fromSecretKey(Uint8Array.from(ADMIN_KEYPAIR));
+  const feeRecipient = Keypair.generate();
+  const gatewayAuthority = Keypair.generate();
+  const configPDA = getConfigPda(program.programId).address;
 
-  // ── PDAs / shared state ───────────────────────────────────────────────
-  let configPDA: PublicKey;
+  const hotWallet = Keypair.generate();
+  const coldWallet = Keypair.generate();
+
   let gatewayPDA: PublicKey;
   let userPaymentPDA: PublicKey;
   let paymentsDelegatePDA: PublicKey;
   let composablePolicyPDA: PublicKey;
   let validationPDA: PublicKey;
 
-  // ── Token accounts ────────────────────────────────────────────────────
   let coldWalletUsdcAta: PublicKey;
   let hotWalletUsdcAta: PublicKey;
   let feeRecipientUsdcAta: PublicKey;
@@ -104,9 +103,6 @@ describe("Composable Topup Balance Flow", () => {
 
   let composablePolicyId: number;
 
-  // ══════════════════════════════════════════════════════════════════════
-  //  Setup
-  // ══════════════════════════════════════════════════════════════════════
   beforeAll(async () => {
     surfpool = new SurfpoolHelper(connection);
 
@@ -119,13 +115,18 @@ describe("Composable Topup Balance Flow", () => {
 
     sdk = new TributarySDK(connection, wallet.payer);
 
-    // Generate keypairs
-    hotWallet = Keypair.generate();
-    coldWallet = Keypair.generate();
-    feeRecipient = Keypair.generate();
+    const configAccount = await sdk.getProgramConfig(configPDA);
+    configAccount.admin = admin.publicKey;
+    const serialized = await program.coder.accounts.encode(
+      "programConfig",
+      configAccount
+    );
+    await surfpool.setAccount({
+      publicKey: configPDA,
+      data: serialized.toString("hex"),
+    });
 
     // Derive PDAs
-    configPDA = getConfigPda(program.programId).address;
     gatewayPDA = getGatewayPda(hotWallet.publicKey, program.programId).address;
     userPaymentPDA = getUserPaymentPda(
       coldWallet.publicKey,
@@ -162,6 +163,10 @@ describe("Composable Topup Balance Flow", () => {
       publicKey: feeRecipient.publicKey,
       lamports: 1_000_000_000,
     });
+    await surfpool.setAccount({
+      publicKey: admin.publicKey,
+      lamports: 1_000_000_000,
+    });
 
     // ── Fund USDC ───────────────────────────────────────────────────────
     // coldWallet: 1000 USDC with payments_delegate set as delegate (100 USDC delegated)
@@ -187,68 +192,66 @@ describe("Composable Topup Balance Flow", () => {
       amount: 0,
     });
 
-    // admin (= provider wallet): empty ATA for protocol fee
+    // wallet
     await surfpool.setTokenAccount({
       owner: wallet.publicKey,
       mint: USDC_MINT,
       amount: 0,
     });
+  });
 
-    // ── Initialize program ──────────────────────────────────────────────
-    try {
-      const initIx = await sdk.initialize(
-        wallet.publicKey, // authority
-        wallet.publicKey // admin (also fee_recipient)
-      );
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(initIx),
-        [wallet.payer],
-        { commitment: "processed" }
-      );
-    } catch {
-      // Already initialized
-    }
+  test("create gateway", async () => {
+    await sdk.updateWallet(new anchor.Wallet(admin));
 
-    // ── Create gateway (0 bps fee) ──────────────────────────────────────
-    // hotWallet is the authority AND signer; feeRecipient gets gateway fees (0 bps).
-    await sdk.updateWallet(wallet as IWallet);
-    try {
-      const gatewayIx = await sdk.createPaymentGateway(
-        hotWallet.publicKey, // authority
-        0, // 0 bps gateway fee — simplifies math
-        feeRecipient.publicKey, // fee recipient
-        "Topup Gateway",
-        "https://topup.tributary.so"
-      );
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(gatewayIx),
-        [wallet.payer],
-        { commitment: "processed" }
-      );
-    } catch {
-      // Gateway might already exist if test re-runs
-    }
+    gatewayPDA = getGatewayPda(gatewayAuthority.publicKey, program.programId).address;
 
-    // ── Create user payment for coldWallet ──────────────────────────────
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
-    try {
-      const createUserIx = await sdk.createUserPayment(USDC_MINT);
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(createUserIx),
-        [coldWallet],
-        { commitment: "processed" }
-      );
-    } catch {
-      // Might already exist
-    }
-  }, 60_000);
+    const gatewayIx = await sdk.createPaymentGateway(
+      gatewayAuthority.publicKey,
+      0, // 0 bps gateway fee — simplifies math
+      feeRecipient.publicKey, // fee recipient
+      "Gateway",
+      "https://tributary.so"
+    );
+    const tx = new Transaction().add(gatewayIx);
 
-  // ══════════════════════════════════════════════════════════════════════
-  //  1. Create composable policy — usage schedule + Lighthouse validation
-  // ══════════════════════════════════════════════════════════════════════
+    await sendAndConfirmTransaction(connection, tx, [admin], {
+      commitment: "processed",
+    });
+
+    const gatewayAccount = await sdk.getPaymentGateway(gatewayPDA);
+
+    expect(gatewayAccount!.authority).toEqual(gatewayAuthority.publicKey);
+    expect(gatewayAccount!.feeRecipient).toEqual(feeRecipient.publicKey);
+    expect(gatewayAccount!.gatewayFeeBps).toBe(0);
+    expect(gatewayAccount!.isActive).toBe(true);
+    expect(gatewayAccount!.createdAt.toNumber()).toBeGreaterThan(0);
+  });
+
+  test("create hotWallet payment for USDC mint", async () => {
+    await sdk.updateWallet(new anchor.Wallet(hotWallet));
+
+    userPaymentPDA = getUserPaymentPda(
+      hotWallet.publicKey,
+      USDC_MINT,
+      program.programId
+    ).address;
+
+    const createUserPaymentIx = await sdk.createUserPayment(USDC_MINT);
+    const tx = new Transaction().add(createUserPaymentIx);
+
+    await sendAndConfirmTransaction(connection, tx, [hotWallet], {
+      commitment: "processed",
+    });
+
+    const userPayment = await sdk.getUserPayment(userPaymentPDA);
+
+    expect(userPayment).not.toBeNull();
+    expect(userPayment!.owner).toEqual(hotWallet.publicKey);
+    expect(userPayment!.tokenMint).toEqual(USDC_MINT);
+    expect(userPayment!.createdPoliciesCount).toBe(0);
+    expect(userPayment!.isActive).toBe(true);
+  });
+
   test("Create composable topup policy — usage schedule + Lighthouse validation", async () => {
     await sdk.updateWallet(new anchor.Wallet(hotWallet));
 
@@ -316,6 +319,7 @@ describe("Composable Topup Balance Flow", () => {
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
+        user: hotWallet.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
@@ -374,9 +378,6 @@ describe("Composable Topup Balance Flow", () => {
     expect(Buffer.from(storedData)).toEqual(validationData);
   });
 
-  // ══════════════════════════════════════════════════════════════════════
-  //  2. Execute topup — succeeds (hotWallet balance 40 USDC < 50 threshold)
-  // ══════════════════════════════════════════════════════════════════════
   test("Execute topup — succeeds (hotWallet below threshold)", async () => {
     await sdk.updateWallet(new anchor.Wallet(hotWallet));
 
@@ -391,7 +392,7 @@ describe("Composable Topup Balance Flow", () => {
     const instructionData = buildTokenTransferInstructionData(50_000_000);
 
     // Derive intermediate ATA (owned by composable_policy PDA)
-    const pdaIntermediateToken = getAssociatedTokenAddressSync(
+    const intermediate_input_token_account = getAssociatedTokenAddressSync(
       USDC_MINT,
       composablePolicyPDA,
       true, // allowOwnerOffCurve (PDA)
@@ -416,8 +417,10 @@ describe("Composable Topup Balance Flow", () => {
         config: configPDA,
         userTokenAccount: coldWalletUsdcAta,
         mint: USDC_MINT,
+        outputMint: USDC_MINT,
+        intermediateInputTokenAccount: intermediate_input_token_account,
+        intermediateOutputTokenAccount: intermediate_input_token_account,
         recipientTokenAccount: hotWalletUsdcAta,
-        pdaIntermediateToken: pdaIntermediateToken,
         gatewayFeeAccount: feeRecipientUsdcAta,
         protocolFeeAccount: adminUsdcAta,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -498,7 +501,7 @@ describe("Composable Topup Balance Flow", () => {
     const instructionData = buildTokenTransferInstructionData(50_000_000);
 
     // Derive intermediate ATA (same as first execution)
-    const pdaIntermediateToken = getAssociatedTokenAddressSync(
+    const intermediate_input_token_account = getAssociatedTokenAddressSync(
       USDC_MINT,
       composablePolicyPDA,
       true,
@@ -522,8 +525,10 @@ describe("Composable Topup Balance Flow", () => {
           config: configPDA,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
+          outputMint: USDC_MINT,
+          intermediateInputTokenAccount: intermediate_input_token_account,
+          intermediateOutputTokenAccount: intermediate_input_token_account,
           recipientTokenAccount: hotWalletUsdcAta,
-          pdaIntermediateToken: pdaIntermediateToken,
           gatewayFeeAccount: feeRecipientUsdcAta,
           protocolFeeAccount: adminUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,

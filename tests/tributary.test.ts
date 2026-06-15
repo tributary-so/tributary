@@ -48,18 +48,19 @@ describe("Tributary", () => {
 
   // Common variables
   const admin = Keypair.fromSecretKey(Uint8Array.from(ADMIN_KEYPAIR));
-  let user: Keypair;
+  const user = Keypair.generate();
+  const mintAuthority = Keypair.generate();
+  const gatewayAuthority = Keypair.generate();
+  const gatewayExecutionSigner = Keypair.generate();
+  const feeRecipient = Keypair.generate();
+  const recipient = Keypair.generate();
+
   let configPDA: PublicKey;
   let configBump: number;
   let tokenMint: PublicKey;
   let userTokenAccount: PublicKey;
-  let mintAuthority: Keypair;
-  let gatewayAuthority: Keypair;
-  let gatewayExecutionSigner: Keypair;
-  let feeRecipient: Keypair;
   let gatewayPDA: PublicKey;
   let gatewayBump: number;
-  let recipient: Keypair;
   let recipientTokenAccount: PublicKey;
   let userPaymentPDA: PublicKey;
   let userPaymentBump: number;
@@ -143,14 +144,6 @@ describe("Tributary", () => {
     // Create Solana Kite connection
     connection = provider.connection;
     sdk = new TributarySDK(connection, wallet as IWallet);
-
-    // Create wallets
-    user = Keypair.generate();
-    mintAuthority = Keypair.generate();
-    gatewayAuthority = Keypair.generate();
-    feeRecipient = Keypair.generate();
-    gatewayExecutionSigner = Keypair.generate();
-    recipient = Keypair.generate();
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
@@ -2335,18 +2328,18 @@ describe("Tributary", () => {
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-          l1Reward -
-          Math.floor((l1Reward * 100) / 10000)
+        l1Reward -
+        Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-          l2Reward -
-          Math.floor((l2Reward * 100) / 10000)
+        l2Reward -
+        Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-          l3Reward -
-          Math.floor((l3Reward * 100) / 10000)
+        l3Reward -
+        Math.floor((l3Reward * 100) / 10000)
       );
     });
 
@@ -3111,7 +3104,7 @@ describe("Tributary", () => {
       );
       expect(
         gateway!.featureFlags &
-          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+        (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
       ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 

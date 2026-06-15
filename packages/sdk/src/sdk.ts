@@ -93,20 +93,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-            publicKey: wallet.publicKey,
-            signTransaction: <T>(tx: T) => {
-              (tx as any).sign(wallet);
-              return Promise.resolve(tx);
-            },
-            signAllTransactions: <T>(txs: T[]) => {
-              return Promise.resolve(
-                txs.map((tx) => {
-                  (tx as any).sign(wallet);
-                  return tx;
-                })
-              );
-            },
-          }
+          publicKey: wallet.publicKey,
+          signTransaction: <T>(tx: T) => {
+            (tx as any).sign(wallet);
+            return Promise.resolve(tx);
+          },
+          signAllTransactions: <T>(txs: T[]) => {
+            return Promise.resolve(
+              txs.map((tx) => {
+                (tx as any).sign(wallet);
+                return tx;
+              })
+            );
+          },
+        }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
@@ -146,6 +146,9 @@ export class Tributary {
       programDataAddress
     );
     if (!accountInfo) throw new Error("Program data account not found");
+    if (new PublicKey(accountInfo.data.slice(13, 45)).toString() != authority.toString()) {
+      throw new Error("Initialization requires the deploy authority!");
+    }
 
     return await this.program.methods
       .initialize()
@@ -2065,6 +2068,7 @@ export class Tributary {
 
     const accounts = {
       feePayer: feePayer ?? user,
+      user,
       composablePolicy: composablePolicyPda.address,
       userPayment: userPaymentPda,
       gateway: gateway,
@@ -2176,7 +2180,7 @@ export class Tributary {
     const hasValidation =
       policy.validationConfig.validationProgram !== undefined &&
       policy.validationConfig.validationProgram.toString() !==
-        PublicKey.default.toString();
+      PublicKey.default.toString();
 
     let resolvedRemaining = remainingAccounts ?? [];
     if (hasValidation) {
@@ -2278,7 +2282,7 @@ export class Tributary {
     const hasValidation =
       policy.validationConfig.validationProgram !== undefined &&
       policy.validationConfig.validationProgram.toString() !==
-        PublicKey.default.toString();
+      PublicKey.default.toString();
 
     const remainingAccounts: any[] = [];
     if (hasValidation) {

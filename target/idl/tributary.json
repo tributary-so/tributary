@@ -478,6 +478,10 @@
           "signer": true
         },
         {
+          "name": "user",
+          "signer": true
+        },
+        {
           "name": "composable_policy",
           "writable": true
         },
@@ -717,7 +721,8 @@
       ],
       "accounts": [
         {
-          "name": "user"
+          "name": "user",
+          "signer": true
         },
         {
           "name": "user_payment",

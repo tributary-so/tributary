@@ -4,11 +4,14 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct CreateComposablePolicy<'info> {
     /// Gateway signer - pays rent and must match gateway.signer
-    #[account(
-        mut,
-        constraint = fee_payer.key() == gateway.signer @ TributaryError::Unauthorized,
-    )]
+    #[account(mut)]
     pub fee_payer: Signer<'info>,
+
+    /// CHECK: The owner account - has to sign, always, so it authorizes spending from user
+    #[account(
+        constraint = user_payment.owner == user.key(),
+    )]
+    pub user: Signer<'info>,
 
     #[account(
         init,

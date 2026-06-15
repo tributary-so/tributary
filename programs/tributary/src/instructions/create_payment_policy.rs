@@ -4,15 +4,16 @@ use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
 pub struct CreatePaymentPolicy<'info> {
-    /// CHECK: The owner account - does NOT need to sign
-    #[account()]
-    pub user: AccountInfo<'info>,
+    /// CHECK: The owner account - has to sign, always, so it authorizes spending from user
+    #[account(
+        constraint = user_payment.owner == user.key(),
+    )]
+    pub user: Signer<'info>,
 
     #[account(
         mut,
         seeds = [USER_PAYMENT_SEED, user.key().as_ref(), token_mint.key().as_ref()],
         bump = user_payment.bump,
-        constraint = user_payment.owner == user.key(),
     )]
     pub user_payment: Box<Account<'info, UserPayment>>,
 

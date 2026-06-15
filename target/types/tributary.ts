@@ -484,6 +484,10 @@ export type Tributary = {
           "signer": true
         },
         {
+          "name": "user",
+          "signer": true
+        },
+        {
           "name": "composablePolicy",
           "writable": true
         },
@@ -723,7 +727,8 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "user"
+          "name": "user",
+          "signer": true
         },
         {
           "name": "userPayment",
