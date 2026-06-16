@@ -49,6 +49,7 @@ pub fn validate_schedule_execution(
             period_length_seconds,
             current_period_start,
             current_period_total,
+            padding: _,
         } => {
             let chunk = provided_amount.ok_or(TributaryError::InvalidAmount)?;
             require!(chunk > 0, TributaryError::InvalidAmount);

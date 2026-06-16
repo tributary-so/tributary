@@ -2853,14 +2853,6 @@ export type Tributary = {
         "kind": "struct",
         "fields": [
           {
-            "name": "discriminator",
-            "type": "u8"
-          },
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
             "name": "bump",
             "type": "u8"
           },
@@ -2893,15 +2885,6 @@ export type Tributary = {
             }
           },
           {
-            "name": "memo",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
-          },
-          {
             "name": "forwardConfig",
             "type": {
               "defined": {
@@ -2915,6 +2898,15 @@ export type Tributary = {
               "defined": {
                 "name": "validationConfig"
               }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
             }
           },
           {
@@ -2946,20 +2938,11 @@ export type Tributary = {
             "type": "i64"
           },
           {
-            "name": "statePadding",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
             "name": "padding",
             "type": {
               "array": [
                 "u8",
-                200
+                32
               ]
             }
           }
@@ -4201,6 +4184,15 @@ export type Tributary = {
               {
                 "name": "nextExecutionDue",
                 "type": "i64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    97
+                  ]
+                }
               }
             ]
           },
@@ -4236,6 +4228,15 @@ export type Tributary = {
               {
                 "name": "total",
                 "type": "u8"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    53
+                  ]
+                }
               }
             ]
           },
@@ -4261,6 +4262,15 @@ export type Tributary = {
               {
                 "name": "currentPeriodTotal",
                 "type": "u64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    88
+                  ]
+                }
               }
             ]
           }

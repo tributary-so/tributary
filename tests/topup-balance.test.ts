@@ -20,6 +20,7 @@ import {
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import assert from "assert";
 import { Buffer } from "buffer";
+import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 
 const LIGHTHOUSE_PUBKEY = new PublicKey(
   "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95"
@@ -113,18 +114,35 @@ describe("Composable Topup Balance Flow", () => {
       );
     }
 
-    sdk = new TributarySDK(connection, wallet.payer);
-
-    const configAccount = await sdk.getProgramConfig(configPDA);
-    configAccount.admin = admin.publicKey;
-    const serialized = await program.coder.accounts.encode(
-      "programConfig",
-      configAccount
-    );
+    // ── Fund SOL ────────────────────────────────────────────────────────
     await surfpool.setAccount({
-      publicKey: configPDA,
-      data: serialized.toString("hex"),
+      publicKey: hotWallet.publicKey,
+      lamports: 10_000_000_000,
     });
+    await surfpool.setAccount({
+      publicKey: coldWallet.publicKey,
+      lamports: 10_000_000_000,
+    });
+    await surfpool.setAccount({
+      publicKey: feeRecipient.publicKey,
+      lamports: 1_000_000_000,
+    });
+    await surfpool.setAccount({
+      publicKey: admin.publicKey,
+      lamports: 1_000_000_000,
+    });
+    await surfpool.setAccount({
+      publicKey: gatewayAuthority.publicKey,
+      lamports: 1_000_000_000,
+    });
+    await surfpool.setAccount({
+      publicKey: wallet.publicKey,
+      lamports: 1_000_000_000,
+    });
+
+
+    // SDK
+    sdk = new TributarySDK(connection, wallet.payer);
 
     // Derive PDAs
     gatewayPDA = getGatewayPda(hotWallet.publicKey, program.programId).address;
@@ -148,24 +166,43 @@ describe("Composable Topup Balance Flow", () => {
       USDC_MINT,
       feeRecipient.publicKey
     );
-    adminUsdcAta = getAssociatedTokenAddressSync(USDC_MINT, wallet.publicKey);
+    adminUsdcAta = getAssociatedTokenAddressSync(USDC_MINT, admin.publicKey);
 
-    // ── Fund SOL ────────────────────────────────────────────────────────
-    await surfpool.setAccount({
-      publicKey: hotWallet.publicKey,
-      lamports: 10_000_000_000,
-    });
-    await surfpool.setAccount({
-      publicKey: coldWallet.publicKey,
-      lamports: 10_000_000_000,
-    });
-    await surfpool.setAccount({
-      publicKey: feeRecipient.publicKey,
-      lamports: 1_000_000_000,
-    });
-    await surfpool.setAccount({
-      publicKey: admin.publicKey,
-      lamports: 1_000_000_000,
+    const ataTx = new Transaction();
+    ataTx.add(
+      createAssociatedTokenAccountInstruction(
+        admin.publicKey,
+        coldWalletUsdcAta,
+        coldWallet.publicKey,
+        USDC_MINT
+      )
+    );
+    ataTx.add(
+      createAssociatedTokenAccountInstruction(
+        admin.publicKey,
+        hotWalletUsdcAta,
+        hotWallet.publicKey,
+        USDC_MINT
+      )
+    );
+    ataTx.add(
+      createAssociatedTokenAccountInstruction(
+        admin.publicKey,
+        feeRecipientUsdcAta,
+        feeRecipient.publicKey,
+        USDC_MINT
+      )
+    );
+    ataTx.add(
+      createAssociatedTokenAccountInstruction(
+        admin.publicKey,
+        adminUsdcAta,
+        admin.publicKey,
+        USDC_MINT
+      )
+    );
+    await sendAndConfirmTransaction(connection, ataTx, [admin], {
+      commitment: "processed",
     });
 
     // ── Fund USDC ───────────────────────────────────────────────────────
@@ -198,12 +235,28 @@ describe("Composable Topup Balance Flow", () => {
       mint: USDC_MINT,
       amount: 0,
     });
+
+    // Mock admin key into the global state
+    const configAccount = await sdk.getProgramConfig(configPDA);
+    configAccount.admin = admin.publicKey;
+    configAccount.feeRecipient = admin.publicKey;
+    const serialized = await program.coder.accounts.encode(
+      "programConfig",
+      configAccount
+    );
+    await surfpool.setAccount({
+      publicKey: configPDA,
+      data: serialized.toString("hex"),
+    });
   });
 
   test("create gateway", async () => {
     await sdk.updateWallet(new anchor.Wallet(admin));
 
-    gatewayPDA = getGatewayPda(gatewayAuthority.publicKey, program.programId).address;
+    gatewayPDA = getGatewayPda(
+      gatewayAuthority.publicKey,
+      program.programId
+    ).address;
 
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
@@ -279,6 +332,7 @@ describe("Composable Topup Balance Flow", () => {
         periodLengthSeconds: new anchor.BN(30 * 24 * 3600), // 30 days
         currentPeriodStart: new anchor.BN(now),
         currentPeriodTotal: new anchor.BN(0),
+        padding: new Array(1).fill(0),
       },
     };
 
@@ -341,8 +395,6 @@ describe("Composable Topup Balance Flow", () => {
       composablePolicyPDA
     );
 
-    expect(policy.discriminator).toBe(1);
-    expect(policy.version).toBe(1);
     expect(policy.userPayment).toEqual(userPaymentPDA);
     expect(policy.gateway).toEqual(gatewayPDA);
     expect(policy.status).toEqual({ active: {} });

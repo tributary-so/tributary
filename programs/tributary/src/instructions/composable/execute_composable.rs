@@ -34,6 +34,7 @@ fn resolve_schedule_amount_and_advance(
             frequency,
             max_executions,
             auto_renew,
+            padding: _,
         } => {
             require!(now >= *next_execution_due, TributaryError::PaymentNotDue);
             let amt = *amount;
@@ -55,6 +56,7 @@ fn resolve_schedule_amount_and_advance(
             current,
             release_condition,
             total,
+            padding: _,
         } => {
             let idx = *current as usize;
             require!(idx < *total as usize, TributaryError::InvalidAmount);
@@ -76,6 +78,7 @@ fn resolve_schedule_amount_and_advance(
             period_length_seconds,
             current_period_start,
             current_period_total,
+            padding: _,
         } => {
             let period_end = current_period_start
                 .checked_add(*period_length_seconds as i64)

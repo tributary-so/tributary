@@ -78,14 +78,14 @@ impl<'info> CreateComposablePolicy<'info> {
             TributaryError::InsufficientByteRangeChecks
         );
         // Validate each ByteRangeCheck is sane (offset + length doesn't overflow u8)
-        // and at least one check pins the Anchor discriminator at offset 0.
+        // and at least one check pins the discriminator at offset 0.
         let mut covers_discriminator = false;
         for i in 0..forward_config.num_data_checks as usize {
             let check = &forward_config.data_checks[i];
             require!(
                 (check.offset as u16)
                     .checked_add(check.length as u16)
-                    .map_or(false, |v| v <= 1024),
+                    .is_some_and(|v| v <= 1024),
                 TributaryError::ByteRangeCheckFailed
             );
             if check.offset == 0 && check.length > 0 {
@@ -133,8 +133,6 @@ impl<'info> CreateComposablePolicy<'info> {
             .saturating_add(1);
 
         let composable_policy = &mut ctx.accounts.composable_policy;
-        composable_policy.discriminator = COMPOSABLE_DISCRIMINATOR;
-        composable_policy.version = COMPOSABLE_VERSION;
         composable_policy.bump = ctx.bumps.composable_policy;
         composable_policy.user_payment = ctx.accounts.user_payment.key();
         composable_policy.gateway = ctx.accounts.gateway.key();
@@ -154,8 +152,7 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.policy_id = policy_id;
         composable_policy.created_at = clock.unix_timestamp;
         composable_policy.updated_at = clock.unix_timestamp;
-        composable_policy.state_padding = [0u8; 32];
-        composable_policy.padding = [0u8; 200];
+        composable_policy.padding = [0u8; 32];
 
         if has_validation {
             let validation_pda_key = Pubkey::find_program_address(

@@ -1,8 +1,6 @@
 use super::payment_policy::PaymentFrequency;
 use anchor_lang::prelude::*;
 
-pub const COMPOSABLE_DISCRIMINATOR: u8 = 1;
-pub const COMPOSABLE_VERSION: u8 = 1;
 pub const MAX_BYTE_RANGE_CHECKS: usize = 4;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
@@ -31,6 +29,7 @@ pub enum ScheduleType {
         max_executions: Option<u32>,
         frequency: PaymentFrequency,
         next_execution_due: i64,
+        padding: [u8; 97], // 97 bytes padding
     },
     Milestone {
         amounts: [u64; 4],
@@ -38,6 +37,7 @@ pub enum ScheduleType {
         current: u8,
         release_condition: u8,
         total: u8,
+        padding: [u8; 53], // 53 bytes padding
     },
     Usage {
         max_amount_per_period: u64,
@@ -45,10 +45,17 @@ pub enum ScheduleType {
         period_length_seconds: u64,
         current_period_start: i64,
         current_period_total: u64,
+        padding: [u8; 88], // 88 bytes padding
     },
 }
 
 impl ScheduleType {
+    /// Each variant must be exactly this size (excluding enum discriminator)
+    pub const VARIANT_SIZE: usize = 128;
+
+    /// Total size including enum discriminator
+    pub const SIZE: usize = 1 + Self::VARIANT_SIZE; // 129 bytes
+
     pub fn validate(&self) -> Result<()> {
         match self {
             ScheduleType::Timed {
@@ -158,17 +165,15 @@ impl Default for ValidationConfig {
 
 #[account]
 pub struct ComposablePolicy {
-    pub discriminator: u8,
-    pub version: u8,
     pub bump: u8,
     pub user_payment: Pubkey,
     pub gateway: Pubkey,
     pub status: super::policy_header::PolicyStatus,
     pub rent_payer: Pubkey,
     pub schedule: ScheduleType,
-    pub memo: [u8; 64],
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,
+    pub memo: [u8; 64],
     pub recipient: Pubkey,
     pub total_input: u64,
     pub total_output: u64,
@@ -176,24 +181,20 @@ pub struct ComposablePolicy {
     pub policy_id: u32,
     pub created_at: i64,
     pub updated_at: i64,
-    pub state_padding: [u8; 32],
-    pub padding: [u8; 200],
+    pub padding: [u8; 32],
 }
 
 impl ComposablePolicy {
     pub const SIZE: usize = 8 + // Anchor discriminator
-        1 + // discriminator: u8
-        1 + // version: u8
         1 + // bump: u8
         32 + // user_payment: Pubkey
         32 + // gateway: Pubkey
         1 + // status: PolicyStatus
         32 + // rent_payer: Pubkey
-        // ScheduleType max size (Timed variant is largest)
-        (1 + 8 + 1 + 5 + 9 + 8) + // ScheduleType::Timed
-        64 + // memo: [u8; 64]
+        ScheduleType::SIZE + // ScheduleType::Timed
         ForwardConfig::SIZE + // forward_config
         ValidationConfig::SIZE + // validation_config
+        64 + // memo: [u8; 64]
         32 + // recipient: Pubkey
         8 + // total_input: u64
         8 + // total_output: u64
@@ -201,6 +202,5 @@ impl ComposablePolicy {
         4 + // policy_id: u32
         8 + // created_at: i64
         8 + // updated_at: i64
-        32 + // state_padding: [u8; 32]
-        200; // padding: [u8; 200]
+        32; // padding: [u8; 200]
 }
