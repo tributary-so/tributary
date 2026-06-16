@@ -140,18 +140,17 @@ describe("Composable Topup Balance Flow", () => {
       lamports: 1_000_000_000,
     });
 
-
     // SDK
     sdk = new TributarySDK(connection, wallet.payer);
 
     // Derive PDAs
     gatewayPDA = getGatewayPda(hotWallet.publicKey, program.programId).address;
+    paymentsDelegatePDA = getPaymentsDelegatePda(program.programId).address;
     userPaymentPDA = getUserPaymentPda(
       coldWallet.publicKey,
       USDC_MINT,
       program.programId
     ).address;
-    paymentsDelegatePDA = getPaymentsDelegatePda(program.programId).address;
 
     // Derive token accounts
     coldWalletUsdcAta = getAssociatedTokenAddressSync(
@@ -193,33 +192,49 @@ describe("Composable Topup Balance Flow", () => {
         USDC_MINT
       )
     );
-    ataTx.add(
-      createAssociatedTokenAccountInstruction(
-        admin.publicKey,
-        adminUsdcAta,
-        admin.publicKey,
-        USDC_MINT
-      )
-    );
-    await sendAndConfirmTransaction(connection, ataTx, [admin], {
-      commitment: "processed",
-    });
+    try {
+      await sendAndConfirmTransaction(connection, ataTx, [admin], {
+        commitment: "processed",
+      });
+    } catch {
+      // ATAs seem to exist already
+    }
+    try {
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(
+          createAssociatedTokenAccountInstruction(
+            admin.publicKey,
+            adminUsdcAta,
+            admin.publicKey,
+            USDC_MINT
+          )
+        ),
+        [admin],
+        {
+          commitment: "processed",
+        }
+      );
+    } catch {
+      // admin ATA seems to exist already
+    }
 
     // ── Fund USDC ───────────────────────────────────────────────────────
-    // coldWallet: 1000 USDC with payments_delegate set as delegate (100 USDC delegated)
-    await surfpool.setTokenAccount({
-      owner: coldWallet.publicKey,
-      mint: USDC_MINT,
-      amount: 1_000_000_000, // 1000 USDC
-      delegate: paymentsDelegatePDA,
-      delegatedAmount: 100_000_000, // 100 USDC delegated
-    });
-
     // hotWallet: 40 USDC (below the 50 USDC threshold)
     await surfpool.setTokenAccount({
       owner: hotWallet.publicKey,
       mint: USDC_MINT,
       amount: 40_000_000, // 40 USDC
+    });
+
+    // coldWallet: 1000 USDC (funding source for topup)
+    // Delegate set to the UserPayment PDA (v1 model per MIGRATION.md)
+    await surfpool.setTokenAccount({
+      owner: coldWallet.publicKey,
+      mint: USDC_MINT,
+      amount: 1_000_000_000, // 1000 USDC
+      delegate: userPaymentPDA,
+      delegatedAmount: 1_000_000_000,
     });
 
     // feeRecipient: empty ATA (gateway fee = 0, but account must exist)
@@ -280,11 +295,11 @@ describe("Composable Topup Balance Flow", () => {
     expect(gatewayAccount!.createdAt.toNumber()).toBeGreaterThan(0);
   });
 
-  test("create hotWallet payment for USDC mint", async () => {
-    await sdk.updateWallet(new anchor.Wallet(hotWallet));
+  test("create coldWallet payment for USDC mint", async () => {
+    await sdk.updateWallet(new anchor.Wallet(coldWallet));
 
     userPaymentPDA = getUserPaymentPda(
-      hotWallet.publicKey,
+      coldWallet.publicKey,
       USDC_MINT,
       program.programId
     ).address;
@@ -292,21 +307,21 @@ describe("Composable Topup Balance Flow", () => {
     const createUserPaymentIx = await sdk.createUserPayment(USDC_MINT);
     const tx = new Transaction().add(createUserPaymentIx);
 
-    await sendAndConfirmTransaction(connection, tx, [hotWallet], {
+    await sendAndConfirmTransaction(connection, tx, [coldWallet], {
       commitment: "processed",
     });
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
 
     expect(userPayment).not.toBeNull();
-    expect(userPayment!.owner).toEqual(hotWallet.publicKey);
+    expect(userPayment!.owner).toEqual(coldWallet.publicKey);
     expect(userPayment!.tokenMint).toEqual(USDC_MINT);
     expect(userPayment!.createdPoliciesCount).toBe(0);
     expect(userPayment!.isActive).toBe(true);
   });
 
   test("Create composable topup policy — usage schedule + Lighthouse validation", async () => {
-    await sdk.updateWallet(new anchor.Wallet(hotWallet));
+    await sdk.updateWallet(new anchor.Wallet(coldWallet));
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
     composablePolicyId = (userPayment!.createdComposableCount ?? 0) + 1;
@@ -373,7 +388,7 @@ describe("Composable Topup Balance Flow", () => {
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
-        user: hotWallet.publicKey,
+        user: coldWallet.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
@@ -386,7 +401,7 @@ describe("Composable Topup Balance Flow", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(ix),
-      [hotWallet],
+      [hotWallet, coldWallet],
       { commitment: "processed" }
     );
 
@@ -431,7 +446,7 @@ describe("Composable Topup Balance Flow", () => {
   });
 
   test("Execute topup — succeeds (hotWallet below threshold)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(hotWallet));
+    await sdk.updateWallet(new anchor.Wallet(coldWallet));
 
     // Pre-execution balance check
     const hotBalanceBefore = await connection.getTokenAccountBalance(
@@ -443,49 +458,59 @@ describe("Composable Topup Balance Flow", () => {
     // The program patches the amount in bytes 1-8; placeholder is fine.
     const instructionData = buildTokenTransferInstructionData(50_000_000);
 
-    // Derive intermediate ATA (owned by composable_policy PDA)
+    // Derive intermediate ATA (owned by user_payment PDA)
     const intermediate_input_token_account = getAssociatedTokenAddressSync(
       USDC_MINT,
-      composablePolicyPDA,
+      userPaymentPDA,
       true, // allowOwnerOffCurve (PDA)
       TOKEN_PROGRAM_ID
     );
 
     // remaining_accounts: [ValidationPDA, hotWalletUsdcAta]
     // The Lighthouse CPI reads hotWalletUsdcAta to assert amount < 50 USDC.
+    //
+    // NOTE: Forward accounts are NOT included here because the handler
+    // currently returns Ok(()) early (stub). Once the handler is fully
+    // implemented, the forward program (TokenProgram Transfer) requires
+    // these additional remaining_accounts AFTER the validation accounts:
+    //   - intermediate_input_token_account (source)
+    //   - intermediate_output_token_account (destination)
+    //   - user_payment PDA (authority)
     const remainingAccounts = [
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
     ];
 
+    const accounts = {
+      feePayer: coldWallet.publicKey,
+      paymentsDelegate: paymentsDelegatePDA,
+      composablePolicy: composablePolicyPDA,
+      userPayment: userPaymentPDA,
+      gateway: gatewayPDA,
+      config: configPDA,
+      userTokenAccount: coldWalletUsdcAta,
+      mint: USDC_MINT,
+      outputMint: USDC_MINT,
+      intermediateInputTokenAccount: intermediate_input_token_account,
+      intermediateOutputTokenAccount: intermediate_input_token_account,
+      recipientTokenAccount: hotWalletUsdcAta,
+      gatewayFeeAccount: feeRecipientUsdcAta,
+      protocolFeeAccount: adminUsdcAta,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    };
+    console.log(accounts);
     const ix = await program.methods
       .executeComposable(instructionData, new anchor.BN(50_000_000))
-      .accountsStrict({
-        feePayer: hotWallet.publicKey,
-        paymentsDelegate: paymentsDelegatePDA,
-        composablePolicy: composablePolicyPDA,
-        userPayment: userPaymentPDA,
-        gateway: gatewayPDA,
-        config: configPDA,
-        userTokenAccount: coldWalletUsdcAta,
-        mint: USDC_MINT,
-        outputMint: USDC_MINT,
-        intermediateInputTokenAccount: intermediate_input_token_account,
-        intermediateOutputTokenAccount: intermediate_input_token_account,
-        recipientTokenAccount: hotWalletUsdcAta,
-        gatewayFeeAccount: feeRecipientUsdcAta,
-        protocolFeeAccount: adminUsdcAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
+      .accountsStrict(accounts)
       .remainingAccounts(remainingAccounts)
       .instruction();
 
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(ix),
-      [hotWallet],
+      [coldWallet],
       { commitment: "processed" }
     );
 
@@ -542,7 +567,7 @@ describe("Composable Topup Balance Flow", () => {
   //  3. Execute topup again — fails (hotWallet balance now > 50 threshold)
   // ══════════════════════════════════════════════════════════════════════
   test("Execute topup again — fails (hotWallet above threshold)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(hotWallet));
+    await sdk.updateWallet(new anchor.Wallet(coldWallet));
 
     // hotWallet should now have ~89.5 USDC (> 50 USDC threshold)
     const hotBalance = await connection.getTokenAccountBalance(
@@ -555,11 +580,12 @@ describe("Composable Topup Balance Flow", () => {
     // Derive intermediate ATA (same as first execution)
     const intermediate_input_token_account = getAssociatedTokenAddressSync(
       USDC_MINT,
-      composablePolicyPDA,
+      userPaymentPDA,
       true,
       TOKEN_PROGRAM_ID
     );
 
+    // NOTE: Forward accounts omitted — see first execute test for details.
     const remainingAccounts = [
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
@@ -569,7 +595,7 @@ describe("Composable Topup Balance Flow", () => {
       const ix = await program.methods
         .executeComposable(instructionData, new anchor.BN(50_000_000))
         .accountsStrict({
-          feePayer: hotWallet.publicKey,
+          feePayer: coldWallet.publicKey,
           paymentsDelegate: paymentsDelegatePDA,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
@@ -593,7 +619,7 @@ describe("Composable Topup Balance Flow", () => {
       await sendAndConfirmTransaction(
         connection,
         new Transaction().add(ix),
-        [hotWallet],
+        [coldWallet],
         { commitment: "processed" }
       );
 

@@ -4,9 +4,7 @@ use crate::{
     shared::delegation::resolve_delegate, state::*, utils::calculate_next_payment_due,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::{
-    create_idempotent, get_associated_token_address_with_program_id, AssociatedToken, Create,
-};
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::Token;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
 
@@ -164,7 +162,7 @@ fn run_validation_cpi<'info>(
             .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
                 pubkey: *a.key,
                 is_signer: a.is_signer,
-                is_writable: a.is_writable,
+                is_writable: false, // enforce validation to be read-only!
             })
             .collect(),
         data: val_data,
@@ -174,29 +172,12 @@ fn run_validation_cpi<'info>(
     Ok(val_accounts_end)
 }
 
-/// Create (idempotent) an intermediate ATA owned by the UserPayment PDA.
-fn create_intermediate_ata<'info>(
-    ata: &AccountInfo<'info>,
-    payer: &AccountInfo<'info>,
-    authority: &AccountInfo<'info>,
-    mint: &AccountInfo<'info>,
-    ata_program: &AccountInfo<'info>,
-    system_program: &AccountInfo<'info>,
-    token_program: &AccountInfo<'info>,
-) -> Result<()> {
-    let create_accounts = Create {
-        payer: payer.clone(),
-        associated_token: ata.clone(),
-        authority: authority.clone(),
-        mint: mint.clone(),
-        system_program: system_program.clone(),
-        token_program: token_program.clone(),
-    };
-    let cpi_ctx = CpiContext::new(ata_program.clone(), create_accounts);
-    create_idempotent(cpi_ctx)
-}
-
 /// Invoke the forward program (Step 5). Signs with UserPayment PDA seeds.
+///
+/// Executable accounts (programs) in the forward range are excluded from
+/// the instruction's `AccountMeta`s — they exist in `remaining_accounts`
+/// solely so the runtime can resolve them for CPI. They are still passed
+/// to `invoke_signed` as `account_infos` so nested CPIs can access them.
 fn run_forward_cpi<'info>(
     remaining: &[AccountInfo<'info>],
     forward_accounts_start: usize,
@@ -209,26 +190,34 @@ fn run_forward_cpi<'info>(
         TributaryError::MissingForwardAccounts
     );
 
-    let forward_account_infos: Vec<AccountInfo<'info>> = remaining[forward_accounts_start..]
+    let all_forward_infos: Vec<AccountInfo<'info>> = remaining[forward_accounts_start..]
         .iter()
         .map(|a| a.clone())
         .collect();
 
+    let instruction_accounts: Vec<&AccountInfo<'info>> =
+        all_forward_infos.iter().filter(|a| !a.executable).collect();
+
+    require!(
+        !instruction_accounts.is_empty(),
+        TributaryError::MissingForwardAccounts
+    );
+
     let instruction = anchor_lang::solana_program::instruction::Instruction {
         program_id: target_program,
-        accounts: forward_account_infos
+        accounts: instruction_accounts
             .iter()
             .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
-                pubkey: *a.key,
-                is_signer: a.is_signer,
-                is_writable: a.is_writable,
+                pubkey: *(*a).key,
+                is_signer: (*a).is_signer,
+                is_writable: (*a).is_writable,
             })
             .collect(),
         data: instruction_data.to_vec(),
     };
     anchor_lang::solana_program::program::invoke_signed(
         &instruction,
-        &forward_account_infos,
+        &all_forward_infos,
         &[up_seeds],
     )?;
     Ok(())
@@ -342,6 +331,7 @@ fn process_output_and_sweep<'info>(
 pub struct ExecuteComposable<'info> {
     /// Gateway signer, user, or recipient — whoever triggers execution
     #[account(
+        mut,
         constraint = (
             fee_payer.key() == gateway.signer
             || fee_payer.key() == user_payment.owner
@@ -396,11 +386,14 @@ pub struct ExecuteComposable<'info> {
     )]
     pub config: Box<Account<'info, ProgramConfig>>,
 
-    /// User's source token account. The account MUST have either the
-    /// UserPayment PDA (v1) or the global payments_delegate PDA (v0) set
-    /// as delegate with `delegated_amount >= input_amount`.
+    /// User's source token account. Must be owned by the user
+    /// (user_payment.owner) and have either the UserPayment PDA (v1)
+    /// or the global payments_delegate PDA (v0) set as delegate with
+    /// `delegated_amount >= input_amount`.
     #[account(
         mut,
+        constraint = user_token_account.owner == user_payment.owner
+            @ TributaryError::Unauthorized,
         constraint = user_token_account.mint == composable_policy.forward_config.input_mint,
         constraint = token_account_has_any_delegate(
             &user_token_account.delegate,
@@ -422,51 +415,67 @@ pub struct ExecuteComposable<'info> {
     )]
     pub output_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    /// CHECK: UserPayment PDA's intermediate input token account
-    /// (input_mint ATA). Created lazily via `create_idempotent`. Funded
-    /// with the full `input_amount`; drained by the forward CPI.
-    #[account(mut)]
-    pub intermediate_input_token_account: UncheckedAccount<'info>,
+    /// UserPayment PDA's intermediate input token account
+    #[account(
+        init,
+        payer = fee_payer,
+        associated_token::mint = mint,
+        associated_token::authority = user_payment,
+        associated_token::token_program = token_program,
+    )]
+    pub intermediate_input_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// CHECK: UserPayment PDA's intermediate output token account
-    /// (output_mint ATA). Created lazily via `create_idempotent`. Receives
-    /// the forward program's output tokens; fees and sweep are taken from
-    /// here. Must end the instruction at balance 0.
-    #[account(mut)]
+    /// UserPayment PDA's intermediate output token account
+    #[account(
+        // init,
+        // payer = fee_payer,
+        // FIXME: We cannot init this in case its the same mint as the input!!
+        // associated_token::mint = output_mint,
+        // associated_token::authority = user_payment,
+        // associated_token::token_program = token_program,
+    )]
+    /// CHECK: todo
     pub intermediate_output_token_account: UncheckedAccount<'info>,
-
+    //pub intermediate_output_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     /// Recipient's destination token account (output_mint ATA). Must
     /// pre-exist. Receives the swept output after fees.
     #[account(
         mut,
+        // associated_token::mint = output_mint,
+        // associated_token::authority = composable_policy.recipient,
+        // associated_token::token_program = token_program,
         constraint = recipient_token_account.mint == composable_policy.forward_config.output_mint
             @ TributaryError::TokenMintMismatch,
         constraint = recipient_token_account.owner == composable_policy.recipient,
     )]
-    pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub recipient_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Gateway fee account (output_mint).
     #[account(
         mut,
+        // associated_token::mint = output_mint,
+        // associated_token::authority = gateway.fee_recipient,
+        // associated_token::token_program = token_program,
         constraint = gateway_fee_account.mint == composable_policy.forward_config.output_mint
             @ TributaryError::TokenMintMismatch,
         constraint = gateway_fee_account.owner == gateway.fee_recipient,
     )]
-    pub gateway_fee_account: InterfaceAccount<'info, TokenAccount>,
+    pub gateway_fee_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Protocol fee account (output_mint).
     #[account(
         mut,
+        // associated_token::mint = output_mint,
+        // associated_token::authority = config.fee_recipient,
+        // associated_token::token_program = token_program,
         constraint = protocol_fee_account.mint == composable_policy.forward_config.output_mint
             @ TributaryError::TokenMintMismatch,
         constraint = protocol_fee_account.owner == config.fee_recipient,
     )]
-    pub protocol_fee_account: InterfaceAccount<'info, TokenAccount>,
+    pub protocol_fee_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
-
     pub associated_token_program: Program<'info, AssociatedToken>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -566,18 +575,19 @@ impl<'info> ExecuteComposable<'info> {
         let seeds: &[&[&[u8]]] = &[signer_seeds];
 
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
-        let forward_accounts_start = if validation_program != Pubkey::default() {
-            run_validation_cpi(
-                ctx.remaining_accounts,
-                ctx.program_id,
-                policy_key,
-                validation_program,
-                num_val_accounts,
-                signer_seeds,
-            )?
-        } else {
-            0
-        };
+        // FIXME: not included yet
+        // let forward_accounts_start = if validation_program != Pubkey::default() {
+        //     run_validation_cpi(
+        //         ctx.remaining_accounts,
+        //         ctx.program_id,
+        //         policy_key,
+        //         validation_program,
+        //         num_val_accounts,
+        //         signer_seeds,
+        //     )?
+        // } else {
+        //     0
+        // };
 
         // ── Cache account infos used by multiple steps ─────────────────
         let token_program_info = ctx.accounts.token_program.to_account_info();
@@ -587,9 +597,6 @@ impl<'info> ExecuteComposable<'info> {
         let output_mint_decimals = ctx.accounts.output_mint.decimals;
         let user_token_info = ctx.accounts.user_token_account.to_account_info();
         let user_payment_info = ctx.accounts.user_payment.to_account_info();
-        let fee_payer_info = ctx.accounts.fee_payer.to_account_info();
-        let ata_program_info = ctx.accounts.associated_token_program.to_account_info();
-        let system_program_info = ctx.accounts.system_program.to_account_info();
 
         // ── Resolve pull delegate for Step 3 ───────────────────────────
         // The user's token account may delegate to EITHER the UserPayment
@@ -611,29 +618,7 @@ impl<'info> ExecuteComposable<'info> {
         let pull_seeds: &[&[&[u8]]] = &[pull_signer_seeds];
         let pull_authority = &pull_resolution.authority_info;
 
-        // ── Step 3: CREATE + FUND intermediate_input_token_account ──────
-        let expected_intermediate_input = get_associated_token_address_with_program_id(
-            &ctx.accounts.user_payment.key(),
-            &ctx.accounts.mint.key(),
-            &ctx.accounts.token_program.key(),
-        );
-        require!(
-            ctx.accounts.intermediate_input_token_account.key() == expected_intermediate_input,
-            TributaryError::IntermediateAccountMismatch
-        );
-
-        create_intermediate_ata(
-            &ctx.accounts
-                .intermediate_input_token_account
-                .to_account_info(),
-            &fee_payer_info,
-            &user_payment_info,
-            &input_mint_info,
-            &ata_program_info,
-            &system_program_info,
-            &token_program_info,
-        )?;
-
+        // ── Step 3: FUND intermediate_input_token_account ──────
         {
             let cpi_accounts = TransferChecked {
                 from: user_token_info.clone(),
@@ -649,37 +634,15 @@ impl<'info> ExecuteComposable<'info> {
             token_interface::transfer_checked(cpi_ctx, input_amount, input_mint_decimals)?;
         }
 
-        // ── Step 4: CREATE intermediate_output_token_account ───────────
-        let expected_intermediate_output = get_associated_token_address_with_program_id(
-            &ctx.accounts.user_payment.key(),
-            &ctx.accounts.output_mint.key(),
-            &ctx.accounts.token_program.key(),
-        );
-        require!(
-            ctx.accounts.intermediate_output_token_account.key() == expected_intermediate_output,
-            TributaryError::IntermediateAccountMismatch
-        );
-
-        create_intermediate_ata(
-            &ctx.accounts
-                .intermediate_output_token_account
-                .to_account_info(),
-            &fee_payer_info,
-            &user_payment_info,
-            &output_mint_info,
-            &ata_program_info,
-            &system_program_info,
-            &token_program_info,
-        )?;
-
+        // FIXME: CPI missing ...
         // ── Step 5: FORWARD CPI ────────────────────────────────────────
-        run_forward_cpi(
-            ctx.remaining_accounts,
-            forward_accounts_start,
-            target_program,
-            &instruction_data,
-            signer_seeds,
-        )?;
+        // run_forward_cpi(
+        //     ctx.remaining_accounts,
+        //     forward_accounts_start,
+        //     target_program,
+        //     &instruction_data,
+        //     signer_seeds,
+        // )?;
 
         // ── Steps 6–9: verify output, fees, sweep ──────────────────────
         let gateway = &ctx.accounts.gateway;

@@ -1432,6 +1432,7 @@ export type Tributary = {
           "docs": [
             "Gateway signer, user, or recipient — whoever triggers execution"
           ],
+          "writable": true,
           "signer": true
         },
         {
@@ -1580,9 +1581,10 @@ export type Tributary = {
         {
           "name": "userTokenAccount",
           "docs": [
-            "User's source token account. The account MUST have either the",
-            "UserPayment PDA (v1) or the global payments_delegate PDA (v0) set",
-            "as delegate with `delegated_amount >= input_amount`."
+            "User's source token account. Must be owned by the user",
+            "(user_payment.owner) and have either the UserPayment PDA (v1)",
+            "or the global payments_delegate PDA (v0) set as delegate with",
+            "`delegated_amount >= input_amount`."
           ],
           "writable": true
         },
@@ -1602,19 +1604,68 @@ export type Tributary = {
         {
           "name": "intermediateInputTokenAccount",
           "docs": [
-            "(input_mint ATA). Created lazily via `create_idempotent`. Funded",
-            "with the full `input_amount`; drained by the forward CPI."
+            "UserPayment PDA's intermediate input token account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "intermediateOutputTokenAccount",
           "docs": [
-            "(output_mint ATA). Created lazily via `create_idempotent`. Receives",
-            "the forward program's output tokens; fees and sweep are taken from",
-            "here. Must end the instruction at balance 0."
-          ],
-          "writable": true
+            "UserPayment PDA's intermediate output token account"
+          ]
         },
         {
           "name": "recipientTokenAccount",
