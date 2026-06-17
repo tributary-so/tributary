@@ -1,6 +1,11 @@
 import { BriefcaseBusiness, CheckCheck, Crown } from "lucide-react";
 
-export default function FabianSchuhProfile() {
+type ProfileProps = {
+  isDAORaise: boolean,
+  showExits: boolean
+};
+
+export default function FabianSchuhProfile({ isDAORaise = true, showExits = true }: ProfileProps) {
   return (
     <div className="space-y-8">
       {/* ── Stats ── */}
@@ -10,7 +15,7 @@ export default function FabianSchuhProfile() {
           ["4", "successful exits"],
           ["10+", "years in web3"],
           ["500M+", "blocks produced"],
-          ["10+", "L1 blockchains launched"],
+          ["16+", "L1 blockchains launched"],
         ].map(([num, label]) => (
           <div key={label} className="bg-gray-50 rounded-lg p-4">
             <div className="text-2xl font-medium">{num}</div>
@@ -25,9 +30,9 @@ export default function FabianSchuhProfile() {
           Built the entire protocol solo · $0 funding
         </p>
         <p className="text-sm text-gray-600 leading-relaxed">
-          Veteran builder. PhD engineer turned crypto founder. From low-latency
-          comms research to shipping low-latency, full-stack blockchain
-          protocols, DeFi platforms, and AI agent systems.
+          Veteran web3 builder. PhD engineer turned crypto founder in 2015.
+          From low-latency comms research to shipping low-latency, full-stack
+          blockchain protocols, DeFi platforms, and AI agent systems.
         </p>
       </section>
 
@@ -86,41 +91,45 @@ export default function FabianSchuhProfile() {
       </section>
 
       {/* ── Exits ── */}
-      <section className="space-y-3">
-        <p className="text-xs font-medium uppercase tracking-widest ">Exits</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {[
-            ["Steemit", "Founding member · Python lead"],
-            ["MakerDAO", "Advisor · whitepaper review"],
-            ["Cryptonomex", "Founding member · 0.1% equity"],
-            ["Relay.md", "Solo MicroSaaS founder"],
-          ].map(([name, role]) => (
-            <div
-              key={name}
-              className="border border-foreground/30 rounded-xl p-3 flex flex-col gap-1 hover:border-gray-300 transition-colors"
-            >
-              <p className="text-sm font-medium">{name}</p>
-              <p className="text-xs text-gray-400">{role}</p>
-              <span className="mt-1 self-start text-xs font-medium text-teal-700 bg-teal-50 rounded-full px-2 py-0.5">
-                ✓ Exit
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {showExits && (
+        <section className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-widest ">Exits</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              ["Steemit", "Founding member · Python lead"],
+              ["MakerDAO", "Advisor · whitepaper review"],
+              ["Cryptonomex", "Founding member · 0.1% equity"],
+              ["Relay.md", "Solo MicroSaaS founder"],
+            ].map(([name, role]) => (
+              <div
+                key={name}
+                className="border border-foreground/30 rounded-xl p-3 flex flex-col gap-1 hover:border-gray-300 transition-colors"
+              >
+                <p className="text-sm font-medium">{name}</p>
+                <p className="text-xs text-gray-400">{role}</p>
+                <span className="mt-1 self-start text-xs font-medium text-teal-700 bg-teal-50 rounded-full px-2 py-0.5">
+                  ✓ Exit
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Why Fabian for a DAO ── */}
-      <section className="space-y-3">
-        <p className="text-xs font-medium uppercase tracking-widest ">
-          Why Fabian to raise funds for a DAO
-        </p>
-        <p className="bg-gray-50 p-4 leading-relaxed">
-          Arguably the most uniquely qualified individual in Web3 to lead a
-          project's transition into a DAO. He not only participated in
-          decentralized governance, he even architected systems that let DAOs
-          function as sustainable, unmanned companies.
-        </p>
-      </section>
+      {isDAORaise && (
+        <section className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-widest ">
+            Why Fabian to raise funds for a DAO
+          </p>
+          <p className="bg-gray-50 p-4 leading-relaxed">
+            Arguably the most uniquely qualified individual in Web3 to lead a
+            project's transition into a DAO. He not only participated in
+            decentralized governance, he even architected systems that let DAOs
+            function as sustainable, unmanned companies.
+          </p>
+        </section>
+      )}
     </div>
   );
 }
