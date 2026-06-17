@@ -61,6 +61,13 @@ pub trait PolicyStrategy: std::fmt::Debug {
         // Update policy state
         self.update_policy_state(payment_policy, current_time)?;
 
+        // Increment the payment counter BEFORE evaluating should_pause_policy so
+        // ceilings (e.g. Subscription::max_renewals) are honored exactly.
+        payment_policy.payment_count = payment_policy
+            .payment_count
+            .checked_add(1)
+            .ok_or(crate::error::TributaryError::ArithmeticOverflow)?;
+
         // Determine if policy should pause
         let should_pause = self.should_pause_policy(payment_policy);
 

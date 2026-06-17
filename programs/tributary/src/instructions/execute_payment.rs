@@ -326,10 +326,6 @@ impl<'info> ExecutePayment<'info> {
             .total_paid
             .checked_add(total_amount_from_user)
             .ok_or(TributaryError::ArithmeticOverflow)?;
-        payment_policy.payment_count = payment_policy
-            .payment_count
-            .checked_add(1)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
         payment_policy.updated_at = clock.unix_timestamp;
 
         // Pause policy if needed based on strategy recommendation

@@ -949,7 +949,8 @@
       ],
       "accounts": [
         {
-          "name": "owner"
+          "name": "owner",
+          "signer": true
         },
         {
           "name": "user_payment",
