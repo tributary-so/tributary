@@ -836,3 +836,5 @@ MIT License - see [LICENSE](../LICENSE) file for details.
 Sometimes, we need to bump this repo to bring in changes from the SDK and
 trigger a release in CI. For this we require a change in this folder. Forcing
 that change with a period..
+
+2026-06-11: fee subsidize

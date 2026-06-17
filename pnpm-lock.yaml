@@ -521,58 +521,6 @@ importers:
         specifier: ^5
         version: 5.9.3
 
-  apps/cli.old:
-    dependencies:
-      '@coral-xyz/anchor':
-        specifier: ^0.31.0
-        version: 0.31.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
-      '@solana/spl-token':
-        specifier: ^0.4.12
-        version: 0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
-      '@solana/web3.js':
-        specifier: ^1.98.0
-        version: 1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
-      '@tributary-so/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
-      bn.js:
-        specifier: ^5.2.1
-        version: 5.2.2
-    devDependencies:
-      '@eslint/js':
-        specifier: ^9.35.0
-        version: 9.39.4
-      '@types/bn.js':
-        specifier: ^5.1.6
-        version: 5.2.0
-      '@types/node':
-        specifier: ^24.5.2
-        version: 24.12.2
-      esbuild-fix-imports-plugin:
-        specifier: ^1.0.23
-        version: 1.0.23
-      eslint:
-        specifier: ^9.35.0
-        version: 9.39.4(jiti@2.6.1)
-      globals:
-        specifier: ^16.4.0
-        version: 16.4.0
-      prettier:
-        specifier: ^2.6.2
-        version: 2.8.8
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@24.12.2)(typescript@5.9.3)
-      tsup:
-        specifier: ^8.0.0
-        version: 8.5.0(jiti@2.6.1)(postcss@8.5.10)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.4)
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-      typescript-eslint:
-        specifier: ^8.44.0
-        version: 8.58.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
-
   apps/example-payments:
     dependencies:
       '@coral-xyz/anchor':
@@ -34324,6 +34272,7 @@ snapshots:
       typescript: 5.9.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
+    optional: true
 
   ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3):
     dependencies:
