@@ -353,7 +353,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
           throw new Error('Invalid policy type selected')
       }
 
-      await createAndSendTransaction(instructions, wallet, connection)
+      const txid = await createAndSendTransaction(instructions, wallet, connection)
+      console.log(txid);
       addToast({ title: 'Success', description: 'Payment policy created successfully!', color: 'success' })
       setTimeout(() => navigate('/account'), 3000)
     } catch (err) {
@@ -825,13 +826,12 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
             onChange={handleInputChange}
             placeholder="e.g., ABC123"
             maxLength={6}
-            className={`w-full ${
-              referralCodeValid === false
+            className={`w-full ${referralCodeValid === false
                 ? 'border-overdue-500'
                 : referralCodeValid === true
-                ? 'border-status-active-500'
-                : ''
-            }`}
+                  ? 'border-status-active-500'
+                  : ''
+              }`}
             isInvalid={referralCodeValid === false}
             errorMessage={referralCodeValid === false ? 'Invalid referral code' : undefined}
             endContent={
