@@ -143,6 +143,10 @@ describe("Composable Topup Balance Flow", () => {
     // SDK
     sdk = new TributarySDK(connection, wallet.payer);
 
+    // need to fetch the lighthouse contract so surfpool has it
+    const ligthHouseProgram = await sdk.connection.getAccountInfo(LIGHTHOUSE_PUBKEY);
+    expect(ligthHouseProgram.data).toBeDefined();
+
     // Derive PDAs
     gatewayPDA = getGatewayPda(hotWallet.publicKey, program.programId).address;
     paymentsDelegatePDA = getPaymentsDelegatePda(program.programId).address;
@@ -459,26 +463,24 @@ describe("Composable Topup Balance Flow", () => {
     const instructionData = buildTokenTransferInstructionData(50_000_000);
 
     // Derive intermediate ATA (owned by user_payment PDA)
-    const intermediate_input_token_account = getAssociatedTokenAddressSync(
+    const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       userPaymentPDA,
       true, // allowOwnerOffCurve (PDA)
       TOKEN_PROGRAM_ID
     );
+    const intermediateOutputTokenAccount = intermediateInputTokenAccount;
 
     // remaining_accounts: [ValidationPDA, hotWalletUsdcAta]
     // The Lighthouse CPI reads hotWalletUsdcAta to assert amount < 50 USDC.
-    //
-    // NOTE: Forward accounts are NOT included here because the handler
-    // currently returns Ok(()) early (stub). Once the handler is fully
-    // implemented, the forward program (TokenProgram Transfer) requires
-    // these additional remaining_accounts AFTER the validation accounts:
-    //   - intermediate_input_token_account (source)
-    //   - intermediate_output_token_account (destination)
-    //   - user_payment PDA (authority)
     const remainingAccounts = [
+      // validation
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
+      // Forward Program -> TokenProgram.Transfer
+      { pubkey: intermediateInputTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: intermediateOutputTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: userPaymentPDA, isSigner: false, isWritable: false }, // TODO: signer = False
     ];
 
     const accounts = {
@@ -491,8 +493,8 @@ describe("Composable Topup Balance Flow", () => {
       userTokenAccount: coldWalletUsdcAta,
       mint: USDC_MINT,
       outputMint: USDC_MINT,
-      intermediateInputTokenAccount: intermediate_input_token_account,
-      intermediateOutputTokenAccount: intermediate_input_token_account,
+      intermediateInputTokenAccount: intermediateInputTokenAccount,
+      intermediateOutputTokenAccount: intermediateOutputTokenAccount,
       recipientTokenAccount: hotWalletUsdcAta,
       gatewayFeeAccount: feeRecipientUsdcAta,
       protocolFeeAccount: adminUsdcAta,
@@ -578,17 +580,22 @@ describe("Composable Topup Balance Flow", () => {
     const instructionData = buildTokenTransferInstructionData(50_000_000);
 
     // Derive intermediate ATA (same as first execution)
-    const intermediate_input_token_account = getAssociatedTokenAddressSync(
+    const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       userPaymentPDA,
       true,
       TOKEN_PROGRAM_ID
     );
+    const intermediateOutputTokenAccount = intermediateInputTokenAccount;
 
     // NOTE: Forward accounts omitted — see first execute test for details.
     const remainingAccounts = [
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
+      // Forward Program -> TokenProgram.Transfer
+      { pubkey: intermediateInputTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: intermediateOutputTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: userPaymentPDA, isSigner: false, isWritable: false }, // TODO: signer = False
     ];
 
     try {
@@ -604,8 +611,8 @@ describe("Composable Topup Balance Flow", () => {
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: USDC_MINT,
-          intermediateInputTokenAccount: intermediate_input_token_account,
-          intermediateOutputTokenAccount: intermediate_input_token_account,
+          intermediateInputTokenAccount: intermediateInputTokenAccount,
+          intermediateOutputTokenAccount: intermediateOutputTokenAccount,
           recipientTokenAccount: hotWalletUsdcAta,
           gatewayFeeAccount: feeRecipientUsdcAta,
           protocolFeeAccount: adminUsdcAta,
@@ -627,6 +634,7 @@ describe("Composable Topup Balance Flow", () => {
     } catch (error: any) {
       // Lighthouse assertion fails because hotWallet balance (89.5 USDC)
       // is NOT less than 50 USDC.
+      console.log(error);
       expect(error).toBeDefined();
     }
 

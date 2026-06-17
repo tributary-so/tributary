@@ -575,19 +575,18 @@ impl<'info> ExecuteComposable<'info> {
         let seeds: &[&[&[u8]]] = &[signer_seeds];
 
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
-        // FIXME: not included yet
-        // let forward_accounts_start = if validation_program != Pubkey::default() {
-        //     run_validation_cpi(
-        //         ctx.remaining_accounts,
-        //         ctx.program_id,
-        //         policy_key,
-        //         validation_program,
-        //         num_val_accounts,
-        //         signer_seeds,
-        //     )?
-        // } else {
-        //     0
-        // };
+        let forward_accounts_start = if validation_program != Pubkey::default() {
+            run_validation_cpi(
+                ctx.remaining_accounts,
+                ctx.program_id,
+                policy_key,
+                validation_program,
+                num_val_accounts,
+                signer_seeds,
+            )?
+        } else {
+            0
+        };
 
         // ── Cache account infos used by multiple steps ─────────────────
         let token_program_info = ctx.accounts.token_program.to_account_info();
@@ -634,7 +633,6 @@ impl<'info> ExecuteComposable<'info> {
             token_interface::transfer_checked(cpi_ctx, input_amount, input_mint_decimals)?;
         }
 
-        // FIXME: CPI missing ...
         // ── Step 5: FORWARD CPI ────────────────────────────────────────
         // run_forward_cpi(
         //     ctx.remaining_accounts,
