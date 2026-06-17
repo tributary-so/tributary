@@ -1,14 +1,14 @@
 ---
 # tributary-bzdb
 title: 'H-01: Fee Underflow in Gross Mode — Combined BPS Not Validated'
-status: todo
+status: completed
 type: task
 priority: high
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-17T18:22:30Z
 parent: tributary-4kt4
 ---
 
@@ -379,3 +379,46 @@ All existing tests must pass. Any test that previously set combined BPS >= 10000
 - Fee calculation (transfer): `programs/tributary/src/instructions/transfer.rs:109-113`
 - Fee calculation (composable): `programs/tributary/src/instructions/composable/execute_composable.rs:376-378`
 - BPS write points: `create_payment_gateway.rs:47`, `change_gateway_fee_bps.rs:35`, `update_gateway_protocol_fee.rs:49-52`
+
+## Implementation TODO
+
+- [x] Add `CombinedFeeBpsExceedsMax` error variant in `error.rs`
+- [x] Add `validate_combined_bps` helper on `PaymentGateway`
+- [x] Call validation in `create_payment_gateway`
+- [x] Call validation in `change_gateway_fee_bps`
+- [x] Call validation in `update_gateway_protocol_fee`
+- [x] Add jest integration tests covering all three rejection paths
+- [x] `cargo test` green (31 passed)
+- [x] `anchor test` (integration suite) green — tributary.test.ts: 76/76 pass, including 3 new H-01 tests
+
+## Summary of Changes
+
+**H-01 fixed.** Added a cross-field invariant `gateway_fee_bps + effective_protocol_fee_bps < 10000` at every BPS write path so gross-mode recipient math can never underflow (and the recipient can never receive zero from a sum-equals-10000 configuration either).
+
+### Rust changes
+- `programs/tributary/src/error.rs` — new variant `CombinedFeeBpsExceedsMax`.
+- `programs/tributary/src/state/payment_gateway.rs` — added:
+  - `effective_protocol_fee_bps(config_bps)` helper (returns custom fee when `FEATURE_CUSTOM_PROTOCOL_FEE` is set, else the global default),
+  - `validate_combined_bps(protocol_fee_bps)` helper — strict `< 10000` check, `u32` accumulation to avoid add overflow,
+  - 4 unit tests covering below-threshold, exactly-10000, above-10000, and effective-fee selection.
+- `programs/tributary/src/instructions/create_payment_gateway.rs` — calls `validate_combined_bps(config.protocol_fee_bps)` after writing `gateway_fee_bps`.
+- `programs/tributary/src/instructions/change_gateway_fee_bps.rs` — calls `validate_combined_bps(effective_protocol_fee_bps(config.protocol_fee_bps))` after writing `gateway_fee_bps`. Uses the effective fee so the check is correct when the gateway has the custom-fee flag set.
+- `programs/tributary/src/instructions/update_gateway_protocol_fee.rs` — calls `validate_combined_bps(effective_protocol_fee_bps(...))` after both the flag toggle and `custom_protocol_fee_bps` write, so the post-write state is validated atomically (Solana rolls back on Err, so a failed validation leaves the gateway untouched).
+
+`update_gateway_feature_flags` was **not** patched: the `FEATURE_CUSTOM_PROTOCOL_FEE` bit is protected there (cannot be toggled from that path), and toggling `FEATURE_NET_AMOUNT` / `FEATURE_REFERRAL` does not change effective fees — so the invariant at the three write sites is sufficient.
+
+`initialize` was **not** patched: `protocol_fee_bps` is hardcoded to `100` (no admin input).
+
+### Tests
+- `tests/tributary.test.ts` — new `describe("H-01: Combined fee BPS validation")` block with three integration tests:
+  1. `create_payment_gateway` rejects `9900 + 100 == 10000` and accepts `9899 + 100 == 9999`.
+  2. `change_gateway_fee_bps` rejects `9900 + 100` (verifies gateway fee unchanged on rejection), accepts `9899 + 100`, then resets.
+  3. `update_gateway_protocol_fee` rejects `500 + 9500 == 10000` (verifies `custom_protocol_fee_bps` and the flag bit are both rolled back), accepts `500 + 9499 == 9999`.
+
+### Verification
+- `cargo test -p tributary` → 31 passed (27 existing + 4 new unit tests).
+- `anchor test` (tributary.test.ts) → 76/76 pass, including the 3 new H-01 tests.
+- `tests/composable.test.ts` failures observed during the run are pre-existing Jest 5s timeouts in `beforeAll` and unrelated to this fix (the suite never reaches the test bodies; my changes don't touch composable code paths).
+
+### Severity / Risk
+The fix is a pure additive validation: it rejects configurations that would have bricked payments at execution time. No existing legitimate configuration is rejected (the `250 + 100 = 350 bps` defaults and all existing test fixtures pass comfortably). Low risk.

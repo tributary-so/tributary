@@ -3140,6 +3140,181 @@ describe("Tributary", () => {
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
 
+  describe("H-01: Combined fee BPS validation (gross-mode underflow guard)", () => {
+    // config.protocol_fee_bps is initialized to 100; gateway_fee_bps + effective
+    // protocol fee must be < 10000 or every gross-mode payment reverts with
+    // ArithmeticOverflow (or, at exactly 10000, the recipient receives zero).
+    let h01GatewayAuthority: Keypair;
+    let h01GatewayPDA: PublicKey;
+    let h01FeeRecipient: Keypair;
+
+    beforeAll(async () => {
+      h01GatewayAuthority = Keypair.generate();
+      h01FeeRecipient = Keypair.generate();
+
+      await batchFund([
+        [h01GatewayAuthority.publicKey, 5],
+        [h01FeeRecipient.publicKey, 1],
+      ]);
+
+      // Create a gateway with a modest fee (500 bps). Combined with the default
+      // 100 bps protocol fee = 600 bps, well below the limit.
+      await sdk.updateWallet(new anchor.Wallet(admin));
+      const createIx = await sdk.createPaymentGateway(
+        h01GatewayAuthority.publicKey,
+        500,
+        h01FeeRecipient.publicKey,
+        "h01 gateway",
+        ""
+      );
+      const tx = new Transaction().add(createIx);
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      h01GatewayPDA = sdk.getGatewayPda(h01GatewayAuthority.publicKey).address;
+    });
+
+    test("create_payment_gateway rejects when gateway_fee_bps + protocol_fee_bps >= 10000", async () => {
+      const freshAuthority = Keypair.generate();
+      const freshFeeRecipient = Keypair.generate();
+      await batchFund([
+        [freshAuthority.publicKey, 1],
+        [freshFeeRecipient.publicKey, 1],
+      ]);
+
+      await sdk.updateWallet(new anchor.Wallet(admin));
+
+      // 9900 + 100 (default protocol fee) == 10000 → must be rejected
+      const createIx = await sdk.createPaymentGateway(
+        freshAuthority.publicKey,
+        9900,
+        freshFeeRecipient.publicKey,
+        "should fail combined",
+        ""
+      );
+      const tx = new Transaction().add(createIx);
+      await expect(
+        sendAndConfirmTransaction(connection, tx, [admin], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // 9899 + 100 == 9999 < 10000 → must succeed
+      const okAuthority = Keypair.generate();
+      const okFeeRecipient = Keypair.generate();
+      await batchFund([
+        [okAuthority.publicKey, 1],
+        [okFeeRecipient.publicKey, 1],
+      ]);
+      const okIx = await sdk.createPaymentGateway(
+        okAuthority.publicKey,
+        9899,
+        okFeeRecipient.publicKey,
+        "should pass combined",
+        ""
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const okGateway = await sdk.getPaymentGateway(
+        sdk.getGatewayPda(okAuthority.publicKey).address
+      );
+      expect(okGateway!.gatewayFeeBps).toBe(9899);
+    });
+
+    test("change_gateway_fee_bps rejects when new fee + effective protocol fee >= 10000", async () => {
+      await sdk.updateWallet(new anchor.Wallet(h01GatewayAuthority));
+
+      // 9900 + 100 (default protocol fee; custom fee disabled) == 10000 → reject
+      const rejectIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        9900
+      );
+      const rejectTx = new Transaction().add(rejectIx);
+      await expect(
+        sendAndConfirmTransaction(connection, rejectTx, [h01GatewayAuthority], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // Gateway fee should be unchanged after rejection
+      const unchanged = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(unchanged!.gatewayFeeBps).toBe(500);
+
+      // 9899 + 100 == 9999 < 10000 → accept
+      const okIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        9899
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [h01GatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
+      const updated = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(updated!.gatewayFeeBps).toBe(9899);
+
+      // Reset for the next test (500 + any custom fee must still be < 10000).
+      const resetIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        500
+      );
+      const resetTx = new Transaction().add(resetIx);
+      await sendAndConfirmTransaction(
+        connection,
+        resetTx,
+        [h01GatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+    });
+
+    test("update_gateway_protocol_fee rejects when custom fee + gateway_fee_bps >= 10000", async () => {
+      await sdk.updateWallet(new anchor.Wallet(admin));
+
+      // gateway_fee_bps = 500; custom = 9500 → 10000 → reject
+      const rejectIx = await sdk.updateGatewayProtocolFee(
+        h01GatewayAuthority.publicKey,
+        true,
+        9500
+      );
+      const rejectTx = new Transaction().add(rejectIx);
+      await expect(
+        sendAndConfirmTransaction(connection, rejectTx, [admin], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // custom_protocol_fee_bps must NOT have been written, and the
+      // FEATURE_CUSTOM_PROTOCOL_FEE bit must NOT be set (Solana rolls back
+      // account state when an instruction fails).
+      const unchanged = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(unchanged!.customProtocolFeeBps).toBe(0);
+      expect(
+        unchanged!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      ).toBe(0);
+
+      // 500 + 9499 == 9999 < 10000 → accept
+      const okIx = await sdk.updateGatewayProtocolFee(
+        h01GatewayAuthority.publicKey,
+        true,
+        9499
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+      const updated = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(updated!.customProtocolFeeBps).toBe(9499);
+      expect(updated!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
+        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      );
+    });
+  });
+
   describe("Gateway feature flags", () => {
     let flagsGatewayAuthority: Keypair;
     let flagsGatewayPDA: PublicKey;

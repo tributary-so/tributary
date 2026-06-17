@@ -97,4 +97,97 @@ impl PaymentGateway {
     pub fn is_custom_protocol_fee_enabled(&self) -> bool {
         self.feature_flags & Self::FEATURE_CUSTOM_PROTOCOL_FEE != 0
     }
+
+    /// Effective protocol fee bps for this gateway: the custom value when the
+    /// feature flag is set, otherwise the protocol-wide default.
+    pub fn effective_protocol_fee_bps(&self, config_protocol_fee_bps: u16) -> u16 {
+        if self.is_custom_protocol_fee_enabled() {
+            self.custom_protocol_fee_bps
+        } else {
+            config_protocol_fee_bps
+        }
+    }
+
+    /// Validate that gateway_fee_bps + protocol_fee_bps < 10000.
+    ///
+    /// In gross mode the recipient amount is computed as
+    /// `payment_amount - gateway_fee - protocol_fee`. When the combined BPS
+    /// exceeds 10000 the subtraction underflows (`ArithmeticOverflow`) and
+    /// every payment through the gateway reverts. At exactly 10000 the
+    /// recipient receives zero, so the threshold is strictly `<`.
+    ///
+    /// Call after both fee fields have their final (post-write) values.
+    pub fn validate_combined_bps(&self, protocol_fee_bps: u16) -> Result<()> {
+        let total = (self.gateway_fee_bps as u32)
+            .checked_add(protocol_fee_bps as u32)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
+        require!(total < 10_000, TributaryError::CombinedFeeBpsExceedsMax);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn gateway_with_fee(bps: u16) -> PaymentGateway {
+        PaymentGateway {
+            authority: Pubkey::default(),
+            fee_recipient: Pubkey::default(),
+            gateway_fee_bps: bps,
+            is_active: true,
+            padding1: 0,
+            created_at: 0,
+            bump: 0,
+            name: [0; 32],
+            url: [0; 64],
+            signer: Pubkey::default(),
+            feature_flags: 0,
+            referral_allocation_bps: 0,
+            referral_tiers_bps: [0; 3],
+            custom_protocol_fee_bps: 0,
+            padding: [0; 117],
+        }
+    }
+
+    #[test]
+    fn combined_bps_below_threshold_accepts() {
+        // 9899 + 100 == 9999 < 10000
+        let gw = gateway_with_fee(9899);
+        assert!(gw.validate_combined_bps(100).is_ok());
+        // 0 + 0
+        let gw = gateway_with_fee(0);
+        assert!(gw.validate_combined_bps(0).is_ok());
+    }
+
+    #[test]
+    fn combined_bps_exactly_10000_rejects() {
+        // 9900 + 100 == 10000 → must reject (recipient would be 0)
+        let gw = gateway_with_fee(9900);
+        assert!(gw.validate_combined_bps(100).is_err());
+        // 5000 + 5000
+        let gw = gateway_with_fee(5000);
+        assert!(gw.validate_combined_bps(5000).is_err());
+    }
+
+    #[test]
+    fn combined_bps_above_10000_rejects() {
+        // 6000 + 5000 == 11000 → underflow territory
+        let gw = gateway_with_fee(6000);
+        assert!(gw.validate_combined_bps(5000).is_err());
+        // 10000 + 100
+        let gw = gateway_with_fee(10_000);
+        assert!(gw.validate_combined_bps(100).is_err());
+    }
+
+    #[test]
+    fn effective_protocol_fee_bps_picks_custom_when_enabled() {
+        let mut gw = gateway_with_fee(500);
+        // Disabled → returns config default
+        assert_eq!(gw.effective_protocol_fee_bps(100), 100);
+        // Enable custom fee
+        gw.feature_flags |= PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
+        gw.custom_protocol_fee_bps = 250;
+        assert_eq!(gw.effective_protocol_fee_bps(100), 250);
+    }
 }

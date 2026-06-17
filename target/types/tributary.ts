@@ -2757,41 +2757,46 @@ export type Tributary = {
     },
     {
       "code": 6051,
+      "name": "combinedFeeBpsExceedsMax",
+      "msg": "Combined fee BPS must be less than 10000"
+    },
+    {
+      "code": 6052,
       "name": "discriminatorCheckRequired",
       "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "unauthorizedInitializer",
       "msg": "Only the upgrade authority can initialize the program"
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "intermediateAccountMismatch",
       "msg": "Intermediate token account address does not match the derived ATA"
     },
     {
-      "code": 6054,
+      "code": 6055,
       "name": "intermediateAccountAlreadyExists",
       "msg": "Intermediate token account already exists — it must be freshly created each execution"
     },
     {
-      "code": 6055,
+      "code": 6056,
       "name": "missingForwardAccounts",
       "msg": "Forward CPI requires at least one remaining account"
     },
     {
-      "code": 6056,
+      "code": 6057,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     },
     {
-      "code": 6057,
+      "code": 6058,
       "name": "payerReferralMismatch",
       "msg": "Payer ReferralAccount does not match the paying wallet"
     },
     {
-      "code": 6058,
+      "code": 6059,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     }

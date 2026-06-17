@@ -59,6 +59,10 @@ impl<'info> CreatePaymentGateway<'info> {
         gateway.url = url;
         gateway.signer = ctx.accounts.authority.key();
 
+        // H-01: validate gateway_fee_bps + config.protocol_fee_bps < 10000 so
+        // gross-mode recipient math cannot underflow on this gateway.
+        gateway.validate_combined_bps(ctx.accounts.config.protocol_fee_bps)?;
+
         emit!(PaymentGatewayCreated {
             authority: gateway.authority,
             fee_recipient: gateway.fee_recipient,

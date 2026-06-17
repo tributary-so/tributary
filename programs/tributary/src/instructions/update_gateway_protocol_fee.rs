@@ -52,6 +52,13 @@ impl<'info> UpdateGatewayProtocolFee<'info> {
         );
         gateway.custom_protocol_fee_bps = args.custom_protocol_fee_bps;
 
+        // H-01: combined BPS (gateway + effective protocol fee) must stay < 10000.
+        // The feature flag has already been toggled above, so
+        // `effective_protocol_fee_bps` reflects the post-write state.
+        let effective_protocol_bps =
+            gateway.effective_protocol_fee_bps(ctx.accounts.config.protocol_fee_bps);
+        gateway.validate_combined_bps(effective_protocol_bps)?;
+
         msg!(
             "Gateway protocol fee updated: use_custom_protocol_fee={}, custom_protocol_fee_bps={}",
             gateway.feature_flags & PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE != 0,

@@ -36,6 +36,13 @@ impl<'info> ChangeGatewayFeeBps<'info> {
 
         gateway.gateway_fee_bps = new_fee_bps;
 
+        // H-01: combined BPS (gateway + effective protocol fee) must stay < 10000.
+        // Use the gateway's effective protocol fee — if the custom-fee flag is
+        // set, the custom value overrides the global default at execution time.
+        let effective_protocol_bps =
+            gateway.effective_protocol_fee_bps(ctx.accounts.config.protocol_fee_bps);
+        gateway.validate_combined_bps(effective_protocol_bps)?;
+
         emit!(GatewayFeeBpsChanged {
             gateway: gateway.key(),
             old_fee_bps,

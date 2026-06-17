@@ -106,6 +106,8 @@ pub enum TributaryError {
     ValidationNotRequired,
     #[msg("Composable policy not found")]
     ComposablePolicyNotFound,
+    #[msg("Combined fee BPS must be less than 10000")]
+    CombinedFeeBpsExceedsMax,
     #[msg("At least one ByteRangeCheck must start at offset 0 to pin the instruction selector")]
     DiscriminatorCheckRequired,
     #[msg("Only the upgrade authority can initialize the program")]
