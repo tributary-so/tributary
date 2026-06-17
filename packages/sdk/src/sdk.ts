@@ -93,20 +93,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-          publicKey: wallet.publicKey,
-          signTransaction: <T>(tx: T) => {
-            (tx as any).sign(wallet);
-            return Promise.resolve(tx);
-          },
-          signAllTransactions: <T>(txs: T[]) => {
-            return Promise.resolve(
-              txs.map((tx) => {
-                (tx as any).sign(wallet);
-                return tx;
-              })
-            );
-          },
-        }
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                })
+              );
+            },
+          }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
@@ -146,7 +146,10 @@ export class Tributary {
       programDataAddress
     );
     if (!accountInfo) throw new Error("Program data account not found");
-    if (new PublicKey(accountInfo.data.slice(13, 45)).toString() != authority.toString()) {
+    if (
+      new PublicKey(accountInfo.data.slice(13, 45)).toString() !=
+      authority.toString()
+    ) {
       throw new Error("Initialization requires the deploy authority!");
     }
 
@@ -2074,6 +2077,9 @@ export class Tributary {
       gateway: gateway,
       config: configPda,
       validationPda: validationPdaAddress,
+      validationProgram: validationProgram.equals(PublicKey.default)
+        ? SystemProgram.programId
+        : validationProgram,
       systemProgram: SystemProgram.programId,
     };
 
@@ -2082,7 +2088,6 @@ export class Tributary {
         schedule,
         memoBytes,
         forwardConfig,
-        validationProgram,
         numValidationAccounts,
         validationData
       )
@@ -2157,11 +2162,20 @@ export class Tributary {
       config.feeRecipient
     );
 
+    const hasValidation =
+      policy.validationConfig.validationProgram !== undefined &&
+      policy.validationConfig.validationProgram.toString() !==
+        PublicKey.default.toString();
+    const validationProgram = hasValidation
+      ? policy.validationConfig.validationProgram
+      : SystemProgram.programId;
+
     const accounts = {
       composablePolicy: composablePolicy,
       userPayment: policy.userPayment,
       gateway: policy.gateway,
       config: configPda,
+      validationProgram,
       userTokenAccount,
       mint: inputMint,
       outputMint,
@@ -2176,11 +2190,6 @@ export class Tributary {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     };
-
-    const hasValidation =
-      policy.validationConfig.validationProgram !== undefined &&
-      policy.validationConfig.validationProgram.toString() !==
-      PublicKey.default.toString();
 
     let resolvedRemaining = remainingAccounts ?? [];
     if (hasValidation) {
@@ -2282,7 +2291,7 @@ export class Tributary {
     const hasValidation =
       policy.validationConfig.validationProgram !== undefined &&
       policy.validationConfig.validationProgram.toString() !==
-      PublicKey.default.toString();
+        PublicKey.default.toString();
 
     const remainingAccounts: any[] = [];
     if (hasValidation) {

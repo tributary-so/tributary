@@ -52,6 +52,10 @@ pub struct CreateComposablePolicy<'info> {
     #[account(mut)]
     pub validation_pda: UncheckedAccount<'info>,
 
+    /// CHECK: Validation program account (e.g. Lighthouse).
+    /// Pass SystemProgram when no validation is configured.
+    pub validation_program: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -61,7 +65,6 @@ impl<'info> CreateComposablePolicy<'info> {
         schedule: ScheduleType,
         memo: [u8; 64],
         forward_config: ForwardConfig,
-        validation_program: Pubkey,
         num_validation_accounts: u8,
         validation_data: Vec<u8>,
     ) -> Result<()> {
@@ -97,14 +100,22 @@ impl<'info> CreateComposablePolicy<'info> {
             TributaryError::DiscriminatorCheckRequired
         );
 
-        // Validate ValidationConfig
-        let has_validation = validation_program != Pubkey::default();
-
-        if has_validation {
+        // Validate ValidationConfig — the validation program is now an
+        // account so the runtime can resolve it for CPI. SystemProgram is
+        // the explicit sentinel for "no validation". Any other non-
+        // whitelisted program is rejected.
+        let validation_program = ctx.accounts.validation_program.key();
+        let has_validation = if validation_program == ctx.accounts.system_program.key() {
+            false
+        } else {
             require!(
                 ALLOWED_VALIDATION_PROGRAMS.contains(&validation_program),
                 TributaryError::InvalidValidationProgram
             );
+            true
+        };
+
+        if has_validation {
             require!(
                 !validation_data.is_empty(),
                 TributaryError::ValidationDataRequired
@@ -141,9 +152,13 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.schedule = schedule;
         composable_policy.memo = memo;
         composable_policy.forward_config = forward_config;
-        composable_policy.validation_config = ValidationConfig {
-            validation_program,
-            num_validation_accounts,
+        composable_policy.validation_config = if has_validation {
+            ValidationConfig {
+                validation_program,
+                num_validation_accounts,
+            }
+        } else {
+            ValidationConfig::default()
         };
         composable_policy.recipient = ctx.accounts.fee_payer.key(); // recipient defaults to gateway signer for now
         composable_policy.total_input = 0;

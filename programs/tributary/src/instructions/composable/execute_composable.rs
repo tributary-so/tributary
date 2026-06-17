@@ -123,7 +123,7 @@ fn run_validation_cpi<'info>(
     remaining: &[AccountInfo<'info>],
     program_id: &Pubkey,
     policy_key: Pubkey,
-    validation_program: Pubkey,
+    validation_program: &AccountInfo<'info>,
     num_val_accounts: usize,
     up_seeds: &[&[u8]],
 ) -> Result<usize> {
@@ -156,7 +156,7 @@ fn run_validation_cpi<'info>(
         .collect();
 
     let instruction = anchor_lang::solana_program::instruction::Instruction {
-        program_id: validation_program,
+        program_id: validation_program.key(),
         accounts: val_accounts
             .iter()
             .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
@@ -167,7 +167,14 @@ fn run_validation_cpi<'info>(
             .collect(),
         data: val_data,
     };
-    anchor_lang::solana_program::program::invoke_signed(&instruction, &val_accounts, &[up_seeds])?;
+
+    // The callee program must be present in account_infos so the runtime
+    // can resolve it for the CPI.
+    let mut all_infos: Vec<AccountInfo<'info>> = Vec::with_capacity(1 + val_accounts.len());
+    all_infos.push(validation_program.clone());
+    all_infos.extend(val_accounts.iter().cloned());
+
+    anchor_lang::solana_program::program::invoke_signed(&instruction, &all_infos, &[up_seeds])?;
 
     Ok(val_accounts_end)
 }
@@ -386,6 +393,10 @@ pub struct ExecuteComposable<'info> {
     )]
     pub config: Box<Account<'info, ProgramConfig>>,
 
+    /// CHECK: Validation program account (e.g. Lighthouse).
+    /// Pass SystemProgram when the policy has no validation configured.
+    pub validation_program: UncheckedAccount<'info>,
+
     /// User's source token account. Must be owned by the user
     /// (user_payment.owner) and have either the UserPayment PDA (v1)
     /// or the global payments_delegate PDA (v0) set as delegate with
@@ -557,7 +568,7 @@ impl<'info> ExecuteComposable<'info> {
             .forward_config
             .min_output_amount;
         let recipient = ctx.accounts.composable_policy.recipient;
-        let validation_program = ctx
+        let stored_validation_program = ctx
             .accounts
             .composable_policy
             .validation_config
@@ -575,12 +586,17 @@ impl<'info> ExecuteComposable<'info> {
         let seeds: &[&[&[u8]]] = &[signer_seeds];
 
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
-        let forward_accounts_start = if validation_program != Pubkey::default() {
+        let forward_accounts_start = if stored_validation_program != Pubkey::default() {
+            require!(
+                ctx.accounts.validation_program.key() == stored_validation_program,
+                TributaryError::ValidationPdaMismatch
+            );
+            let validation_program_info = ctx.accounts.validation_program.to_account_info();
             run_validation_cpi(
                 ctx.remaining_accounts,
                 ctx.program_id,
                 policy_key,
-                validation_program,
+                &validation_program_info,
                 num_val_accounts,
                 signer_seeds,
             )?

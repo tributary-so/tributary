@@ -144,7 +144,9 @@ describe("Composable Topup Balance Flow", () => {
     sdk = new TributarySDK(connection, wallet.payer);
 
     // need to fetch the lighthouse contract so surfpool has it
-    const ligthHouseProgram = await sdk.connection.getAccountInfo(LIGHTHOUSE_PUBKEY);
+    const ligthHouseProgram = await sdk.connection.getAccountInfo(
+      LIGHTHOUSE_PUBKEY
+    );
     expect(ligthHouseProgram.data).toBeDefined();
 
     // Derive PDAs
@@ -386,7 +388,6 @@ describe("Composable Topup Balance Flow", () => {
         schedule,
         memo,
         forwardConfig,
-        LIGHTHOUSE_PUBKEY,
         1, // numValidationAccounts
         validationData
       )
@@ -398,6 +399,7 @@ describe("Composable Topup Balance Flow", () => {
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPDA,
+        validationProgram: LIGHTHOUSE_PUBKEY,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -478,8 +480,16 @@ describe("Composable Topup Balance Flow", () => {
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
       // Forward Program -> TokenProgram.Transfer
-      { pubkey: intermediateInputTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: intermediateOutputTokenAccount, isSigner: false, isWritable: true },
+      {
+        pubkey: intermediateInputTokenAccount,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: intermediateOutputTokenAccount,
+        isSigner: false,
+        isWritable: true,
+      },
       { pubkey: userPaymentPDA, isSigner: false, isWritable: false }, // TODO: signer = False
     ];
 
@@ -490,6 +500,7 @@ describe("Composable Topup Balance Flow", () => {
       userPayment: userPaymentPDA,
       gateway: gatewayPDA,
       config: configPDA,
+      validationProgram: LIGHTHOUSE_PUBKEY,
       userTokenAccount: coldWalletUsdcAta,
       mint: USDC_MINT,
       outputMint: USDC_MINT,
@@ -593,8 +604,16 @@ describe("Composable Topup Balance Flow", () => {
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
       // Forward Program -> TokenProgram.Transfer
-      { pubkey: intermediateInputTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: intermediateOutputTokenAccount, isSigner: false, isWritable: true },
+      {
+        pubkey: intermediateInputTokenAccount,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: intermediateOutputTokenAccount,
+        isSigner: false,
+        isWritable: true,
+      },
       { pubkey: userPaymentPDA, isSigner: false, isWritable: false }, // TODO: signer = False
     ];
 
@@ -608,6 +627,7 @@ describe("Composable Topup Balance Flow", () => {
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
+          validationProgram: LIGHTHOUSE_PUBKEY,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: USDC_MINT,

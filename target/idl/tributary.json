@@ -567,6 +567,12 @@
           "writable": true
         },
         {
+          "name": "validation_program",
+          "docs": [
+            "Pass SystemProgram when no validation is configured."
+          ]
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -596,10 +602,6 @@
               "name": "ForwardConfig"
             }
           }
-        },
-        {
-          "name": "validation_program",
-          "type": "pubkey"
         },
         {
           "name": "num_validation_accounts",
@@ -1571,6 +1573,12 @@
               }
             ]
           }
+        },
+        {
+          "name": "validation_program",
+          "docs": [
+            "Pass SystemProgram when the policy has no validation configured."
+          ]
         },
         {
           "name": "user_token_account",

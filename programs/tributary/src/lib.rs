@@ -136,7 +136,6 @@ pub mod tributary {
         schedule: ScheduleType,
         memo: [u8; 64],
         forward_config: ForwardConfig,
-        validation_program: Pubkey,
         num_validation_accounts: u8,
         validation_data: Vec<u8>,
     ) -> Result<()> {
@@ -145,7 +144,6 @@ pub mod tributary {
             schedule,
             memo,
             forward_config,
-            validation_program,
             num_validation_accounts,
             validation_data,
         )

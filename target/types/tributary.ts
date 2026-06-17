@@ -573,6 +573,12 @@ export type Tributary = {
           "writable": true
         },
         {
+          "name": "validationProgram",
+          "docs": [
+            "Pass SystemProgram when no validation is configured."
+          ]
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -602,10 +608,6 @@ export type Tributary = {
               "name": "forwardConfig"
             }
           }
-        },
-        {
-          "name": "validationProgram",
-          "type": "pubkey"
         },
         {
           "name": "numValidationAccounts",
@@ -1577,6 +1579,12 @@ export type Tributary = {
               }
             ]
           }
+        },
+        {
+          "name": "validationProgram",
+          "docs": [
+            "Pass SystemProgram when the policy has no validation configured."
+          ]
         },
         {
           "name": "userTokenAccount",
