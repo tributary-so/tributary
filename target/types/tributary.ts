@@ -1612,68 +1612,19 @@ export type Tributary = {
         {
           "name": "intermediateInputTokenAccount",
           "docs": [
-            "UserPayment PDA's intermediate input token account"
+            "UserPayment PDA's intermediate input token account (input_mint ATA).",
+            "Created via CPI if non-existent; closed at end to reclaim rent for",
+            "the fee_payer."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "userPayment"
-              },
-              {
-                "kind": "account",
-                "path": "tokenProgram"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "intermediateOutputTokenAccount",
           "docs": [
-            "UserPayment PDA's intermediate output token account"
-          ]
+            "UserPayment PDA's intermediate output token account (output_mint ATA).",
+            "Same account as the input when input_mint == output_mint."
+          ],
+          "writable": true
         },
         {
           "name": "recipientTokenAccount",
@@ -2820,11 +2771,16 @@ export type Tributary = {
     },
     {
       "code": 6054,
+      "name": "intermediateAccountAlreadyExists",
+      "msg": "Intermediate token account already exists — it must be freshly created each execution"
+    },
+    {
+      "code": 6055,
       "name": "missingForwardAccounts",
       "msg": "Forward CPI requires at least one remaining account"
     },
     {
-      "code": 6055,
+      "code": 6056,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     }

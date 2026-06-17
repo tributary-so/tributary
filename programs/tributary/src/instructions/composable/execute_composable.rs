@@ -6,7 +6,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::Token;
-use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
+use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, TransferChecked};
 
 /// Validate byte-range checks on instruction_data using the configured checks.
 fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: u8) -> Result<()> {
@@ -104,6 +104,74 @@ fn read_token_amount(account_info: &AccountInfo) -> Result<u64> {
     Ok(u64::from_le_bytes(
         data[64..72].try_into().unwrap_or([0u8; 8]),
     ))
+}
+
+/// Create an associated token account via CPI. The account MUST NOT
+/// already exist — this is a security requirement to prevent stale or
+/// attacker-controlled intermediate accounts.
+fn create_ata<'info>(
+    ata: &AccountInfo<'info>,
+    payer: &AccountInfo<'info>,
+    owner: &AccountInfo<'info>,
+    mint: &AccountInfo<'info>,
+    system_program: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    associated_token_program: &AccountInfo<'info>,
+) -> Result<()> {
+    require!(
+        ata.lamports() == 0,
+        TributaryError::IntermediateAccountAlreadyExists
+    );
+    let ix = anchor_lang::solana_program::instruction::Instruction {
+        program_id: *associated_token_program.key,
+        accounts: vec![
+            anchor_lang::solana_program::instruction::AccountMeta::new(*payer.key, true),
+            anchor_lang::solana_program::instruction::AccountMeta::new(*ata.key, false),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(*owner.key, false),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(*mint.key, false),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
+                *system_program.key,
+                false,
+            ),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
+                *token_program.key,
+                false,
+            ),
+        ],
+        data: vec![],
+    };
+    anchor_lang::solana_program::program::invoke(
+        &ix,
+        &[
+            payer.clone(),
+            ata.clone(),
+            owner.clone(),
+            mint.clone(),
+            system_program.clone(),
+            token_program.clone(),
+            associated_token_program.clone(),
+        ],
+    )?;
+    Ok(())
+}
+
+/// Close a token account via CPI, transferring its lamports (rent) to
+/// `destination`. The `authority` signs via the provided PDA seeds.
+fn close_token_account<'info>(
+    account: &AccountInfo<'info>,
+    destination: &AccountInfo<'info>,
+    authority: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    signer_seeds: &[&[u8]],
+) -> Result<()> {
+    let close_accounts = CloseAccount {
+        account: account.clone(),
+        destination: destination.clone(),
+        authority: authority.clone(),
+    };
+    let seeds = [signer_seeds];
+    let cpi_ctx = CpiContext::new_with_signer(token_program.clone(), close_accounts, &seeds);
+    token_interface::close_account(cpi_ctx)
 }
 
 /// Build the UserPayment PDA signer seeds. The returned Vec owns the bytes;
@@ -426,28 +494,18 @@ pub struct ExecuteComposable<'info> {
     )]
     pub output_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    /// UserPayment PDA's intermediate input token account
-    #[account(
-        init,
-        payer = fee_payer,
-        associated_token::mint = mint,
-        associated_token::authority = user_payment,
-        associated_token::token_program = token_program,
-    )]
-    pub intermediate_input_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// UserPayment PDA's intermediate input token account (input_mint ATA).
+    /// Created via CPI if non-existent; closed at end to reclaim rent for
+    /// the fee_payer.
+    /// CHECK: Address validated in handler against the derived ATA.
+    #[account(mut)]
+    pub intermediate_input_token_account: UncheckedAccount<'info>,
 
-    /// UserPayment PDA's intermediate output token account
-    #[account(
-        // init,
-        // payer = fee_payer,
-        // FIXME: We cannot init this in case its the same mint as the input!!
-        // associated_token::mint = output_mint,
-        // associated_token::authority = user_payment,
-        // associated_token::token_program = token_program,
-    )]
-    /// CHECK: todo
+    /// UserPayment PDA's intermediate output token account (output_mint ATA).
+    /// Same account as the input when input_mint == output_mint.
+    /// CHECK: Address validated in handler against the derived ATA.
+    #[account(mut)]
     pub intermediate_output_token_account: UncheckedAccount<'info>,
-    //pub intermediate_output_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     /// Recipient's destination token account (output_mint ATA). Must
     /// pre-exist. Receives the swept output after fees.
     #[account(
@@ -508,6 +566,35 @@ impl<'info> ExecuteComposable<'info> {
                 .forward_config
                 .num_data_checks,
         )?;
+
+        // ── Validate intermediate ATA addresses ──────────────────────────
+        let expected_input_ata = Pubkey::find_program_address(
+            &[
+                ctx.accounts.user_payment.key().as_ref(),
+                ctx.accounts.token_program.key().as_ref(),
+                ctx.accounts.mint.key().as_ref(),
+            ],
+            ctx.accounts.associated_token_program.key,
+        )
+        .0;
+        require!(
+            ctx.accounts.intermediate_input_token_account.key() == expected_input_ata,
+            TributaryError::IntermediateAccountMismatch
+        );
+
+        let expected_output_ata = Pubkey::find_program_address(
+            &[
+                ctx.accounts.user_payment.key().as_ref(),
+                ctx.accounts.token_program.key().as_ref(),
+                ctx.accounts.output_mint.key().as_ref(),
+            ],
+            ctx.accounts.associated_token_program.key,
+        )
+        .0;
+        require!(
+            ctx.accounts.intermediate_output_token_account.key() == expected_output_ata,
+            TributaryError::IntermediateAccountMismatch
+        );
 
         let composable_policy = &mut ctx.accounts.composable_policy;
         let (schedule_amount, should_pause) =
@@ -633,6 +720,42 @@ impl<'info> ExecuteComposable<'info> {
         let pull_seeds: &[&[&[u8]]] = &[pull_signer_seeds];
         let pull_authority = &pull_resolution.authority_info;
 
+        // ── Step 2.5: CREATE intermediate ATAs if needed ──────────────
+        let fee_payer_info = ctx.accounts.fee_payer.to_account_info();
+        let system_program_info = ctx.accounts.system_program.to_account_info();
+        let atp_info = ctx.accounts.associated_token_program.to_account_info();
+        let input_ata_info = ctx
+            .accounts
+            .intermediate_input_token_account
+            .to_account_info();
+        create_ata(
+            &input_ata_info,
+            &fee_payer_info,
+            &user_payment_info,
+            &input_mint_info,
+            &system_program_info,
+            &token_program_info,
+            &atp_info,
+        )?;
+
+        // Only create the output ATA when it's a distinct account
+        // (input_mint != output_mint).
+        if ctx.accounts.mint.key() != ctx.accounts.output_mint.key() {
+            let output_ata_info = ctx
+                .accounts
+                .intermediate_output_token_account
+                .to_account_info();
+            create_ata(
+                &output_ata_info,
+                &fee_payer_info,
+                &user_payment_info,
+                &output_mint_info,
+                &system_program_info,
+                &token_program_info,
+                &atp_info,
+            )?;
+        }
+
         // ── Step 3: FUND intermediate_input_token_account ──────
         {
             let cpi_accounts = TransferChecked {
@@ -743,6 +866,37 @@ impl<'info> ExecuteComposable<'info> {
             gateway_fee,
             protocol_fee,
         );
+
+        // ── Step 12: CLOSE intermediate token accounts ────────────────
+        // Both intermediates are closed to return rent to the fee_payer.
+        // The user_payment PDA owns both ATAs and signs the close CPI.
+        // When input_mint == output_mint they're the same account — close
+        // only once.
+        let close_input_ata = ctx
+            .accounts
+            .intermediate_input_token_account
+            .to_account_info();
+        close_token_account(
+            &close_input_ata,
+            &fee_payer_info,
+            &user_payment_info,
+            &token_program_info,
+            signer_seeds,
+        )?;
+
+        if close_input_ata.key() != ctx.accounts.intermediate_output_token_account.key() {
+            let close_output_ata = ctx
+                .accounts
+                .intermediate_output_token_account
+                .to_account_info();
+            close_token_account(
+                &close_output_ata,
+                &fee_payer_info,
+                &user_payment_info,
+                &token_program_info,
+                signer_seeds,
+            )?;
+        }
 
         Ok(())
     }

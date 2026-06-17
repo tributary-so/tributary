@@ -513,7 +513,6 @@ describe("Composable Topup Balance Flow", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     };
-    console.log(accounts);
     const ix = await program.methods
       .executeComposable(instructionData, new anchor.BN(50_000_000))
       .accountsStrict(accounts)
@@ -654,8 +653,10 @@ describe("Composable Topup Balance Flow", () => {
     } catch (error: any) {
       // Lighthouse assertion fails because hotWallet balance (89.5 USDC)
       // is NOT less than 50 USDC.
-      console.log(error);
       expect(error).toBeDefined();
+
+      // Lighthouse raises 0x1771 -> 6001 which is an AssertionFailed Error
+      expect(error.message).toContain("L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95 failed: custom program error: 0x1771");
     }
 
     // ── Verify policy state unchanged (transaction reverted) ────────────

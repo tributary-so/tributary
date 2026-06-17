@@ -112,6 +112,8 @@ pub enum TributaryError {
     UnauthorizedInitializer,
     #[msg("Intermediate token account address does not match the derived ATA")]
     IntermediateAccountMismatch,
+    #[msg("Intermediate token account already exists — it must be freshly created each execution")]
+    IntermediateAccountAlreadyExists,
     #[msg("Forward CPI requires at least one remaining account")]
     MissingForwardAccounts,
     #[msg("Forward CPI produced no output (intermediate output balance is zero)")]
