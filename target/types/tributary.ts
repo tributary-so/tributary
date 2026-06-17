@@ -445,7 +445,8 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "user"
+          "name": "user",
+          "signer": true
         },
         {
           "name": "userPayment",
