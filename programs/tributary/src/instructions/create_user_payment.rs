@@ -4,9 +4,9 @@ use anchor_spl::token::{Mint, TokenAccount};
 
 #[derive(Accounts)]
 pub struct CreateUserPayment<'info> {
-    /// CHECK: The owner account - does NOT need to sign
+    /// CHECK: The owner account
     #[account()]
-    pub owner: AccountInfo<'info>,
+    pub owner: Signer<'info>,
 
     #[account(
         init,
