@@ -1,7 +1,10 @@
 use crate::{
-    constants::*, error::TributaryError,
+    constants::*,
+    error::TributaryError,
     instructions::execute_payment::token_account_has_any_delegate,
-    shared::delegation::resolve_delegate, state::*, utils::calculate_next_payment_due,
+    shared::delegation::resolve_delegate,
+    state::*,
+    utils::{calculate_next_payment_due, validate_mint_compatible},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -556,6 +559,15 @@ impl<'info> ExecuteComposable<'info> {
     ) -> Result<()> {
         let clock = Clock::get()?;
         let now = clock.unix_timestamp;
+
+        // Re-validate both mints at execution time. Token-2022 extensions
+        // (TransferHook, TransferFee) are mutable post-creation, so the input
+        // mint that was clean at create_user_payment could have turned hostile.
+        // The output mint has never been validated at all, yet this instruction
+        // creates a PDA-controlled intermediate ATA for it — a PermanentDelegate
+        // output mint would drain that intermediate.
+        validate_mint_compatible(&ctx.accounts.mint.to_account_info())?;
+        validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
 
         // ── Step 1: VALIDATE ───────────────────────────────────────────
         validate_byte_ranges(

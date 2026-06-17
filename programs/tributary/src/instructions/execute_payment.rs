@@ -118,6 +118,12 @@ impl<'info> ExecutePayment<'info> {
         ctx: Context<'_, '_, 'info, 'info, ExecutePayment<'info>>,
         payment_amount: Option<u64>,
     ) -> Result<()> {
+        // Re-validate the mint at execution time: Token-2022 extensions
+        // (TransferHook, TransferFee) are mutable post-creation, so a mint that
+        // was clean when the UserPayment was registered could have become
+        // hostile before this payment runs.
+        crate::utils::validate_mint_compatible(&ctx.accounts.mint.to_account_info())?;
+
         let remaining_accounts = ctx.remaining_accounts;
         let accounts = ctx.accounts;
         let payment_policy = &mut accounts.payment_policy;

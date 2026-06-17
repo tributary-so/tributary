@@ -74,8 +74,8 @@ pub enum TributaryError {
     ReferralAccountAlreadyExists,
     #[msg("Token mint mismatch between accounts")]
     TokenMintMismatch,
-    #[msg("Token-2022 TransferHook mints are not currently supported")]
-    TransferHookNotSupported,
+    #[msg("Token-2022 Extension currently not supported")]
+    UnsupportedTokenExtension,
     #[msg("Distinct Pubkeys required!")]
     DistinctPubKeysRequired,
     #[msg("Invalid feature flags")]

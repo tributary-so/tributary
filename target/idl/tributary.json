@@ -2671,8 +2671,8 @@
     },
     {
       "code": 6035,
-      "name": "TransferHookNotSupported",
-      "msg": "Token-2022 TransferHook mints are not currently supported"
+      "name": "UnsupportedTokenExtension",
+      "msg": "Token-2022 Extension currently not supported"
     },
     {
       "code": 6036,

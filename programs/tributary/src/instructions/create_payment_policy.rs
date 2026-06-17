@@ -63,6 +63,11 @@ impl<'info> CreatePaymentPolicy<'info> {
         policy_type: PolicyType,
         memo: [u8; 64],
     ) -> Result<()> {
+        // Re-validate the mint: Token-2022 extensions (TransferHook, TransferFee)
+        // are mutable post-creation, so a mint clean at create_user_payment time
+        // could have become hostile.
+        crate::utils::validate_mint_compatible(&ctx.accounts.token_mint.to_account_info())?;
+
         // Validate the policy type and its parameters
         policy_type.validate()?;
 

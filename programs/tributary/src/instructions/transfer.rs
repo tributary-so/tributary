@@ -73,6 +73,10 @@ impl<'info> TransferTokens<'info> {
 
         let remaining_accounts = ctx.remaining_accounts;
         let accounts = &ctx.accounts;
+
+        // Reject mints with dangerous Token-2022 extensions (e.g. PermanentDelegate,
+        // NonTransferable) that would corrupt this transfer's accounting.
+        crate::utils::validate_mint_compatible(&accounts.mint.to_account_info())?;
         let config = &accounts.config;
         let gateway = &accounts.gateway;
         let clock = Clock::get()?;
