@@ -2778,6 +2778,16 @@
       "code": 6056,
       "name": "ForwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
+    },
+    {
+      "code": 6057,
+      "name": "PayerReferralMismatch",
+      "msg": "Payer ReferralAccount does not match the paying wallet"
+    },
+    {
+      "code": 6058,
+      "name": "DuplicateReferralAccount",
+      "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     }
   ],
   "types": [

@@ -2784,6 +2784,16 @@ export type Tributary = {
       "code": 6056,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
+    },
+    {
+      "code": 6057,
+      "name": "payerReferralMismatch",
+      "msg": "Payer ReferralAccount does not match the paying wallet"
+    },
+    {
+      "code": 6058,
+      "name": "duplicateReferralAccount",
+      "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     }
   ],
   "types": [

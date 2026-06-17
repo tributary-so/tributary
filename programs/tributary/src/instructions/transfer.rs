@@ -131,6 +131,7 @@ impl<'info> TransferTokens<'info> {
                 payment_policy_key: Pubkey::default(),
                 payment_amount: amount,
                 timestamp: clock.unix_timestamp,
+                payer_wallet: accounts.from.owner,
             };
             let referral_pool = process_referral_rewards(
                 referral_ctx,

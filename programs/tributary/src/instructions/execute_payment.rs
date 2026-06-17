@@ -273,6 +273,7 @@ impl<'info> ExecutePayment<'info> {
                 payment_policy_key,
                 payment_amount,
                 timestamp: clock.unix_timestamp,
+                payer_wallet: user_owner,
             };
             let referral_pool = process_referral_rewards(
                 referral_ctx,

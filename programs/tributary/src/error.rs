@@ -118,4 +118,8 @@ pub enum TributaryError {
     MissingForwardAccounts,
     #[msg("Forward CPI produced no output (intermediate output balance is zero)")]
     ForwardProducedNoOutput,
+    #[msg("Payer ReferralAccount does not match the paying wallet")]
+    PayerReferralMismatch,
+    #[msg("Duplicate ReferralAccount supplied in remaining_accounts")]
+    DuplicateReferralAccount,
 }

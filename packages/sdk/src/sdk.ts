@@ -1441,42 +1441,14 @@ export class Tributary {
         (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
 
       if (referralEnabled && _user) {
-        // Build the referral chain
-        const referralChain = await this.getReferralChain(_user, _gateway!);
-
-        // Filter out nulls and get the referral account addresses
-        const referralAccounts = referralChain.filter(
-          (ref): ref is PublicKey => ref !== null
+        // C-02: chain must be anchored by the payer's own ReferralAccount.
+        const remainingAccounts = await this.buildReferralRemainingAccounts(
+          _user,
+          _gateway!,
+          _tokenMint
         );
 
-        if (referralAccounts.length > 0) {
-          // Get the actual referral account addresses (not just the owner)
-          const remainingAccounts = [];
-
-          for (const referrer of referralAccounts) {
-            remainingAccounts.push({
-              pubkey: referrer,
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-
-          for (const referrer of referralAccounts) {
-            const referrerAccount = await this.getReferralAccount(referrer);
-            if (!referrerAccount) {
-              // TODO: create ATA
-              throw new Error("missing ATA!");
-            }
-            remainingAccounts.push({
-              pubkey: getAssociatedTokenAddressSync(
-                _tokenMint,
-                referrerAccount.owner
-              ),
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-
+        if (remainingAccounts && remainingAccounts.length > 1) {
           // Create new instruction with remaining accounts
           executeIx = await this.program.methods
             .executePayment(paymentAmount || null)
@@ -2526,6 +2498,20 @@ export class Tributary {
     gateway: PublicKey,
     owner: PublicKey
   ): Promise<ReferralAccount | null> {
+    const found = await this.getReferralAccountAddressByOwner(gateway, owner);
+    return found ? found.account : null;
+  }
+
+  /**
+   * Same as {@link getReferralAccountByOwner} but also returns the on-chain
+   * address of the ReferralAccount PDA. Required by C-02 remediation so the
+   * caller can pass the payer's ReferralAccount as the first entry in
+   * `remaining_accounts` for `executePayment` / `transfer`.
+   */
+  async getReferralAccountAddressByOwner(
+    gateway: PublicKey,
+    owner: PublicKey
+  ): Promise<{ publicKey: PublicKey; account: ReferralAccount } | null> {
     const allReferrals = await this.program.account.referralAccount.all([
       {
         memcmp: {
@@ -2536,11 +2522,8 @@ export class Tributary {
     ]);
 
     for (const ref of allReferrals) {
-      const refData = await this.program.account.referralAccount.fetchNullable(
-        ref.publicKey
-      );
-      if (refData && refData.gateway.toString() === gateway.toString()) {
-        return refData;
+      if (ref.account.gateway.toString() === gateway.toString()) {
+        return { publicKey: ref.publicKey, account: ref.account };
       }
     }
     return null;
@@ -2563,6 +2546,13 @@ export class Tributary {
    * Builds the referral chain for a given user and gateway.
    * This method traverses the referral chain up to 3 levels deep.
    * We replace the default PublicKey by null here!
+   *
+   * C-02 remediation: the caller MUST also pass the payer's own
+   * `ReferralAccount` to `executePayment` / `transfer` as the FIRST entry in
+   * `remaining_accounts`. Use {@link getReferralAccountAddressByOwner} to
+   * obtain it, or use {@link buildReferralRemainingAccounts} which returns
+   * the full ordered list ready for `remainingAccounts(...)`.
+   *
    * @param user - Public key of the user to find the referral chain for
    * @param gateway - Public key of the gateway
    * @returns Array of referral account addresses [L1, L2, L3] (may contain nulls)
@@ -2574,7 +2564,10 @@ export class Tributary {
     const chain: (PublicKey | null)[] = [];
 
     // Get the user's referral account for this gateway
-    const userReferral = await this.getReferralAccountByOwner(gateway, user);
+    const userReferral = await this.getReferralAccountAddressByOwner(
+      gateway,
+      user
+    );
 
     if (!userReferral) {
       // User doesn't have a referral account
@@ -2582,11 +2575,15 @@ export class Tributary {
     }
 
     // L1 referrer (who referred this user)
-    if (userReferral.referrer.toString() != PublicKey.default.toString()) {
-      chain.push(userReferral.referrer);
+    if (
+      userReferral.account.referrer.toString() != PublicKey.default.toString()
+    ) {
+      chain.push(userReferral.account.referrer);
 
       // Get L1's referral account to find L2
-      const l1Referral = await this.getReferralAccount(userReferral.referrer);
+      const l1Referral = await this.getReferralAccount(
+        userReferral.account.referrer
+      );
 
       if (
         l1Referral &&
@@ -2616,6 +2613,97 @@ export class Tributary {
     }
 
     return chain;
+  }
+
+  /**
+   * Build the ordered `remaining_accounts` list for `executePayment` /
+   * `transfer` referral reward distribution.
+   *
+   * Returns `null` if the user has no ReferralAccount at all (caller should
+   * invoke the instruction without any remaining accounts). Otherwise
+   * returns a non-empty array whose first entry is the payer's own
+   * ReferralAccount (read-only), followed by the writable ancestor chain
+   * and their matching ATAs.
+   *
+   * Layout (matches `parse_and_validate_referral_accounts` on-chain):
+   *
+   * ```
+   *   [payer_referral,
+   *    L1, L2, L3,
+   *    ATA_L1, ATA_L2, ATA_L3]
+   * ```
+   */
+  async buildReferralRemainingAccounts(
+    user: PublicKey,
+    gateway: PublicKey,
+    tokenMint: PublicKey
+  ): Promise<
+    | {
+        pubkey: PublicKey;
+        isWritable: boolean;
+        isSigner: boolean;
+      }[]
+    | null
+  > {
+    const userReferral = await this.getReferralAccountAddressByOwner(
+      gateway,
+      user
+    );
+    if (!userReferral) {
+      return null;
+    }
+
+    // Always include the payer's ReferralAccount at position 0.
+    const remainingAccounts: {
+      pubkey: PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[] = [
+      // payer_referral — read-only on-chain (we never pay the payer).
+      { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
+    ];
+
+    // If the payer has no referrer, nothing else to add.
+    if (
+      userReferral.account.referrer.toString() === PublicKey.default.toString()
+    ) {
+      return remainingAccounts;
+    }
+
+    // Walk the chain [L1, L2, L3].
+    const chain: PublicKey[] = [];
+    let cursor: PublicKey | null = userReferral.account.referrer;
+    while (cursor && chain.length < 3) {
+      chain.push(cursor);
+      const next = await this.getReferralAccount(cursor);
+      if (!next || next.referrer.toString() === PublicKey.default.toString()) {
+        break;
+      }
+      cursor = next.referrer;
+    }
+
+    // Append the writable chain.
+    for (const referrer of chain) {
+      remainingAccounts.push({
+        pubkey: referrer,
+        isWritable: true,
+        isSigner: false,
+      });
+    }
+    // Append the matching ATAs.
+    for (const referrer of chain) {
+      const referrerAccount = await this.getReferralAccount(referrer);
+      if (!referrerAccount) {
+        throw new Error("Missing referral account for referrer");
+      }
+      remainingAccounts.push({
+        pubkey: getAssociatedTokenAddressSync(tokenMint, referrerAccount.owner),
+        isWritable: true,
+        isSigner: false,
+      });
+    }
+
+    return remainingAccounts;
   }
 
   async confirmTransactionWithStatus(
@@ -2783,35 +2871,14 @@ export class Tributary {
       const referralEnabled =
         (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
       if (referralEnabled) {
-        const referralChain = await this.getReferralChain(authority, gateway);
-        const referralAccounts = referralChain.filter(
-          (ref): ref is PublicKey => ref !== null
+        // C-02: chain must be anchored by the payer's own ReferralAccount.
+        const remainingAccounts = await this.buildReferralRemainingAccounts(
+          authority,
+          gateway,
+          tokenMint
         );
 
-        if (referralAccounts.length > 0) {
-          const remainingAccounts = [];
-          for (const referrer of referralAccounts) {
-            remainingAccounts.push({
-              pubkey: referrer,
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-          for (const referrer of referralAccounts) {
-            const referrerAccount = await this.getReferralAccount(referrer);
-            if (!referrerAccount) {
-              throw new Error("Missing referral account for referrer");
-            }
-            remainingAccounts.push({
-              pubkey: getAssociatedTokenAddressSync(
-                tokenMint,
-                referrerAccount.owner
-              ),
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-
+        if (remainingAccounts && remainingAccounts.length > 1) {
           transferIx = await this.program.methods
             .transfer(amount, memoArray)
             .accountsStrict(accounts)

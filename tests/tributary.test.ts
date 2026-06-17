@@ -6,6 +6,7 @@ import {
   LAMPORTS_PER_SOL,
   Commitment,
   Transaction,
+  TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
@@ -2328,19 +2329,163 @@ describe("Tributary", () => {
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-        l1Reward -
-        Math.floor((l1Reward * 100) / 10000)
+          l1Reward -
+          Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-        l2Reward -
-        Math.floor((l2Reward * 100) / 10000)
+          l2Reward -
+          Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-        l3Reward -
-        Math.floor((l3Reward * 100) / 10000)
+          l3Reward -
+          Math.floor((l3Reward * 100) / 10000)
       );
+    });
+
+    test("C-02: rejects chain not anchored by payer's ReferralAccount", async () => {
+      // Use the transfer instruction (no PaymentNotDue check) to exercise
+      // the referral validation path. Attacker supplies a FAKE first account
+      // (their own referral account) instead of the payer's real one.
+      // Pre-fix this would have routed rewards to the attacker; post-fix it
+      // must fail because the first remaining account is interpreted as the
+      // payer's ReferralAccount and its owner != paying wallet.
+      const attacker = Keypair.generate();
+      await batchFund([[attacker.publicKey, 5]]);
+
+      await sdk.updateWallet(new anchor.Wallet(attacker));
+      const a1 = "ATCK01";
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(
+          await sdk.createReferralAccount(gatewayPDA, a1, null)
+        ),
+        [attacker],
+        { commitment: "processed" as Commitment }
+      );
+      const a1Pda = sdk.getReferralPda(gatewayPDA, Buffer.from(a1)).address;
+
+      // Build a legitimate transfer ix for the payer (with referral chain),
+      // then patch the remaining_accounts to inject the attacker's account.
+      await sdk.updateWallet(new anchor.Wallet(payer));
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("c-02 transfer attacker").copy(memo);
+      const legitimateIxs = await sdk.transfer(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(100000),
+        Array.from(memo),
+        "PAYER1"
+      );
+      const goodIx = legitimateIxs[legitimateIxs.length - 1];
+      // TransferTokens has 9 named accounts; rest are remaining_accounts.
+      const trailingCount = goodIx.keys.length - 9;
+      expect(trailingCount).toBeGreaterThan(0);
+      const namedKeys = goodIx.keys.slice(
+        0,
+        goodIx.keys.length - trailingCount
+      );
+
+      const patchedKeys = [
+        ...namedKeys,
+        // position 0: attacker's own ReferralAccount masquerading as payer's
+        { pubkey: a1Pda, isWritable: false, isSigner: false },
+      ];
+
+      const badIx = new TransactionInstruction({
+        programId: goodIx.programId,
+        data: goodIx.data,
+        keys: patchedKeys,
+      });
+
+      let caught: any = null;
+      try {
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(badIx),
+          [payer],
+          { commitment: "processed" as Commitment }
+        );
+      } catch (e: any) {
+        caught = e;
+      }
+      expect(caught).not.toBeNull();
+      const errMsg = caught?.message ?? "";
+      const expected =
+        errMsg.includes("PayerReferralMismatch") ||
+        errMsg.includes("InvalidReferralChainOrdering") ||
+        errMsg.includes("ReferrerAccountInvalid") ||
+        errMsg.includes("InvalidReferralAccountDiscriminator");
+      if (!expected) {
+        throw new Error(`expected security error, got: ${errMsg}`);
+      }
+    });
+
+    test("C-02: rejects duplicate referral accounts in chain", async () => {
+      // Construct a chain where L1 and L2 are the same account. Must fail
+      // with DuplicateReferralAccount.
+      const payerReferralPda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from("PAYER1")
+      ).address;
+      const l1Pda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from("REF001")
+      ).address;
+
+      await sdk.updateWallet(new anchor.Wallet(payer));
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("c-02 transfer dup").copy(memo);
+      const legitimateIxs = await sdk.transfer(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(100000),
+        Array.from(memo),
+        "PAYER1"
+      );
+      const goodIx = legitimateIxs[legitimateIxs.length - 1];
+      const namedKeys = goodIx.keys.slice(0, goodIx.keys.length - 7);
+
+      // [payer_referral, L1, L1_dup, ATA_L1, ATA_L1_dup]
+      const patchedKeys = [
+        ...namedKeys,
+        { pubkey: payerReferralPda, isWritable: false, isSigner: false },
+        { pubkey: l1Pda, isWritable: true, isSigner: false },
+        { pubkey: l1Pda, isWritable: true, isSigner: false }, // duplicate!
+        { pubkey: l1TokenAccount, isWritable: true, isSigner: false },
+        { pubkey: l1TokenAccount, isWritable: true, isSigner: false },
+      ];
+
+      const dupIx = new TransactionInstruction({
+        programId: goodIx.programId,
+        data: goodIx.data,
+        keys: patchedKeys,
+      });
+
+      let caught: any = null;
+      try {
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(dupIx),
+          [payer],
+          { commitment: "processed" as Commitment }
+        );
+      } catch (e: any) {
+        caught = e;
+      }
+      expect(caught).not.toBeNull();
+      const errMsg = caught?.message ?? "";
+      const expected =
+        errMsg.includes("DuplicateReferralAccount") ||
+        errMsg.includes("InvalidReferralChainOrdering");
+      if (!expected) {
+        throw new Error(
+          `expected DuplicateReferralAccount or InvalidReferralChainOrdering, got: ${errMsg}`
+        );
+      }
     });
 
     test("Setup Referral program with only L1 referrer", async () => {
@@ -3104,7 +3249,7 @@ describe("Tributary", () => {
       );
       expect(
         gateway!.featureFlags &
-        (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
       ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 
