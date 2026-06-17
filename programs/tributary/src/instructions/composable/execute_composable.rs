@@ -188,6 +188,56 @@ fn build_user_payment_seeds(user_payment: &Account<UserPayment>) -> Vec<Vec<u8>>
     ]
 }
 
+/// Build the `AccountMeta` list for a validation CPI from a slice of
+/// caller-supplied `remaining_accounts`.
+///
+/// Per `shared-base` §5.3 (signer pass-through sanitization): validation
+/// programs (Lighthouse, etc.) run read-only and MUST NOT inherit signer
+/// privileges from the outer transaction. The caller's `fee_payer` is a
+/// `Signer` and could be re-passed as a remaining_account; blindly
+/// forwarding `is_signer` would grant the callee unintended authority
+/// over it. We hard-code both flags to `false` — validation never needs
+/// write access and never needs to assert a signer.
+fn build_validation_account_metas(
+    accounts: &[AccountInfo<'_>],
+) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+    accounts
+        .iter()
+        .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
+            pubkey: *a.key,
+            is_signer: false,
+            is_writable: false,
+        })
+        .collect()
+}
+
+/// Build the `AccountMeta` list for a forward CPI (Meteora-DLM, etc.)
+/// from a slice of caller-supplied `remaining_accounts`.
+///
+/// Per `shared-base` §5.3: only the `user_payment_pda` may appear as a
+/// signer — its authority is established by `invoke_signed` with the
+/// UserPayment seeds. All other forwarded accounts are forced to
+/// `is_signer: false` even if the caller passed them as signers in the
+/// outer transaction (e.g. `fee_payer`).
+///
+/// `is_writable` is forwarded verbatim from the caller-supplied info,
+/// which is safe: the Solana runtime rejects any inner instruction that
+/// claims writable access to an account the outer transaction did not
+/// also mark writable, so we cannot elevate privileges by forwarding.
+fn build_forward_account_metas(
+    accounts: &[&AccountInfo<'_>],
+    user_payment_pda: Pubkey,
+) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+    accounts
+        .iter()
+        .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
+            pubkey: *(*a).key,
+            is_signer: *(*a).key == user_payment_pda,
+            is_writable: (*a).is_writable,
+        })
+        .collect()
+}
+
 /// Run the optional validation CPI (Step 2). Returns the index into
 /// `remaining_accounts` where forward-program accounts begin.
 fn run_validation_cpi<'info>(
@@ -228,14 +278,7 @@ fn run_validation_cpi<'info>(
 
     let instruction = anchor_lang::solana_program::instruction::Instruction {
         program_id: validation_program.key(),
-        accounts: val_accounts
-            .iter()
-            .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
-                pubkey: *a.key,
-                is_signer: a.is_signer,
-                is_writable: false, // enforce validation to be read-only!
-            })
-            .collect(),
+        accounts: build_validation_account_metas(&val_accounts),
         data: val_data,
     };
 
@@ -261,6 +304,7 @@ fn run_forward_cpi<'info>(
     forward_accounts_start: usize,
     target_program: Pubkey,
     instruction_data: &[u8],
+    user_payment_pda: Pubkey,
     up_seeds: &[&[u8]],
 ) -> Result<()> {
     require!(
@@ -283,14 +327,7 @@ fn run_forward_cpi<'info>(
 
     let instruction = anchor_lang::solana_program::instruction::Instruction {
         program_id: target_program,
-        accounts: instruction_accounts
-            .iter()
-            .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
-                pubkey: *(*a).key,
-                is_signer: (*a).is_signer,
-                is_writable: (*a).is_writable,
-            })
-            .collect(),
+        accounts: build_forward_account_metas(&instruction_accounts, user_payment_pda),
         data: instruction_data.to_vec(),
     };
     anchor_lang::solana_program::program::invoke_signed(
@@ -790,6 +827,7 @@ impl<'info> ExecuteComposable<'info> {
         //     forward_accounts_start,
         //     target_program,
         //     &instruction_data,
+        //     ctx.accounts.user_payment.key(),
         //     signer_seeds,
         // )?;
 
@@ -911,5 +949,126 @@ impl<'info> ExecuteComposable<'info> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anchor_lang::solana_program::{account_info::AccountInfo, pubkey::Pubkey};
+
+    /// Construct a minimal `AccountInfo` with the requested flags.
+    /// `is_signer` and `is_writable` are the only fields the sanitization
+    /// helpers inspect.
+    fn fake_info(key: Pubkey, is_signer: bool, is_writable: bool) -> AccountInfo<'static> {
+        let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
+        let data: &'static mut [u8] = Box::leak(Box::new([0u8; 0]));
+        AccountInfo::new(
+            Box::leak(Box::new(key)),
+            is_signer,
+            is_writable,
+            lamports,
+            data,
+            Box::leak(Box::new(Pubkey::default())),
+            false,
+            0,
+        )
+    }
+
+    #[test]
+    fn validation_metas_strips_signer_and_writable() {
+        // Simulate a remaining_account that the caller passed as a signer
+        // (e.g. fee_payer) and writable. The validation CPI must see it
+        // as read-only and non-signer regardless of caller intent.
+        let signer_key = Pubkey::new_unique();
+        let writable_key = Pubkey::new_unique();
+        let plain_key = Pubkey::new_unique();
+
+        let accounts = vec![
+            fake_info(signer_key, true, true),
+            fake_info(writable_key, false, true),
+            fake_info(plain_key, false, false),
+        ];
+
+        let metas = build_validation_account_metas(&accounts);
+
+        assert_eq!(metas.len(), 3);
+        for meta in &metas {
+            assert!(
+                !meta.is_signer,
+                "validation AccountMeta must never be signer (got signer for {})",
+                meta.pubkey
+            );
+            assert!(
+                !meta.is_writable,
+                "validation AccountMeta must never be writable (got writable for {})",
+                meta.pubkey
+            );
+        }
+        // Pubkeys are preserved.
+        assert_eq!(metas[0].pubkey, signer_key);
+        assert_eq!(metas[1].pubkey, writable_key);
+        assert_eq!(metas[2].pubkey, plain_key);
+    }
+
+    #[test]
+    fn forward_metas_only_signs_user_payment_pda() {
+        let user_payment = Pubkey::new_unique();
+        let fee_payer = Pubkey::new_unique();
+        let pool_a = Pubkey::new_unique();
+
+        // fee_payer is a real Signer in the outer tx; it must NOT be a
+        // signer in the forward CPI. user_payment PDA must be the only
+        // signer (it signs via invoke_signed). pool_a is a writable pool
+        // account — writability is preserved.
+        let up_info = fake_info(user_payment, false, false);
+        let fp_info = fake_info(fee_payer, true, false);
+        let pool_info = fake_info(pool_a, false, true);
+
+        let refs: Vec<&AccountInfo<'_>> = vec![&up_info, &fp_info, &pool_info];
+        let metas = build_forward_account_metas(&refs, user_payment);
+
+        assert_eq!(metas.len(), 3);
+        assert_eq!(metas[0].pubkey, user_payment);
+        assert!(metas[0].is_signer, "UserPayment PDA must remain signer");
+        assert!(!metas[0].is_writable);
+
+        assert_eq!(metas[1].pubkey, fee_payer);
+        assert!(
+            !metas[1].is_signer,
+            "fee_payer must NOT be forwarded as signer"
+        );
+        assert!(!metas[1].is_writable);
+
+        assert_eq!(metas[2].pubkey, pool_a);
+        assert!(!metas[2].is_signer);
+        assert!(
+            metas[2].is_writable,
+            "writability from caller must be preserved"
+        );
+    }
+
+    #[test]
+    fn forward_metas_user_payment_not_in_set_is_all_non_signer() {
+        // If the forward accounts don't include the UserPayment PDA,
+        // nothing should be a signer.
+        let a = Pubkey::new_unique();
+        let b = Pubkey::new_unique();
+        let user_payment = Pubkey::new_unique();
+
+        let a_info = fake_info(a, true, true);
+        let b_info = fake_info(b, true, false);
+        let refs: Vec<&AccountInfo<'_>> = vec![&a_info, &b_info];
+        let metas = build_forward_account_metas(&refs, user_payment);
+
+        for meta in &metas {
+            assert!(
+                !meta.is_signer,
+                "no account should be signer when UserPayment PDA absent"
+            );
+        }
+        // Writability still forwarded.
+        assert!(metas[0].is_writable);
+        assert!(!metas[1].is_writable);
     }
 }
