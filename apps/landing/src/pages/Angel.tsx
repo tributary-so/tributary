@@ -1,96 +1,830 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   Mail,
-  TrendingUp,
-  Building2,
-  Landmark,
-  CheckCircle2,
-  Circle,
-  CircleDot,
-  ArrowRight,
-  Lock,
-  Target,
+  ShieldCheck,
+  Network,
+  Database,
   Layers,
+  ChevronRight,
+  XIcon,
+  TwitterIcon,
 } from "lucide-react";
 import FabianSchuhProfile from "@/components/futardio/cv";
+import { FaTelegram } from "react-icons/fa6";
 
-function Divider() {
+// ─── Table of Contents ──────────────────────────────────────────────────────
+const TOC_ITEMS = [
+  { id: "s01", num: "01", label: "Headline" },
+  { id: "s02", num: "02", label: "Future" },
+  { id: "s03", num: "03", label: "Why Now" },
+  { id: "s04", num: "04", label: "Product" },
+  { id: "s05", num: "05", label: "Why You" },
+  { id: "s06", num: "06", label: "The Business" },
+  { id: "s07", num: "07", label: "Ask" },
+  { id: "s08", num: "08", label: "Closing" },
+];
+
+function TableOfContents() {
+  const [active, setActive] = useState("s01");
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setActive(e.target.id);
+        });
+      },
+      { rootMargin: "-15% 0px -75% 0px" }
+    );
+    TOC_ITEMS.forEach((item) => {
+      const el = document.getElementById(item.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div
-      className="font-mono text-sm text-muted-foreground/30 select-none"
-      aria-hidden="true"
-    >
-      //
+    <nav className="sticky top-8 space-y-0.5">
+      {TOC_ITEMS.map((item) => (
+        <a
+          key={item.id}
+          onClick={() => scrollToSection(item.id)}
+          className={`flex items-center gap-2 py-1 text-xs transition-colors cursor:pointer hover:text-foreground ${active === item.id
+            ? "text-foreground"
+            : "text-foreground/30 hover:text-foreground/60"
+            }`}
+        >
+          <span
+            className={`font-mono ${active === item.id ? "text-primary" : ""} `}
+          >
+            {item.num}
+          </span>
+          <span className="uppercase tracking-widest">{item.label}</span>
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+// ─── Chainsquad primitives ──────────────────────────────────────────────────
+// Priority system: foreground = claim · /60 = proof · /40 = detail
+// Fragments over sentences. Tables over paragraphs. Whitespace is structure.
+
+function SectionHeader({ num, label }: { num: string; label: string }) {
+  return (
+    <div className="flex items-center gap-4 mb-2">
+      <span className="text-xs font-mono text-foreground/40">{num}</span>
+      <span className="text-xs tracking-[0.2em] uppercase font-medium text-foreground/60">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-border" />
     </div>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// Sub-part distinguisher within a merged group. Smaller than SectionHeader,
+// marks each Lead-block as its own part of the section.
+function Lead({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-      {children}
-    </p>
+    <div className="flex items-center gap-3 mt-10 mb-4">
+      <span className="h-3 w-1 bg-primary/70" />
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/70">
+        {children}
+      </h3>
+    </div>
   );
 }
 
-// ─── Slide: Hero ─────────────────────────────────────────────────────────────
-function SlideHero() {
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <div className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text leading-none">
+        {value}
+      </div>
+      <div className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mt-2">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Lede({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-4 mb-8">
+      <div className="w-0.5 bg-primary self-stretch shrink-0" />
+      <p className="text-xl font-normal leading-snug tracking-tight text-foreground">
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function TableWrap({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto border border-border/60">
+      <table className="w-full text-sm">{children}</table>
+    </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="text-left px-4 py-2.5 text-foreground/40 font-medium tracking-wide text-[11px] uppercase border-b border-border">
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <td
+      className={`px-4 py-2.5 border-b border-border/40 align-top ${className}`}
+    >
+      {children}
+    </td>
+  );
+}
+
+// ─── 01 · Headline ──────────────────────────────────────────────────────────
+function Hero() {
+  return (
+    <section className="pt-20 pb-4">
+      <p className="text-xs tracking-[0.3em] uppercase text-foreground/40 mb-6">
+        Angel · Pre-Seed · $215K
+      </p>
+      <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight">
+        <span className="text-foreground">Tributary.</span>
+        <br />
+        <span className="gradient-text">
+          The money operating system for solana
+        </span>
+      </h1>
+      <p className="text-lg text-foreground/60 mt-8 leading-relaxed">
+        Approve once. Money moves automatically — payments, swaps, stakes,
+        yield. Non-custodial.
+      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-14 py-8 border-y border-border">
+        <Stat value="$316B" label="Stablecoins. Zero automation." />
+        <Stat value="4,000+" label="Payments on mainnet" />
+        <Stat value="6+" label="Integrators. $0 marketing" />
+        <Stat value="9" label="Systems shipped solo" />
+      </div>
+
+      <div className="flex flex-wrap gap-3 mt-8">
+        <a
+          href="https://tributary.so"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-6 py-3 transition-colors"
+        >
+          tributary.so <ArrowUpRight className="h-4 w-4" />
+        </a>
+        <a
+          href="mailto:fabian@tributary.so"
+          className="inline-flex items-center gap-2 border border-border hover:border-primary/50 text-foreground text-sm px-6 py-3 transition-colors"
+        >
+          <Mail className="h-4 w-4" /> Get in Touch
+        </a>
+      </div>
+    </section>
+  );
+}
+
+// ─── 02 · Future (quiet — context, not pitch) ───────────────────────────────
+function Future() {
   return (
     <section className="py-20">
-      <div className="flex flex-col gap-6 max-w-4xl text-center lg:text-left lg:items-start">
-        <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.3em]">
-          Angel Round · Pre-Seed
-        </p>
-        <h1 className="text-3xl font-bold leading-snug tracking-tight md:text-4xl lg:text-5xl">
-          <span className="text-foreground">
-            Tributary is the non-custodial operating system
-          </span>
-          <br />
-          <span className="gradient-text">for capital on Solana.</span>
-        </h1>
+      <SectionHeader num="02" label="The Future" />
+      <Lede>An internet economy where money behaves like software.</Lede>
+      <p className="text-foreground/50 mt-6 leading-relaxed">
+        Approve once, execute forever. Compose payments, investments, treasury —
+        no custody. AI agents spend within guardrails. Three shifts landed at
+        once: stablecoins won ($316B), Solana shipped a delegation primitive,
+        DeFi became composable.
+      </p>
+      <p className="text-foreground mt-4">
+        We build the company that makes non-custodial money
+        programmable
+      </p>
+    </section>
+  );
+}
 
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          Every financial automation — DCA, idle-cash deployment, stop-losses,
-          treasury management, autonomous allocation — is a different face of
-          one primitive:
-        </p>
+// ─── 03 · Why Now (quiet) ───────────────────────────────────────────────────
+function WhyNow() {
+  return (
+    <section className="py-20">
+      <SectionHeader num="03" label="Why Now" />
+      <Lede>
+        Every on-chain action requires a signature. Every signature requires a
+        human.
+      </Lede>
+      <p className="text-foreground/50 mt-6 leading-relaxed">
+        No automation — DCA, payroll, treasury are manual clicks or custodians.
+        No composability: a payment can't trigger staking; an oracle can't trigger a swap.
+        Users want no custodian. Manual processes don't scale.
+        Single-protocol schedulers can't compose.
+      </p>
+      <p className="text-foreground mt-4">
+        Money on solana lacks an operating system.
+      </p>
+    </section>
+  );
+}
 
-        <div className="border border-border/50 bg-muted/10 px-6 py-4 max-w-2xl mx-auto lg:mx-0">
-          <p
-            className="text-center text-lg font-bold gradient-text"
-            style={{ fontFamily: "var(--font-secondary, monospace)" }}
-          >
-            WHEN (condition) → PULL (amount) → ROUTE (to any on-chain program)
+// ─── 04 · Product (Pivot · How it works · Risks) ────────────────────────────
+function Product() {
+  const risks: [string, string, string][] = [
+    ["Technology — does the primitive work?", "RESOLVED", "Mainnet-proven."],
+    [
+      "Demand — will anyone use it?",
+      "RESOLVED",
+      "Organic, zero-churn inbound.",
+    ],
+    [
+      "Execution — can the founder ship?",
+      "RESOLVED",
+      "Full stack shipped solo.",
+    ],
+    [
+      "Custody — trust-failure exposure",
+      "STRUCTURALLY ABSENT",
+      "Non-custodial. No keys held.",
+    ],
+    [
+      "Market — is the category real?",
+      "INDEPENDENTLY VALIDATED",
+      "Solana Foundation shipped the same primitive.",
+    ],
+    [
+      "Composable routing — does CPI scale?",
+      "PARTIALLY RETIRED",
+      "Prototype operational · this round funds audit + mainnet.",
+    ],
+    [
+      "Revenue — will fees materialize?",
+      "NEXT — THIS ROUND",
+      "Fee model live in code · needs composable volume.",
+    ],
+  ];
+  return (
+    <section className="py-20">
+      <SectionHeader num="04" label="Product" />
+      <Lede>
+        Compoasability means: WHEN → PULL → ROUTE
+      </Lede>
+
+      <Lead>The Pivot</Lead>
+      <div className="space-y-4">
+        <div className="border-l-2 border-border pl-5">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-1">
+            Stage 0 — Recurring Payments
+          </p>
+          <p className="text-foreground/70 text-sm">
+            We've shipped subscriptions, milestones, pay-as-you-go payments.
+            Full stack built solo: contract, SDKs, indexer, checkout, dashboard.
           </p>
         </div>
+        <div className="border-l-2 border-secondary pl-5">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-primary mb-1">
+            The lesson
+          </p>
+          <p className="text-foreground/70 text-sm">
+            Integrators started hacking around the protocol boundary — using milstones for loan re-payments.
+            Not being composable was a limitation!
+          </p>
+        </div>
+        <div className="border-l-2 border-border pl-5">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-1">
+            Stage 1 — this raise
+          </p>
+          <p className="text-foreground/70 text-sm">
+            Payment product → composable platform → autonomous money allocation.
+            Operational prototype.
+          </p>
+        </div>
+      </div>
 
-        <p className="text-sm text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          We don't ask investors to bet on the end state. We resolve every risk{" "}
-          <span className="text-foreground font-medium">stage by stage</span> —
-          each one a complete product with its own PMF. Stage 0 is proven. This
-          raise funds Stage 1. The venture category arrives when nothing about
-          it is unproven.
+      <Lead>How It Works</Lead>
+      <TableWrap>
+        <tbody>
+          <tr>
+            <Td className="font-mono text-primary font-semibold w-24">WHEN</Td>
+            <Td className="text-foreground/40 w-60">When execution happens</Td>
+            <Td className="text-foreground/60">
+              Time · Price · Balance · Oracle · Custom logic
+            </Td>
+          </tr>
+          <tr>
+            <Td className="font-mono text-primary font-semibold">PULL</Td>
+            <Td className="text-foreground/40">How much moves</Td>
+            <Td className="text-foreground/60">
+              Fixed · Variable · Capped · Usage-based
+            </Td>
+          </tr>
+          <tr>
+            <Td className="font-mono text-primary font-semibold">ROUTE</Td>
+            <Td className="text-foreground/40">Where it goes</Td>
+            <Td className="text-foreground/60">
+              Transfer · Swap · Stake · LP · Any approved program
+            </Td>
+          </tr>
+        </tbody>
+      </TableWrap>
+      <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mt-6 mb-3">
+        Feature → quantified benefit
+      </p>
+      <TableWrap>
+        <tbody>
+          <tr>
+            <Td className="text-foreground font-medium">
+              One approval instead of signing 1,000x
+            </Td>
+            <Td className="text-foreground/50">
+              Support load drops to near-zero post-onboarding.
+            </Td>
+          </tr>
+          <tr>
+            <Td className="text-foreground font-medium">
+              Non-custodial by construction
+            </Td>
+            <Td className="text-foreground/50">
+              Limited access to user funds. 0$ TVL by design!
+            </Td>
+          </tr>
+          <tr>
+            <Td className="text-foreground font-medium">
+              Composable, not closed
+            </Td>
+            <Td className="text-foreground/50">
+              Network value compounds with use-cases.
+            </Td>
+          </tr>
+        </tbody>
+      </TableWrap>
+
+      <Lead>Risks Retired</Lead>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Risk</Th>
+            <Th>Status</Th>
+            <Th>Evidence</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {risks.map(([risk, status, evidence]) => {
+            const resolved =
+              status === "RESOLVED" ||
+              status === "STRUCTURALLY ABSENT" ||
+              status === "INDEPENDENTLY VALIDATED";
+            return (
+              <tr key={risk}>
+                <Td className="text-foreground font-medium">{risk}</Td>
+                <Td
+                  className={
+                    resolved
+                      ? "text-emerald-500 font-semibold text-xs whitespace-nowrap"
+                      : "text-primary font-semibold text-xs whitespace-nowrap"
+                  }
+                >
+                  {resolved ? "✅ " : "◀ "}
+                  {status}
+                </Td>
+                <Td className="text-foreground/50">{evidence}</Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </TableWrap>
+    </section>
+  );
+}
+
+// ─── 05 · Why You ───────────────────────────────────────────────────────────
+function WhyYou() {
+  return (
+    <section className="py-20">
+      <SectionHeader num="05" label="Why You" />
+      <Lede>Web3 veteran</Lede>
+      <FabianSchuhProfile isDAORaise={false} showExits={false} />
+    </section>
+  );
+}
+
+// ─── 06 · The Business (Proof · Market · Moat · Model · GTM) ────────────────
+function TheBusiness() {
+  const cases = [
+    {
+      who: "Individual",
+      title: "Spare-change investing",
+      pain: "Manual investing takes effort most people won't give.",
+      fix: "Round up every purchase. Pull the difference into yield automatically. Invisible wealth-building — needs continuous micro-pulls push payments can't do.",
+    },
+    {
+      who: "Individual",
+      title: "Inheritance without a lawyer",
+      pain: "Billions in crypto lost every year — keys die with their owners.",
+      fix: "Authorize an heir to claim after a countdown. Stay active, push the deadline. Go dark, they inherit. Non-custodial until death.",
+    },
+    {
+      who: "Business",
+      title: "Checkout that converts",
+      pain: "Solana Pay gives merchants a QR code. That's it.",
+      fix: "Upsells, subscriptions, order bumps, thank-you offers. The Web2 conversion playbook, on-chain. Merchants stop reinventing checkout.",
+    },
+    {
+      who: "Business",
+      title: "Escrow without trust",
+      pain: "Every freelancer has been ghosted after delivery.",
+      fix: "Funds escrowed on-chain, released as milestones verify. The contract is the escrow agent — non-custodial, instant, sub-cent fees.",
+    },
+    {
+      who: "Community",
+      title: "Group economies",
+      pain: "Splitwise and Venmo exist because splitting bills is painful.",
+      fix: 'Friends delegate to a shared pool. Expenses auto-split. Nobody chases anyone. The "you owe me $23" conversation disappears.',
+    },
+    {
+      who: "AI agent",
+      title: "Agent budgets",
+      pain: "Agents that manage capital take custody (unsafe) or can't act (useless).",
+      fix: "Approve a spending envelope. Agents pull within guardrails you define. Non-custodial, bounded, auditable.",
+    },
+  ];
+  const layers = [
+    {
+      icon: ShieldCheck,
+      n: "L1",
+      title: "Structural lock-in",
+      body: "One delegate per token account. Chain-enforced. Competitors can't win back users without a revoke.",
+    },
+    {
+      icon: Network,
+      n: "L2",
+      title: "Network effects",
+      body: "More integrators → more volume → more validation → more use-cases → more integrators.",
+    },
+    {
+      icon: Database,
+      n: "L3",
+      title: "Proprietary data",
+      body: "Every route generates fee/slippage data no competitor sees. Input to Stage 2 constraint optimization.",
+    },
+    {
+      icon: Layers,
+      n: "L4",
+      title: "Flexibility",
+      body: "Hundreds of businesses can be built with composability in stage 1. Made a bad choice, pick another!",
+    },
+  ];
+  return (
+    <section className="py-20">
+      <SectionHeader num="06" label="The Business" />
+      <Lede>
+        Organic traction. A market beyond payments. A structural moat.
+      </Lede>
+
+      <Lead>Proof</Lead>
+      <p className="text-foreground mb-6">
+        <span className="font-bold">4,000+</span> payments ·{" "}
+        <span className="font-bold">$12K+</span> transferred ·{" "}
+        <span className="font-bold">$0</span> marketing. Pre-revenue,
+        post-deployment, organic usage
+      </p>
+      <TableWrap>
+        <tbody>
+          <tr>
+            <Td className="text-foreground/70 w-2/5">
+              Inbound integrators (6+)
+            </Td>
+            <Td className="text-foreground/50">
+              allowly, contribute.so, yumi, polycode, orquestra, p-link,
+              fundwise, cashflow.fi, unseal.link
+            </Td>
+          </tr>
+          <tr>
+            <Td className="text-foreground/70">Recent Wins</Td>
+            <Td className="text-foreground/50">
+              $8k Superteam Grant, <br />
+              🥇 $10K Credits (Adevar Labs),<br />
+              🥉 Zerion AI Integration
+            </Td>
+          </tr>
+        </tbody>
+      </TableWrap>
+      <p className="text-sm text-foreground/60 leading-relaxed self-center">
+        <span className="text-foreground/80 font-medium">Zero churn.</span>{" "}
+        Adopters expand usage — the pre-revenue equivalent of negative churn.
+      </p>
+
+      <Lead>Market</Lead>
+      <p className="text-foreground/60 mb-6">
+        <span className="text-foreground font-bold">$15.2B</span> stablecoins on
+        Solana · <span className="text-foreground font-bold">$4.6B</span> DeFi
+        TVL · <span className="text-foreground font-bold">$1.7B</span> daily DEX
+        volume.
+      </p>
+      <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-4">
+        Concrete pain → how the primitive solves it
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border">
+        {cases.map((c) => (
+          <div key={c.title} className="bg-background p-5">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-primary/70 mb-1.5">
+              {c.who}
+            </p>
+            <p className="text-sm font-bold text-foreground mb-3">{c.title}</p>
+            <p className="text-xs text-foreground/40 leading-relaxed mb-2">
+              {c.pain}
+            </p>
+            <p className="text-xs text-foreground/65 leading-relaxed flex gap-2">
+              <span className="text-primary shrink-0">→</span>
+              <span>{c.fix}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-foreground/40 mt-4">
+        Goal: own the composable automation layer underneath it all.
+      </p>
+
+      <Lead>Moat</Lead>
+      <p className="text-foreground/50 mb-4">
+        "First mover" is marketing. This is a moat.
+      </p>
+      <div className="grid md:grid-cols-2 gap-px bg-border">
+        {layers.map((l) => (
+          <div key={l.n} className="bg-background p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <l.icon className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-xs font-mono text-foreground/40">
+                {l.n}
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                {l.title}
+              </span>
+            </div>
+            <p className="text-sm text-foreground/50 leading-relaxed">
+              {l.body}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <Lead>Model</Lead>
+      <p className="text-foreground/50 mb-4">
+        1% of every transaction. ~100% margin. No balance-sheet risk.
+      </p>
+      <div className="grid md:grid-cols-3 gap-px bg-border mb-6">
+        <div className="bg-background p-5">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-primary mb-1">
+            Protocol fee
+          </p>
+          <p className="text-2xl font-bold text-foreground mb-1">1%</p>
+          <p className="text-xs text-foreground/50">
+            Every transaction. Auto-deposited to treasury.
+          </p>
+        </div>
+        <div className="bg-background p-5">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-primary mb-1">
+            Gateway fees
+          </p>
+          <p className="text-sm font-bold text-foreground mb-1 mt-1">
+            Operator spread
+          </p>
+          <p className="text-xs text-foreground/50">
+            Every billing reseller on Solana = revenue source.
+          </p>
+        </div>
+        <div className="bg-background p-5">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-primary mb-1">
+            No custody
+          </p>
+          <p className="text-2xl font-bold text-foreground mb-1">0 TVL</p>
+          <p className="text-xs text-foreground/50">
+            Scales with volume, not TVL.
+          </p>
+        </div>
+      </div>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Scenario</Th>
+            <Th>Monthly volume</Th>
+            <Th>Protocol revenue</Th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <Td className="text-foreground/60">1 SaaS × 100 users × $10</Td>
+            <Td className="text-foreground/40 font-mono">$10K</Td>
+            <Td className="text-primary font-bold font-mono">$100/mo</Td>
+          </tr>
+          <tr>
+            <Td className="text-foreground/60">15 such businesses</Td>
+            <Td className="text-foreground/40 font-mono">$150K</Td>
+            <Td className="text-primary font-bold font-mono">$1.5K/mo</Td>
+          </tr>
+          <tr>
+            <Td className="text-foreground/60">50 businesses + DCA flows</Td>
+            <Td className="text-foreground/40 font-mono">~$1M+</Td>
+            <Td className="text-primary font-bold font-mono">$10K+/mo</Td>
+          </tr>
+        </tbody>
+      </TableWrap>
+
+      <Lead>Go-To-Market</Lead>
+      <div className="grid md:grid-cols-3 gap-px bg-border mb-6">
+        <div className="bg-background p-5">
+          <p className="text-xs font-mono text-primary mb-1">Phase 1 · Now</p>
+          <p className="text-sm font-bold text-foreground mb-1">
+            Composable layer
+          </p>
+          <p className="text-xs text-foreground/50">
+            Ship WHEN→PULL→ROUTE. Audit. Validate revenue.
+          </p>
+        </div>
+        <div className="bg-background p-5">
+          <p className="text-xs font-mono text-primary mb-1">Phase 2</p>
+          <p className="text-sm font-bold text-foreground mb-1">
+            Money automation
+          </p>
+          <p className="text-xs text-foreground/50">
+            DCA, auto-stake, idle-capital automation.
+          </p>
+        </div>
+        <div className="bg-background p-5">
+          <p className="text-xs font-mono text-primary mb-1">Phase 3</p>
+          <p className="text-sm font-bold text-foreground mb-1">
+            Treasury & policy
+          </p>
+          <p className="text-xs text-foreground/50">
+            B2B. Product revenue. Seed-round proof.
+          </p>
+        </div>
+      </div>
+      <p className="text-sm text-foreground/60 mb-2">
+        <span className="text-foreground/80 font-medium">
+          "Hey agent: Keep $X liquid. Deploy everything above on Meteora!"
+        </span>
+      </p>
+    </section>
+  );
+}
+
+// ─── 07 · Ask ───────────────────────────────────────────────────────────────
+function Ask() {
+  const funds = [
+    [
+      "Security audit (after $10K Adevar grant)",
+      "$45K",
+      "Enterprise + B2B gate. Ottersec-scoped.",
+    ],
+    [
+      "Founder runway (12–18 mo)",
+      "$90K",
+      "Fabian ships the contract. ~$5–7K/mo.",
+    ],
+    [
+      "DevRel contractor (6 mo)",
+      "$45K",
+      "Self-serve onboarding for 15+ integrators.",
+    ],
+    [
+      "Legal & entity (GmbH/holdco)",
+      "$15K",
+      "Investor-ready structure for seed.",
+    ],
+    ["Infrastructure (18 mo)", "$20K", "RPC, indexer, hosting."],
+  ];
+  return (
+    <section className="py-20">
+      <SectionHeader num="07" label="The Ask" />
+      <Lede>
+        Raising to move from payments to internet money.
+      </Lede>
+      <p className="text-4xl md:text-5xl font-bold text-foreground mb-2">
+        Raising <span className="gradient-text">$215K.</span>
+      </p>
+      <p className="text-foreground/60 mb-10">
+        18-month runway to seed. Flexible on structure.
+      </p>
+      <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-3">
+        Use of funds — line-by-line
+      </p>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Line item</Th>
+            <Th>Amount</Th>
+            <Th>Why</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {funds.map(([item, amount, why]) => (
+            <tr key={item}>
+              <Td className="text-foreground/70">{item}</Td>
+              <Td className="text-primary font-bold font-mono whitespace-nowrap">
+                {amount}
+              </Td>
+              <Td className="text-foreground/40">{why}</Td>
+            </tr>
+          ))}
+          <tr className="bg-primary/5">
+            <Td className="text-foreground font-bold">Total</Td>
+            <Td className="text-primary font-bold font-mono">$215K</Td>
+            <Td className="text-foreground/60">18-month runway to seed</Td>
+          </tr>
+        </tbody>
+      </TableWrap>
+      <div className="mt-4">
+        <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-3">
+          Milestones
         </p>
+        <ol className="space-y-1.5 text-sm text-foreground/60">
+          <li className="flex gap-3">
+            <span className="font-mono text-primary/60 w-4">1.</span>Audit
+            complete. barrier-to-entry cleared
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-primary/60 w-4">2.</span>
+            Composable layer live on mainnet
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-primary/60 w-4">3.</span>15+
+            integrations onboarded
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-primary/60 w-4">4.</span>Revenue
+            validated ($1.5K–$10K/mo floor)
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-primary/60 w-4">5.</span>Treasury
+            pipeline opened — seed proof
+          </li>
+        </ol>
+      </div>
+    </section>
+  );
+}
 
-        <div className="flex flex-wrap gap-3 mt-2 justify-center lg:justify-start">
+// ─── 08 · Closing ───────────────────────────────────────────────────────────
+function Closing() {
+  return (
+    <section className="py-20">
+      <SectionHeader num="08" label="Closing" />
+      <Lede>
+        Stablecoins made money internet-native. Tributary makes it composable.
+      </Lede>
+      <p className="text-lg text-foreground/60 mb-12">
+        One approval. Programmable money.
+      </p>
+      <div className="border-t border-border pt-6">
+        <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-1">
+          Contact
+        </p>
+        <p className="text-foreground font-medium">Fabian Schuh, Dr.-Ing.</p>
+        <div className="flex flex-wrap gap-3 mt-3">
+          <a
+            href="mailto:fabian@tributary.so"
+            className="inline-flex items-center gap-2 border border-border hover:border-primary/50 text-foreground text-sm px-5 py-2.5 transition-colors"
+          >
+            <Mail className="h-4 w-4" /> fabian@tributary.so
+          </a>
+          <a
+            href="https://x.com/xer0c"
+            className="inline-flex items-center gap-2 border border-border hover:border-primary/50 text-foreground text-sm px-5 py-2.5 transition-colors"
+          >
+            <TwitterIcon className="h-4 w-4" /> @xer0c
+          </a>
+          <a
+            href="https://t.me/xeroc"
+            className="inline-flex items-center gap-2 border border-border hover:border-primary/50 text-foreground text-sm px-5 py-2.5 transition-colors"
+          >
+            <FaTelegram className="h-4 w-4" /> @xeroc
+          </a>
           <a
             href="https://tributary.so"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-5 py-2.5 transition-colors"
+            className="inline-flex items-center gap-2 border border-border hover:border-primary/50 text-foreground text-sm px-5 py-2.5 transition-colors"
           >
-            tributary.so
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </a>
-          <a
-            href="mailto:fabian@tributary.so"
-            className="inline-flex items-center gap-2 border border-border bg-background hover:bg-muted text-foreground text-sm px-5 py-2.5 transition-colors"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            Get in Touch
+            tributary.so <ArrowUpRight className="h-3.5 w-3.5" />
           </a>
         </div>
       </div>
@@ -98,1045 +832,365 @@ function SlideHero() {
   );
 }
 
-// ─── Slide: The Thesis ───────────────────────────────────────────────────────
-function SlideThesis() {
-  const risks = [
-    {
-      label: "Technology",
-      q: "Does composable on-chain routing actually work?",
-      stage: "Stage 1",
-    },
-    {
-      label: "Execution",
-      q: "Can this solo founder ship each layer?",
-      stage: "Stage 1",
-    },
-    {
-      label: "Trust",
-      q: "Will users let non-custodial software manage real capital?",
-      stage: "Stage 0–2",
-    },
-    {
-      label: "Decision",
-      q: "Can software make allocation decisions users accept?",
-      stage: "Stage 3",
-    },
+// ─── Appendix ───────────────────────────────────────────────────────────────
+function Appendix() {
+  const a2Systems = [
+    ["1", "Mainnet contract (Anchor)", "Core protocol logic"],
+    ["2", "TypeScript SDK", "Program interaction"],
+    ["3", "React component library", "Embedded checkout UI"],
+    ["4", "Stripe-compatible SDK", "Web2 dev ergonomics"],
+    ["5", "HTTP 402 middleware", "Machine-to-machine pay"],
+    ["6", "API server (REST + WS + Kafka)", "Off-chain orchestration"],
+    ["7", "Event indexer", "On-chain state sync"],
+    ["8", "Hosted checkout", "No-code merchant path"],
+    ["9", "Merchant dashboard", "Ops + analytics"],
+  ];
+  const a4Features = [
+    "Non-custodial",
+    "Auto-execution",
+    "On-chain fee extraction",
+    "Merchant SDKs",
+    "Composable automation",
+    "Multi-protocol routing",
+    "Gateway layer",
+  ];
+  const a4matrix: Record<string, boolean[]> = {
+    Helio: [false, false, false, false, false, false, false],
+    "SF Subs": [true, true, false, false, false, false, false],
+    Stripe: [false, true, false, true, false, false, false],
+    Jupiter: [true, true, false, false, false, false, false],
+  };
+  const ladder = [
+    [
+      "STAGE 0",
+      "Pull tokens on a schedule.",
+      "✅ PROVEN",
+      "4K+ payments, 6+ integrators",
+    ],
+    ["STAGE 1", "Route capital into DeFi.", "◀ NEXT", "DCA, idle-capital AUM"],
+    ["STAGE 2", "Enforce constraints.", "⏳ FUTURE", "Treasury customers, B2B"],
+    [
+      "STAGE 3",
+      "Decide where capital goes.",
+      "⏳ FUTURE",
+      "Intent policies, growing AUM",
+    ],
+    [
+      "STAGE 4",
+      "Manage capital autonomously.",
+      "💰 SERIES A+",
+      "AUM at scale, recurring revenue",
+    ],
   ];
 
   return (
-    <section className="py-16">
-      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Thesis</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">
-            Don't underwrite four risks at once.
-          </span>
-          <br />
-          <span className="gradient-text">Resolve them sequentially.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Pitching "autonomous capital allocation" cold bundles technology,
-          execution, trust, and decision risk into a single ask. We don't. Each
-          stage ships a complete product with its own PMF — and de-risks the
-          next one before we build it. By the venture round, the only open
-          question is growth velocity.
-        </p>
-      </div>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
-        {risks.map((r, i) => (
-          <motion.div
-            key={r.label}
-            className="border border-border/50 bg-muted/10 p-5 space-y-2"
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.08 }}
-            viewport={{ once: true }}
-          >
-            <div className="text-xs font-mono text-muted-foreground/60 uppercase tracking-wider">
-              {r.stage}
-            </div>
-            <div className="text-sm font-bold text-foreground">
-              {r.label} risk
-            </div>
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              {r.q}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: The Trust Ladder ─────────────────────────────────────────────────
-function SlideLadder() {
-  const rungs = [
-    {
-      stage: "STAGE 0",
-      trust: "Pull tokens to a recipient on a schedule.",
-      rung: "Non-custodial delegation itself.",
-      status: "PROVEN",
-      icon: CheckCircle2,
-      color: "text-emerald-400",
-      border: "border-emerald-500/30",
-      bg: "bg-emerald-500/5",
-      badge: "bg-emerald-500/15 text-emerald-400",
-    },
-    {
-      stage: "STAGE 1",
-      trust: "Route your capital into DeFi on a schedule.",
-      rung: "Automated execution across protocols.",
-      status: "NEXT",
-      icon: ArrowRight,
-      color: "text-primary",
-      border: "border-primary/40",
-      bg: "bg-primary/5",
-      badge: "bg-primary/15 text-primary",
-    },
-    {
-      stage: "STAGE 2",
-      trust: "Enforce constraints on your capital.",
-      rung: "The system obeys limits you define.",
-      status: "FUTURE",
-      icon: CircleDot,
-      color: "text-amber-400",
-      border: "border-amber-500/20",
-      bg: "bg-amber-500/5",
-      badge: "bg-amber-500/10 text-amber-400",
-    },
-    {
-      stage: "STAGE 3",
-      trust: "Decide where your capital goes.",
-      rung: "Decision delegation within guardrails.",
-      status: "FUTURE",
-      icon: CircleDot,
-      color: "text-purple-400",
-      border: "border-purple-500/20",
-      bg: "bg-purple-500/5",
-      badge: "bg-purple-500/10 text-purple-400",
-    },
-    {
-      stage: "STAGE 4",
-      trust: "Manage your capital autonomously.",
-      rung: "Full autonomous allocation — the venture category.",
-      status: "VENTURE",
-      icon: Target,
-      color: "text-rose-400",
-      border: "border-rose-500/30",
-      bg: "bg-rose-500/5",
-      badge: "bg-rose-500/15 text-rose-400",
-    },
-  ];
-
-  return (
-    <section className="py-16">
-      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Trust Ladder</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Five rungs. </span>
-          <span className="gradient-text">No shortcuts.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Each stage asks users for a bigger commitment — unlocked by trust
-          earned at the stage below. Competitors who jump straight to
-          "autonomous finance" hit a trust wall. We climb it. The ladder is the
-          moat.
-        </p>
-      </div>
-
-      <div className="space-y-2 max-w-5xl mx-auto">
-        {rungs.map((r, i) => (
-          <motion.div
-            key={r.stage}
-            className={`flex flex-col sm:flex-row sm:items-center gap-3 border ${r.border} ${r.bg} px-5 py-4`}
-            initial={{ opacity: 0, x: -15 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.1 }}
-            viewport={{ once: true }}
-          >
-            <div className="flex items-center gap-3 sm:w-40 shrink-0">
-              <r.icon className={`h-5 w-5 ${r.color} shrink-0`} />
-              <span
-                className="text-sm font-bold tracking-wider"
-                style={{ fontFamily: "var(--font-secondary, monospace)" }}
-              >
-                {r.stage}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground italic">
-                "Let us {r.trust}"
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">{r.rung}</p>
-            </div>
-            <span
-              className={`text-[10px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 ${r.badge} shrink-0 self-start sm:self-center`}
-            >
-              {r.status}
-            </span>
-          </motion.div>
-        ))}
-      </div>
-
-      <p className="mt-6 text-sm text-muted-foreground italic max-w-3xl mx-auto text-center lg:text-left lg:mx-0">
-        You cannot ask users to outsource decisions (Stage 3) before they trust
-        the system to obey constraints (Stage 2). The ladder is non-negotiable.
-      </p>
-    </section>
-  );
-}
-
-// ─── Slide: Stage 0 — Proven ──────────────────────────────────────────────────
-function SlideStage0() {
-  const metrics = [
-    { value: "4,000+", label: "Payments triggered" },
-    { value: "$12K+", label: "Transferred" },
-    { value: "6+", label: "Active integrations" },
-    { value: "$0", label: "Marketing spend" },
-  ];
-  const proofs = [
-    "Non-custodial pull-payment primitive works in production",
-    "Users delegate pull authority to a protocol PDA",
-    "Integrators build on the SDK without being asked",
-    "Solo founder shipped a full protocol stack",
-  ];
-
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <div className="flex items-center gap-3 justify-center lg:justify-start">
-          <SectionLabel>Stage 0 — Recurring Payments Protocol</SectionLabel>
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 bg-emerald-500/15 text-emerald-400">
-            ✅ Proven
-          </span>
-        </div>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">The trust foundation </span>
-          <span className="gradient-text">already exists.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Three direct-transfer payment models — Subscription, Milestone,
-          Pay-as-you-go. Non-custodial pull payments on Solana mainnet. Before
-          anyone lets Tributary route capital into DeFi, they need to see it
-          reliably move money between wallets at scale. We have that proof.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-4">
-            Organic Traction · Zero Marketing
+    <details className="mt-12 mb-12 group">
+      <summary className="cursor-pointer pt-6 pb-2 select-none list-none [&::-webkit-details-marker]:hidden">
+        <div className="flex items-center gap-3">
+          <ChevronRight className="h-4 w-4 text-foreground/40 group-open:rotate-90 transition-transform" />
+          <p className="text-xs tracking-[0.3em] uppercase text-foreground/50 font-medium">
+            Appendix
           </p>
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {metrics.map((m, i) => (
-              <motion.div
-                key={m.label}
-                className="border border-border/50 bg-muted/10 px-4 py-4"
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.08 }}
-                viewport={{ once: true }}
+        </div>
+        <p className="text-xs text-foreground/40 mt-1 ml-7">
+          Dense data. Summoned when the investor asks the hard question. Click
+          to expand.
+        </p>
+      </summary>
+      <div className="pt-4">
+        {/* A1 */}
+        <section className="py-12">
+          <p className="text-xs font-mono text-foreground/40 mb-1">§A1</p>
+          <h3 className="text-lg font-bold text-foreground mb-5">
+            Market Sizing
+          </h3>
+          <TableWrap>
+            <thead>
+              <tr>
+                <Th>Segment</Th>
+                <Th>Basis</Th>
+                <Th>TAM</Th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <Td className="text-foreground/60">SaaS billing</Td>
+                <Td className="text-foreground/40">
+                  ~5K businesses × $1.2K/yr
+                </Td>
+                <Td className="text-primary font-mono font-bold">$6M</Td>
+              </tr>
+              <tr>
+                <Td className="text-foreground/60">DCA / idle capital</Td>
+                <Td className="text-foreground/40">~2M holders × $50 × 1%</Td>
+                <Td className="text-primary font-mono font-bold">$1B</Td>
+              </tr>
+              <tr>
+                <Td className="text-foreground/60">DAO + startup treasury</Td>
+                <Td className="text-foreground/40">
+                  ~500 entities × $50K × 0.5%
+                </Td>
+                <Td className="text-primary font-mono font-bold">$12.5M</Td>
+              </tr>
+            </tbody>
+          </TableWrap>
+          <p className="text-xs text-foreground/40 mt-3">
+            SAM (24-mo): ~$15M/yr. SOM (Y3): $150K–$450K/yr. Floors the seed
+            narrative.
+          </p>
+        </section>
+
+        {/* A2 */}
+        <section className="py-12">
+          <p className="text-xs font-mono text-foreground/40 mb-1">§A2</p>
+          <h3 className="text-lg font-bold text-foreground mb-5">
+            9 Production Systems
+          </h3>
+          <TableWrap>
+            <thead>
+              <tr>
+                <Th>#</Th>
+                <Th>Component</Th>
+                <Th>Purpose</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {a2Systems.map(([n, c, p]) => (
+                <tr key={n}>
+                  <Td className="font-mono text-foreground/40 w-8">{n}</Td>
+                  <Td className="text-foreground/70">{c}</Td>
+                  <Td className="text-foreground/40">{p}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrap>
+          <p className="text-xs text-foreground/40 mt-3">
+            All ✅ live. Test coverage &gt;95%. Shipped solo, zero external
+            capital.
+          </p>
+        </section>
+
+        {/* A3 */}
+        <section className="py-12">
+          <p className="text-xs font-mono text-foreground/40 mb-1">§A3</p>
+          <h3 className="text-lg font-bold text-foreground mb-5">
+            Trust Ladder — Full Roadmap
+          </h3>
+          <div className="border border-border/60">
+            {ladder.map(([stage, trust, status, pmf]) => (
+              <div
+                key={stage}
+                className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border/40 last:border-b-0 items-center"
               >
-                <div className="text-2xl font-bold gradient-text">
-                  {m.value}
+                <div className="col-span-12 md:col-span-2">
+                  <span className="font-mono text-sm font-bold text-foreground/70">
+                    {stage}
+                  </span>
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
-                  {m.label}
+                <div className="col-span-12 md:col-span-6">
+                  <p className="text-foreground/50 text-sm italic">"{trust}"</p>
+                  <p className="text-xs text-foreground/40 mt-0.5">{pmf}</p>
                 </div>
-              </motion.div>
+                <div className="col-span-12 md:col-span-4 md:text-right">
+                  <span
+                    className={`text-xs font-bold uppercase tracking-[0.12em] ${status.includes("PROVEN")
+                      ? "text-emerald-500"
+                      : status.includes("NEXT")
+                        ? "text-primary"
+                        : status.includes("SERIES")
+                          ? "text-amber-500"
+                          : "text-foreground/40"
+                      }`}
+                  >
+                    {status}
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Plus a{" "}
-            <span className="text-foreground font-medium">
-              $10K Adevar audit grant
-            </span>{" "}
-            secured. Inbound integrations: Allowly, Contribute.so, Yumi Finance,
-            Polycode, Orquestra, p-link.
+          <p className="text-xs text-foreground/40 mt-3">
+            No stage skipped. The ladder is the moat.
           </p>
-        </div>
+        </section>
 
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-4">
-            What Stage 0 Proves
-          </p>
-          <ul className="space-y-2.5">
-            {proofs.map((p) => (
-              <li
-                key={p}
-                className="flex items-start gap-2.5 text-sm text-foreground"
-              >
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
-                <span className="leading-relaxed">{p}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: The Stages Ahead ──────────────────────────────────────────────────
-function SlideStages() {
-  const stages = [
-    {
-      n: "1",
-      name: "Money Automation",
-      sub: "DCA + Auto-Deploy",
-      status: "NEXT",
-      statusColor: "text-primary",
-      pain: '"I keep forgetting to DCA." · "My USDC is sitting idle."',
-      proves:
-        "Technology risk resolved — composable routing works across real DeFi. Execution risk resolved — founder ships the hard layer.",
-      infra: "ComposablePolicy, ForwardConfig, ALLOWED_FORWARD_PROGRAMS",
-      isNext: true,
-    },
-    {
-      n: "2",
-      name: "Policy Engine",
-      sub: "Constraint-Based Capital Allocation",
-      status: "FUTURE",
-      statusColor: "text-amber-400",
-      pain: '"Keep $2K liquid." · "Never more than 20% to one LP." · "Stop-loss at -10%."',
-      proves:
-        "Trust rung climbed — system enforces constraints, not just schedules. First real product revenue (treasury fees, policy subscriptions).",
-      infra: "ValidationConfig, Lighthouse assertions, oracle triggers",
-      isNext: false,
-    },
-    {
-      n: "3",
-      name: "Intent Agent",
-      sub: "Goals, Not Rules",
-      status: "FUTURE",
-      statusColor: "text-purple-400",
-      pain: '"Grow my SOL holdings." · "Best risk-adjusted yield available." · "Save for my tax bill."',
-      proves:
-        "Decision risk resolved — software makes allocation decisions users accept, within Stage 2 guardrails.",
-      infra: "Off-chain reasoning → policy creation → on-chain execution",
-      isNext: false,
-    },
-    {
-      n: "4",
-      name: "Autonomous Capital",
-      sub: "The Venture Category",
-      status: "VENTURE",
-      statusColor: "text-rose-400",
-      pain: "Users specify objectives. System allocates, compounds, exits, re-enters — non-custodial, on Solana.",
-      proves:
-        "Large TAM, defensible moat (delegation lock-in + AUM), network effects, recurring revenue. This is where the platform becomes venture-scale.",
-      infra: "Everything, operating continuously",
-      isNext: false,
-    },
-  ];
-
-  return (
-    <section className="py-16">
-      <div className="mb-10 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Path</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Each stage is a product. </span>
-          <span className="gradient-text">Each is a de-risking asset.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Nothing is throwaway. Nothing is a detour. The DCA user of Stage 1
-          becomes the treasury customer of Stage 2 becomes the intent-policy
-          user of Stage 3. Same user, deeper relationship, same infrastructure
-          underneath.
-        </p>
-      </div>
-
-      <div className="space-y-3 max-w-5xl mx-auto">
-        {stages.map((s, i) => (
-          <motion.div
-            key={s.n}
-            className={`border ${
-              s.isNext
-                ? "border-primary/40 bg-primary/5"
-                : "border-border/50 bg-muted/10"
-            } p-5`}
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.08 }}
-            viewport={{ once: true }}
-          >
-            <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
-              <div className="flex items-center gap-3 lg:w-56 shrink-0">
-                <span
-                  className="text-3xl font-bold text-muted-foreground/30"
-                  style={{ fontFamily: "var(--font-secondary, monospace)" }}
-                >
-                  0{s.n}
-                </span>
-                <div>
-                  <div className="text-sm font-bold text-foreground">
-                    {s.name}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{s.sub}</div>
-                </div>
-              </div>
-
-              <div className="flex-1 grid sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-                    Painkiller
-                  </div>
-                  <p className="text-xs text-foreground italic leading-relaxed">
-                    {s.pain}
-                  </p>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-                    What it proves
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {s.proves}
-                  </p>
-                </div>
-              </div>
-
-              <div className="lg:w-20 shrink-0 flex lg:flex-col items-start gap-2">
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-1 bg-muted/30 ${s.statusColor}`}
-                >
-                  {s.status}
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: Cumulative De-Risking ────────────────────────────────────────────
-function SlideDeRisking() {
-  const rows = [
-    {
-      risk: "Does non-custodial delegation work?",
-      resolved: "Stage 0",
-      evidence: "4,000+ payments, 6 integrations, live mainnet",
-      status: "resolved",
-    },
-    {
-      risk: "Will users trust the primitive?",
-      resolved: "Stage 0",
-      evidence: "Organic adoption, zero marketing",
-      status: "resolved",
-    },
-    {
-      risk: "Does composable on-chain routing work?",
-      resolved: "Stage 1",
-      evidence: "Production DCA + auto-deploy across DeFi",
-      status: "progress",
-    },
-    {
-      risk: "Can the founder ship the hard layer?",
-      resolved: "Stage 1",
-      evidence: "v2 composable layer shipped and audited",
-      status: "progress",
-    },
-    {
-      risk: "Will users route into DeFi?",
-      resolved: "Stage 1",
-      evidence: "AUM flowing through composable path",
-      status: "progress",
-    },
-    {
-      risk: "Does constraint enforcement work live?",
-      resolved: "Stage 2",
-      evidence: "Policies firing through volatility",
-      status: "future",
-    },
-    {
-      risk: "Will users outsource constraint mgmt?",
-      resolved: "Stage 2",
-      evidence: "Treasury customers, retained policy users",
-      status: "future",
-    },
-    {
-      risk: "Can software make allocation decisions?",
-      resolved: "Stage 3",
-      evidence: "Intent policies with growing AUM",
-      status: "future",
-    },
-  ];
-
-  const statusMap: Record<
-    string,
-    { label: string; color: string; icon: typeof CheckCircle2 }
-  > = {
-    resolved: {
-      label: "✅ Resolved",
-      color: "text-emerald-400",
-      icon: CheckCircle2,
-    },
-    progress: {
-      label: "◀ In progress",
-      color: "text-primary",
-      icon: ArrowRight,
-    },
-    future: {
-      label: "⏳ Future",
-      color: "text-muted-foreground",
-      icon: Circle,
-    },
-  };
-
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Cumulative De-Risking</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">By the venture round, </span>
-          <span className="gradient-text">
-            every risk is answered with data.
-          </span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Each stage resolves a specific risk that the venture round would
-          otherwise carry. The only question left at Stage 4 is market size and
-          growth velocity. Everything else is proven.
-        </p>
-      </div>
-
-      <div className="overflow-x-auto border border-border/50 bg-muted/10 max-w-5xl mx-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">
-                Risk
-              </th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium w-24">
-                Resolved by
-              </th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">
-                Evidence
-              </th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium w-32">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => {
-              const s = statusMap[r.status];
-              return (
-                <tr key={i} className="border-b border-border/30">
-                  <td className="px-4 py-3 text-foreground font-medium">
-                    {r.risk}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className="text-xs font-mono text-muted-foreground"
-                      style={{ fontFamily: "var(--font-secondary, monospace)" }}
+        {/* A4 */}
+        <section className="py-12">
+          <p className="text-xs font-mono text-foreground/40 mb-1">§A4</p>
+          <h3 className="text-lg font-bold text-foreground mb-5">
+            Competitive Matrix
+          </h3>
+          <div className="overflow-x-auto border border-border/60">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="text-left px-4 py-2.5 text-foreground/40 text-[11px] uppercase tracking-wide font-medium border-b border-border">
+                    Feature
+                  </th>
+                  {["Helio", "SF Subs", "Stripe", "Jupiter"].map((h) => (
+                    <th
+                      key={h}
+                      className="text-center px-4 py-2.5 text-foreground/40 text-[11px] uppercase tracking-wide font-medium border-b border-border"
                     >
-                      {r.resolved}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {r.evidence}
-                  </td>
-                  <td className={`px-4 py-3 ${s.color} text-xs font-semibold`}>
-                    {s.label}
-                  </td>
+                      {h}
+                    </th>
+                  ))}
+                  <th className="text-center px-4 py-2.5 text-primary text-[11px] uppercase tracking-wide font-medium border-b border-primary">
+                    Tributary
+                  </th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
+              </thead>
+              <tbody>
+                {a4Features.map((feat, i) => (
+                  <tr key={feat} className="border-b border-border/40">
+                    <td className="px-4 py-2.5 text-foreground/70">{feat}</td>
+                    <td className="px-4 py-2.5 text-center text-foreground/30">
+                      {a4matrix.Helio[i] ? "✓" : "✗"}
+                    </td>
+                    <td className="px-4 py-2.5 text-center text-foreground/30">
+                      {a4matrix["SF Subs"][i] ? "✓" : "✗"}
+                    </td>
+                    <td className="px-4 py-2.5 text-center text-foreground/30">
+                      {a4matrix.Stripe[i] ? "✓" : "✗"}
+                    </td>
+                    <td className="px-4 py-2.5 text-center text-foreground/30">
+                      {a4matrix.Jupiter[i] ? "✓" : "✗"}
+                    </td>
+                    <td className="px-4 py-2.5 text-center text-primary font-bold bg-primary/5">
+                      ✓
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-foreground/40 mt-3">
+            SF Subscriptions is a delegation primitive. Tributary is the
+            composable platform on top.
+          </p>
+        </section>
 
-// ─── Slide: The Wedge ─────────────────────────────────────────────────────────
-function SlideWedge() {
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Wedge</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">
-            "Keep $X liquid. Everything above
-          </span>
-          <br />
-          <span className="gradient-text">gets deployed automatically."</span>
-        </h2>
-      </div>
-
-      <div className="border border-primary/30 bg-primary/5 px-6 py-5 max-w-3xl mx-auto mb-6">
-        <p className="text-sm text-foreground leading-relaxed">
-          This is the strongest wedge because the pain is universal — nearly
-          every crypto user has idle SOL, USDC, or rewards. The ROI is
-          measurable. The value proposition is immediate: set it once, benefit
-          forever. It spans retail and B2B. And it's a trust escalation gateway.
-        </p>
-      </div>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
-        {[
-          {
-            icon: TrendingUp,
-            title: "Universal pain",
-            desc: "Every crypto user has idle capital",
-          },
-          {
-            icon: Target,
-            title: "Measurable ROI",
-            desc: "Users see yield appearing",
-          },
-          {
-            icon: Lock,
-            title: "Immediate value",
-            desc: "Set once, benefit forever",
-          },
-          {
-            icon: Layers,
-            title: "Escalation gateway",
-            desc: "Yield → policies → intents",
-          },
-        ].map((w, i) => (
-          <motion.div
-            key={w.title}
-            className="border border-border/50 bg-muted/10 p-4 space-y-2"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.08 }}
-            viewport={{ once: true }}
-          >
-            <w.icon className="h-5 w-5 text-primary" />
-            <div className="text-sm font-bold text-foreground">{w.title}</div>
-            <div className="text-xs text-muted-foreground leading-snug">
-              {w.desc}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <p className="mt-6 text-sm text-muted-foreground italic max-w-3xl mx-auto text-center lg:text-left lg:mx-0">
-        DCA gets them in the door. Auto-deploy gets their capital flowing. That
-        capital flow is the moat — every dollar routed through Tributary's
-        composable layer generates fee data, proves the tech, deepens trust.
-      </p>
-    </section>
-  );
-}
-
-// ─── Slide: Stage 2 Markets ───────────────────────────────────────────────────
-function SlideMarkets() {
-  const markets = [
-    {
-      icon: TrendingUp,
-      who: "Retail crypto holders",
-      sub: "Personal wealth automation",
-      why: "Idle capital + risk management",
-      analog: "Wealthfront / Betterment",
-    },
-    {
-      icon: Building2,
-      who: "Crypto-native startups",
-      sub: "Startup treasury",
-      why: "Founders don't want to manage DeFi",
-      analog: "Brex / Stripe Treasury",
-    },
-    {
-      icon: Landmark,
-      who: "DAOs",
-      sub: "DAO treasury",
-      why: "Stables/SOL sitting idle",
-      analog: "No good on-chain solution exists",
-    },
-  ];
-
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Stage 2 — Where Revenue Becomes Real</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Three sub-markets. </span>
-          <span className="gradient-text">Each independently large.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          Stage 2 is where Tributary stops being "a protocol with features" and
-          becomes a capital management layer. The leap from transaction
-          automation (a feature) to constraint-based capital management (a
-          platform). This is where a seed round becomes fundable on its own
-          merits.
-        </p>
-      </div>
-
-      <div className="grid sm:grid-cols-3 gap-4 max-w-5xl mx-auto">
-        {markets.map((m, i) => (
-          <motion.div
-            key={m.sub}
-            className="border border-border/50 bg-muted/10 p-5 space-y-3"
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.1 }}
-            viewport={{ once: true }}
-          >
-            <m.icon className="h-5 w-5 text-primary" />
+        {/* A5 */}
+        <section className="py-12">
+          <p className="text-xs font-mono text-foreground/40 mb-1">§A5</p>
+          <h3 className="text-lg font-bold text-foreground mb-5">
+            Unit Economics
+          </h3>
+          <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                {m.sub}
+              <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-2">
+                Path to $10K MRR
+              </p>
+              <div className="border border-border/60">
+                {[
+                  ["M0", "$0", "payments-only fee volume thin"],
+                  ["M6", "~$500", "composable live, first DCA"],
+                  ["M12", "~$2K", "15+ integrators"],
+                  ["M18", "~$10K", "treasury pipeline, seed-ready"],
+                ].map(([m, r, n]) => (
+                  <div
+                    key={m}
+                    className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-border/40 last:border-b-0 items-center"
+                  >
+                    <div className="col-span-3 font-mono text-xs text-foreground/40">
+                      {m}
+                    </div>
+                    <div className="col-span-3 text-primary font-bold font-mono text-sm">
+                      {r}
+                    </div>
+                    <div className="col-span-6 text-xs text-foreground/40">
+                      {n}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="text-sm font-bold text-foreground mt-0.5">
-                {m.who}
-              </div>
             </div>
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              {m.why}
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-2">
+                Margin
+              </p>
+              <p className="text-sm text-foreground/60 leading-relaxed">
+                Effectively{" "}
+                <span className="text-foreground/80 font-medium">100%</span> on
+                protocol fees. No COGS — gas paid by executors. Infrastructure
+                is fixed OpEx.
+              </p>
+              <p className="text-xs text-foreground/40 mt-4">
+                1% protocol fee + gateway spread. No balance-sheet costs.
+              </p>
             </div>
-            <div className="text-xs gradient-text font-medium pt-2 border-t border-border/30">
-              Analog: {m.analog}
-            </div>
-          </motion.div>
-        ))}
+          </div>
+        </section>
+
+        {/* A6 */}
+        <section className="py-12">
+          <p className="text-xs font-mono text-foreground/40 mb-1">§A6</p>
+          <h3 className="text-lg font-bold text-foreground mb-5">
+            Security & Verification
+          </h3>
+          <TableWrap>
+            <tbody>
+              <tr>
+                <Td className="text-foreground/60 w-2/5">Verified builds</Td>
+                <Td className="text-foreground/40">Ottersec verified</Td>
+              </tr>
+              <tr>
+                <Td className="text-foreground/60">Test coverage</Td>
+                <Td className="text-foreground/40">&gt;95%</Td>
+              </tr>
+              <tr>
+                <Td className="text-foreground/60">Adevar grant</Td>
+                <Td className="text-foreground/40">$10K secured (partial)</Td>
+              </tr>
+              <tr>
+                <Td className="text-foreground/60">Full audit scope</Td>
+                <Td className="text-foreground/40">
+                  Funded by this round ($45K)
+                </Td>
+              </tr>
+            </tbody>
+          </TableWrap>
+        </section>
       </div>
-    </section>
+    </details>
   );
 }
 
-// ─── Slide: Funding Sequencing ───────────────────────────────────────────────
-function SlideFunding() {
-  const rounds = [
-    {
-      stage: "PRE-SEED",
-      amount: "<$250K",
-      purpose: "Ship v2 composable layer + security audit",
-      gates: "Audit complete · composable layer in production",
-      narrative: "This raise",
-      current: true,
-    },
-    {
-      stage: "SEED",
-      amount: "$1–3M",
-      purpose: "Build Stage 2 (policy engine, treasury)",
-      gates: "Active DCA policies · idle-capital AUM",
-      narrative: '"Capital management layer on Solana"',
-      current: false,
-    },
-    {
-      stage: "SERIES A",
-      amount: "$5–15M",
-      purpose: "Build Stage 3 (agent) + scale Stage 2",
-      gates: "Treasury customers · retained policy revenue",
-      narrative: '"Agentic asset management for on-chain capital"',
-      current: false,
-    },
-  ];
-
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>Funding Sequencing</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Each raise is gated </span>
-          <span className="gradient-text">by PMF proof below it.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          The pre-seed is the right move right now — but not as the endgame.
-          It's the first rung of the ladder. The endgame is Series A at Stage 4
-          with three proven PMFs behind it.
-        </p>
-      </div>
-
-      <div className="max-w-5xl mx-auto">
-        <div className="grid sm:grid-cols-3 gap-0 border border-border/50">
-          {rounds.map((r, i) => (
-            <motion.div
-              key={r.stage}
-              className={`p-5 border-r border-border/30 last:border-r-0 ${
-                r.current ? "bg-primary/5 border-primary/30" : ""
-              }`}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span
-                  className="text-xs font-bold tracking-wider text-muted-foreground"
-                  style={{ fontFamily: "var(--font-secondary, monospace)" }}
-                >
-                  {r.stage}
-                </span>
-                {r.current && (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 bg-primary/15 text-primary">
-                    You are here
-                  </span>
-                )}
-              </div>
-              <div className="text-2xl font-bold gradient-text mb-3">
-                {r.amount}
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                    Purpose
-                  </div>
-                  <div className="text-xs text-foreground leading-snug">
-                    {r.purpose}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                    Gates
-                  </div>
-                  <div className="text-xs text-muted-foreground leading-snug">
-                    {r.gates}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                    Narrative
-                  </div>
-                  <div className="text-xs text-foreground italic leading-snug">
-                    {r.narrative}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: The Ask ───────────────────────────────────────────────────────────
-function SlideAsk() {
-  const allocation = [
-    {
-      pct: "~30%",
-      label: "Security Audit",
-      desc: "Enterprise-ready contract. Adevar grant covers partial.",
-    },
-    {
-      pct: "~27%",
-      label: "Composable Layer",
-      desc: "Ship WHEN→PULL→ROUTE. Payment protocol → composable platform.",
-    },
-    {
-      pct: "~27%",
-      label: "Growth & Adoption",
-      desc: "SDK improvements, integration guides, self-hosting.",
-    },
-    {
-      pct: "~16%",
-      label: "Operations",
-      desc: "Infrastructure, legal, liquidity pool.",
-    },
-  ];
-
-  const milestones = [
-    {
-      month: "M3",
-      label: "Audit complete",
-      signal: "Enterprise-ready contract",
-    },
-    {
-      month: "M6",
-      label: "Composable layer live",
-      signal: "First non-payment products shipping",
-    },
-    {
-      month: "M9",
-      label: "15+ integrations",
-      signal: "Recurring protocol revenue visible",
-    },
-    {
-      month: "M12",
-      label: "Seed on real metrics",
-      signal: "Composable volume growing · ecosystem emerging",
-    },
-  ];
-
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3 mx-auto text-center lg:text-left lg:mx-0">
-        <SectionLabel>The Ask</SectionLabel>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Raising </span>
-          <span className="gradient-text">&lt;$250K pre-seed.</span>
-        </h2>
-        <p className="text-muted-foreground text-[15px] leading-relaxed">
-          The protocol is built. The market is validated. 4,000+ payments prove
-          the primitive works. This raise completes the audit, ships the
-          composable layer, and validates recurring protocol revenue —
-          de-risking the seed round on real metrics, not promises.
-        </p>
-      </div>
-
-      <div className="grid sm:grid-cols-4 gap-3 mb-8 max-w-5xl mx-auto">
-        {allocation.map((a, i) => (
-          <motion.div
-            key={a.label}
-            className="border border-border/50 bg-muted/10 p-4"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.08 }}
-            viewport={{ once: true }}
-          >
-            <div className="text-2xl font-bold gradient-text">{a.pct}</div>
-            <div className="text-sm font-bold text-foreground mt-1">
-              {a.label}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1 leading-snug">
-              {a.desc}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="max-w-5xl mx-auto">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold mb-3">
-          12-Month Arc
-        </p>
-        <div className="grid sm:grid-cols-4 gap-0 border border-border/50">
-          {milestones.map((m, i) => (
-            <motion.div
-              key={m.month}
-              className={`p-4 border-r border-border/30 last:border-r-0 ${
-                i === milestones.length - 1
-                  ? "border-primary/30 bg-primary/5"
-                  : ""
-              }`}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <div className="text-xs font-mono text-muted-foreground/50">
-                {m.month}
-              </div>
-              <div className="text-sm font-bold text-foreground mt-1">
-                {m.label}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {m.signal}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Slide: Team ─────────────────────────────────────────────────────────────
-function SlideTeam() {
-  return (
-    <section className="py-16">
-      <div className="mb-8 max-w-3xl space-y-3">
-        <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-          Team
-        </p>
-        <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-          <span className="text-foreground">Fabian Schuh </span>
-          <span className="gradient-text">Dr.-Ing.</span>
-        </h2>
-      </div>
-      <FabianSchuhProfile />
-    </section>
-  );
-}
-
-// ─── Slide: Vision + CTA ──────────────────────────────────────────────────────
-function SlideCTA() {
-  return (
-    <section className="py-16">
-      <div className="border border-border bg-muted/20 p-8 sm:p-12 text-center">
-        <motion.p
-          className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-        >
-          The Venture Thesis
-        </motion.p>
-        <motion.h2
-          className="text-3xl md:text-4xl font-bold mb-6 leading-tight"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          viewport={{ once: true }}
-        >
-          Tributary reaches venture scale
-          <br />
-          <span className="gradient-text">
-            by climbing a trust ladder — not betting on a single product.
-          </span>
-        </motion.h2>
-        <motion.p
-          className="mb-10 text-muted-foreground max-w-2xl mx-auto text-[15px] leading-relaxed"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          viewport={{ once: true }}
-        >
-          Stage 0 earned trust in delegation. Stage 1 earns trust in DeFi
-          routing. Stage 2 earns trust in constraint enforcement and opens
-          product revenue. Stage 3 earns trust in decision delegation. Stage 4 —
-          autonomous capital management — is where the platform becomes
-          venture-scale.
-          <br />
-          <br />
-          <span className="text-foreground font-medium">
-            By then every risk has been resolved with data. Investors fund
-            scaling, not speculation.
-          </span>
-        </motion.p>
-        <motion.div
-          className="flex flex-col sm:flex-row gap-3 justify-center"
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          viewport={{ once: true }}
-        >
-          <a
-            href="mailto:fabian@tributary.so"
-            className="inline-flex items-center gap-2 border border-border bg-background hover:bg-muted text-foreground text-sm px-6 py-3 transition-colors"
-          >
-            <Mail className="h-4 w-4" />
-            Get in Touch
-          </a>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Root ─────────────────────────────────────────────────────────────────────
+// ─── Root ───────────────────────────────────────────────────────────────────
 export default function TributaryAngelPitch() {
   return (
-    <main className="mx-auto max-w-6xl px-4">
-      <SlideHero />
-      <Divider />
-      <SlideThesis />
-      <Divider />
-      <SlideLadder />
-      <Divider />
-      <SlideStage0 />
-      <Divider />
-      <SlideStages />
-      <Divider />
-      <SlideDeRisking />
-      <Divider />
-      <SlideWedge />
-      <Divider />
-      <SlideMarkets />
-      <Divider />
-      <SlideFunding />
-      <Divider />
-      <SlideAsk />
-      <Divider />
-      <SlideTeam />
-      <Divider />
-      <SlideCTA />
-    </main>
+    <div className="mx-auto max-w-6xl px-6 md:px-8">
+      <div className="lg:grid lg:grid-cols-[170px_1fr] lg:gap-12">
+        <aside className="hidden lg:block">
+          <TableOfContents />
+        </aside>
+        <main>
+          <div id="s01" className="scroll-mt-8">
+            <Hero />
+          </div>
+          <div id="s02" className="scroll-mt-8">
+            <Future />
+          </div>
+          <div id="s03" className="scroll-mt-8">
+            <WhyNow />
+          </div>
+          <div id="s04" className="scroll-mt-8">
+            <Product />
+          </div>
+          <div id="s05" className="scroll-mt-8">
+            <WhyYou />
+          </div>
+          <div id="s06" className="scroll-mt-8">
+            <TheBusiness />
+          </div>
+          <div id="s07" className="scroll-mt-8">
+            <Ask />
+          </div>
+          <div id="s08" className="scroll-mt-8">
+            <Closing />
+          </div>
+          <Appendix />
+        </main>
+      </div>
+    </div>
   );
 }
