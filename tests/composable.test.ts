@@ -12,7 +12,6 @@ import {
 import {
   createMint,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccount,
   createAssociatedTokenAccountIdempotent,
   mintTo,
   approve,
@@ -121,7 +120,7 @@ describe("Composable Policies", () => {
   let gatewayPDA: PublicKey;
   let userPaymentPDA: PublicKey;
   let paymentsDelegate: PublicKey;
-  let gatewaySignerTokenAccount: PublicKey; // token account for gateway signer (= recipient in composable) — OUTPUT mint
+  let userSecondMintTokenAccount: PublicKey; // token account for gateway signer (= recipient in composable) — OUTPUT mint
   let gatewaySignerInputTokenAccount: PublicKey; // token account for gateway signer — INPUT mint (still used for some setups)
 
   async function fund(account: PublicKey, amount: number): Promise<void> {
@@ -214,7 +213,7 @@ describe("Composable Policies", () => {
     );
 
     // Recipient token account (OUTPUT mint = secondMint) — receives swept output
-    gatewaySignerTokenAccount = await createAssociatedTokenAccountIdempotent(
+    userSecondMintTokenAccount = await createAssociatedTokenAccountIdempotent(
       connection,
       admin,
       secondMint,
@@ -310,7 +309,7 @@ describe("Composable Policies", () => {
   //  1. Create composable policy — timed schedule, no validation
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — timed schedule, no validation", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composableCountBefore =
@@ -341,17 +340,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        PublicKey.default,
         0,
         Buffer.alloc(0)
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -359,7 +359,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(ix),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -367,8 +367,6 @@ describe("Composable Policies", () => {
       composablePolicyPDA
     );
 
-    expect(policy.discriminator).toBe(1);
-    expect(policy.version).toBe(1);
     expect(policy.userPayment).toEqual(userPaymentPDA);
     expect(policy.gateway).toEqual(gatewayPDA);
     expect(policy.status).toEqual({ active: {} });
@@ -397,7 +395,7 @@ describe("Composable Policies", () => {
   //  2. Create composable policy — with validation config
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — with validation config", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -428,17 +426,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        LIGHTHOUSE_PUBKEY,
         1,
         validationData
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: LIGHTHOUSE_PUBKEY,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -446,7 +445,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(ix),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -479,7 +478,7 @@ describe("Composable Policies", () => {
   //  3. Create composable policy — fails with non-whitelisted forward program
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with non-whitelisted forward program", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -509,17 +508,18 @@ describe("Composable Policies", () => {
           schedule,
           memo,
           forwardConfig,
-          PublicKey.default,
           0,
           Buffer.alloc(0)
         )
         .accountsStrict({
-          feePayer: gatewayAuthority.publicKey,
+          feePayer: user.publicKey,
+          user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
           validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -527,7 +527,7 @@ describe("Composable Policies", () => {
       await sendAndConfirmTransaction(
         connection,
         new Transaction().add(ix),
-        [gatewayAuthority],
+        [user],
         { commitment: "processed" as Commitment }
       );
 
@@ -541,7 +541,7 @@ describe("Composable Policies", () => {
   //  4. Create composable policy — fails with non-whitelisted validation program
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with non-whitelisted validation program", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -570,17 +570,18 @@ describe("Composable Policies", () => {
           schedule,
           memo,
           forwardConfig,
-          rogueValidation,
           0,
           Buffer.from("some-data")
         )
         .accountsStrict({
-          feePayer: gatewayAuthority.publicKey,
+          feePayer: user.publicKey,
+          user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
           validationPda: validationPdaAddress,
+          validationProgram: rogueValidation,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -588,7 +589,7 @@ describe("Composable Policies", () => {
       await sendAndConfirmTransaction(
         connection,
         new Transaction().add(ix),
-        [gatewayAuthority],
+        [user],
         { commitment: "processed" as Commitment }
       );
 
@@ -602,7 +603,7 @@ describe("Composable Policies", () => {
   //  5. Create composable policy — fails with zero data checks
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with zero data checks", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -631,17 +632,18 @@ describe("Composable Policies", () => {
           schedule,
           memo,
           forwardConfig,
-          PublicKey.default,
           0,
           Buffer.alloc(0)
         )
         .accountsStrict({
-          feePayer: gatewayAuthority.publicKey,
+          feePayer: user.publicKey,
+          user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
           validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -649,7 +651,7 @@ describe("Composable Policies", () => {
       await sendAndConfirmTransaction(
         connection,
         new Transaction().add(ix),
-        [gatewayAuthority],
+        [user],
         { commitment: "processed" as Commitment }
       );
 
@@ -663,7 +665,7 @@ describe("Composable Policies", () => {
   //  7. Change composable status — Active to Paused
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Active to Paused", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -690,17 +692,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        PublicKey.default,
         0,
         Buffer.alloc(0)
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -708,7 +711,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(createIx),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -716,8 +719,6 @@ describe("Composable Policies", () => {
       composablePolicyPDA
     );
     expect(policy.status).toEqual({ active: {} });
-
-    await sdk.updateWallet(new anchor.Wallet(user));
 
     const pauseIx = await program.methods
       .changeComposableStatus(composablePolicyId, { paused: {} })
@@ -789,7 +790,7 @@ describe("Composable Policies", () => {
   //  6. Delete composable policy
   // ══════════════════════════════════════════════════════════════════════
   test("Delete composable policy", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -818,17 +819,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        PublicKey.default,
         0,
         Buffer.alloc(0)
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -836,7 +838,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(createIx),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -844,8 +846,6 @@ describe("Composable Policies", () => {
       composablePolicyPDA
     );
     expect(policy.status).toEqual({ active: {} });
-
-    await sdk.updateWallet(new anchor.Wallet(user));
 
     const pauseIx = await program.methods
       .changeComposableStatus(composablePolicyId, { paused: {} })
@@ -872,7 +872,7 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         composablePolicy: composablePolicyPDA,
         config: configPDA,
-        rentPayer: gatewayAuthority.publicKey,
+        rentPayer: user.publicKey,
       })
       .instruction();
 
@@ -941,17 +941,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        PublicKey.default,
         0,
         Buffer.alloc(0)
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -959,7 +960,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(createIx),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -972,9 +973,20 @@ describe("Composable Policies", () => {
       10_000_000
     );
 
+    const recipientTokenAccount = getAssociatedTokenAddressSync(
+      secondMint,
+      user.publicKey
+    );
+    await createAssociatedTokenAccountIdempotent(
+      connection,
+      admin,
+      secondMint,
+      user.publicKey
+    );
+
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    const wrongInstructionData = Buffer.from(new Array(32).fill(0));
+    const wrongInstructionData = Buffer.from(new Array(33).fill(0));
 
     try {
       const ix = await program.methods
@@ -985,6 +997,7 @@ describe("Composable Policies", () => {
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
+          validationProgram: PublicKey.default,
           config: configPDA,
           userTokenAccount: userTokenAccount,
           mint: tokenMint,
@@ -999,7 +1012,7 @@ describe("Composable Policies", () => {
             userPaymentPDA,
             true
           ),
-          recipientTokenAccount: gatewaySignerTokenAccount,
+          recipientTokenAccount,
           gatewayFeeAccount: getAssociatedTokenAddressSync(
             secondMint,
             feeRecipient.publicKey
@@ -1063,17 +1076,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        PublicKey.default,
         0,
         Buffer.alloc(0)
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -1081,7 +1095,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(createIx),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -1118,6 +1132,7 @@ describe("Composable Policies", () => {
           gateway: gatewayPDA,
           config: configPDA,
           userTokenAccount: userTokenAccount,
+          validationProgram: PublicKey.default,
           mint: tokenMint,
           outputMint: secondMint,
           intermediateInputTokenAccount: getAssociatedTokenAddressSync(
@@ -1130,7 +1145,7 @@ describe("Composable Policies", () => {
             userPaymentPDA,
             true
           ),
-          recipientTokenAccount: gatewaySignerTokenAccount,
+          recipientTokenAccount: userSecondMintTokenAccount,
           gatewayFeeAccount: getAssociatedTokenAddressSync(
             secondMint,
             feeRecipient.publicKey
@@ -1194,17 +1209,18 @@ describe("Composable Policies", () => {
         schedule,
         memo,
         forwardConfig,
-        LIGHTHOUSE_PUBKEY,
         2,
         validationData
       )
       .accountsStrict({
-        feePayer: gatewayAuthority.publicKey,
+        feePayer: user.publicKey,
+        user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
         validationPda: validationPdaAddress,
+        validationProgram: LIGHTHOUSE_PUBKEY,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -1212,7 +1228,7 @@ describe("Composable Policies", () => {
     await sendAndConfirmTransaction(
       connection,
       new Transaction().add(createIx),
-      [gatewayAuthority],
+      [user],
       { commitment: "processed" as Commitment }
     );
 
@@ -1249,7 +1265,7 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         composablePolicy: composablePolicyPDA,
         config: configPDA,
-        rentPayer: gatewayAuthority.publicKey,
+        rentPayer: user.publicKey,
       })
       .remainingAccounts([
         {
