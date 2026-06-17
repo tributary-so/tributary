@@ -6,7 +6,7 @@ use anchor_spl::token::Mint;
 pub struct CreatePaymentPolicy<'info> {
     /// CHECK: The owner account - does NOT need to sign
     #[account()]
-    pub user: AccountInfo<'info>,
+    pub user: Signer<'info>,
 
     #[account(
         mut,
