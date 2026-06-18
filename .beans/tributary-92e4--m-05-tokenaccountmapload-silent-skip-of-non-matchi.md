@@ -1,14 +1,14 @@
 ---
 # tributary-92e4
 title: 'M-05: TokenAccountMap::load — Silent Skip of Non-Matching Accounts'
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-18T10:07:45Z
 parent: tributary-4kt4
 ---
 

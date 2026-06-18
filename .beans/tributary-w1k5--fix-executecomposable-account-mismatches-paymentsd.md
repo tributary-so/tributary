@@ -1,11 +1,11 @@
 ---
 # tributary-w1k5
 title: 'Fix executeComposable account mismatches: paymentsDelegate, user_token_account authority, coldWallet funding'
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-06-16T13:07:54Z
-updated_at: 2026-06-16T13:07:54Z
+updated_at: 2026-06-18T10:07:14Z
 ---
 
 Fix 5 issues in topup-balance.test.ts and execute_composable.rs:

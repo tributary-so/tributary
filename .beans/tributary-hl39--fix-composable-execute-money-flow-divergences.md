@@ -1,13 +1,11 @@
 ---
-id: tributary-hl39
-slug: fix-composable-execute-money-flow-divergences
+# tributary-hl39
 title: Fix composable execute money flow divergences
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-06-14T10:17:49Z
-updated_at: 2026-06-14T10:17:49Z
-etag: cc397f6913bbdda6
+updated_at: 2026-06-18T10:07:23Z
 ---
 
 execute_composable.rs diverges from COMPOSABLE.md in 8 places. See sub-tasks for fixes.

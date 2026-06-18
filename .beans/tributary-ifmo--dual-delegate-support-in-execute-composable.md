@@ -1,11 +1,11 @@
 ---
 # tributary-ifmo
 title: Dual delegate support in execute_composable
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-06-14T11:33:08Z
-updated_at: 2026-06-14T11:33:39Z
+updated_at: 2026-06-18T10:07:19Z
 ---
 
 Make execute_composable.rs accept both payments_delegate and user_payment PDA as valid delegation keys, matching execute_payment.rs compatibility. Only the initial pull (Step 3) uses the resolved delegate authority; all other CPIs (validation, forward, sweeps) continue to use the UserPayment PDA since it owns the intermediate ATAs.

@@ -1,14 +1,14 @@
 ---
 # tributary-y35e
 title: 'H-05: Validation CPI Layer Is a No-Op Stub'
-status: todo
+status: completed
 type: task
 priority: high
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-18T10:07:47Z
 parent: tributary-4kt4
 ---
 

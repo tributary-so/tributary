@@ -1,14 +1,14 @@
 ---
 # tributary-scie
 title: 'M-06: ReferralAccountMap::load — break Silently Drops Referral Accounts'
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - security
     - audit
 created_at: 2026-06-13T05:51:21Z
-updated_at: 2026-06-13T05:51:21Z
+updated_at: 2026-06-18T10:07:49Z
 parent: tributary-4kt4
 ---
 
