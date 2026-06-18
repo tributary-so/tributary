@@ -662,6 +662,74 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
+  //  5b. Create composable policy — fails when numDataChecks > MAX_BYTE_RANGE_CHECKS
+  //      Regression for reports/H-04-num-data-checks-unbounded-oob.md:
+  //      previously only >= 1 was validated, so numDataChecks = 5 (or 255)
+  //      succeeded at create time and then panicked out-of-bounds on every
+  //      execute_composable call, bricking the policy.
+  // ══════════════════════════════════════════════════════════════════════
+  test("Create composable policy — fails when numDataChecks exceeds MAX_BYTE_RANGE_CHECKS", async () => {
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+    const composablePolicyId =
+      (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+    const [composablePolicyPDA] = getComposablePolicyPda(
+      userPaymentPDA,
+      composablePolicyId,
+      program.programId
+    );
+
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
+    const now = Math.floor(Date.now() / 1000);
+    const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
+    const memo = new Array(64).fill(0);
+
+    // MAX_BYTE_RANGE_CHECKS == 4 on-chain. Sending 5 must be rejected at
+    // create time with InsufficientByteRangeChecks.
+    const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+    forwardConfig.numDataChecks = 5;
+
+    try {
+      const ix = await program.methods
+        .createComposablePolicy(
+          policyType,
+          memo,
+          forwardConfig,
+          0,
+          Buffer.alloc(0)
+        )
+        .accountsStrict({
+          feePayer: user.publicKey,
+          user: user.publicKey,
+          composablePolicy: composablePolicyPDA,
+          userPayment: userPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(ix),
+        [user],
+        { commitment: "processed" as Commitment }
+      );
+
+      assert(false, "Expected error for numDataChecks > MAX_BYTE_RANGE_CHECKS");
+    } catch (error: any) {
+      expect(error.message).toContain("InsufficientByteRangeChecks");
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
   //  7. Change composable status — Active to Paused
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Active to Paused", async () => {

@@ -12,8 +12,17 @@ use anchor_spl::token::Token;
 use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, TransferChecked};
 
 /// Validate byte-range checks on instruction_data using the configured checks.
+///
+/// Defense-in-depth: even though `create_composable_policy` rejects
+/// `num_data_checks > MAX_BYTE_RANGE_CHECKS`, this fn is reached with
+/// `num_checks` sourced from on-chain state. We re-check the bound here
+/// so a future regression in create-time validation (or a directly-
+/// serialized malformed account) cannot trigger an indexed panic.
+/// See reports/H-04-num-data-checks-unbounded-oob.md.
 fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: u8) -> Result<()> {
-    for i in 0..num_checks as usize {
+    let n = num_checks as usize;
+    require!(n <= checks.len(), TributaryError::ByteRangeCheckFailed);
+    for i in 0..n {
         require!(
             checks[i].validate(data),
             TributaryError::ByteRangeCheckFailed
@@ -989,5 +998,56 @@ mod tests {
         // Writability still forwarded.
         assert!(metas[0].is_writable);
         assert!(!metas[1].is_writable);
+    }
+
+    /// Defense-in-depth: `validate_byte_ranges` must reject `num_checks`
+    /// values greater than the length of the provided `checks` slice
+    /// instead of indexing out-of-bounds and panicking.
+    ///
+    /// See reports/H-04-num-data-checks-unbounded-oob.md.
+    #[test]
+    fn validate_byte_ranges_rejects_num_checks_above_slice_len() {
+        let checks: [ByteRangeCheck; 4] = [
+            ByteRangeCheck {
+                offset: 0,
+                length: 1,
+                expected: [0u8; 8],
+            },
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+        ];
+        let data = [0u8; 8];
+
+        // num_checks == checks.len() is fine (no OOB).
+        assert!(validate_byte_ranges(&data, &checks, 4).is_ok());
+
+        // num_checks > checks.len() must return an Err rather than panic.
+        let res = validate_byte_ranges(&data, &checks, 5);
+        assert!(
+            res.is_err(),
+            "num_checks > slice length must be rejected, got {:?}",
+            res
+        );
+
+        // And the obviously hostile 255 case.
+        let res = validate_byte_ranges(&data, &checks, 255);
+        assert!(
+            res.is_err(),
+            "num_checks = 255 must be rejected, got {:?}",
+            res
+        );
     }
 }

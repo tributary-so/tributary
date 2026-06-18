@@ -78,7 +78,8 @@ impl<'info> CreateComposablePolicy<'info> {
             TributaryError::InvalidForwardProgram
         );
         require!(
-            forward_config.num_data_checks >= 1,
+            forward_config.num_data_checks >= 1
+                && forward_config.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
             TributaryError::InsufficientByteRangeChecks
         );
         // Validate each ByteRangeCheck is sane (offset + length doesn't overflow u8)
