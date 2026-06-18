@@ -2,7 +2,7 @@ use crate::{
     constants::*,
     error::TributaryError,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
-    shared::schedule::{advance_schedule, validate_schedule_execution},
+    shared::schedule::{advance_policy, validate_policy_execution},
     state::*,
     utils::validate_mint_compatible,
 };
@@ -575,16 +575,16 @@ impl<'info> ExecuteComposable<'info> {
 
         let composable_policy = &mut ctx.accounts.composable_policy;
 
-        // ── Validate schedule + resolve base amount ─────────────────────
-        // Routes through `shared::strategies` so that Timed advancement
-        // uses the same calendar-month math as the subscription path
-        // (see reports/M-04-inconsistent-month-arithmetic.md).
+        // ── Validate policy + resolve base amount ──────────────────────
+        // Routes through `shared::schedule` so that Subscription
+        // advancement uses the same calendar-month math as the
+        // subscription path (see reports/M-04-inconsistent-month-arithmetic.md).
         let schedule_amount =
-            validate_schedule_execution(&composable_policy.schedule, now, forward_amount)?;
+            validate_policy_execution(&composable_policy.policy_type, now, forward_amount)?;
 
-        // Resolve the actual input amount. For Usage (PAYG), the caller-
+        // Resolve the actual input amount. For PayAsYouGo, the caller-
         // supplied `forward_amount` IS the chunk — validation already
-        // happened inside `validate_schedule_execution`. For other schedule
+        // happened inside `validate_policy_execution`. For other policy
         // types, `forward_amount` optionally overrides the configured
         // schedule amount.
         let input_amount = match forward_amount {
@@ -786,12 +786,12 @@ impl<'info> ExecuteComposable<'info> {
         // ── Step 11: UPDATE STATE ──────────────────────────────────────
         let composable_policy = &mut ctx.accounts.composable_policy;
 
-        // Advance the schedule now that the execution succeeded. For Timed
-        // this advances `next_execution_due` via calendar-month math (M-04),
-        // for Milestone it bumps `current`, for Usage it updates the rolling
-        // period total. Returns `should_complete` for one-shot / exhausted
-        // schedules.
-        let should_pause = advance_schedule(&mut composable_policy.schedule, now, input_amount)?;
+        // Advance the policy now that the execution succeeded. For
+        // Subscription this advances `next_payment_due` via calendar-month
+        // math (M-04), for Milestone it bumps `current_milestone`, for
+        // PayAsYouGo it updates the rolling period total. Returns
+        // `should_complete` for one-shot / exhausted policies.
+        let should_pause = advance_policy(&mut composable_policy.policy_type, now, input_amount)?;
 
         composable_policy.total_input = composable_policy
             .total_input

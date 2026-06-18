@@ -133,7 +133,7 @@ pub mod tributary {
 
     pub fn create_composable_policy(
         ctx: Context<CreateComposablePolicy>,
-        schedule: ScheduleType,
+        policy_type: PolicyType,
         memo: [u8; 64],
         forward_config: ForwardConfig,
         num_validation_accounts: u8,
@@ -141,7 +141,7 @@ pub mod tributary {
     ) -> Result<()> {
         CreateComposablePolicy::handler(
             ctx,
-            schedule,
+            policy_type,
             memo,
             forward_config,
             num_validation_accounts,

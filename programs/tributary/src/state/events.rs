@@ -1,4 +1,4 @@
-use super::composable_policy::{ForwardConfig, ScheduleType, ValidationConfig};
+use super::composable_policy::{ForwardConfig, ValidationConfig};
 use super::payment_policy::{PaymentStatus, PolicyType};
 use super::policy_header::PolicyStatus;
 use anchor_lang::prelude::*;
@@ -136,7 +136,7 @@ pub struct ComposablePolicyCreated {
     pub gateway: Pubkey,
     pub recipient: Pubkey,
     pub policy_id: u32,
-    pub schedule: ScheduleType,
+    pub policy_type: PolicyType,
     pub memo: [u8; 64],
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,

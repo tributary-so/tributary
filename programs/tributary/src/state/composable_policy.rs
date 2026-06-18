@@ -1,4 +1,4 @@
-use super::payment_policy::PaymentFrequency;
+use super::payment_policy::PolicyType;
 use anchor_lang::prelude::*;
 
 pub const MAX_BYTE_RANGE_CHECKS: usize = 4;
@@ -18,107 +18,6 @@ impl ByteRangeCheck {
         let start = self.offset as usize;
         let end = start + self.length as usize;
         &instruction_data[start..end] == &self.expected[..self.length as usize]
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
-pub enum ScheduleType {
-    Timed {
-        amount: u64,
-        auto_renew: bool,
-        max_executions: Option<u32>,
-        frequency: PaymentFrequency,
-        next_execution_due: i64,
-        padding: [u8; 97], // 97 bytes padding
-    },
-    Milestone {
-        amounts: [u64; 4],
-        timestamps: [i64; 4],
-        current: u8,
-        release_condition: u8,
-        total: u8,
-        padding: [u8; 53], // 53 bytes padding
-    },
-    Usage {
-        max_amount_per_period: u64,
-        max_chunk_amount: u64,
-        period_length_seconds: u64,
-        current_period_start: i64,
-        current_period_total: u64,
-        padding: [u8; 88], // 88 bytes padding
-    },
-}
-
-impl ScheduleType {
-    /// Each variant must be exactly this size (excluding enum discriminator)
-    pub const VARIANT_SIZE: usize = 128;
-
-    /// Total size including enum discriminator
-    pub const SIZE: usize = 1 + Self::VARIANT_SIZE; // 129 bytes
-
-    pub fn validate(&self) -> Result<()> {
-        match self {
-            ScheduleType::Timed {
-                amount,
-                frequency,
-                max_executions,
-                ..
-            } => {
-                require!(*amount > 0, crate::error::TributaryError::InvalidAmount);
-                frequency.validate()?;
-                if let Some(max) = max_executions {
-                    require!(*max > 0, crate::error::TributaryError::InvalidAmount);
-                }
-                Ok(())
-            }
-            ScheduleType::Milestone {
-                amounts,
-                timestamps,
-                current,
-                total,
-                ..
-            } => {
-                require!(
-                    *total >= 1 && *total <= 4,
-                    crate::error::TributaryError::InvalidAmount
-                );
-                require!(*current == 0, crate::error::TributaryError::InvalidAmount);
-                for i in 0..*total as usize {
-                    require!(amounts[i] > 0, crate::error::TributaryError::InvalidAmount);
-                    if i > 0 {
-                        require!(
-                            timestamps[i] > timestamps[i - 1],
-                            crate::error::TributaryError::InvalidPaymentDueDate
-                        );
-                    }
-                }
-                Ok(())
-            }
-            ScheduleType::Usage {
-                max_amount_per_period,
-                max_chunk_amount,
-                period_length_seconds,
-                ..
-            } => {
-                require!(
-                    *max_amount_per_period > 0,
-                    crate::error::TributaryError::InvalidAmount
-                );
-                require!(
-                    *max_chunk_amount > 0,
-                    crate::error::TributaryError::InvalidAmount
-                );
-                require!(
-                    *max_chunk_amount <= *max_amount_per_period,
-                    crate::error::TributaryError::InvalidAmount
-                );
-                require!(
-                    *period_length_seconds > 0,
-                    crate::error::TributaryError::InvalidInterval
-                );
-                Ok(())
-            }
-        }
     }
 }
 
@@ -170,7 +69,11 @@ pub struct ComposablePolicy {
     pub gateway: Pubkey,
     pub status: super::policy_header::PolicyStatus,
     pub rent_payer: Pubkey,
-    pub schedule: ScheduleType,
+    /// Reuses the same `PolicyType` enum as `PaymentPolicy`. Before
+    /// unification this was a separate `ScheduleType`; the two were
+    /// byte-identical duplicates (see `reports/M-04-inconsistent-month-arithmetic.md`
+    /// for the consolidation rationale).
+    pub policy_type: PolicyType,
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,
     pub memo: [u8; 64],
@@ -191,7 +94,7 @@ impl ComposablePolicy {
         32 + // gateway: Pubkey
         1 + // status: PolicyStatus
         32 + // rent_payer: Pubkey
-        ScheduleType::SIZE + // ScheduleType::Timed
+        PolicyType::TOTAL_SIZE + // policy_type (same enum as PaymentPolicy)
         ForwardConfig::SIZE + // forward_config
         ValidationConfig::SIZE + // validation_config
         64 + // memo: [u8; 64]
@@ -202,5 +105,5 @@ impl ComposablePolicy {
         4 + // policy_id: u32
         8 + // created_at: i64
         8 + // updated_at: i64
-        32; // padding: [u8; 200]
+        32; // padding: [u8; 32]
 }

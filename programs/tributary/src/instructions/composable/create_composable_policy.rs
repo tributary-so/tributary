@@ -62,14 +62,15 @@ pub struct CreateComposablePolicy<'info> {
 impl<'info> CreateComposablePolicy<'info> {
     pub fn handler(
         ctx: Context<CreateComposablePolicy>,
-        schedule: ScheduleType,
+        policy_type: PolicyType,
         memo: [u8; 64],
         forward_config: ForwardConfig,
         num_validation_accounts: u8,
         validation_data: Vec<u8>,
     ) -> Result<()> {
-        // Validate schedule
-        schedule.validate()?;
+        // Validate policy_type (delegates to PolicyType::validate which
+        // covers Subscription / Milestone / PayAsYouGo).
+        policy_type.validate()?;
 
         // Validate ForwardConfig
         require!(
@@ -149,7 +150,7 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.gateway = ctx.accounts.gateway.key();
         composable_policy.status = PolicyStatus::Active;
         composable_policy.rent_payer = ctx.accounts.fee_payer.key();
-        composable_policy.schedule = schedule;
+        composable_policy.policy_type = policy_type;
         composable_policy.memo = memo;
         composable_policy.forward_config = forward_config;
         composable_policy.validation_config = if has_validation {
@@ -226,7 +227,7 @@ impl<'info> CreateComposablePolicy<'info> {
             gateway: composable_policy.gateway,
             recipient: composable_policy.recipient,
             policy_id,
-            schedule: composable_policy.schedule.clone(),
+            policy_type: composable_policy.policy_type.clone(),
             memo: composable_policy.memo,
             forward_config: composable_policy.forward_config.clone(),
             validation_config: composable_policy.validation_config.clone(),
