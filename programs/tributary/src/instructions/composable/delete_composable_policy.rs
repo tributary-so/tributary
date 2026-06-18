@@ -1,7 +1,5 @@
-use crate::{constants::*, error::TributaryError, state::*};
+use crate::{constants::*, error::TributaryError, shared::account_close::close_account, state::*};
 use anchor_lang::prelude::*;
-
-const CLOSE_DISCRIMINATOR: [u8; 8] = [u8::MAX; 8];
 
 #[derive(Accounts)]
 #[instruction(policy_id: u32)]
@@ -67,7 +65,10 @@ impl<'info> DeleteComposablePolicy<'info> {
         let policy_key = composable_policy.key();
         let policy_id = composable_policy.policy_id;
 
-        // Close ValidationPDA if validation was configured
+        // Close ValidationPDA if validation was configured. Rent goes to the
+        // same destination as the policy; the helper fully zeroes the data
+        // buffer (ValidationPda can carry up to MAX_VALIDATION_DATA_SIZE bytes
+        // of off-chain-relevant validation bytes).
         if has_validation {
             let remaining = ctx.remaining_accounts;
             require!(!remaining.is_empty(), TributaryError::ValidationPdaMismatch);
@@ -81,29 +82,12 @@ impl<'info> DeleteComposablePolicy<'info> {
                 TributaryError::ValidationPdaMismatch
             );
 
-            let val_pda_info = &remaining[0];
-            // Transfer rent to the same destination as the policy
-            **destination.to_account_info().try_borrow_mut_lamports()? = destination
-                .to_account_info()
-                .lamports()
-                .checked_add(val_pda_info.lamports())
-                .ok_or(TributaryError::ArithmeticOverflow)?;
-            **val_pda_info.try_borrow_mut_lamports()? = 0;
-            let mut val_data = val_pda_info.try_borrow_mut_data()?;
-            val_data[..8].copy_from_slice(&CLOSE_DISCRIMINATOR);
+            close_account(&remaining[0], &destination)?;
         }
 
         // Close ComposablePolicy
         let info = composable_policy.to_account_info();
-        {
-            let mut data = info.try_borrow_mut_data()?;
-            data[..8].copy_from_slice(&CLOSE_DISCRIMINATOR);
-        }
-        **destination.try_borrow_mut_lamports()? = destination
-            .lamports()
-            .checked_add(info.lamports())
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-        **info.try_borrow_mut_lamports()? = 0;
+        close_account(&info, &destination)?;
 
         emit!(ComposablePolicyDeleted {
             composable_policy: policy_key,

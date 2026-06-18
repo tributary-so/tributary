@@ -1,4 +1,4 @@
-use crate::{constants::*, error::TributaryError, state::*};
+use crate::{constants::*, error::TributaryError, shared::account_close::close_account, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -50,11 +50,7 @@ impl<'info> DeleteUserPayment<'info> {
         let rent_refund_target = destination.key();
 
         let info = user_payment.to_account_info();
-        **destination.try_borrow_mut_lamports()? = destination
-            .lamports()
-            .checked_add(info.lamports())
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-        **info.try_borrow_mut_lamports()? = 0;
+        close_account(&info, &destination)?;
 
         emit!(UserPaymentDeleted {
             user_payment: user_payment.key(),
