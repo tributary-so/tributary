@@ -400,6 +400,8 @@ describe("Composable Topup Balance Flow", () => {
         config: configPDA,
         validationPda: validationPDA,
         validationProgram: LIGHTHOUSE_PUBKEY,
+        inputMint: USDC_MINT,
+        outputMint: USDC_MINT,
         systemProgram: SystemProgram.programId,
       })
       .instruction();

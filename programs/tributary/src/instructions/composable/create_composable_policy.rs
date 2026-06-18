@@ -1,5 +1,6 @@
-use crate::{constants::*, error::TributaryError, state::*};
+use crate::{constants::*, error::TributaryError, state::*, utils::validate_mint_compatible};
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 #[derive(Accounts)]
 pub struct CreateComposablePolicy<'info> {
@@ -56,6 +57,19 @@ pub struct CreateComposablePolicy<'info> {
     /// Pass SystemProgram when no validation is configured.
     pub validation_program: UncheckedAccount<'info>,
 
+    /// Forward input mint. Pinned against `forward_config.input_mint`
+    /// in the handler (Anchor constraints can't reach handler args) and
+    /// fully validated via `validate_mint_compatible` to reject Token-2022
+    /// TransferHook / PermanentDelegate / ConfidentialTransferMint etc.
+    /// that would break `transfer_checked` at execute time or drain the
+    /// PDA-owned intermediate ATA. See reports/L-02-mint-validation-call-sites-incomplete.md
+    /// and shared-base §17/§23.
+    pub input_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    /// Forward output mint. Pinned against `forward_config.output_mint`
+    /// in the handler and validated the same way as `input_mint`.
+    pub output_mint: Box<InterfaceAccount<'info, Mint>>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -82,6 +96,24 @@ impl<'info> CreateComposablePolicy<'info> {
                 && forward_config.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
             TributaryError::InsufficientByteRangeChecks
         );
+
+        // L-02: pin the named `input_mint` / `output_mint` accounts against
+        // the caller-supplied `forward_config` Pubkeys and run the full
+        // Token-2022 extension allowlist on both. Without this, a policy
+        // could be created against a TransferHook / PermanentDelegate /
+        // ConfidentialTransferMint mint that breaks `transfer_checked` at
+        // execute time (or drains the PDA-owned intermediate ATA in the
+        // PermanentDelegate case). See reports/L-02-mint-validation-call-sites-incomplete.md.
+        require!(
+            ctx.accounts.input_mint.key() == forward_config.input_mint,
+            TributaryError::TokenMintMismatch
+        );
+        require!(
+            ctx.accounts.output_mint.key() == forward_config.output_mint,
+            TributaryError::TokenMintMismatch
+        );
+        validate_mint_compatible(&ctx.accounts.input_mint.to_account_info())?;
+        validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
         // Validate each ByteRangeCheck is sane (offset + length doesn't overflow u8)
         // and at least one check pins the discriminator at offset 0.
         //

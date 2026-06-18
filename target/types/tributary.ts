@@ -579,6 +579,25 @@ export type Tributary = {
           ]
         },
         {
+          "name": "inputMint",
+          "docs": [
+            "Forward input mint. Pinned against `forward_config.input_mint`",
+            "in the handler (Anchor constraints can't reach handler args) and",
+            "fully validated via `validate_mint_compatible` to reject Token-2022",
+            "TransferHook / PermanentDelegate / ConfidentialTransferMint etc.",
+            "that would break `transfer_checked` at execute time or drain the",
+            "PDA-owned intermediate ATA. See reports/L-02-mint-validation-call-sites-incomplete.md",
+            "and shared-base §17/§23."
+          ]
+        },
+        {
+          "name": "outputMint",
+          "docs": [
+            "Forward output mint. Pinned against `forward_config.output_mint`",
+            "in the handler and validated the same way as `input_mint`."
+          ]
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }

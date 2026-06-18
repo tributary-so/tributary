@@ -352,6 +352,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -438,6 +440,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: LIGHTHOUSE_PUBKEY,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -520,6 +524,8 @@ describe("Composable Policies", () => {
           config: configPDA,
           validationPda: validationPdaAddress,
           validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -582,6 +588,8 @@ describe("Composable Policies", () => {
           config: configPDA,
           validationPda: validationPdaAddress,
           validationProgram: rogueValidation,
+          inputMint: tokenMint,
+          outputMint: secondMint,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -644,6 +652,8 @@ describe("Composable Policies", () => {
           config: configPDA,
           validationPda: validationPdaAddress,
           validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -712,6 +722,8 @@ describe("Composable Policies", () => {
           config: configPDA,
           validationPda: validationPdaAddress,
           validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -787,6 +799,8 @@ describe("Composable Policies", () => {
           config: configPDA,
           validationPda: validationPdaAddress,
           validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -847,6 +861,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -974,6 +990,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -1096,6 +1114,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -1231,6 +1251,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -1364,6 +1386,8 @@ describe("Composable Policies", () => {
         config: configPDA,
         validationPda: validationPdaAddress,
         validationProgram: LIGHTHOUSE_PUBKEY,
+        inputMint: tokenMint,
+        outputMint: secondMint,
         systemProgram: SystemProgram.programId,
       })
       .instruction();

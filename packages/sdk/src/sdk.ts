@@ -2051,6 +2051,12 @@ export class Tributary {
       validationProgram: validationProgram.equals(PublicKey.default)
         ? SystemProgram.programId
         : validationProgram,
+      // L-02: forward mints are validated on-chain against
+      // forwardConfig.inputMint/outputMint; auto-derive them from the
+      // caller-supplied config so consumers don't have to pass them
+      // explicitly.
+      inputMint: forwardConfig.inputMint,
+      outputMint: forwardConfig.outputMint,
       systemProgram: SystemProgram.programId,
     };
 
