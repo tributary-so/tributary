@@ -37,7 +37,6 @@ import type {
   ProgramConfig,
   ReferralAccount,
   ComposablePolicy,
-  ScheduleType,
   ForwardConfig,
   ValidationConfig,
   PolicyStatus,
@@ -1995,7 +1994,7 @@ export class Tributary {
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
-   * @param schedule - Schedule configuration defining execution timing
+   * @param policyType - Policy configuration defining execution timing
    * @param memo - Memo string to include with the policy (max 64 bytes)
    * @param forwardConfig - Token forwarding configuration
    * @param validationProgram - Validation program pubkey (PublicKey.default for no validation)
@@ -2008,7 +2007,7 @@ export class Tributary {
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
-    schedule: any,
+    policyType: any,
     memo: string,
     forwardConfig: any,
     validationProgram: PublicKey = PublicKey.default,
@@ -2057,7 +2056,7 @@ export class Tributary {
 
     return await this.program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memoBytes,
         forwardConfig,
         numValidationAccounts,

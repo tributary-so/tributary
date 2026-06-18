@@ -326,7 +326,7 @@ describe("Composable Topup Balance Flow", () => {
     expect(userPayment!.isActive).toBe(true);
   });
 
-  test("Create composable topup policy — usage schedule + Lighthouse validation", async () => {
+  test("Create composable topup policy — pay-as-you-go policy + Lighthouse validation", async () => {
     await sdk.updateWallet(new anchor.Wallet(coldWallet));
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
@@ -345,15 +345,15 @@ describe("Composable Topup Balance Flow", () => {
 
     const now = Math.floor(Date.now() / 1000);
 
-    // Usage schedule: 100 USDC/month max, 50 USDC max chunk
-    const schedule = {
-      usage: {
+    // PayAsYouGo policy: 100 USDC/month max, 50 USDC max chunk
+    const policyType = {
+      payAsYouGo: {
         maxAmountPerPeriod: new anchor.BN(100_000_000), // 100 USDC
         maxChunkAmount: new anchor.BN(50_000_000), // 50 USDC
         periodLengthSeconds: new anchor.BN(30 * 24 * 3600), // 30 days
         currentPeriodStart: new anchor.BN(now),
         currentPeriodTotal: new anchor.BN(0),
-        padding: new Array(1).fill(0),
+        padding: new Array(88).fill(0),
       },
     };
 
@@ -385,7 +385,7 @@ describe("Composable Topup Balance Flow", () => {
     // numValidationAccounts = 1 (hotWallet USDC ATA — the account Lighthouse reads)
     const ix = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         1, // numValidationAccounts
@@ -435,12 +435,14 @@ describe("Composable Topup Balance Flow", () => {
     );
     expect(policy.validationConfig.numValidationAccounts).toBe(1);
 
-    // Usage schedule
-    expect(policy.schedule.usage.maxAmountPerPeriod.toNumber()).toBe(
+    // PayAsYouGo policy
+    expect(policy.policyType.payAsYouGo.maxAmountPerPeriod.toNumber()).toBe(
       100_000_000
     );
-    expect(policy.schedule.usage.maxChunkAmount.toNumber()).toBe(50_000_000);
-    expect(policy.schedule.usage.currentPeriodTotal.toNumber()).toBe(0);
+    expect(policy.policyType.payAsYouGo.maxChunkAmount.toNumber()).toBe(
+      50_000_000
+    );
+    expect(policy.policyType.payAsYouGo.currentPeriodTotal.toNumber()).toBe(0);
 
     // Verify ValidationPDA was created with correct assertion data
     const valPdaAccount = await connection.getAccountInfo(validationPDA);
@@ -570,7 +572,7 @@ describe("Composable Topup Balance Flow", () => {
     expect(policy.totalInput.toNumber()).toBe(inputAmount);
     expect(policy.totalOutput.toNumber()).toBe(netInput);
     expect(policy.paymentCount).toBe(1);
-    expect(policy.schedule.usage.currentPeriodTotal.toNumber()).toBe(
+    expect(policy.policyType.payAsYouGo.currentPeriodTotal.toNumber()).toBe(
       inputAmount
     );
   });
@@ -656,7 +658,9 @@ describe("Composable Topup Balance Flow", () => {
       expect(error).toBeDefined();
 
       // Lighthouse raises 0x1771 -> 6001 which is an AssertionFailed Error
-      expect(error.message).toContain("L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95 failed: custom program error: 0x1771");
+      expect(error.message).toContain(
+        "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95 failed: custom program error: 0x1771"
+      );
     }
 
     // ── Verify policy state unchanged (transaction reverted) ────────────
@@ -664,7 +668,7 @@ describe("Composable Topup Balance Flow", () => {
       composablePolicyPDA
     );
     expect(policy.paymentCount).toBe(1);
-    expect(policy.schedule.usage.currentPeriodTotal.toNumber()).toBe(
+    expect(policy.policyType.payAsYouGo.currentPeriodTotal.toNumber()).toBe(
       50_000_000
     );
   });

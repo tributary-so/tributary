@@ -83,14 +83,14 @@ function defaultForwardConfig(
   };
 }
 
-function defaultTimedSchedule(amount: number, nextDue: number): any {
+function defaultSubscriptionPolicy(amount: number, nextDue: number): any {
   return {
-    timed: {
+    subscription: {
       amount: new anchor.BN(amount),
       autoRenew: true,
-      maxExecutions: null,
-      frequency: { monthly: {} },
-      nextExecutionDue: new anchor.BN(nextDue),
+      maxRenewals: null,
+      paymentFrequency: { monthly: {} },
+      nextPaymentDue: new anchor.BN(nextDue),
     },
   };
 }
@@ -306,9 +306,9 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  1. Create composable policy — timed schedule, no validation
+  //  1. Create composable policy — subscription policy, no validation
   // ══════════════════════════════════════════════════════════════════════
-  test("Create composable policy — timed schedule, no validation", async () => {
+  test("Create composable policy — subscription policy, no validation", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
@@ -317,7 +317,7 @@ describe("Composable Policies", () => {
 
     const now = Math.floor(Date.now() / 1000);
     const nextDue = now + 30 * 24 * 3600;
-    const schedule = defaultTimedSchedule(1_000_000, nextDue);
+    const policyType = defaultSubscriptionPolicy(1_000_000, nextDue);
     const memo = new Array(64).fill(0);
     Buffer.from("Test composable").copy(Buffer.from(memo));
 
@@ -337,7 +337,7 @@ describe("Composable Policies", () => {
 
     const ix = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         0,
@@ -380,9 +380,9 @@ describe("Composable Policies", () => {
       PublicKey.default
     );
 
-    expect(policy.schedule.timed.amount.toNumber()).toBe(1_000_000);
-    expect(policy.schedule.timed.autoRenew).toBe(true);
-    expect(policy.schedule.timed.maxExecutions).toBeNull();
+    expect(policy.policyType.subscription.amount.toNumber()).toBe(1_000_000);
+    expect(policy.policyType.subscription.autoRenew).toBe(true);
+    expect(policy.policyType.subscription.maxRenewals).toBeNull();
 
     const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
     expect(userPaymentAfter!.createdComposableCount).toBe(composablePolicyId);
@@ -412,7 +412,7 @@ describe("Composable Policies", () => {
     );
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(500_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(500_000, now + 86400);
 
     const memo = new Array(64).fill(0);
     Buffer.from("With validation").copy(Buffer.from(memo));
@@ -423,7 +423,7 @@ describe("Composable Policies", () => {
 
     const ix = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         1,
@@ -495,7 +495,7 @@ describe("Composable Policies", () => {
     );
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(100_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
     const rogueProgram = Keypair.generate().publicKey;
@@ -505,7 +505,7 @@ describe("Composable Policies", () => {
     try {
       const ix = await program.methods
         .createComposablePolicy(
-          schedule,
+          policyType,
           memo,
           forwardConfig,
           0,
@@ -558,7 +558,7 @@ describe("Composable Policies", () => {
     );
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(100_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
@@ -567,7 +567,7 @@ describe("Composable Policies", () => {
     try {
       const ix = await program.methods
         .createComposablePolicy(
-          schedule,
+          policyType,
           memo,
           forwardConfig,
           0,
@@ -620,7 +620,7 @@ describe("Composable Policies", () => {
     );
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(100_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
@@ -629,7 +629,7 @@ describe("Composable Policies", () => {
     try {
       const ix = await program.methods
         .createComposablePolicy(
-          schedule,
+          policyType,
           memo,
           forwardConfig,
           0,
@@ -682,14 +682,14 @@ describe("Composable Policies", () => {
     );
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(100_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Status test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
     const createIx = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         0,
@@ -809,14 +809,14 @@ describe("Composable Policies", () => {
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(50_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(50_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Delete test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
     const createIx = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         0,
@@ -913,7 +913,7 @@ describe("Composable Policies", () => {
     );
 
     const pastTime = Math.floor(Date.now() / 1000) - 3600;
-    const schedule = defaultTimedSchedule(100_000, pastTime);
+    const policyType = defaultSubscriptionPolicy(100_000, pastTime);
 
     const memo = new Array(64).fill(0);
     Buffer.from("ByteCheck test").copy(Buffer.from(memo));
@@ -938,7 +938,7 @@ describe("Composable Policies", () => {
 
     const createIx = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         0,
@@ -1065,7 +1065,7 @@ describe("Composable Policies", () => {
     );
 
     const pastTime = Math.floor(Date.now() / 1000) - 3600;
-    const schedule = defaultTimedSchedule(100_000, pastTime);
+    const policyType = defaultSubscriptionPolicy(100_000, pastTime);
 
     const memo = new Array(64).fill(0);
     Buffer.from("Paused exec test").copy(Buffer.from(memo));
@@ -1073,7 +1073,7 @@ describe("Composable Policies", () => {
 
     const createIx = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         0,
@@ -1197,7 +1197,7 @@ describe("Composable Policies", () => {
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
 
     const now = Math.floor(Date.now() / 1000);
-    const schedule = defaultTimedSchedule(50_000, now + 86400);
+    const policyType = defaultSubscriptionPolicy(50_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Delete+Val test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
@@ -1206,7 +1206,7 @@ describe("Composable Policies", () => {
     // Create with validation
     const createIx = await program.methods
       .createComposablePolicy(
-        schedule,
+        policyType,
         memo,
         forwardConfig,
         2,

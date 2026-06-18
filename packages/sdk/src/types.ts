@@ -102,11 +102,6 @@ export type ReferralAccount = IdlAccounts<Tributary>["referralAccount"];
 // Composable policy types - These types will resolve once the IDL is regenerated
 // after `anchor build`. They resolve to `any` until the IDL includes them.
 
-/**
- * Schedule type for composable policies.
- * Defines when and how composable policy executions occur.
- */
-export type ScheduleType = IdlTypes<Tributary>["scheduleType"];
 
 /**
  * Forward configuration for composable policies.

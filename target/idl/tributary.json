@@ -579,10 +579,10 @@
       ],
       "args": [
         {
-          "name": "schedule",
+          "name": "policy_type",
           "type": {
             "defined": {
-              "name": "ScheduleType"
+              "name": "PolicyType"
             }
           }
         },
@@ -2902,10 +2902,16 @@
             "type": "pubkey"
           },
           {
-            "name": "schedule",
+            "name": "policy_type",
+            "docs": [
+              "Reuses the same `PolicyType` enum as `PaymentPolicy`. Before",
+              "unification this was a separate `ScheduleType`; the two were",
+              "byte-identical duplicates (see `reports/M-04-inconsistent-month-arithmetic.md`",
+              "for the consolidation rationale)."
+            ],
             "type": {
               "defined": {
-                "name": "ScheduleType"
+                "name": "PolicyType"
               }
             }
           },
@@ -3003,10 +3009,10 @@
             "type": "u32"
           },
           {
-            "name": "schedule",
+            "name": "policy_type",
             "type": {
               "defined": {
-                "name": "ScheduleType"
+                "name": "PolicyType"
               }
             }
           },
@@ -4172,132 +4178,6 @@
                 3
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "ScheduleType",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Timed",
-            "fields": [
-              {
-                "name": "amount",
-                "type": "u64"
-              },
-              {
-                "name": "auto_renew",
-                "type": "bool"
-              },
-              {
-                "name": "max_executions",
-                "type": {
-                  "option": "u32"
-                }
-              },
-              {
-                "name": "frequency",
-                "type": {
-                  "defined": {
-                    "name": "PaymentFrequency"
-                  }
-                }
-              },
-              {
-                "name": "next_execution_due",
-                "type": "i64"
-              },
-              {
-                "name": "padding",
-                "type": {
-                  "array": [
-                    "u8",
-                    97
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Milestone",
-            "fields": [
-              {
-                "name": "amounts",
-                "type": {
-                  "array": [
-                    "u64",
-                    4
-                  ]
-                }
-              },
-              {
-                "name": "timestamps",
-                "type": {
-                  "array": [
-                    "i64",
-                    4
-                  ]
-                }
-              },
-              {
-                "name": "current",
-                "type": "u8"
-              },
-              {
-                "name": "release_condition",
-                "type": "u8"
-              },
-              {
-                "name": "total",
-                "type": "u8"
-              },
-              {
-                "name": "padding",
-                "type": {
-                  "array": [
-                    "u8",
-                    53
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "name": "Usage",
-            "fields": [
-              {
-                "name": "max_amount_per_period",
-                "type": "u64"
-              },
-              {
-                "name": "max_chunk_amount",
-                "type": "u64"
-              },
-              {
-                "name": "period_length_seconds",
-                "type": "u64"
-              },
-              {
-                "name": "current_period_start",
-                "type": "i64"
-              },
-              {
-                "name": "current_period_total",
-                "type": "u64"
-              },
-              {
-                "name": "padding",
-                "type": {
-                  "array": [
-                    "u8",
-                    88
-                  ]
-                }
-              }
-            ]
           }
         ]
       }
