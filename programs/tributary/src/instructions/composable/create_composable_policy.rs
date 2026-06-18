@@ -84,6 +84,10 @@ impl<'info> CreateComposablePolicy<'info> {
         );
         // Validate each ByteRangeCheck is sane (offset + length doesn't overflow u8)
         // and at least one check pins the discriminator at offset 0.
+        //
+        // `length <= 8` is mandatory because `expected` is a `[u8; 8]`:
+        // any larger value would panic in `ByteRangeCheck::validate` on
+        // `&self.expected[..length]`. See reports/H-06-byte-range-check-length-unbounded.md.
         let mut covers_discriminator = false;
         for i in 0..forward_config.num_data_checks as usize {
             let check = &forward_config.data_checks[i];
@@ -93,6 +97,7 @@ impl<'info> CreateComposablePolicy<'info> {
                     .is_some_and(|v| v <= 1024),
                 TributaryError::ByteRangeCheckFailed
             );
+            require!(check.length <= 8, TributaryError::ByteRangeCheckFailed);
             if check.offset == 0 && check.length > 0 {
                 covers_discriminator = true;
             }

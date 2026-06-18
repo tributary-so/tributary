@@ -730,6 +730,81 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
+  //  5c. Create composable policy — fails when a ByteRangeCheck.length > 8
+  //      Regression for reports/H-06-byte-range-check-length-unbounded.md:
+  //      `expected` is a `[u8; 8]`, so any length > 8 panics at
+  //      `&self.expected[..length]` during execute_composable. The
+  //      create-time guard now rejects length > 8 with
+  //      ByteRangeCheckFailed instead of bricking the policy.
+  // ══════════════════════════════════════════════════════════════════════
+  test("Create composable policy — fails when ByteRangeCheck.length > 8", async () => {
+    await sdk.updateWallet(new anchor.Wallet(user));
+
+    const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+    const composablePolicyId =
+      (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+    const [composablePolicyPDA] = getComposablePolicyPda(
+      userPaymentPDA,
+      composablePolicyId,
+      program.programId
+    );
+
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
+    const now = Math.floor(Date.now() / 1000);
+    const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
+    const memo = new Array(64).fill(0);
+
+    // length = 16 with an 8-byte expected payload: offset + length = 16
+    // <= 1024, so the existing overflow check passes, but the slice
+    // `&expected[..16]` would panic on the `[u8; 8]` array. Must be
+    // rejected at create time with ByteRangeCheckFailed.
+    const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+    forwardConfig.dataChecks[0] = {
+      offset: 0,
+      length: 16,
+      expected: [1, 2, 3, 4, 5, 6, 7, 8],
+    };
+
+    try {
+      const ix = await program.methods
+        .createComposablePolicy(
+          policyType,
+          memo,
+          forwardConfig,
+          0,
+          Buffer.alloc(0)
+        )
+        .accountsStrict({
+          feePayer: user.publicKey,
+          user: user.publicKey,
+          composablePolicy: composablePolicyPDA,
+          userPayment: userPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(ix),
+        [user],
+        { commitment: "processed" as Commitment }
+      );
+
+      assert(false, "Expected error for ByteRangeCheck.length > 8");
+    } catch (error: any) {
+      expect(error.message).toContain("ByteRangeCheckFailed");
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
   //  7. Change composable status — Active to Paused
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Active to Paused", async () => {

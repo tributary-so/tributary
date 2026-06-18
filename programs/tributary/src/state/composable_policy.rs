@@ -12,6 +12,16 @@ pub struct ByteRangeCheck {
 
 impl ByteRangeCheck {
     pub fn validate(&self, instruction_data: &[u8]) -> bool {
+        // Defense-in-depth: `expected` is a fixed `[u8; 8]`, so any
+        // `length > 8` would panic on the slice below. The create-time
+        // guard in `create_composable_policy` rejects `length > 8`, but
+        // this fn is reached with state sourced from on-chain accounts —
+        // reject the hostile case here too so a malformed account (or a
+        // create-time regression) cannot trigger the panic.
+        // See reports/H-06-byte-range-check-length-unbounded.md.
+        if self.length > 8 {
+            return false;
+        }
         if self.offset as usize + self.length as usize > instruction_data.len() {
             return false;
         }
@@ -106,4 +116,50 @@ impl ComposablePolicy {
         8 + // created_at: i64
         8 + // updated_at: i64
         32; // padding: [u8; 32]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Defense-in-depth: `ByteRangeCheck::validate` must never panic when
+    /// `length > 8`. `expected` is a fixed `[u8; 8]`, so slicing
+    /// `&self.expected[..self.length]` with `length > 8` is an out-of-
+    /// bounds panic. The create-time guard in `create_composable_policy`
+    /// rejects `length > 8`, but `validate` is reached with state sourced
+    /// from on-chain accounts — a malformed account (or a regression in
+    /// create-time validation) must not be able to trigger the panic.
+    ///
+    /// See reports/H-06-byte-range-check-length-unbounded.md.
+    #[test]
+    fn validate_rejects_length_above_eight_array_bound() {
+        // length = 16: bigger than the `[u8; 8]` expected array.
+        // Currently this panics at `&self.expected[..16]`; it must
+        // instead return `false`.
+        let check = ByteRangeCheck {
+            offset: 0,
+            length: 16,
+            expected: [1, 2, 3, 4, 5, 6, 7, 8],
+        };
+        let data = [
+            1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
+        assert!(
+            !check.validate(&data),
+            "length=16 must return false, not panic"
+        );
+
+        // Hostile edge: length = u8::MAX.
+        let hostile = ByteRangeCheck {
+            offset: 0,
+            length: 255,
+            expected: [0u8; 8],
+        };
+        let big_data = vec![0u8; 512];
+        assert!(
+            !hostile.validate(&big_data),
+            "length=255 must return false, not panic"
+        );
+    }
 }
