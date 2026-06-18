@@ -2,27 +2,13 @@ use crate::{
     constants::*,
     error::TributaryError,
     policies::*,
+    shared::delegation::{resolve_delegate, token_account_has_any_delegate},
     state::*,
     utils::{process_referral_rewards, AuthorityMode, ReferralContext},
 };
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::Token;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
-
-pub fn token_account_has_delegate(delegate: &COption<Pubkey>, expected_delegate: &Pubkey) -> bool {
-    match delegate {
-        COption::Some(d) => d == expected_delegate,
-        COption::None => false,
-    }
-}
-
-pub fn token_account_has_any_delegate(delegate: &COption<Pubkey>, keys: &[&Pubkey]) -> bool {
-    match delegate {
-        COption::Some(d) => keys.iter().any(|k| d == *k),
-        COption::None => false,
-    }
-}
 
 #[derive(Accounts)]
 pub struct ExecutePayment<'info> {
@@ -146,35 +132,19 @@ impl<'info> ExecutePayment<'info> {
         let payments_delegate_bump = ctx.bumps.payments_delegate;
         let expected_mint = accounts.user_token_account.mint;
 
-        let up_key = user_payment.key();
-        let pd_key = accounts.payments_delegate.key();
         let user_payment_info = user_payment.to_account_info();
-
         let delegate = accounts.user_token_account.delegate.clone();
-        let up_owner = user_payment.owner;
-        let up_mint = user_payment.token_mint;
-        let up_bump = user_payment.bump;
 
-        let (seeds_vec, authority_info): (Vec<Vec<u8>>, AccountInfo<'info>) = match &delegate {
-            COption::Some(d) if d == &up_key => {
-                let seeds: Vec<Vec<u8>> = vec![
-                    USER_PAYMENT_SEED.to_vec(),
-                    up_owner.as_ref().to_vec(),
-                    up_mint.as_ref().to_vec(),
-                    vec![up_bump],
-                ];
-                (seeds, user_payment_info.clone())
-            }
-            COption::Some(d) if d == &pd_key => {
-                let seeds: Vec<Vec<u8>> =
-                    vec![PAYMENTS_SEED.to_vec(), vec![payments_delegate_bump]];
-                (seeds, payments_delegate_info.clone())
-            }
-            _ => return Err(TributaryError::NoDelegateSet.into()),
-        };
-
-        let seed_slices: Vec<&[u8]> = seeds_vec.iter().map(|s| s.as_slice()).collect();
+        let pull_resolution = resolve_delegate(
+            user_payment,
+            user_payment_info.clone(),
+            payments_delegate_info.clone(),
+            payments_delegate_bump,
+            &delegate,
+        )?;
+        let seed_slices: Vec<&[u8]> = pull_resolution.seeds.iter().map(|s| s.as_slice()).collect();
         let signer_seeds: &[&[u8]] = &seed_slices;
+        let authority_info = pull_resolution.authority_info;
 
         // Get appropriate strategy for policy type
         let mut strategy = crate::policies::get_policy_strategy(payment_policy)?;
@@ -212,43 +182,19 @@ impl<'info> ExecutePayment<'info> {
             )?;
         }
 
-        // Calculate fees (same calculation for both modes)
-        let mut gateway_fee = payment_amount
-            .checked_mul(gateway.gateway_fee_bps as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-
-        let protocol_fee_bps = if gateway.is_custom_protocol_fee_enabled() {
-            gateway.custom_protocol_fee_bps
-        } else {
-            config.protocol_fee_bps
-        };
-
-        let protocol_fee = payment_amount
-            .checked_mul(protocol_fee_bps as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-
-        // Calculate recipient amount and total based on net/gross mode
-        let (recipient_amount, total_amount_from_user) = if gateway.is_amount_net() {
-            // Net mode: payment_amount is what recipient receives, fees added on top
-            let total = payment_amount
-                .checked_add(gateway_fee)
-                .ok_or(TributaryError::ArithmeticOverflow)?
-                .checked_add(protocol_fee)
-                .ok_or(TributaryError::ArithmeticOverflow)?;
-            (payment_amount, total)
-        } else {
-            // Gross mode (default): payment_amount includes fees, recipient gets less
-            let recipient = payment_amount
-                .checked_sub(gateway_fee)
-                .ok_or(TributaryError::ArithmeticOverflow)?
-                .checked_sub(protocol_fee)
-                .ok_or(TributaryError::ArithmeticOverflow)?;
-            (recipient, payment_amount)
-        };
+        // Calculate fees (single shared helper for both net/gross modes).
+        let fee_breakdown = crate::shared::fees::calculate_fees(
+            payment_amount,
+            gateway.gateway_fee_bps,
+            gateway.custom_protocol_fee_bps,
+            config.protocol_fee_bps,
+            gateway.is_custom_protocol_fee_enabled(),
+            gateway.is_amount_net(),
+        )?;
+        let mut gateway_fee = fee_breakdown.gateway_fee;
+        let protocol_fee = fee_breakdown.protocol_fee;
+        let recipient_amount = fee_breakdown.recipient_amount;
+        let total_amount_from_user = fee_breakdown.total_from_user;
 
         // Validate delegated amount is sufficient
         require!(

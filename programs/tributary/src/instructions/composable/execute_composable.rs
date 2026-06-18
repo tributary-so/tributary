@@ -1,10 +1,10 @@
 use crate::{
     constants::*,
     error::TributaryError,
-    instructions::execute_payment::token_account_has_any_delegate,
-    shared::delegation::resolve_delegate,
+    shared::delegation::{resolve_delegate, token_account_has_any_delegate},
+    shared::schedule::{advance_schedule, validate_schedule_execution},
     state::*,
-    utils::{calculate_next_payment_due, validate_mint_compatible},
+    utils::validate_mint_compatible,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -20,78 +20,6 @@ fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: u8) 
         );
     }
     Ok(())
-}
-
-/// Determine the payment amount based on the schedule type and advance it.
-/// Returns (amount_to_forward, should_pause).
-fn resolve_schedule_amount_and_advance(
-    schedule: &mut ScheduleType,
-    now: i64,
-) -> Result<(u64, bool)> {
-    match schedule {
-        ScheduleType::Timed {
-            amount,
-            next_execution_due,
-            frequency,
-            max_executions,
-            auto_renew,
-            padding: _,
-        } => {
-            require!(now >= *next_execution_due, TributaryError::PaymentNotDue);
-            let amt = *amount;
-
-            *next_execution_due = calculate_next_payment_due(*next_execution_due, frequency, now)?;
-
-            let should_pause = if let Some(ref mut max) = max_executions {
-                *max = max.saturating_sub(1);
-                *max == 0 || !*auto_renew
-            } else {
-                false
-            };
-
-            Ok((amt, should_pause))
-        }
-        ScheduleType::Milestone {
-            amounts,
-            timestamps,
-            current,
-            release_condition,
-            total,
-            padding: _,
-        } => {
-            let idx = *current as usize;
-            require!(idx < *total as usize, TributaryError::InvalidAmount);
-
-            if *release_condition & 0b0001 != 0 {
-                require!(now >= timestamps[idx], TributaryError::PaymentNotDue);
-            }
-
-            let amt = amounts[idx];
-            *current = current.saturating_add(1);
-
-            let should_pause = *current >= *total;
-
-            Ok((amt, should_pause))
-        }
-        ScheduleType::Usage {
-            max_amount_per_period: _,
-            max_chunk_amount: _,
-            period_length_seconds,
-            current_period_start,
-            current_period_total,
-            padding: _,
-        } => {
-            let period_end = current_period_start
-                .checked_add(*period_length_seconds as i64)
-                .ok_or(TributaryError::ArithmeticOverflow)?;
-            if now >= period_end {
-                *current_period_start = now;
-                *current_period_total = 0;
-            }
-
-            Ok((0, false))
-        }
-    }
 }
 
 /// Read the SPL Token `amount` field (offset 64, 8 bytes LE) from a raw
@@ -646,38 +574,21 @@ impl<'info> ExecuteComposable<'info> {
         );
 
         let composable_policy = &mut ctx.accounts.composable_policy;
-        let (schedule_amount, should_pause) =
-            resolve_schedule_amount_and_advance(&mut composable_policy.schedule, now)?;
 
+        // ── Validate schedule + resolve base amount ─────────────────────
+        // Routes through `shared::strategies` so that Timed advancement
+        // uses the same calendar-month math as the subscription path
+        // (see reports/M-04-inconsistent-month-arithmetic.md).
+        let schedule_amount =
+            validate_schedule_execution(&composable_policy.schedule, now, forward_amount)?;
+
+        // Resolve the actual input amount. For Usage (PAYG), the caller-
+        // supplied `forward_amount` IS the chunk — validation already
+        // happened inside `validate_schedule_execution`. For other schedule
+        // types, `forward_amount` optionally overrides the configured
+        // schedule amount.
         let input_amount = match forward_amount {
-            Some(amt) => match &composable_policy.schedule {
-                ScheduleType::Usage {
-                    max_chunk_amount,
-                    max_amount_per_period,
-                    current_period_total,
-                    ..
-                } => {
-                    require!(amt <= *max_chunk_amount, TributaryError::InvalidAmount);
-                    let new_total = current_period_total
-                        .checked_add(amt)
-                        .ok_or(TributaryError::ArithmeticOverflow)?;
-                    require!(
-                        new_total <= *max_amount_per_period,
-                        TributaryError::InsufficientBalance
-                    );
-                    match &mut composable_policy.schedule {
-                        ScheduleType::Usage {
-                            current_period_total,
-                            ..
-                        } => {
-                            *current_period_total = new_total;
-                        }
-                        _ => unreachable!(),
-                    }
-                    amt
-                }
-                _ => amt,
-            },
+            Some(amt) => amt,
             None => {
                 require!(schedule_amount > 0, TributaryError::InvalidAmount);
                 schedule_amount
@@ -874,6 +785,14 @@ impl<'info> ExecuteComposable<'info> {
 
         // ── Step 11: UPDATE STATE ──────────────────────────────────────
         let composable_policy = &mut ctx.accounts.composable_policy;
+
+        // Advance the schedule now that the execution succeeded. For Timed
+        // this advances `next_execution_due` via calendar-month math (M-04),
+        // for Milestone it bumps `current`, for Usage it updates the rolling
+        // period total. Returns `should_complete` for one-shot / exhausted
+        // schedules.
+        let should_pause = advance_schedule(&mut composable_policy.schedule, now, input_amount)?;
+
         composable_policy.total_input = composable_policy
             .total_input
             .checked_add(input_amount)

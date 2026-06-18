@@ -7,6 +7,26 @@ pub struct DelegateResolution<'info> {
     pub authority_info: AccountInfo<'info>,
 }
 
+/// Returns true when the supplied SPL `delegate` COption matches the
+/// `expected_delegate` pubkey exactly.
+pub fn token_account_has_delegate(delegate: &COption<Pubkey>, expected_delegate: &Pubkey) -> bool {
+    match delegate {
+        COption::Some(d) => d == expected_delegate,
+        COption::None => false,
+    }
+}
+
+/// Returns true when the supplied SPL `delegate` COption matches any of
+/// the `keys` pubkeys. Used by `execute_payment` and `execute_composable`
+/// to accept either the v1 UserPayment PDA or the v0 global payments
+/// delegate as the active delegate on a user token account.
+pub fn token_account_has_any_delegate(delegate: &COption<Pubkey>, keys: &[&Pubkey]) -> bool {
+    match delegate {
+        COption::Some(d) => keys.iter().any(|k| d == *k),
+        COption::None => false,
+    }
+}
+
 pub fn resolve_delegate<'info>(
     user_payment: &Account<'info, UserPayment>,
     user_payment_info: AccountInfo<'info>,
