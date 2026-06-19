@@ -124,4 +124,6 @@ pub enum TributaryError {
     PayerReferralMismatch,
     #[msg("Duplicate ReferralAccount supplied in remaining_accounts")]
     DuplicateReferralAccount,
+    #[msg("ValidationPDA is malformed — data_len out of bounds")]
+    InvalidValidationPda,
 }

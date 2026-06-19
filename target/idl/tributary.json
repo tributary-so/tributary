@@ -2812,6 +2812,11 @@
       "code": 6059,
       "name": "DuplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
+    },
+    {
+      "code": 6060,
+      "name": "InvalidValidationPda",
+      "msg": "ValidationPDA is malformed — data_len out of bounds"
     }
   ],
   "types": [

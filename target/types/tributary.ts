@@ -2818,6 +2818,11 @@ export type Tributary = {
       "code": 6059,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
+    },
+    {
+      "code": 6060,
+      "name": "invalidValidationPda",
+      "msg": "ValidationPDA is malformed — data_len out of bounds"
     }
   ],
   "types": [

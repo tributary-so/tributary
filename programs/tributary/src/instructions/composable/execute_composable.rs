@@ -198,8 +198,13 @@ fn run_validation_cpi<'info>(
     let val_data = {
         let val_pda_info = &remaining[0];
         let data = val_pda_info.try_borrow_data()?;
+        require!(data.len() >= 10, TributaryError::InvalidValidationPda);
         let data_len = u16::from_le_bytes([data[8], data[9]]) as usize;
-        data[10..10 + data_len].to_vec()
+        let end = 10usize
+            .checked_add(data_len)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
+        require!(end <= data.len(), TributaryError::InvalidValidationPda);
+        data[10..end].to_vec()
     };
 
     let val_accounts_end = 1 + num_val_accounts;
