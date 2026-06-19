@@ -225,6 +225,17 @@ impl<'info> CreateComposablePolicy<'info> {
             let fee_payer_info = ctx.accounts.fee_payer.to_account_info();
             let validation_pda_info = ctx.accounts.validation_pda.to_account_info();
 
+            // M-02: Defense-in-depth freshness guard. The create_account CPI
+            // below would fail anyway if the account exists, but this explicit
+            // check documents the invariant and fails fast with a precise error
+            // (matching the pattern in execute_composable.rs). Guards against
+            // type cosplay / re-initialization if a future variant reuses these
+            // seeds. See reports/M-02-manual-validation-pda-write.md.
+            require!(
+                ValidationPda::is_fresh(&validation_pda_info),
+                TributaryError::IntermediateAccountAlreadyExists
+            );
+
             let seeds: Vec<Vec<u8>> = vec![
                 VALIDATION_PDA_SEED.to_vec(),
                 composable_policy.key().as_ref().to_vec(),
