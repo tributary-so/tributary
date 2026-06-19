@@ -5,8 +5,6 @@ pub mod payment_policy;
 pub mod policy_header;
 pub mod program_config;
 pub mod referral_account;
-pub mod referral_account_map;
-pub mod token_account_map;
 pub mod user_payment;
 pub mod validation_pda;
 
@@ -17,7 +15,5 @@ pub use payment_policy::*;
 pub use policy_header::*;
 pub use program_config::*;
 pub use referral_account::*;
-pub use referral_account_map::*;
-pub use token_account_map::*;
 pub use user_payment::*;
 pub use validation_pda::*;
