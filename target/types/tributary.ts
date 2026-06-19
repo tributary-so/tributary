@@ -1619,7 +1619,7 @@ export type Tributary = {
         {
           "name": "mint",
           "docs": [
-            "Input mint (== forward_config.input_mint)."
+            "Input mint (== forward_config.input_mint == user_payment.token_mint)."
           ]
         },
         {
@@ -4455,9 +4455,9 @@ export type Tributary = {
   ],
   "constants": [
     {
-      "name": "seed",
-      "type": "string",
-      "value": "\"anchor\""
+      "name": "configSeed",
+      "type": "bytes",
+      "value": "[99, 111, 110, 102, 105, 103]"
     }
   ]
 };

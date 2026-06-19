@@ -458,9 +458,11 @@ pub struct ExecuteComposable<'info> {
     )]
     pub user_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Input mint (== forward_config.input_mint).
+    /// Input mint (== forward_config.input_mint == user_payment.token_mint).
     #[account(
         constraint = mint.key() == composable_policy.forward_config.input_mint,
+        constraint = mint.key() == user_payment.token_mint
+            @ TributaryError::TokenMintMismatch,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
 

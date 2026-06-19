@@ -72,7 +72,10 @@ pub struct ExecutePayment<'info> {
     )]
     pub user_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account()]
+    #[account(
+        constraint = mint.key() == user_payment.token_mint
+            @ TributaryError::TokenMintMismatch,
+    )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
