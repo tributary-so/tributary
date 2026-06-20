@@ -1520,10 +1520,12 @@ export type Tributary = {
         {
           "name": "userPayment",
           "docs": [
-            "UserPayment PDA — also the SOLE signing authority for every token",
-            "op and CPI in this instruction (see COMPOSABLE.md §PDA Seed Summary).",
-            "Owns both intermediate ATAs. The user's source token account MUST",
-            "delegate to this PDA."
+            "UserPayment PDA — the delegate on the user's source token account.",
+            "It signs ONLY the initial pull (Step 3, user → intermediate). The",
+            "intermediate ATAs are owned by the ComposablePolicy PDA (see above),",
+            "which signs all other CPIs; this keeps user-source authority",
+            "decoupled from intermediate authority.",
+            "The user's source token account MUST delegate to this PDA."
           ],
           "writable": true,
           "pda": {

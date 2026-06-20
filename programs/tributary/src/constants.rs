@@ -10,10 +10,8 @@ pub const REFERRAL_SEED: &[u8] = b"referral";
 pub const COMPOSABLE_POLICY_SEED: &[u8] = b"composable_policy";
 pub const VALIDATION_PDA_SEED: &[u8] = b"composable_validation";
 
-pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] = &[
-    pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token Program
-    pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"), // meteora dlm
-];
+pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] =
+    &[pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo")]; // meteora dlm
 
 pub const ALLOWED_VALIDATION_PROGRAMS: &[Pubkey] =
     &[pubkey!("L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95")]; // Lighthouse

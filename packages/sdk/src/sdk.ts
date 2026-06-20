@@ -2115,16 +2115,21 @@ export class Tributary {
       policy.recipient
     );
 
-    // Intermediate ATAs are owned by the UserPayment PDA.
+    // Intermediate ATAs are owned by the ComposablePolicy PDA — NOT the
+    // UserPayment PDA. This decouples the intermediate-ATA owner (which
+    // signs forward/sweep/close CPIs) from the user-source delegate
+    // (UserPayment PDA), so a forward program can only ever move the
+    // transient intermediate balances, never the user's source funds.
+    // See reports/C-1-validation-cpi-signer-leak.md + bean tributary-0kja.
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       inputMint,
-      policy.userPayment,
-      true, // allowOwnerOffCurve — UserPayment is a PDA
+      composablePolicy, // owner = ComposablePolicy PDA
+      true, // allowOwnerOffCurve — ComposablePolicy is a PDA
       TOKEN_PROGRAM_ID
     );
     const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
       outputMint,
-      policy.userPayment,
+      composablePolicy, // owner = ComposablePolicy PDA
       true,
       TOKEN_PROGRAM_ID
     );

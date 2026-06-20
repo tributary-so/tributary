@@ -1167,12 +1167,12 @@ describe("Composable Policies", () => {
           outputMint: secondMint,
           intermediateInputTokenAccount: getAssociatedTokenAddressSync(
             tokenMint,
-            userPaymentPDA,
+            composablePolicyPDA,
             true
           ),
           intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
             secondMint,
-            userPaymentPDA,
+            composablePolicyPDA,
             true
           ),
           recipientTokenAccount,
@@ -1302,12 +1302,12 @@ describe("Composable Policies", () => {
           outputMint: secondMint,
           intermediateInputTokenAccount: getAssociatedTokenAddressSync(
             tokenMint,
-            userPaymentPDA,
+            composablePolicyPDA,
             true
           ),
           intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
             secondMint,
-            userPaymentPDA,
+            composablePolicyPDA,
             true
           ),
           recipientTokenAccount: userSecondMintTokenAccount,

@@ -114,14 +114,23 @@ fn close_token_account<'info>(
     token_interface::close_account(cpi_ctx)
 }
 
-/// Build the UserPayment PDA signer seeds. The returned Vec owns the bytes;
-/// callers must keep it alive for the duration of any `invoke_signed` call.
-fn build_user_payment_seeds(user_payment: &Account<UserPayment>) -> Vec<Vec<u8>> {
+/// Build the ComposablePolicy PDA signer seeds.
+///
+/// The ComposablePolicy PDA owns the intermediate ATAs (see the ownership
+/// note in the handler). It is NOT a token-account delegate anywhere, so
+/// signing a CPI with these seeds can only ever move the transient
+/// intermediate balances — never the user's source `user_token_account`.
+/// This is what breaks the dual-role coupling that previously let the
+/// validation/forward/sweep CPIs drain user funds via nested CPIs.
+///
+/// The returned Vec owns the bytes; callers must keep it alive for the
+/// duration of any `invoke_signed` call.
+fn build_composable_policy_seeds(user_payment: &Pubkey, policy_id: u32, bump: u8) -> Vec<Vec<u8>> {
     vec![
-        USER_PAYMENT_SEED.to_vec(),
-        user_payment.owner.as_ref().to_vec(),
-        user_payment.token_mint.as_ref().to_vec(),
-        vec![user_payment.bump],
+        COMPOSABLE_POLICY_SEED.to_vec(),
+        user_payment.as_ref().to_vec(),
+        policy_id.to_le_bytes().to_vec(),
+        vec![bump],
     ]
 }
 
@@ -151,11 +160,19 @@ fn build_validation_account_metas(
 /// Build the `AccountMeta` list for a forward CPI (Meteora-DLM, etc.)
 /// from a slice of caller-supplied `remaining_accounts`.
 ///
-/// Per `shared-base` §5.3: only the `user_payment_pda` may appear as a
-/// signer — its authority is established by `invoke_signed` with the
-/// UserPayment seeds. All other forwarded accounts are forced to
+/// Per `shared-base` §5.3: only the `intermediate_owner_pda` (the
+/// ComposablePolicy PDA, which owns the intermediate ATAs) may appear as
+/// a signer — its authority is established by `invoke_signed` with the
+/// ComposablePolicy seeds. All other forwarded accounts are forced to
 /// `is_signer: false` even if the caller passed them as signers in the
 /// outer transaction (e.g. `fee_payer`).
+///
+/// Because the ComposablePolicy PDA is never a token-account delegate, a
+/// forward program that receives it as a signer can only move the
+/// transient intermediate balances (capped at `input_amount`), never the
+/// user's source `user_token_account`. This is the decoupling fix for the
+/// dual-role leak that existed when the intermediates were owned by the
+/// UserPayment PDA.
 ///
 /// `is_writable` is forwarded verbatim from the caller-supplied info,
 /// which is safe: the Solana runtime rejects any inner instruction that
@@ -163,13 +180,13 @@ fn build_validation_account_metas(
 /// also mark writable, so we cannot elevate privileges by forwarding.
 fn build_forward_account_metas(
     accounts: &[&AccountInfo<'_>],
-    user_payment_pda: Pubkey,
+    intermediate_owner_pda: Pubkey,
 ) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
     accounts
         .iter()
         .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
             pubkey: *(*a).key,
-            is_signer: *(*a).key == user_payment_pda,
+            is_signer: *(*a).key == intermediate_owner_pda,
             is_writable: (*a).is_writable,
         })
         .collect()
@@ -177,13 +194,23 @@ fn build_forward_account_metas(
 
 /// Run the optional validation CPI (Step 2). Returns the index into
 /// `remaining_accounts` where forward-program accounts begin.
+///
+/// SECURITY (reports/C-1-validation-cpi-signer-leak.md): the validation
+/// CPI uses plain `invoke` — NO signer seeds. Validation programs
+/// (Lighthouse, etc.) are read-only assertion checkers and must never
+/// inherit signing authority. Previously this called `invoke_signed`
+/// with the UserPayment PDA seeds, which (because UserPayment PDA is the
+/// delegate on `user_token_account`) let the validation program — and any
+/// program it nested into — drain user funds via a nested Token transfer.
+/// The composable_policy-owned intermediates (see handler) are funded only
+/// AFTER validation runs, so there is nothing for a validation program to
+/// sign for even if it wanted to.
 fn run_validation_cpi<'info>(
     remaining: &[AccountInfo<'info>],
     program_id: &Pubkey,
     policy_key: Pubkey,
     validation_program: &AccountInfo<'info>,
     num_val_accounts: usize,
-    up_seeds: &[&[u8]],
 ) -> Result<usize> {
     require!(!remaining.is_empty(), TributaryError::ValidationPdaMismatch);
 
@@ -230,12 +257,18 @@ fn run_validation_cpi<'info>(
     all_infos.push(validation_program.clone());
     all_infos.extend(val_accounts.iter().cloned());
 
-    anchor_lang::solana_program::program::invoke_signed(&instruction, &all_infos, &[up_seeds])?;
+    // Plain `invoke` — no signer seeds. See the security note on
+    // `run_validation_cpi`: validation is read-only and must not inherit
+    // any PDA signing authority (C-1).
+    anchor_lang::solana_program::program::invoke(&instruction, &all_infos)?;
 
     Ok(val_accounts_end)
 }
 
-/// Invoke the forward program (Step 5). Signs with UserPayment PDA seeds.
+/// Invoke the forward program (Step 5). Signs with ComposablePolicy PDA
+/// seeds — the intermediate-ATA owner. This PDA has no authority over the
+/// user's source token account, so the forward program's blast radius is
+/// limited to the transient intermediate balances.
 ///
 /// Executable accounts (programs) in the forward range are excluded from
 /// the instruction's `AccountMeta`s — they exist in `remaining_accounts`
@@ -246,8 +279,8 @@ fn run_forward_cpi<'info>(
     forward_accounts_start: usize,
     target_program: Pubkey,
     instruction_data: &[u8],
-    user_payment_pda: Pubkey,
-    up_seeds: &[&[u8]],
+    intermediate_owner_pda: Pubkey,
+    intermediate_owner_seeds: &[&[u8]],
 ) -> Result<()> {
     require!(
         forward_accounts_start < remaining.len(),
@@ -269,13 +302,13 @@ fn run_forward_cpi<'info>(
 
     let instruction = anchor_lang::solana_program::instruction::Instruction {
         program_id: target_program,
-        accounts: build_forward_account_metas(&instruction_accounts, user_payment_pda),
+        accounts: build_forward_account_metas(&instruction_accounts, intermediate_owner_pda),
         data: instruction_data.to_vec(),
     };
     anchor_lang::solana_program::program::invoke_signed(
         &instruction,
         &all_forward_infos,
-        &[up_seeds],
+        &[intermediate_owner_seeds],
     )?;
     Ok(())
 }
@@ -416,10 +449,12 @@ pub struct ExecuteComposable<'info> {
     )]
     pub composable_policy: Box<Account<'info, ComposablePolicy>>,
 
-    /// UserPayment PDA — also the SOLE signing authority for every token
-    /// op and CPI in this instruction (see COMPOSABLE.md §PDA Seed Summary).
-    /// Owns both intermediate ATAs. The user's source token account MUST
-    /// delegate to this PDA.
+    /// UserPayment PDA — the delegate on the user's source token account.
+    /// It signs ONLY the initial pull (Step 3, user → intermediate). The
+    /// intermediate ATAs are owned by the ComposablePolicy PDA (see above),
+    /// which signs all other CPIs; this keeps user-source authority
+    /// decoupled from intermediate authority.
+    /// The user's source token account MUST delegate to this PDA.
     #[account(
         mut,
         seeds = [USER_PAYMENT_SEED, user_payment.owner.as_ref(), user_payment.token_mint.as_ref()],
@@ -561,9 +596,19 @@ impl<'info> ExecuteComposable<'info> {
         )?;
 
         // ── Validate intermediate ATA addresses ──────────────────────────
+        // The intermediate ATAs are owned by the ComposablePolicy PDA — NOT
+        // the UserPayment PDA. This is the decoupling fix: the UserPayment
+        // PDA is the delegate on `user_token_account`, so owning the
+        // intermediates with it would couple "intermediate-ATA owner" to
+        // "user-source delegate". By parenting the intermediates under
+        // ComposablePolicy (which is never a token delegate), any CPI
+        // signed by ComposablePolicy can only ever move the transient
+        // intermediate balances, never the user's source funds.
+        // See reports/C-1-validation-cpi-signer-leak.md + tributary-0kja.
+        let intermediate_owner = ctx.accounts.composable_policy.key();
         let expected_input_ata = Pubkey::find_program_address(
             &[
-                ctx.accounts.user_payment.key().as_ref(),
+                intermediate_owner.as_ref(),
                 ctx.accounts.token_program.key().as_ref(),
                 ctx.accounts.mint.key().as_ref(),
             ],
@@ -577,7 +622,7 @@ impl<'info> ExecuteComposable<'info> {
 
         let expected_output_ata = Pubkey::find_program_address(
             &[
-                ctx.accounts.user_payment.key().as_ref(),
+                intermediate_owner.as_ref(),
                 ctx.accounts.token_program.key().as_ref(),
                 ctx.accounts.output_mint.key().as_ref(),
             ],
@@ -642,13 +687,20 @@ impl<'info> ExecuteComposable<'info> {
             .validation_config
             .num_validation_accounts as usize;
 
-        // ── Resolve UserPayment PDA signer seeds ───────────────────────
-        let seeds_vec = build_user_payment_seeds(&ctx.accounts.user_payment);
+        // ── Resolve ComposablePolicy PDA signer seeds ──────────────────
+        // ComposablePolicy owns the intermediate ATAs and signs every CPI
+        // that touches them (forward, sweep, close). It is never a token-
+        // account delegate, so its signing authority cannot reach
+        // `user_token_account`.
+        let policy_bump = ctx.accounts.composable_policy.bump;
+        let seeds_vec =
+            build_composable_policy_seeds(&ctx.accounts.user_payment.key(), policy_id, policy_bump);
         let seed_slices: Vec<&[u8]> = seeds_vec.iter().map(|s| s.as_slice()).collect();
         let signer_seeds: &[&[u8]] = &seed_slices;
         let seeds: &[&[&[u8]]] = &[signer_seeds];
 
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
+        // No signer seeds are passed — validation is read-only (C-1).
         let forward_accounts_start = if stored_validation_program != Pubkey::default() {
             require!(
                 ctx.accounts.validation_program.key() == stored_validation_program,
@@ -661,7 +713,6 @@ impl<'info> ExecuteComposable<'info> {
                 policy_key,
                 &validation_program_info,
                 num_val_accounts,
-                signer_seeds,
             )?
         } else {
             0
@@ -675,14 +726,18 @@ impl<'info> ExecuteComposable<'info> {
         let output_mint_decimals = ctx.accounts.output_mint.decimals;
         let user_token_info = ctx.accounts.user_token_account.to_account_info();
         let user_payment_info = ctx.accounts.user_payment.to_account_info();
+        // ComposablePolicy info — used as the intermediate-ATA owner/
+        // authority for create, sweep, and close CPIs.
+        let composable_policy_info = ctx.accounts.composable_policy.to_account_info();
 
         // ── Resolve pull delegate for Step 3 ───────────────────────────
         // The user's token account may delegate to EITHER the UserPayment
         // PDA (v1) or the global payments_delegate PDA (v0) — see
         // MIGRATION.md. Only the initial pull (user → intermediate) uses
-        // the resolved authority. All subsequent CPIs (validation, forward,
-        // sweeps) use the UserPayment PDA because it owns the intermediate
-        // ATAs.
+        // the resolved authority; this is the ONLY CPI that can touch the
+        // user's source balance. All subsequent CPIs (forward, sweep,
+        // close) are signed by the ComposablePolicy PDA, which owns the
+        // intermediate ATAs but has no authority over user_token_account.
         let pull_resolution = resolve_delegate(
             &ctx.accounts.user_payment,
             user_payment_info.clone(),
@@ -707,7 +762,7 @@ impl<'info> ExecuteComposable<'info> {
         create_ata(
             &input_ata_info,
             &fee_payer_info,
-            &user_payment_info,
+            &composable_policy_info,
             &input_mint_info,
             &system_program_info,
             &token_program_info,
@@ -724,7 +779,7 @@ impl<'info> ExecuteComposable<'info> {
             create_ata(
                 &output_ata_info,
                 &fee_payer_info,
-                &user_payment_info,
+                &composable_policy_info,
                 &output_mint_info,
                 &system_program_info,
                 &token_program_info,
@@ -754,7 +809,7 @@ impl<'info> ExecuteComposable<'info> {
         //     forward_accounts_start,
         //     target_program,
         //     &instruction_data,
-        //     ctx.accounts.user_payment.key(),
+        //     intermediate_owner,
         //     signer_seeds,
         // )?;
 
@@ -768,7 +823,7 @@ impl<'info> ExecuteComposable<'info> {
                 .to_account_info(),
             &output_mint_info,
             output_mint_decimals,
-            &user_payment_info,
+            &composable_policy_info,
             &token_program_info,
             &ctx.accounts.gateway_fee_account.to_account_info(),
             &ctx.accounts.protocol_fee_account.to_account_info(),
@@ -854,7 +909,7 @@ impl<'info> ExecuteComposable<'info> {
 
         // ── Step 12: CLOSE intermediate token accounts ────────────────
         // Both intermediates are closed to return rent to the fee_payer.
-        // The user_payment PDA owns both ATAs and signs the close CPI.
+        // The ComposablePolicy PDA owns both ATAs and signs the close CPI.
         // When input_mint == output_mint they're the same account — close
         // only once.
         let close_input_ata = ctx
@@ -864,7 +919,7 @@ impl<'info> ExecuteComposable<'info> {
         close_token_account(
             &close_input_ata,
             &fee_payer_info,
-            &user_payment_info,
+            &composable_policy_info,
             &token_program_info,
             signer_seeds,
         )?;
@@ -877,7 +932,7 @@ impl<'info> ExecuteComposable<'info> {
             close_token_account(
                 &close_output_ata,
                 &fee_payer_info,
-                &user_payment_info,
+                &composable_policy_info,
                 &token_program_info,
                 signer_seeds,
             )?;
