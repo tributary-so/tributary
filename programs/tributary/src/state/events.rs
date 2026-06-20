@@ -1,6 +1,6 @@
 use super::composable_policy::{ForwardConfig, ValidationConfig};
 use super::payment_policy::{PaymentStatus, PolicyType};
-use super::policy_header::PolicyStatus;
+use super::policy_status::PolicyStatus;
 use anchor_lang::prelude::*;
 
 /// An event that is thrown when a payment takes place

@@ -3385,16 +3385,26 @@
           {
             "name": "referral_allocation_bps",
             "docs": [
-              "Gateway-scoped referral program allocation (in basis points)",
-              "0 = no referral program, 2500 = 25% of gateway fee can be used for referrals"
+              "What percentage of the **gateway fee** funds the referral pool.",
+              "Units: basis points of the gateway fee. Range: 0..=2500.",
+              "- 0    = referral program inactive (no pool is carved out)",
+              "- 1000 = 10% of the gateway fee becomes the referral pool",
+              "- 2500 = 25% of the gateway fee (hard cap)",
+              "The remaining `(10000 - referral_allocation_bps)` bps of the gateway fee",
+              "stays with the gateway fee recipient."
             ],
             "type": "u16"
           },
           {
             "name": "referral_tiers_bps",
             "docs": [
-              "Gateway-scoped referral tier distribution as [level1, level2, level3]",
-              "Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%"
+              "How the referral pool is split across the 3 chain levels",
+              "`[level1 (direct referrer), level2, level3]`. Units: basis points of the",
+              "**referral pool** (NOT of the gateway fee). Must sum to 10000 (100%).",
+              "Example: with `referral_allocation_bps = 1000` and",
+              "`referral_tiers_bps = [5000, 3000, 2000]`, the actual cut of the gateway",
+              "fee is L1 = 5%, L2 = 3%, L3 = 2% (each tier_bps × allocation / 10000).",
+              "Misreading these as \"bps of gateway fee per level\" overpays by 10x."
             ],
             "type": {
               "array": [
@@ -4263,7 +4273,8 @@
           {
             "name": "referral_allocation_bps",
             "docs": [
-              "Optional referral allocation in basis points (0-2500)"
+              "Optional referral allocation in basis points (0-2500).",
+              "Bps of the **gateway fee** that funds the referral pool."
             ],
             "type": {
               "option": "u16"
@@ -4272,7 +4283,9 @@
           {
             "name": "referral_tiers_bps",
             "docs": [
-              "Optional referral tier distribution [level1, level2, level3] in bps (must sum to 10000)"
+              "Optional referral tier distribution `[level1, level2, level3]` in bps.",
+              "Bps of the **referral pool** (not the gateway fee); must sum to 10000.",
+              "Effective per-level share of the gateway fee = tier_bps × allocation / 10000."
             ],
             "type": {
               "option": {

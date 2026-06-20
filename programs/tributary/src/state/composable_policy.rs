@@ -77,7 +77,7 @@ pub struct ComposablePolicy {
     pub bump: u8,
     pub user_payment: Pubkey,
     pub gateway: Pubkey,
-    pub status: super::policy_header::PolicyStatus,
+    pub status: super::policy_status::PolicyStatus,
     pub rent_payer: Pubkey,
     /// Reuses the same `PolicyType` enum as `PaymentPolicy`. Before
     /// unification this was a separate `ScheduleType`; the two were
