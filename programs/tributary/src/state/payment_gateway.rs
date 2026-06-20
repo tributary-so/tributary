@@ -32,11 +32,21 @@ pub struct PaymentGateway {
     /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
     /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
     pub feature_flags: u8,
-    /// Gateway-scoped referral program allocation (in basis points)
-    /// 0 = no referral program, 2500 = 25% of gateway fee can be used for referrals
+    /// What percentage of the **gateway fee** funds the referral pool.
+    /// Units: basis points of the gateway fee. Range: 0..=2500.
+    ///   - 0    = referral program inactive (no pool is carved out)
+    ///   - 1000 = 10% of the gateway fee becomes the referral pool
+    ///   - 2500 = 25% of the gateway fee (hard cap)
+    /// The remaining `(10000 - referral_allocation_bps)` bps of the gateway fee
+    /// stays with the gateway fee recipient.
     pub referral_allocation_bps: u16,
-    /// Gateway-scoped referral tier distribution as [level1, level2, level3]
-    /// Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%
+    /// How the referral pool is split across the 3 chain levels
+    /// `[level1 (direct referrer), level2, level3]`. Units: basis points of the
+    /// **referral pool** (NOT of the gateway fee). Must sum to 10000 (100%).
+    /// Example: with `referral_allocation_bps = 1000` and
+    /// `referral_tiers_bps = [5000, 3000, 2000]`, the actual cut of the gateway
+    /// fee is L1 = 5%, L2 = 3%, L3 = 2% (each tier_bps × allocation / 10000).
+    /// Misreading these as "bps of gateway fee per level" overpays by 10x.
     pub referral_tiers_bps: [u16; 3],
     /// Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.
     /// When enabled, this overrides the default 100 bps protocol fee.

@@ -352,6 +352,17 @@ fn validate_referral_chain_topology(
     Ok(())
 }
 
+/// Distribute referral rewards from a gateway fee.
+///
+/// Two-stage split:
+///   1. `referral_allocation_bps` (≤ 2500) carves a *referral pool* out of the
+///      **gateway fee**: `pool = gateway_fee * allocation_bps / 10000`.
+///   2. `referral_tiers_bps` (must sum to 10000) splits that pool across the
+///      3 chain levels: `tier_reward[i] = pool * tier_bps[i] / 10000`.
+///
+/// Note: `tier_bps` is a share of the *pool*, not of the gateway fee. Effective
+/// per-level share of the gateway fee is `tier_bps * allocation_bps / 10000`.
+/// Returns the total referral pool amount (0 if the program is off or no pool).
 #[inline(never)]
 pub fn process_referral_rewards<'a, 'info>(
     ctx: ReferralContext<'a, 'info>,
@@ -359,6 +370,7 @@ pub fn process_referral_rewards<'a, 'info>(
     referral_allocation_bps: u16,
     referral_tiers_bps: &[u16; 3],
 ) -> Result<u64> {
+    // Stage 1: carve the referral pool out of the gateway fee.
     let referral_pool = gateway_fee
         .checked_mul(referral_allocation_bps as u64)
         .ok_or(TributaryError::ArithmeticOverflow)?
@@ -386,6 +398,7 @@ pub fn process_referral_rewards<'a, 'info>(
         return Ok(0);
     }
 
+    // Stage 2: split the pool across the 3 levels (tier_bps = share of pool).
     let tier_rewards: [u64; MAX_REFERRAL_CHAIN_DEPTH] = [
         referral_pool
             .checked_mul(referral_tiers_bps[0] as u64)

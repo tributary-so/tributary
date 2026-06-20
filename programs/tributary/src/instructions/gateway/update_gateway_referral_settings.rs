@@ -9,9 +9,12 @@ pub struct UpdateGatewayReferralSettingsArgs {
     /// Optional feature flags to update (bit 0 = referral program enabled, bit 1 = net mode)
     /// Bit 2 (custom protocol fee) is reserved for protocol admin and cannot be modified here
     pub feature_flags: Option<u8>,
-    /// Optional referral allocation in basis points (0-2500)
+    /// Optional referral allocation in basis points (0-2500).
+    /// Bps of the **gateway fee** that funds the referral pool.
     pub referral_allocation_bps: Option<u16>,
-    /// Optional referral tier distribution [level1, level2, level3] in bps (must sum to 10000)
+    /// Optional referral tier distribution `[level1, level2, level3]` in bps.
+    /// Bps of the **referral pool** (not the gateway fee); must sum to 10000.
+    /// Effective per-level share of the gateway fee = tier_bps × allocation / 10000.
     pub referral_tiers_bps: Option<[u16; 3]>,
 }
 
