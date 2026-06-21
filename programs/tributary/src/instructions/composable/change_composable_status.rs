@@ -27,6 +27,8 @@ pub struct ChangeComposableStatus<'info> {
     pub composable_policy: Box<Account<'info, ComposablePolicy>>,
 
     #[account(
+        seeds = [GATEWAY_SEED, gateway.authority.as_ref()],
+        bump = gateway.bump,
         constraint = composable_policy.gateway == gateway.key(),
     )]
     pub gateway: Box<Account<'info, PaymentGateway>>,
