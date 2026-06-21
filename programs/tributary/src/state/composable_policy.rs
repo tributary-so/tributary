@@ -31,7 +31,7 @@ impl ByteRangeCheck {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ForwardConfig {
     pub target_program: Pubkey,
     pub input_mint: Pubkey,
@@ -53,7 +53,7 @@ impl ForwardConfig {
                                              // = 146 bytes
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ValidationConfig {
     pub validation_program: Pubkey,
     pub num_validation_accounts: u8,

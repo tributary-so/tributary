@@ -292,8 +292,8 @@ impl<'info> CreateComposablePolicy<'info> {
             policy_id,
             policy_type: composable_policy.policy_type.clone(),
             memo: composable_policy.memo,
-            forward_config: composable_policy.forward_config.clone(),
-            validation_config: composable_policy.validation_config.clone(),
+            forward_config: composable_policy.forward_config,
+            validation_config: composable_policy.validation_config,
             has_validation_pda: has_validation,
         });
 
