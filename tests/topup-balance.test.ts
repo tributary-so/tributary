@@ -154,10 +154,12 @@ describe("Composable Topup Balance Flow", () => {
     sdk = new TributarySDK(connection, wallet.payer);
 
     // need to fetch the lighthouse contract so surfpool has it
-    const ligthHouseProgram = await sdk.connection.getAccountInfo(
+    const lighthouseProgram = await sdk.connection.getAccountInfo(
       LIGHTHOUSE_PUBKEY
     );
-    expect(ligthHouseProgram.data).toBeDefined();
+    expect(lighthouseProgram).not.toBeNull();
+    expect(lighthouseProgram!.data).toBeDefined();
+    expect(lighthouseProgram!.data.length).toBeGreaterThan(0);
 
     // Derive PDAs
     gatewayPDA = getGatewayPda(hotWallet.publicKey, program.programId).address;
