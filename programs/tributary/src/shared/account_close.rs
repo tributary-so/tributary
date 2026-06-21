@@ -44,9 +44,10 @@ pub fn close_account<'info, 'dest>(
         data[..CLOSE_DISCRIMINATOR.len()].copy_from_slice(&CLOSE_DISCRIMINATOR);
     }
 
-    **destination.try_borrow_mut_lamports()? = destination
-        .lamports()
-        .checked_add(info.lamports())
+    let dest_starting_lamports = destination.lamports();
+    let src_lamports = info.lamports();
+    **destination.try_borrow_mut_lamports()? = dest_starting_lamports
+        .checked_add(src_lamports)
         .ok_or(TributaryError::ArithmeticOverflow)?;
     **info.try_borrow_mut_lamports()? = 0;
 
