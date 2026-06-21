@@ -320,7 +320,9 @@ fn process_output_and_sweep<'info>(
     intermediate_output: &AccountInfo<'info>,
     output_mint: &AccountInfo<'info>,
     output_mint_decimals: u8,
-    user_payment_info: &AccountInfo<'info>,
+    // ComposablePolicy PDA — owns the intermediate ATAs and signs every
+    // CPI that sweeps out of `intermediate_output`. NOT the UserPayment PDA.
+    intermediate_owner_info: &AccountInfo<'info>,
     token_program: &AccountInfo<'info>,
     gateway_fee_account: &AccountInfo<'info>,
     protocol_fee_account: &AccountInfo<'info>,
@@ -330,7 +332,7 @@ fn process_output_and_sweep<'info>(
     custom_protocol_fee_bps: u16,
     default_protocol_fee_bps: u16,
     min_output_amount: Option<u64>,
-    seeds: &[&[&[u8]]],
+    intermediate_owner_seeds: &[&[&[u8]]],
 ) -> Result<(u64, u64, u64, u64)> {
     // ── Reload + verify output ──────────────────────────────────────
     let output_amount = read_token_amount(intermediate_output)?;
@@ -384,9 +386,13 @@ fn process_output_and_sweep<'info>(
             from: intermediate_output.clone(),
             mint: output_mint.clone(),
             to: gateway_fee_account.clone(),
-            authority: user_payment_info.clone(),
+            authority: intermediate_owner_info.clone(),
         };
-        let cpi_ctx = CpiContext::new_with_signer(token_program.clone(), cpi_accounts, seeds);
+        let cpi_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            cpi_accounts,
+            intermediate_owner_seeds,
+        );
         token_interface::transfer_checked(cpi_ctx, gateway_fee, output_mint_decimals)?;
     }
 
@@ -396,9 +402,13 @@ fn process_output_and_sweep<'info>(
             from: intermediate_output.clone(),
             mint: output_mint.clone(),
             to: protocol_fee_account.clone(),
-            authority: user_payment_info.clone(),
+            authority: intermediate_owner_info.clone(),
         };
-        let cpi_ctx = CpiContext::new_with_signer(token_program.clone(), cpi_accounts, seeds);
+        let cpi_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            cpi_accounts,
+            intermediate_owner_seeds,
+        );
         token_interface::transfer_checked(cpi_ctx, protocol_fee, output_mint_decimals)?;
     }
 
@@ -408,9 +418,13 @@ fn process_output_and_sweep<'info>(
             from: intermediate_output.clone(),
             mint: output_mint.clone(),
             to: recipient_token_account.clone(),
-            authority: user_payment_info.clone(),
+            authority: intermediate_owner_info.clone(),
         };
-        let cpi_ctx = CpiContext::new_with_signer(token_program.clone(), cpi_accounts, seeds);
+        let cpi_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            cpi_accounts,
+            intermediate_owner_seeds,
+        );
         token_interface::transfer_checked(cpi_ctx, sweep_amount, output_mint_decimals)?;
     }
 
@@ -697,7 +711,7 @@ impl<'info> ExecuteComposable<'info> {
             build_composable_policy_seeds(&ctx.accounts.user_payment.key(), policy_id, policy_bump);
         let seed_slices: Vec<&[u8]> = seeds_vec.iter().map(|s| s.as_slice()).collect();
         let signer_seeds: &[&[u8]] = &seed_slices;
-        let seeds: &[&[&[u8]]] = &[signer_seeds];
+        let intermediate_owner_seeds: &[&[&[u8]]] = &[signer_seeds];
 
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
         // No signer seeds are passed — validation is read-only (C-1).
@@ -833,7 +847,7 @@ impl<'info> ExecuteComposable<'info> {
             gateway.custom_protocol_fee_bps,
             config.protocol_fee_bps,
             min_output_amount,
-            seeds,
+            intermediate_owner_seeds,
         )?;
 
         // ── Step 10: VERIFY INTERMEDIATES EMPTY ────────────────────────
