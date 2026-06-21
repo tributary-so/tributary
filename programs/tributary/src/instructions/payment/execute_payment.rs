@@ -282,6 +282,10 @@ impl<'info> ExecutePayment<'info> {
             .total_paid
             .checked_add(total_amount_from_user)
             .ok_or(TributaryError::ArithmeticOverflow)?;
+        // NOTE: `payment_count` is incremented inside strategy.execute() (see
+        // policies/traits.rs), BEFORE should_pause_policy is evaluated, so
+        // Subscription::max_renewals is honored exactly. The `record_id`
+        // emitted in PaymentRecord reflects the post-increment value.
         payment_policy.updated_at = clock.unix_timestamp;
 
         // Pause policy if needed based on strategy recommendation
