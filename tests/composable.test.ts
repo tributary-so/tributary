@@ -1462,4 +1462,206 @@ describe("Composable Policies", () => {
     const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
     expect(userPaymentAfter!.activeComposableCount).toBe(activeBefore);
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Regression for B2 — delete_user_payment must reject when
+  //  active_composable_count > 0. Without this guard, a UserPayment can be
+  //  closed while ComposablePolicy accounts still reference it, then reborn
+  //  at the same PDA with reset counters → dangling policy state.
+  //  See reports/B2-delete-user-payment-ignores-composable-count.md
+  // ══════════════════════════════════════════════════════════════════════
+  describe("B2 regression — delete_user_payment vs active_composable_count", () => {
+    let b2User: Keypair;
+    let b2UserPaymentPDA: PublicKey;
+    let b2UserTokenAccount: PublicKey;
+    let b2ComposablePolicyPDA: PublicKey;
+    let b2PolicyId: number;
+
+    beforeAll(async () => {
+      b2User = Keypair.generate();
+      await fund(b2User.publicKey, 10);
+
+      b2UserTokenAccount = getAssociatedTokenAddressSync(
+        tokenMint,
+        b2User.publicKey
+      );
+      await createAssociatedTokenAccountIdempotent(
+        connection,
+        admin,
+        tokenMint,
+        b2User.publicKey
+      );
+      await mintTo(
+        connection,
+        mintAuthority,
+        tokenMint,
+        b2UserTokenAccount,
+        mintAuthority,
+        BigInt(10_000_000)
+      );
+
+      [b2UserPaymentPDA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(SEEDS.USER_PAYMENT),
+          b2User.publicKey.toBuffer(),
+          tokenMint.toBuffer(),
+        ],
+        program.programId
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(b2User));
+      const createUserIx = await sdk.createUserPayment(tokenMint);
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createUserIx),
+        [b2User],
+        { commitment: "processed" as Commitment }
+      );
+
+      // Create one composable policy → active_composable_count == 1,
+      // active_policies_count == 0.
+      const now = Math.floor(Date.now() / 1000);
+      const nextDue = now + 30 * 24 * 3600;
+      const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+      const memo = new Array(64).fill(0);
+
+      b2PolicyId = 1;
+      [b2ComposablePolicyPDA] = getComposablePolicyPda(
+        b2UserPaymentPDA,
+        b2PolicyId,
+        program.programId
+      );
+      const [validationPdaAddress] = getValidationPda(
+        b2ComposablePolicyPDA,
+        program.programId
+      );
+
+      const createIx = await program.methods
+        .createComposablePolicy(
+          defaultSubscriptionPolicy(1_000_000, nextDue),
+          memo,
+          forwardConfig,
+          0,
+          Buffer.alloc(0)
+        )
+        .accountsStrict({
+          feePayer: b2User.publicKey,
+          user: b2User.publicKey,
+          composablePolicy: b2ComposablePolicyPDA,
+          userPayment: b2UserPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createIx),
+        [b2User],
+        { commitment: "processed" as Commitment }
+      );
+
+      const up = await sdk.getUserPayment(b2UserPaymentPDA);
+      expect(up!.activePoliciesCount).toBe(0);
+      expect(up!.activeComposableCount).toBe(1);
+    });
+
+    test("delete_user_payment fails when active_composable_count > 0", async () => {
+      await sdk.updateWallet(new anchor.Wallet(b2User));
+
+      const ix = await program.methods
+        .deleteUserPayment()
+        .accountsStrict({
+          owner: b2User.publicKey,
+          userPayment: b2UserPaymentPDA,
+          tokenMint: tokenMint,
+          rentPayer: b2User.publicKey,
+          config: configPDA,
+        })
+        .instruction();
+
+      await expect(
+        sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(ix),
+          [b2User],
+          { commitment: "processed" as Commitment }
+        )
+      ).rejects.toThrow(/HasActiveComposables|HasActivePolicies/);
+
+      // Account must still exist.
+      const stillThere = await sdk.getUserPayment(b2UserPaymentPDA);
+      expect(stillThere).not.toBeNull();
+      expect(stillThere!.activeComposableCount).toBe(1);
+    });
+
+    test("delete_user_payment succeeds once composable policy is removed", async () => {
+      // Clean up the composable policy first.
+      await sdk.updateWallet(new anchor.Wallet(b2User));
+
+      const pauseIx = await program.methods
+        .changeComposableStatus(b2PolicyId, { paused: {} })
+        .accountsStrict({
+          owner: b2User.publicKey,
+          userPayment: b2UserPaymentPDA,
+          composablePolicy: b2ComposablePolicyPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+        })
+        .instruction();
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(pauseIx),
+        [b2User],
+        { commitment: "processed" as Commitment }
+      );
+
+      const deletePolicyIx = await program.methods
+        .deleteComposablePolicy(b2PolicyId)
+        .accountsStrict({
+          owner: b2User.publicKey,
+          userPayment: b2UserPaymentPDA,
+          composablePolicy: b2ComposablePolicyPDA,
+          config: configPDA,
+          rentPayer: b2User.publicKey,
+        })
+        .instruction();
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(deletePolicyIx),
+        [b2User],
+        { commitment: "processed" as Commitment }
+      );
+
+      const up = await sdk.getUserPayment(b2UserPaymentPDA);
+      expect(up!.activeComposableCount).toBe(0);
+      expect(up!.activePoliciesCount).toBe(0);
+
+      // Now delete_user_payment must succeed.
+      const deleteUserIx = await program.methods
+        .deleteUserPayment()
+        .accountsStrict({
+          owner: b2User.publicKey,
+          userPayment: b2UserPaymentPDA,
+          tokenMint: tokenMint,
+          rentPayer: b2User.publicKey,
+          config: configPDA,
+        })
+        .instruction();
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(deleteUserIx),
+        [b2User],
+        { commitment: "processed" as Commitment }
+      );
+
+      const gone = await sdk.getUserPayment(b2UserPaymentPDA);
+      expect(gone).toBeNull();
+    });
+  });
 });

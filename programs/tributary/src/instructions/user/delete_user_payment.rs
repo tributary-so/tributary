@@ -13,6 +13,7 @@ pub struct DeleteUserPayment<'info> {
         bump = user_payment.bump,
         constraint = user_payment.owner == owner.key(),
         constraint = user_payment.active_policies_count == 0 @ TributaryError::HasActivePolicies,
+        constraint = user_payment.active_composable_count == 0 @ TributaryError::HasActiveComposables,
     )]
     pub user_payment: Account<'info, UserPayment>,
 

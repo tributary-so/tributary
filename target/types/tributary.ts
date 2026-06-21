@@ -2718,111 +2718,116 @@ export type Tributary = {
     },
     {
       "code": 6039,
+      "name": "hasActiveComposables",
+      "msg": "Cannot delete user payment with active composable policies"
+    },
+    {
+      "code": 6040,
       "name": "invalidRentPayer",
       "msg": "Invalid rent payer"
     },
     {
-      "code": 6040,
+      "code": 6041,
       "name": "invalidForwardProgram",
       "msg": "Forward program not whitelisted"
     },
     {
-      "code": 6041,
+      "code": 6042,
       "name": "invalidValidationProgram",
       "msg": "Validation program not whitelisted"
     },
     {
-      "code": 6042,
+      "code": 6043,
       "name": "byteRangeCheckFailed",
       "msg": "Byte range check failed"
     },
     {
-      "code": 6043,
+      "code": 6044,
       "name": "insufficientOutputAmount",
       "msg": "Insufficient output amount after forward CPI"
     },
     {
-      "code": 6044,
+      "code": 6045,
       "name": "composableNotEnabled",
       "msg": "Composable policies not enabled for this gateway"
     },
     {
-      "code": 6045,
+      "code": 6046,
       "name": "insufficientByteRangeChecks",
       "msg": "Must have at least one byte range check"
     },
     {
-      "code": 6046,
+      "code": 6047,
       "name": "validationPdaMismatch",
       "msg": "Validation PDA does not match derived address"
     },
     {
-      "code": 6047,
+      "code": 6048,
       "name": "validationDataTooLarge",
       "msg": "Validation data exceeds maximum size"
     },
     {
-      "code": 6048,
+      "code": 6049,
       "name": "validationDataRequired",
       "msg": "Validation program set but no data provided"
     },
     {
-      "code": 6049,
+      "code": 6050,
       "name": "validationNotRequired",
       "msg": "Validation not configured but data was provided"
     },
     {
-      "code": 6050,
+      "code": 6051,
       "name": "composablePolicyNotFound",
       "msg": "Composable policy not found"
     },
     {
-      "code": 6051,
+      "code": 6052,
       "name": "combinedFeeBpsExceedsMax",
       "msg": "Combined fee BPS must be less than 10000"
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "discriminatorCheckRequired",
       "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "unauthorizedInitializer",
       "msg": "Only the upgrade authority can initialize the program"
     },
     {
-      "code": 6054,
+      "code": 6055,
       "name": "intermediateAccountMismatch",
       "msg": "Intermediate token account address does not match the derived ATA"
     },
     {
-      "code": 6055,
+      "code": 6056,
       "name": "intermediateAccountAlreadyExists",
       "msg": "Intermediate token account already exists — it must be freshly created each execution"
     },
     {
-      "code": 6056,
+      "code": 6057,
       "name": "missingForwardAccounts",
       "msg": "Forward CPI requires at least one remaining account"
     },
     {
-      "code": 6057,
+      "code": 6058,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     },
     {
-      "code": 6058,
+      "code": 6059,
       "name": "payerReferralMismatch",
       "msg": "Payer ReferralAccount does not match the paying wallet"
     },
     {
-      "code": 6059,
+      "code": 6060,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     },
     {
-      "code": 6060,
+      "code": 6061,
       "name": "invalidValidationPda",
       "msg": "ValidationPDA is malformed — data_len out of bounds"
     }

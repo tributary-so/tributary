@@ -82,6 +82,8 @@ pub enum TributaryError {
     InvalidFeatureFlags,
     #[msg("Cannot delete user payment with active policies")]
     HasActivePolicies,
+    #[msg("Cannot delete user payment with active composable policies")]
+    HasActiveComposables,
     #[msg("Invalid rent payer")]
     InvalidRentPayer,
     #[msg("Forward program not whitelisted")]
