@@ -407,6 +407,7 @@ describe("Composable Topup Balance Flow", () => {
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
+        recipient: hotWallet.publicKey,
         user: coldWallet.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,

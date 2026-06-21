@@ -2043,6 +2043,7 @@ export class Tributary {
     const accounts = {
       feePayer: feePayer ?? user,
       user,
+      recipient,
       composablePolicy: composablePolicyPda.address,
       userPayment: userPaymentPda,
       gateway: gateway,

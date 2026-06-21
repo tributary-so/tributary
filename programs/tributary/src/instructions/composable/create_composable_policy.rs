@@ -4,7 +4,10 @@ use anchor_spl::token_interface::Mint;
 
 #[derive(Accounts)]
 pub struct CreateComposablePolicy<'info> {
-    /// Gateway signer - pays rent and must match gateway.signer
+    /// Rent payer — only covers rent for the policy (and optional
+    /// ValidationPda) accounts. Receives rent back on delete. This
+    /// account is NOT the recipient. See
+    /// reports/B3-fee-payer-becomes-recipient-without-gateway-signer-constraint.md
     #[account(mut)]
     pub fee_payer: Signer<'info>,
 
@@ -13,6 +16,17 @@ pub struct CreateComposablePolicy<'info> {
         constraint = user_payment.owner == user.key(),
     )]
     pub user: Signer<'info>,
+
+    /// CHECK: Explicit recipient of composable policy outputs. This is
+    /// an authority — the corresponding output-mint ATA is derived and
+    /// validated at execute time (`recipient_token_account.owner ==
+    /// composable_policy.recipient`). Must be non-default to prevent
+    /// accidental burn-to-nowhere policies. Mirrors the pattern in
+    /// `create_payment_policy::CreatePaymentPolicy::recipient`.
+    #[account(
+        constraint = recipient.key() != Pubkey::default() @ TributaryError::InvalidAmount,
+    )]
+    pub recipient: UncheckedAccount<'info>,
 
     #[account(
         init,
@@ -199,7 +213,7 @@ impl<'info> CreateComposablePolicy<'info> {
         } else {
             ValidationConfig::default()
         };
-        composable_policy.recipient = ctx.accounts.fee_payer.key(); // recipient defaults to gateway signer for now
+        composable_policy.recipient = ctx.accounts.recipient.key();
         composable_policy.total_input = 0;
         composable_policy.total_output = 0;
         composable_policy.payment_count = 0;

@@ -345,6 +345,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -433,6 +434,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -517,6 +519,7 @@ describe("Composable Policies", () => {
         )
         .accountsStrict({
           feePayer: user.publicKey,
+          recipient: user.publicKey,
           user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
@@ -581,6 +584,7 @@ describe("Composable Policies", () => {
         )
         .accountsStrict({
           feePayer: user.publicKey,
+          recipient: user.publicKey,
           user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
@@ -645,6 +649,7 @@ describe("Composable Policies", () => {
         )
         .accountsStrict({
           feePayer: user.publicKey,
+          recipient: user.publicKey,
           user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
@@ -715,6 +720,7 @@ describe("Composable Policies", () => {
         )
         .accountsStrict({
           feePayer: user.publicKey,
+          recipient: user.publicKey,
           user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
@@ -792,6 +798,7 @@ describe("Composable Policies", () => {
         )
         .accountsStrict({
           feePayer: user.publicKey,
+          recipient: user.publicKey,
           user: user.publicKey,
           composablePolicy: composablePolicyPDA,
           userPayment: userPaymentPDA,
@@ -854,6 +861,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -983,6 +991,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -1107,6 +1116,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -1244,6 +1254,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -1379,6 +1390,7 @@ describe("Composable Policies", () => {
       )
       .accountsStrict({
         feePayer: user.publicKey,
+        recipient: user.publicKey,
         user: user.publicKey,
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
@@ -1546,6 +1558,7 @@ describe("Composable Policies", () => {
         )
         .accountsStrict({
           feePayer: b2User.publicKey,
+          recipient: b2User.publicKey,
           user: b2User.publicKey,
           composablePolicy: b2ComposablePolicyPDA,
           userPayment: b2UserPaymentPDA,
@@ -1662,6 +1675,138 @@ describe("Composable Policies", () => {
 
       const gone = await sdk.getUserPayment(b2UserPaymentPDA);
       expect(gone).toBeNull();
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  B3 regression: recipient is an explicit account, NOT fee_payer
+  //  reports/B3-fee-payer-becomes-recipient-without-gateway-signer-constraint.md
+  // ══════════════════════════════════════════════════════════════════════
+  describe("B3 regression", () => {
+    test("create_composable_policy stores explicit recipient != fee_payer", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      // Dedicated recipient keypair — distinct from fee_payer (user)
+      const b3Recipient = Keypair.generate();
+
+      const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+      const composablePolicyId =
+        (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+      const [composablePolicyPDA] = getComposablePolicyPda(
+        userPaymentPDA,
+        composablePolicyId,
+        program.programId
+      );
+      const [validationPdaAddress] = getValidationPda(
+        composablePolicyPDA,
+        program.programId
+      );
+
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const policyType = defaultSubscriptionPolicy(100_000, pastTime);
+      const memo = new Array(64).fill(0);
+      Buffer.from("B3 recipient test").copy(Buffer.from(memo));
+      const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+
+      const createIx = await program.methods
+        .createComposablePolicy(
+          policyType,
+          memo,
+          forwardConfig,
+          0,
+          Buffer.alloc(0)
+        )
+        .accountsStrict({
+          feePayer: user.publicKey,
+          recipient: b3Recipient.publicKey,
+          user: user.publicKey,
+          composablePolicy: composablePolicyPDA,
+          userPayment: userPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createIx),
+        [user],
+        { commitment: "processed" as Commitment }
+      );
+
+      const policy = await program.account.composablePolicy.fetch(
+        composablePolicyPDA
+      );
+
+      // Core B3 assertions: recipient is the EXPLICIT account, not fee_payer
+      expect(policy.recipient).toEqual(b3Recipient.publicKey);
+      expect(policy.recipient).not.toEqual(user.publicKey);
+      // rent_payer still tracks who paid rent (fee_payer)
+      expect(policy.rentPayer).toEqual(user.publicKey);
+    });
+
+    test("create_composable_policy rejects recipient = PublicKey.default", async () => {
+      await sdk.updateWallet(new anchor.Wallet(user));
+
+      const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+      const composablePolicyId =
+        (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+      const [composablePolicyPDA] = getComposablePolicyPda(
+        userPaymentPDA,
+        composablePolicyId,
+        program.programId
+      );
+      const [validationPdaAddress] = getValidationPda(
+        composablePolicyPDA,
+        program.programId
+      );
+
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const policyType = defaultSubscriptionPolicy(100_000, pastTime);
+      const memo = new Array(64).fill(0);
+      const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+
+      try {
+        const ix = await program.methods
+          .createComposablePolicy(
+            policyType,
+            memo,
+            forwardConfig,
+            0,
+            Buffer.alloc(0)
+          )
+          .accountsStrict({
+            feePayer: user.publicKey,
+            recipient: PublicKey.default,
+            user: user.publicKey,
+            composablePolicy: composablePolicyPDA,
+            userPayment: userPaymentPDA,
+            gateway: gatewayPDA,
+            config: configPDA,
+            validationPda: validationPdaAddress,
+            validationProgram: PublicKey.default,
+            inputMint: tokenMint,
+            outputMint: secondMint,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
+
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(ix),
+          [user],
+          { commitment: "processed" as Commitment }
+        );
+
+        assert(false, "Expected InvalidAmount error for default recipient");
+      } catch (error: any) {
+        expect(error.message).toContain("InvalidAmount");
+      }
     });
   });
 });

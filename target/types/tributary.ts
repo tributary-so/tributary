@@ -478,7 +478,10 @@ export type Tributary = {
         {
           "name": "feePayer",
           "docs": [
-            "Gateway signer - pays rent and must match gateway.signer"
+            "Rent payer — only covers rent for the policy (and optional",
+            "ValidationPda) accounts. Receives rent back on delete. This",
+            "account is NOT the recipient. See",
+            "reports/B3-fee-payer-becomes-recipient-without-gateway-signer-constraint.md"
           ],
           "writable": true,
           "signer": true
@@ -486,6 +489,16 @@ export type Tributary = {
         {
           "name": "user",
           "signer": true
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "an authority — the corresponding output-mint ATA is derived and",
+            "validated at execute time (`recipient_token_account.owner ==",
+            "composable_policy.recipient`). Must be non-default to prevent",
+            "accidental burn-to-nowhere policies. Mirrors the pattern in",
+            "`create_payment_policy::CreatePaymentPolicy::recipient`."
+          ]
         },
         {
           "name": "composablePolicy",
