@@ -18,7 +18,6 @@ import {
 } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
 import { SEEDS, IWallet, Tributary as TributarySDK } from "../packages/sdk/src";
-import assert from "assert";
 import { Buffer } from "buffer";
 
 const METEORA_DLMM_PUBKEY = new PublicKey(
@@ -508,42 +507,35 @@ describe("Composable Policies", () => {
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     forwardConfig.targetProgram = rogueProgram;
 
-    try {
-      const ix = await program.methods
-        .createComposablePolicy(
-          policyType,
-          memo,
-          forwardConfig,
-          0,
-          Buffer.alloc(0)
-        )
-        .accountsStrict({
-          feePayer: user.publicKey,
-          recipient: user.publicKey,
-          user: user.publicKey,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
-          inputMint: tokenMint,
-          outputMint: secondMint,
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .createComposablePolicy(
+        policyType,
+        memo,
+        forwardConfig,
+        0,
+        Buffer.alloc(0)
+      )
+      .accountsStrict({
+        feePayer: user.publicKey,
+        recipient: user.publicKey,
+        user: user.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(ix),
-        [user],
-        { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected error for non-whitelisted forward program");
-    } catch (error: any) {
-      expect(error.message).toContain("InvalidForwardProgram");
-    }
+    await expect(
+      sendAndConfirmTransaction(connection, new Transaction().add(ix), [user], {
+        commitment: "processed" as Commitment,
+      })
+    ).rejects.toThrow(/InvalidForwardProgram/);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -573,42 +565,35 @@ describe("Composable Policies", () => {
 
     const rogueValidation = Keypair.generate().publicKey;
 
-    try {
-      const ix = await program.methods
-        .createComposablePolicy(
-          policyType,
-          memo,
-          forwardConfig,
-          0,
-          Buffer.from("some-data")
-        )
-        .accountsStrict({
-          feePayer: user.publicKey,
-          recipient: user.publicKey,
-          user: user.publicKey,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: rogueValidation,
-          inputMint: tokenMint,
-          outputMint: secondMint,
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .createComposablePolicy(
+        policyType,
+        memo,
+        forwardConfig,
+        0,
+        Buffer.from("some-data")
+      )
+      .accountsStrict({
+        feePayer: user.publicKey,
+        recipient: user.publicKey,
+        user: user.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        validationProgram: rogueValidation,
+        inputMint: tokenMint,
+        outputMint: secondMint,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(ix),
-        [user],
-        { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected error for non-whitelisted validation program");
-    } catch (error: any) {
-      expect(error.message).toContain("InvalidValidationProgram");
-    }
+    await expect(
+      sendAndConfirmTransaction(connection, new Transaction().add(ix), [user], {
+        commitment: "processed" as Commitment,
+      })
+    ).rejects.toThrow(/InvalidValidationProgram/);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -638,42 +623,35 @@ describe("Composable Policies", () => {
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     forwardConfig.numDataChecks = 0;
 
-    try {
-      const ix = await program.methods
-        .createComposablePolicy(
-          policyType,
-          memo,
-          forwardConfig,
-          0,
-          Buffer.alloc(0)
-        )
-        .accountsStrict({
-          feePayer: user.publicKey,
-          recipient: user.publicKey,
-          user: user.publicKey,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
-          inputMint: tokenMint,
-          outputMint: secondMint,
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .createComposablePolicy(
+        policyType,
+        memo,
+        forwardConfig,
+        0,
+        Buffer.alloc(0)
+      )
+      .accountsStrict({
+        feePayer: user.publicKey,
+        recipient: user.publicKey,
+        user: user.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(ix),
-        [user],
-        { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected error for zero data checks");
-    } catch (error: any) {
-      expect(error.message).toContain("InsufficientByteRangeChecks");
-    }
+    await expect(
+      sendAndConfirmTransaction(connection, new Transaction().add(ix), [user], {
+        commitment: "processed" as Commitment,
+      })
+    ).rejects.toThrow(/InsufficientByteRangeChecks/);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -709,42 +687,35 @@ describe("Composable Policies", () => {
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     forwardConfig.numDataChecks = 5;
 
-    try {
-      const ix = await program.methods
-        .createComposablePolicy(
-          policyType,
-          memo,
-          forwardConfig,
-          0,
-          Buffer.alloc(0)
-        )
-        .accountsStrict({
-          feePayer: user.publicKey,
-          recipient: user.publicKey,
-          user: user.publicKey,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
-          inputMint: tokenMint,
-          outputMint: secondMint,
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .createComposablePolicy(
+        policyType,
+        memo,
+        forwardConfig,
+        0,
+        Buffer.alloc(0)
+      )
+      .accountsStrict({
+        feePayer: user.publicKey,
+        recipient: user.publicKey,
+        user: user.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(ix),
-        [user],
-        { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected error for numDataChecks > MAX_BYTE_RANGE_CHECKS");
-    } catch (error: any) {
-      expect(error.message).toContain("InsufficientByteRangeChecks");
-    }
+    await expect(
+      sendAndConfirmTransaction(connection, new Transaction().add(ix), [user], {
+        commitment: "processed" as Commitment,
+      })
+    ).rejects.toThrow(/InsufficientByteRangeChecks/);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -787,42 +758,35 @@ describe("Composable Policies", () => {
       expected: [1, 2, 3, 4, 5, 6, 7, 8],
     };
 
-    try {
-      const ix = await program.methods
-        .createComposablePolicy(
-          policyType,
-          memo,
-          forwardConfig,
-          0,
-          Buffer.alloc(0)
-        )
-        .accountsStrict({
-          feePayer: user.publicKey,
-          recipient: user.publicKey,
-          user: user.publicKey,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
-          inputMint: tokenMint,
-          outputMint: secondMint,
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .createComposablePolicy(
+        policyType,
+        memo,
+        forwardConfig,
+        0,
+        Buffer.alloc(0)
+      )
+      .accountsStrict({
+        feePayer: user.publicKey,
+        recipient: user.publicKey,
+        user: user.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(ix),
-        [user],
-        { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected error for ByteRangeCheck.length > 8");
-    } catch (error: any) {
-      expect(error.message).toContain("ByteRangeCheckFailed");
-    }
+    await expect(
+      sendAndConfirmTransaction(connection, new Transaction().add(ix), [user], {
+        commitment: "processed" as Commitment,
+      })
+    ).rejects.toThrow(/ByteRangeCheckFailed/);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1161,60 +1125,56 @@ describe("Composable Policies", () => {
 
     const wrongInstructionData = Buffer.from(new Array(33).fill(0));
 
-    try {
-      const ix = await program.methods
-        .executeComposable(wrongInstructionData, null)
-        .accountsStrict({
-          feePayer: gatewayAuthority.publicKey,
-          paymentsDelegate,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          validationProgram: PublicKey.default,
-          config: configPDA,
-          userTokenAccount: userTokenAccount,
-          mint: tokenMint,
-          outputMint: secondMint,
-          intermediateInputTokenAccount: getAssociatedTokenAddressSync(
-            tokenMint,
-            composablePolicyPDA,
-            true
-          ),
-          intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
-            secondMint,
-            composablePolicyPDA,
-            true
-          ),
-          recipientTokenAccount,
-          gatewayFeeAccount: getAssociatedTokenAddressSync(
-            secondMint,
-            feeRecipient.publicKey
-          ),
-          protocolFeeAccount: getAssociatedTokenAddressSync(
-            secondMint,
-            admin.publicKey
-          ),
-          tokenProgram: new PublicKey(
-            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-          ),
-          associatedTokenProgram: new PublicKey(
-            "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-          ),
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .executeComposable(wrongInstructionData, null)
+      .accountsStrict({
+        feePayer: gatewayAuthority.publicKey,
+        paymentsDelegate,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        validationProgram: PublicKey.default,
+        config: configPDA,
+        userTokenAccount: userTokenAccount,
+        mint: tokenMint,
+        outputMint: secondMint,
+        intermediateInputTokenAccount: getAssociatedTokenAddressSync(
+          tokenMint,
+          composablePolicyPDA,
+          true
+        ),
+        intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          composablePolicyPDA,
+          true
+        ),
+        recipientTokenAccount,
+        gatewayFeeAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          feeRecipient.publicKey
+        ),
+        protocolFeeAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          admin.publicKey
+        ),
+        tokenProgram: new PublicKey(
+          "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        ),
+        associatedTokenProgram: new PublicKey(
+          "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        ),
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
+    await expect(
+      sendAndConfirmTransaction(
         connection,
         new Transaction().add(ix),
         [gatewayAuthority],
         { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected ByteRangeCheckFailed error");
-    } catch (error: any) {
-      expect(error.message).toContain("ByteRangeCheckFailed");
-    }
+      )
+    ).rejects.toThrow(/ByteRangeCheckFailed/);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1297,60 +1257,56 @@ describe("Composable Policies", () => {
 
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
-    try {
-      const ix = await program.methods
-        .executeComposable(Buffer.from(new Array(32).fill(0)), null)
-        .accountsStrict({
-          feePayer: gatewayAuthority.publicKey,
-          paymentsDelegate,
-          composablePolicy: composablePolicyPDA,
-          userPayment: userPaymentPDA,
-          gateway: gatewayPDA,
-          config: configPDA,
-          userTokenAccount: userTokenAccount,
-          validationProgram: PublicKey.default,
-          mint: tokenMint,
-          outputMint: secondMint,
-          intermediateInputTokenAccount: getAssociatedTokenAddressSync(
-            tokenMint,
-            composablePolicyPDA,
-            true
-          ),
-          intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
-            secondMint,
-            composablePolicyPDA,
-            true
-          ),
-          recipientTokenAccount: userSecondMintTokenAccount,
-          gatewayFeeAccount: getAssociatedTokenAddressSync(
-            secondMint,
-            feeRecipient.publicKey
-          ),
-          protocolFeeAccount: getAssociatedTokenAddressSync(
-            secondMint,
-            admin.publicKey
-          ),
-          tokenProgram: new PublicKey(
-            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-          ),
-          associatedTokenProgram: new PublicKey(
-            "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-          ),
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+    const ix = await program.methods
+      .executeComposable(Buffer.from(new Array(32).fill(0)), null)
+      .accountsStrict({
+        feePayer: gatewayAuthority.publicKey,
+        paymentsDelegate,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        userTokenAccount: userTokenAccount,
+        validationProgram: PublicKey.default,
+        mint: tokenMint,
+        outputMint: secondMint,
+        intermediateInputTokenAccount: getAssociatedTokenAddressSync(
+          tokenMint,
+          composablePolicyPDA,
+          true
+        ),
+        intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          composablePolicyPDA,
+          true
+        ),
+        recipientTokenAccount: userSecondMintTokenAccount,
+        gatewayFeeAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          feeRecipient.publicKey
+        ),
+        protocolFeeAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          admin.publicKey
+        ),
+        tokenProgram: new PublicKey(
+          "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        ),
+        associatedTokenProgram: new PublicKey(
+          "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        ),
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
 
-      await sendAndConfirmTransaction(
+    await expect(
+      sendAndConfirmTransaction(
         connection,
         new Transaction().add(ix),
         [gatewayAuthority],
         { commitment: "processed" as Commitment }
-      );
-
-      assert(false, "Expected PolicyPaused error");
-    } catch (error: any) {
-      expect(error.message).toContain("PolicyPaused");
-    }
+      )
+    ).rejects.toThrow(/PolicyPaused/);
   });
 
   test("Delete composable policy with validation — closes ValidationPDA", async () => {
@@ -1771,42 +1727,38 @@ describe("Composable Policies", () => {
       const memo = new Array(64).fill(0);
       const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
-      try {
-        const ix = await program.methods
-          .createComposablePolicy(
-            policyType,
-            memo,
-            forwardConfig,
-            0,
-            Buffer.alloc(0)
-          )
-          .accountsStrict({
-            feePayer: user.publicKey,
-            recipient: PublicKey.default,
-            user: user.publicKey,
-            composablePolicy: composablePolicyPDA,
-            userPayment: userPaymentPDA,
-            gateway: gatewayPDA,
-            config: configPDA,
-            validationPda: validationPdaAddress,
-            validationProgram: PublicKey.default,
-            inputMint: tokenMint,
-            outputMint: secondMint,
-            systemProgram: SystemProgram.programId,
-          })
-          .instruction();
+      const ix = await program.methods
+        .createComposablePolicy(
+          policyType,
+          memo,
+          forwardConfig,
+          0,
+          Buffer.alloc(0)
+        )
+        .accountsStrict({
+          feePayer: user.publicKey,
+          recipient: PublicKey.default,
+          user: user.publicKey,
+          composablePolicy: composablePolicyPDA,
+          userPayment: userPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          validationPda: validationPdaAddress,
+          validationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
 
-        await sendAndConfirmTransaction(
+      await expect(
+        sendAndConfirmTransaction(
           connection,
           new Transaction().add(ix),
           [user],
           { commitment: "processed" as Commitment }
-        );
-
-        assert(false, "Expected InvalidAmount error for default recipient");
-      } catch (error: any) {
-        expect(error.message).toContain("InvalidAmount");
-      }
+        )
+      ).rejects.toThrow(/InvalidAmount/);
     });
   });
 });
