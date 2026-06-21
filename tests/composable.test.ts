@@ -19,6 +19,7 @@ import {
 import { Tributary } from "../target/types/tributary";
 import { SEEDS, IWallet, Tributary as TributarySDK } from "../packages/sdk/src";
 import { Buffer } from "buffer";
+import { getOnChainNow } from "./helpers/onChainNow";
 
 const METEORA_DLMM_PUBKEY = new PublicKey(
   "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
@@ -314,7 +315,7 @@ describe("Composable Policies", () => {
     const composableCountBefore =
       userPaymentBefore!.createdComposableCount ?? 0;
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const nextDue = now + 30 * 24 * 3600;
     const policyType = defaultSubscriptionPolicy(1_000_000, nextDue);
     const memo = new Array(64).fill(0);
@@ -413,7 +414,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(500_000, now + 86400);
 
     const memo = new Array(64).fill(0);
@@ -499,7 +500,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
@@ -558,7 +559,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
@@ -616,7 +617,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
@@ -678,7 +679,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
@@ -743,7 +744,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
 
@@ -809,7 +810,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Status test").copy(Buffer.from(memo));
@@ -939,7 +940,7 @@ describe("Composable Policies", () => {
 
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(50_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Delete test").copy(Buffer.from(memo));
@@ -1046,7 +1047,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const pastTime = Math.floor(Date.now() / 1000) - 3600;
+    const pastTime = (await getOnChainNow(connection)) - 3600;
     const policyType = defaultSubscriptionPolicy(100_000, pastTime);
 
     const memo = new Array(64).fill(0);
@@ -1197,7 +1198,7 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const pastTime = Math.floor(Date.now() / 1000) - 3600;
+    const pastTime = (await getOnChainNow(connection)) - 3600;
     const policyType = defaultSubscriptionPolicy(100_000, pastTime);
 
     const memo = new Array(64).fill(0);
@@ -1328,7 +1329,7 @@ describe("Composable Policies", () => {
 
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(50_000, now + 86400);
     const memo = new Array(64).fill(0);
     Buffer.from("Delete+Val test").copy(Buffer.from(memo));
@@ -1488,7 +1489,7 @@ describe("Composable Policies", () => {
 
       // Create one composable policy → active_composable_count == 1,
       // active_policies_count == 0.
-      const now = Math.floor(Date.now() / 1000);
+      const now = await getOnChainNow(connection);
       const nextDue = now + 30 * 24 * 3600;
       const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
       const memo = new Array(64).fill(0);
@@ -1658,7 +1659,7 @@ describe("Composable Policies", () => {
         program.programId
       );
 
-      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const pastTime = (await getOnChainNow(connection)) - 3600;
       const policyType = defaultSubscriptionPolicy(100_000, pastTime);
       const memo = new Array(64).fill(0);
       Buffer.from("B3 recipient test").copy(Buffer.from(memo));
@@ -1722,7 +1723,7 @@ describe("Composable Policies", () => {
         program.programId
       );
 
-      const pastTime = Math.floor(Date.now() / 1000) - 3600;
+      const pastTime = (await getOnChainNow(connection)) - 3600;
       const policyType = defaultSubscriptionPolicy(100_000, pastTime);
       const memo = new Array(64).fill(0);
       const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
