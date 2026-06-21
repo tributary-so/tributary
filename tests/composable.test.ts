@@ -306,7 +306,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  1. Create composable policy — subscription policy, no validation
+  //  Create composable policy — subscription policy, no validation
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — subscription policy, no validation", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -395,7 +395,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  2. Create composable policy — with validation config
+  //  Create composable policy — with validation config
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — with validation config", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -481,7 +481,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  3. Create composable policy — fails with non-whitelisted forward program
+  //  Create composable policy — fails with non-whitelisted forward program
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with non-whitelisted forward program", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -547,7 +547,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  4. Create composable policy — fails with non-whitelisted validation program
+  //  Create composable policy — fails with non-whitelisted validation program
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with non-whitelisted validation program", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -612,7 +612,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  5. Create composable policy — fails with zero data checks
+  //  Create composable policy — fails with zero data checks
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with zero data checks", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -677,7 +677,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  5b. Create composable policy — fails when numDataChecks > MAX_BYTE_RANGE_CHECKS
+  //  Create composable policy — fails when numDataChecks > MAX_BYTE_RANGE_CHECKS
   //      Regression for reports/H-04-num-data-checks-unbounded-oob.md:
   //      previously only >= 1 was validated, so numDataChecks = 5 (or 255)
   //      succeeded at create time and then panicked out-of-bounds on every
@@ -748,7 +748,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  5c. Create composable policy — fails when a ByteRangeCheck.length > 8
+  //  Create composable policy — fails when a ByteRangeCheck.length > 8
   //      Regression for reports/H-06-byte-range-check-length-unbounded.md:
   //      `expected` is a `[u8; 8]`, so any length > 8 panics at
   //      `&self.expected[..length]` during execute_composable. The
@@ -826,7 +826,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  7. Change composable status — Active to Paused
+  //  Change composable status — Active to Paused
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Active to Paused", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -910,7 +910,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  8. Change composable status — Paused to Active
+  //  Change composable status — Paused to Active
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Paused to Active", async () => {
     // Reuse the paused policy from the previous test
@@ -954,7 +954,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  6. Delete composable policy
+  //  Delete composable policy
   // ══════════════════════════════════════════════════════════════════════
   test("Delete composable policy", async () => {
     await sdk.updateWallet(new anchor.Wallet(user));
@@ -1063,7 +1063,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  9. Execute composable — byte range check fails
+  //  Execute composable — byte range check fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — byte range check fails", async () => {
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
@@ -1218,7 +1218,7 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  //  10. Execute composable — paused policy fails
+  //  Execute composable — paused policy fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — paused policy fails", async () => {
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
