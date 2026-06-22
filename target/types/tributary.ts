@@ -104,7 +104,28 @@ export type Tributary = {
           }
         },
         {
-          "name": "gateway"
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
         },
         {
           "name": "config",
@@ -2761,86 +2782,81 @@ export type Tributary = {
     },
     {
       "code": 6045,
-      "name": "composableNotEnabled",
-      "msg": "Composable policies not enabled for this gateway"
-    },
-    {
-      "code": 6046,
       "name": "insufficientByteRangeChecks",
       "msg": "Must have at least one byte range check"
     },
     {
-      "code": 6047,
+      "code": 6046,
       "name": "validationPdaMismatch",
       "msg": "Validation PDA does not match derived address"
     },
     {
-      "code": 6048,
+      "code": 6047,
       "name": "validationDataTooLarge",
       "msg": "Validation data exceeds maximum size"
     },
     {
-      "code": 6049,
+      "code": 6048,
       "name": "validationDataRequired",
       "msg": "Validation program set but no data provided"
     },
     {
-      "code": 6050,
+      "code": 6049,
       "name": "validationNotRequired",
       "msg": "Validation not configured but data was provided"
     },
     {
-      "code": 6051,
+      "code": 6050,
       "name": "composablePolicyNotFound",
       "msg": "Composable policy not found"
     },
     {
-      "code": 6052,
+      "code": 6051,
       "name": "combinedFeeBpsExceedsMax",
       "msg": "Combined fee BPS must be less than 10000"
     },
     {
-      "code": 6053,
+      "code": 6052,
       "name": "discriminatorCheckRequired",
       "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
     },
     {
-      "code": 6054,
+      "code": 6053,
       "name": "unauthorizedInitializer",
       "msg": "Only the upgrade authority can initialize the program"
     },
     {
-      "code": 6055,
+      "code": 6054,
       "name": "intermediateAccountMismatch",
       "msg": "Intermediate token account address does not match the derived ATA"
     },
     {
-      "code": 6056,
+      "code": 6055,
       "name": "intermediateAccountAlreadyExists",
       "msg": "Intermediate token account already exists — it must be freshly created each execution"
     },
     {
-      "code": 6057,
+      "code": 6056,
       "name": "missingForwardAccounts",
       "msg": "Forward CPI requires at least one remaining account"
     },
     {
-      "code": 6058,
+      "code": 6057,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     },
     {
-      "code": 6059,
+      "code": 6058,
       "name": "payerReferralMismatch",
       "msg": "Payer ReferralAccount does not match the paying wallet"
     },
     {
-      "code": 6060,
+      "code": 6059,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     },
     {
-      "code": 6061,
+      "code": 6060,
       "name": "invalidValidationPda",
       "msg": "ValidationPDA is malformed — data_len out of bounds"
     }
@@ -3795,6 +3811,14 @@ export type Tributary = {
           },
           {
             "name": "recordId",
+            "docs": [
+              "Post-increment payment counter. For the Nth execution of a policy,",
+              "`record_id == N` (starts at 1, not 0). The increment happens inside",
+              "`strategy.execute()` (`policies/traits.rs`) before `should_pause_policy`",
+              "runs, so `Subscription::max_renewals` ceilings are honored exactly.",
+              "Indexers that assumed 0-indexed records must add 1 to historical data",
+              "or use `payment_count - 1` for backward display."
+            ],
             "type": "u32"
           },
           {

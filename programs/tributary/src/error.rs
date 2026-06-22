@@ -94,8 +94,6 @@ pub enum TributaryError {
     ByteRangeCheckFailed,
     #[msg("Insufficient output amount after forward CPI")]
     InsufficientOutputAmount,
-    #[msg("Composable policies not enabled for this gateway")]
-    ComposableNotEnabled,
     #[msg("Must have at least one byte range check")]
     InsufficientByteRangeChecks,
     #[msg("Validation PDA does not match derived address")]
