@@ -331,6 +331,11 @@ fn process_output_and_sweep<'info>(
     use_custom_protocol_fee: bool,
     custom_protocol_fee_bps: u16,
     default_protocol_fee_bps: u16,
+    // Net-mode flag from `gateway.is_amount_net()`. Threaded through to
+    // `shared::fees::calculate_fees` so the bps math stays unified with
+    // `execute_payment`. See the fee-section comment below for why only
+    // `gateway_fee` / `protocol_fee` are consumed.
+    is_amount_net: bool,
     min_output_amount: Option<u64>,
     intermediate_owner_seeds: &[&[&[u8]]],
 ) -> Result<(u64, u64, u64, u64)> {
@@ -343,24 +348,34 @@ fn process_output_and_sweep<'info>(
     // convention (Uniswap/Jupiter amountOutMin). See
     // reports/M5-min-output-amount-checked-before-fees.md.
 
-    // ── Calculate fees (output-based) ───────────────────────────────
-    let gateway_fee = output_amount
-        .checked_mul(gateway_fee_bps as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    let protocol_fee_bps = if use_custom_protocol_fee {
-        custom_protocol_fee_bps
-    } else {
-        default_protocol_fee_bps
-    };
-
-    let protocol_fee = output_amount
-        .checked_mul(protocol_fee_bps as u64)
-        .ok_or(TributaryError::ArithmeticOverflow)?
-        .checked_div(10000)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
+    // ── Calculate fees via shared helper ───────────────────────────
+    // M7 unification: route through `shared::fees::calculate_fees` so the
+    // bps math (rounding, overflow checks) has a single source of truth
+    // shared with `execute_payment`. We pass `is_amount_net` so any future
+    // change to fee accounting flows through both paths identically.
+    //
+    // Composable's invariant differs from `execute_payment`: fees are
+    // ALWAYS deducted from the forward program's realized gross output
+    // (there is no separate "user debit" to inflate — the user's pull
+    // already happened, sized independently of the swap result). We
+    // therefore consume only `gateway_fee` and `protocol_fee` from the
+    // breakdown; the `recipient_amount` / `total_from_user` fields model
+    // the `execute_payment` net-vs-gross split and don't apply here.
+    // `gateway_fee` and `protocol_fee` are themselves mode-independent
+    // (always `amount * bps / 10000`), so today's behavior is preserved
+    // exactly; the win is that the math can no longer drift between the
+    // two paths.
+    // See reports/M7-composable-diverges-from-shared-fee-schedule-patterns.md.
+    let fee_breakdown = crate::shared::fees::calculate_fees(
+        output_amount,
+        gateway_fee_bps,
+        custom_protocol_fee_bps,
+        default_protocol_fee_bps,
+        use_custom_protocol_fee,
+        is_amount_net,
+    )?;
+    let gateway_fee = fee_breakdown.gateway_fee;
+    let protocol_fee = fee_breakdown.protocol_fee;
 
     let total_fees = gateway_fee
         .checked_add(protocol_fee)
@@ -662,6 +677,28 @@ impl<'info> ExecuteComposable<'info> {
         // Routes through `shared::schedule` so that Subscription
         // advancement uses the same calendar-month math as the
         // subscription path (see reports/M-04-inconsistent-month-arithmetic.md).
+        //
+        // TODO(M7-follow-up): unify on the `crate::policies::PolicyStrategy`
+        // trait pattern used by `execute_payment` (Option A of
+        // reports/M7-composable-diverges-from-shared-fee-schedule-patterns.md).
+        // The fee-math half of M7 IS unified (see `process_output_and_sweep`
+        // → `shared::fees::calculate_fees`); the policy-strategy half is
+        // deferred because the existing `PolicyStrategy` trait is bound to
+        // `PaymentPolicy` in every method signature and bakes in three
+        // semantic commitments that diverge from the composable path:
+        //   1. Signer checks via `release_condition` bits inside
+        //      `validate_payment_timing` — composable authorizes via the
+        //      `fee_payer` Accounts constraint instead.
+        //   2. `status = Paused` on completion — composable uses
+        //      `PolicyStatus::Completed`.
+        //   3. `payment_count` incremented inside `execute()` — composable
+        //      increments itself, post-swap.
+        // Fully migrating requires either generalizing the trait over a
+        // `PolicyAccount` super-trait (large ripple through the three
+        // existing strategy impls + their tests) or introducing a parallel
+        // `ComposablePolicyStrategy` trait (duplicated logic). Both exceed
+        // the agreed session scope. Until then, `shared::schedule` keeps
+        // exactly one production caller (this fn) plus its own unit tests.
         let schedule_amount =
             validate_policy_execution(&composable_policy.policy_type, now, forward_amount)?;
 
@@ -854,6 +891,7 @@ impl<'info> ExecuteComposable<'info> {
             gateway.is_custom_protocol_fee_enabled(),
             gateway.custom_protocol_fee_bps,
             config.protocol_fee_bps,
+            gateway.is_amount_net(),
             min_output_amount,
             intermediate_owner_seeds,
         )?;
@@ -884,6 +922,11 @@ impl<'info> ExecuteComposable<'info> {
         // math (M-04), for Milestone it bumps `current_milestone`, for
         // PayAsYouGo it updates the rolling period total. Returns
         // `should_complete` for one-shot / exhausted policies.
+        //
+        // TODO(M7-follow-up): see the matching note at the
+        // `validate_policy_execution` call above — this remains on
+        // `shared::schedule` until the `PolicyStrategy` trait is generalized
+        // to cover `ComposablePolicy` semantics.
         let should_pause = advance_policy(&mut composable_policy.policy_type, now, input_amount)?;
 
         composable_policy.total_input = composable_policy
