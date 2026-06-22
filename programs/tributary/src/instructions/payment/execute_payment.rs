@@ -297,7 +297,7 @@ impl<'info> ExecutePayment<'info> {
             amount: payment_amount,
             timestamp: clock.unix_timestamp,
             memo: payment_policy.memo,
-            record_id: payment_policy.payment_count,
+            record_id: payment_policy.payment_count, // post-increment; incremented in strategy.execute() — see policies/traits.rs
             payer: user_payment.owner,
             recipient: accounts.recipient_token_account.owner.key(),
             token_mint: mint_pubkey,

@@ -11,6 +11,12 @@ pub struct PaymentRecord {
     pub amount: u64,
     pub timestamp: i64,
     pub memo: [u8; 64],
+    /// Post-increment payment counter. For the Nth execution of a policy,
+    /// `record_id == N` (starts at 1, not 0). The increment happens inside
+    /// `strategy.execute()` (`policies/traits.rs`) before `should_pause_policy`
+    /// runs, so `Subscription::max_renewals` ceilings are honored exactly.
+    /// Indexers that assumed 0-indexed records must add 1 to historical data
+    /// or use `payment_count - 1` for backward display.
     pub record_id: u32,
     pub payer: Pubkey,
     pub recipient: Pubkey,
