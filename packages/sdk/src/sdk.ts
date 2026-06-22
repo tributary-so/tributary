@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   Connection,
   Keypair,
   PublicKey,
@@ -2007,9 +2008,9 @@ export class Tributary {
     tokenMint: PublicKey,
     recipient: PublicKey,
     gateway: PublicKey,
-    policyType: any,
+    policyType: PolicyType,
     memo: string,
-    forwardConfig: any,
+    forwardConfig: ForwardConfig,
     validationProgram: PublicKey = PublicKey.default,
     numValidationAccounts: number = 0,
     validationData: Buffer = Buffer.alloc(0),
@@ -2087,11 +2088,10 @@ export class Tributary {
     composablePolicy: PublicKey,
     instructionData: Buffer,
     forwardAmount?: BN | null,
-    remainingAccounts?: any[]
+    remainingAccounts?: AccountMeta[]
   ): Promise<TransactionInstruction> {
-    const policy: any = await this.program.account.composablePolicy.fetch(
-      composablePolicy
-    );
+    const policy: ComposablePolicy =
+      await this.program.account.composablePolicy.fetch(composablePolicy);
     const userPayment: UserPayment =
       await this.program.account.userPayment.fetch(policy.userPayment);
     const gateway: PaymentGateway =
@@ -2204,7 +2204,7 @@ export class Tributary {
   async changeComposablePolicyStatus(
     tokenMint: PublicKey,
     policyId: number,
-    newStatus: any // PolicyStatus — will be typed once IDL is regenerated
+    newStatus: PolicyStatus
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
@@ -2267,16 +2267,15 @@ export class Tributary {
       rentPayer: owner,
     };
 
-    const policy: any = await this.program.account.composablePolicy.fetch(
-      composablePolicyPda
-    );
+    const policy: ComposablePolicy =
+      await this.program.account.composablePolicy.fetch(composablePolicyPda);
 
     const hasValidation =
       policy.validationConfig.validationProgram !== undefined &&
       policy.validationConfig.validationProgram.toString() !==
         PublicKey.default.toString();
 
-    const remainingAccounts: any[] = [];
+    const remainingAccounts: AccountMeta[] = [];
     if (hasValidation) {
       const { address: validationPdaAddress } = getValidationPda(
         composablePolicyPda,
