@@ -21,10 +21,8 @@ import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import assert from "assert";
 import { Buffer } from "buffer";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { METEORA_DLMM_PUBKEY, LIGHTHOUSE_PUBKEY } from "./constants";
 
-const LIGHTHOUSE_PUBKEY = new PublicKey(
-  "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95"
-);
 // Meteora DLM is the only program in ALLOWED_FORWARD_PROGRAMS after the
 // Token Program was removed from the forward allowlist (the raw-token-
 // transfer "forward" was a direct user-fund drain vector — see
@@ -32,9 +30,6 @@ const LIGHTHOUSE_PUBKEY = new PublicKey(
 // currently commented out in execute_composable, so for this test the
 // forward target is a placeholder that satisfies the create-time
 // allowlist check; the data_checks below only gate Step-1 byte validation.
-const METEORA_DLMM_PUBKEY = new PublicKey(
-  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
-);
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );

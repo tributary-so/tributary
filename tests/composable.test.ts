@@ -20,13 +20,8 @@ import { Tributary } from "../target/types/tributary";
 import { SEEDS, IWallet, Tributary as TributarySDK } from "../packages/sdk/src";
 import { Buffer } from "buffer";
 import { getOnChainNow } from "./helpers/onChainNow";
+import { METEORA_DLMM_PUBKEY, LIGHTHOUSE_PUBKEY } from "./constants";
 
-const METEORA_DLMM_PUBKEY = new PublicKey(
-  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
-);
-const LIGHTHOUSE_PUBKEY = new PublicKey(
-  "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95"
-);
 const ADMIN_KEYPAIR = [
   238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
   50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
