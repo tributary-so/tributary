@@ -47,5 +47,5 @@ impl UserPayment {
         1 + // is_active: bool
         1 + // bump: u8
         32 + // rent_payer: Pubkey
-        210; // padding: [u8; 209]
+        210; // padding: [u8; 210]
 }
