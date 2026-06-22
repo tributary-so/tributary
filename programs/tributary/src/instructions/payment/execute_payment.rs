@@ -4,7 +4,7 @@ use crate::{
     policies::*,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
     shared::mint::validate_mint_compatible,
-    shared::referral::{process_referral_rewards, AuthorityMode, ReferralContext},
+    shared::referral::{try_distribute_referral_rewards, AuthorityMode},
     state::*,
 };
 use anchor_lang::prelude::*;
@@ -214,34 +214,27 @@ impl<'info> ExecutePayment<'info> {
 
         let seeds = &[signer_seeds];
 
-        // Process referral rewards if enabled
-        if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
-            let referral_ctx = ReferralContext {
-                remaining_accounts,
-                source_token_account: user_token_account_info.clone(),
-                authority_info: authority_info.clone(),
-                authority_mode: AuthorityMode::PdaSigner(seeds),
-                token_program: token_program_info.clone(),
-                mint_info: mint_info.clone(),
-                mint_decimals,
-                expected_mint,
-                gateway_key: gateway.key(),
-                payment_policy_key,
-                payment_amount,
-                timestamp: clock.unix_timestamp,
-                payer_wallet: user_owner,
-            };
-            let referral_pool = process_referral_rewards(
-                referral_ctx,
-                gateway_fee,
-                gateway.referral_allocation_bps,
-                &gateway.referral_tiers_bps,
-            )?;
-
-            gateway_fee = gateway_fee
-                .checked_sub(referral_pool)
-                .ok_or(TributaryError::ArithmeticOverflow)?;
-        }
+        // Process referral rewards if enabled (helper short-circuits when off).
+        let referral_pool = try_distribute_referral_rewards(
+            remaining_accounts,
+            user_token_account_info.clone(),
+            authority_info.clone(),
+            AuthorityMode::PdaSigner(seeds),
+            token_program_info.clone(),
+            mint_info.clone(),
+            mint_decimals,
+            expected_mint,
+            gateway.key(),
+            gateway,
+            payment_policy_key,
+            payment_amount,
+            clock.unix_timestamp,
+            user_owner,
+            gateway_fee,
+        )?;
+        gateway_fee = gateway_fee
+            .checked_sub(referral_pool)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         if recipient_amount > 0 {
             let cpi_accounts = TransferChecked {

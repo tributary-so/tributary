@@ -2,7 +2,7 @@ use crate::{
     constants::*,
     error::TributaryError,
     shared::mint::validate_mint_compatible,
-    shared::referral::{process_referral_rewards, AuthorityMode, ReferralContext},
+    shared::referral::{try_distribute_referral_rewards, AuthorityMode},
     state::events::PaymentRecord,
     state::*,
 };
@@ -122,33 +122,29 @@ impl<'info> TransferTokens<'info> {
             TributaryError::InsufficientBalance
         );
 
-        if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
-            let referral_ctx = ReferralContext {
-                remaining_accounts,
-                source_token_account: from_info.clone(),
-                authority_info: authority_info.clone(),
-                authority_mode: AuthorityMode::Direct,
-                token_program: token_program_info.clone(),
-                mint_info: mint_info.clone(),
-                mint_decimals,
-                expected_mint,
-                gateway_key: gateway.key(),
-                payment_policy_key: Pubkey::default(),
-                payment_amount: amount,
-                timestamp: clock.unix_timestamp,
-                payer_wallet: accounts.from.owner,
-            };
-            let referral_pool = process_referral_rewards(
-                referral_ctx,
-                gateway_fee,
-                gateway.referral_allocation_bps,
-                &gateway.referral_tiers_bps,
-            )?;
-
-            gateway_fee = gateway_fee
-                .checked_sub(referral_pool)
-                .ok_or(TributaryError::ArithmeticOverflow)?;
-        }
+        // Process referral rewards if enabled (helper short-circuits when off).
+        // NOTE: payment_policy_key = Pubkey::default() is a sentinel for
+        // "no policy" — see audit finding L2. Not fixed here per M2 scope.
+        let referral_pool = try_distribute_referral_rewards(
+            remaining_accounts,
+            from_info.clone(),
+            authority_info.clone(),
+            AuthorityMode::Direct,
+            token_program_info.clone(),
+            mint_info.clone(),
+            mint_decimals,
+            expected_mint,
+            gateway.key(),
+            gateway,
+            Pubkey::default(),
+            amount,
+            clock.unix_timestamp,
+            accounts.from.owner,
+            gateway_fee,
+        )?;
+        gateway_fee = gateway_fee
+            .checked_sub(referral_pool)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         if recipient_amount > 0 {
             let cpi_accounts = TransferChecked {

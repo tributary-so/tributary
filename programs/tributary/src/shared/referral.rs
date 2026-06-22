@@ -219,6 +219,63 @@ pub fn process_referral_rewards<'a, 'info>(
     Ok(referral_pool)
 }
 
+/// Distribute referral rewards from a gateway fee, or return `Ok(0)` when
+/// the gateway has referral rewards disabled (or the allocation is zero).
+///
+/// This is a thin wrapper over [`process_referral_rewards`] that centralizes
+/// the `ReferralContext` plumbing duplicated by `execute_payment` and
+/// `transfer` (audit finding M2). Callers still own the
+/// `gateway_fee -= referral_pool` adjustment so the arithmetic stays at the
+/// site that owns `gateway_fee`.
+///
+/// `gateway_key` is passed separately from `gateway` because `key()` is
+/// provided by Anchor's `Account` wrapper, not by the bare `PaymentGateway`
+/// struct — callers have the wrapper in scope, the helper does not.
+///
+/// Returns the total referral pool amount (0 if disabled or no pool).
+pub fn try_distribute_referral_rewards<'a, 'info>(
+    remaining_accounts: &'info [AccountInfo<'info>],
+    source_token_account: AccountInfo<'info>,
+    authority_info: AccountInfo<'info>,
+    authority_mode: AuthorityMode<'a>,
+    token_program: AccountInfo<'info>,
+    mint_info: AccountInfo<'info>,
+    mint_decimals: u8,
+    expected_mint: Pubkey,
+    gateway_key: Pubkey,
+    gateway: &PaymentGateway,
+    payment_policy_key: Pubkey,
+    payment_amount: u64,
+    timestamp: i64,
+    payer_wallet: Pubkey,
+    gateway_fee: u64,
+) -> Result<u64> {
+    if !gateway.is_referral_enabled() || gateway.referral_allocation_bps == 0 {
+        return Ok(0);
+    }
+    let ctx = ReferralContext {
+        remaining_accounts,
+        source_token_account,
+        authority_info,
+        authority_mode,
+        token_program,
+        mint_info,
+        mint_decimals,
+        expected_mint,
+        gateway_key,
+        payment_policy_key,
+        payment_amount,
+        timestamp,
+        payer_wallet,
+    };
+    process_referral_rewards(
+        ctx,
+        gateway_fee,
+        gateway.referral_allocation_bps,
+        &gateway.referral_tiers_bps,
+    )
+}
+
 /// Parse and fully validate the `remaining_accounts` slice for a referral
 /// reward distribution.
 ///
