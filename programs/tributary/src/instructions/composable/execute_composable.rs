@@ -338,15 +338,10 @@ fn process_output_and_sweep<'info>(
     let output_amount = read_token_amount(intermediate_output)?;
     require!(output_amount > 0, TributaryError::ForwardProducedNoOutput);
 
-    // min_output_amount check runs BEFORE fee deduction.
-    if let Some(min_output) = min_output_amount {
-        if min_output > 0 {
-            require!(
-                output_amount >= min_output,
-                TributaryError::InsufficientOutputAmount
-            );
-        }
-    }
+    // NOTE: min_output_amount is checked AFTER fee deduction below — it
+    // refers to the NET amount the recipient receives, matching DeFi
+    // convention (Uniswap/Jupiter amountOutMin). See
+    // reports/M5-min-output-amount-checked-before-fees.md.
 
     // ── Calculate fees (output-based) ───────────────────────────────
     let gateway_fee = output_amount
@@ -379,6 +374,19 @@ fn process_output_and_sweep<'info>(
     let sweep_amount = output_amount
         .checked_sub(total_fees)
         .ok_or(TributaryError::ArithmeticOverflow)?;
+
+    // min_output_amount check runs AFTER fee deduction — refers to the
+    // NET amount the recipient receives (matches DeFi convention:
+    // Uniswap/Jupiter amountOutMin). See
+    // reports/M5-min-output-amount-checked-before-fees.md.
+    if let Some(min_output) = min_output_amount {
+        if min_output > 0 {
+            require!(
+                sweep_amount >= min_output,
+                TributaryError::InsufficientOutputAmount
+            );
+        }
+    }
 
     // ── Claim gateway fee ───────────────────────────────────────────
     if gateway_fee > 0 {

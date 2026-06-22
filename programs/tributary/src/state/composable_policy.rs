@@ -36,6 +36,12 @@ pub struct ForwardConfig {
     pub target_program: Pubkey,
     pub input_mint: Pubkey,
     pub output_mint: Pubkey,
+    /// Minimum acceptable **net** output the recipient must receive,
+    /// measured AFTER gateway and protocol fees have been deducted
+    /// from the forward program's gross output. Matches DeFi convention
+    /// (Uniswap/Jupiter `amountOutMin`). Set to `None` or `Some(0)` to
+    /// disable the check. See
+    /// `reports/M5-min-output-amount-checked-before-fees.md`.
     pub min_output_amount: Option<u64>,
     pub forward_flags: u8,
     pub num_data_checks: u8,
