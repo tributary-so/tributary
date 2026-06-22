@@ -1,4 +1,6 @@
-use crate::{constants::*, error::TributaryError, state::*};
+use crate::{
+    constants::*, error::TributaryError, shared::mint::validate_mint_compatible, state::*,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -66,7 +68,7 @@ impl<'info> CreatePaymentPolicy<'info> {
         // Re-validate the mint: Token-2022 extensions (TransferHook, TransferFee)
         // are mutable post-creation, so a mint clean at create_user_payment time
         // could have become hostile.
-        crate::utils::validate_mint_compatible(&ctx.accounts.token_mint.to_account_info())?;
+        validate_mint_compatible(&ctx.accounts.token_mint.to_account_info())?;
 
         // Validate the policy type and its parameters
         policy_type.validate()?;

@@ -2,9 +2,9 @@ use crate::{
     constants::*,
     error::TributaryError,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
+    shared::mint::validate_mint_compatible,
     shared::schedule::{advance_policy, validate_policy_execution},
     state::*,
-    utils::validate_mint_compatible,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;

@@ -1,4 +1,6 @@
-use crate::{constants::*, error::TributaryError, state::*, utils::validate_mint_compatible};
+use crate::{
+    constants::*, error::TributaryError, shared::mint::validate_mint_compatible, state::*,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 

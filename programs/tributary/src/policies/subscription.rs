@@ -1,8 +1,8 @@
 use crate::{
     error::TributaryError,
     policies::traits::PolicyStrategy,
+    shared::schedule::calculate_next_payment_due,
     state::{PaymentGateway, PaymentPolicy, PolicyType},
-    utils::calculate_next_payment_due,
 };
 use anchor_lang::prelude::*;
 

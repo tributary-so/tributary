@@ -1,9 +1,10 @@
 use crate::{
     constants::*,
     error::TributaryError,
+    shared::mint::validate_mint_compatible,
+    shared::referral::{process_referral_rewards, AuthorityMode, ReferralContext},
     state::events::PaymentRecord,
     state::*,
-    utils::{process_referral_rewards, AuthorityMode, ReferralContext},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
@@ -76,7 +77,7 @@ impl<'info> TransferTokens<'info> {
 
         // Reject mints with dangerous Token-2022 extensions (e.g. PermanentDelegate,
         // NonTransferable) that would corrupt this transfer's accounting.
-        crate::utils::validate_mint_compatible(&accounts.mint.to_account_info())?;
+        validate_mint_compatible(&accounts.mint.to_account_info())?;
         let config = &accounts.config;
         let gateway = &accounts.gateway;
         let clock = Clock::get()?;

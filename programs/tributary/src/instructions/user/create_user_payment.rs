@@ -1,4 +1,6 @@
-use crate::{error::TributaryError, state::*, USER_PAYMENT_SEED};
+use crate::{
+    error::TributaryError, shared::mint::validate_mint_compatible, state::*, USER_PAYMENT_SEED,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
@@ -40,7 +42,7 @@ pub struct CreateUserPayment<'info> {
 impl<'info> CreateUserPayment<'info> {
     /// Create a new user payment account for given owner and token mint.
     pub fn handler_create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
-        crate::utils::validate_mint_compatible(&ctx.accounts.token_mint.to_account_info())?;
+        validate_mint_compatible(&ctx.accounts.token_mint.to_account_info())?;
 
         let user_payment = &mut ctx.accounts.user_payment;
         let clock = Clock::get()?;

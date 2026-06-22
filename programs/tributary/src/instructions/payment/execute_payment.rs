@@ -3,8 +3,9 @@ use crate::{
     error::TributaryError,
     policies::*,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
+    shared::mint::validate_mint_compatible,
+    shared::referral::{process_referral_rewards, AuthorityMode, ReferralContext},
     state::*,
-    utils::{process_referral_rewards, AuthorityMode, ReferralContext},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
@@ -111,7 +112,7 @@ impl<'info> ExecutePayment<'info> {
         // (TransferHook, TransferFee) are mutable post-creation, so a mint that
         // was clean when the UserPayment was registered could have become
         // hostile before this payment runs.
-        crate::utils::validate_mint_compatible(&ctx.accounts.mint.to_account_info())?;
+        validate_mint_compatible(&ctx.accounts.mint.to_account_info())?;
 
         let remaining_accounts = ctx.remaining_accounts;
         let accounts = ctx.accounts;
