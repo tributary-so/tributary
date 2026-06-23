@@ -102,16 +102,20 @@ impl<'info> CreateComposablePolicy<'info> {
         // covers Subscription / Milestone / PayAsYouGo).
         policy_type.validate()?;
 
-        // Validate ForwardConfig
-        require!(
-            ALLOWED_FORWARD_PROGRAMS.contains(&forward_config.target_program),
-            TributaryError::InvalidForwardProgram
-        );
-        require!(
-            forward_config.num_data_checks >= 1
-                && forward_config.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
-            TributaryError::InsufficientByteRangeChecks
-        );
+        // Validate ForwardConfig. Extracted so the branching rules
+        // (allowlist/sentinel, data-check coupling, cross-mint guard) are
+        // unit-tested directly — the Anchor handler is hard to exercise
+        // without a running validator.
+        //
+        // `target_program == Pubkey::default()` is the explicit sentinel
+        // for "no forward step" — mirrors the validation_program sentinel
+        // pattern. The topup flow (same-mint pull → sweep, no swap) uses
+        // this: the intermediate is funded by the pull and swept directly,
+        // so no forward CPI is required. Allowing tokenProgram here instead
+        // would be a drain vector (unvalidated `to` account in the forward
+        // AccountMeta list).
+        validate_forward_config(&forward_config)?;
+        let forward_disabled = forward_config.target_program == Pubkey::default();
 
         // L-02: pin the named `input_mint` / `output_mint` accounts against
         // the caller-supplied `forward_config` Pubkeys and run the full
@@ -136,24 +140,29 @@ impl<'info> CreateComposablePolicy<'info> {
         // `length <= 8` is mandatory because `expected` is a `[u8; 8]`:
         // any larger value would panic in `ByteRangeCheck::validate` on
         // `&self.expected[..length]`. See reports/H-06-byte-range-check-length-unbounded.md.
+        //
+        // Skipped entirely when forward is disabled (num_data_checks == 0):
+        // there is no forward instruction selector to pin.
         let mut covers_discriminator = false;
-        for i in 0..forward_config.num_data_checks as usize {
-            let check = &forward_config.data_checks[i];
-            require!(
-                (check.offset as u16)
-                    .checked_add(check.length as u16)
-                    .is_some_and(|v| v <= 1024),
-                TributaryError::ByteRangeCheckFailed
-            );
-            require!(check.length <= 8, TributaryError::ByteRangeCheckFailed);
-            if check.offset == 0 && check.length > 0 {
-                covers_discriminator = true;
+        if !forward_disabled {
+            for i in 0..forward_config.num_data_checks as usize {
+                let check = &forward_config.data_checks[i];
+                require!(
+                    (check.offset as u16)
+                        .checked_add(check.length as u16)
+                        .is_some_and(|v| v <= 1024),
+                    TributaryError::ByteRangeCheckFailed
+                );
+                require!(check.length <= 8, TributaryError::ByteRangeCheckFailed);
+                if check.offset == 0 && check.length > 0 {
+                    covers_discriminator = true;
+                }
             }
+            require!(
+                covers_discriminator,
+                TributaryError::DiscriminatorCheckRequired
+            );
         }
-        require!(
-            covers_discriminator,
-            TributaryError::DiscriminatorCheckRequired
-        );
 
         // Validate ValidationConfig — the validation program is now an
         // account so the runtime can resolve it for CPI. SystemProgram is
@@ -307,5 +316,138 @@ impl<'info> CreateComposablePolicy<'info> {
         );
 
         Ok(())
+    }
+}
+
+/// Validate the forward-program portion of a `ForwardConfig`.
+///
+/// Rules:
+/// - `target_program == Pubkey::default()` is the "forward disabled"
+///   sentinel (mirrors the validation_program sentinel). When disabled:
+///     * `num_data_checks` MUST be 0 (no forward instruction to validate)
+///     * `input_mint` MUST equal `output_mint` (no conversion step)
+/// - Otherwise `target_program` MUST be in `ALLOWED_FORWARD_PROGRAMS` and
+///   `num_data_checks` MUST be in `1..=MAX_BYTE_RANGE_CHECKS`.
+///
+/// The per-check sanity loop + discriminator-pin requirement stay in the
+/// handler (they only run when forward is enabled).
+pub(crate) fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
+    let forward_disabled = forward_config.target_program == Pubkey::default();
+    require!(
+        forward_disabled || ALLOWED_FORWARD_PROGRAMS.contains(&forward_config.target_program),
+        TributaryError::InvalidForwardProgram
+    );
+
+    if forward_disabled {
+        require!(
+            forward_config.num_data_checks == 0,
+            TributaryError::InsufficientByteRangeChecks
+        );
+        require!(
+            forward_config.input_mint == forward_config.output_mint,
+            TributaryError::ForwardDisabledRequiresSameMint
+        );
+    } else {
+        require!(
+            forward_config.num_data_checks >= 1
+                && forward_config.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
+            TributaryError::InsufficientByteRangeChecks
+        );
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn same_mint() -> Pubkey {
+        Pubkey::new_unique()
+    }
+
+    fn disabled_config(mint: Pubkey, num_data_checks: u8) -> ForwardConfig {
+        ForwardConfig {
+            target_program: Pubkey::default(),
+            input_mint: mint,
+            output_mint: mint,
+            min_output_amount: None,
+            forward_flags: 0,
+            num_data_checks,
+            data_checks: [ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            }; MAX_BYTE_RANGE_CHECKS],
+        }
+    }
+
+    fn enabled_config(target: Pubkey, num_data_checks: u8) -> ForwardConfig {
+        let mint = Pubkey::new_unique();
+        ForwardConfig {
+            target_program: target,
+            input_mint: mint,
+            output_mint: Pubkey::new_unique(),
+            min_output_amount: None,
+            forward_flags: 0,
+            num_data_checks,
+            data_checks: [ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            }; MAX_BYTE_RANGE_CHECKS],
+        }
+    }
+
+    #[test]
+    fn disabled_forward_with_same_mint_and_zero_checks_is_ok() {
+        let mint = same_mint();
+        assert!(validate_forward_config(&disabled_config(mint, 0)).is_ok());
+    }
+
+    #[test]
+    fn disabled_forward_rejects_non_zero_data_checks() {
+        let mint = same_mint();
+        let res = validate_forward_config(&disabled_config(mint, 1));
+        assert!(
+            res.is_err(),
+            "disabled forward must reject num_data_checks > 0"
+        );
+    }
+
+    #[test]
+    fn disabled_forward_rejects_cross_mint() {
+        let mut cfg = disabled_config(Pubkey::new_unique(), 0);
+        cfg.output_mint = Pubkey::new_unique(); // distinct from input
+        let res = validate_forward_config(&cfg);
+        assert!(
+            res.is_err(),
+            "disabled forward must require input_mint == output_mint"
+        );
+    }
+
+    #[test]
+    fn enabled_forward_rejects_non_allowlisted_target() {
+        // A random pubkey is neither the default sentinel nor allowlisted.
+        let rogue = Pubkey::new_unique();
+        let res = validate_forward_config(&enabled_config(rogue, 1));
+        assert!(res.is_err(), "rogue forward target must be rejected");
+    }
+
+    #[test]
+    fn enabled_forward_rejects_zero_data_checks() {
+        // Allowlisted target but zero checks violates the >= 1 rule.
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        let res = validate_forward_config(&enabled_config(allowlisted, 0));
+        assert!(
+            res.is_err(),
+            "enabled forward must require num_data_checks >= 1"
+        );
+    }
+
+    #[test]
+    fn enabled_forward_accepts_allowlisted_target_with_checks() {
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        let res = validate_forward_config(&enabled_config(allowlisted, 1));
+        assert!(res.is_ok(), "allowlisted target + 1 check must be valid");
     }
 }

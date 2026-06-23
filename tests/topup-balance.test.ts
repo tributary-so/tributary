@@ -21,15 +21,15 @@ import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import assert from "assert";
 import { Buffer } from "buffer";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
-import { METEORA_DLMM_PUBKEY, LIGHTHOUSE_PUBKEY } from "./constants";
+import { LIGHTHOUSE_PUBKEY } from "./constants";
 
-// Meteora DLM is the only program in ALLOWED_FORWARD_PROGRAMS after the
-// Token Program was removed from the forward allowlist (the raw-token-
-// transfer "forward" was a direct user-fund drain vector — see
-// reports/C-1-validation-cpi-signer-leak.md). The forward CPI itself is
-// currently commented out in execute_composable, so for this test the
-// forward target is a placeholder that satisfies the create-time
-// allowlist check; the data_checks below only gate Step-1 byte validation.
+// A composable policy with forward_config.target_program = PublicKey.default
+// has its forward CPI disabled (the "no forward step" sentinel — mirrors the
+// validation_program sentinel). The topup flow is a same-mint pull → sweep:
+// the intermediate is funded by the pull and swept directly to the recipient,
+// so no forward program is required. Allowing tokenProgram as the forward
+// target instead would be a drain vector (the forward AccountMeta list's
+// `to` account is not validated, so the gateway could redirect the sweep).
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
@@ -66,16 +66,6 @@ function buildLighthouseTokenAccountAmountAssertion(
 
 // IntegerOperator constants (from Lighthouse)
 const OP_LESS_THAN = 3;
-
-// ── Token Transfer instruction data ──────────────────────────────────────
-// The program patches bytes 1-8 with the actual net_input amount.
-// The test provides a placeholder that passes byte-range validation.
-function buildTokenTransferInstructionData(amount: number): Buffer {
-  const buf = Buffer.alloc(9);
-  buf.writeUInt8(3, 0); // Token Program Transfer instruction
-  buf.writeBigUInt64LE(BigInt(amount), 1);
-  return buf;
-}
 
 describe("Composable Topup Balance Flow", () => {
   const provider = anchor.AnchorProvider.env();
@@ -367,20 +357,19 @@ describe("Composable Topup Balance Flow", () => {
     const memo = new Array(64).fill(0);
     Buffer.from("Topup balance").copy(Buffer.from(memo));
 
-    // Forward target = Meteora DLM (Token Program no longer in the forward
-    // allowlist). The forward CPI is commented out in the program, so this
-    // is a placeholder for the allowlist check; the byte-range check below
-    // pins byte 0 == 3 purely for Step-1 validation (input==output here, so
-    // the intermediate IS the output and no real forward runs).
+    // Forward disabled: target_program = PublicKey.default is the "no
+    // forward step" sentinel. The topup is a same-mint pull → sweep, so
+    // no swap program is involved. num_data_checks must be 0 (there is
+    // no forward instruction_data to byte-range validate).
     const forwardConfig = {
-      targetProgram: METEORA_DLMM_PUBKEY,
+      targetProgram: PublicKey.default,
       inputMint: USDC_MINT,
       outputMint: USDC_MINT,
       minOutputAmount: null,
       forwardFlags: 0,
-      numDataChecks: 1,
+      numDataChecks: 0,
       dataChecks: [
-        { offset: 0, length: 1, expected: [3, 0, 0, 0, 0, 0, 0, 0] },
+        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
         { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
         { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
         { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
@@ -438,10 +427,10 @@ describe("Composable Topup Balance Flow", () => {
     // Recipient defaults to fee_payer (gateway signer = hotWallet)
     expect(policy.recipient).toEqual(hotWallet.publicKey);
 
-    // Forward config
-    expect(policy.forwardConfig.targetProgram).toEqual(METEORA_DLMM_PUBKEY);
+    // Forward config — disabled (target_program = default), no data checks
+    expect(policy.forwardConfig.targetProgram).toEqual(PublicKey.default);
     expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
-    expect(policy.forwardConfig.numDataChecks).toBe(1);
+    expect(policy.forwardConfig.numDataChecks).toBe(0);
 
     // Validation config
     expect(policy.validationConfig.validationProgram).toEqual(
@@ -476,9 +465,10 @@ describe("Composable Topup Balance Flow", () => {
     );
     expect(hotBalanceBefore.value.uiAmount).toBe(40);
 
-    // Build instruction data: Token Transfer (byte 0 = 3)
-    // The program patches the amount in bytes 1-8; placeholder is fine.
-    const instructionData = buildTokenTransferInstructionData(50_000_000);
+    // Forward is disabled (target_program = default), so instruction_data
+    // is unused — the program skips both byte-range validation and the
+    // forward CPI. Pass an empty buffer.
+    const instructionData = Buffer.alloc(0);
 
     // Derive intermediate ATA (owned by the ComposablePolicy PDA — not the
     // UserPayment PDA; this decouples intermediate authority from the
@@ -491,24 +481,12 @@ describe("Composable Topup Balance Flow", () => {
     );
     const intermediateOutputTokenAccount = intermediateInputTokenAccount;
 
-    // remaining_accounts: [ValidationPDA, hotWalletUsdcAta]
+    // remaining_accounts: validation only — [ValidationPDA, hotWalletUsdcAta].
     // The Lighthouse CPI reads hotWalletUsdcAta to assert amount < 50 USDC.
+    // No forward accounts are required (forward disabled).
     const remainingAccounts = [
-      // validation
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
-      // Forward Program -> TokenProgram.Transfer
-      {
-        pubkey: intermediateInputTokenAccount,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: intermediateOutputTokenAccount,
-        isSigner: false,
-        isWritable: true,
-      },
-      { pubkey: composablePolicyPDA, isSigner: false, isWritable: false },
     ];
 
     const accounts = {
@@ -605,7 +583,8 @@ describe("Composable Topup Balance Flow", () => {
     );
     expect(Number(hotBalance.value.amount)).toBeGreaterThan(50_000_000);
 
-    const instructionData = buildTokenTransferInstructionData(50_000_000);
+    // Forward disabled — instruction_data unused (empty).
+    const instructionData = Buffer.alloc(0);
 
     // Derive intermediate ATA (same as first execution — owned by
     // ComposablePolicy PDA).
@@ -617,22 +596,10 @@ describe("Composable Topup Balance Flow", () => {
     );
     const intermediateOutputTokenAccount = intermediateInputTokenAccount;
 
-    // NOTE: Forward accounts omitted — see first execute test for details.
+    // Validation only — no forward accounts (forward disabled).
     const remainingAccounts = [
       { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
-      // Forward Program -> TokenProgram.Transfer
-      {
-        pubkey: intermediateInputTokenAccount,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: intermediateOutputTokenAccount,
-        isSigner: false,
-        isWritable: true,
-      },
-      { pubkey: composablePolicyPDA, isSigner: false, isWritable: false },
     ];
 
     try {

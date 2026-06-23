@@ -623,14 +623,22 @@ impl<'info> ExecuteComposable<'info> {
         validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
 
         // ── Step 1: VALIDATE ───────────────────────────────────────────
-        validate_byte_ranges(
-            &instruction_data,
-            &ctx.accounts.composable_policy.forward_config.data_checks,
-            ctx.accounts
-                .composable_policy
-                .forward_config
-                .num_data_checks,
-        )?;
+        // Byte-range checks validate the forward program's instruction_data.
+        // When the policy has no forward step (target_program = default,
+        // the "disabled" sentinel — see create_composable_policy), there
+        // is no instruction selector to pin and instruction_data is empty,
+        // so skip validation entirely.
+        let target_program_early = ctx.accounts.composable_policy.forward_config.target_program;
+        if target_program_early != Pubkey::default() {
+            validate_byte_ranges(
+                &instruction_data,
+                &ctx.accounts.composable_policy.forward_config.data_checks,
+                ctx.accounts
+                    .composable_policy
+                    .forward_config
+                    .num_data_checks,
+            )?;
+        }
 
         // ── Validate intermediate ATA addresses ──────────────────────────
         // The intermediate ATAs are owned by the ComposablePolicy PDA — NOT
@@ -863,14 +871,22 @@ impl<'info> ExecuteComposable<'info> {
         }
 
         // ── Step 5: FORWARD CPI ────────────────────────────────────────
-        // run_forward_cpi(
-        //     ctx.remaining_accounts,
-        //     forward_accounts_start,
-        //     target_program,
-        //     &instruction_data,
-        //     intermediate_owner,
-        //     signer_seeds,
-        // )?;
+        // Skipped when the policy has no forward step (target_program =
+        // default). For the same-mint topup path the intermediate was
+        // funded by the pull (Step 3) and input/output intermediates
+        // collapse into one account, so process_output_and_sweep reads
+        // the funded balance directly. No accounts beyond the validation
+        // range are consumed in the disabled case.
+        if target_program != Pubkey::default() {
+            run_forward_cpi(
+                ctx.remaining_accounts,
+                forward_accounts_start,
+                target_program,
+                &instruction_data,
+                intermediate_owner,
+                signer_seeds,
+            )?;
+        }
 
         // ── Steps 6–9: verify output, fees, sweep ──────────────────────
         let gateway = &ctx.accounts.gateway;

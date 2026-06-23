@@ -2847,16 +2847,21 @@ export type Tributary = {
     },
     {
       "code": 6058,
+      "name": "forwardDisabledRequiresSameMint",
+      "msg": "Forward disabled (target_program = default) requires input_mint == output_mint"
+    },
+    {
+      "code": 6059,
       "name": "payerReferralMismatch",
       "msg": "Payer ReferralAccount does not match the paying wallet"
     },
     {
-      "code": 6059,
+      "code": 6060,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     },
     {
-      "code": 6060,
+      "code": 6061,
       "name": "invalidValidationPda",
       "msg": "ValidationPDA is malformed — data_len out of bounds"
     }
@@ -3187,6 +3192,14 @@ export type Tributary = {
           },
           {
             "name": "minOutputAmount",
+            "docs": [
+              "Minimum acceptable **net** output the recipient must receive,",
+              "measured AFTER gateway and protocol fees have been deducted",
+              "from the forward program's gross output. Matches DeFi convention",
+              "(Uniswap/Jupiter `amountOutMin`). Set to `None` or `Some(0)` to",
+              "disable the check. See",
+              "`reports/M5-min-output-amount-checked-before-fees.md`."
+            ],
             "type": {
               "option": "u64"
             }
