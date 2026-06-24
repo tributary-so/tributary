@@ -17,13 +17,23 @@ import { PublicKey } from "@solana/web3.js";
  *
  * The Token Program was removed from the forward allowlist because the
  * raw-token-transfer "forward" was a direct user-fund drain vector (see
- * reports/C-1-validation-cpi-signer-leak.md). The forward CPI itself is
- * currently commented out in execute_composable, so in tests this value
- * is effectively a placeholder that satisfies the create-time allowlist
- * check; per-test data_checks only gate Step-1 byte validation.
+ * reports/C-1-validation-cpi-signer-leak.md). The forward CPI runs live
+ * for allowlisted programs (DLMM); policies whose target_program is
+ * Pubkey::default() skip the forward step entirely (sentinel disable —
+ * see execute_composable.run_forward_cpi).
  */
 export const METEORA_DLMM_PUBKEY = new PublicKey(
   "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+);
+
+/**
+ * Meteora DLMM SOL/USDC pool — used by topup-balance-swap.test.ts as the
+ * forward target for a USDC->WSOL swap. Owned by METEORA_DLMM_PUBKEY
+ * (verified on mainnet). Surfpool lazy-forks pool + bin-array state from
+ * mainnet when the SDK reads them.
+ */
+export const METEORA_DLMM_SOL_USDC_POOL = new PublicKey(
+  "BGm1tav58oGcsQJehL9WXBFXF7D27vZsKefj4xJKD5Y"
 );
 
 /**

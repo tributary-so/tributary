@@ -292,8 +292,16 @@ fn run_forward_cpi<'info>(
         .map(|a| a.clone())
         .collect();
 
-    let instruction_accounts: Vec<&AccountInfo<'info>> =
-        all_forward_infos.iter().filter(|a| !a.executable).collect();
+    // The forward instruction's accounts are forwarded VERBATIM from the
+    // caller-supplied remaining_accounts. We do NOT filter executable
+    // accounts here: forward programs (e.g. Meteora DLMM) legitimately
+    // include other programs in their instruction accounts — `token_program`,
+    // the forward program itself (self-listed alongside `__event_authority`),
+    // etc. Stripping executables would drop those required slots and shift
+    // every subsequent account, misaligning the CPI. The caller is expected
+    // to pass exactly the forward ix's account list; any account the runtime
+    // needs for CPI resolution (programs included) is already in this slice.
+    let instruction_accounts: Vec<&AccountInfo<'info>> = all_forward_infos.iter().collect();
 
     require!(
         !instruction_accounts.is_empty(),

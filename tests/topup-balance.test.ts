@@ -641,7 +641,6 @@ describe("Composable Topup Balance Flow", () => {
       // is NOT less than 50 USDC.
       expect(error).toBeDefined();
 
-      // Lighthouse raises 0x1771 (=6001) AssertionFailed. Match the code in
       // either hex or decimal form — RPC providers serialize it differently.
       expect(error.message).toMatch(/0x1771|custom program error.*6001/);
     }
