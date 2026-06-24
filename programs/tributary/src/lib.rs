@@ -11,7 +11,6 @@ pub mod instructions;
 pub mod policies;
 pub mod shared;
 pub mod state;
-pub mod utils;
 
 use anchor_lang::prelude::*;
 #[cfg(not(feature = "no-entrypoint"))]
