@@ -234,7 +234,7 @@ execute, the program CPIs into the validation program passing this data + the
 declared read-accounts as `remaining_accounts`.
 
 - `validation_program` must be in `ALLOWED_VALIDATION_PROGRAMS` (currently:
-  Lighthouse `L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qq3S95`). `SystemProgram`
+  Lighthouse `L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95`). `SystemProgram`
   disables validation.
 
 ### Building Lighthouse assertions (SDK facade)
