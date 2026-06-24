@@ -8,7 +8,7 @@ import {
 } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
-import { Tributary as TributarySDK } from "../packages/sdk/src";
+import { Tributary as TributarySDK, lighthouse } from "../packages/sdk/src";
 import {
   getConfigPda,
   getGatewayPda,
@@ -43,29 +43,9 @@ const ADMIN_KEYPAIR = [
   167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
 ];
 
-// ── Lighthouse assertion builder ─────────────────────────────────────────
-// Builds a serialized AssertTokenAccount instruction for Lighthouse CPI.
-// Layout (12 bytes):
-//   [0]    discriminator = 9 (AssertTokenAccount)
-//   [1]    logLevel = 0 (Silent)
-//   [2]    assertion variant = 2 (TokenAccountAssertion::Amount)
-//   [3-10] amount as u64 LE
-//   [11]   operator (3 = LessThan, 0 = Equal, 4 = LessThanOrEqual, …)
-function buildLighthouseTokenAccountAmountAssertion(
-  amount: number,
-  operator: number
-): Buffer {
-  const buf = Buffer.alloc(12);
-  buf.writeUInt8(9, 0); // AssertTokenAccount discriminator
-  buf.writeUInt8(0, 1); // LogLevel::Silent
-  buf.writeUInt8(2, 2); // TokenAccountAssertion::Amount variant
-  buf.writeBigUInt64LE(BigInt(amount), 3);
-  buf.writeUInt8(operator, 11);
-  return buf;
-}
-
-// IntegerOperator constants (from Lighthouse)
-const OP_LESS_THAN = 3;
+// ── Lighthouse assertion ─────────────────────────────────────────────────
+// Built via the SDK facade (packages/sdk/src/lighthouse.ts), which wraps the
+// vendored official Lighthouse client. See topup-balance usage below.
 
 describe("Composable Topup Balance Flow", () => {
   const provider = anchor.AnchorProvider.env();
@@ -377,10 +357,10 @@ describe("Composable Topup Balance Flow", () => {
     };
 
     // Lighthouse validation: assert hotWallet USDC amount < 50 USDC
-    const validationData = buildLighthouseTokenAccountAmountAssertion(
-      50_000_000, // 50 USDC threshold
-      OP_LESS_THAN
-    );
+    const guard = lighthouse
+      .tokenAccount(hotWalletUsdcAta)
+      .amount(50_000_000, "<")
+      .build();
 
     // numValidationAccounts = 1 (hotWallet USDC ATA — the account Lighthouse reads)
     const ix = await program.methods
@@ -388,8 +368,8 @@ describe("Composable Topup Balance Flow", () => {
         policyType,
         memo,
         forwardConfig,
-        1, // numValidationAccounts
-        validationData
+        guard.numAccounts,
+        guard.data
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
@@ -453,7 +433,7 @@ describe("Composable Topup Balance Flow", () => {
     const dataLen = valPdaAccount!.data.readUInt16LE(8);
     expect(dataLen).toBe(12);
     const storedData = valPdaAccount!.data.slice(10, 10 + 12);
-    expect(Buffer.from(storedData)).toEqual(validationData);
+    expect(Buffer.from(storedData)).toEqual(guard.data);
   });
 
   test("Execute topup — succeeds (hotWallet below threshold)", async () => {

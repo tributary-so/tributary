@@ -1,0 +1,60 @@
+{
+  "name": "lighthouse-sdk-legacy",
+  "private": true,
+  "version": "2.0.1",
+  "description": "Legacy web3.js client for Lighthouse",
+  "sideEffects": false,
+  "module": "dist/src/index.mjs",
+  "main": "dist/src/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/src/index.mjs",
+      "require": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist/src/**/*",
+    "dist/types/**/*"
+  ],
+  "scripts": {
+    "build": "rimraf dist && tsup && tsc -p ./tsconfig.declarations.json",
+    "build:docs": "typedoc",
+    "test": "ava",
+    "lint": "eslint --ext js,ts,tsx src",
+    "lint:fix": "eslint --fix --ext js,ts,tsx src",
+    "format": "prettier --check src test",
+    "format:fix": "prettier --write src test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@metaplex-foundation/umi": "^1.4.1",
+    "@metaplex-foundation/umi-serializers-core": "^1.4.1",
+    "@minhducsun2002/leb128": "^1.0.0",
+    "@solana/web3.js": "^1.98.4"
+  },
+  "devDependencies": {
+    "@ava/typescript": "^4.1.0",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "ava": "^6.1.2",
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-typescript": "^17.1.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.8",
+    "rimraf": "^5.0.5",
+    "tsup": "^8.0.2",
+    "typedoc": "^0.25.13",
+    "typedoc-plugin-expand-object-like-types": "^0.1.2",
+    "typedoc-plugin-missing-exports": "^2.2.0",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "pnpm@9.0.3"
+}

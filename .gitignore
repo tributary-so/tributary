@@ -24,3 +24,5 @@ apps/cli/keypair.json
 coverage
 .surfpool
 apps/docs/site/
+
+!packages/lighthouse/dist

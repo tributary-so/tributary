@@ -26,7 +26,8 @@
     "@rollup/plugin-inject": "^5.0.5",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
-    "bn.js": "^5.2.2"
+    "bn.js": "^5.2.2",
+    "lighthouse-sdk-legacy": "workspace:*"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",

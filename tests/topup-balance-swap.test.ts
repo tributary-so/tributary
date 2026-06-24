@@ -14,7 +14,7 @@ import {
 } from "@solana/spl-token";
 import DLMM from "@meteora-ag/dlmm";
 import { Tributary } from "../target/types/tributary";
-import { Tributary as TributarySDK } from "../packages/sdk/src";
+import { Tributary as TributarySDK, lighthouse } from "../packages/sdk/src";
 import {
   getConfigPda,
   getGatewayPda,
@@ -46,27 +46,9 @@ const ADMIN_KEYPAIR = [
 // Topup chunk pulled from coldWallet (USDC, 6 decimals) → swapped to WSOL.
 const SWAP_INPUT_AMOUNT = 50_000_000; // 50 USDC
 
-// ── Lighthouse assertion builder ─────────────────────────────────────────
-// Layout (12 bytes):
-//   [0]    discriminator = 9 (AssertTokenAccount)
-//   [1]    logLevel = 0 (Silent)
-//   [2]    assertion variant = 2 (TokenAccountAssertion::Amount)
-//   [3-10] amount as u64 LE
-//   [11]   operator (3 = LessThan)
-function buildLighthouseTokenAccountAmountAssertion(
-  amount: number,
-  operator: number
-): Buffer {
-  const buf = Buffer.alloc(12);
-  buf.writeUInt8(9, 0);
-  buf.writeUInt8(0, 1);
-  buf.writeUInt8(2, 2);
-  buf.writeBigUInt64LE(BigInt(amount), 3);
-  buf.writeUInt8(operator, 11);
-  return buf;
-}
-
-const OP_LESS_THAN = 3;
+// ── Lighthouse assertion ─────────────────────────────────────────────────
+// Built via the SDK facade (packages/sdk/src/lighthouse.ts), which wraps the
+// vendored official Lighthouse client. See topup-swap usage below.
 
 // DLMM state is lazy-forked from mainnet through surfpool, which makes pool
 // loading + bin-array fetches slow. Give the suite ample room.
@@ -420,18 +402,18 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     };
 
     // Lighthouse: assert hotWallet WSOL balance < 1 WSOL before topping up.
-    const validationData = buildLighthouseTokenAccountAmountAssertion(
-      1_000_000_000, // 1 WSOL threshold
-      OP_LESS_THAN
-    );
+    const guard = lighthouse
+      .tokenAccount(hotWalletWsolAta)
+      .amount(1_000_000_000, "<")
+      .build();
 
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
-        1, // numValidationAccounts (hotWallet WSOL ATA)
-        validationData
+        guard.numAccounts, // hotWallet WSOL ATA
+        guard.data
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
@@ -720,10 +702,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     const keys = found.keys.map((k) =>
       k.pubkey.equals(SystemProgram.programId)
         ? {
-          pubkey: METEORA_DLMM_PUBKEY,
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        }
+            pubkey: METEORA_DLMM_PUBKEY,
+            isSigner: k.isSigner,
+            isWritable: k.isWritable,
+          }
         : k
     );
     return new TransactionInstruction({
