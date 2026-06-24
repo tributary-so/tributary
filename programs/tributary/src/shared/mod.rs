@@ -4,4 +4,3 @@ pub mod fees;
 pub mod mint;
 pub mod referral;
 pub mod schedule;
-pub mod validation;
