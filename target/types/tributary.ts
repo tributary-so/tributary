@@ -1685,8 +1685,15 @@ export type Tributary = {
         {
           "name": "recipientTokenAccount",
           "docs": [
-            "Recipient's destination token account (output_mint ATA). Must",
-            "pre-exist. Receives the swept output after fees."
+            "Recipient destination. In normal mode this is the recipient's",
+            "output-mint ATA (mint+owner validated in the handler). In",
+            "NATIVE_OUTPUT mode (forward_flags bit 0) it is the recipient's",
+            "**system wallet** — `closeAccount` ships the WSOL value there as",
+            "native SOL. Anchor constraints can't be conditional, so this is",
+            "an `UncheckedAccount` and the handler replicates the two original",
+            "checks (`mint == output_mint`, `owner == recipient`) in normal",
+            "mode. Do NOT weaken the normal-mode checks. See bean",
+            "tributary-hgp7 + reports/native-output-sweep.md."
           ],
           "writable": true
         },
@@ -2864,6 +2871,11 @@ export type Tributary = {
       "code": 6061,
       "name": "invalidValidationPda",
       "msg": "ValidationPDA is malformed — data_len out of bounds"
+    },
+    {
+      "code": 6062,
+      "name": "nativeOutputRequiresWsol",
+      "msg": "NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)"
     }
   ],
   "types": [

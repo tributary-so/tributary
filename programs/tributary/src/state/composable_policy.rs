@@ -1,4 +1,5 @@
 use super::payment_policy::PolicyType;
+use crate::constants::FORWARD_FLAG_NATIVE_OUTPUT;
 use anchor_lang::prelude::*;
 
 pub const MAX_BYTE_RANGE_CHECKS: usize = 4;
@@ -57,6 +58,16 @@ impl ForwardConfig {
         1 + // num_data_checks: u8
         (1 + 1 + 8) * MAX_BYTE_RANGE_CHECKS; // data_checks: [ByteRangeCheck; 4]
                                              // = 146 bytes
+
+    /// True when the forward leg's WSOL output must be unwrapped to native
+    /// SOL via a Tributary-controlled `closeAccount` sweep (destination =
+    /// `composable_policy.recipient`), rather than swept as WSOL into the
+    /// recipient's ATA. Opt-in via bit 0 of `forward_flags`. Requires
+    /// `output_mint == NATIVE_MINT` (enforced at create time). See
+    /// reports/native-output-sweep.md and bean tributary-hgp7.
+    pub fn is_native_output(&self) -> bool {
+        self.forward_flags & FORWARD_FLAG_NATIVE_OUTPUT != 0
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]

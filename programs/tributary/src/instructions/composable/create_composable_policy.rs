@@ -328,6 +328,11 @@ impl<'info> CreateComposablePolicy<'info> {
 ///     * `input_mint` MUST equal `output_mint` (no conversion step)
 /// - Otherwise `target_program` MUST be in `ALLOWED_FORWARD_PROGRAMS` and
 ///   `num_data_checks` MUST be in `1..=MAX_BYTE_RANGE_CHECKS`.
+/// - When the `NATIVE_OUTPUT` flag (bit 0) is set, the post-swap sweep
+///   `closeAccount`s the WSOL intermediate into the recipient's system
+///   wallet. That only makes sense if the forward output is WSOL itself,
+///   so `output_mint == NATIVE_MINT` is required. Auto-unwrapping any
+///   other `output_mint` would close an unrelated token account.
 ///
 /// The per-check sanity loop + discriminator-pin requirement stay in the
 /// handler (they only run when forward is enabled).
@@ -352,6 +357,17 @@ pub(crate) fn validate_forward_config(forward_config: &ForwardConfig) -> Result<
             forward_config.num_data_checks >= 1
                 && forward_config.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
             TributaryError::InsufficientByteRangeChecks
+        );
+    }
+
+    // NATIVE_OUTPUT requires output_mint == NATIVE_MINT. The sweep unwraps
+    // the post-swap WSOL balance via closeAccount, which only makes sense
+    // when the forward actually produces WSOL. See bean tributary-hgp7 and
+    // reports/native-output-sweep.md.
+    if forward_config.is_native_output() {
+        require!(
+            forward_config.output_mint == NATIVE_MINT,
+            TributaryError::NativeOutputRequiresWsol
         );
     }
     Ok(())
@@ -449,5 +465,38 @@ mod tests {
         let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
         let res = validate_forward_config(&enabled_config(allowlisted, 1));
         assert!(res.is_ok(), "allowlisted target + 1 check must be valid");
+    }
+
+    /// NATIVE_OUTPUT flag (bit 0) requires output_mint == NATIVE_MINT.
+    /// Auto-unwrapping a non-WSOL forward output would close an unrelated
+    /// token account. See bean tributary-hgp7.
+    #[test]
+    fn native_output_rejects_non_wsol_output_mint() {
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        let mut cfg = enabled_config(allowlisted, 1);
+        cfg.forward_flags = FORWARD_FLAG_NATIVE_OUTPUT;
+        // output_mint is a random pubkey (set by enabled_config) — reject.
+        let res = validate_forward_config(&cfg);
+        assert!(
+            res.is_err(),
+            "NATIVE_OUTPUT without WSOL output_mint must be rejected"
+        );
+    }
+
+    #[test]
+    fn native_output_accepts_wsol_output_mint() {
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        let mut cfg = enabled_config(allowlisted, 1);
+        cfg.forward_flags = FORWARD_FLAG_NATIVE_OUTPUT;
+        cfg.output_mint = NATIVE_MINT;
+        assert!(validate_forward_config(&cfg).is_ok());
+    }
+
+    #[test]
+    fn native_output_ignored_when_flag_clear() {
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        // Default enabled_config has a non-WSOL output mint and flag = 0.
+        let cfg = enabled_config(allowlisted, 1);
+        assert!(validate_forward_config(&cfg).is_ok());
     }
 }

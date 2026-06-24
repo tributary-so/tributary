@@ -128,4 +128,6 @@ pub enum TributaryError {
     DuplicateReferralAccount,
     #[msg("ValidationPDA is malformed — data_len out of bounds")]
     InvalidValidationPda,
+    #[msg("NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)")]
+    NativeOutputRequiresWsol,
 }

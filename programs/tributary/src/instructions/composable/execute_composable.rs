@@ -324,6 +324,19 @@ fn run_forward_cpi<'info>(
 /// Process the forward program's output: verify > 0, check min_output,
 /// calculate fees, deduct fees, sweep remainder to recipient.
 /// Returns `(output_amount, gateway_fee, protocol_fee, sweep_amount)`.
+///
+/// When `native_output` is true the post-swap sweep unwraps the WSOL
+/// intermediate into native SOL via `closeAccount(intermediate_WSOL →
+/// recipient_wallet)`, instead of `transfer_checked` into the recipient's
+/// WSOL ATA. The `closeAccount` destination is validated in the handler
+/// to equal `composable_policy.recipient`, so there is no drain vector
+/// (the rejected alternative — a generic Token/wrap forward — would let
+/// the gateway redirect `closeAccount`'s `destination` to itself; see
+/// bean tributary-hgp7 + reports/native-output-sweep.md). Fees stay in
+/// WSOL (taken before the close). `sweep_amount` returned for accounting
+/// is the WSOL value unwrapped; rent shipped by `closeAccount` is a
+/// side-effect bonus to the recipient and excluded from `total_output`.
+#[allow(clippy::too_many_arguments)]
 fn process_output_and_sweep<'info>(
     intermediate_output: &AccountInfo<'info>,
     output_mint: &AccountInfo<'info>,
@@ -346,6 +359,7 @@ fn process_output_and_sweep<'info>(
     is_amount_net: bool,
     min_output_amount: Option<u64>,
     intermediate_owner_seeds: &[&[&[u8]]],
+    native_output: bool,
 ) -> Result<(u64, u64, u64, u64)> {
     // ── Reload + verify output ──────────────────────────────────────
     let output_amount = read_token_amount(intermediate_output)?;
@@ -445,18 +459,41 @@ fn process_output_and_sweep<'info>(
 
     // ── Sweep remainder → recipient ─────────────────────────────────
     if sweep_amount > 0 {
-        let cpi_accounts = TransferChecked {
-            from: intermediate_output.clone(),
-            mint: output_mint.clone(),
-            to: recipient_token_account.clone(),
-            authority: intermediate_owner_info.clone(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
-            cpi_accounts,
-            intermediate_owner_seeds,
-        );
-        token_interface::transfer_checked(cpi_ctx, sweep_amount, output_mint_decimals)?;
+        if native_output {
+            // Unwrap WSOL → native SOL: close the WSOL intermediate into the
+            // recipient's system wallet. closeAccount sends the entire
+            // remaining WSOL value (= sweep_amount) as native SOL, plus the
+            // rent lamports of the closed ATA (a side-effect bonus to the
+            // recipient). Authority = ComposablePolicy PDA (owns the
+            // intermediate); destination validated in the handler to equal
+            // `composable_policy.recipient`. No drain vector: the destination
+            // is constrained on-chain, unlike a generic closeAccount forward.
+            // See bean tributary-hgp7 + reports/native-output-sweep.md.
+            close_token_account(
+                intermediate_output,
+                recipient_token_account,
+                intermediate_owner_info,
+                token_program,
+                // close_token_account wraps the seeds in `&[signer_seeds]`,
+                // so we pass the inner &[&[u8]] slice it expects. The
+                // ComposablePolicy PDA owns the intermediate and signs here
+                // with the SAME seeds used for the fee/sweep CPIs above.
+                intermediate_owner_seeds[0],
+            )?;
+        } else {
+            let cpi_accounts = TransferChecked {
+                from: intermediate_output.clone(),
+                mint: output_mint.clone(),
+                to: recipient_token_account.clone(),
+                authority: intermediate_owner_info.clone(),
+            };
+            let cpi_ctx = CpiContext::new_with_signer(
+                token_program.clone(),
+                cpi_accounts,
+                intermediate_owner_seeds,
+            );
+            token_interface::transfer_checked(cpi_ctx, sweep_amount, output_mint_decimals)?;
+        }
     }
 
     Ok((output_amount, gateway_fee, protocol_fee, sweep_amount))
@@ -570,18 +607,18 @@ pub struct ExecuteComposable<'info> {
     /// CHECK: Address validated in handler against the derived ATA.
     #[account(mut)]
     pub intermediate_output_token_account: UncheckedAccount<'info>,
-    /// Recipient's destination token account (output_mint ATA). Must
-    /// pre-exist. Receives the swept output after fees.
-    #[account(
-        mut,
-        // associated_token::mint = output_mint,
-        // associated_token::authority = composable_policy.recipient,
-        // associated_token::token_program = token_program,
-        constraint = recipient_token_account.mint == composable_policy.forward_config.output_mint
-            @ TributaryError::TokenMintMismatch,
-        constraint = recipient_token_account.owner == composable_policy.recipient,
-    )]
-    pub recipient_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// Recipient destination. In normal mode this is the recipient's
+    /// output-mint ATA (mint+owner validated in the handler). In
+    /// NATIVE_OUTPUT mode (forward_flags bit 0) it is the recipient's
+    /// **system wallet** — `closeAccount` ships the WSOL value there as
+    /// native SOL. Anchor constraints can't be conditional, so this is
+    /// an `UncheckedAccount` and the handler replicates the two original
+    /// checks (`mint == output_mint`, `owner == recipient`) in normal
+    /// mode. Do NOT weaken the normal-mode checks. See bean
+    /// tributary-hgp7 + reports/native-output-sweep.md.
+    /// CHECK: Validated in the handler.
+    #[account(mut)]
+    pub recipient_token_account: UncheckedAccount<'info>,
 
     /// Gateway fee account (output_mint).
     #[account(
@@ -629,6 +666,49 @@ impl<'info> ExecuteComposable<'info> {
         // output mint would drain that intermediate.
         validate_mint_compatible(&ctx.accounts.mint.to_account_info())?;
         validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
+
+        // ── Validate recipient destination (conditional on NATIVE_OUTPUT) ──
+        // Anchor constraints are static, so `recipient_token_account` is an
+        // UncheckedAccount. In normal mode it must be the recipient's
+        // output-mint ATA (replicates the two checks that used to live on
+        // the accounts struct). In NATIVE_OUTPUT mode it is the recipient's
+        // system wallet — the WSOL value gets shipped there as native SOL
+        // via `closeAccount`. See bean tributary-hgp7.
+        //
+        // We avoid `InterfaceAccount::<TokenAccount>::try_from` here: the
+        // returned `InterfaceAccount` borrows the `AccountInfo` for `'info`
+        // but the local `to_account_info()` binding isn't `'info`-long,
+        // causing E0597. Instead we deserialize the two fields we need
+        // (mint: bytes 0..32, owner: bytes 32..64) directly from the raw
+        // SPL token account layout, which is exactly what the Anchor
+        // constraints would have validated anyway.
+        let native_output = ctx
+            .accounts
+            .composable_policy
+            .forward_config
+            .is_native_output();
+        if native_output {
+            require!(
+                ctx.accounts.recipient_token_account.key()
+                    == ctx.accounts.composable_policy.recipient,
+                TributaryError::Unauthorized
+            );
+        } else {
+            let rta_info = ctx.accounts.recipient_token_account.to_account_info();
+            let data = rta_info.try_borrow_data()?;
+            // SPL Token account layout: mint at 0..32, owner at 32..64.
+            require!(data.len() >= 64, TributaryError::InvalidTokenAccount);
+            let rta_mint = Pubkey::try_from(&data[0..32]).unwrap_or_default();
+            let rta_owner = Pubkey::try_from(&data[32..64]).unwrap_or_default();
+            require!(
+                rta_mint == ctx.accounts.composable_policy.forward_config.output_mint,
+                TributaryError::TokenMintMismatch
+            );
+            require!(
+                rta_owner == ctx.accounts.composable_policy.recipient,
+                TributaryError::Unauthorized
+            );
+        }
 
         // ── Step 1: VALIDATE ───────────────────────────────────────────
         // Byte-range checks validate the forward program's instruction_data.
@@ -918,6 +998,7 @@ impl<'info> ExecuteComposable<'info> {
             gateway.is_amount_net(),
             min_output_amount,
             intermediate_owner_seeds,
+            native_output,
         )?;
 
         // ── Step 10: VERIFY INTERMEDIATES EMPTY ────────────────────────
@@ -931,12 +1012,18 @@ impl<'info> ExecuteComposable<'info> {
         )?;
         require!(input_check == 0, TributaryError::InsufficientBalance);
 
-        let output_check = read_token_amount(
-            &ctx.accounts
-                .intermediate_output_token_account
-                .to_account_info(),
-        )?;
-        require!(output_check == 0, TributaryError::InsufficientBalance);
+        // In NATIVE_OUTPUT mode the WSOL intermediate was already closed by
+        // the sweep (closeAccount zeroes it), so `read_token_amount` would
+        // fail with `data.len() < 72`. Skip the check — `closeAccount` is
+        // atomic, so the balance is provably zero (or the whole tx reverted).
+        if !native_output {
+            let output_check = read_token_amount(
+                &ctx.accounts
+                    .intermediate_output_token_account
+                    .to_account_info(),
+            )?;
+            require!(output_check == 0, TributaryError::InsufficientBalance);
+        }
 
         // ── Step 11: UPDATE STATE ──────────────────────────────────────
         let composable_policy = &mut ctx.accounts.composable_policy;
@@ -1013,7 +1100,13 @@ impl<'info> ExecuteComposable<'info> {
             signer_seeds,
         )?;
 
-        if close_input_ata.key() != ctx.accounts.intermediate_output_token_account.key() {
+        if close_input_ata.key() != ctx.accounts.intermediate_output_token_account.key()
+            && !native_output
+        {
+            // NATIVE_OUTPUT mode already closed the output intermediate in
+            // the sweep (closeAccount). Skipping here avoids a double-close
+            // (which would fail at `close_token_account`'s ATA-lamports==0
+            // guard anyway, since the account no longer exists).
             let close_output_ata = ctx
                 .accounts
                 .intermediate_output_token_account
