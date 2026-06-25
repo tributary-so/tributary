@@ -93,29 +93,19 @@ impl<'info> TransferTokens<'info> {
         let token_program_info = accounts.token_program.to_account_info();
         let expected_mint = accounts.from.mint;
 
-        let mut gateway_fee = amount
-            .checked_mul(gateway.gateway_fee_bps as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-
-        let protocol_fee_bps = if gateway.is_custom_protocol_fee_enabled() {
-            gateway.custom_protocol_fee_bps
-        } else {
-            config.protocol_fee_bps
-        };
-
-        let protocol_fee = amount
-            .checked_mul(protocol_fee_bps as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-
-        let recipient_amount = amount
-            .checked_sub(gateway_fee)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_sub(protocol_fee)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
+        // Transfer is always gross-mode (recipient_amount = amount - fees),
+        // so total_from_user == amount and is not used here.
+        let fee_breakdown = crate::shared::fees::calculate_fees(
+            amount,
+            gateway.gateway_fee_bps,
+            gateway.custom_protocol_fee_bps,
+            config.protocol_fee_bps,
+            gateway.is_custom_protocol_fee_enabled(),
+            false,
+        )?;
+        let mut gateway_fee = fee_breakdown.gateway_fee;
+        let protocol_fee = fee_breakdown.protocol_fee;
+        let recipient_amount = fee_breakdown.recipient_amount;
 
         require!(
             accounts.from.amount >= amount,
