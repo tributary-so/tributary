@@ -51,6 +51,12 @@ const SWAP_INPUT_AMOUNT = 50_000_000; // 50 USDC
 // programs/tributary/src/constants.rs::FORWARD_FLAG_NATIVE_OUTPUT.
 const FORWARD_FLAG_NATIVE_OUTPUT = 1;
 
+// Lighthouse topup trigger: only fire when hotWallet native SOL (lamports)
+// is below this. hotWallet is funded with 10 SOL at setup, so the threshold
+// sits above that to make the `<` assertion hold. NATIVE_OUTPUT sweep mutates
+// this balance, so this is the correct sensor (not a WSOL ATA).
+const SOL_TOPUP_THRESHOLD = 20_000_000_000; // 20 SOL
+
 // DLMM state is lazy-forked from mainnet through surfpool, which makes pool
 // loading + bin-array fetches slow. Give the suite ample room.
 jest.setTimeout(300_000);
@@ -72,8 +78,8 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
   const configPDA = getConfigPda(program.programId).address;
 
   // hotWallet is the recipient — in NATIVE_OUTPUT mode it receives the
-  // WSOL value as native SOL via closeAccount. It still needs a WSOL ATA
-  // for the Lighthouse assertion (bean open-decision (a): WSOL-ATA sensor).
+  // WSOL value as native SOL via closeAccount. The Lighthouse guard asserts
+  // on its native SOL (lamports) balance directly.
   const hotWallet = Keypair.generate();
   const coldWallet = Keypair.generate();
 
@@ -86,9 +92,6 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
   // Input side (USDC)
   let coldWalletUsdcAta: PublicKey;
   // Output side (WSOL) — fee accounts stay WSOL (taken BEFORE the close).
-  // hotWalletWsolAta is the Lighthouse sensor only; the SOL sweep lands in
-  // the system wallet.
-  let hotWalletWsolAta: PublicKey;
   let feeRecipientWsolAta: PublicKey;
   let adminWsolAta: PublicKey;
 
@@ -187,21 +190,15 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       USDC_MINT,
       coldWallet.publicKey
     );
-    // Lighthouse sensor only — NOT the sweep destination in NATIVE_OUTPUT
-    // mode. The sweep lands in hotWallet.publicKey (the system wallet).
-    hotWalletWsolAta = getAssociatedTokenAddressSync(
-      NATIVE_MINT,
-      hotWallet.publicKey
-    );
     feeRecipientWsolAta = getAssociatedTokenAddressSync(
       NATIVE_MINT,
       feeRecipient.publicKey
     );
     adminWsolAta = getAssociatedTokenAddressSync(NATIVE_MINT, admin.publicKey);
 
-    // Create ATAs (input USDC for coldWallet; output WSOL sensor + fees).
-    // hotWallet's WSOL ATA is required by the Lighthouse assertion, not by
-    // the sweep — the sweep destination is the system wallet.
+    // Create ATAs (input USDC for coldWallet; output WSOL fee accounts).
+    // hotWallet needs no ATA — NATIVE_OUTPUT sweeps SOL into its system
+    // wallet, and the Lighthouse guard reads lamports off that wallet.
     const ataTx = new Transaction();
     ataTx.add(
       createAssociatedTokenAccountInstruction(
@@ -209,14 +206,6 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
         coldWalletUsdcAta,
         coldWallet.publicKey,
         USDC_MINT
-      )
-    );
-    ataTx.add(
-      createAssociatedTokenAccountInstruction(
-        admin.publicKey,
-        hotWalletWsolAta,
-        hotWallet.publicKey,
-        NATIVE_MINT
       )
     );
     ataTx.add(
@@ -244,15 +233,6 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     }
 
     // ── Fund tokens ────────────────────────────────────────────────────
-    // hotWallet WSOL ATA: 0.4 WSOL sensor (below the 1 WSOL threshold the
-    // Lighthouse guard asserts). Sweep adds SOL to the system wallet, NOT
-    // here — so this balance is unchanged by execution.
-    await surfpool.setTokenAccount({
-      owner: hotWallet.publicKey,
-      mint: NATIVE_MINT,
-      amount: 400_000_000, // 0.4 WSOL
-    });
-
     // coldWallet: 1000 USDC (funding source), delegate → UserPayment PDA
     await surfpool.setTokenAccount({
       owner: coldWallet.publicKey,
@@ -405,12 +385,12 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       ],
     };
 
-    // Lighthouse: assert hotWallet WSOL ATA balance < 1 WSOL before topping
-    // up. This is the bean's open-decision (a) — WSOL-ATA sensor. The ATA
-    // is unrelated to the SOL sweep; it's just a read-only trigger.
+    // Lighthouse: assert hotWallet native SOL (lamports) is below the
+    // topup threshold. NATIVE_OUTPUT sweep mutates this balance, so the
+    // system wallet is the correct sensor (not a WSOL ATA).
     const guard = lighthouse
-      .tokenAccount(hotWalletWsolAta)
-      .amount(1_000_000_000, "<")
+      .accountInfo(hotWallet.publicKey)
+      .lamports(SOL_TOPUP_THRESHOLD, "<")
       .build();
 
     const ix = await program.methods
@@ -488,9 +468,9 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     }));
 
     const remainingAccounts = [
-      // validation: [ValidationPDA, hotWallet WSOL ATA sensor]
+      // validation: [ValidationPDA, hotWallet system wallet (SOL sensor)]
       { pubkey: validationPDA, isSigner: false, isWritable: false },
-      { pubkey: hotWalletWsolAta, isSigner: false, isWritable: false },
+      { pubkey: hotWallet.publicKey, isSigner: false, isWritable: false },
       // forward: DLMM swap accounts
       ...forwardAccounts,
     ];
@@ -569,8 +549,8 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     );
     expect(
       intermediateOutputInfo === null ||
-      intermediateOutputInfo.lamports === 0 ||
-      intermediateOutputInfo.data.length === 0
+        intermediateOutputInfo.lamports === 0 ||
+        intermediateOutputInfo.data.length === 0
     ).toBe(true);
 
     // ── Verify policy state ─────────────────────────────────────────────
@@ -616,7 +596,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     }));
     const remainingAccounts = [
       { pubkey: validationPDA, isSigner: false, isWritable: false },
-      { pubkey: hotWalletWsolAta, isSigner: false, isWritable: false },
+      { pubkey: hotWallet.publicKey, isSigner: false, isWritable: false },
       ...forwardAccounts,
     ];
 
@@ -703,10 +683,10 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     const keys = found.keys.map((k) =>
       k.pubkey.equals(SystemProgram.programId)
         ? {
-          pubkey: METEORA_DLMM_PUBKEY,
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        }
+            pubkey: METEORA_DLMM_PUBKEY,
+            isSigner: k.isSigner,
+            isWritable: k.isWritable,
+          }
         : k
     );
     return new TransactionInstruction({
