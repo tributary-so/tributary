@@ -8,14 +8,10 @@ pub enum TributaryError {
     InvalidAmount,
     #[msg("Invalid payment frequency")]
     InvalidFrequency,
-    #[msg("Maximum policies per user reached")]
-    MaxPoliciesReached,
     #[msg("Unauthorized")]
     Unauthorized,
     #[msg("Invalid policy status transition")]
     InvalidPolicyStatusTransition,
-    #[msg("Payment policy not found")]
-    PolicyNotFound,
     #[msg("Insufficient delegated amount")]
     InsufficientDelegatedAmount,
     #[msg("Payment is not yet due")]
@@ -34,8 +30,6 @@ pub enum TributaryError {
     InvalidPaymentDueDate,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
-    #[msg("Referral program feature is not enabled")]
-    ReferralFeatureNotEnabled,
     #[msg("Invalid referral allocation - must be <= 2500 bps")]
     InvalidReferralAllocation,
     #[msg("Invalid referral tiers - must sum to 10000 bps")]
@@ -70,8 +64,6 @@ pub enum TributaryError {
     InvalidTokenAccount,
     #[msg("Mismatch between number referrers and atas!")]
     MismatchAtaReferralAccountNumbers,
-    #[msg("Referral account already exists for this code")]
-    ReferralAccountAlreadyExists,
     #[msg("Token mint mismatch between accounts")]
     TokenMintMismatch,
     #[msg("Token-2022 Extension currently not supported")]
@@ -104,8 +96,6 @@ pub enum TributaryError {
     ValidationDataRequired,
     #[msg("Validation not configured but data was provided")]
     ValidationNotRequired,
-    #[msg("Composable policy not found")]
-    ComposablePolicyNotFound,
     #[msg("Combined fee BPS must be less than 10000")]
     CombinedFeeBpsExceedsMax,
     #[msg("At least one ByteRangeCheck must start at offset 0 to pin the instruction selector")]
