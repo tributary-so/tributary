@@ -25,7 +25,7 @@ const session = await payments.checkout.sessions.create({
 });
 ```
 
-👉 **Get Started:** [Checkout](./checkout.md)
+👉 **Get Started:** [Checkout](pull-payments/checkout.md)
 
 ---
 
@@ -45,7 +45,7 @@ const tributary = new Tributary(connection, wallet);
 const instructions = await tributary.createSubscriptionInstruction(/*...*/);
 ```
 
-👉 **Get Started:** [Integration](./integration.md) | [SDK Reference](./sdk.md)
+👉 **Get Started:** [SDK Reference](pull-payments/sdk.md)
 
 ---
 
@@ -96,7 +96,7 @@ Best for: Backend integration and real-time notifications
 curl "https://api.tributary.so/v1/subscriptions?trackingId=my-sub"
 ```
 
-👉 **Get Started:** [API Overview](./api/overview.md)
+👉 **Get Started:** [API Overview](../api/rest-api.md)
 
 ---
 
@@ -122,7 +122,7 @@ app.use(
 );
 ```
 
-👉 **Get Started:** [x402 Overview](./x402.md)
+👉 **Get Started:** [x402 Overview](pull-payments/x402/overview.md)
 
 ---
 
@@ -151,15 +151,15 @@ app.use(
 
 ## Next Steps
 
-1. **Learn the Protocol:** [Tributary Overview](./index.md)
+1. **Learn the Protocol:** [Tributary Overview](../index.md)
 2. **Choose Your Integration:** Review quickstart guides above
-3. **JWT Authentication:** [Verify subscriptions after checkout](./jwt-auth.md)
-4. **Explore Payment Types:** [Subscriptions](./policies/subscription.md), [Milestones](./policies/milestone.md), [Pay-as-you-go](./policies/payasyougo.md)
-5. **Build:** Check [use cases](./use-cases.md) for inspiration
+3. **JWT Authentication:** [Verify subscriptions after checkout](pull-payments/jwt-auth.md)
+4. **Explore Payment Types:** [Subscriptions](../protocol-reference/payment-policy/subscription.md), [Milestones](../protocol-reference/payment-policy/milestone.md), [Pay-as-you-go](../protocol-reference/payment-policy/payasyougo.md)
+5. **Build:** Check [use cases](../use-cases.md) for inspiration
 
 ## Need Help?
 
-- 📖 [SDK Reference](./sdk.md)
-- 📖 [API Reference](./api/overview.md)
-- ❓ [FAQ](./faq.md)
+- 📖 [SDK Reference](pull-payments/sdk.md)
+- 📖 [API Reference](../api/rest-api.md)
+- ❓ [FAQ](../faq.md)
 - 💬 [Discord](https://discord.gg/tributary)

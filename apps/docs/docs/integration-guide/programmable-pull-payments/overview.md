@@ -78,4 +78,4 @@ equal `output_mint` (no conversion step — it's a same-mint pull → sweep).
 - Examples: [Auto-topup guard](./examples/auto-topup-guard.md) ·
   [Swap & deliver](./examples/swap-and-deliver.md) ·
   [Native SOL topup](./examples/native-sol-topup.md).
-- Deep technical reference → [Protocol Reference → Composable Policy](../../protocol-reference/composable-policy/index.md).
+- Deep technical reference → [Protocol Reference → Composable Policy](../../protocol-reference/composable-policy/overview.md).

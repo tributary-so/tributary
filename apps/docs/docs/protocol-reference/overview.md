@@ -116,8 +116,8 @@ Key points:
 - Math is `(amount * bps) / 10000` with floor rounding; dust goes to the
   protocol.
 
-For the full fee mechanics, see [Fees](../fees.md) and
-[Referral Program](../referral-program.md).
+For the full fee mechanics, see [Fees](fees.md) and
+[Referral Program](payment-policy/referral-program.md).
 
 ## Emergency controls
 

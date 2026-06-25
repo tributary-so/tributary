@@ -248,5 +248,5 @@ unambiguous and safe.
 
 - [Overview](./overview.md) — concept and lifecycle.
 - [Lighthouse facade](./lighthouse-facade.md) — building the assertion buffer.
-- [Protocol Reference → Composable Policy](../../protocol-reference/composable-policy/index.md)
+- [Protocol Reference → Composable Policy](../../protocol-reference/composable-policy/overview.md)
   for on-chain constraints, error codes, and the full account layout.
