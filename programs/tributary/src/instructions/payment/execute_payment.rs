@@ -34,7 +34,7 @@ pub struct ExecutePayment<'info> {
         mut,
         seeds = [PAYMENT_POLICY_SEED, payment_policy.user_payment.as_ref(), payment_policy.policy_id.to_le_bytes().as_ref()],
         bump = payment_policy.bump,
-        constraint = payment_policy.status == PaymentStatus::Active @ crate::error::TributaryError::PolicyPaused,
+        constraint = payment_policy.status == PolicyStatus::Active @ crate::error::TributaryError::PolicyPaused,
     )]
     pub payment_policy: Box<Account<'info, PaymentPolicy>>,
 
@@ -282,9 +282,13 @@ impl<'info> ExecutePayment<'info> {
         // emitted in PaymentRecord reflects the post-increment value.
         payment_policy.updated_at = clock.unix_timestamp;
 
-        // Pause policy if needed based on strategy recommendation
+        // Terminal transition: when a strategy signals `should_pause` the
+        // policy is exhausted (subscription `max_renewals` reached, or all
+        // milestones released). Write `Completed` — the program-internal
+        // terminal state. Owners cannot reach `Completed` via
+        // `change_payment_policy_status`; they only get Active<->Paused.
         if execution_result.should_pause {
-            payment_policy.status = PaymentStatus::Paused;
+            payment_policy.status = PolicyStatus::Completed;
         }
 
         // Update user payment account

@@ -477,7 +477,7 @@ export type Tributary = {
           "name": "newStatus",
           "type": {
             "defined": {
-              "name": "paymentStatus"
+              "name": "policyStatus"
             }
           }
         }
@@ -3590,11 +3590,13 @@ export type Tributary = {
           {
             "name": "status",
             "docs": [
-              "Current status of this payment policy"
+              "Current status of this payment policy (Active | Paused | Completed).",
+              "`Completed` is terminal and set only by the program when the policy is",
+              "exhausted; owners may only toggle Active<->Paused."
             ],
             "type": {
               "defined": {
-                "name": "paymentStatus"
+                "name": "policyStatus"
               }
             }
           },
@@ -3761,7 +3763,7 @@ export type Tributary = {
             "name": "oldStatus",
             "type": {
               "defined": {
-                "name": "paymentStatus"
+                "name": "policyStatus"
               }
             }
           },
@@ -3769,7 +3771,7 @@ export type Tributary = {
             "name": "newStatus",
             "type": {
               "defined": {
-                "name": "paymentStatus"
+                "name": "policyStatus"
               }
             }
           }
@@ -3832,25 +3834,6 @@ export type Tributary = {
           {
             "name": "tokenMint",
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "paymentStatus",
-      "docs": [
-        "Status enum for payment policies indicating whether payments can be executed.",
-        "Active policies allow payment execution, while Paused policies prevent",
-        "automatic payment processing until reactivated."
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "active"
-          },
-          {
-            "name": "paused"
           }
         ]
       }

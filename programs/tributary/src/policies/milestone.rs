@@ -135,9 +135,11 @@ impl PolicyStrategy for MilestoneStrategy {
                     .checked_add(1)
                     .ok_or(TributaryError::ArithmeticOverflow)?;
 
-                // If we've completed all milestones, pause policy
+                // If we've completed all milestones, mark terminal. The
+                // `should_pause_policy` trait fn mirrors this and triggers
+                // the `Completed` write in execute_payment.
                 if *current_milestone >= *total_milestones {
-                    payment_policy.status = crate::state::PaymentStatus::Paused;
+                    payment_policy.status = crate::state::PolicyStatus::Completed;
                 }
                 Ok(())
             }

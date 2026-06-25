@@ -192,7 +192,7 @@ impl PayAsYouGoStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::PaymentStatus;
+    use crate::state::PolicyStatus;
     use anchor_lang::solana_program::pubkey::Pubkey;
 
     /// Build a `PaymentPolicy` whose `policy_type` is `PayAsYouGo` with
@@ -217,7 +217,7 @@ mod tests {
                 current_period_total,
                 padding: [0u8; 88],
             },
-            status: PaymentStatus::Active,
+            status: PolicyStatus::Active,
             memo: [0u8; 64],
             total_paid: 0,
             payment_count: 0,

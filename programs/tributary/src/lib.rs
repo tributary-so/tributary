@@ -69,7 +69,7 @@ pub mod tributary {
     pub fn change_payment_policy_status(
         ctx: Context<ChangePaymentPolicyStatus>,
         policy_id: u32,
-        new_status: PaymentStatus,
+        new_status: PolicyStatus,
     ) -> Result<()> {
         ChangePaymentPolicyStatus::handler_change_payment_policy_status(ctx, policy_id, new_status)
     }

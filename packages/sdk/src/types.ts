@@ -82,10 +82,30 @@ export type PolicyType = IdlTypes<Tributary>["policyType"];
 export type PaymentFrequency = IdlTypes<Tributary>["paymentFrequency"];
 
 /**
- * Status of a payment execution.
- * Tracks whether payments were successful, failed, or are pending.
+ * Lifecycle status of a policy (PaymentPolicy or ComposablePolicy).
+ * Unified on-chain enum: `active | paused | completed`.
+ *
+ * - `active`: payments can be executed.
+ * - `paused`: owner-initiated pause (toggleable via `changePaymentPolicyStatus`
+ *   / `changeComposablePolicyStatus`).
+ * - `completed`: program-internal terminal state. For PaymentPolicy this is
+ *   set by the program when a subscription hits `max_renewals` or all
+ *   milestones are released; it is NOT accepted from owners in
+ *   `change_payment_policy_status`. PayAsYouGo never auto-completes (no
+ *   global max).
+ *
+ * Note: accounts that terminated before the unification keep their legacy
+ * `paused` status; only new terminal transitions write `completed`.
  */
-export type PaymentStatus = IdlTypes<Tributary>["paymentStatus"];
+export type PolicyStatus = IdlTypes<Tributary>["policyStatus"];
+
+/**
+ * @deprecated Use {@link PolicyStatus}. Unified with `PolicyStatus` on-chain;
+ * the separate `paymentStatus` IDL type has been removed. This alias is a
+ * widening (it now also includes `completed`) so existing call sites passing
+ * `{ active: {} }` / `{ paused: {} }` keep compiling. Removed next minor.
+ */
+export type PaymentStatus = PolicyStatus;
 
 /**
  * Record of a completed payment.
@@ -101,7 +121,6 @@ export type ReferralAccount = IdlAccounts<Tributary>["referralAccount"];
 
 // Composable policy types - These types will resolve once the IDL is regenerated
 // after `anchor build`. They resolve to `any` until the IDL includes them.
-
 
 /**
  * Forward configuration for composable policies.
@@ -120,12 +139,6 @@ export type ValidationConfig = IdlTypes<Tributary>["validationConfig"];
  * Specifies a range of bytes to validate in instruction data.
  */
 export type ByteRangeCheck = IdlTypes<Tributary>["byteRangeCheck"];
-
-/**
- * Status of a composable policy.
- * Tracks whether a composable policy is active, paused, or completed.
- */
-export type PolicyStatus = IdlTypes<Tributary>["policyStatus"];
 
 /**
  * Validation PDA account structure.

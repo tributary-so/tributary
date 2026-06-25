@@ -51,7 +51,7 @@ The original `execute_payment.rs` handler was 333 lines with a large match state
 
 - `PolicyType` enum definitions
 - Account serialization compatibility with Anchor
-- Shared state types (`PaymentStatus`, `PaymentFrequency`)
+- Shared state types (`PolicyStatus`, `PaymentFrequency`)
 
 ✅ **Behavior moves to `src/policies/`**:
 

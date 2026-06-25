@@ -37,11 +37,14 @@ pub struct ChangePaymentPolicyStatus<'info> {
 }
 
 impl<'info> ChangePaymentPolicyStatus<'info> {
-    /// Change the status of a payment policy (active/paused).
+    /// Change the status of a payment policy. Owners may only toggle
+    /// Active <-> Paused. `Completed` is a program-internal terminal state
+    /// (set when a subscription hits `max_renewals` or all milestones are
+    /// released) and is rejected here for any PaymentPolicy.
     pub fn handler_change_payment_policy_status(
         ctx: Context<ChangePaymentPolicyStatus>,
         _policy_id: u32,
-        new_status: PaymentStatus,
+        new_status: PolicyStatus,
     ) -> Result<()> {
         let payment_policy = &mut ctx.accounts.payment_policy;
         let user_payment = &mut ctx.accounts.user_payment;
@@ -50,8 +53,8 @@ impl<'info> ChangePaymentPolicyStatus<'info> {
         let old_status = payment_policy.status.clone();
 
         match (&old_status, &new_status) {
-            (PaymentStatus::Active, PaymentStatus::Paused)
-            | (PaymentStatus::Paused, PaymentStatus::Active) => {}
+            (PolicyStatus::Active, PolicyStatus::Paused)
+            | (PolicyStatus::Paused, PolicyStatus::Active) => {}
             _ => return err!(TributaryError::InvalidPolicyStatusTransition),
         }
 

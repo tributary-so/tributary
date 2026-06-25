@@ -1682,17 +1682,25 @@ export class Tributary {
   }
 
   /**
-   * Changes the status of a payment policy (active or paused).
+   * Changes the status of a payment policy. Only Active <-> Paused is allowed
+   * for owner-initiated transitions; `completed` is a program-internal
+   * terminal state (subscription `max_renewals` reached, or all milestones
+   * released) and is rejected on-chain with `InvalidPolicyStatusTransition`.
    * Only the policy owner can change the status.
+   *
+   * The param type accepts the full {@link PolicyStatus} (including
+   * `completed`) for parity with `changeComposablePolicyStatus`; callers
+   * passing `{ active: {} }` / `{ paused: {} }` are unaffected.
+   *
    * @param tokenMint - Public key of the token mint
    * @param policyId - ID of the policy to modify
-   * @param newStatus - New status for the policy
+   * @param newStatus - New status for the policy (`completed` rejected on-chain)
    * @returns Transaction instruction to change the policy status
    */
   async changePaymentPolicyStatus(
     tokenMint: PublicKey,
     policyId: number,
-    newStatus: { active: {} } | { paused: {} }
+    newStatus: PolicyStatus
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(

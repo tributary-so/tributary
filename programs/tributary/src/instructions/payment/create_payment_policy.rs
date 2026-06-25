@@ -116,7 +116,7 @@ impl<'info> CreatePaymentPolicy<'info> {
         payment_policy.recipient = ctx.accounts.recipient.key();
         payment_policy.gateway = ctx.accounts.gateway.key();
         payment_policy.policy_type = adjusted_policy_type;
-        payment_policy.status = PaymentStatus::Active;
+        payment_policy.status = PolicyStatus::Active;
         payment_policy.memo = memo;
         payment_policy.total_paid = 0;
         payment_policy.payment_count = 0;

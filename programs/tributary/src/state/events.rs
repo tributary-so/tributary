@@ -1,5 +1,5 @@
 use super::composable_policy::{ForwardConfig, ValidationConfig};
-use super::payment_policy::{PaymentStatus, PolicyType};
+use super::payment_policy::PolicyType;
 use super::policy_status::PolicyStatus;
 use anchor_lang::prelude::*;
 
@@ -89,8 +89,8 @@ pub struct GatewayFeeBpsChanged {
 #[event]
 pub struct PaymentPolicyStatusChanged {
     pub payment_policy: Pubkey,
-    pub old_status: PaymentStatus,
-    pub new_status: PaymentStatus,
+    pub old_status: PolicyStatus,
+    pub new_status: PolicyStatus,
 }
 
 /// An event that is thrown when a payment policy is deleted
