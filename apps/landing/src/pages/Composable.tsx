@@ -316,11 +316,10 @@ function SlidePrimitive() {
             <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4 flex items-center gap-2">
               {s.title}
               <span
-                className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
-                  s.status === "LIVE"
+                className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${s.status === "LIVE"
                     ? "text-accent border border-accent/30"
                     : "text-muted-foreground/60 border border-border"
-                }`}
+                  }`}
               >
                 {s.status === "LIVE" ? "● LIVE" : "ROADMAP"}
               </span>
@@ -787,9 +786,8 @@ function SlideTraction() {
             viewport={{ once: true }}
           >
             <span
-              className={`text-2xl font-bold ${
-                m.accent ? "text-amber-400" : "gradient-text"
-              }`}
+              className={`text-2xl font-bold ${m.accent ? "text-amber-400" : "gradient-text"
+                }`}
             >
               {m.value}
             </span>
@@ -1027,11 +1025,10 @@ function SlideRoadmap() {
         {items.map((item, i) => (
           <motion.div
             key={item.label}
-            className={`flex flex-col sm:grid sm:grid-cols-[300px_1fr] gap-1 sm:gap-2 items-start sm:items-center py-2 border-b border-border/30 last:border-0 ${
-              item.highlight
+            className={`flex flex-col sm:grid sm:grid-cols-[300px_1fr] gap-1 sm:gap-2 items-start sm:items-center py-2 border-b border-border/30 last:border-0 ${item.highlight
                 ? "bg-primary/5 -mx-2 px-2 border-l-2 border-l-primary"
                 : ""
-            }`}
+              }`}
             initial={{ opacity: 0, x: -10 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: i * 0.07 }}
@@ -1190,11 +1187,10 @@ function SlideAsk() {
           {milestones.map((m, i) => (
             <motion.div
               key={m.month}
-              className={`p-4 border-r border-border/30 last:border-r-0 ${
-                i === milestones.length - 1
+              className={`p-4 border-r border-border/30 last:border-r-0 ${i === milestones.length - 1
                   ? "border-primary/30 bg-primary/5"
                   : ""
-              }`}
+                }`}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: i * 0.1 }}
@@ -1230,7 +1226,7 @@ function SlideTeam() {
           <span className="gradient-text">Dr.-Ing.</span>
         </h2>
       </div>
-      <FabianSchuhProfile />
+      <FabianSchuhProfile isDAORaise={false} showExits={true} />
     </section>
   );
 }
