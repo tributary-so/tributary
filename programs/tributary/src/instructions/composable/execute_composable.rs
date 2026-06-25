@@ -3,7 +3,7 @@ use crate::{
     error::TributaryError,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
     shared::mint::validate_mint_compatible,
-    shared::schedule::{advance_policy, validate_policy_execution},
+    shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners},
     state::*,
 };
 use anchor_lang::prelude::*;
@@ -787,8 +787,18 @@ impl<'info> ExecuteComposable<'info> {
         // `ComposablePolicyStrategy` trait (duplicated logic). Both exceed
         // the agreed session scope. Until then, `shared::schedule` keeps
         // exactly one production caller (this fn) plus its own unit tests.
-        let schedule_amount =
-            validate_policy_execution(&composable_policy.policy_type, now, forward_amount)?;
+        let caller_key = ctx.accounts.fee_payer.key();
+        let schedule_amount = validate_policy_execution(
+            &composable_policy.policy_type,
+            now,
+            forward_amount,
+            &MilestoneSigners {
+                caller: &caller_key,
+                gateway_signer: &ctx.accounts.gateway.signer,
+                owner: &ctx.accounts.user_payment.owner,
+                recipient: &composable_policy.recipient,
+            },
+        )?;
 
         // Resolve the actual input amount. For PayAsYouGo, the caller-
         // supplied `forward_amount` IS the chunk — validation already

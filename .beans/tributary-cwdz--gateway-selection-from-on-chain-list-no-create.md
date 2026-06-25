@@ -1,10 +1,11 @@
 ---
 # tributary-cwdz
 title: Gateway selection from on-chain list (no create)
-status: in-progress
+status: completed
 type: task
+priority: normal
 created_at: 2026-06-25T12:45:43Z
-updated_at: 2026-06-25T12:45:43Z
+updated_at: 2026-06-25T19:28:19Z
 parent: tributary-vyg1
 ---
 

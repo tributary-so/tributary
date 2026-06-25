@@ -15,7 +15,9 @@
 //! used anywhere (see `reports/M-04-inconsistent-month-arithmetic.md`).
 
 use crate::error::TributaryError;
-use crate::state::{PaymentFrequency, PolicyType};
+use crate::state::{
+    PaymentFrequency, PolicyType, RELEASE_GATEWAY, RELEASE_OWNER, RELEASE_RECIPIENT,
+};
 use anchor_lang::prelude::*;
 
 /// Maximum number of monthly iterations the bounded loop in
@@ -218,6 +220,39 @@ fn get_days_in_month(year: i32, month: i32) -> i32 {
     }
 }
 
+/// Signer context required to enforce `Milestone::release_condition`
+/// signer bits 1-3 (gateway / owner / recipient). The values are only
+/// read for `PolicyType::Milestone` and ignored by the other variants.
+///
+/// Bits 1-3 are mutually exclusive — enforced at policy creation by
+/// [`crate::policies::milestone::validate_milestone_policy`]. Callers that
+/// do not have a real signer to check (e.g. unit tests for non-Milestone
+/// policies) may pass [`MilestoneSigners::none`].
+#[derive(Clone, Copy)]
+pub struct MilestoneSigners<'a> {
+    pub caller: &'a Pubkey,
+    pub gateway_signer: &'a Pubkey,
+    pub owner: &'a Pubkey,
+    pub recipient: &'a Pubkey,
+}
+
+impl<'a> MilestoneSigners<'a> {
+    /// Convenience: all-zero placeholder for tests of non-Milestone policies.
+    /// Passing this to [`validate_policy_execution`] for a Milestone policy
+    /// with any signer bit set will reject the call (bits 1-3 compare
+    /// unequal to `Pubkey::default()` unless the caller is also default).
+    pub fn none() -> Self {
+        // from_str_const is the only const way to materialize a Pubkey.
+        const DUMMY: Pubkey = Pubkey::from_str_const("11111111111111111111111111111111");
+        Self {
+            caller: &DUMMY,
+            gateway_signer: &DUMMY,
+            owner: &DUMMY,
+            recipient: &DUMMY,
+        }
+    }
+}
+
 /// Validate that a policy may execute at `current_time` and return the
 /// base amount to transfer.
 ///
@@ -225,7 +260,10 @@ fn get_days_in_month(year: i32, month: i32) -> i32 {
 ///   the configured `amount`.
 /// * **Milestone** — checks `current_milestone < total_milestones`; if the
 ///   `release_condition` bit-0 flag is set, also enforces the milestone's
-///   due-date; returns `milestone_amounts[current_milestone]`.
+///   due-date; if any of bits 1-3 is set, enforces that `signers.caller`
+///   matches the corresponding authority (gateway signer / owner /
+///   recipient). Bits 1-3 are mutually exclusive. Returns
+///   `milestone_amounts[current_milestone]`.
 /// * **PayAsYouGo** — requires `provided_amount` (the chunk); validates
 ///   `0 < chunk <= max_chunk_amount` and that the projected period total
 ///   stays within `max_amount_per_period`; returns the chunk.
@@ -233,6 +271,7 @@ pub fn validate_policy_execution(
     policy_type: &PolicyType,
     current_time: i64,
     provided_amount: Option<u64>,
+    signers: &MilestoneSigners<'_>,
 ) -> Result<u64> {
     match policy_type {
         PolicyType::Subscription {
@@ -263,6 +302,26 @@ pub fn validate_policy_execution(
                 require!(
                     current_time >= milestone_timestamps[idx],
                     TributaryError::PaymentNotDue
+                );
+            }
+            // Bits 1-3 (mutually exclusive — see validate_milestone_policy).
+            // Mirror the legacy PaymentPolicy path (policies/milestone.rs).
+            // Without this check the milestone would release on the due date
+            // alone, bypassing the configured signer authorization (H-1).
+            if *release_condition & RELEASE_GATEWAY != 0 {
+                require!(
+                    signers.caller == signers.gateway_signer,
+                    TributaryError::Unauthorized
+                );
+            } else if *release_condition & RELEASE_OWNER != 0 {
+                require!(
+                    signers.caller == signers.owner,
+                    TributaryError::Unauthorized
+                );
+            } else if *release_condition & RELEASE_RECIPIENT != 0 {
+                require!(
+                    signers.caller == signers.recipient,
+                    TributaryError::Unauthorized
                 );
             }
             Ok(milestone_amounts[idx])
@@ -459,15 +518,181 @@ mod tests {
     #[test]
     fn subscription_rejects_execution_before_due() {
         let pt = subscription(100, PaymentFrequency::Monthly, FEB_29_2024, None, true);
-        let err = validate_policy_execution(&pt, JAN_31_2024, None).unwrap_err();
+        let err = validate_policy_execution(&pt, JAN_31_2024, None, &MilestoneSigners::none())
+            .unwrap_err();
         assert!(err == error!(TributaryError::PaymentNotDue));
     }
 
     #[test]
     fn subscription_returns_configured_amount() {
         let pt = subscription(42, PaymentFrequency::Monthly, JAN_31_2024, None, true);
-        let amount = validate_policy_execution(&pt, FEB_29_2024, None).unwrap();
+        let amount =
+            validate_policy_execution(&pt, FEB_29_2024, None, &MilestoneSigners::none()).unwrap();
         assert_eq!(amount, 42);
+    }
+
+    // ── H-1 regression: Milestone release_condition signer bits 1-3 ──
+
+    /// Build a `PolicyType::Milestone` with a single milestone.
+    fn milestone(amount: u64, due: i64, release_condition: u8) -> PolicyType {
+        PolicyType::Milestone {
+            milestone_amounts: [amount, 0, 0, 0],
+            milestone_timestamps: [due, 0, 0, 0],
+            current_milestone: 0,
+            release_condition,
+            total_milestones: 1,
+            escrow_amount: amount,
+            padding: [0u8; 53],
+        }
+    }
+
+    /// Distinct pubkeys so a mismatch is unambiguous.
+    fn distinct_signers() -> (
+        Pubkey,
+        Pubkey,
+        Pubkey,
+        Pubkey,
+        Pubkey,
+        MilestoneSigners<'static>,
+    ) {
+        // ponytail: leak to get 'static lifetime — test-only.
+        let caller = Box::leak(Box::new(Pubkey::new_unique()));
+        let gateway = Box::leak(Box::new(Pubkey::new_unique()));
+        let owner = Box::leak(Box::new(Pubkey::new_unique()));
+        let recipient = Box::leak(Box::new(Pubkey::new_unique()));
+        let other = Box::leak(Box::new(Pubkey::new_unique()));
+        let s = MilestoneSigners {
+            caller,
+            gateway_signer: gateway,
+            owner,
+            recipient,
+        };
+        (*caller, *gateway, *owner, *recipient, *other, s)
+    }
+
+    #[test]
+    fn milestone_release_due_date_only_executes_when_due() {
+        // bit0 only — no signer gate. Should succeed once due.
+        let pt = milestone(100, JAN_31_2024, 0b0001);
+        let (_, _, _, _, _, signers) = distinct_signers();
+        let err = validate_policy_execution(&pt, JAN_31_2024 - 1, None, &signers).unwrap_err();
+        assert!(err == error!(TributaryError::PaymentNotDue));
+        let amount = validate_policy_execution(&pt, JAN_31_2024, None, &signers).unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn milestone_release_gateway_bit_requires_gateway_signer() {
+        // bit1 (RELEASE_GATEWAY). Wrong caller is rejected even when due.
+        let pt = milestone(100, JAN_31_2024, 0b0010);
+        let (caller, gateway, _, _, other, _) = distinct_signers();
+        let wrong = MilestoneSigners {
+            caller: &other,
+            gateway_signer: &gateway,
+            owner: &gateway,
+            recipient: &gateway,
+        };
+        let err = validate_policy_execution(&pt, FEB_29_2024, None, &wrong).unwrap_err();
+        assert!(err == error!(TributaryError::Unauthorized));
+
+        let ok = MilestoneSigners {
+            caller: &gateway,
+            gateway_signer: &gateway,
+            owner: &caller,
+            recipient: &caller,
+        };
+        let amount = validate_policy_execution(&pt, FEB_29_2024, None, &ok).unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn milestone_release_owner_bit_requires_owner() {
+        // bit2 (RELEASE_OWNER)
+        let pt = milestone(100, JAN_31_2024, 0b0100);
+        let (caller, _, owner, _, other, _) = distinct_signers();
+        let wrong = MilestoneSigners {
+            caller: &other,
+            gateway_signer: &owner,
+            owner: &owner,
+            recipient: &owner,
+        };
+        let err = validate_policy_execution(&pt, FEB_29_2024, None, &wrong).unwrap_err();
+        assert!(err == error!(TributaryError::Unauthorized));
+
+        let ok = MilestoneSigners {
+            caller: &owner,
+            gateway_signer: &caller,
+            owner: &owner,
+            recipient: &caller,
+        };
+        assert_eq!(
+            validate_policy_execution(&pt, FEB_29_2024, None, &ok).unwrap(),
+            100
+        );
+    }
+
+    #[test]
+    fn milestone_release_recipient_bit_requires_recipient() {
+        // bit3 (RELEASE_RECIPIENT)
+        let pt = milestone(100, JAN_31_2024, 0b1000);
+        let (caller, _, _, recipient, other, _) = distinct_signers();
+        let wrong = MilestoneSigners {
+            caller: &other,
+            gateway_signer: &recipient,
+            owner: &recipient,
+            recipient: &recipient,
+        };
+        let err = validate_policy_execution(&pt, FEB_29_2024, None, &wrong).unwrap_err();
+        assert!(err == error!(TributaryError::Unauthorized));
+
+        let ok = MilestoneSigners {
+            caller: &recipient,
+            gateway_signer: &caller,
+            owner: &caller,
+            recipient: &recipient,
+        };
+        assert_eq!(
+            validate_policy_execution(&pt, FEB_29_2024, None, &ok).unwrap(),
+            100
+        );
+    }
+
+    #[test]
+    fn milestone_release_zero_condition_allows_anyone() {
+        // rc=0 → no gates, anyone can fire immediately.
+        let pt = milestone(7, JAN_31_2024, 0b0000);
+        let (_, _, _, _, _, signers) = distinct_signers();
+        assert_eq!(
+            validate_policy_execution(&pt, JAN_31_2024, None, &signers).unwrap(),
+            7
+        );
+    }
+
+    #[test]
+    fn milestone_release_due_plus_gateway_bit_requires_both() {
+        // bit0 | bit1: must be due AND gateway-signed.
+        let pt = milestone(100, JAN_31_2024, 0b0011);
+        let (_, gateway_k, _, _, _, signers) = distinct_signers();
+
+        // Due, wrong signer → Unauthorized.
+        let err = validate_policy_execution(&pt, FEB_29_2024, None, &signers).unwrap_err();
+        assert!(err == error!(TributaryError::Unauthorized));
+
+        // Right signer.
+        let ok = MilestoneSigners {
+            caller: &gateway_k,
+            gateway_signer: &gateway_k,
+            owner: &gateway_k,
+            recipient: &gateway_k,
+        };
+        // Not due → PaymentNotDue.
+        let err = validate_policy_execution(&pt, JAN_31_2024 - 1, None, &ok).unwrap_err();
+        assert!(err == error!(TributaryError::PaymentNotDue));
+        // Both satisfied → ok.
+        assert_eq!(
+            validate_policy_execution(&pt, FEB_29_2024, None, &ok).unwrap(),
+            100
+        );
     }
 
     // ──────────────────────────────────────────────────────────────────
