@@ -336,7 +336,6 @@ fn run_forward_cpi<'info>(
 /// WSOL (taken before the close). `sweep_amount` returned for accounting
 /// is the WSOL value unwrapped; rent shipped by `closeAccount` is a
 /// side-effect bonus to the recipient and excluded from `total_output`.
-#[allow(clippy::too_many_arguments)]
 fn process_output_and_sweep<'info>(
     intermediate_output: &AccountInfo<'info>,
     output_mint: &AccountInfo<'info>,
@@ -345,18 +344,11 @@ fn process_output_and_sweep<'info>(
     // CPI that sweeps out of `intermediate_output`. NOT the UserPayment PDA.
     intermediate_owner_info: &AccountInfo<'info>,
     token_program: &AccountInfo<'info>,
+    gateway: &PaymentGateway,
+    config: &ProgramConfig,
     gateway_fee_account: &AccountInfo<'info>,
     protocol_fee_account: &AccountInfo<'info>,
     recipient_token_account: &AccountInfo<'info>,
-    gateway_fee_bps: u16,
-    use_custom_protocol_fee: bool,
-    custom_protocol_fee_bps: u16,
-    default_protocol_fee_bps: u16,
-    // Net-mode flag from `gateway.is_amount_net()`. Threaded through to
-    // `shared::fees::calculate_fees` so the bps math stays unified with
-    // `execute_payment`. See the fee-section comment below for why only
-    // `gateway_fee` / `protocol_fee` are consumed.
-    is_amount_net: bool,
     min_output_amount: Option<u64>,
     intermediate_owner_seeds: &[&[&[u8]]],
     native_output: bool,
@@ -390,11 +382,11 @@ fn process_output_and_sweep<'info>(
     // See reports/M7-composable-diverges-from-shared-fee-schedule-patterns.md.
     let fee_breakdown = crate::shared::fees::calculate_fees(
         output_amount,
-        gateway_fee_bps,
-        custom_protocol_fee_bps,
-        default_protocol_fee_bps,
-        use_custom_protocol_fee,
-        is_amount_net,
+        gateway.gateway_fee_bps,
+        gateway.custom_protocol_fee_bps,
+        config.protocol_fee_bps,
+        gateway.is_custom_protocol_fee_enabled(),
+        gateway.is_amount_net(),
     )?;
     let gateway_fee = fee_breakdown.gateway_fee;
     let protocol_fee = fee_breakdown.protocol_fee;
@@ -988,14 +980,11 @@ impl<'info> ExecuteComposable<'info> {
             output_mint_decimals,
             &composable_policy_info,
             &token_program_info,
+            gateway,
+            config,
             &ctx.accounts.gateway_fee_account.to_account_info(),
             &ctx.accounts.protocol_fee_account.to_account_info(),
             &ctx.accounts.recipient_token_account.to_account_info(),
-            gateway.gateway_fee_bps,
-            gateway.is_custom_protocol_fee_enabled(),
-            gateway.custom_protocol_fee_bps,
-            config.protocol_fee_bps,
-            gateway.is_amount_net(),
             min_output_amount,
             intermediate_owner_seeds,
             native_output,
