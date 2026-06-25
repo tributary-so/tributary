@@ -1,0 +1,91 @@
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Alert,
+} from "@heroui/react";
+
+import { useCluster } from "./cluster-data-access";
+
+export function ExplorerLink({
+  path,
+  label,
+  className,
+}: {
+  path: string;
+  label: string;
+  className?: string;
+}) {
+  const { getExplorerUrl } = useCluster();
+  return (
+    <a
+      href={getExplorerUrl(path)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className ? className : `link font-mono`}
+    >
+      {label}
+    </a>
+  );
+}
+
+export function ClusterChecker({ children }: { children: React.ReactNode }) {
+  const { cluster } = useCluster();
+  const { connection } = useConnection();
+
+  const query = useQuery({
+    queryKey: ["version", { cluster, endpoint: connection.rpcEndpoint }],
+    queryFn: () => connection.getVersion(),
+    retry: 1,
+  });
+  if (query.isLoading) {
+    return null;
+  }
+  if (query.isError || !query.data) {
+    return (
+      <Alert
+        title="Connection Error"
+        description={
+          <>
+            Error connecting to cluster{" "}
+            <span className="font-bold">{cluster.name}</span>.
+            <Button
+              variant="flat"
+              onClick={() => query.refetch()}
+              className="ml-2"
+            >
+              Refresh
+            </Button>
+          </>
+        }
+        color="danger"
+      />
+    );
+  }
+  return children;
+}
+
+export function ClusterUiSelect() {
+  const { clusters, setCluster, cluster } = useCluster();
+
+  return (
+    <Dropdown>
+      <DropdownTrigger>
+        <button className="border border-border px-3 py-1 text-xs uppercase tracking-[0.12em] hover:bg-accent transition-colors">
+          {cluster.name}
+        </button>
+      </DropdownTrigger>
+      <DropdownMenu>
+        {clusters.map((item) => (
+          <DropdownItem key={item.name} onClick={() => setCluster(item)}>
+            {item.name}
+          </DropdownItem>
+        ))}
+      </DropdownMenu>
+    </Dropdown>
+  );
+}
