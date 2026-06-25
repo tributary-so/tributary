@@ -28,3 +28,7 @@ coverage
 apps/docs/site/
 
 !packages/lighthouse/dist
+
+# OpenAPI spec — generated dynamically by the API server
+apps/api/openapi.yaml
+apps/docs/docs/api/openapi.yaml

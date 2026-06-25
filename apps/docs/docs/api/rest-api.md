@@ -16,11 +16,12 @@ The complete endpoint reference is rendered from our OpenAPI 3.0 spec, which is
 generated from the API server's JSDoc annotations.
 
 ```swagger-ui
-openapi.yaml
+https://api.tributary.so/openapi.yaml
 ```
 
-> The spec is served live at `https://api.tributary.so/openapi.yaml` and checked
-> into the repo at `apps/api/openapi.yaml`.
+> The spec is generated dynamically from JSDoc annotations in the API server's
+> route files and served live at the URL above. No static copy is stored in
+> this repo — the explorer always shows the current API surface.
 
 ---
 
