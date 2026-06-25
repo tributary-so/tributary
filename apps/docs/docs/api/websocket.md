@@ -2,6 +2,9 @@
 
 Real-time payment notifications via Socket.IO.
 
+> WebSocket events are documented inline below. The REST API is documented via
+> OpenAPI at [REST API](rest-api.md).
+
 **Endpoint:** `wss://api.tributary.so/ws/v1`
 
 ## Connection
@@ -82,29 +85,21 @@ export function PaymentNotifier({ trackingId }: { trackingId: string }) {
 
 ## Client-to-Server Events
 
-### subscribe
-
-Subscribe to payment notifications for a tracking ID.
+| Event         | Payload                  | Description                            |
+| ------------- | ------------------------ | -------------------------------------- |
+| `subscribe`   | `{ trackingId: string }` | Subscribe to payment notifications     |
+| `unsubscribe` | `{ trackingId: string }` | Unsubscribe from payment notifications |
 
 ```typescript
 socket.emit("subscribe", { trackingId: "my-subscription-id" });
-```
-
-### unsubscribe
-
-Unsubscribe from payment notifications.
-
-```typescript
 socket.emit("unsubscribe", { trackingId: "my-subscription-id" });
 ```
 
 ## Server-to-Client Events
 
-### payment
+### `payment`
 
 Payment notification received.
-
-**Payload:**
 
 ```json
 {
@@ -120,11 +115,9 @@ Payment notification received.
 }
 ```
 
-### ack
+### `ack`
 
 Acknowledgment message.
-
-**Payload:**
 
 ```json
 {
@@ -134,11 +127,9 @@ Acknowledgment message.
 }
 ```
 
-### error
+### `error`
 
 Error message.
-
-**Payload:**
 
 ```json
 {
@@ -148,61 +139,6 @@ Error message.
     "message": "Tracking ID is required and must be a string"
   },
   "timestamp": 1699876543210
-}
-```
-
-## Complete Example
-
-```typescript
-import { io } from "socket.io-client";
-
-const socket = io("https://api.tributary.so", {
-  path: "/ws/v1",
-  transports: ["websocket"],
-});
-
-// Subscribe to payment notifications
-socket.emit("subscribe", { trackingId: "my-subscription-id" });
-
-// Listen for payment events
-socket.on("payment", (message) => {
-  console.log("Payment received:", message.data);
-
-  const { trackingId, amount, timestamp, status, signature } = message.data;
-
-  console.log(`Payment of ${amount} for ${trackingId}`);
-  console.log(`Status: ${status}`);
-  console.log(`Transaction: ${signature}`);
-  console.log(`Time: ${new Date(timestamp * 1000).toISOString()}`);
-});
-
-// Listen for acknowledgments
-socket.on("ack", (message) => {
-  console.log("Ack:", message.data);
-});
-
-// Listen for errors
-socket.on("error", (message) => {
-  console.error("Error:", message.data);
-});
-
-// Handle connection events
-socket.on("connect", () => {
-  console.log("Connected to Tributary WebSocket");
-});
-
-socket.on("disconnect", () => {
-  console.log("Disconnected from Tributary WebSocket");
-});
-
-// Unsubscribe when done
-function unsubscribe(trackingId: string) {
-  socket.emit("unsubscribe", { trackingId });
-}
-
-// Disconnect
-function disconnect() {
-  socket.disconnect();
 }
 ```
 
@@ -294,9 +230,10 @@ useEffect(() => {
 
 ## Scaling
 
-For multi-server deployments, the WebSocket uses a Redis adapter to distribute messages across instances. No client-side changes needed.
+For multi-server deployments, the WebSocket uses a Redis adapter to distribute
+messages across instances. No client-side changes needed.
 
 ## Next Steps
 
-- [REST API Reference](./rest-api.md) - Complete REST endpoints
-- [Examples](./examples.md) - More code examples
+- [REST API](rest-api.md) — Complete REST endpoint reference (OpenAPI)
+- [Examples](examples.md) — More code examples
