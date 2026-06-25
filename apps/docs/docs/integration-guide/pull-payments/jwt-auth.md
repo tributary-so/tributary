@@ -716,7 +716,7 @@ No Solana libraries required for JWT validation. That's the point.
 
 ## Next Steps
 
-- [Integration Options](./integration.md) — choose your integration method
+- [Integration Options](../index.md) — choose your integration method
 - [Checkout](./checkout.md) — generate payment links with success URL
-- [API Overview](./api/overview.md) — REST and WebSocket APIs
-- [Security Model](./security.md) — protocol-level security details
+- [API Overview](../../api/overview.md) — REST and WebSocket APIs
+- [Security Model](../../protocol-reference/security.md) — protocol-level security details

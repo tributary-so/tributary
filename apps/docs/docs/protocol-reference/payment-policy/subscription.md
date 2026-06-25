@@ -44,13 +44,13 @@ PolicyType::Subscription {
 
 ```rust
 pub enum PaymentFrequency {
-    Daily = 0,
-    Weekly = 1,
-    BiWeekly = 2,
-    Monthly = 3,
-    Quarterly = 4,
-    SemiAnnually = 5,
-    Yearly = 6,
+    Daily,
+    Weekly,
+    Monthly,
+    Quarterly,
+    SemiAnnually,
+    Annually,
+    Custom(u64),
 }
 ```
 

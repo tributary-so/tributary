@@ -77,5 +77,5 @@ function useSubscribeWithStatus() {
 
 - [SDK Reference](../sdk.md) — Full SDK documentation for all packages
 - [Checkout Links](../checkout.md) — Generate shareable payment URLs
-- [Integration Options](../integration.md) — Compare all integration methods
-- [API Reference](../api/overview.md) — Check subscription status server-side
+- [Integration Options](../../index.md) — Compare all integration methods
+- [API Reference](../../../api/overview.md) — Check subscription status server-side

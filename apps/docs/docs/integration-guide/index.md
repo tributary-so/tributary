@@ -80,7 +80,7 @@ const { createSubscription, loading, error } = useCreateSubscription();
 const result = await createSubscription({ amount, recipient, gateway, interval, ... });
 ```
 
-👉 **Get Started:** [React SDK](sdk-react/index.md)
+👉 **Get Started:** [React SDK](pull-payments/sdk-react/index.md)
 
 ---
 

@@ -332,8 +332,8 @@ await sdk.updateGatewayReferralSettings(gatewayPDA, {
 
 ## Related Documentation
 
-- [Architecture Overview](./architecture.md)
-- [Payment Policies](./policies/subscription.md)
-- [SDK Documentation](./sdk.md)
-- [Fees](./fees.md)
-- [Smart Contract](./smart-contract.md)
+- [Protocol Overview](../overview.md)
+- [Subscription Payments](./subscription.md)
+- [SDK Documentation](../../integration-guide/pull-payments/sdk.md)
+- [Fees](../fees.md)
+- [Protocol Reference](../overview.md)

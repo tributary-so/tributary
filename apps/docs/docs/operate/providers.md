@@ -386,4 +386,4 @@ class MyPaymentProvider {
 
 The future of payments is automated, transparent, and user-controlled. Payment providers make this future accessible to everyone.
 
-Ready to start building? [Learn the Technical Details →](how.md)
+Ready to start building? [Learn the Technical Details →](../protocol-reference/overview.md)

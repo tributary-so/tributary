@@ -35,7 +35,7 @@ The protocol admin can override the global protocol fee on a per-gateway basis. 
 await sdk.updateGatewayProtocolFee(gatewayAuthority, true, 0);
 ```
 
-See [Providers](providers.md) for gateway configuration details.
+See [Providers](../operate/providers.md) for gateway configuration details.
 
 ### Referral Fee Allocation
 
@@ -44,7 +44,7 @@ When a gateway has the referral feature enabled, a portion of the gateway fee is
 - **Referral allocation**: Percentage of gateway fee dedicated to rewards (e.g., 500 bps = 5%)
 - **Tier split**: How rewards distribute across up to 3 referral levels (must sum to 10,000 bps)
 
-See [Referral Program](referral-program.md) for the full referral chain mechanics.
+See [Referral Program](payment-policy/referral-program.md) for the full referral chain mechanics.
 
 ---
 

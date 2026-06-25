@@ -43,7 +43,7 @@ curl "https://api.tributary.so/v1/events?trackingId=my-subscription"
 
 Read operations are open. Write operations (webhooks) require gateway authentication.
 
-For verifying subscription status after checkout, see [JWT Authentication](../jwt-auth.md) — merchants validate signed JWTs client-side without needing Solana expertise.
+For verifying subscription status after checkout, see [JWT Authentication](../integration-guide/pull-payments/jwt-auth.md) — merchants validate signed JWTs client-side without needing Solana expertise.
 
 ## Rate Limits
 

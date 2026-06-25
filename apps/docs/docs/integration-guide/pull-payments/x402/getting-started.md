@@ -316,7 +316,7 @@ Verify the gateway PDA and recipient address are correct in your environment var
 
 ## Next Steps
 
-- [x402 API Reference](./x402-api-reference.md)
-- [Usage Metering](./x402.md#usage-metering)
-- [Pay-as-you-go Payments](./policies/payasyougo.md)
-- [Smart Contract Documentation](./smart-contract.md)
+- [x402 API Reference](./api-reference.md)
+- [Usage Metering](./overview.md#usage-metering)
+- [Pay-as-you-go Payments](../../../protocol-reference/payment-policy/payasyougo.md)
+- [Protocol Reference](../../../protocol-reference/overview.md)

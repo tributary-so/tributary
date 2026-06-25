@@ -343,7 +343,7 @@ app.use("/api/premium", middleware);
 
 ## CLI (`@tributary-so/cli`)
 
-Command-line interface for protocol management. See [Tools](./tools.md) for full documentation.
+Command-line interface for protocol management. See [CLI Tools](./cli.md) for full documentation.
 
 ```bash
 # Create subscription
