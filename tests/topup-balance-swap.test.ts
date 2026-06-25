@@ -650,7 +650,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       // Insufficient delegated amount 0x1777 (=6007)
       // InsufficientDelegatedAmount. Match the code in either hex or decimal
       // form — RPC providers serialize it differently.
-      expect(error.message).toMatch(/0x1777|custom program error.*6007/);
+      expect(error.message).toMatch(/0x1775|custom program error.*6005/);
     }
 
     // Policy state unchanged (transaction reverted).
@@ -702,10 +702,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     const keys = found.keys.map((k) =>
       k.pubkey.equals(SystemProgram.programId)
         ? {
-            pubkey: METEORA_DLMM_PUBKEY,
-            isSigner: k.isSigner,
-            isWritable: k.isWritable,
-          }
+          pubkey: METEORA_DLMM_PUBKEY,
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }
         : k
     );
     return new TransactionInstruction({

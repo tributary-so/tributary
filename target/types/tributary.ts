@@ -2579,301 +2579,276 @@ export type Tributary = {
     },
     {
       "code": 6003,
-      "name": "maxPoliciesReached",
-      "msg": "Maximum policies per user reached"
-    },
-    {
-      "code": 6004,
       "name": "unauthorized",
       "msg": "unauthorized"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "invalidPolicyStatusTransition",
       "msg": "Invalid policy status transition"
     },
     {
-      "code": 6006,
-      "name": "policyNotFound",
-      "msg": "Payment policy not found"
-    },
-    {
-      "code": 6007,
+      "code": 6005,
       "name": "insufficientDelegatedAmount",
       "msg": "Insufficient delegated amount"
     },
     {
-      "code": 6008,
+      "code": 6006,
       "name": "paymentNotDue",
       "msg": "Payment is not yet due"
     },
     {
-      "code": 6009,
+      "code": 6007,
       "name": "insufficientBalance",
       "msg": "Insufficient balance for payment"
     },
     {
-      "code": 6010,
+      "code": 6008,
       "name": "noDelegateSet",
       "msg": "No or incorrect delegate set in ata"
     },
     {
-      "code": 6011,
+      "code": 6009,
       "name": "policyPaused",
       "msg": "Payment policy is paused"
     },
     {
-      "code": 6012,
+      "code": 6010,
       "name": "invalidInterval",
       "msg": "Invalid Interval"
     },
     {
-      "code": 6013,
+      "code": 6011,
       "name": "invalidFeeBps",
       "msg": "Invalid fee basis points"
     },
     {
-      "code": 6014,
+      "code": 6012,
       "name": "invalidPaymentDueDate",
       "msg": "Invalid payment due date"
     },
     {
-      "code": 6015,
+      "code": 6013,
       "name": "arithmeticOverflow",
       "msg": "Arithmetic overflow"
     },
     {
-      "code": 6016,
-      "name": "referralFeatureNotEnabled",
-      "msg": "Referral program feature is not enabled"
-    },
-    {
-      "code": 6017,
+      "code": 6014,
       "name": "invalidReferralAllocation",
       "msg": "Invalid referral allocation - must be <= 2500 bps"
     },
     {
-      "code": 6018,
+      "code": 6015,
       "name": "invalidReferralTiers",
       "msg": "Invalid referral tiers - must sum to 10000 bps"
     },
     {
-      "code": 6019,
+      "code": 6016,
       "name": "couldNotDeserializeReferrer",
       "msg": "Could not deserialize referrer account"
     },
     {
-      "code": 6020,
+      "code": 6017,
       "name": "referrerMustBeWritable",
       "msg": "Referrer account must be writable"
     },
     {
-      "code": 6021,
+      "code": 6018,
       "name": "circularReferralChain",
       "msg": "Circular referral chain detected"
     },
     {
-      "code": 6022,
+      "code": 6019,
       "name": "maxReferralDepthExceeded",
       "msg": "Maximum referral chain depth exceeded"
     },
     {
-      "code": 6023,
+      "code": 6020,
       "name": "invalidReferralChainOrdering",
       "msg": "Invalid referral chain ordering in remaining_accounts"
     },
     {
-      "code": 6024,
+      "code": 6021,
       "name": "invalidReferralAccountDiscriminator",
       "msg": "Invalid referral account discriminator"
     },
     {
-      "code": 6025,
+      "code": 6022,
       "name": "referralAccountSizeMismatch",
       "msg": "Referral account size mismatch"
     },
     {
-      "code": 6026,
+      "code": 6023,
       "name": "invalidReferralCode",
       "msg": "Invalid referral code - must be alphanumeric"
     },
     {
-      "code": 6027,
+      "code": 6024,
       "name": "referrerAccountInvalid",
       "msg": "Referrer Account invalid"
     },
     {
-      "code": 6028,
+      "code": 6025,
       "name": "referrerAtaInvalid",
       "msg": "Referrer ATA invalid"
     },
     {
-      "code": 6029,
+      "code": 6026,
       "name": "referrerAtaMintInvalid",
       "msg": "Referrer ATA with invalid Mint"
     },
     {
-      "code": 6030,
+      "code": 6027,
       "name": "missingReferralAta",
       "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
     },
     {
-      "code": 6031,
+      "code": 6028,
       "name": "invalidTokenAccount",
       "msg": "Invalid token account - mint mismatch or deserialization failed"
     },
     {
-      "code": 6032,
+      "code": 6029,
       "name": "mismatchAtaReferralAccountNumbers",
       "msg": "Mismatch between number referrers and atas!"
     },
     {
-      "code": 6033,
-      "name": "referralAccountAlreadyExists",
-      "msg": "Referral account already exists for this code"
-    },
-    {
-      "code": 6034,
+      "code": 6030,
       "name": "tokenMintMismatch",
       "msg": "Token mint mismatch between accounts"
     },
     {
-      "code": 6035,
+      "code": 6031,
       "name": "unsupportedTokenExtension",
       "msg": "Token-2022 Extension currently not supported"
     },
     {
-      "code": 6036,
+      "code": 6032,
       "name": "distinctPubKeysRequired",
       "msg": "Distinct Pubkeys required!"
     },
     {
-      "code": 6037,
+      "code": 6033,
       "name": "invalidFeatureFlags",
       "msg": "Invalid feature flags"
     },
     {
-      "code": 6038,
+      "code": 6034,
       "name": "hasActivePolicies",
       "msg": "Cannot delete user payment with active policies"
     },
     {
-      "code": 6039,
+      "code": 6035,
       "name": "hasActiveComposables",
       "msg": "Cannot delete user payment with active composable policies"
     },
     {
-      "code": 6040,
+      "code": 6036,
       "name": "invalidRentPayer",
       "msg": "Invalid rent payer"
     },
     {
-      "code": 6041,
+      "code": 6037,
       "name": "invalidForwardProgram",
       "msg": "Forward program not whitelisted"
     },
     {
-      "code": 6042,
+      "code": 6038,
       "name": "invalidValidationProgram",
       "msg": "Validation program not whitelisted"
     },
     {
-      "code": 6043,
+      "code": 6039,
       "name": "byteRangeCheckFailed",
       "msg": "Byte range check failed"
     },
     {
-      "code": 6044,
+      "code": 6040,
       "name": "insufficientOutputAmount",
       "msg": "Insufficient output amount after forward CPI"
     },
     {
-      "code": 6045,
+      "code": 6041,
       "name": "insufficientByteRangeChecks",
       "msg": "Must have at least one byte range check"
     },
     {
-      "code": 6046,
+      "code": 6042,
       "name": "validationPdaMismatch",
       "msg": "Validation PDA does not match derived address"
     },
     {
-      "code": 6047,
+      "code": 6043,
       "name": "validationDataTooLarge",
       "msg": "Validation data exceeds maximum size"
     },
     {
-      "code": 6048,
+      "code": 6044,
       "name": "validationDataRequired",
       "msg": "Validation program set but no data provided"
     },
     {
-      "code": 6049,
+      "code": 6045,
       "name": "validationNotRequired",
       "msg": "Validation not configured but data was provided"
     },
     {
-      "code": 6050,
-      "name": "composablePolicyNotFound",
-      "msg": "Composable policy not found"
-    },
-    {
-      "code": 6051,
+      "code": 6046,
       "name": "combinedFeeBpsExceedsMax",
       "msg": "Combined fee BPS must be less than 10000"
     },
     {
-      "code": 6052,
+      "code": 6047,
       "name": "discriminatorCheckRequired",
       "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
     },
     {
-      "code": 6053,
+      "code": 6048,
       "name": "unauthorizedInitializer",
       "msg": "Only the upgrade authority can initialize the program"
     },
     {
-      "code": 6054,
+      "code": 6049,
       "name": "intermediateAccountMismatch",
       "msg": "Intermediate token account address does not match the derived ATA"
     },
     {
-      "code": 6055,
+      "code": 6050,
       "name": "intermediateAccountAlreadyExists",
       "msg": "Intermediate token account already exists — it must be freshly created each execution"
     },
     {
-      "code": 6056,
+      "code": 6051,
       "name": "missingForwardAccounts",
       "msg": "Forward CPI requires at least one remaining account"
     },
     {
-      "code": 6057,
+      "code": 6052,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     },
     {
-      "code": 6058,
+      "code": 6053,
       "name": "forwardDisabledRequiresSameMint",
       "msg": "Forward disabled (target_program = default) requires input_mint == output_mint"
     },
     {
-      "code": 6059,
+      "code": 6054,
       "name": "payerReferralMismatch",
       "msg": "Payer ReferralAccount does not match the paying wallet"
     },
     {
-      "code": 6060,
+      "code": 6055,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     },
     {
-      "code": 6061,
+      "code": 6056,
       "name": "invalidValidationPda",
       "msg": "ValidationPDA is malformed — data_len out of bounds"
     },
     {
-      "code": 6062,
+      "code": 6057,
       "name": "nativeOutputRequiresWsol",
       "msg": "NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)"
     }
@@ -4120,10 +4095,6 @@ export type Tributary = {
           {
             "name": "protocolFeeBps",
             "type": "u16"
-          },
-          {
-            "name": "maxPoliciesPerUser",
-            "type": "u32"
           }
         ]
       }

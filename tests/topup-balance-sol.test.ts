@@ -569,8 +569,8 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     );
     expect(
       intermediateOutputInfo === null ||
-        intermediateOutputInfo.lamports === 0 ||
-        intermediateOutputInfo.data.length === 0
+      intermediateOutputInfo.lamports === 0 ||
+      intermediateOutputInfo.data.length === 0
     ).toBe(true);
 
     // ── Verify policy state ─────────────────────────────────────────────
@@ -659,9 +659,9 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       // PayAsYouGo period cap is already exhausted. Runs BEFORE the
       // Lighthouse CPI, so the failure is deterministic.
       expect(error).toBeDefined();
-      // InsufficientDelegatedAmount 0x1777 (=6007). RPC providers serialize
+      // InsufficientDelegatedAmount 0x1775 (=6005). RPC providers serialize
       // it differently — match either form.
-      expect(error.message).toMatch(/0x1777|custom program error.*6007/);
+      expect(error.message).toMatch(/0x1775|custom program error.*6005/);
     }
 
     // Policy state unchanged (transaction reverted).
@@ -703,10 +703,10 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     const keys = found.keys.map((k) =>
       k.pubkey.equals(SystemProgram.programId)
         ? {
-            pubkey: METEORA_DLMM_PUBKEY,
-            isSigner: k.isSigner,
-            isWritable: k.isWritable,
-          }
+          pubkey: METEORA_DLMM_PUBKEY,
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }
         : k
     );
     return new TransactionInstruction({
