@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tributary-so/sdk": ["../../packages/sdk/src"],
+      "@tributary-so/sdk-react": ["../../packages/sdk-react/src"]
+    }
+  }
+}
