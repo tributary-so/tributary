@@ -4,7 +4,7 @@ use crate::{
     policies::*,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
     shared::mint::validate_mint_compatible,
-    shared::referral::{try_distribute_referral_rewards, AuthorityMode},
+    shared::referral::{process_referral_rewards, AuthorityMode},
     state::*,
 };
 use anchor_lang::prelude::*;
@@ -215,7 +215,9 @@ impl<'info> ExecutePayment<'info> {
         let seeds = &[signer_seeds];
 
         // Process referral rewards if enabled (helper short-circuits when off).
-        let referral_pool = try_distribute_referral_rewards(
+        let referral_pool = process_referral_rewards(
+            gateway,
+            gateway_fee,
             remaining_accounts,
             user_token_account_info.clone(),
             authority_info.clone(),
@@ -225,12 +227,10 @@ impl<'info> ExecutePayment<'info> {
             mint_decimals,
             expected_mint,
             gateway.key(),
-            gateway,
             payment_policy_key,
             payment_amount,
             clock.unix_timestamp,
             user_owner,
-            gateway_fee,
         )?;
         gateway_fee = gateway_fee
             .checked_sub(referral_pool)

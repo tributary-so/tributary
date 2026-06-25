@@ -4,9 +4,9 @@
 //! chain (up to [`MAX_REFERRAL_CHAIN_DEPTH`] levels deep). Extracted from
 //! `utils.rs` (audit finding M1) — this module owns:
 //!
-//! * [`ReferralContext`] / [`AuthorityMode`] — call-site plumbing.
+//! * [`AuthorityMode`] — call-site plumbing for direct vs PDA-signed CPI.
 //! * [`process_referral_rewards`] — top-level entrypoint invoked from
-//!   `transfer`, `execute_payment`, and `execute_composable`.
+//!   `transfer` and `execute_payment`.
 //! * [`parse_and_validate_referral_accounts`] — rigid parsing of the
 //!   `remaining_accounts` slice into `(payer, chain, ATAs)` triples.
 //! * [`validate_referral_chain_topology`] — pure Pubkey-graph checks.
@@ -26,24 +26,6 @@ pub const MAX_REFERRAL_CHAIN_DEPTH: usize = 3;
 pub enum AuthorityMode<'a> {
     Direct,
     PdaSigner(&'a [&'a [&'a [u8]]]),
-}
-
-pub struct ReferralContext<'a, 'info> {
-    pub remaining_accounts: &'info [AccountInfo<'info>],
-    pub source_token_account: AccountInfo<'info>,
-    pub authority_info: AccountInfo<'info>,
-    pub authority_mode: AuthorityMode<'a>,
-    pub token_program: AccountInfo<'info>,
-    pub mint_info: AccountInfo<'info>,
-    pub mint_decimals: u8,
-    pub expected_mint: Pubkey,
-    pub gateway_key: Pubkey,
-    pub payment_policy_key: Pubkey,
-    pub payment_amount: u64,
-    pub timestamp: i64,
-    /// Wallet of the paying user. Used to bind the supplied referral chain
-    /// to the actual payer via their own `ReferralAccount`.
-    pub payer_wallet: Pubkey,
 }
 
 /// Validation of a referral chain's topology.
@@ -130,15 +112,32 @@ fn validate_referral_chain_topology(
 /// per-level share of the gateway fee is `tier_bps * allocation_bps / 10000`.
 /// Returns the total referral pool amount (0 if the program is off or no pool).
 #[inline(never)]
+#[allow(clippy::too_many_arguments)]
 pub fn process_referral_rewards<'a, 'info>(
-    ctx: ReferralContext<'a, 'info>,
+    gateway: &PaymentGateway,
     gateway_fee: u64,
-    referral_allocation_bps: u16,
-    referral_tiers_bps: &[u16; 3],
+    remaining_accounts: &'info [AccountInfo<'info>],
+    source_token_account: AccountInfo<'info>,
+    authority_info: AccountInfo<'info>,
+    authority_mode: AuthorityMode<'a>,
+    token_program: AccountInfo<'info>,
+    mint_info: AccountInfo<'info>,
+    mint_decimals: u8,
+    expected_mint: Pubkey,
+    gateway_key: Pubkey,
+    payment_policy_key: Pubkey,
+    payment_amount: u64,
+    timestamp: i64,
+    payer_wallet: Pubkey,
 ) -> Result<u64> {
+    // Short-circuit when the gateway has referral rewards disabled.
+    if !gateway.is_referral_enabled() || gateway.referral_allocation_bps == 0 {
+        return Ok(0);
+    }
+
     // Stage 1: carve the referral pool out of the gateway fee.
     let referral_pool = gateway_fee
-        .checked_mul(referral_allocation_bps as u64)
+        .checked_mul(gateway.referral_allocation_bps as u64)
         .ok_or(TributaryError::ArithmeticOverflow)?
         .checked_div(10000)
         .ok_or(TributaryError::ArithmeticOverflow)?;
@@ -148,15 +147,15 @@ pub fn process_referral_rewards<'a, 'info>(
     }
 
     // Empty remaining_accounts → caller opted out of referral rewards.
-    if ctx.remaining_accounts.is_empty() {
+    if remaining_accounts.is_empty() {
         return Ok(0);
     }
 
     let (payer_loader, chain_loaders, token_accounts) = parse_and_validate_referral_accounts(
-        ctx.remaining_accounts,
-        ctx.expected_mint,
-        ctx.gateway_key,
-        ctx.payer_wallet,
+        remaining_accounts,
+        expected_mint,
+        gateway_key,
+        payer_wallet,
     )?;
 
     // If the payer has no referrer, there is nothing to pay.
@@ -167,17 +166,17 @@ pub fn process_referral_rewards<'a, 'info>(
     // Stage 2: split the pool across the 3 levels (tier_bps = share of pool).
     let tier_rewards: [u64; MAX_REFERRAL_CHAIN_DEPTH] = [
         referral_pool
-            .checked_mul(referral_tiers_bps[0] as u64)
+            .checked_mul(gateway.referral_tiers_bps[0] as u64)
             .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
             .ok_or(TributaryError::ArithmeticOverflow)?,
         referral_pool
-            .checked_mul(referral_tiers_bps[1] as u64)
+            .checked_mul(gateway.referral_tiers_bps[1] as u64)
             .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
             .ok_or(TributaryError::ArithmeticOverflow)?,
         referral_pool
-            .checked_mul(referral_tiers_bps[2] as u64)
+            .checked_mul(gateway.referral_tiers_bps[2] as u64)
             .ok_or(TributaryError::ArithmeticOverflow)?
             .checked_div(10000)
             .ok_or(TributaryError::ArithmeticOverflow)?,
@@ -193,15 +192,25 @@ pub fn process_referral_rewards<'a, 'info>(
     }
 
     emit!(ReferralRewardDistributedRecord {
-        payment_policy: ctx.payment_policy_key,
-        gateway: ctx.gateway_key,
-        payment_amount: ctx.payment_amount,
-        timestamp: ctx.timestamp,
+        payment_policy: payment_policy_key,
+        gateway: gateway_key,
+        payment_amount,
+        timestamp,
         rewards,
     });
 
     for (idx, loader) in chain_loaders.iter().enumerate() {
-        transfer_referral_reward(&ctx, &token_accounts, loader, tier_rewards[idx])?;
+        transfer_referral_reward(
+            &source_token_account,
+            &authority_info,
+            &authority_mode,
+            &token_program,
+            &mint_info,
+            mint_decimals,
+            &token_accounts,
+            loader,
+            tier_rewards[idx],
+        )?;
     }
 
     msg!(
@@ -217,63 +226,6 @@ pub fn process_referral_rewards<'a, 'info>(
     drop(payer_loader);
 
     Ok(referral_pool)
-}
-
-/// Distribute referral rewards from a gateway fee, or return `Ok(0)` when
-/// the gateway has referral rewards disabled (or the allocation is zero).
-///
-/// This is a thin wrapper over [`process_referral_rewards`] that centralizes
-/// the `ReferralContext` plumbing duplicated by `execute_payment` and
-/// `transfer` (audit finding M2). Callers still own the
-/// `gateway_fee -= referral_pool` adjustment so the arithmetic stays at the
-/// site that owns `gateway_fee`.
-///
-/// `gateway_key` is passed separately from `gateway` because `key()` is
-/// provided by Anchor's `Account` wrapper, not by the bare `PaymentGateway`
-/// struct — callers have the wrapper in scope, the helper does not.
-///
-/// Returns the total referral pool amount (0 if disabled or no pool).
-pub fn try_distribute_referral_rewards<'a, 'info>(
-    remaining_accounts: &'info [AccountInfo<'info>],
-    source_token_account: AccountInfo<'info>,
-    authority_info: AccountInfo<'info>,
-    authority_mode: AuthorityMode<'a>,
-    token_program: AccountInfo<'info>,
-    mint_info: AccountInfo<'info>,
-    mint_decimals: u8,
-    expected_mint: Pubkey,
-    gateway_key: Pubkey,
-    gateway: &PaymentGateway,
-    payment_policy_key: Pubkey,
-    payment_amount: u64,
-    timestamp: i64,
-    payer_wallet: Pubkey,
-    gateway_fee: u64,
-) -> Result<u64> {
-    if !gateway.is_referral_enabled() || gateway.referral_allocation_bps == 0 {
-        return Ok(0);
-    }
-    let ctx = ReferralContext {
-        remaining_accounts,
-        source_token_account,
-        authority_info,
-        authority_mode,
-        token_program,
-        mint_info,
-        mint_decimals,
-        expected_mint,
-        gateway_key,
-        payment_policy_key,
-        payment_amount,
-        timestamp,
-        payer_wallet,
-    };
-    process_referral_rewards(
-        ctx,
-        gateway_fee,
-        gateway.referral_allocation_bps,
-        &gateway.referral_tiers_bps,
-    )
 }
 
 /// Parse and fully validate the `remaining_accounts` slice for a referral
@@ -439,8 +391,14 @@ fn load_referral_account<'info>(
 }
 
 #[inline(never)]
-fn transfer_referral_reward<'info>(
-    ctx: &ReferralContext<'_, 'info>,
+#[allow(clippy::too_many_arguments)]
+fn transfer_referral_reward<'a, 'info>(
+    source_token_account: &AccountInfo<'info>,
+    authority_info: &AccountInfo<'info>,
+    authority_mode: &AuthorityMode<'a>,
+    token_program: &AccountInfo<'info>,
+    mint_info: &AccountInfo<'info>,
+    mint_decimals: u8,
     token_accounts: &[(Pubkey, AccountInfo<'info>)],
     referral_loader: &AccountLoader<'info, ReferralAccount>,
     reward: u64,
@@ -457,18 +415,18 @@ fn transfer_referral_reward<'info>(
         .ok_or(TributaryError::MissingReferralAta)?;
 
     let cpi_accounts = TransferChecked {
-        from: ctx.source_token_account.clone(),
-        mint: ctx.mint_info.clone(),
+        from: source_token_account.clone(),
+        mint: mint_info.clone(),
         to: ata_info.clone(),
-        authority: ctx.authority_info.clone(),
+        authority: authority_info.clone(),
     };
-    let cpi_ctx = match &ctx.authority_mode {
-        AuthorityMode::Direct => CpiContext::new(ctx.token_program.clone(), cpi_accounts),
+    let cpi_ctx = match authority_mode {
+        AuthorityMode::Direct => CpiContext::new(token_program.clone(), cpi_accounts),
         AuthorityMode::PdaSigner(seeds) => {
-            CpiContext::new_with_signer(ctx.token_program.clone(), cpi_accounts, *seeds)
+            CpiContext::new_with_signer(token_program.clone(), cpi_accounts, *seeds)
         }
     };
-    token_interface::transfer_checked(cpi_ctx, reward, ctx.mint_decimals)?;
+    token_interface::transfer_checked(cpi_ctx, reward, mint_decimals)?;
 
     let mut referral_account = referral_loader.load_mut()?;
     referral_account.total_earned = referral_account
