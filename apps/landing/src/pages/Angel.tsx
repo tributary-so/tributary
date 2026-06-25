@@ -9,7 +9,6 @@ import {
   Database,
   Layers,
   ChevronRight,
-  XIcon,
   TwitterIcon,
 } from "lucide-react";
 import FabianSchuhProfile from "@/components/futardio/cv";

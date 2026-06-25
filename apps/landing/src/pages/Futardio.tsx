@@ -756,7 +756,7 @@ export default function Futardio() {
               <span className="gradient-text">Dr.-Ing.</span>
             </h2>
           </div>
-          <FabianSchuhProfile />
+          <FabianSchuhProfile isDAORaise={true} showExits={true} />
         </section>
 
         <div
