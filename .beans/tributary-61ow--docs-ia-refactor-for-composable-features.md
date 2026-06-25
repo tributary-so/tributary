@@ -1,14 +1,14 @@
 ---
 # tributary-61ow
 title: Docs IA refactor for composable features
-status: in-progress
+status: completed
 type: epic
 priority: high
 tags:
     - docs
     - refactor
 created_at: 2026-06-25T08:40:08Z
-updated_at: 2026-06-25T08:40:08Z
+updated_at: 2026-06-25T18:08:35Z
 ---
 
 Restructure apps/docs/ to accommodate the ComposablePolicy family (composable branch about to merge) and align with the 8 public-docs PRIs. Scope: (a) scaffold IA + stubs, document path to (c) full content. Static mkdocs build; OpenAPI spec auto-generated from Express JSDoc annotations.

@@ -1,11 +1,11 @@
 ---
 # tributary-hko3
-title: "Switch topup-balance-sol.test.ts Lighthouse guard: WSOL-ATA sensor → SOL (lamports) sensor"
-status: in-progress
+title: 'Switch topup-balance-sol.test.ts Lighthouse guard: WSOL-ATA sensor → SOL (lamports) sensor'
+status: completed
 type: task
 priority: normal
 created_at: 2026-06-25T06:32:35Z
-updated_at: 2026-06-25T08:13:55Z
+updated_at: 2026-06-25T18:08:50Z
 ---
 
 ## Context

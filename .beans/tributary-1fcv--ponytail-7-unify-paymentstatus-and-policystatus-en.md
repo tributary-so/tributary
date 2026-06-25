@@ -1,14 +1,14 @@
 ---
 # tributary-1fcv
 title: 'Ponytail #7: unify PaymentStatus and PolicyStatus enums'
-status: draft
+status: todo
 type: task
 priority: normal
 tags:
     - ponytail
     - dedup
 created_at: 2026-06-24T12:38:55Z
-updated_at: 2026-06-25T08:05:49Z
+updated_at: 2026-06-25T18:10:58Z
 parent: tributary-9hca
 ---
 

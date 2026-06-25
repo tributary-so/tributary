@@ -1,14 +1,14 @@
 ---
 # tributary-pu1j
 title: 'Ponytail #15: drop redundant Cargo deps (proc-macro2, syn, quote, Xargo.toml)'
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - ponytail
     - deps
 created_at: 2026-06-24T12:39:51Z
-updated_at: 2026-06-24T12:39:51Z
+updated_at: 2026-06-25T18:09:15Z
 parent: tributary-9hca
 ---
 
