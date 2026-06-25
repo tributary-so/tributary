@@ -9,15 +9,6 @@
   --stagger-stagger: 40ms;
   --stagger-blur: 3px;
   --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Tooltip open/close */
-  --tt-in-dur: 150ms;
-  --tt-out-dur: 50ms;
-  --tt-scale: 0.98;
-  --tt-delay: 80ms;
-  --tt-in-ease: ease-out;
-  --tt-out-ease: ease-out;
-  --tt-bg: hsl(var(--popover));
-  --tt-fg: hsl(var(--popover-foreground));
   /* Skeleton loader and reveal */
   --pulse-dur: 1000ms;
   --pulse-count: 1;
@@ -86,43 +77,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .t-stagger-line {
-    transition: none !important;
-  }
-}
-
-/* ── Tooltip ──────────────────────────────────────────────────────────── */
-.t-tt-wrap {
-  position: relative;
-  display: inline-block;
-}
-.t-tt {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translate(-50%, 0) scale(var(--tt-scale));
-  transform-origin: 50% 100%;
-  padding: 8px 12px;
-  border: 1px solid hsl(var(--border));
-  background: var(--tt-bg);
-  color: var(--tt-fg);
-  white-space: nowrap;
-  font-size: 0.75rem;
-  z-index: 50;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--tt-out-dur) var(--tt-out-ease),
-    transform var(--tt-out-dur) var(--tt-out-ease);
-}
-.t-tt-wrap:hover .t-tt,
-.t-tt-trigger:focus-visible + .t-tt {
-  opacity: 1;
-  transform: translate(-50%, 0) scale(1);
-  transition-duration: var(--tt-in-dur);
-  transition-timing-function: var(--tt-in-ease);
-  transition-delay: var(--tt-delay);
-}
-@media (prefers-reduced-motion: reduce) {
-  .t-tt {
     transition: none !important;
   }
 }

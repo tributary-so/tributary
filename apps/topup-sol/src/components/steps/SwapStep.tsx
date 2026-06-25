@@ -9,8 +9,6 @@ import {
 import type { TopupFormState, FormPatch } from "@/lib/form";
 import { PRESET_POOLS } from "@/lib/pools";
 import { StepShell } from "@/components/StepShell";
-import { Tooltip } from "@/components/transitions";
-import { HelpCircle } from "lucide-react";
 
 /** Step 4 — DEX + pool selection + slippage. Only Meteora DLMM supported today. */
 export function SwapStep({
@@ -58,11 +56,8 @@ export function SwapStep({
         </label>
 
         <label className="block space-y-1.5">
-          <span className="items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">
             Pool
-            <Tooltip content="Pick a preset DLMM LbPair, or paste a custom one. The swap runs inside the policy execution.">
-              <HelpCircle className="h-3 w-3 text-muted-foreground/60" />
-            </Tooltip>
           </span>
           <Autocomplete
             allowsCustomValue
@@ -88,14 +83,15 @@ export function SwapStep({
               </AutocompleteItem>
             )}
           </Autocomplete>
+          <span className="block text-[11px] leading-snug text-muted-foreground/70">
+            Pick a preset DLMM LbPair, or paste a custom one. The swap runs
+            inside the policy execution.
+          </span>
         </label>
 
         <label className="block space-y-1.5 max-w-[16rem]">
-          <span className="items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">
             Slippage
-            <Tooltip content="Tolerance applied inside the Meteora quote (basis points). 100 = 1%.">
-              <HelpCircle className="h-3 w-3 text-muted-foreground/60" />
-            </Tooltip>
           </span>
           <Input
             type="number"
@@ -110,6 +106,9 @@ export function SwapStep({
             variant="bordered"
             classNames={{ inputWrapper: "border-border" }}
           />
+          <span className="block text-[11px] leading-snug text-muted-foreground/70">
+            Tolerance applied inside the Meteora quote (basis points). 100 = 1%.
+          </span>
         </label>
       </div>
     </StepShell>

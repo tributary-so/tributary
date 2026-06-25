@@ -35,24 +35,6 @@ export function TextsReveal({
   );
 }
 
-/** Pure-CSS tooltip. Wrap a trigger; the tip fades+scales in on hover/focus. */
-export function Tooltip({
-  content,
-  children,
-}: {
-  content: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <span className="t-tt-wrap block text-xs text-muted-foreground/70">
-      <span className="t-tt-trigger inline-flex mr-2">{children}</span>
-      <span role="tooltip" className="t-tt">
-        {content}
-      </span>
-    </span>
-  );
-}
-
 /**
  * Skeleton loader + reveal. Mounts a pulsing skeleton, swaps to content once
  * `loaded` is true. The two layers share absolute coordinates so the swap is

@@ -2,8 +2,6 @@ import { Input, Select, SelectItem } from "@heroui/react";
 import type { TopupFormState, FormPatch } from "@/lib/form";
 import { PERIOD_PRESETS } from "@/lib/form";
 import { StepShell } from "@/components/StepShell";
-import { Tooltip } from "@/components/transitions";
-import { HelpCircle } from "lucide-react";
 
 /** Step 2 — PayAsYouGo funding parameters. */
 export function FundingStep({
@@ -129,13 +127,13 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <span className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">
         {label}
-        <Tooltip content={hint}>
-          <HelpCircle className="h-3 w-3 text-muted-foreground/60" />
-        </Tooltip>
       </span>
       {children}
+      <span className="block text-[11px] leading-snug text-muted-foreground/70">
+        {hint}
+      </span>
     </label>
   );
 }

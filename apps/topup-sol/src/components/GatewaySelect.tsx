@@ -56,39 +56,36 @@ export function GatewaySelect({
           <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
             Gateway
           </span>
-          <div className="h-10">
-            <SkeletonReveal
-              loaded={!gateways.isLoading}
-              skeleton={<div className="t-skel-bar w-full h-10" />}
-            >
-              {list.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  No active gateways on this cluster. Create one (e.g. via the
-                  manager CLI) before configuring a policy.
-                </p>
-              ) : (
-                <Select
-                  selectedKeys={state.gateway ? [state.gateway] : []}
-                  onChange={(e) => patch({ gateway: e.target.value })}
-                  variant="bordered"
-                  classNames={{ trigger: "border-border" }}
-                >
-                  {list.map((g) => (
-                    <SelectItem
-                      key={g.publicKey.toBase58()}
-                      description={`${g.publicKey
-                        .toBase58()
-                        .slice(0, 8)}…${g.publicKey.toBase58().slice(-6)} · ${
-                        g.account.gatewayFeeBps
+          <SkeletonReveal
+            loaded={!gateways.isLoading}
+            skeleton={<div className="t-skel-bar w-full h-10" />}
+          >
+            {list.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">
+                No active gateways on this cluster. Create one (e.g. via the
+                manager CLI) before configuring a policy.
+              </p>
+            ) : (
+              <Select
+                selectedKeys={state.gateway ? [state.gateway] : []}
+                onChange={(e) => patch({ gateway: e.target.value })}
+                variant="bordered"
+                classNames={{ trigger: "border-border" }}
+              >
+                {list.map((g) => (
+                  <SelectItem
+                    key={g.publicKey.toBase58()}
+                    description={`${g.publicKey
+                      .toBase58()
+                      .slice(0, 8)}…${g.publicKey.toBase58().slice(-6)} · ${g.account.gatewayFeeBps
                       } bps`}
-                    >
-                      {decodeMemo(g.account.name) || "Unnamed gateway"}
-                    </SelectItem>
-                  ))}
-                </Select>
-              )}
-            </SkeletonReveal>
-          </div>
+                  >
+                    {decodeMemo(g.account.name) || "Unnamed gateway"}
+                  </SelectItem>
+                ))}
+              </Select>
+            )}
+          </SkeletonReveal>
         </label>
       </div>
     </StepShell>
