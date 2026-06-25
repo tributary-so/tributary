@@ -45,3 +45,28 @@ pub fn close_account<'info, 'dest>(
 
     Ok(())
 }
+
+/// Resolve where closed-account lamports should be refunded.
+///
+/// If `stored_rent_payer` is `Pubkey::default()`, refunds go to `owner`
+/// (the historical default). Otherwise `rent_payer` must be present and
+/// its key must match `stored_rent_payer` exactly.
+///
+/// Returns a cloned `AccountInfo` so callers can pass it to `close_account`
+/// without borrowing against their own `ctx.accounts` fields.
+pub fn resolve_rent_destination<'info>(
+    stored_rent_payer: Pubkey,
+    owner: &AccountInfo<'info>,
+    rent_payer: &AccountInfo<'info>,
+) -> Result<AccountInfo<'info>> {
+    if stored_rent_payer == Pubkey::default() {
+        Ok(owner.clone())
+    } else {
+        require_keys_eq!(
+            rent_payer.key(),
+            stored_rent_payer,
+            crate::error::TributaryError::InvalidRentPayer
+        );
+        Ok(rent_payer.clone())
+    }
+}

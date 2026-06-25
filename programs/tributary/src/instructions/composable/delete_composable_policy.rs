@@ -1,4 +1,9 @@
-use crate::{constants::*, error::TributaryError, shared::account_close::close_account, state::*};
+use crate::{
+    constants::*,
+    error::TributaryError,
+    shared::account_close::{close_account, resolve_rent_destination},
+    state::*,
+};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -47,15 +52,11 @@ impl<'info> DeleteComposablePolicy<'info> {
 
         let stored_rent_payer = composable_policy.rent_payer;
 
-        let destination = if stored_rent_payer == Pubkey::default() {
-            ctx.accounts.owner.to_account_info()
-        } else {
-            require!(
-                ctx.accounts.rent_payer.key() == stored_rent_payer,
-                TributaryError::InvalidRentPayer
-            );
-            ctx.accounts.rent_payer.to_account_info()
-        };
+        let destination = resolve_rent_destination(
+            stored_rent_payer,
+            &ctx.accounts.owner.to_account_info(),
+            &ctx.accounts.rent_payer.to_account_info(),
+        )?;
 
         let rent_refund_target = destination.key();
 
