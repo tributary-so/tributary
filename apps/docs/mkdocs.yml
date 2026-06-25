@@ -108,9 +108,8 @@ plugins:
         Usage documentation:
           - index.md: Main documentation page
           - "*.md"
-  - swagger-ui-tag:
-      background: white
-      docExpansion: none
+  - neoteroi.mkdocsoad:
+      use_pymdownx: true
 
 markdown_extensions:
   - admonition
@@ -141,3 +140,4 @@ extra:
 
 extra_css:
   - stylesheets/extra.css
+  - css/mkdocsoad.css
