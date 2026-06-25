@@ -18,7 +18,6 @@ import {
   Tributary,
   lighthouse,
   LIGHTHOUSE_PROGRAM_ID,
-  getGatewayPda,
   getUserPaymentPda,
   getComposablePolicyPda,
 } from "@tributary-so/sdk";
@@ -41,12 +40,12 @@ type Status = "idle" | "preparing" | "sending" | "success" | "error";
 
 /**
  * Builds + sends the batched composable-policy setup transaction:
- *   1. (optional) createPaymentGateway — when no gateway exists & no override
- *   2. (optional) createUserPayment(USDC) — when missing
- *   3. (optional) create ATA — when the cold wallet has no USDC account
- *   4. revoke + approve — delegate UserPayment PDA up to the period cap
- *   5. createComposablePolicy — PayAsYouGo + Meteora forward + Lighthouse guard
+ *   1. (optional) createUserPayment(USDC) — when missing
+ *   2. (optional) create ATA — when the cold wallet has no USDC account
+ *   3. revoke + approve — delegate UserPayment PDA up to the period cap
+ *   4. createComposablePolicy — PayAsYouGo + Meteora forward + Lighthouse guard
  *
+ * The gateway is selected upstream (GatewaySelect) and must already exist.
  * The discriminator for ForwardConfig.data_checks is read from a dry-run
  * Meteora quote on the chosen pool. No execution happens here — only setup.
  */
@@ -87,28 +86,10 @@ export function useCreateTopupPolicy() {
         const capRaw = usdcToRaw(form.capUsdc);
         const thresholdLamports = solToLamports(form.thresholdSol);
 
-        // ── Resolve gateway ────────────────────────────────────────────
-        let gateway: PublicKey;
+        // ── Gateway (selected upstream; must already exist) ───────────
+        if (!form.gateway) throw new Error("Select a payment gateway.");
+        const gateway = new PublicKey(form.gateway);
         const ixs: TransactionInstruction[] = [];
-        if (form.customGateway) {
-          gateway = new PublicKey(form.customGateway);
-        } else {
-          const gatewayPda = getGatewayPda(coldWallet, sdk.programId).address;
-          const existing = await connection.getAccountInfo(gatewayPda);
-          if (!existing) {
-            // Auto-create a gateway with the cold wallet as authority, 0 bps.
-            ixs.push(
-              await sdk.createPaymentGateway(
-                coldWallet,
-                0,
-                coldWallet,
-                "Top-up SOL demo",
-                "https://tributary.so"
-              )
-            );
-          }
-          gateway = gatewayPda;
-        }
 
         // ── Resolve UserPayment ────────────────────────────────────────
         const userPaymentPda = getUserPaymentPda(

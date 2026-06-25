@@ -58,7 +58,7 @@ export function SwapStep({
         </label>
 
         <label className="block space-y-1.5">
-          <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
             Pool
             <Tooltip content="Pick a preset DLMM LbPair, or paste a custom one. The swap runs inside the policy execution.">
               <HelpCircle className="h-3 w-3 text-muted-foreground/60" />
@@ -91,7 +91,7 @@ export function SwapStep({
         </label>
 
         <label className="block space-y-1.5 max-w-[16rem]">
-          <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
             Slippage
             <Tooltip content="Tolerance applied inside the Meteora quote (basis points). 100 = 1%.">
               <HelpCircle className="h-3 w-3 text-muted-foreground/60" />

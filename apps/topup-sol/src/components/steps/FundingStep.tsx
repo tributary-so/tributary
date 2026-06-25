@@ -129,7 +129,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <span className="items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
         {label}
         <Tooltip content={hint}>
           <HelpCircle className="h-3 w-3 text-muted-foreground/60" />

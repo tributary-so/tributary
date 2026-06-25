@@ -44,8 +44,8 @@ export function Tooltip({
   children: ReactNode;
 }) {
   return (
-    <span className="t-tt-wrap">
-      <span className="t-tt-trigger inline-flex">{children}</span>
+    <span className="t-tt-wrap block text-xs text-muted-foreground/70">
+      <span className="t-tt-trigger inline-flex mr-2">{children}</span>
       <span role="tooltip" className="t-tt">
         {content}
       </span>

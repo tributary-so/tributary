@@ -21,8 +21,8 @@ export interface TopupFormState {
   poolAddress: string;
   /** Slippage in basis points (100 = 1%). */
   slippageBps: number;
-  /** Optional existing gateway pubkey. Empty = auto-create with cold wallet. */
-  customGateway: string;
+  /** Selected PaymentGateway pubkey (from on-chain list). */
+  gateway: string;
 }
 
 export const INITIAL_FORM: TopupFormState = {
@@ -34,7 +34,7 @@ export const INITIAL_FORM: TopupFormState = {
   unwrap: true,
   poolAddress: "", // filled by SwapStep default
   slippageBps: 100,
-  customGateway: "",
+  gateway: "", // filled by GatewaySelect once gateways load
 };
 
 /** Period presets for the FundingStep selector. */
@@ -69,12 +69,14 @@ export function validateForm(form: TopupFormState): string | null {
   } catch {
     return "Pool address is not a valid public key.";
   }
-  if (form.customGateway) {
+  if (form.gateway) {
     try {
-      new PublicKey(form.customGateway);
+      new PublicKey(form.gateway);
     } catch {
-      return "Custom gateway is not a valid public key.";
+      return "Selected gateway is not a valid public key.";
     }
+  } else {
+    return "Select a payment gateway.";
   }
   return null;
 }

@@ -5,7 +5,7 @@ import { ConnectStep } from "@/components/steps/ConnectStep";
 import { FundingStep } from "@/components/steps/FundingStep";
 import { TargetStep } from "@/components/steps/TargetStep";
 import { SwapStep } from "@/components/steps/SwapStep";
-import { AccordionAdvanced } from "@/components/AccordionAdvanced";
+import { GatewaySelect } from "@/components/GatewaySelect";
 import { CreatePolicyButton } from "@/components/CreatePolicyButton";
 
 /**
@@ -19,12 +19,6 @@ export default function SetupPage() {
   return (
     <div className="py-12">
       <header className="mb-2">
-        <div className="flex items-center gap-3 text-primary mb-3">
-          <img src="/logo.png" alt="Tributary" className="h-4 w-4" />
-          <span className="font-semibold text-xs uppercase tracking-[0.3em]">
-            TRIBUTARY
-          </span>
-        </div>
         <h1 className="text-3xl font-bold tracking-tight">
           Composable SOL Top-up
         </h1>
@@ -36,10 +30,10 @@ export default function SetupPage() {
       </header>
 
       <ConnectStep />
+      <GatewaySelect state={form} patch={patch} />
       <FundingStep state={form} patch={patch} />
       <TargetStep state={form} patch={patch} />
       <SwapStep state={form} patch={patch} />
-      <AccordionAdvanced state={form} patch={patch} />
 
       <div className="mt-10 max-w-md ml-auto">
         <CreatePolicyButton form={form} />
