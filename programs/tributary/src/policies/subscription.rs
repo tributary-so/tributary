@@ -15,8 +15,15 @@ pub fn validate_subscription_policy(
     // Validate amount is greater than zero
     require!(amount > 0, TributaryError::InvalidAmount);
 
-    // Validate payment frequency
-    payment_frequency.validate()?;
+    // Validate payment frequency: Custom intervals must fit i64 (the cast
+    // boundary enforced at execute-time in calculate_next_payment_due).
+    if let crate::state::PaymentFrequency::Custom(interval) = payment_frequency {
+        require!(*interval > 0, TributaryError::InvalidFrequency);
+        require!(
+            *interval <= i64::MAX as u64,
+            TributaryError::InvalidFrequency
+        );
+    }
 
     // Validate max_renewals if set (must be greater than 0)
     if let Some(renewals) = max_renewals {
@@ -91,5 +98,40 @@ impl PolicyStrategy for SubscriptionStrategy {
             }
             _ => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::TributaryError;
+    use crate::state::PaymentFrequency;
+
+    // Regression for tributary-q8x9: Custom(u64) intervals are now fully
+    // validated at create-time (both > 0 AND <= i64::MAX), closing the gap
+    // where calculate_next_payment_due was the only boundary check.
+
+    #[test]
+    fn custom_frequency_rejects_zero() {
+        let err =
+            validate_subscription_policy(100, &PaymentFrequency::Custom(0), &None).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidFrequency));
+    }
+
+    #[test]
+    fn custom_frequency_rejects_u64_max() {
+        let err = validate_subscription_policy(100, &PaymentFrequency::Custom(u64::MAX), &None)
+            .unwrap_err();
+        assert!(err == error!(TributaryError::InvalidFrequency));
+    }
+
+    #[test]
+    fn custom_frequency_accepts_valid_interval() {
+        assert!(validate_subscription_policy(100, &PaymentFrequency::Custom(86400), &None).is_ok());
+    }
+
+    #[test]
+    fn predefined_frequency_skips_interval_check() {
+        assert!(validate_subscription_policy(100, &PaymentFrequency::Monthly, &None).is_ok());
     }
 }

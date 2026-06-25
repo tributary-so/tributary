@@ -36,19 +36,6 @@ pub enum PaymentFrequency {
     Custom(u64),
 }
 
-impl PaymentFrequency {
-    /// Validates payment frequency
-    pub fn validate(&self) -> Result<()> {
-        if let PaymentFrequency::Custom(interval) = self {
-            require!(
-                *interval > 0,
-                crate::error::TributaryError::InvalidFrequency
-            );
-        }
-        Ok(())
-    }
-}
-
 /// The PolicyType enum implements different payment schemes. The initial policy
 /// will be a subscription payment that enables regular payment according to
 /// a schedule.
