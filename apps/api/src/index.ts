@@ -7,6 +7,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { createServer } from "http";
+import swaggerUi from "swagger-ui-express";
+import yaml from "js-yaml";
 import { requestLogger, errorHandler, notFoundHandler } from "./middleware";
 
 import { WebSocketService } from "./services/websocket";
@@ -15,6 +17,7 @@ import { KafkaPaymentConsumer } from "./services/kafkaConsumer";
 import apiRoutes from "./routes";
 import jwksRouter from "./routes/jwks";
 import { startAutoRotationCheck } from "./services/jwks";
+import { openapiSpec } from "./openapi";
 
 const app: express.Express = express();
 const PORT = process.env.PORT || "3002";
@@ -26,10 +29,26 @@ app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 
-// API routes with /api/v1 prefix
+// API routes with /v1 prefix
 app.use("/v1", apiRoutes);
 
 app.use("/.well-known/jwks.json", jwksRouter);
+
+// OpenAPI spec — JSON, YAML, and Swagger UI.
+// The checked-in apps/api/openapi.yaml is regenerated from /openapi.yaml.
+app.get("/openapi.json", (_req, res) => {
+  res.json(openapiSpec);
+});
+app.get("/openapi.yaml", (_req, res) => {
+  res.type("text/yaml").send(yaml.dump(openapiSpec));
+});
+// Cast — @types/swagger-ui-express and @types/express v4 disagree on the
+// RequestHandler signature. Runtime is fine; this is purely a types clash.
+app.use(
+  "/docs",
+  ...(swaggerUi.serve as any),
+  swaggerUi.setup(openapiSpec) as any
+);
 
 // Root endpoint
 app.get("/", (req, res) => {

@@ -62,8 +62,43 @@ export class MarkdownTemplateEngine {
 }
 
 /**
- * GET /api/v1/skill/:encoded
- * Generate skill markdown from encoded subscription data
+ * @openapi
+ * /v1/skill/{encoded}:
+ *   get:
+ *     summary: Generate Lando skill markdown
+ *     description: >
+ *       Decodes a base64-encoded checkout session, fetches mint decimals
+ *       on-chain, converts the human-readable amount to its integer
+ *       representation, and renders a `text/markdown` skill document the
+ *       Lando agent uses to drive the subscription checkout.
+ *     tags: [Skill]
+ *     operationId: getSkillMarkdown
+ *     parameters:
+ *       - in: path
+ *         name: encoded
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Base64-encoded subscription parameters produced by `CheckoutSessionManager`.
+ *     responses:
+ *       200:
+ *         description: Rendered skill markdown.
+ *         content:
+ *           text/markdown:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Missing or invalid `encoded` parameter.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to fetch mint info or render template.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get(
   "/:encoded",
