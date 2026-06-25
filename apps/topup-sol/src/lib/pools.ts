@@ -9,6 +9,13 @@ export const METEORA_DLMM_PUBKEY = new PublicKey(
   "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
 );
 
+/**
+ * Forward flag bit 0: sweep the WSOL output as native SOL via closeAccount
+ * (WSOL → SOL unwrap). Must match FORWARD_FLAG_NATIVE_OUTPUT in
+ * programs/tributary/src/constants.rs.
+ */
+export const FORWARD_FLAG_NATIVE_OUTPUT = 1;
+
 /** USDC (mainnet, 6 decimals) — the input/funding mint. */
 export const USDC_MINT = new PublicKey(
   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"

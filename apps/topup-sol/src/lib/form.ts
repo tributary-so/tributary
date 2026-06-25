@@ -1,3 +1,5 @@
+import { PublicKey } from "@solana/web3.js";
+
 /**
  * Shared form state for the topup policy configuration.
  * Owned by pages/Setup.tsx, threaded down to each step.
@@ -45,3 +47,34 @@ export const PERIOD_PRESETS: { label: string; seconds: number }[] = [
 ];
 
 export type FormPatch = Partial<TopupFormState>;
+
+/** Returns an error message if the form is invalid, else null. */
+export function validateForm(form: TopupFormState): string | null {
+  if (!form.hotWallet) return "Enter the hot wallet that should receive SOL.";
+  try {
+    new PublicKey(form.hotWallet);
+  } catch {
+    return "Hot wallet is not a valid public key.";
+  }
+  if (!(form.thresholdSol > 0))
+    return "SOL threshold must be greater than zero.";
+  if (!(form.chunkUsdc > 0))
+    return "Chunk per top-up must be greater than zero.";
+  if (form.chunkUsdc > form.capUsdc) return "Chunk exceeds the period cap.";
+  if (!(form.periodSeconds > 0))
+    return "Period length must be greater than zero.";
+  if (!form.poolAddress) return "Pick or paste a Meteora pool address.";
+  try {
+    new PublicKey(form.poolAddress);
+  } catch {
+    return "Pool address is not a valid public key.";
+  }
+  if (form.customGateway) {
+    try {
+      new PublicKey(form.customGateway);
+    } catch {
+      return "Custom gateway is not a valid public key.";
+    }
+  }
+  return null;
+}

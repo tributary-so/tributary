@@ -6,6 +6,7 @@ import { FundingStep } from "@/components/steps/FundingStep";
 import { TargetStep } from "@/components/steps/TargetStep";
 import { SwapStep } from "@/components/steps/SwapStep";
 import { AccordionAdvanced } from "@/components/AccordionAdvanced";
+import { CreatePolicyButton } from "@/components/CreatePolicyButton";
 
 /**
  * Single-page configuration form. Owns the form state and threads it down to
@@ -40,7 +41,9 @@ export default function SetupPage() {
       <SwapStep state={form} patch={patch} />
       <AccordionAdvanced state={form} patch={patch} />
 
-      {/* Create action + success state land in T5 */}
+      <div className="mt-10 max-w-md ml-auto">
+        <CreatePolicyButton form={form} />
+      </div>
     </div>
   );
 }
