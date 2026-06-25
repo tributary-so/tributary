@@ -1,5 +1,6 @@
 use crate::{constants::*, error::TributaryError, state::*};
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 use anchor_spl::token::Mint;
 
 const CLOSE_DISCRIMINATOR: [u8; 8] = [u8::MAX; 8];
@@ -73,11 +74,12 @@ impl<'info> DeletePaymentPolicy<'info> {
             let mut data = info.try_borrow_mut_data()?;
             data[..8].copy_from_slice(&CLOSE_DISCRIMINATOR);
         }
-        **destination.try_borrow_mut_lamports()? = destination
-            .lamports()
-            .checked_add(info.lamports())
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-        **info.try_borrow_mut_lamports()? = 0;
+        let dest_starting_lamports = destination.lamports();
+        **destination.lamports.borrow_mut() =
+            dest_starting_lamports.checked_add(info.lamports()).unwrap();
+        **info.lamports.borrow_mut() = 0;
+        info.assign(&system_program::ID);
+        info.realloc(0, false)?;
 
         emit!(PaymentPolicyDeleted {
             payment_policy: payment_policy.key(),

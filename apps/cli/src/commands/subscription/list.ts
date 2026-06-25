@@ -4,63 +4,51 @@ import {ReadOnlyCommand} from '../../lib/base-command.js'
 import {parsePublicKey} from '../../lib/utils.js'
 
 export default class SubscriptionList extends ReadOnlyCommand {
-  static description = 'List payment policies'
+  static description = 'List payment policies for a user payment account'
   static examples = [
-    '<%= config.bin %> <%= command.id %>',
-    '<%= config.bin %> <%= command.id %> --owner <OWNER_PUBKEY>',
-    '<%= config.bin %> <%= command.id %> -o <OWNER_PUBKEY>',
+    '<%= config.bin %> <%= command.id %> --user-payment <USER_PAYMENT_PUBKEY>',
+    '<%= config.bin %> <%= command.id %> -u <USER_PAYMENT_PUBKEY>',
   ]
   static flags = {
     ...ReadOnlyCommand.baseFlags,
-    owner: Flags.string({
-      char: 'o',
-      description: 'Filter by owner public key',
+    'user-payment': Flags.string({
+      char: 'u',
+      description: 'User payment account public key to list policies for',
+      required: true,
     }),
   }
 
   public async run(): Promise<void> {
     const {flags} = await this.parse(SubscriptionList)
 
+    const userPayment = parsePublicKey(flags['user-payment'])
+    if (!userPayment) this.error('Invalid user payment public key')
+
     const sdk = await this.getSDK()
 
-    if (flags.owner) {
-      const owner = parsePublicKey(flags.owner)
-      if (!owner) this.error('Invalid owner public key')
+    const userPaymentAccount = await sdk.getUserPayment(userPayment)
+    const policies = await sdk.getPaymentPoliciesByUserPayment(userPayment)
 
-      const userPayments = await sdk.getAllUserPaymentsByOwner(owner)
-      const results = await Promise.all(
-        userPayments.map(async (up) => {
-          const policies = await sdk.getPaymentPoliciesByUserPayment(up.publicKey)
-          return {
-            policies: policies.map((p) => ({
-              policyId: p.account.policyId,
-              status: Object.keys(p.account.status)[0],
-            })),
-            userPayment: up.publicKey.toString(),
+    this.output({
+      command: 'subscription list',
+      filter: {userPayment: userPayment.toString()},
+      policies: policies.map((p) => ({
+        policyId: p.account.policyId,
+        publicKey: p.publicKey.toString(),
+        status: Object.keys(p.account.status)[0],
+      })),
+      policiesCount: policies.length,
+      success: true,
+      timestamp: new Date().toISOString(),
+      userPayment: userPaymentAccount
+        ? {
+            activePoliciesCount: userPaymentAccount.activePoliciesCount,
+            createdPoliciesCount: userPaymentAccount.createdPoliciesCount,
+            isActive: userPaymentAccount.isActive,
+            owner: userPaymentAccount.owner.toString(),
+            tokenMint: userPaymentAccount.tokenMint.toString(),
           }
-        }),
-      )
-
-      this.output({
-        command: 'subscription list',
-        filter: {owner: owner.toString()},
-        success: true,
-        timestamp: new Date().toISOString(),
-        userPayments: results,
-        userPaymentsCount: userPayments.length,
-      })
-    } else {
-      const policies = await sdk.getAllPaymentPolicies()
-      this.output({
-        command: 'subscription list',
-        count: policies.length,
-        policies: policies.map((p) => ({
-          publicKey: p.publicKey.toString(),
-          status: Object.keys(p.account.status)[0],
-        })),
-        success: true,
-        timestamp: new Date().toISOString(),
-      })
-    }
+        : null,
+    })
   }
 }
