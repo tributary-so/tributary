@@ -89,16 +89,11 @@ const result = await createSubscription({ amount, recipient, gateway, interval, 
 Best for: Backend integration and real-time notifications
 
 - Query subscription status and payment events
-- WebSocket notifications for payment events
-- Webhook management for external notifications
 - No SDK required - pure HTTP
 
 ```bash
 # Get subscription status
 curl "https://api.tributary.so/v1/subscriptions?trackingId=my-sub"
-
-# WebSocket for real-time updates
-socket.emit("subscribe", { trackingId: "my-sub" });
 ```
 
 👉 **Get Started:** [API Overview](./api/overview.md)
@@ -133,16 +128,16 @@ app.use(
 
 ## Choosing the Right Integration
 
-| Use Case                 | Method               |
-| ------------------------ | -------------------- |
-| Share payment links      | Payments SDK         |
-| AI agent monetization    | Payments SDK         |
-| Custom payment UI        | Direct SDK           |
-| Complex payment logic    | Direct SDK           |
-| React web app            | React SDK            |
-| Backend-only integration | REST API             |
-| API monetization         | x402                 |
-| Real-time notifications  | REST API + WebSocket |
+| Use Case                 | Method       |
+| ------------------------ | ------------ |
+| Share payment links      | Payments SDK |
+| AI agent monetization    | Payments SDK |
+| Custom payment UI        | Direct SDK   |
+| Complex payment logic    | Direct SDK   |
+| React web app            | React SDK    |
+| Backend-only integration | REST API     |
+| API monetization         | x402         |
+| Real-time notifications  | REST API     |
 
 ## SDK Packages
 

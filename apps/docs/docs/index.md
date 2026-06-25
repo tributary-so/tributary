@@ -120,7 +120,6 @@ More ideas in [Use Cases](use-cases.md).
 1. **Pick your integration** — [React SDK](integration-guide/pull-payments/sdk-react/index.md), [TypeScript SDK](integration-guide/pull-payments/sdk.md), or [Checkout Links](integration-guide/pull-payments/checkout.md)
 2. **Choose a payment type** — [Subscription](protocol-reference/payment-policy/subscription.md), [Milestone](protocol-reference/payment-policy/milestone.md), or [Pay-as-you-go](protocol-reference/payment-policy/payasyougo.md)
 3. **Go live** — deploy on Solana mainnet in minutes
-4. **Monitor** — track payments via [REST API](api/rest-api.md) or [WebSocket API](api/websocket.md)
 
 !!! question "Questions?"
 
@@ -134,7 +133,6 @@ More ideas in [Use Cases](use-cases.md).
 - **[x402 SDK](integration-guide/pull-payments/sdk.md#x402-sdk-tributary-sox402)** - HTTP 402 middleware for API monetization
 - **[CLI](integration-guide/pull-payments/sdk.md#cli-tributary-socli)** - Protocol management tools
 - **[REST API](./api/rest-api.md)** - Query subscriptions, events, manage webhooks
-- **[WebSocket API](./api/websocket.md)** - Real-time payment notifications
 
 ---
 

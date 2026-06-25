@@ -273,5 +273,4 @@ const connection = new Connection("https://api.devnet.solana.com");
 
 - [SDK Reference](sdk.md) - Full SDK documentation
 - [Payment Types](../../protocol-reference/payment-policy/subscription.md) - Subscriptions, milestones, pay-as-you-go
-- [API Reference](../../api/overview.md) - REST and WebSocket APIs
 - [Lando](https://lando.tributary.so) - AI-to-AI payments platform
