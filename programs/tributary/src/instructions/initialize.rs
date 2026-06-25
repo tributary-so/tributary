@@ -42,7 +42,6 @@ impl<'info> Initialize<'info> {
             admin: config.admin,
             fee_recipient: config.fee_recipient,
             protocol_fee_bps: config.protocol_fee_bps,
-            max_policies_per_user: 0, // DEPRECATED
         });
 
         msg!("Program initialized with admin: {:?}", config.admin);

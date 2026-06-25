@@ -29,7 +29,6 @@ pub struct ProgramConfigCreated {
     pub admin: Pubkey,
     pub fee_recipient: Pubkey,
     pub protocol_fee_bps: u16,
-    pub max_policies_per_user: u32,
 }
 
 /// An event that is thrown when a user payment account is created
