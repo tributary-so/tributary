@@ -1,14 +1,14 @@
 ---
 # tributary-yi3s
-title: "T5: Integration Guide → Programmable Pull Payments content"
-status: in-progress
+title: 'T5: Integration Guide → Programmable Pull Payments content'
+status: completed
 type: task
 priority: high
 tags:
-  - composable
-  - docs
+    - composable
+    - docs
 created_at: 2026-06-25T08:40:57Z
-updated_at: 2026-06-25T10:55:00Z
+updated_at: 2026-06-25T09:38:50Z
 parent: tributary-61ow
 ---
 

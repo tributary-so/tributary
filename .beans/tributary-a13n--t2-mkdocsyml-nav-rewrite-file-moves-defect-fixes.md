@@ -1,14 +1,14 @@
 ---
 # tributary-a13n
 title: 'T2: mkdocs.yml nav rewrite + file moves + defect fixes'
-status: in-progress
+status: completed
 type: task
 priority: high
 tags:
     - ia
     - nav
 created_at: 2026-06-25T08:40:57Z
-updated_at: 2026-06-25T08:43:49Z
+updated_at: 2026-06-25T09:38:50Z
 parent: tributary-61ow
 ---
 
