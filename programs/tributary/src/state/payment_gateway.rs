@@ -81,13 +81,8 @@ impl PaymentGateway {
 
     /// Validate that referral tier percentages sum to 100% (10000 bps)
     pub fn validate_referral_tiers(&self) -> Result<()> {
-        if self.referral_tiers_bps.len() != 3 {
-            return Err(TributaryError::InvalidReferralTiers.into());
-        }
-
         let total: u16 = self.referral_tiers_bps.iter().sum();
         require!(total == 10000, TributaryError::InvalidReferralTiers);
-
         Ok(())
     }
 
