@@ -1,10 +1,11 @@
 ---
 # tributary-uwa3
 title: Delete 1,440 lines of dead neoteroi CSS
-status: todo
+status: scrapped
 type: task
+priority: normal
 created_at: 2026-06-25T12:41:09Z
-updated_at: 2026-06-25T12:41:09Z
+updated_at: 2026-06-25T12:46:32Z
 parent: tributary-916s
 ---
 

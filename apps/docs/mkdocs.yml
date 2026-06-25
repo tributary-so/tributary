@@ -3,137 +3,129 @@ site_description: Open-source, permissionless automated payment infrastructure f
 site_url: https://docs.tributary.so
 repo_url: https://github.com/tributary-so/tributary
 repo_name: tributary-so/tributary
+copyright: Made with 💗
 
 theme:
-    name: material
-    custom_dir: docs/overrides
-    font:
-        text: Roboto Mono
-        code: Roboto Mono
+  name: material
+  font:
+    text: Roboto Mono
+    code: Roboto Mono
 
-    palette:
-        # Palette toggle for light mode
-        - scheme: default
-          primary: white
-          toggle:
-              icon: material/brightness-7
-              name: Switch to dark mode
-        # Palette toggle for dark mode
-        - scheme: slate
-          primary: black
-          toggle:
-              icon: material/brightness-4
-              name: Switch to light mode
-    features:
-        - navigation.tabs
-        - navigation.sections
-        - navigation.expand
-        - navigation.top
-        - search.highlight
-        - content.code.copy
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: white
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
 
 nav:
-    - Home: index.md
-    - Use Cases: use-cases.md
-    - FAQ: faq.md
-    - Get Started:
-          - Quickstart: get-started/quickstart.md
-          - Environments: get-started/environments.md
-          - Common Errors: get-started/common-errors.md
-    - Integration Guide:
-          - Pull Payments vs Programmable: integration-guide/index.md
-          - Pull Payments:
-                - Overview: integration-guide/pull-payments/overview.md
-                - TypeScript SDK: integration-guide/pull-payments/sdk.md
-                - React SDK:
-                      - Installation: integration-guide/pull-payments/sdk-react/index.md
-                      - Quick Buttons: integration-guide/pull-payments/sdk-react/buttons.md
-                      - Hooks: integration-guide/pull-payments/sdk-react/hooks.md
-                      - Common Patterns: integration-guide/pull-payments/sdk-react/common.md
-                - Checkout Links: integration-guide/pull-payments/checkout.md
-                - Payment Tokens (JWT): integration-guide/pull-payments/jwt-auth.md
-                - x402 HTTP Payments:
-                      - Overview: integration-guide/pull-payments/x402/overview.md
-                      - Getting Started: integration-guide/pull-payments/x402/getting-started.md
-                      - API Reference: integration-guide/pull-payments/x402/api-reference.md
-                - CLI Tools: integration-guide/pull-payments/cli.md
-          - Programmable Pull Payments:
-                - Overview: integration-guide/programmable-pull-payments/overview.md
-                - SDK: integration-guide/programmable-pull-payments/sdk.md
-                - Lighthouse Facade: integration-guide/programmable-pull-payments/lighthouse-facade.md
-                - Examples:
-                      - Auto Topup Guard: integration-guide/programmable-pull-payments/examples/auto-topup-guard.md
-                      - Swap and Deliver: integration-guide/programmable-pull-payments/examples/swap-and-deliver.md
-                      - Native SOL Topup: integration-guide/programmable-pull-payments/examples/native-sol-topup.md
-    - Protocol Reference:
-          - Overview: protocol-reference/overview.md
-          - Accounts & PDAs: protocol-reference/accounts-and-pdas.md
-          - IDL: protocol-reference/idl.md
-          - Fees & Rent: protocol-reference/fees.md
-          - Security: protocol-reference/security.md
-          - Deployment: protocol-reference/deployment.md
-          - Error Codes: protocol-reference/error-codes.md
-          - Changelog: protocol-reference/changelog.md
-          - Payment Policy:
-                - Overview: protocol-reference/payment-policy/overview.md
-                - Subscription: protocol-reference/payment-policy/subscription.md
-                - Milestone: protocol-reference/payment-policy/milestone.md
-                - Pay-as-you-go: protocol-reference/payment-policy/payasyougo.md
-                - Referral Program: protocol-reference/payment-policy/referral-program.md
-          - Composable Policy:
-                - Overview: protocol-reference/composable-policy/overview.md
-                - Validation Hook: protocol-reference/composable-policy/validation-hook.md
-                - Forward Hook: protocol-reference/composable-policy/forward-hook.md
-                - Native Output: protocol-reference/composable-policy/native-output.md
-                - Allowlists & Sentinels: protocol-reference/composable-policy/allowlists-and-sentinels.md
-                - Security Model: protocol-reference/composable-policy/security-model.md
-                - vs Payment Policy: protocol-reference/composable-policy/vs-payment-policy.md
-    - Operate:
-          - Providers: operate/providers.md
-    - API: api/rest-api.md
-    - Reference:
-          - Glossary: reference/glossary.md
+  - Home: index.md
+  - Use Cases: use-cases.md
+  - FAQ: faq.md
+  - Integration Guide:
+      - Pull Payments vs Programmable: integration-guide/index.md
+      - Pull Payments:
+          - TypeScript SDK: integration-guide/pull-payments/sdk.md
+          - React SDK:
+              - Installation: integration-guide/pull-payments/sdk-react/index.md
+              - Quick Buttons: integration-guide/pull-payments/sdk-react/buttons.md
+              - Hooks: integration-guide/pull-payments/sdk-react/hooks.md
+              - Common Patterns: integration-guide/pull-payments/sdk-react/common.md
+          - Checkout Links: integration-guide/pull-payments/checkout.md
+          - Payment Tokens (JWT): integration-guide/pull-payments/jwt-auth.md
+          - x402 HTTP Payments:
+              - Overview: integration-guide/pull-payments/x402/overview.md
+              - Getting Started: integration-guide/pull-payments/x402/getting-started.md
+              - API Reference: integration-guide/pull-payments/x402/api-reference.md
+          - CLI Tools: integration-guide/pull-payments/cli.md
+      - Programmable Pull Payments:
+          - Overview: integration-guide/programmable-pull-payments/overview.md
+          - SDK: integration-guide/programmable-pull-payments/sdk.md
+          - Lighthouse Facade: integration-guide/programmable-pull-payments/lighthouse-facade.md
+          - Examples:
+              - Auto Topup Guard: integration-guide/programmable-pull-payments/examples/auto-topup-guard.md
+              - Swap and Deliver: integration-guide/programmable-pull-payments/examples/swap-and-deliver.md
+              - Native SOL Topup: integration-guide/programmable-pull-payments/examples/native-sol-topup.md
+  - Protocol Reference:
+      - Overview: protocol-reference/overview.md
+      - Accounts & PDAs: protocol-reference/accounts-and-pdas.md
+      - IDL: protocol-reference/idl.md
+      - Fees & Rent: protocol-reference/fees.md
+      - Security: protocol-reference/security.md
+      - Deployment: protocol-reference/deployment.md
+      - Error Codes: protocol-reference/error-codes.md
+      - Changelog: protocol-reference/changelog.md
+      - Payment Policy:
+          - Subscription: protocol-reference/payment-policy/subscription.md
+          - Milestone: protocol-reference/payment-policy/milestone.md
+          - Pay-as-you-go: protocol-reference/payment-policy/payasyougo.md
+          - Referral Program: protocol-reference/payment-policy/referral-program.md
+      - Composable Policy:
+          - Overview: protocol-reference/composable-policy/overview.md
+          - Validation Hook: protocol-reference/composable-policy/validation-hook.md
+          - Forward Hook: protocol-reference/composable-policy/forward-hook.md
+          - Native Output: protocol-reference/composable-policy/native-output.md
+          - Allowlists & Sentinels: protocol-reference/composable-policy/allowlists-and-sentinels.md
+          - Security Model: protocol-reference/composable-policy/security-model.md
+          - vs Payment Policy: protocol-reference/composable-policy/vs-payment-policy.md
+  - Operate:
+      - Providers: operate/providers.md
+  - API: api/rest-api.md
 
 plugins:
-    - social:
-    - search:
-    - privacy:
-    - llmstxt:
-          full_output: llms-full.txt
-          sections:
-              Usage documentation:
-                  - index.md: Main documentation page
-                  - "*.md"
-    - neoteroi.mkdocsoad:
-          use_pymdownx: true
+  - social:
+  - search:
+  - privacy:
+  - llmstxt:
+      full_output: llms-full.txt
+      sections:
+        Usage documentation:
+          - index.md: Main documentation page
+          - "*.md"
+  - neoteroi.mkdocsoad:
+      use_pymdownx: true
 
 markdown_extensions:
-    - admonition
-    - pymdownx.details
-    - pymdownx.tabbed:
-          alternate_style: true
-    - pymdownx.emoji:
-          emoji_index: !!python/name:material.extensions.emoji.twemoji ""
-          emoji_generator: !!python/name:material.extensions.emoji.to_svg ""
-    - pymdownx.highlight:
-          anchor_linenums: true
-          line_spans: __span
-          pygments_lang_class: true
-    - pymdownx.inlinehilite
-    - toc:
-          permalink: true
-    - pymdownx.superfences:
-          custom_fences:
-              - name: mermaid
-                class: mermaid
-                format: !!python/name:pymdownx.superfences.fence_code_format ""
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji ""
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg ""
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format ""
 extra:
-    social:
-        - icon: fontawesome/brands/github
-          link: https://github.com/tributary-so/tributary
-        - icon: fontawesome/brands/twitter
-          link: https://twitter.com/tributaryso
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tributary-so/tributary
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/tributaryso
 
 extra_css:
-    - stylesheets/extra.css
-    - css/mkdocsoad.css
+  - stylesheets/extra.css
+  - css/mkdocsoad.css
