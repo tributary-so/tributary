@@ -29,7 +29,6 @@ import {
   BriefcaseBusiness,
 } from "lucide-react";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import TerminalCard from "../components/TerminalCard";
 import TwitterWall from "@/components/TwitterWall";
 import HowToRecurring from "@/components/HowToRecurring";
@@ -320,14 +319,6 @@ export function HomeFutardio() {
 }
 
 export default function HomeContent() {
-  const navigate = useNavigate();
-
-  const scrollToSection = (id: string) => {
-    navigate("/");
-    sessionStorage.setItem("scrollTo", id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
     const section = sessionStorage.getItem("scrollTo");
     if (section) {
@@ -341,12 +332,12 @@ export default function HomeContent() {
   }, []);
   return (
     <main className="mx-auto max-w-6xl px-4">
-      {/* ─── Hero ─── */}
+      {/* ─── Hero (the Resolution motif) ─── */}
       <section id="hero" className="py-20">
         <div className="flex flex-col gap-6 text-center lg:text-left lg:items-start">
           <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/5 px-3 py-1.5 text-accent text-xs font-mono">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            Live on Solana mainnet · 4,000+ payments · six teams integrating
+            Live on Solana · 4,000+ pulls executed
           </div>
           <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl lg:text-5xl">
             <span className="text-foreground">If This</span>
@@ -354,13 +345,12 @@ export default function HomeContent() {
             <span className="gradient-text">Then Money.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto lg:mx-0">
-            v1 is live on mainnet today — subscriptions, milestones, and
-            pay-as-you-go, all on one token delegation.{" "}
+            Stablecoins made money digital.{" "}
             <span className="text-foreground">
-              v2 turns it into composable automation
-            </span>
-            : sign once, walk away, and money routes through any DeFi primitive
-            on Solana when conditions you define are met.
+              Tributary makes it self-driving
+            </span>{" "}
+            — one primitive, three knobs, that moves money itself within rules
+            you set. Non-custodial, on Solana.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row justify-center lg:justify-start">
             <a
@@ -368,23 +358,79 @@ export default function HomeContent() {
               className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
             >
               <Code2 className="h-4 w-4" />
-              View Docs
+              Read the Docs
             </a>
             <a
-              onClick={() => scrollToSection("use-cases")}
+              href="https://app.tributary.so"
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
-              Explore Use Cases
-            </a>
-            <a
-              href="https://tally.so/r/RGbbGl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-accent/60 hover:bg-accent/80 text-white shadow-2xs inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              Business Onboarding <ArrowRight className="h-3 w-3" />
+              See it running <ArrowRight className="h-3 w-3" />
             </a>
           </div>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      {/* ─── Setup + Conflict: inert money ─── */}
+      <section id="conflict" className="py-16">
+        <div className="mb-10 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            The Problem
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">
+              Stablecoins made money digital.
+            </span>{" "}
+            <span className="gradient-text">It&apos;s still inert.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            ~$300B sits on chain — instant, global, native. But it only moves
+            when a human signs, and only to where that human manually sends it.
+            No schedules. No conditions. No autonomy. Every
+            &quot;automation&quot; in crypto is either a custodial bot that
+            holds your keys, or a calendar reminder that still needs you to
+            sign.{" "}
+            <span className="text-foreground">
+              Money that can&apos;t act on its own is money that can&apos;t
+              scale.
+            </span>
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4 max-w-4xl">
+          {[
+            {
+              Icon: Building2,
+              title: "DAO Treasury",
+              scenario: "$50M portfolio. Market moves at 2am.",
+              pain: "Someone has to wake up, check prices, and sign a rebalance. Every time. Manually. Or the portfolio drifts.",
+            },
+            {
+              Icon: Brain,
+              title: "AI Agent",
+              scenario: "Needs compute. Wants to pay for its own API calls.",
+              pain: "It can&apos;t — not without your private key. Hand over full wallet access, or the agent can&apos;t function autonomously.",
+            },
+          ].map((v) => (
+            <div
+              key={v.title}
+              className="border border-border/50 bg-muted/10 p-6 space-y-3"
+            >
+              <v.Icon className="h-5 w-5 text-muted-foreground" />
+              <div className="text-sm font-bold text-foreground">{v.title}</div>
+              <div className="text-xs text-muted-foreground italic">
+                {v.scenario}
+              </div>
+              <div className="text-xs text-foreground leading-relaxed">
+                {v.pain}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
