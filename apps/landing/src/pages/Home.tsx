@@ -27,6 +27,7 @@ import HowToRecurring from "@/components/HowToRecurring";
 import IntegrationsWall from "@/components/IntegrationsWall";
 import Mentions from "@/components/Mentions";
 import HowToProcessor from "@/components/HowToProcessor";
+import HowComposableWorks from "@/components/HowComposableWorks";
 import FutardioBanner from "@/components/futardio-banner";
 
 const checklistItems = [
@@ -305,6 +306,33 @@ export default function HomeContent() {
           </p>
         </div>
         <HowToProcessor />
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      {/* ── Execution Comparison: PaymentPolicy vs ComposablePolicy ── */}
+      <section id="execution-comparison" className="py-16">
+        <div className="mb-8 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            Execution Paths
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">One primitive. </span>
+            <span className="gradient-text">Two ways to settle.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            The live PaymentPolicy pulls and settles in a single CPI. The
+            roadmap ComposablePolicy adds a validation gate and routes the pull
+            through any allowlisted Solana program before settling. Same PULL
+            axis, different ROUTE.
+          </p>
+        </div>
+        <HowComposableWorks />
       </section>
 
       <div
