@@ -46,7 +46,6 @@ import {
   computePaymentsPerYear,
   encodeMemo,
   generateSecureRandomString,
-  nextComposablePolicyId,
   sleep,
 } from "./utils";
 import IDL from "../../../target/idl/tributary.json"; // with { type: "json" };
@@ -93,20 +92,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-            publicKey: wallet.publicKey,
-            signTransaction: <T>(tx: T) => {
-              (tx as any).sign(wallet);
-              return Promise.resolve(tx);
-            },
-            signAllTransactions: <T>(txs: T[]) => {
-              return Promise.resolve(
-                txs.map((tx) => {
-                  (tx as any).sign(wallet);
-                  return tx;
-                })
-              );
-            },
-          }
+          publicKey: wallet.publicKey,
+          signTransaction: <T>(tx: T) => {
+            (tx as any).sign(wallet);
+            return Promise.resolve(tx);
+          },
+          signAllTransactions: <T>(txs: T[]) => {
+            return Promise.resolve(
+              txs.map((tx) => {
+                (tx as any).sign(wallet);
+                return tx;
+              })
+            );
+          },
+        }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
@@ -2030,10 +2029,13 @@ export class Tributary {
 
     const userPayment: UserPayment | null =
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
-    // H-6: composable policyId MUST come from createdComposableCount, never
-    // createdPoliciesCount — they are independent counters on the same
-    // UserPayment and aliasing would collide with an existing PaymentPolicy PDA.
-    const policyId = nextComposablePolicyId(userPayment);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId =
+        (userPayment as any).createdComposableCount !== undefined
+          ? (userPayment as any).createdComposableCount + 1
+          : userPayment.createdPoliciesCount + 1;
+    }
 
     const composablePolicyPda = this.getComposablePolicyPda(
       userPaymentPda,
@@ -2153,7 +2155,7 @@ export class Tributary {
     const hasValidation =
       policy.validationConfig.validationProgram !== undefined &&
       policy.validationConfig.validationProgram.toString() !==
-        PublicKey.default.toString();
+      PublicKey.default.toString();
     const validationProgram = hasValidation
       ? policy.validationConfig.validationProgram
       : SystemProgram.programId;
@@ -2278,7 +2280,7 @@ export class Tributary {
     const hasValidation =
       policy.validationConfig.validationProgram !== undefined &&
       policy.validationConfig.validationProgram.toString() !==
-        PublicKey.default.toString();
+      PublicKey.default.toString();
 
     const remainingAccounts: AccountMeta[] = [];
     if (hasValidation) {
@@ -2654,10 +2656,10 @@ export class Tributary {
     tokenMint: PublicKey
   ): Promise<
     | {
-        pubkey: PublicKey;
-        isWritable: boolean;
-        isSigner: boolean;
-      }[]
+      pubkey: PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[]
     | null
   > {
     const userReferral = await this.getReferralAccountAddressByOwner(
@@ -2674,9 +2676,9 @@ export class Tributary {
       isWritable: boolean;
       isSigner: boolean;
     }[] = [
-      // payer_referral — read-only on-chain (we never pay the payer).
-      { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
-    ];
+        // payer_referral — read-only on-chain (we never pay the payer).
+        { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
+      ];
 
     // If the payer has no referrer, nothing else to add.
     if (
