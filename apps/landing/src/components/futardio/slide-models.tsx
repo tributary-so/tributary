@@ -39,15 +39,6 @@ const models = [
     border: "border-blue-500/20",
     text: "text-blue-400",
   },
-  {
-    name: "UP-TO",
-    desc: "Flexible cap-based payments.",
-    example: '"Up to $50/month" — x402 aligned, perfect for agentic billing.',
-    icon: "<>",
-    accent: "from-rose-500/10 to-transparent",
-    border: "border-rose-500/20",
-    text: "text-rose-400",
-  },
 ];
 
 export default function SlideModels() {
@@ -71,7 +62,7 @@ export default function SlideModels() {
       >
         One approval,
         <br />
-        <span className="text-emerald-400">Five payment types.</span>
+        <span className="text-emerald-400">Four payment types.</span>
         <br />
         <span className="text-muted-foreground">Zero custody.</span>
       </motion.h2>
@@ -148,7 +139,7 @@ export default function SlideModels() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.8 }}
       >
-        That's five models today. More tomorrow.
+        That's four models today. More tomorrow.
       </motion.p>
     </div>
   );
