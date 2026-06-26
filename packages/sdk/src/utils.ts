@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { PaymentFrequency, PaymentFrequencyString } from "./types";
+import { PaymentFrequency, PaymentFrequencyString, UserPayment } from "./types";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { publicKey } from "@metaplex-foundation/umi";
@@ -179,4 +179,23 @@ export async function getTokenDecimals(
   } catch {
     return null;
   }
+}
+
+/**
+ * Next composable policyId for a UserPayment.
+ *
+ * ComposablePolicy and PaymentPolicy maintain INDEPENDENT id counters on
+ * the same UserPayment PDA (see AGENTS.md §"Counter separation"). The
+ * composable policyId MUST come from `createdComposableCount`, never from
+ * `createdPoliciesCount` — aliasing to the regular counter collides with
+ * an existing PaymentPolicy PDA (H-6).
+ *
+ * If `userPayment` is null (first-ever policy on this UserPayment) or the
+ * composable counter is absent on a legacy account, treat as 0 so the
+ * first composable receives id 1.
+ */
+export function nextComposablePolicyId(
+  userPayment: Pick<UserPayment, "createdComposableCount"> | null
+): number {
+  return (userPayment?.createdComposableCount ?? 0) + 1;
 }
