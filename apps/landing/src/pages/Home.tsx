@@ -203,7 +203,7 @@ const faqs = [
   {
     question: "What does composable mean?",
     answer:
-      "Composable means the same PULL primitive — the live token-delegation pull — can route money through any DeFi program on Solana instead of just settling into a wallet. v1 is a payment protocol; v2 turns that primitive into a composable automation layer (WHEN triggers, PULL value, ROUTE destinations).",
+      "It means the same PULL primitive — the live token-delegation pull — can route money through any DeFi program on Solana, not just settle into a wallet. Today only the minimal config is live (schedule + wallet = recurring payments). Open the WHEN and ROUTE knobs and the same If/Then composes into automation far beyond payments.",
   },
   {
     question: "Is composable live?",
@@ -385,8 +385,13 @@ export default function HomeContent() {
             <span className="gradient-text">Infinite compositions.</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed text-[15px]">
-            Users delegate spending authority once. Tributary never holds funds
-            — it pulls within approved limits and routes through any on-chain
+            <span className="text-foreground">If This Then Money</span> is
+            literally this primitive&apos;s grammar:{" "}
+            <span className="text-foreground">WHEN</span> a condition holds,{" "}
+            <span className="text-foreground">PULL</span> value and{" "}
+            <span className="text-foreground">ROUTE</span> it onward. Users
+            delegate spending authority once; Tributary never holds funds — it
+            pulls within approved limits and routes through any on-chain
             program. One approval. Rules you define. Money moves within your
             boundaries.
           </p>
@@ -490,9 +495,10 @@ export default function HomeContent() {
         <div className="mt-4 border border-primary/30 bg-primary/5 px-6 py-4 max-w-5xl">
           <p className="text-sm text-foreground">
             <span className="font-bold text-amber-400">PULL is live</span> —
-            recurring payments on mainnet today.{" "}
-            <span className="font-bold gradient-text">WHEN and ROUTE</span>{" "}
-            extend it into a composable automation layer.
+            recurring payments on mainnet today. Open{" "}
+            <span className="font-bold gradient-text">WHEN and ROUTE</span> and
+            the same primitive composes: any condition, any allowlisted
+            destination. Same If/Then, more knobs turned on.
           </p>
         </div>
       </section>
@@ -905,11 +911,12 @@ export default function HomeContent() {
       <section id="cta" className="py-16">
         <div className="border border-border bg-muted/20 p-12 text-center">
           <h2 className="mb-4 text-3xl font-bold">
-            Live, Powerful, and Open for Builders
+            <span className="gradient-text">If This Then Money.</span>
           </h2>
           <p className="mb-8 text-muted-foreground max-w-xl mx-auto">
-            A live, well-built infrastructure product in an important category,
-            already proving itself in real use cases, with obvious room to grow.
+            One primitive, three knobs, live on Solana. Build on it — or back
+            the layer underneath every flow. The minimal config runs today; the
+            rest is the same If/Then with the knobs turned up.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
@@ -923,20 +930,13 @@ export default function HomeContent() {
               href="https://app.tributary.so"
               className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
             >
-              Try the App
-            </a>
-            <a
-              href="https://checkout.tributary.so"
-              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Try Checkout
+              See it running
             </a>
             <a
               href="mailto:info@tributary.so"
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
-              Contact / Integrate
+              Get in touch
             </a>
           </div>
         </div>
