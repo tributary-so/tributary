@@ -240,20 +240,21 @@ export default function HomeContent() {
         <div className="flex flex-col gap-6 text-center lg:text-left lg:items-start">
           <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/5 px-3 py-1.5 text-accent text-xs font-mono">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            Live on Solana mainnet
+            Live on Solana mainnet · 4,000+ payments · six teams integrating
           </div>
           <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl lg:text-5xl">
-            <span className="text-foreground">The payment protocol</span>
+            <span className="text-foreground">If This</span>
             <br />
-            <span className="gradient-text">for Solana.</span>
+            <span className="gradient-text">Then Money.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto lg:mx-0">
-            We&apos;re the only payment infrastructure with truly automated
-            recurring payments on Solana.{" "}
+            v1 is live on mainnet today — subscriptions, milestones, and
+            pay-as-you-go, all on one token delegation.{" "}
             <span className="text-foreground">
-              Sign Once. Pay Automatically. Verify Anywhere
+              v2 turns it into composable automation
             </span>
-            .
+            : sign once, walk away, and money routes through any DeFi primitive
+            on Solana when conditions you define are met.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row justify-center lg:justify-start">
             <a
