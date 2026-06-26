@@ -2029,13 +2029,7 @@ export class Tributary {
 
     const userPayment: UserPayment | null =
       await this.program.account.userPayment.fetchNullable(userPaymentPda);
-    let policyId: number = 1;
-    if (userPayment) {
-      policyId =
-        (userPayment as any).createdComposableCount !== undefined
-          ? (userPayment as any).createdComposableCount + 1
-          : userPayment.createdPoliciesCount + 1;
-    }
+    const policyId = (userPayment?.createdComposableCount ?? 0) + 1;
 
     const composablePolicyPda = this.getComposablePolicyPda(
       userPaymentPda,
