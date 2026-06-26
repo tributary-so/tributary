@@ -1907,7 +1907,7 @@ describe("Tributary", () => {
         );
         assert(false, "Expected payment to fail due to period limit");
       } catch (error: any) {
-        expect(error.message).toContain("InvalidAmount");
+        expect(error.message).toContain("InsufficientDelegatedAmount");
       }
     });
 
@@ -2329,18 +2329,18 @@ describe("Tributary", () => {
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-          l1Reward -
-          Math.floor((l1Reward * 100) / 10000)
+        l1Reward -
+        Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-          l2Reward -
-          Math.floor((l2Reward * 100) / 10000)
+        l2Reward -
+        Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-          l3Reward -
-          Math.floor((l3Reward * 100) / 10000)
+        l3Reward -
+        Math.floor((l3Reward * 100) / 10000)
       );
     });
 
@@ -3424,7 +3424,7 @@ describe("Tributary", () => {
       );
       expect(
         gateway!.featureFlags &
-          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+        (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
       ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 

@@ -1,10 +1,10 @@
 use crate::{
     constants::*,
     error::TributaryError,
-    policies::*,
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
     shared::mint::validate_mint_compatible,
     shared::referral::{process_referral_rewards, AuthorityMode},
+    shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners},
     state::*,
 };
 use anchor_lang::prelude::*;
@@ -150,40 +150,33 @@ impl<'info> ExecutePayment<'info> {
         let signer_seeds: &[&[u8]] = &seed_slices;
         let authority_info = pull_resolution.authority_info;
 
-        // Get appropriate strategy for policy type
-        let mut strategy = crate::policies::get_policy_strategy(payment_policy)?;
-
-        // Execute policy-specific logic
-        let execution_result = strategy.execute(
-            payment_policy,
-            payment_amount,
+        // ── Validate policy + resolve amount (shared with execute_composable) ──
+        // Single dispatch over PolicyType: timing gates, milestone
+        // release_condition signer bits, and PayAsYouGo chunk/period bounds
+        // all live in `shared::schedule::validate_policy_execution`. Returns
+        // the authoritative payment amount (configured amount for
+        // Subscription/Milestone, the caller-supplied chunk for PayAsYouGo).
+        let schedule_amount = validate_policy_execution(
+            &payment_policy.policy_type,
             clock.unix_timestamp,
-            &fee_payer_key,
-            &user_owner,
-            gateway,
+            payment_amount,
+            &MilestoneSigners {
+                caller: &fee_payer_key,
+                gateway_signer: &gateway.signer,
+                owner: &user_owner,
+                recipient: &payment_policy.recipient,
+            },
         )?;
-        let payment_amount = execution_result.payment_amount;
+        let payment_amount = schedule_amount;
 
-        // Only in the case of PayAsYouGo can the recipient trigger payments
+        // Only in the case of PayAsYouGo can the recipient trigger payments.
+        // (Milestone release_condition::RELEASE_RECIPIENT authorizes the
+        // recipient to release escrow, but the caller must still be the
+        // gateway signer or owner — see validate_policy_execution above.)
         if fee_payer_key == payment_policy.recipient {
             if !matches!(&payment_policy.policy_type, PolicyType::PayAsYouGo { .. }) {
                 return Err(TributaryError::Unauthorized.into());
             }
-        }
-
-        // Additional validation for pay-as-you-go policies
-        if let PolicyType::PayAsYouGo { .. } = &payment_policy.policy_type {
-            let mut payg_strategy = PayAsYouGoStrategy;
-            payg_strategy.validate_payment_constraints(
-                payment_policy,
-                payment_amount,
-                clock.unix_timestamp,
-            )?;
-            payg_strategy.update_period_total(
-                payment_policy,
-                payment_amount,
-                clock.unix_timestamp,
-            )?;
         }
 
         // Calculate fees (single shared helper for both net/gross modes).
@@ -276,18 +269,33 @@ impl<'info> ExecutePayment<'info> {
             .total_paid
             .checked_add(total_amount_from_user)
             .ok_or(TributaryError::ArithmeticOverflow)?;
-        // NOTE: `payment_count` is incremented inside strategy.execute() (see
-        // policies/traits.rs), BEFORE should_pause_policy is evaluated, so
-        // Subscription::max_renewals is honored exactly. The `record_id`
-        // emitted in PaymentRecord reflects the post-increment value.
+
+        // Advance the schedule now that the transfer succeeded — same helper
+        // `execute_composable` uses: Subscription advances `next_payment_due`
+        // via calendar-month math and decrements `max_renewals`; Milestone
+        // bumps `current_milestone`; PayAsYouGo accumulates/resets the period
+        // total. Returns `true` when the policy is exhausted.
+        let should_complete = advance_policy(
+            &mut payment_policy.policy_type,
+            clock.unix_timestamp,
+            payment_amount,
+        )?;
+
+        // Increment payment_count after a successful execution. Both policy
+        // paths (PaymentPolicy + ComposablePolicy) increment exactly once
+        // here/at the equivalent composable site, post-transfer/post-swap.
+        // `record_id` in PaymentRecord reflects this post-increment value.
+        payment_policy.payment_count = payment_policy
+            .payment_count
+            .checked_add(1)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
         payment_policy.updated_at = clock.unix_timestamp;
 
-        // Terminal transition: when a strategy signals `should_pause` the
-        // policy is exhausted (subscription `max_renewals` reached, or all
-        // milestones released). Write `Completed` — the program-internal
-        // terminal state. Owners cannot reach `Completed` via
+        // Terminal transition: `Completed` is the program-internal terminal
+        // state (subscription `max_renewals` exhausted, or all milestones
+        // released). Owners cannot reach `Completed` via
         // `change_payment_policy_status`; they only get Active<->Paused.
-        if execution_result.should_pause {
+        if should_complete {
             payment_policy.status = PolicyStatus::Completed;
         }
 
@@ -301,7 +309,7 @@ impl<'info> ExecutePayment<'info> {
             amount: payment_amount,
             timestamp: clock.unix_timestamp,
             memo: payment_policy.memo,
-            record_id: payment_policy.payment_count, // post-increment; incremented in strategy.execute() — see policies/traits.rs
+            record_id: payment_policy.payment_count,
             payer: user_payment.owner,
             recipient: accounts.recipient_token_account.owner.key(),
             token_mint: mint_pubkey,

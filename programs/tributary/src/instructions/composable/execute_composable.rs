@@ -762,31 +762,12 @@ impl<'info> ExecuteComposable<'info> {
         let composable_policy = &mut ctx.accounts.composable_policy;
 
         // ── Validate policy + resolve base amount ──────────────────────
-        // Routes through `shared::schedule` so that Subscription
-        // advancement uses the same calendar-month math as the
-        // subscription path (see reports/M-04-inconsistent-month-arithmetic.md).
-        //
-        // TODO(M7-follow-up): unify on the `crate::policies::PolicyStrategy`
-        // trait pattern used by `execute_payment` (Option A of
-        // reports/M7-composable-diverges-from-shared-fee-schedule-patterns.md).
-        // The fee-math half of M7 IS unified (see `process_output_and_sweep`
-        // → `shared::fees::calculate_fees`); the policy-strategy half is
-        // deferred because the existing `PolicyStrategy` trait is bound to
-        // `PaymentPolicy` in every method signature and bakes in three
-        // semantic commitments that diverge from the composable path:
-        //   1. Signer checks via `release_condition` bits inside
-        //      `validate_payment_timing` — composable authorizes via the
-        //      `fee_payer` Accounts constraint instead.
-        //   2. `status = Paused` on completion — composable uses
-        //      `PolicyStatus::Completed`.
-        //   3. `payment_count` incremented inside `execute()` — composable
-        //      increments itself, post-swap.
-        // Fully migrating requires either generalizing the trait over a
-        // `PolicyAccount` super-trait (large ripple through the three
-        // existing strategy impls + their tests) or introducing a parallel
-        // `ComposablePolicyStrategy` trait (duplicated logic). Both exceed
-        // the agreed session scope. Until then, `shared::schedule` keeps
-        // exactly one production caller (this fn) plus its own unit tests.
+        // Routes through `shared::schedule` — the same dispatch path used by
+        // `execute_payment`. Both policy families (PaymentPolicy +
+        // ComposablePolicy) share one `match` over `PolicyType` for timing
+        // gates, milestone release_condition signer bits, and PayAsYouGo
+        // chunk/period bounds. See reports/M-04-inconsistent-month-arithmetic.md
+        // for the calendar-month math this also relies on.
         let caller_key = ctx.accounts.fee_payer.key();
         let schedule_amount = validate_policy_execution(
             &composable_policy.policy_type,
@@ -1036,13 +1017,10 @@ impl<'info> ExecuteComposable<'info> {
         // Subscription this advances `next_payment_due` via calendar-month
         // math (M-04), for Milestone it bumps `current_milestone`, for
         // PayAsYouGo it updates the rolling period total. Returns
-        // `should_complete` for one-shot / exhausted policies.
-        //
-        // TODO(M7-follow-up): see the matching note at the
-        // `validate_policy_execution` call above — this remains on
-        // `shared::schedule` until the `PolicyStrategy` trait is generalized
-        // to cover `ComposablePolicy` semantics.
-        let should_pause = advance_policy(&mut composable_policy.policy_type, now, input_amount)?;
+        // `should_complete` for one-shot / exhausted policies. Shared with
+        // `execute_payment`.
+        let should_complete =
+            advance_policy(&mut composable_policy.policy_type, now, input_amount)?;
 
         composable_policy.total_input = composable_policy
             .total_input
@@ -1058,7 +1036,7 @@ impl<'info> ExecuteComposable<'info> {
             .ok_or(TributaryError::ArithmeticOverflow)?;
         composable_policy.updated_at = now;
 
-        if should_pause {
+        if should_complete {
             composable_policy.status = PolicyStatus::Completed;
         }
 

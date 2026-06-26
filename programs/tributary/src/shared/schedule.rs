@@ -695,6 +695,132 @@ mod tests {
         );
     }
 
+    // ── PayAsYouGo gating + L-01 regression (unified path) ──
+    //
+    // These pin the L-01 defense (reject explicit zero chunk) at its single
+    // home in `validate_policy_execution`. Both `execute_payment` and
+    // `execute_composable` route through this match arm. See
+    // reports/L-01-payg-accepts-zero-amount.md.
+
+    /// Build a `PolicyType::PayAsYouGo` with sane test defaults.
+    fn payg(
+        max_amount_per_period: u64,
+        max_chunk_amount: u64,
+        period_length_seconds: u64,
+        current_period_start: i64,
+        current_period_total: u64,
+    ) -> PolicyType {
+        PolicyType::PayAsYouGo {
+            max_amount_per_period,
+            max_chunk_amount,
+            period_length_seconds,
+            current_period_start,
+            current_period_total,
+            padding: [0u8; 88],
+        }
+    }
+
+    /// L-01 regression: `validate_policy_execution(Some(0))` must be rejected.
+    /// A caller-supplied zero chunk would otherwise let `execute_payment` /
+    /// `execute_composable` skip every transfer CPI while still advancing the
+    /// schedule and incrementing `payment_count`.
+    #[test]
+    fn payg_rejects_explicit_zero_chunk() {
+        let pt = payg(1000, 100, 3600, 0, 0);
+        let err =
+            validate_policy_execution(&pt, 100, Some(0), &MilestoneSigners::none()).unwrap_err();
+        assert!(
+            err == error!(TributaryError::InvalidAmount),
+            "Some(0) must be rejected, got {:?}",
+            err
+        );
+    }
+
+    /// L-01 regression: `validate_policy_execution(None)` must be rejected
+    /// for PayAsYouGo — unlike Subscription/Milestone, a chunk is mandatory.
+    #[test]
+    fn payg_rejects_missing_chunk() {
+        let pt = payg(1000, 100, 3600, 0, 0);
+        let err = validate_policy_execution(&pt, 100, None, &MilestoneSigners::none()).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    /// A positive chunk within chunk + period bounds is accepted and echoed.
+    #[test]
+    fn payg_accepts_positive_chunk_within_bounds() {
+        let pt = payg(1000, 100, 3600, 0, 0);
+        let amt = validate_policy_execution(&pt, 100, Some(50), &MilestoneSigners::none()).unwrap();
+        assert_eq!(amt, 50);
+    }
+
+    /// Chunk above `max_chunk_amount` is rejected.
+    #[test]
+    fn payg_rejects_chunk_above_max() {
+        let pt = payg(1000, 100, 3600, 0, 0);
+        let err =
+            validate_policy_execution(&pt, 100, Some(101), &MilestoneSigners::none()).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    /// Chunk that would breach `max_amount_per_period` is rejected.
+    #[test]
+    fn payg_rejects_chunk_breaching_period_cap() {
+        // period already at 950/1000; a 100-chunk would total 1050 > 1000.
+        let pt = payg(1000, 100, 3600, 0, 950);
+        let err =
+            validate_policy_execution(&pt, 100, Some(100), &MilestoneSigners::none()).unwrap_err();
+        assert!(err == error!(TributaryError::InsufficientDelegatedAmount));
+    }
+
+    /// `advance_policy` accumulates within a period and never auto-completes.
+    #[test]
+    fn payg_advance_accumulates_within_period() {
+        let mut pt = payg(1000, 100, 3600, 0, 0);
+        // First execution within the period → total becomes the chunk.
+        let should = advance_policy(&mut pt, 100, 50).unwrap();
+        assert!(!should, "PayAsYouGo never auto-completes");
+        match &pt {
+            PolicyType::PayAsYouGo {
+                current_period_total,
+                ..
+            } => assert_eq!(
+                *current_period_total, 50,
+                "first chunk sets the period total"
+            ),
+            _ => panic!("expected PayAsYouGo"),
+        }
+        // Second execution within the same period → accumulates.
+        let should = advance_policy(&mut pt, 200, 30).unwrap();
+        assert!(!should);
+        match &pt {
+            PolicyType::PayAsYouGo {
+                current_period_total,
+                ..
+            } => assert_eq!(*current_period_total, 80),
+            _ => panic!("expected PayAsYouGo"),
+        }
+    }
+
+    /// `advance_policy` resets the period total when the window has elapsed.
+    #[test]
+    fn payg_advance_resets_after_period_end() {
+        let mut pt = payg(1000, 100, 3600, 0, 900);
+        // current_time (4000) >= start (0) + period (3600) → new period.
+        let should = advance_policy(&mut pt, 4000, 40).unwrap();
+        assert!(!should);
+        match &pt {
+            PolicyType::PayAsYouGo {
+                current_period_start,
+                current_period_total,
+                ..
+            } => {
+                assert_eq!(*current_period_start, 4000);
+                assert_eq!(*current_period_total, 40);
+            }
+            _ => panic!("expected PayAsYouGo"),
+        }
+    }
+
     // ──────────────────────────────────────────────────────────────────
     // Calendar-math tests (lifted verbatim from `utils.rs` during the M1
     // extraction — these exercise `calculate_next_payment_due` /
