@@ -37,9 +37,16 @@ packages/sdk-x402/    x402 / HTTP-402 payment integration
 packages/payments/    Payment helper utilities
 packages/lighthouse/  Vendored official Lighthouse SDK (not on npm)
 tests/                Integration test suite (jest, runs against Surfpool)
-docs/                 MkDocs documentation (what/how/why)
+apps/docs/            MkDocs documentation site (what/how/why)
+apps/docs/adr/        Architecture Decision Records (numbered, immutable-once-deployed)
+CONTEXT.md            Domain glossary / ubiquitous language (single-context repo)
 landing/              React/Tailwind marketing site
 ```
+
+> **Reading order for new agents:** `CONTEXT.md` (domain language) →
+> `AGENTS.md` (this file — build/test, gotchas) → `apps/docs/adr/` (the
+> _why_ behind every locked-in architectural decision). The ADRs are the
+> authority on rationale; the code is the authority on current state.
 
 ### Core Architecture
 
@@ -360,6 +367,59 @@ Sentinels (`Pubkey::default()` / `SystemProgram`) disable the respective hook.
 
 `ProgramConfig.emergency_pause` flag. When true, all `execute_payment` AND
 `execute_composable` calls fail.
+
+## Architecture Decision Records (ADRs)
+
+ADRs live in `apps/docs/adr/` and capture the _why_ behind every locked-in
+architectural decision. They are numbered chronologically:
+**0001–0006** are v1 PaymentPolicy-era decisions; **0007–0013** are v2
+ComposablePolicy-era decisions. Each ADR is 1–3 paragraphs naming the
+decision, the rejected alternatives, and the rationale. **Code is the
+authority on current state; ADRs are the authority on rationale.** If the
+two disagree, the ADR is wrong — fix it.
+
+When making a change that locks in a new architectural decision (hard to
+reverse, surprising without context, real trade-off), add a new numbered
+ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
+
+### ADR map
+
+**v1 — PaymentPolicy era:**
+
+| ADR    | Title                                                              |
+| ------ | ------------------------------------------------------------------ |
+| [0001] | Account topology and the UserPayment-as-delegate model             |
+| [0002] | PolicyType: three variants in a 128-byte fixed layout              |
+| [0003] | Milestone release_condition as a bitmap                            |
+| [0004] | Permissionless execution and the standalone `transfer` instruction |
+| [0005] | Referral system: gateway-scoped, 3-level chain, ref-code in seeds  |
+| [0006] | Per-gateway fee model with feature-flag gating                     |
+
+**v2 — ComposablePolicy era:**
+
+| ADR    | Title                                                                              |
+| ------ | ---------------------------------------------------------------------------------- |
+| [0007] | ComposablePolicy as a separate account type, not a PolicyType variant              |
+| [0008] | Composable CPI privilege boundary (intermediate ATA ownership + signer sanitizing) |
+| [0009] | Composable hooks: sentinel-disabled, externally stored                             |
+| [0010] | Composable settlement semantics (NET min_output, PayAsYouGo-only forward_amount)   |
+| [0011] | Referral chain hardened at execution: re-validated + payer-bound                   |
+| [0012] | Mint compatibility: Token-2022 extension blocklist                                 |
+| [0013] | Lighthouse SDK vendored with an anti-corruption facade in `@tributary-so/sdk`      |
+
+[0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
+[0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
+[0003]: apps/docs/adr/0003-milestone-release-condition-bitmap.md
+[0004]: apps/docs/adr/0004-permissionless-execution-and-standalone-transfer.md
+[0005]: apps/docs/adr/0005-referral-system-gateway-scoped-3-level-chain.md
+[0006]: apps/docs/adr/0006-per-gateway-fee-model.md
+[0007]: apps/docs/adr/0007-composablepolicy-as-separate-account-type.md
+[0008]: apps/docs/adr/0008-composable-cpi-privilege-boundary.md
+[0009]: apps/docs/adr/0009-composable-hooks-sentinel-disabled-externally-stored.md
+[0010]: apps/docs/adr/0010-composable-settlement-semantics.md
+[0011]: apps/docs/adr/0011-referral-chain-hardened-at-execution.md
+[0012]: apps/docs/adr/0012-mint-compatibility-token-2022-blocklist.md
+[0013]: apps/docs/adr/0013-lighthouse-sdk-vendored-facade.md
 
 ## SDK
 

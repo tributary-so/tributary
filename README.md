@@ -247,12 +247,20 @@ Open [http://localhost:8000](http://localhost:8000).
 │   ├── cli/                   # @tributary-so/cli — oclif CLI (wallet/gateway/subscription/...)
 │   ├── example-payments/      # Integration examples
 │   └── docs/                  # MkDocs Material site (uv / Python)
+│       └── adr/               # Architecture Decision Records (0001-0013)
 ├── tests/                     # Jest integration suite (Surfpool-backed)
 ├── specs/                     # Feature specifications
 ├── branding/                  # Brand assets
 ├── reports/                   # Audit / security finding write-ups
+├── CONTEXT.md                 # Domain glossary / ubiquitous language
 └── .github/workflows/         # CI pipelines
 ```
+
+> **Orientation for new contributors:** [`CONTEXT.md`](./CONTEXT.md) defines
+> the ubiquitous language (read it first). [`apps/docs/adr/`](./apps/docs/adr/)
+> captures the _why_ behind every locked-in architectural decision — 0001-0006
+> are v1 PaymentPolicy era, 0007-0013 are v2 ComposablePolicy era. Code is the
+> authority on current state; ADRs are the authority on rationale.
 
 ### The Two Policy Families
 
