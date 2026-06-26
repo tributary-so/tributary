@@ -6,12 +6,7 @@ import SlideRoadmap from "@/components/futardio/slide-roadmap";
 import SlideCTA from "@/components/futardio/slide-tam";
 import SlideTraction from "@/components/futardio/slide-traction";
 import Mentions from "@/components/Mentions";
-import {
-  CheckCircle2,
-  DollarSign,
-  ExternalLink,
-  Users,
-} from "lucide-react";
+import { CheckCircle2, DollarSign, ExternalLink, Users } from "lucide-react";
 import FabianSchuhProfile from "../components/futardio/cv";
 import { FiArrowRight, FiExternalLink } from "react-icons/fi";
 import FutardioBanner from "@/components/futardio-banner";
@@ -317,7 +312,8 @@ export default function Futardio() {
               <span className="gradient-text">Integrations</span>
             </h2>
             <p className="text-muted-foreground leading-relaxed text-[15px]">
-              The base protocol is live on mainnet. Now making people are of it and onboarding builders.
+              The base protocol is live on mainnet. Now making people are of it
+              and onboarding builders.
             </p>
           </div>
           <div className="mb-8 border border-border/50 bg-muted/10 p-6">
@@ -411,7 +407,9 @@ export default function Futardio() {
                         Protocol Fees
                       </div>
                       <div className="font-mono text-sm">
-                        1% of every transfer<sup className="text-emerald-800">*</sup>, auto-deposited to treasury
+                        1% of every transfer
+                        <sup className="text-emerald-800">*</sup>,
+                        auto-deposited to treasury
                       </div>
                     </div>
                   </div>
@@ -455,14 +453,13 @@ export default function Futardio() {
                   <sup className="mr-3 text-emerald-800">*</sup>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  To boost growth, we allow to reduce protocol fees for limited time on a per business basis.
+                  To boost growth, we allow to reduce protocol fees for limited
+                  time on a per business basis.
                 </div>
               </div>
             </div>
             <div className="space-y-6">
-              <h3 className="font-bold">
-                Revenue Scenarios
-              </h3>
+              <h3 className="font-bold">Revenue Scenarios</h3>
               <div className="space-y-2">
                 {revenueScenarios.map((s) => (
                   <div
@@ -502,7 +499,6 @@ export default function Futardio() {
               </p>
             </div>
           </div>
-
         </section>
 
         <div
@@ -511,7 +507,6 @@ export default function Futardio() {
         >
           //
         </div>
-
 
         {/* ─── Use of Funds ─── */}
         <section className="py-16">
@@ -545,10 +540,11 @@ export default function Futardio() {
                 {useOfFunds.map((f, index) => (
                   <tr
                     key={f.category}
-                    className={`border-b border-border/50 ${index == 0
-                      ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
-                      : ""
-                      }`}
+                    className={`border-b border-border/50 ${
+                      index == 0
+                        ? "bg-emerald-500/5 -mx-2 px-2 border-l-2 border-l-emerald-400"
+                        : ""
+                    }`}
                   >
                     <td className="py-3 pr-4 pl-2">{f.category}</td>
                     <td className="py-3 pr-4 text-right font-mono">
@@ -598,14 +594,14 @@ export default function Futardio() {
               "interesting" to "production-ready."
             </p>
             <p>
-              We have already secured quotes from freelancer auditors as well
-              as reputable audit firms ranging from 10k$ to 40k$ including an
-              offer from Adevar where we have already received a 10k$ grant
-              from Adevar with Tribtuary. A separate proposal will be brought
-              forward to fund the Audit out of Treasury funds. Excess funds of
-              the Audit budget will either be returned via buyback or
-              re-allocated with a separate proposal. No automatic re-purposing
-              without prior approval will take place.
+              We have already secured quotes from freelancer auditors as well as
+              reputable audit firms ranging from 10k$ to 40k$ including an offer
+              from Adevar where we have already received a 10k$ grant from
+              Adevar with Tribtuary. A separate proposal will be brought forward
+              to fund the Audit out of Treasury funds. Excess funds of the Audit
+              budget will either be returned via buyback or re-allocated with a
+              separate proposal. No automatic re-purposing without prior
+              approval will take place.
             </p>
           </div>
         </section>
@@ -659,9 +655,8 @@ export default function Futardio() {
                   <h4 className="font-semibold text-sm mb-1">Payment Flows</h4>
                   <p className="text-sm text-muted-foreground">
                     Complete all payment models (subscriptions, milestones,
-                    pay-as-you-go, one-time, and up-to/cap-based). The up-to
-                    model in particular unlocks x402/HTTP 402 alignment and
-                    flexible usage billing with caps.
+                    pay-as-you-go, one-time) and align usage billing caps with
+                    x402/HTTP 402.
                   </p>
                 </div>
                 <div className="border border-border/50 p-5">
@@ -752,7 +747,7 @@ export default function Futardio() {
               Team
             </p>
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              <span className="text-foreground">Fabian Schuh{" "}</span>
+              <span className="text-foreground">Fabian Schuh </span>
               <span className="gradient-text">Dr.-Ing.</span>
             </h2>
           </div>

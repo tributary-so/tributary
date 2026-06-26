@@ -3,7 +3,6 @@ import {
   RefreshCw,
   Target,
   TrendingUp,
-  CreditCard,
   Code2,
   ChevronDown,
   Check,
@@ -115,19 +114,6 @@ const paymentTypes = [
     tags: ["AI/LLM", "API", "Cloud"],
     color: "blue-500",
   },
-  {
-    name: "UpTo",
-    icon: CreditCard,
-    description: "One-time claim, expiring policy",
-    features: [
-      "Single claim window",
-      "Policy expiration",
-      "x402 compliant",
-      "Pre-approved budget",
-    ],
-    tags: ["API", "x402", "Micropayments"],
-    color: "orange-500",
-  },
 ];
 
 const useCases = [
@@ -171,7 +157,7 @@ const faqs = [
   {
     question: "What is Tributary?",
     answer:
-      "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports four payment models: Subscriptions, Milestones, Pay-as-you-go, and UpTo.",
+      "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports three claim shapes: Subscriptions, Milestones, and Pay-as-you-go.",
   },
   {
     question: "How does token delegation work?",
@@ -346,17 +332,21 @@ export default function HomeContent() {
       <section id="payment-models" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Payment Models
+            PULL Patterns
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
             <span className="text-foreground">One delegation, </span>
-            <span className="gradient-text">four models.</span>
+            <span className="gradient-text">three claim shapes.</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed text-[15px]">
-            A single token delegation powers subscriptions, milestones,
-            pay-as-you-go billing, and one-time payments. Unlimited policies per
-            user. More models to be implemented in the future. Extending the
-            Solana Token Program, not replacing it.
+            These are the <span className="text-foreground">PULL axis</span> —
+            how value is claimed from a single token delegation. The same shapes
+            are shared by both execution paths: the live{" "}
+            <span className="text-foreground">PaymentPolicy</span> (direct
+            settle) and the roadmap{" "}
+            <span className="text-foreground">ComposablePolicy</span> (routed
+            through any DeFi primitive). Unlimited policies per user; extends
+            the Solana Token Program, never replaces it.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
