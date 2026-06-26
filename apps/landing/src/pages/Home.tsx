@@ -20,6 +20,12 @@ import {
   Sprout,
   Droplets,
   Cpu,
+  BarChart3,
+  Coins,
+  Heart,
+  Bot,
+  Lock,
+  Building2,
   BriefcaseBusiness,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -200,6 +206,54 @@ const useCases = [
     title: "Milestone-based Work",
     description:
       "Structured contributor, freelancer, or service-provider payments.",
+  },
+];
+
+const composableUseCases = [
+  {
+    icon: BarChart3,
+    title: "Generic DCA / Auto-buy",
+    description: "Auto-buy any token on schedule. No signing per trade.",
+  },
+  {
+    icon: Coins,
+    title: "Spare-change Investing",
+    description:
+      "Round-up transactions and invest the difference automatically.",
+  },
+  {
+    icon: Heart,
+    title: "Automated Giving",
+    description:
+      "Donate a share of gains. Remove human hesitation from generosity.",
+  },
+  {
+    icon: Building2,
+    title: "Treasury Auto-rebalance",
+    description: "Rebalance when allocation drifts. No 3am multisig calls.",
+  },
+  {
+    icon: Bot,
+    title: "AI-agent Budget Billing",
+    description: "Budget-scoped autonomous agents. Metered, capped, hands-off.",
+  },
+  {
+    icon: Cpu,
+    title: "Machine-to-Machine Settlement",
+    description:
+      "Services settle with services. Per-call, per-compute, trustless.",
+  },
+  {
+    icon: Lock,
+    title: "Cold-Storage Allowance",
+    description:
+      "Funds stay in cold storage; claim a monthly allowance for expenses.",
+  },
+  {
+    icon: Sprout,
+    title: "Yield Auto-compound",
+    description:
+      "Auto-compound and rebalance into higher yield. Set and forget.",
   },
 ];
 
@@ -1085,6 +1139,16 @@ if (payload.lastPayments.length > 0) {
             what gives it upside.
           </p>
         </div>
+
+        {/* Tier 1 — live today */}
+        <div className="mb-3 flex items-center gap-3">
+          <span className="text-[10px] font-mono tracking-wider text-accent border border-accent/30 px-2 py-1">
+            ● LIVE TODAY
+          </span>
+          <span className="text-xs text-muted-foreground italic">
+            Payments-layer use cases running on mainnet now.
+          </span>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {useCases.map((useCase) => (
             <div
@@ -1093,6 +1157,41 @@ if (payload.lastPayments.length > 0) {
             >
               <div className="p-5 space-y-3">
                 <useCase.icon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">{useCase.title}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {useCase.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-10">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[10px] font-mono tracking-[0.2em] text-muted-foreground uppercase">
+            Next: unlocked by composability
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* Tier 2 — when composable ships */}
+        <div className="mb-3 flex items-center gap-3">
+          <span className="text-[10px] font-mono tracking-wider text-muted-foreground/70 border border-border px-2 py-1">
+            WHEN COMPOSABLE SHIPS
+          </span>
+          <span className="text-xs text-muted-foreground italic">
+            New categories that become trivial once WHEN→PULL→ROUTE is live.
+          </span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {composableUseCases.map((useCase) => (
+            <div
+              key={useCase.title}
+              className="border border-border/50 hover:border-primary/30 transition-all"
+            >
+              <div className="p-5 space-y-3">
+                <useCase.icon className="h-5 w-5 text-muted-foreground" />
                 <h3 className="font-medium">{useCase.title}</h3>
                 <p className="text-sm text-muted-foreground">
                   {useCase.description}
