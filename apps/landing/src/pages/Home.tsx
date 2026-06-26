@@ -14,8 +14,12 @@ import {
   Brain,
   DollarSign,
   Users,
-  //ArrowRightLeft,
-  //Wallet,
+  Wallet,
+  ArrowRightLeft,
+  Landmark,
+  Sprout,
+  Droplets,
+  Cpu,
   BriefcaseBusiness,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -113,6 +117,52 @@ const paymentTypes = [
     ],
     tags: ["AI/LLM", "API", "Cloud"],
     color: "blue-500",
+  },
+];
+
+const routeTargets = [
+  {
+    name: "Wallet",
+    icon: Wallet,
+    description: "Settle directly into any SPL wallet — the live default.",
+    tags: ["Payroll", "Payouts", "Settlement"],
+    live: true,
+  },
+  {
+    name: "DEX Swap",
+    icon: ArrowRightLeft,
+    description: "Auto-swap into any token via any DEX before it lands.",
+    tags: ["DCA", "Auto-buy", "Rebalancing"],
+    live: false,
+  },
+  {
+    name: "Lending Deposit",
+    icon: Landmark,
+    description: "Route into any lending market to earn or supply yield.",
+    tags: ["Auto-supply", "Repay", "Collateral"],
+    live: false,
+  },
+  {
+    name: "Staking",
+    icon: Sprout,
+    description: "Stake or delegate to any staking program on schedule.",
+    tags: ["Auto-stake", "Restake", "Delegation"],
+    live: false,
+  },
+  {
+    name: "Liquidity Provision",
+    icon: Droplets,
+    description: "Add or withdraw liquidity from any LP position.",
+    tags: ["Auto-LP", "Rebalance", "Yield"],
+    live: false,
+  },
+  {
+    name: "Any Whitelisted Program",
+    icon: Cpu,
+    description:
+      "Forward into any Solana program on the allowlist — locked by instruction discriminator.",
+    tags: ["Custom", "Composable", "CPI"],
+    live: false,
   },
 ];
 
@@ -388,6 +438,70 @@ export default function HomeContent() {
             </div>
           ))}
         </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      {/* ─── ROUTE Targets ─── */}
+      <section id="route-targets" className="py-16">
+        <div className="mb-8 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            ROUTE Targets
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">Where the money </span>
+            <span className="gradient-text">lands.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            The <span className="text-foreground">ROUTE axis</span> decides the
+            destination. Today a pull settles into a wallet. Tomorrow the same
+            pull can route through any Solana program before settling —
+            vendor-neutral by design.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {routeTargets.map((target) => (
+            <div
+              key={target.name}
+              className="border border-border/50 hover:border-primary/30 transition-all"
+            >
+              <div className="p-5 space-y-3">
+                <div className="flex items-start justify-between">
+                  <target.icon className="h-5 w-5 text-primary" />
+                  <span
+                    className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
+                      target.live
+                        ? "text-accent border border-accent/30"
+                        : "text-muted-foreground/60 border border-border"
+                    }`}
+                  >
+                    {target.live ? "● LIVE" : "NEXT"}
+                  </span>
+                </div>
+                <h3 className="font-medium">{target.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {target.description}
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {target.tags.map((tag) => (
+                    <span key={tag} className="text-xs bg-muted/30 px-2 py-0.5">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-6 text-sm text-muted-foreground italic">
+          Today money lands in a wallet. Tomorrow it can land anywhere a Solana
+          program will take it.
+        </p>
       </section>
 
       <div
