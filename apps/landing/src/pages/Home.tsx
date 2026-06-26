@@ -13,11 +13,7 @@ import {
   Brain,
   DollarSign,
   Users,
-  Wallet,
-  ArrowRightLeft,
-  Landmark,
   Sprout,
-  Droplets,
   Cpu,
   BarChart3,
   Coins,
@@ -80,52 +76,6 @@ const paymentTypes = [
     ],
     tags: ["AI/LLM", "API", "Cloud"],
     color: "blue-500",
-  },
-];
-
-const routeTargets = [
-  {
-    name: "Wallet",
-    icon: Wallet,
-    description: "Settle directly into any SPL wallet — the live default.",
-    tags: ["Payroll", "Payouts", "Settlement"],
-    live: true,
-  },
-  {
-    name: "DEX Swap",
-    icon: ArrowRightLeft,
-    description: "Auto-swap into any token via any DEX before it lands.",
-    tags: ["DCA", "Auto-buy", "Rebalancing"],
-    live: false,
-  },
-  {
-    name: "Lending Deposit",
-    icon: Landmark,
-    description: "Route into any lending market to earn or supply yield.",
-    tags: ["Auto-supply", "Repay", "Collateral"],
-    live: false,
-  },
-  {
-    name: "Staking",
-    icon: Sprout,
-    description: "Stake or delegate to any staking program on schedule.",
-    tags: ["Auto-stake", "Restake", "Delegation"],
-    live: false,
-  },
-  {
-    name: "Liquidity Provision",
-    icon: Droplets,
-    description: "Add or withdraw liquidity from any LP position.",
-    tags: ["Auto-LP", "Rebalance", "Yield"],
-    live: false,
-  },
-  {
-    name: "Any Whitelisted Program",
-    icon: Cpu,
-    description:
-      "Forward into any Solana program on the allowlist — locked by instruction discriminator.",
-    tags: ["Custom", "Composable", "CPI"],
-    live: false,
   },
 ];
 
@@ -554,21 +504,24 @@ export default function HomeContent() {
         //
       </div>
 
-      {/* ── Execution Comparison: PaymentPolicy vs ComposablePolicy ── */}
+      {/* ── Execution: two configs of one primitive ── */}
       <section id="execution-comparison" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Execution Paths
+            How It Executes
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
             <span className="text-foreground">One primitive. </span>
-            <span className="gradient-text">Two ways to settle.</span>
+            <span className="gradient-text">Two configs.</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed text-[15px]">
-            The live PaymentPolicy pulls and settles in a single CPI. The
-            roadmap ComposablePolicy adds a validation gate and routes the pull
-            through any allowlisted Solana program before settling. Same PULL
-            axis, different ROUTE.
+            Not two products — two settings of the same If/Then. The{" "}
+            <span className="text-foreground">minimal config</span> (live today)
+            pulls and settles in a single CPI. The{" "}
+            <span className="text-foreground">full config</span> (next) adds a
+            validation gate and routes the pull through any allowlisted Solana
+            program before settling. Same PULL axis; the ROUTE knob is what
+            opens up.
           </p>
         </div>
         <HowComposableWorks />
@@ -643,70 +596,6 @@ export default function HomeContent() {
             </div>
           ))}
         </div>
-      </section>
-
-      <div
-        className="font-mono text-sm text-muted-foreground/30 select-none"
-        aria-hidden="true"
-      >
-        //
-      </div>
-
-      {/* ─── ROUTE Targets ─── */}
-      <section id="route-targets" className="py-16">
-        <div className="mb-8 max-w-3xl space-y-3">
-          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            ROUTE Targets
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">Where the money </span>
-            <span className="gradient-text">lands.</span>
-          </h2>
-          <p className="text-muted-foreground leading-relaxed text-[15px]">
-            The <span className="text-foreground">ROUTE axis</span> decides the
-            destination. Today a pull settles into a wallet. Tomorrow the same
-            pull can route through any Solana program before settling —
-            vendor-neutral by design.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {routeTargets.map((target) => (
-            <div
-              key={target.name}
-              className="border border-border/50 hover:border-primary/30 transition-all"
-            >
-              <div className="p-5 space-y-3">
-                <div className="flex items-start justify-between">
-                  <target.icon className="h-5 w-5 text-primary" />
-                  <span
-                    className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
-                      target.live
-                        ? "text-accent border border-accent/30"
-                        : "text-muted-foreground/60 border border-border"
-                    }`}
-                  >
-                    {target.live ? "● LIVE" : "NEXT"}
-                  </span>
-                </div>
-                <h3 className="font-medium">{target.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {target.description}
-                </p>
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {target.tags.map((tag) => (
-                    <span key={tag} className="text-xs bg-muted/30 px-2 py-0.5">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 text-sm text-muted-foreground italic">
-          Today money lands in a wallet. Tomorrow it can land anywhere a Solana
-          program will take it.
-        </p>
       </section>
 
       <div
@@ -913,72 +802,47 @@ export default function HomeContent() {
       <section id="use-cases" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Use-Cases
+            What It Unlocks
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">
-              Tributary, the protocol, the{" "}
-            </span>
-            <span className="gradient-text">Enabler</span>
+            <span className="text-foreground">One primitive. </span>
+            <span className="gradient-text">Today and tomorrow.</span>
           </h2>
-          <p className="text-muted-foreground">
-            With tributary, you can serve important categories. That is part of
-            what gives it upside.
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            The minimal config — WHEN=schedule, ROUTE=wallet — is live today
+            (the <span className="text-foreground">● LIVE</span> cards). Open
+            the other two knobs and the <em>same</em> primitive unlocks the rest
+            (the <span className="text-foreground">NEXT</span> cards). Not two
+            products — one If/Then, ascending.
           </p>
         </div>
 
-        {/* Tier 1 — live today */}
-        <div className="mb-3 flex items-center gap-3">
-          <span className="text-[10px] font-mono tracking-wider text-accent border border-accent/30 px-2 py-1">
-            ● LIVE TODAY
-          </span>
-          <span className="text-xs text-muted-foreground italic">
-            Payments-layer use cases running on mainnet now.
-          </span>
-        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {useCases.map((useCase) => (
+          {[
+            ...useCases.map((u) => ({ ...u, live: true })),
+            ...composableUseCases.map((u) => ({ ...u, live: false })),
+          ].map((useCase) => (
             <div
               key={useCase.title}
               className="border border-border/50 hover:border-primary/30 transition-all"
             >
               <div className="p-5 space-y-3">
-                <useCase.icon className="h-5 w-5 text-primary" />
-                <h3 className="font-medium">{useCase.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {useCase.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-4 my-10">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-[10px] font-mono tracking-[0.2em] text-muted-foreground uppercase">
-            Next: unlocked by composability
-          </span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        {/* Tier 2 — when composable ships */}
-        <div className="mb-3 flex items-center gap-3">
-          <span className="text-[10px] font-mono tracking-wider text-muted-foreground/70 border border-border px-2 py-1">
-            WHEN COMPOSABLE SHIPS
-          </span>
-          <span className="text-xs text-muted-foreground italic">
-            New categories that become trivial once WHEN→PULL→ROUTE is live.
-          </span>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {composableUseCases.map((useCase) => (
-            <div
-              key={useCase.title}
-              className="border border-border/50 hover:border-primary/30 transition-all"
-            >
-              <div className="p-5 space-y-3">
-                <useCase.icon className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-start justify-between">
+                  <useCase.icon
+                    className={`h-5 w-5 ${
+                      useCase.live ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                  <span
+                    className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
+                      useCase.live
+                        ? "text-accent border border-accent/30"
+                        : "text-muted-foreground/60 border border-border"
+                    }`}
+                  >
+                    {useCase.live ? "● LIVE" : "NEXT"}
+                  </span>
+                </div>
                 <h3 className="font-medium">{useCase.title}</h3>
                 <p className="text-sm text-muted-foreground">
                   {useCase.description}

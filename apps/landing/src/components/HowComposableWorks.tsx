@@ -14,6 +14,7 @@ type Phase = {
 type Flow = {
   id: "payment" | "composable";
   label: string;
+  policy: string;
   badge: string;
   caption: string;
   phases: Phase[];
@@ -23,7 +24,8 @@ type Flow = {
 const FLOWS: Flow[] = [
   {
     id: "payment",
-    label: "PaymentPolicy",
+    label: "Minimal config",
+    policy: "PaymentPolicy",
     badge: "● LIVE",
     caption:
       "The live primitive. A gateway signer pulls delegated tokens and settles in a single CPI — recipient paid, protocol + gateway fees split, no funds held.",
@@ -54,8 +56,9 @@ const tx = await tributary.executePayment({
   },
   {
     id: "composable",
-    label: "ComposablePolicy",
-    badge: "ROADMAP",
+    label: "Full config",
+    policy: "ComposablePolicy",
+    badge: "NEXT",
     caption:
       "Same PULL primitive, different ROUTE. Validation runs before any token moves. The forward CPI is allowlisted and instruction-discriminator-locked; intermediate ATAs are force-emptied so nothing ever parks in the contract.",
     phases: [
@@ -130,6 +133,15 @@ export default function HowComposableWorks() {
                       : "text-muted-foreground/60"
                   }`}
                 >
+                  {f.policy}
+                </span>
+                <span
+                  className={`ml-2 text-[10px] font-mono ${
+                    isActive
+                      ? "text-primary-foreground/80"
+                      : "text-muted-foreground/60"
+                  }`}
+                >
                   {f.badge}
                 </span>
               </button>
@@ -137,7 +149,7 @@ export default function HowComposableWorks() {
           })}
         </div>
         <p className="text-xs text-muted-foreground italic">
-          Same primitive, different ROUTE.
+          Same primitive, two configs.
         </p>
       </div>
 
