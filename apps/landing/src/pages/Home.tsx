@@ -351,6 +351,136 @@ export default function HomeContent() {
         //
       </div>
 
+      {/* ─── The Primitive: WHEN / PULL / ROUTE ─── */}
+      <section id="primitive" className="py-16">
+        <div className="mb-10 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            The Primitive
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">Three knobs. </span>
+            <span className="gradient-text">Infinite compositions.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            Users delegate spending authority once. Tributary never holds funds
+            — it pulls within approved limits and routes through any on-chain
+            program. One approval. Rules you define. Money moves within your
+            boundaries.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-0 border border-border/50 max-w-5xl">
+          {[
+            {
+              step: "WHEN",
+              title: "Trigger Condition",
+              status: "PARTIAL",
+              color: "text-primary",
+              border: "border-primary/20",
+              bg: "bg-primary/5",
+              items: [
+                { label: "Time / schedule", live: true },
+                { label: "Price oracle", live: false },
+                { label: "Wallet balance", live: false },
+                { label: "Governance outcome", live: false },
+                { label: "Custom logic", live: false },
+              ],
+            },
+            {
+              step: "PULL",
+              title: "Value Transfer",
+              status: "LIVE",
+              color: "text-amber-400",
+              border: "border-amber-500/20",
+              bg: "bg-amber-500/5",
+              items: [
+                { label: "Fixed amount", live: true },
+                { label: "Variable / usage-based", live: true },
+                { label: "Percentage", live: true },
+                { label: "Any token", live: true },
+              ],
+            },
+            {
+              step: "ROUTE",
+              title: "Destination",
+              status: "PARTIAL",
+              color: "text-purple-400",
+              border: "border-purple-500/20",
+              bg: "bg-purple-500/5",
+              items: [
+                { label: "Wallet", live: true },
+                { label: "DEX swap", live: false },
+                { label: "Lending deposit", live: false },
+                { label: "Staking", live: false },
+                { label: "Liquidity provision", live: false },
+                { label: "Any whitelisted Solana program", live: false },
+              ],
+            },
+          ].map((s) => (
+            <div
+              key={s.step}
+              className={`p-6 border-r border-border/30 last:border-r-0 ${s.bg}`}
+            >
+              <div
+                className={`text-3xl font-bold ${s.color} mb-1`}
+                style={{ fontFamily: "var(--font-secondary, monospace)" }}
+              >
+                {s.step}
+              </div>
+              <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4 flex items-center gap-2">
+                {s.title}
+                <span
+                  className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
+                    s.status === "LIVE"
+                      ? "text-accent border border-accent/30"
+                      : "text-muted-foreground/60 border border-border"
+                  }`}
+                >
+                  {s.status === "LIVE" ? "● LIVE" : s.status}
+                </span>
+              </div>
+              <ul className="space-y-1.5">
+                {s.items.map((item) => (
+                  <li
+                    key={item.label}
+                    className="text-sm text-foreground flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-1 h-1 rounded-full shrink-0 ${
+                        item.live
+                          ? s.color.replace("text-", "bg-")
+                          : "bg-muted-foreground/30"
+                      }`}
+                    />
+                    <span
+                      className={item.live ? "" : "text-muted-foreground/70"}
+                    >
+                      {item.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 border border-primary/30 bg-primary/5 px-6 py-4 max-w-5xl">
+          <p className="text-sm text-foreground">
+            <span className="font-bold text-amber-400">PULL is live</span> —
+            recurring payments on mainnet today.{" "}
+            <span className="font-bold gradient-text">WHEN and ROUTE</span>{" "}
+            extend it into a composable automation layer.
+          </p>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
       {/* ── Execution Comparison: PaymentPolicy vs ComposablePolicy ── */}
       <section id="execution-comparison" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
