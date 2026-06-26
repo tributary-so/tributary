@@ -1,5 +1,5 @@
 beans:
-    path: .beans
+    path: apps/docs/beans
     prefix: tributary-
     id_length: 4
     default_status: todo
