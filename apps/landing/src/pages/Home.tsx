@@ -239,6 +239,21 @@ const faqs = [
     answer:
       "Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle, ideal for API monetization.",
   },
+  {
+    question: "What does composable mean?",
+    answer:
+      "Composable means the same PULL primitive — the live token-delegation pull — can route money through any DeFi program on Solana instead of just settling into a wallet. v1 is a payment protocol; v2 turns that primitive into a composable automation layer (WHEN triggers, PULL value, ROUTE destinations).",
+  },
+  {
+    question: "Is composable live?",
+    answer:
+      "Not yet. v1 payments — subscriptions, milestones, and pay-as-you-go — are live on Solana mainnet today (4,000+ payments executed). The composable layer (WHEN conditions beyond schedules, and ROUTE targets beyond a wallet) is v2, in development. PULL is the only live axis right now.",
+  },
+  {
+    question: "What can money route to?",
+    answer:
+      "Any whitelisted Solana program — any DEX swap, any lending market, any staking program, any liquidity pool, or a custom program you allowlist. Today money lands in a wallet; tomorrow the same pull can forward into any program before settling, gated by a validation step.",
+  },
 ];
 
 export function HomeFutardio() {
