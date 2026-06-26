@@ -800,13 +800,18 @@ impl<'info> ExecuteComposable<'info> {
             },
         )?;
 
-        // Resolve the actual input amount. For PayAsYouGo, the caller-
-        // supplied `forward_amount` IS the chunk — validation already
-        // happened inside `validate_policy_execution`. For other policy
-        // types, `forward_amount` optionally overrides the configured
-        // schedule amount.
+        // Resolve the actual input amount.
+        // - PayAsYouGo: the caller-supplied `forward_amount` IS the chunk
+        //   (validated inside `validate_policy_execution` above).
+        // - Subscription / Milestone: the configured `schedule_amount` is
+        //   authoritative. Rejecting `forward_amount` here closes C-1: an
+        //   adversarial gateway signer could otherwise charge above the
+        //   agreed schedule by passing `forward_amount = Some(larger)`.
         let input_amount = match forward_amount {
-            Some(amt) => amt,
+            Some(amt) => match &composable_policy.policy_type {
+                PolicyType::PayAsYouGo { .. } => amt,
+                _ => return err!(TributaryError::InvalidAmount),
+            },
             None => {
                 require!(schedule_amount > 0, TributaryError::InvalidAmount);
                 schedule_amount

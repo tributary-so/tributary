@@ -1174,6 +1174,135 @@ describe("Composable Policies", () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
+  //  C-1 regression: forward_amount must not override schedule amount on
+  //  Subscription composable. Only PayAsYouGo accepts a caller chunk.
+  // ══════════════════════════════════════════════════════════════════════
+  test("Execute composable — Subscription rejects forwardAmount (C-1)", async () => {
+    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+    const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+    const composablePolicyId =
+      (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+    const [composablePolicyPDA] = getComposablePolicyPda(
+      userPaymentPDA,
+      composablePolicyId,
+      program.programId
+    );
+
+    const [validationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId
+    );
+
+    const pastTime = (await getOnChainNow(connection)) - 3600;
+    // Schedule amount = 100_000. Adversarial forwardAmount = 99_999_999.
+    const policyType = defaultSubscriptionPolicy(100_000, pastTime);
+
+    const createIx = await program.methods
+      .createComposablePolicy(
+        policyType,
+        new Array(64).fill(0),
+        defaultForwardConfig(tokenMint, secondMint),
+        0,
+        Buffer.alloc(0)
+      )
+      .accountsStrict({
+        feePayer: user.publicKey,
+        recipient: user.publicKey,
+        user: user.publicKey,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        config: configPDA,
+        validationPda: validationPdaAddress,
+        validationProgram: PublicKey.default,
+        inputMint: tokenMint,
+        outputMint: secondMint,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(createIx),
+      [user],
+      { commitment: "processed" as Commitment }
+    );
+
+    // Approve enough delegate to cover schedule_amount but NOT the
+    // adversarial forwardAmount. Pre-fix: this would fail with
+    // InsufficientDelegatedAmount (delegate < forwardAmount). Post-fix:
+    // fails earlier with InvalidAmount (forwardAmount rejected outright).
+    await approve(
+      connection,
+      user,
+      userTokenAccount,
+      userPaymentPDA,
+      user,
+      10_000_000
+    );
+
+    const recipientTokenAccount = getAssociatedTokenAddressSync(
+      secondMint,
+      user.publicKey
+    );
+
+    const ix = await program.methods
+      .executeComposable(
+        Buffer.from(new Array(32).fill(0)),
+        new anchor.BN(99_999_999)
+      )
+      .accountsStrict({
+        feePayer: gatewayAuthority.publicKey,
+        paymentsDelegate,
+        composablePolicy: composablePolicyPDA,
+        userPayment: userPaymentPDA,
+        gateway: gatewayPDA,
+        validationProgram: PublicKey.default,
+        config: configPDA,
+        userTokenAccount: userTokenAccount,
+        mint: tokenMint,
+        outputMint: secondMint,
+        intermediateInputTokenAccount: getAssociatedTokenAddressSync(
+          tokenMint,
+          composablePolicyPDA,
+          true
+        ),
+        intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          composablePolicyPDA,
+          true
+        ),
+        recipientTokenAccount,
+        gatewayFeeAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          feeRecipient.publicKey
+        ),
+        protocolFeeAccount: getAssociatedTokenAddressSync(
+          secondMint,
+          admin.publicKey
+        ),
+        tokenProgram: new PublicKey(
+          "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        ),
+        associatedTokenProgram: new PublicKey(
+          "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        ),
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    await expect(
+      sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(ix),
+        [gatewayAuthority],
+        { commitment: "processed" as Commitment }
+      )
+    ).rejects.toThrow(/InvalidAmount/);
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
   //  Execute composable — paused policy fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — paused policy fails", async () => {
