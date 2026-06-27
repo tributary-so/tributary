@@ -1,0 +1,6 @@
+beans:
+    path: .beans
+    prefix: composable-landing-page-
+    id_length: 4
+    default_status: todo
+    default_type: task
