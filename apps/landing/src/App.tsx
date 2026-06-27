@@ -4,7 +4,6 @@ import { Footer } from "./components/Footer";
 import Home from "./pages/Home";
 import Terms from "./pages/Terms";
 import Futardio from "./pages/Futardio";
-import TributaryComposablePitch from "./pages/Composable";
 import TributaryAngelPitch from "./pages/Angel";
 
 export default function App() {
@@ -15,7 +14,6 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/futardio" element={<Futardio />} />
-        <Route path="/composable" element={<TributaryComposablePitch />} />
         <Route path="/angel" element={<TributaryAngelPitch />} />
       </Routes>
       <Footer />

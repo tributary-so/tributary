@@ -3,11 +3,9 @@ import {
   RefreshCw,
   Target,
   TrendingUp,
-  CreditCard,
   Code2,
   ChevronDown,
   Check,
-  Terminal,
   ArrowRight,
   ShoppingCart,
   HelpCircle,
@@ -15,57 +13,22 @@ import {
   Brain,
   DollarSign,
   Users,
-  //ArrowRightLeft,
-  //Wallet,
-  BriefcaseBusiness,
+  Sprout,
+  Cpu,
+  BarChart3,
+  Coins,
+  Heart,
+  Bot,
+  Lock,
+  Building2,
 } from "lucide-react";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import TerminalCard from "../components/TerminalCard";
 import TwitterWall from "@/components/TwitterWall";
-import HowToRecurring from "@/components/HowToRecurring";
 import IntegrationsWall from "@/components/IntegrationsWall";
 import Mentions from "@/components/Mentions";
 import HowToProcessor from "@/components/HowToProcessor";
+import HowComposableWorks from "@/components/HowComposableWorks";
 import FutardioBanner from "@/components/futardio-banner";
-
-const checklistItems = [
-  {
-    title: "No Solana SDK needed",
-    desc: "Your codebase never imports web3.js, wallet adapter, or RPC providers.",
-  },
-  {
-    title: "Cryptographic proof",
-    desc: "JWT signed with ES256, verifiable against public JWKS endpoint.",
-  },
-  {
-    title: "Smart expiration",
-    desc: "Tokens expire with the payment cycle. Refreshes pull fresh on-chain state.",
-  },
-  {
-    title: "Self-hostable when ready",
-    desc: "Migrate checkout, API, and indexer to your own infrastructure whenever you want.",
-  },
-];
-
-const fnList = [
-  {
-    fn: "Register",
-    desc: "Register as a gateway with custom fees and signer keys",
-  },
-  {
-    fn: "Process",
-    desc: "Execute recurring payments via permissionless on-chain contract",
-  },
-  {
-    fn: "Verify",
-    desc: "JWT + JWKS verification, confirm subscription details",
-  },
-  {
-    fn: "Earn",
-    desc: "Set your own gateway fee on top of the 1% protocol fee",
-  },
-];
 
 const stats = [
   { label: "Integrations", value: "10+" },
@@ -114,19 +77,6 @@ const paymentTypes = [
     tags: ["AI/LLM", "API", "Cloud"],
     color: "blue-500",
   },
-  {
-    name: "UpTo",
-    icon: CreditCard,
-    description: "One-time claim, expiring policy",
-    features: [
-      "Single claim window",
-      "Policy expiration",
-      "x402 compliant",
-      "Pre-approved budget",
-    ],
-    tags: ["API", "x402", "Micropayments"],
-    color: "orange-500",
-  },
 ];
 
 const useCases = [
@@ -166,11 +116,59 @@ const useCases = [
   },
 ];
 
+const composableUseCases = [
+  {
+    icon: BarChart3,
+    title: "Generic DCA / Auto-buy",
+    description: "Auto-buy any token on schedule. No signing per trade.",
+  },
+  {
+    icon: Coins,
+    title: "Spare-change Investing",
+    description:
+      "Round-up transactions and invest the difference automatically.",
+  },
+  {
+    icon: Heart,
+    title: "Automated Giving",
+    description:
+      "Donate a share of gains. Remove human hesitation from generosity.",
+  },
+  {
+    icon: Building2,
+    title: "Treasury Auto-rebalance",
+    description: "Rebalance when allocation drifts. No 3am multisig calls.",
+  },
+  {
+    icon: Bot,
+    title: "AI-agent Budget Billing",
+    description: "Budget-scoped autonomous agents. Metered, capped, hands-off.",
+  },
+  {
+    icon: Cpu,
+    title: "Machine-to-Machine Settlement",
+    description:
+      "Services settle with services. Per-call, per-compute, trustless.",
+  },
+  {
+    icon: Lock,
+    title: "Cold-Storage Allowance",
+    description:
+      "Funds stay in cold storage; claim a monthly allowance for expenses.",
+  },
+  {
+    icon: Sprout,
+    title: "Yield Auto-compound",
+    description:
+      "Auto-compound and rebalance into higher yield. Set and forget.",
+  },
+];
+
 const faqs = [
   {
     question: "What is Tributary?",
     answer:
-      "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports four payment models: Subscriptions, Milestones, Pay-as-you-go, and UpTo.",
+      "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports three claim shapes: Subscriptions, Milestones, and Pay-as-you-go.",
   },
   {
     question: "How does token delegation work?",
@@ -202,6 +200,21 @@ const faqs = [
     answer:
       "Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle, ideal for API monetization.",
   },
+  {
+    question: "What does composable mean?",
+    answer:
+      "It means the same PULL primitive — the live token-delegation pull — can route money through any DeFi program on Solana, not just settle into a wallet. Today only the minimal config is live (schedule + wallet = recurring payments). Open the WHEN and ROUTE knobs and the same If/Then composes into automation far beyond payments.",
+  },
+  {
+    question: "Is composable live?",
+    answer:
+      "Not yet. v1 payments — subscriptions, milestones, and pay-as-you-go — are live on Solana mainnet today (4,000+ payments executed). The composable layer (WHEN conditions beyond schedules, and ROUTE targets beyond a wallet) is v2, in development. PULL is the only live axis right now.",
+  },
+  {
+    question: "What can money route to?",
+    answer:
+      "Any whitelisted Solana program — any DEX swap, any lending market, any staking program, any liquidity pool, or a custom program you allowlist. Today money lands in a wallet; tomorrow the same pull can forward into any program before settling, gated by a validation step.",
+  },
 ];
 
 export function HomeFutardio() {
@@ -214,14 +227,6 @@ export function HomeFutardio() {
 }
 
 export default function HomeContent() {
-  const navigate = useNavigate();
-
-  const scrollToSection = (id: string) => {
-    navigate("/");
-    sessionStorage.setItem("scrollTo", id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
     const section = sessionStorage.getItem("scrollTo");
     if (section) {
@@ -235,25 +240,25 @@ export default function HomeContent() {
   }, []);
   return (
     <main className="mx-auto max-w-6xl px-4">
-      {/* ─── Hero ─── */}
+      {/* ─── Hero (the Resolution motif) ─── */}
       <section id="hero" className="py-20">
         <div className="flex flex-col gap-6 text-center lg:text-left lg:items-start">
           <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/5 px-3 py-1.5 text-accent text-xs font-mono">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            Live on Solana mainnet
+            Live on Solana · 4,000+ pulls executed
           </div>
           <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl lg:text-5xl">
-            <span className="text-foreground">The payment protocol</span>
+            <span className="text-foreground">If This</span>
             <br />
-            <span className="gradient-text">for Solana.</span>
+            <span className="gradient-text">Then Money.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto lg:mx-0">
-            We&apos;re the only payment infrastructure with truly automated
-            recurring payments on Solana.{" "}
+            Stablecoins made money digital.{" "}
             <span className="text-foreground">
-              Sign Once. Pay Automatically. Verify Anywhere
-            </span>
-            .
+              Tributary makes it self-driving
+            </span>{" "}
+            — one primitive, three knobs, that moves money itself within rules
+            you set. Non-custodial, on Solana.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row justify-center lg:justify-start">
             <a
@@ -261,23 +266,79 @@ export default function HomeContent() {
               className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
             >
               <Code2 className="h-4 w-4" />
-              View Docs
+              Read the Docs
             </a>
             <a
-              onClick={() => scrollToSection("use-cases")}
+              href="https://app.tributary.so"
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
-              Explore Use Cases
-            </a>
-            <a
-              href="https://tally.so/r/RGbbGl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-accent/60 hover:bg-accent/80 text-white shadow-2xs inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              Business Onboarding <ArrowRight className="h-3 w-3" />
+              See it running <ArrowRight className="h-3 w-3" />
             </a>
           </div>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      {/* ─── Setup + Conflict: inert money ─── */}
+      <section id="conflict" className="py-16">
+        <div className="mb-10 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            The Problem
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">
+              Stablecoins made money digital.
+            </span>{" "}
+            <span className="gradient-text">It&apos;s still inert.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            ~$300B sits on chain — instant, global, native. But it only moves
+            when a human signs, and only to where that human manually sends it.
+            No schedules. No conditions. No autonomy. Every
+            &quot;automation&quot; in crypto is either a custodial bot that
+            holds your keys, or a calendar reminder that still needs you to
+            sign.{" "}
+            <span className="text-foreground">
+              Money that can&apos;t act on its own is money that can&apos;t
+              scale.
+            </span>
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4 max-w-4xl">
+          {[
+            {
+              Icon: Building2,
+              title: "DAO Treasury",
+              scenario: "$50M portfolio. Market moves at 2am.",
+              pain: "Someone has to wake up, check prices, and sign a rebalance. Every time. Manually. Or the portfolio drifts.",
+            },
+            {
+              Icon: Brain,
+              title: "AI Agent",
+              scenario: "Needs compute. Wants to pay for its own API calls.",
+              pain: "It can&apos;t — not without your private key. Hand over full wallet access, or the agent can&apos;t function autonomously.",
+            },
+          ].map((v) => (
+            <div
+              key={v.title}
+              className="border border-border/50 bg-muted/10 p-6 space-y-3"
+            >
+              <v.Icon className="h-5 w-5 text-muted-foreground" />
+              <div className="text-sm font-bold text-foreground">{v.title}</div>
+              <div className="text-xs text-muted-foreground italic">
+                {v.scenario}
+              </div>
+              <div className="text-xs text-foreground leading-relaxed">
+                {v.pain}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -313,21 +374,193 @@ export default function HomeContent() {
         //
       </div>
 
+      {/* ─── The Primitive: WHEN / PULL / ROUTE ─── */}
+      <section id="primitive" className="py-16">
+        <div className="mb-10 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            The Primitive
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">Three knobs. </span>
+            <span className="gradient-text">Infinite compositions.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            <span className="text-foreground">If This Then Money</span> is
+            literally this primitive&apos;s grammar:{" "}
+            <span className="text-foreground">WHEN</span> a condition holds,{" "}
+            <span className="text-foreground">PULL</span> value and{" "}
+            <span className="text-foreground">ROUTE</span> it onward. Users
+            delegate spending authority once; Tributary never holds funds — it
+            pulls within approved limits and routes through any on-chain
+            program. One approval. Rules you define. Money moves within your
+            boundaries.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-0 border border-border/50 max-w-5xl">
+          {[
+            {
+              step: "WHEN",
+              title: "Trigger Condition",
+              status: "PARTIAL",
+              color: "text-primary",
+              border: "border-primary/20",
+              bg: "bg-primary/5",
+              items: [
+                { label: "Time / schedule", live: true },
+                { label: "Price oracle", live: false },
+                { label: "Wallet balance", live: false },
+                { label: "Governance outcome", live: false },
+                { label: "Custom logic", live: false },
+              ],
+            },
+            {
+              step: "PULL",
+              title: "Value Transfer",
+              status: "LIVE",
+              color: "text-amber-400",
+              border: "border-amber-500/20",
+              bg: "bg-amber-500/5",
+              items: [
+                { label: "Fixed amount", live: true },
+                { label: "Variable / usage-based", live: true },
+                { label: "Percentage", live: true },
+                { label: "Any token", live: true },
+              ],
+            },
+            {
+              step: "ROUTE",
+              title: "Destination",
+              status: "PARTIAL",
+              color: "text-purple-400",
+              border: "border-purple-500/20",
+              bg: "bg-purple-500/5",
+              items: [
+                { label: "Wallet", live: true },
+                { label: "DEX swap", live: false },
+                { label: "Lending deposit", live: false },
+                { label: "Staking", live: false },
+                { label: "Liquidity provision", live: false },
+                { label: "Any whitelisted Solana program", live: false },
+              ],
+            },
+          ].map((s) => (
+            <div
+              key={s.step}
+              className={`p-6 border-r border-border/30 last:border-r-0 ${s.bg}`}
+            >
+              <div
+                className={`text-3xl font-bold ${s.color} mb-1`}
+                style={{ fontFamily: "var(--font-secondary, monospace)" }}
+              >
+                {s.step}
+              </div>
+              <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-4 flex items-center gap-2">
+                {s.title}
+                <span
+                  className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
+                    s.status === "LIVE"
+                      ? "text-accent border border-accent/30"
+                      : "text-muted-foreground/60 border border-border"
+                  }`}
+                >
+                  {s.status === "LIVE" ? "● LIVE" : s.status}
+                </span>
+              </div>
+              <ul className="space-y-1.5">
+                {s.items.map((item) => (
+                  <li
+                    key={item.label}
+                    className="text-sm text-foreground flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-1 h-1 rounded-full shrink-0 ${
+                        item.live
+                          ? s.color.replace("text-", "bg-")
+                          : "bg-muted-foreground/30"
+                      }`}
+                    />
+                    <span
+                      className={item.live ? "" : "text-muted-foreground/70"}
+                    >
+                      {item.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 border border-primary/30 bg-primary/5 px-6 py-4 max-w-5xl">
+          <p className="text-sm text-foreground">
+            <span className="font-bold text-amber-400">PULL is live</span> —
+            recurring payments on mainnet today. Open{" "}
+            <span className="font-bold gradient-text">WHEN and ROUTE</span> and
+            the same primitive composes: any condition, any allowlisted
+            destination. Same If/Then, more knobs turned on.
+          </p>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
+      {/* ── Execution: two configs of one primitive ── */}
+      <section id="execution-comparison" className="py-16">
+        <div className="mb-8 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            How It Executes
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">One primitive. </span>
+            <span className="gradient-text">Two configs.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            Not two products — two settings of the same If/Then. The{" "}
+            <span className="text-foreground">minimal config</span> (live today)
+            pulls and settles in a single CPI. The{" "}
+            <span className="text-foreground">full config</span> (next) adds a
+            validation gate and routes the pull through any allowlisted Solana
+            program before settling. Same PULL axis; the ROUTE knob is what
+            opens up.
+          </p>
+        </div>
+        <HowComposableWorks />
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
       {/* ─── Payment Models ─── */}
+      {/* ─── Proof it runs: the minimal config is live ─── */}
       <section id="payment-models" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Payment Models
+            Proof It Runs
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">One delegation, </span>
-            <span className="gradient-text">four models.</span>
+            <span className="text-foreground">The simplest config </span>
+            <span className="gradient-text">is already live.</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed text-[15px]">
-            A single token delegation powers subscriptions, milestones,
-            pay-as-you-go billing, and one-time payments. Unlimited policies per
-            user. More models to be implemented in the future. Extending the
-            Solana Token Program, not replacing it.
+            Turn one knob of each axis —{" "}
+            <span className="text-foreground">WHEN</span>=schedule,{" "}
+            <span className="text-foreground">PULL</span>=any of the three claim
+            shapes, <span className="text-foreground">ROUTE</span>=wallet — and
+            the primitive becomes recurring payments. That minimal config has
+            executed{" "}
+            <span className="text-foreground">4,000+ pulls on mainnet</span>,
+            used by six teams. The cards below are the live PULL axis — the same
+            shapes the full config will compose with.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -368,225 +601,6 @@ export default function HomeContent() {
               </div>
             </div>
           ))}
-        </div>
-      </section>
-
-      <div
-        className="font-mono text-sm text-muted-foreground/30 select-none"
-        aria-hidden="true"
-      >
-        //
-      </div>
-
-      {/* ── Sidebar Feature Section ── */}
-      <section id="developers" className="py-16">
-        <div className="mb-8 max-w-3xl space-y-3">
-          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Developer Experience
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">
-              A payment platform built for{" "}
-            </span>
-            <span className="gradient-text">developers.</span>
-          </h2>
-          <p className="text-muted-foreground leading-relaxed text-[15px]">
-            Accept USDC without touching a single blockchain library. Self-host
-            everything. Or don&apos;t. Our hosted path has you covered.
-          </p>
-        </div>
-        <HowToRecurring />
-        <div className="mt-12 border border-border bg-muted/10 p-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <Terminal className="h-10 w-10 text-primary shrink-0" />
-            <div className="flex-1 space-y-2">
-              <h3 className="font-bold">Full Integration Example</h3>
-              <p className="text-sm text-muted-foreground">
-                Full react integration examples using React Hooks or predefined
-                React Buttons.
-              </p>
-            </div>
-            <a
-              href="https://github.com/tributary-so/tributary/tree/develop/apps/example-payments"
-              className="border bg-background hover:bg-muted/50 inline-flex items-center gap-2 px-4 py-2 text-sm transition-all shrink-0"
-            >
-              View Examples <ArrowRight className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <div
-        className="font-mono text-sm text-muted-foreground/30 select-none"
-        aria-hidden="true"
-      >
-        //
-      </div>
-
-      {/* ── Editorial A: JWT Flow ── */}
-      <section id="jwt-checkout" className="py-16">
-        <div className="mb-8 max-w-3xl space-y-3">
-          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Checkout
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">
-              Accepting crypto should be
-              <br />
-              as easy as{" "}
-            </span>
-            <span className="gradient-text">checking a cookie.</span>
-          </h2>
-          <p className="text-muted-foreground leading-relaxed text-[15px]">
-            Your website never talks to Solana. Your code never touches a
-            keypair, an RPC endpoint, or an on-chain account. You receive a
-            signed JWT, verify it, and know cryptographically that a payment
-            happened.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-2 gap-16 md:gap-20 items-center">
-          <div className="space-y-8">
-            <ul className="space-y-5">
-              {checklistItems.map(({ title, desc }) => (
-                <li key={title} className="flex items-start gap-4">
-                  <div className="w-5 h-5 border border-primary/40 bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg
-                      className="w-3 h-3 text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2.5}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-foreground text-sm font-semibold mb-0.5">
-                      {title}
-                    </p>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {desc}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <a
-              href="https://docs.tributary.so/jwt-auth/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-primary font-medium group"
-            >
-              <span>Read JWT Flow Docs</span>
-              <span className="transition-transform group-hover:translate-x-1">
-                &rarr;
-              </span>
-            </a>
-          </div>
-          <TerminalCard
-            filename="verify.ts"
-            language="typescript"
-            code={`import { jwtVerify, createRemoteJWKSet } from "jose";
-
-const { payload } = await jwtVerify(
-  token,
-  createRemoteJWKSet(
-    new URL("https://api.tributary.so/.well-known/jwks.json")
-  ),
-  {
-    issuer: "https://api.tributary.so",
-    audience: "tributary-checkout"
-  }
-);
-
-// Subscription active?
-if (payload.subscriptions.length > 0) {
-  const sub = payload.subscriptions[0];
-  // sub.status === "paid"
-  // sub.amount === "10.00"
-  // sub.paymentFrequency === "monthly"
-}
-
-// One-time payment?
-if (payload.lastPayments.length > 0) {
-  const payment = payload.lastPayments[0];
-  // Cryptographic proof of transfer
-}`}
-          />
-        </div>
-      </section>
-
-      <div
-        className="font-mono text-sm text-muted-foreground/30 select-none"
-        aria-hidden="true"
-      >
-        //
-      </div>
-
-      {/* ── Editorial B: We're the Rails ── */}
-      <section id="infrastructure" className="py-16">
-        <div className="mb-8 max-w-3xl space-y-3">
-          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Infrastructure
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">We&apos;re the rails. </span>
-            <span className="gradient-text">You&apos;re payments.</span>
-          </h2>
-          <p className="text-muted-foreground leading-relaxed text-[15px]">
-            Tributary is the credit card network. You register as a gateway and
-            become a payment processor. Protocol fees compound with every
-            integration. More gateways = more volume = more valuable protocol.
-          </p>
-        </div>
-        <div className="tems-center">
-          <div className="space-y-8 order-1 md:order-2">
-            <ul className="space-y-8">
-              {fnList.map(({ fn, desc }) => (
-                <li key={fn}>
-                  <div className="border-l-3 border-purple-800 pl-4">
-                    <h3 className="text-lg font-semibold font-mono text-purple-600 mb-1 tracking-widest">
-                      {fn}
-                    </h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {desc}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <div className="mt-12 border border-border bg-muted/10 p-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <BriefcaseBusiness className="h-10 w-10 text-primary shrink-0" />
-            <div className="flex-1 space-y-2">
-              <h3 className="font-bold">Build your Tributary Business</h3>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>1% protocol fee + your gateway fee.</li>
-                <li>Non-custodial. $0 TVL risk.</li>
-                <li>Open source. Fork it. Own it.</li>
-              </ul>
-            </div>
-            <a
-              href="https://tally.so/r/RGbbGl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              Onboarding Form <ArrowRight className="h-3 w-3" />
-            </a>
-            <a
-              href="https://docs.tributary.so"
-              className="border bg-background hover:bg-muted/50 inline-flex items-center gap-2 px-4 py-2 text-sm transition-all shrink-0"
-            >
-              Read the docs <ArrowRight className="h-3 w-3" />
-            </a>
-          </div>
         </div>
       </section>
 
@@ -794,27 +808,47 @@ if (payload.lastPayments.length > 0) {
       <section id="use-cases" className="py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            Use-Cases
+            What It Unlocks
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-            <span className="text-foreground">
-              Tributary, the protocol, the{" "}
-            </span>
-            <span className="gradient-text">Enabler</span>
+            <span className="text-foreground">One primitive. </span>
+            <span className="gradient-text">Today and tomorrow.</span>
           </h2>
-          <p className="text-muted-foreground">
-            With tributary, you can serve important categories. That is part of
-            what gives it upside.
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            The minimal config — WHEN=schedule, ROUTE=wallet — is live today
+            (the <span className="text-foreground">● LIVE</span> cards). Open
+            the other two knobs and the <em>same</em> primitive unlocks the rest
+            (the <span className="text-foreground">NEXT</span> cards). Not two
+            products — one If/Then, ascending.
           </p>
         </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {useCases.map((useCase) => (
+          {[
+            ...useCases.map((u) => ({ ...u, live: true })),
+            ...composableUseCases.map((u) => ({ ...u, live: false })),
+          ].map((useCase) => (
             <div
               key={useCase.title}
               className="border border-border/50 hover:border-primary/30 transition-all"
             >
               <div className="p-5 space-y-3">
-                <useCase.icon className="h-5 w-5 text-primary" />
+                <div className="flex items-start justify-between">
+                  <useCase.icon
+                    className={`h-5 w-5 ${
+                      useCase.live ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                  <span
+                    className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 ${
+                      useCase.live
+                        ? "text-accent border border-accent/30"
+                        : "text-muted-foreground/60 border border-border"
+                    }`}
+                  >
+                    {useCase.live ? "● LIVE" : "NEXT"}
+                  </span>
+                </div>
                 <h3 className="font-medium">{useCase.title}</h3>
                 <p className="text-sm text-muted-foreground">
                   {useCase.description}
@@ -877,11 +911,12 @@ if (payload.lastPayments.length > 0) {
       <section id="cta" className="py-16">
         <div className="border border-border bg-muted/20 p-12 text-center">
           <h2 className="mb-4 text-3xl font-bold">
-            Live, Powerful, and Open for Builders
+            <span className="gradient-text">If This Then Money.</span>
           </h2>
           <p className="mb-8 text-muted-foreground max-w-xl mx-auto">
-            A live, well-built infrastructure product in an important category,
-            already proving itself in real use cases, with obvious room to grow.
+            One primitive, three knobs, live on Solana. Build on it — or back
+            the layer underneath every flow. The minimal config runs today; the
+            rest is the same If/Then with the knobs turned up.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
@@ -895,20 +930,13 @@ if (payload.lastPayments.length > 0) {
               href="https://app.tributary.so"
               className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
             >
-              Try the App
-            </a>
-            <a
-              href="https://checkout.tributary.so"
-              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Try Checkout
+              See it running
             </a>
             <a
               href="mailto:info@tributary.so"
               className="border border-border/50 bg-background hover:bg-muted/50 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6 text-muted-foreground hover:text-foreground"
             >
-              Contact / Integrate
+              Get in touch
             </a>
           </div>
         </div>
