@@ -173,6 +173,26 @@ and recipient. When the NATIVE_OUTPUT flag is set, the output intermediate
 is closed to native SOL via `closeAccount` rather than transferred as
 WSOL.
 
+**Trigger**:
+The boolean predicate "this policy would execute successfully right now."
+Composed of schedule-readiness AND validation-predicate-readiness AND
+delegation-sufficiency AND funded-balance. Distinct from validation (the
+Lighthouse hook specifically) and from schedule (the timing predicate). A
+policy with a valid schedule but a failing validation has no trigger. The
+composable scheduler evaluates triggers off-chain every poll cycle; only
+policies whose trigger is true proceed to simulation and fire.
+_Avoid_: eligibility, readiness, due (that is schedule-specific).
+
+**Forward context**:
+The off-chain per-`inputMint:outputMint` metadata an executor needs to
+build a forward instruction: the specific pool address (e.g. which DLMM
+`lbPair`), the swap-level slippage convention, and any SDK quirks (e.g.
+`hostFeeIn` rewrite). Not stored on-chain — the `ComposablePolicy` carries
+only byte-range pins on the instruction discriminator. Lives in the
+executor's static config map, keyed by mint pair. A policy whose mint pair
+has no forward context is skipped silently by the scheduler.
+_Avoid_: pool config, swap config.
+
 ### Fees
 
 **Protocol fee**:
