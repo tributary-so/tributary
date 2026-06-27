@@ -372,8 +372,9 @@ Sentinels (`Pubkey::default()` / `SystemProgram`) disable the respective hook.
 
 ADRs live in `apps/docs/adr/` and capture the _why_ behind every locked-in
 architectural decision. They are numbered chronologically:
-**0001–0006** are v1 PaymentPolicy-era decisions; **0007–0013** are v2
-ComposablePolicy-era decisions. Each ADR is 1–3 paragraphs naming the
+**0001–0006** are v1 PaymentPolicy-era decisions; **0007–0016** are v2
+ComposablePolicy-era decisions (0015 is a positioning/narrative ADR, the
+rest are architectural). Each ADR is 1–3 paragraphs naming the
 decision, the rejected alternatives, and the rationale. **Code is the
 authority on current state; ADRs are the authority on rationale.** If the
 two disagree, the ADR is wrong — fix it.
@@ -406,6 +407,9 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0011] | Referral chain hardened at execution: re-validated + payer-bound                   |
 | [0012] | Mint compatibility: Token-2022 extension blocklist                                 |
 | [0013] | Lighthouse SDK vendored with an anti-corruption facade in `@tributary-so/sdk`      |
+| [0014] | Composable scheduler trigger model: per-policy state-poll                          |
+| [0015] | Position Tributary as one primitive — "If This Then Money" (positioning)           |
+| [0016] | Permissionless composable execution: parameter-constrained relayers                |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -420,6 +424,9 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0011]: apps/docs/adr/0011-referral-chain-hardened-at-execution.md
 [0012]: apps/docs/adr/0012-mint-compatibility-token-2022-blocklist.md
 [0013]: apps/docs/adr/0013-lighthouse-sdk-vendored-facade.md
+[0014]: apps/docs/adr/0014-composable-scheduler-trigger-model.md
+[0015]: apps/docs/adr/0015-positioning-if-this-then-money.md
+[0016]: apps/docs/adr/0016-permissionless-composable-execution.md
 
 ## SDK
 
