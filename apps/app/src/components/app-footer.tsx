@@ -1,9 +1,6 @@
 import { Droplets } from 'lucide-react'
-import { useLocation } from 'react-router'
 
 export function AppFooter() {
-  const location = useLocation()
-  if (location.pathname == '/frontier' || location.pathname == '/roadshow' || location.pathname == '/the-miracle') return
   return (
     <footer className="border-t border-border/50">
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -14,7 +11,7 @@ export function AppFooter() {
               <span className="font-semibold uppercase tracking-[0.3em]">TRIBUTARY</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Automated recurring payments on Solana using token delegation.
+              Non-custodial payment policies on Solana. Delegate once; money moves on schedule.
             </p>
           </div>
           <div></div>

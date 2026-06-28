@@ -997,7 +997,7 @@ function EmptyState() {
       <div className="text-center max-w-md">
         <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2">No Payment Policies Yet</h2>
         <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-          You haven't set up any recurring payments. Create a subscription, milestone, or pay-as-you-go policy to get
+          You haven't set up any payment policies yet. Create a subscription, milestone, or pay-as-you-go policy to get
           started.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">

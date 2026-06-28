@@ -109,7 +109,6 @@ const hackathonLinks = {
   frontier: [
     { label: "Pitch Video", href: "https://youtu.be/KwRowt-9448" },
     { label: "Demo Video", href: "https://youtu.be/GHR2WmTtRAQ" },
-    { label: "Slides", href: "https://app.tributary.so/#/frontier" },
     {
       label: "Arena",
       href: "https://arena.colosseum.org/projects/explore/tributary-2",
@@ -119,7 +118,6 @@ const hackathonLinks = {
     { label: "Pitch Video", href: "https://youtu.be/HwulPezwCSQ" },
     { label: "Demo Video", href: "https://youtu.be/0irXnJaL_Rs" },
     { label: "Tech Demo", href: "https://youtu.be/94tAF2PvMpw" },
-    { label: "Slides", href: "https://app.tributary.so/#/hackathon" },
     {
       label: "Arena",
       href: "https://arena.colosseum.org/projects/explore/tributary-1",

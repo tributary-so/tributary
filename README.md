@@ -245,7 +245,7 @@ Open [http://localhost:8000](http://localhost:8000).
 │   │   └── src/{routes,services,middleware,db,types}
 │   ├── scheduler/             # @tributary-so/scheduler — node-cron executor
 │   ├── cli/                   # @tributary-so/cli — oclif CLI (wallet/gateway/subscription/...)
-│   ├── example-payments/      # Integration examples
+│   ├── showcase-payments/     # Integration showcase
 │   └── docs/                  # MkDocs Material site (uv / Python)
 │       └── adr/               # Architecture Decision Records (0001-0013)
 ├── tests/                     # Jest integration suite (Surfpool-backed)

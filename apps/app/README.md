@@ -55,7 +55,6 @@ apps/app/
     │   ├── account/           # Account management
     │   ├── payment-policy/    # Payment policy creation
     │   ├── referral-program/  # Referral program page
-    │   ├── presentation/      # Demo/presentation components
     │   ├── cluster/           # Solana cluster UI
     │   ├── solana/            # Solana provider + wallet
     │   └── ui/                # Reusable UI components
@@ -194,18 +193,15 @@ Main landing page with:
 
 ## Routes
 
-| Path          | Component               | Description                 |
-| ------------- | ----------------------- | --------------------------- |
-| `/`           | `LazyDashboard`         | Main dashboard landing page |
-| `/about`      | `LazyDashboard`         | About section (dashboard)   |
-| `/demo`       | `LazyDashboard`         | Demo section (dashboard)    |
-| `/docs`       | `LazyDashboard`         | Docs section (dashboard)    |
-| `/quickstart` | `LazyPaymentPolicy`     | Create payment policy       |
-| `/account`    | `LazyAccount`           | User account management     |
-| `/hackathon`  | `LazyPresentation`      | Cypherpunk hackathon demo   |
-| `/x402`       | `LazyX402Presentation`  | x402 presentation           |
-| `/agent`      | `LazyLandoPresentation` | Agent presentation          |
-| `/referral`   | `LazyReferralProgram`   | Referral program page       |
+| Path          | Component             | Description                 |
+| ------------- | --------------------- | --------------------------- |
+| `/`           | `LazyDashboard`       | Main dashboard landing page |
+| `/about`      | `LazyDashboard`       | About section (dashboard)   |
+| `/demo`       | `LazyDashboard`       | Demo section (dashboard)    |
+| `/docs`       | `LazyDashboard`       | Docs section (dashboard)    |
+| `/quickstart` | `LazyPaymentPolicy`   | Create payment policy       |
+| `/account`    | `LazyAccount`         | User account management     |
+| `/referral`   | `LazyReferralProgram` | Referral program page       |
 
 ## Available Scripts
 

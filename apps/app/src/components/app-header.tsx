@@ -1,20 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { ChevronDown, Moon, Sun } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { WalletButton } from '@/components/solana/solana-provider'
 import { ClusterUiSelect } from './cluster/cluster-ui'
 
 const navItems = [{ label: 'Docs', href: 'https://docs.tributary.so' }]
-
-const hackathons = [
-  { label: 'Cypherpunk', href: '/hackathon' },
-  { label: 'x402', href: '/x402' },
-  { label: 'Agent', href: '/agent' },
-  { label: 'Frontier', href: '/frontier' },
-  { label: 'Roadshow', href: '/roadshow' },
-  //{ label: 'theMiracle', href: '/the-miracle' },
-]
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(false)
@@ -49,18 +40,6 @@ export function AppHeader() {
   const { connected } = useWallet()
   const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isHackathonsOpen, setIsHackathonsOpen] = useState(false)
-  const hackathonsRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (hackathonsRef.current && !hackathonsRef.current.contains(event.target as Node)) {
-        setIsHackathonsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const scrollToSection = (id: string) => {
     navigate('/')
@@ -77,10 +56,6 @@ export function AppHeader() {
       }, 100)
     }
   }, [])
-
-  const location = useLocation()
-  if (location.pathname == '/frontier' || location.pathname == '/roadshow' || location.pathname == '/the-miracle')
-    return
 
   return (
     <header className="py-6">
@@ -100,31 +75,6 @@ export function AppHeader() {
                 {item.label}
               </a>
             ))}
-            <div ref={hackathonsRef} className="relative">
-              <button
-                onClick={() => setIsHackathonsOpen(!isHackathonsOpen)}
-                className="flex items-center gap-1 transition-colors hover:text-foreground"
-              >
-                PITCHES
-                <ChevronDown className={`h-3 w-3 transition-transform ${isHackathonsOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {isHackathonsOpen && (
-                <div className="absolute left-0 top-full pt-2 z-50">
-                  <div className="bg-background border border-border shadow-lg min-w-32 py-2">
-                    {hackathons.map((hackathon) => (
-                      <Link
-                        key={hackathon.href}
-                        to={hackathon.href}
-                        onClick={() => setIsHackathonsOpen(false)}
-                        className="block px-4 py-2 hover:bg-muted/50 transition-colors text-xs uppercase tracking-[0.12em] text-foreground"
-                      >
-                        {hackathon.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
             <Link to="/referral" className="transition-colors hover:text-foreground">
               REFERRAL
             </Link>
@@ -185,16 +135,6 @@ export function AppHeader() {
               >
                 {item.label}
               </a>
-            ))}
-            {hackathons.map((hackathon) => (
-              <Link
-                key={hackathon.href}
-                to={hackathon.href}
-                onClick={() => setIsMenuOpen(false)}
-                className="transition-colors hover:text-foreground"
-              >
-                {hackathon.label}
-              </Link>
             ))}
             <Link
               to="/referral"

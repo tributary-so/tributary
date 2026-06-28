@@ -4,7 +4,7 @@ For full control over the UI, use hooks directly. Each hook manages its own load
 
 ## `useTributarySDK`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Returns an initialized `Tributary` SDK instance (or `null` if the wallet isn't connected). All other payment hooks depend on this internally — use it when you need raw SDK access.
 
@@ -27,7 +27,7 @@ function MyComponent() {
 
 ## `useCreateSubscription`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Creates a subscription policy. Handles instruction building, transaction signing, and on-chain confirmation.
 
@@ -85,7 +85,7 @@ function SubscribeForm() {
 
 ## `useCreateMilestone`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Creates a milestone payment with up to 4 deliverable phases. Each milestone has its own amount and due timestamp.
 
@@ -147,7 +147,7 @@ function MilestoneForm() {
 
 ## `useCreatePayAsYouGo`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Creates a pay-as-you-go policy with a spending cap per period. The provider claims incrementally as the user consumes.
 
@@ -199,7 +199,7 @@ function PayGoForm() {
 
 ## `useCheckoutSession`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Generates checkout URLs or redirects users to the hosted Tributary checkout page. Works for both one-time payments and subscriptions. No wallet connection required — the checkout page handles that.
 
@@ -257,7 +257,7 @@ function CheckoutButton() {
 
 ## `useTributaryToken`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Verifies a Tributary JWT token (e.g., from a checkout callback) and decodes its payload. Use this to confirm an active subscription on the client side.
 
@@ -302,7 +302,7 @@ const { payload } = useTributaryToken(myJwtToken);
 
 ## `useTrackingId`
 
-> **Full example integration:** [github.com/tributary-so/tributary/example-payments](https://github.com/tributary-so/tributary/tree/develop/apps/example-payments)
+> **Full example integration:** [github.com/tributary-so/tributary/showcase-payments](https://github.com/tributary-so/tributary/tree/develop/apps/showcase-payments)
 
 Fetches and verifies a payment token for a given tracking ID. Use this to confirm a user's subscription status on the client side by resolving a tracking ID (set during checkout) to a verified JWT payload.
 

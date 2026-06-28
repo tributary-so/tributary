@@ -283,7 +283,7 @@ export default function ReferralAccountForm({
                 : status?.color === 'success'
                 ? 'border-status-active-500'
                 : status?.color === 'validating'
-                ? 'border-subscription-400'
+                ? 'border-policy-400'
                 : ''
             }`}
             isInvalid={status?.color === 'error' || status?.color === 'warning'}
@@ -292,7 +292,7 @@ export default function ReferralAccountForm({
               status ? (
                 <div className="pointer-events-none flex items-center">
                   {status.color === 'validating' ? (
-                    <Loader2 className="w-4 h-4 text-subscription-400 animate-spin" />
+                    <Loader2 className="w-4 h-4 text-policy-400 animate-spin" />
                   ) : (
                     <span
                       className={`text-small ${
@@ -321,7 +321,7 @@ export default function ReferralAccountForm({
             }
           />
           {status?.color === 'validating' ? (
-            <p className="text-xs text-subscription-500 mt-1">Validating...</p>
+            <p className="text-xs text-policy-500 mt-1">Validating...</p>
           ) : (
             <p className="text-xs text-muted-foreground mt-1">Must be exactly 6 alphanumeric characters (A-Z, 0-9)</p>
           )}
@@ -347,7 +347,7 @@ export default function ReferralAccountForm({
                 : referrerValid === true
                 ? 'border-status-active-500'
                 : validatingReferrer
-                ? 'border-subscription-400'
+                ? 'border-policy-400'
                 : ''
             }`}
             isInvalid={referrerValid === false}
@@ -356,7 +356,7 @@ export default function ReferralAccountForm({
               validatingReferrer || referrerValid !== null ? (
                 <div className="pointer-events-none flex items-center">
                   {validatingReferrer ? (
-                    <Loader2 className="w-4 h-4 text-subscription-400 animate-spin" />
+                    <Loader2 className="w-4 h-4 text-policy-400 animate-spin" />
                   ) : (
                     <span
                       className={`text-small ${

@@ -5,14 +5,14 @@ const actions = [
   {
     icon: Play,
     title: 'Quickstart',
-    description: 'Set up your first recurring payment',
+    description: 'Create your first payment policy',
     link: '/quickstart',
     internal: true,
   },
   {
     icon: BookOpen,
     title: 'Read Documentation',
-    description: 'Learn how to integrate recurring payments in your app',
+    description: 'Learn how to integrate payment policies in your app',
     link: 'https://docs.tributary.so',
     internal: false,
   },
@@ -48,8 +48,8 @@ const actions = [
 
 const stats = [
   { label: 'Network', value: 'Solana' },
-  { label: 'Type', value: 'Recurring Payments' },
-  { label: 'UX', value: 'set & forget' },
+  { label: 'Model', value: 'Pull-based, non-custodial' },
+  { label: 'UX', value: 'One delegation' },
 ]
 
 function ActionCard({ action }: { action: (typeof actions)[number] }) {
@@ -86,14 +86,14 @@ export default function DashboardFeature() {
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr] lg:gap-16">
         <div className="flex flex-col items-start gap-4 text-left">
           <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl">
-            Accept and manage recurring payments in minutes
+            Manage your payment policies in minutes
           </h1>
           <p className="text-xl text-muted-foreground">
-            Web2 subscription UX with Web3 transparency using token delegation
+            Delegate once. Money moves itself within rules you set — non-custodial, on schedule.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Link
-              to="/quickstart4"
+              to="/quickstart"
               className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
             >
               <Play className="h-4 w-4" />
@@ -153,7 +153,7 @@ export default function DashboardFeature() {
       </div>
 
       <div className=" border border-border bg-muted/20 p-12 text-center">
-        <h2 className="mb-4 text-2xl font-bold">Ready to Accept Recurring Payments?</h2>
+        <h2 className="mb-4 text-2xl font-bold">Ready to set up a payment policy?</h2>
         <p className="mb-8 text-muted-foreground">Connect your wallet and create your first payment policy</p>
         <Link
           to="/quickstart"
