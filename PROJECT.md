@@ -1,353 +1,219 @@
-# Tributary.so Project Summary
+# Tributary — Project Summary
 
 ## Overview
 
-Tributary is a comprehensive payment protocol on Solana that enables automated recurring payments through token delegation. Users approve payments once, and the protocol handles execution automatically without fund lock-up. The protocol provides foundational infrastructure that payment providers build upon to create user-facing payment services across three distinct payment models: Subscriptions, Milestone Payments, and Pay-as-you-go.
+Tributary is a single rule-based money-moving primitive on Solana. A user
+delegates spending authority once; money then moves itself within rules the
+user defined — a trigger condition, a value to pull, a destination to route
+to. Non-custodial, permissionless, composable.
+
+Tributary is **one thing**, not a portfolio of products. Everything below is
+an aspect of the same primitive, captured by the motif:
+
+> **If This Then Money.**
+
+- **v1 (live on mainnet)** — the PULL axis is live. WHEN is schedule-only,
+  ROUTE is wallet-only. This is what the market calls "recurring payments" —
+  the minimal live configuration of the primitive, already proven in
+  production (4,000+ pulls across six teams).
+- **v2 (in development)** — WHEN and ROUTE open up. A pull may be gated by
+  any allowlisted on-chain condition (Lighthouse assertions) and routed
+  through any allowlisted program (Meteora DLMM swaps today, more tomorrow).
+  Internal docs call this "composable"; it is the same primitive with two
+  more knobs turned on.
+
+**Program ID:** `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`
+
+## The Three Knobs
+
+A fully-specified movement of money is one **WHEN × PULL × ROUTE**.
+
+| Knob      | Meaning               | v1 (live)                      | v2 (composable)                                        |
+| --------- | --------------------- | ------------------------------ | ------------------------------------------------------ |
+| **WHEN**  | The trigger condition | Schedule only                  | Schedule, oracle, balance, governance...               |
+| **PULL**  | The value transfer    | Fixed / variable / usage-based | Same, any token                                        |
+| **ROUTE** | The destination       | Wallet                         | Wallet, DEX swap, LP, staking, any allowlisted program |
+
+Recurring payments is not a separate product — it is the simplest live
+configuration (WHEN=schedule, PULL=fixed, ROUTE=wallet). Open WHEN and ROUTE
+and the _same_ primitive becomes the v2 composable layer.
 
 ## Core Technology
 
-- **Protocol**: Smart contract-based recurring payments using SPL token delegation
-- **Network**: Native Solana integration with sub-cent fees and 400ms settlement
-- **Security**: Non-custodial - funds remain in user wallets until payment execution
-- **UX**: One-click setup via token delegation, eliminating repetitive approvals
+- **Primitive**: Rule-based pull payments using SPL token delegation
+- **Network**: Native Solana — sub-cent fees, 400ms finality
+- **Security**: Non-custodial — funds remain in user wallets until execution
+- **UX**: One delegation; authorized gateways pull on schedule without further signatures
+- **Composable**: Optional validation CPI (Lighthouse) + forward CPI (Meteora DLMM) between pull and settle
 - **Program ID**: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`
-- **Action Codes**: One-time payment codes enabling wallet-less payment initiation
+- **Validation CPI**: Lighthouse `L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95`
+- **Forward CPI**: Meteora DLMM `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`
+- **Action Codes**: One-time wallet-less payment codes
+- **x402**: HTTP 402 middleware for deferred micropayments
 
 ## Key Features
 
-- **Automated Execution**: Payments execute automatically on schedule without user intervention
-- **Full Control**: Users can pause, resume, or cancel subscriptions anytime
-- **Protocol Design**: One smart contract enabling unlimited businesses on top
-- **Fee Structure**: 1% protocol fee + configurable gateway fees (up to 10%)
-- **Integration**: x402 HTTP 402 support for deferred micropayments
-- **Action Codes**: Generate one-time payment codes for wallet-less transactions
-- **Multiple Payment Types**: Subscriptions, Milestones, and Pay-as-you-go models
+- **One primitive, three knobs** — WHEN / PULL / ROUTE compose into any rule-based payment
+- **Two policy families** — `PaymentPolicy` (direct pull, v1) and `ComposablePolicy` (programmable pull, v2) sharing the same schedule engine, fee math, and `UserPayment` scope
+- **Three schedule models** — Subscription, Milestone (escrow + release conditions), Pay-as-you-go (usage-based with period caps)
+- **Composable hooks** — opt-in validation (Lighthouse on-chain assertions) and token-transform forwards (Meteora DLMM) inserted between pull and settle
+- **Non-custodial** — funds stay in the user's wallet; only SPL delegation is used
+- **Permissionless execution** — any authorized gateway signer can trigger a due payment
+- **Fee architecture** — configurable protocol + gateway fees, net/gross modes, per-gateway custom fees, 3-tier referral reward pool
+- **Emergency pause** — global kill switch on the `ProgramConfig` singleton
+- **x402 / HTTP 402** middleware for deferred micropayments
+- **Action Codes** — one-time wallet-less payment codes
 
-## Development Status
+## The Two Policy Families
 
-- **MVP**: 100% complete, built in 3 weeks for Colosseum Hackathon
-- **Live Networks**: Devnet and Mainnet deployment
-- **SDK Packages**: TypeScript SDK, React components, CLI manager
-- **Demo Flows**: Create, pause, resume, delete subscriptions
-- **Security**: Audit pending
-- **CI/CD**: Full test coverage with GitHub Actions pipelines
-- **Payment Types**: Three payment models fully implemented and tested
+Tributary exposes two policy namespaces that share the scheduling engine, the
+`UserPayment` account, the `PaymentGateway`, and the fee-distribution logic.
 
-## Testing & Quality Assurance
+```
+                       ┌──────────────────────────────────────┐
+                       │           UserPayment                │
+                       │   ["user_payment", owner, mint]      │
+                       │   created_policies_count ──┐         │
+                       │   created_composable_count ┤         │
+                       └────────────────────────────┼─────────┘
+                                                   │
+           ┌───────────────────────────────────────┴───────────────────────────┐
+           │                                                                     │
+   PaymentPolicy PDA                                          ComposablePolicy PDA
+  ["payment_policy", user_payment, id]                   ["composable_policy", user_payment, id]
+  id = created_policies_count                             id = created_composable_count
+           │                                                               │
+   execute_payment                                             execute_composable
+   (single CPI: user → recipient)              ┌─────────────────────┴─────────────────────┐
+                                                │                                             │
+                                       Phase 1: PULL                                Phase 2/3 (optional)
+                                       user_token ──► intermediate_input_ata       VALIDATE  +  FORWARD
+                                                                                        (Lighthouse) (Meteora DLMM)
+                                                                                              │
+                                                                                     settle: recipient + fees
+```
 
-Tributary maintains comprehensive test coverage across all components:
+- **PaymentPolicy** — direct pull: program pulls tokens from the user's ATA
+  straight to the recipient in a single CPI, with fees routed inline. This is
+  the v1 minimal config (WHEN=schedule, ROUTE=wallet).
+- **ComposablePolicy** — programmable pull: program pulls into a transient
+  intermediate ATA owned by the ComposablePolicy PDA, optionally runs a
+  read-only validation CPI, optionally runs a forward CPI (swap), then settles
+  to the recipient. This is the v2 config (WHEN + ROUTE open).
 
-### GitHub Actions CI/CD Pipeline
+> Policy IDs come from **independent** counters on `UserPayment`
+> (`created_policies_count` vs `created_composable_count`). A regular policy
+> #1 and a composable policy #1 can coexist on the same `UserPayment`.
 
-- **Smart Contract Tests**: Full Anchor test suite covering all payment types
-- **SDK Tests**: TypeScript integration tests for all SDK functionality
-- **React Component Tests**: Component testing for payment UI elements
-- **E2E Tests**: End-to-end payment flow validation
-- **Security Tests**: Automated security scanning and vulnerability detection
-- **Performance Tests**: Load testing for high-volume payment scenarios
+## Smart Contract
 
-### Test Coverage Areas
+Single Anchor program in `programs/tributary/` (Rust / Anchor `0.31.1`), exposing
+21 instruction entrypoints across the two policy families plus gateway, user,
+referral, and config management.
 
-- **Program Instructions**: All 5 core instructions thoroughly tested
-- **Payment Types**: Subscriptions, Milestones, and Pay-as-you-go validation
-- **Edge Cases**: Error handling, boundary conditions, and failure scenarios
-- **Integration**: Cross-component interaction testing
-- **Security**: Delegation validation, permission checks, and fund safety
+### Core accounts
 
-### Quality Metrics
+| Account            | Seeds                                            | Purpose                                                                 |
+| ------------------ | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| `ProgramConfig`    | `["config"]`                                     | Singleton — protocol admin, protocol fee, emergency pause               |
+| `PaymentGateway`   | `["gateway", authority]`                         | Per-authority gateway settings (fees, signer, flags, referral)          |
+| `UserPayment`      | `["user_payment", owner, mint]`                  | Per user+mint; the **delegate** for token pulls; holds both counters    |
+| `PaymentPolicy`    | `["payment_policy", user_payment, policy_id]`    | Direct pull-payment policy (Subscription / Milestone / PayAsYouGo)      |
+| `ComposablePolicy` | `["composable_policy", user_payment, policy_id]` | Programmable pull-payment policy (validation + forward hooks)           |
+| `ValidationPda`    | `["composable_validation", composable_policy]`   | Stores Lighthouse assertion data (≤ 1024 bytes)                         |
+| `ReferralAccount`  | `["referral", gateway, referral_code]`           | 6-char referral code + chain relationships (gateway-scoped)             |
+| `PaymentsDelegate` | `["payments"]`                                   | Legacy global delegate (deprecated — `UserPayment` PDA is the delegate) |
 
-- **Code Coverage**: >95% across all critical paths
-- **Test Automation**: 100% automated testing pipeline
-- **Security Audits**: Regular third-party security assessments (TBD)
-- **Performance**: Sub-second transaction processing guaranteed
+### Instructions
 
-## Smart Contracts
+**PaymentPolicy (v1):** `initialize`, `create_user_payment`, `create_payment_gateway`,
+`create_payment_policy`, `execute_payment`, `change_payment_policy_status`,
+`delete_payment_policy`, `delete_user_payment`, `delete_payment_gateway`,
+`change_gateway_signer`, `change_gateway_fee_recipient`, `change_gateway_fee_bps`,
+`update_gateway_referral_settings`, `update_gateway_protocol_fee`,
+`update_gateway_feature_flags`, `create_referral_account`, `transfer`.
 
-The protocol consists of five main programs in `programs/recurring_payments/src/`:
+**ComposablePolicy (v2):** `create_composable_policy`, `execute_composable`,
+`delete_composable_policy`, `change_composable_status`.
 
-### Program Config
+## Schedule Models (PolicyType)
 
-Global protocol configuration with protocol fees and emergency controls.
-
-### Payment Gateway
-
-Business-specific payment processing with configurable fees and signer authority.
-
-### User Payment
-
-Individual user payment setups tracking active policies per token.
-
-### Payment Policy
-
-Flexible payment rule definitions supporting multiple policy types.
-
-### Automatic Execution
-
-Trustless payment processing using Solana's token delegation.
-
-## Token Delegation & SPL Integration
-
-Tributary leverages Solana's native SPL Token delegation for secure, automated payments:
-
-**Approval Flow:**
-
-1. User delegates authority to Tributary's PDAs for specific amounts and schedules
-2. Smart contract verifies delegation scope (amount, time limits)
-3. Payments execute automatically from user's token account
-4. Users retain full custody and can revoke delegation anytime
-
-**Extensible Policy Types:**
+Both policy families reuse the same `PolicyType` enum — three variants, each
+exactly **128 bytes** (fixed-size for account stability).
 
 ```rust
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub enum PolicyType {
     Subscription {
-        amount: u64,
-        auto_renew: bool,
-        max_renewals: Option<u32>,
-        payment_frequency: PaymentFrequency,
-        next_payment_due: i64,
+        amount: u64,                         // payment per cycle
+        auto_renew: bool,                    // continue past max_renewals?
+        max_renewals: Option<u32>,           // ceiling (None = indefinite)
+        payment_frequency: PaymentFrequency, // Daily/Weekly/Monthly/Quarterly/.../Custom(secs)
+        next_payment_due: i64,               // gates execution
         padding: [u8; 97],
     },
     Milestone {
         milestone_amounts: [u64; 4],         // Amount for each milestone
         milestone_timestamps: [i64; 4],      // Absolute timestamps for each milestone
         current_milestone: u8,               // Which milestone is next (0-3)
-        release_condition: u8,               // 0=time-based, 1=manual approval, 2=automatic
-        total_milestones: u8,                // How many milestones are configured (1-4)
+        release_condition: u8,               // bitmap: bit0=due-date, bits1-3=signer
+        total_milestones: u8,                // 1..=4
         escrow_amount: u64,                  // Total amount held in escrow
-        padding: [u8; 53],                   // Padding for 128-byte alignment
+        padding: [u8; 53],
     },
     PayAsYouGo {
         max_amount_per_period: u64,          // Total amount allowed per period
         max_chunk_amount: u64,               // Max amount provider can claim in one go
         period_length_seconds: u64,          // Length of each period in seconds
         current_period_start: i64,           // When current period started (unix timestamp)
-        current_period_total: u64,           // Amount claimed in current period so far
-        padding: [u8; 88],                   // Padding for 128-byte alignment
+        current_period_total: u64,           // Amount claimed in current period so far (auto-resets)
+        padding: [u8; 88],
     },
 }
 ```
 
-## Technical Architecture
+### 1. Subscription
 
-```
-User → Create UserPayment (owner/mint)
-    → Create PaymentGateway (authority/signer)
-    → Create PaymentPolicy (user_payment/recipient/gateway)
-    → Approve Delegate (token account delegation)
-    → Execute Payment (permissionless, by gateway signer)
-       → Transfer to recipient + fees
-```
+Fixed recurring payments at regular intervals (Daily, Weekly, Monthly,
+Quarterly, SemiAnnually, Annually, or `Custom(u64)` seconds), with optional
+auto-renewal and maximum renewal limits. Execution is gated by
+`next_payment_due`.
 
-**PDAs:**
+**Best for:** SaaS platforms, content memberships, recurring donations, API
+access with fixed monthly fees, software licenses.
 
-- ProgramConfig: Protocol settings and fees
-- PaymentGateway: Gateway configuration and fees
-- UserPayment: User stats across policies
-- PaymentPolicy: Individual subscription details
-- PaymentsDelegate: Delegation authority
+### 2. Milestone
 
-## SDK & Integration
+Project-based compensation with up to 4 escrowed milestones. Each milestone
+has an amount and a payable timestamp. Release is governed by a
+`release_condition` bitmap:
 
-### TypeScript SDK (`sdk/`)
+| Bit | Mask     | Condition                   |
+| --- | -------- | --------------------------- |
+| 0   | `0b0001` | Milestone due-date reached  |
+| 1   | `0b0010` | Gateway authority must sign |
+| 2   | `0b0100` | Policy owner must sign      |
+| 3   | `0b1000` | Recipient must sign         |
 
-Complete protocol interaction library with Anchor integration:
+Bits 1–3 are mutually exclusive (only one signer-release mode at a time).
 
-- Payment management functions (create, execute, pause/resume policies)
-- PDA helpers for deterministic addresses
-- Token delegation utilities for SPL integration
-- Error handling, validation, and payment frequency mapping
-
-```typescript
-const instructions = await sdk.createSubscriptionInstruction(
-  params.token,
-  params.recipient,
-  params.gateway,
-  params.amount,
-  false,
-  null,
-  createPaymentFrequency(params.interval),
-  createMemoBuffer(params.memo || "", 64),
-  params.startTime,
-  params.approvalAmount,
-  params.executeImmediately ?? true
-);
-```
-
-### React SDK (`sdk-react/`)
-
-Pre-built payment components:
-
-```typescript
-import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
-<SubscriptionButton
-  amount={new BN("10000000")}
-  token={new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")}
-  recipient={recipient}
-  gateway={gateway}
-  interval={PaymentInterval.Weekly}
-  maxRenewals={12}
-  memo={`Monthly donation to ${repository}`}
-  label="Donate $10/month"
-/>;
-```
-
-### Integration Examples
-
-**Basic Payment Button:**
-
-```typescript
-<SubscriptionButton
-  amount={new BN(10_000_000)}
-  token={USDC_MINT}
-  recipient={merchantWallet}
-  interval={PaymentInterval.Monthly}
-  label="Subscribe for $10/month"
-/>
-```
-
-**Advanced Provider Integration:**
-
-```typescript
-class PaymentProvider {
-  constructor(config) {
-    this.tributary = new Tributary(config);
-    this.database = new Database(config.db);
-    this.webhooks = new WebhookService(config.webhooks);
-  }
-
-  async setupSubscription(user, plan) {
-    const policy = await this.tributary.createPaymentPolicy({
-      amount: plan.amount,
-      interval: plan.interval,
-      recipient: plan.recipient,
-    });
-
-    await this.database.saveSubscription({
-      userId: user.id,
-      policyId: policy.id,
-      plan: plan,
-      status: "active",
-    });
-
-    await this.webhooks.register({
-      policyId: policy.id,
-      events: ["payment.success", "payment.failed"],
-      url: `${this.config.baseUrl}/webhooks/payments`,
-    });
-
-    return policy;
-  }
-}
-```
-
-## Payment Types
-
-Tributary supports three distinct payment models, each optimized for different use cases:
-
-### 1. Subscriptions
-
-Fixed recurring payments at regular intervals (daily, weekly, monthly, etc.) with optional auto-renewal and maximum renewal limits.
-
-**Characteristics:**
-
-- **Predictable**: Fixed amounts at regular intervals
-- **Automated**: Executes without user intervention after setup
-- **Flexible Intervals**: Daily, weekly, monthly, quarterly, yearly
-- **Renewal Control**: Auto-renew with limits or manual renewal
-- **Simple Setup**: One-time approval for ongoing payments
-
-**Use Cases:**
-
-- SaaS platforms with monthly billing
-- Content subscriptions (streaming, newsletters)
-- Membership dues and recurring donations
-- API access with fixed monthly fees
-- Software licenses and maintenance contracts
-
-**Technical Details:**
-
-```rust
-Subscription {
-    amount: u64,                    // Fixed payment amount
-    auto_renew: bool,               // Auto-renewal enabled
-    max_renewals: Option<u32>,      // Maximum renewal limit
-    payment_frequency: PaymentFrequency, // Daily/Weekly/Monthly/etc.
-    next_payment_due: i64,          // Unix timestamp for next payment
-}
-```
-
-### 2. Milestone Payments
-
-Project-based compensation with up to 4 configurable milestones. Each milestone has specific amounts, timestamps, and release conditions (time-based, manual approval, or automatic).
-
-**Characteristics:**
-
-- **Event-driven**: Payments tied to deliverable completion
-- **Variable Amounts**: Different amounts per milestone
-- **Progress Tracking**: Clear visibility into project status
-- **Release Control**: Time-based, manual, or automatic release
-- **Escrow Security**: Total amount approved upfront
-
-**Use Cases:**
-
-- Freelance projects with phased deliverables
-- Software development contracts
-- Consulting engagements with milestone-based progress
-- Content creation with episode/release-based payments
-- Construction and engineering projects
-- Research and development initiatives
-
-**Technical Details:**
-
-```rust
-Milestone {
-    milestone_amounts: [u64; 4],      // Amount for each milestone
-    milestone_timestamps: [i64; 4],   // When each milestone is payable
-    current_milestone: u8,            // Which milestone is next (0-3)
-    release_condition: u8,            // 0=time, 1=manual, 2=automatic
-    total_milestones: u8,             // How many milestones (1-4)
-    escrow_amount: u64,               // Total amount held in escrow
-}
-```
+**Best for:** Freelance projects, software development contracts, consulting
+engagements, content series, construction / engineering, R&D initiatives.
 
 ### 3. Pay-as-you-go
 
-Flexible usage-based billing where providers claim funds incrementally within predefined limits. Features period-based limits, chunk-based claims, and automatic resets.
+Usage-based billing: each execution claims up to `max_chunk_amount`, capped at
+`max_amount_per_period` per `period_length_seconds`. The period resets
+automatically. This is the **only** variant that accepts a caller-supplied
+amount at execute time (`forward_amount` on the composable path).
 
-**Characteristics:**
-
-- **Usage-based**: Pay only for what you consume
-- **Flexible Limits**: Period and chunk-based controls
-- **Automatic Resets**: Period totals reset automatically
-- **Provider-driven**: Providers initiate payment claims
-- **Budget Control**: Built-in spending limits per period
-
-**Use Cases:**
-
-- AI agents and LLM providers
-- API services with variable consumption
-- Cloud resources and infrastructure costs
-- SaaS platforms with flexible billing
-- Utility services (compute, storage, bandwidth)
-- Pay-per-use applications
-
-**Technical Details:**
-
-```rust
-PayAsYouGo {
-    max_amount_per_period: u64,      // Total allowed per billing period
-    max_chunk_amount: u64,           // Max per individual claim
-    period_length_seconds: u64,       // Billing period duration
-    current_period_start: i64,        // Current period start time
-    current_period_total: u64,        // Amount claimed this period
-}
-```
+**Best for:** AI agents / LLM providers, API services with variable
+consumption, cloud resources, utility services (compute, storage, bandwidth),
+pay-per-use applications.
 
 ## Payment Type Comparison
 
-| Feature              | Subscriptions          | Milestone Payments      | Pay-as-you-go    |
+| Feature              | Subscription           | Milestone               | Pay-as-you-go    |
 | -------------------- | ---------------------- | ----------------------- | ---------------- |
 | **Payment Timing**   | Fixed schedule         | Event-based             | On-demand        |
 | **Amount Structure** | Fixed recurring        | Variable per milestone  | Variable chunks  |
@@ -358,78 +224,236 @@ PayAsYouGo {
 | **Setup Complexity** | Simple                 | Medium                  | Medium           |
 | **Best For**         | Regular services       | Project work            | Variable usage   |
 
-## Payment Type Selection Guide
+## Composable Policies (Validation + Forward)
 
-### Choose Subscriptions when
+A `ComposablePolicy` runs two **optional** hooks during execution, between the
+pull and settlement. Both are opt-in via sentinels.
 
-- Service usage is consistent and predictable
-- Customers prefer fixed monthly costs
-- Business model relies on recurring revenue
-- Administrative overhead should be minimal
+### Execution flow (3 phases)
 
-**Examples:** Netflix-style content, SaaS software, gym memberships, software maintenance
+```
+execute_composable:
+  ┌─ Phase 1: PULL ─────────────────────────────────────────────────┐
+  │ UserPayment PDA signs:                                          │
+  │   user_token_account ──► intermediate_input_ata                 │
+  │ (intermediate ATAs owned by ComposablePolicy PDA — NOT the      │
+  │  UserPayment PDA, decoupling intermediate authority from the    │
+  │  user-source delegate)                                          │
+  └─────────────────────────────────────────────────────────────────┘
+  ┌─ Phase 2: VALIDATE (optional) ──────────────────────────────────┐
+  │ CPI into validation_program (Lighthouse) with stored            │
+  │ validation_data + declared read-accounts. Veto on assertion     │
+  │ failure. Read-only — cannot move funds.                         │
+  └─────────────────────────────────────────────────────────────────┘
+  ┌─ Phase 3: FORWARD (optional) + SETTLE ──────────────────────────┐
+  │ If forward enabled: CPI into target_program (Meteora DLMM) to   │
+  │   swap intermediate_input ──► intermediate_output.              │
+  │ ByteRangeCheck pins the forward instruction selector.           │
+  │ Sweep intermediate_output ──► recipient + protocol + gateway.   │
+  │ min_output_amount enforced on NET (post-fee) amount.            │
+  │ If forward disabled (sentinel): sweep input directly to         │
+  │   recipient + fees (same-mint topup pattern).                   │
+  └─────────────────────────────────────────────────────────────────┘
+```
 
-### Choose Milestone Payments when
+### ForwardConfig
 
-- Work is delivered in discrete phases
-- Payment should follow completion, not time
-- Project scope is well-defined
-- Quality control at each stage is important
+```rust
+struct ForwardConfig {
+    target_program: Pubkey,             // Pubkey::default() = disabled (sentinel)
+    input_mint: Pubkey,                 // == user_payment.token_mint
+    output_mint: Pubkey,                // recipient delivery mint
+    min_output_amount: Option<u64>,     // NET (post-fee) minimum (DeFi convention)
+    forward_flags: u8,
+    num_data_checks: u8,
+    data_checks: [ByteRangeCheck; 4],   // pin forward instruction discriminator
+}
+```
 
-**Examples:** Construction projects, software development, consulting engagements, content series
+- `target_program` must be in `ALLOWED_FORWARD_PROGRAMS` (Meteora DLMM). `Pubkey::default()` disables the forward.
+- When enabled, ≥1 `ByteRangeCheck` must pin the discriminator at offset 0 — prevents a gateway swapping in an arbitrary instruction.
+- `min_output_amount` is checked against the **net** amount (after fees).
 
-### Choose Pay-as-you-go when
+### ValidationConfig
 
-- Usage patterns are variable and unpredictable
-- Customers prefer paying only for what they use
-- Service costs scale with consumption
-- Flexibility is more valuable than predictability
+```rust
+struct ValidationConfig {
+    validation_program: Pubkey,   // SystemProgram = disabled (sentinel)
+    num_validation_accounts: u8,  // ≤ 10 read-accounts for the assertion
+}
+```
 
-**Examples:** Cloud computing, API calls, AI token usage, pay-per-click advertising
+Assertion data (≤ 1024 bytes) lives in a separate `ValidationPda`
+(`["composable_validation", composable_policy]`). At execute, the program CPIs
+into the validation program passing this data + declared read-accounts as
+`remaining_accounts`.
 
-## Business Applications
+- `validation_program` must be in `ALLOWED_VALIDATION_PROGRAMS` (Lighthouse). `SystemProgram` disables validation.
 
-Tributary's three payment models support diverse business use cases:
+### Building Lighthouse assertions (SDK facade)
 
-### SaaS & Software
+The SDK ships a fluent `lighthouse` facade over the vendored
+`packages/lighthouse` client. Never hand-roll the serialization.
 
-- **Subscriptions**: Monthly/annual software licenses
-- **Pay-as-you-go**: API usage billing, compute costs
-- **Milestones**: Custom development projects
+```typescript
+import { lighthouse, LIGHTHOUSE_PROGRAM_ID } from "@tributary-so/sdk";
 
-### Creator Economy
+// Assert hotWallet USDC balance < 50 USDC before topping up
+const guard = lighthouse
+  .tokenAccount(hotWalletUsdcAta)
+  .amount(50_000_000, "<")
+  .build();
 
-- **Subscriptions**: Content memberships, fan support
-- **Milestones**: Series-based content creation
-- **Pay-as-you-go**: Premium content access
+// guard.data        → Buffer  (stored in ValidationPda)
+// guard.numAccounts → 1       (numValidationAccounts)
+// guard.accounts    → [hotWalletUsdcAta]  (Lighthouse read-accounts)
+```
 
-### Professional Services
+Covers `tokenAccount`, `mintAccount`, `accountInfo`, `accountData`,
+`accountDelta`, `sysvarClock`, `stakeAccount`, `merkleTree`, plus operator
+sugar (`"<"`, `">="`, `"!="`, `"in"`, …).
 
-- **Subscriptions**: Retainer agreements, ongoing support
-- **Milestones**: Project-based consulting, legal services
-- **Pay-as-you-go**: Hourly billing, usage-based services
+### Allowlists (hard-coded in `constants.rs`)
 
-### Gaming & Entertainment
+| List                          | Programs                                                   |
+| ----------------------------- | ---------------------------------------------------------- |
+| `ALLOWED_FORWARD_PROGRAMS`    | Meteora DLMM `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
+| `ALLOWED_VALIDATION_PROGRAMS` | Lighthouse `L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95`   |
 
-- **Subscriptions**: Game passes, platform access
-- **Milestones**: Content release schedules
-- **Pay-as-you-go**: In-game purchases, virtual goods
+Sentinels (`Pubkey::default()` / `SystemProgram`) disable the respective hook.
 
-### DeFi & Web3
+## Technical Architecture
 
-- **Subscriptions**: Protocol fees, strategy access
-- **Milestones**: Grant disbursements, development milestones
-- **Pay-as-you-go**: Transaction fees, gas optimization
+```
+User → createUserPayment(owner, mint)
+     → createPaymentGateway(authority, feeBps, feeRecipient)
+     → createPaymentPolicy / createComposablePolicy(user_payment, recipient, gateway, PolicyType)
+     → approve UserPayment PDA as delegate on the user token account
+     → executePayment / executeComposable (permissionless — any gateway signer)
+        → PaymentPolicy:   single CPI user_token → recipient + fees
+        → ComposablePolicy: pull → validate? → forward? → settle recipient + fees
+```
 
-### AI & Machine Learning
+## Fee Model
 
-- **Subscriptions**: Model access, API subscriptions
-- **Milestones**: Training milestones, model development
-- **Pay-as-you-go**: Token usage billing, compute time
+Fees are computed in `programs/tributary/src/shared/fees.rs`:
+
+- **Protocol fee** — default `100 bps` (1%), stored on `ProgramConfig.protocol_fee_bps`.
+- **Gateway fee** — configurable `gateway_fee_bps` (0..10000), stored per-gateway.
+- **Custom protocol fee** — per-gateway override (bit 2 of `feature_flags`).
+- **Combined guard** — `gateway_fee_bps + protocol_fee_bps < 10000` (recipient must receive > 0).
+
+Two amount modes (`PaymentGateway.feature_flags` bit 1):
+
+- **Gross (default)** — recipient = `payment_amount − gateway_fee − protocol_fee`.
+- **Net** — recipient receives exactly `payment_amount`; fees are added on top and pulled from the user.
+
+Math: `(amount * bps) / 10000` (rounds down; dust goes to protocol). On the
+composable path, `min_output_amount` is checked against the **net** (post-fee) output.
+
+## SDK & Integration
+
+### Install
+
+```bash
+pnpm add @tributary-so/sdk
+# optional companions:
+pnpm add @tributary-so/sdk-react   # React hooks + buttons
+pnpm add @tributary-so/sdk-x402    # HTTP 402 middleware
+pnpm add @tributary-so/payments    # high-level payments client
+```
+
+### TypeScript SDK (`packages/sdk`)
+
+Core protocol interaction library with Anchor integration — instruction
+builders, PDA helpers, token utilities, and the Lighthouse assertion facade.
+
+```typescript
+import { Tributary, getPaymentFrequency, encodeMemo } from "@tributary-so/sdk";
+import { Connection, PublicKey } from "@solana/web3.js";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const PROGRAM_ID = new PublicKey("TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ");
+const sdk = new Tributary(PROGRAM_ID, connection);
+
+// Full subscription setup: ATA + user payment + policy + delegate approval
+const ixs = await sdk.createSubscription(
+  tokenMint,
+  recipient,
+  gateway,
+  new BN("1000000"), // 1 USDC (6 decimals)
+  true, // auto-renew
+  12, // max renewals
+  getPaymentFrequency("monthly"),
+  encodeMemo("Pro plan")
+);
+
+// Permissionless execution (called by gateway signer)
+const execIx = await sdk.executePayment(paymentPolicyPda);
+```
+
+### Composable policy with a Lighthouse guard
+
+```typescript
+import { lighthouse, LIGHTHOUSE_PROGRAM_ID } from "@tributary-so/sdk";
+
+const guard = lighthouse
+  .tokenAccount(hotWalletUsdcAta)
+  .amount(50_000_000, "<")
+  .build();
+
+const ix = await sdk.getCreateComposablePolicyInstruction(
+  tokenMint,
+  recipient,
+  gateway,
+  policyType,
+  "Auto topup guard",
+  forwardConfig, // targetProgram = PublicKey.default for no-swap topup
+  LIGHTHOUSE_PROGRAM_ID, // SystemProgram = no validation
+  guard.numAccounts,
+  guard.data
+);
+
+const execIx = await sdk.executeComposable(
+  composablePolicyPda,
+  instructionData, // forward ix data (empty if disabled)
+  forwardAmount ?? null,
+  remainingAccounts // [ValidationPda, ...lighthouseTargets, ...forwardAccts]
+);
+```
+
+### React SDK (`packages/sdk-react`)
+
+Pre-built payment components:
+
+```tsx
+import { SubscriptionButton, PaymentInterval } from "@tributary-so/sdk-react";
+
+<SubscriptionButton
+  amount={new BN("10000000")} // 10 USDC
+  token={USDC_MINT}
+  recipient={recipientWallet}
+  gateway={gatewayAddress}
+  interval={PaymentInterval.Monthly}
+  maxRenewals={12}
+  memo="Monthly donation"
+  label="Subscribe for $10/month"
+/>;
+```
+
+### CLI (`apps/cli`, binary `tributary`)
+
+oclif CLI exposing topics for every program operation: `wallet`, `program`,
+`user`, `gateway`, `subscription`, `payments`, `referral`, `pda`.
 
 ## x402 Integration
 
-Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropayments. The x402 protocol represents a proposed HTTP status code for "Payment Required" that enables seamless payment flows over HTTP without breaking the request-response cycle. Unlike traditional payment walls that return opaque errors, x402 servers provide structured payment quotes that clients can fulfill with signed blockchain transactions.
+Tributary powers x402 (HTTP 402 Payment Required) implementation for web
+micropayments. The x402 protocol represents a proposed HTTP status code for
+"Payment Required" that enables seamless payment flows over HTTP without
+breaking the request-response cycle. Unlike traditional payment walls that
+return opaque errors, x402 servers provide structured payment quotes that
+clients can fulfill with signed blockchain transactions.
 
 **Core capabilities:**
 
@@ -441,237 +465,216 @@ Tributary powers x402 (HTTP 402 Payment Required) implementation for web micropa
 
 ### Middleware
 
-The `createX402Middleware()` function provides a complete Express.js integration layer that handles the entire payment flow automatically. This middleware intercepts incoming requests and determines whether payment is required, processes valid payments, and grants access via JWT tokens for returning users.
-
-**Function signature:**
-
-```typescript
-function createX402Middleware(options: X402Options): RequestHandler;
-```
-
-**Options interface:**
+The `createX402Middleware()` function provides a complete Express.js
+integration layer that handles the entire payment flow automatically. This
+middleware intercepts incoming requests and determines whether payment is
+required, processes valid payments, and grants access via JWT tokens for
+returning users.
 
 ```typescript
-interface X402Options {
-  scheme: "deferred" | "x402://payg" | "x402://prepaid";
-  network: string;
-  amount: number;
-  recipient: string;
-  gateway: string;
-  tokenMint: string;
-  paymentFrequency?: string;
-  autoRenew?: boolean;
-  maxRenewals?: number | null;
-  maxAmountPerPeriod?: number;
-  periodLengthSeconds?: number;
-  maxChunkAmount?: number;
-  jwtSecret: string;
-  sdk: Tributary;
-  connection: Connection;
-}
-```
+import { createX402Middleware } from "@tributary-so/sdk-x402";
 
-**Payment handling flow:**
-
-The middleware handles three distinct scenarios for each incoming request. First, it checks for an existing JWT in the Authorization header—valid tokens are verified against the blockchain to confirm the policy remains active, and access is immediately granted. Second, it checks for a Payment header containing a base64-encoded transaction—this triggers transaction simulation, submission to Solana, on-chain confirmation, and JWT generation upon success. Third, if neither JWT nor Payment header is present, the server returns HTTP 402 with a `Payment-Required` header containing the payment quote.
-
-**JWT verification:**
-
-When a client presents a Bearer token, the middleware decodes the JWT and extracts the policy address. It then queries the blockchain to verify the policy exists, is active, and matches the expected configuration. For pay-as-you-go schemes, it additionally checks whether the current period's usage remains within configured limits. If the policy is valid and within limits, the request proceeds with policy metadata attached to the request object for downstream use.
-
-**v2 header specification:**
-
-The x402 v2 implementation uses modern IETF-style headers instead of the deprecated `X-*` prefix convention. The `Payment-Required` header communicates payment requirements when access is denied, formatted as a comma-separated list of key-value pairs. The `Payment` header carries the client's payment payload, containing base64-encoded JSON with the transaction data. The `Payment-Response` header confirms successful payment with scheme, network, ID, and timestamp details.
-
-### Metering Utilities
-
-The x402 SDK includes three specialized metering utilities for tracking resource consumption in pay-as-you-go payment models. These utilities enable precise usage tracking across different resource types and integrate seamlessly with the payment verification flow.
-
-**TokenMeter:**
-
-The `TokenMeter` class provides utilities for estimating and parsing token consumption in LLM workflows. The `estimateFromText()` method calculates approximate token counts from raw text using a character-based heuristic (approximately 4 characters per token for English text). The `fromOpenAI()` static method parses OpenAI-compatible usage objects to extract input tokens, output tokens, and total token counts. For JSON payloads, `estimateFromJSON()` provides equivalent token estimation after stringification.
-
-```typescript
-TokenMeter.estimateFromText("Hello, world!"); // Returns ~4 tokens
-TokenMeter.fromOpenAI(response); // Extracts from usage object
-```
-
-**ComputeMeter:**
-
-The `ComputeMeter` class calculates compute unit consumption for various AI operations. The `calculateForLLM()` method applies model-specific multipliers to input and output token counts—different models have distinct cost profiles based on their computational requirements. The `calculateForEmbedding()` method estimates embedding costs based on model type, dimensions, and input tokens. For fine-tuning operations, `calculateForFineTune()` provides estimates based on epochs, training examples, and model size parameters.
-
-**UsageTracker:**
-
-The `UsageTracker` class implements comprehensive usage tracking with configurable limits per resource type. It maintains period-based aggregation, tracking usage since the current billing period began and providing summaries on demand. The `trackUsage()` method records individual request consumption, while `getCurrentPeriod()` returns aggregated statistics including total usage, request count, and estimated cost. The `checkQuota()` method enables pre-flight validation to determine whether expected usage will exceed configured limits.
-
-The `createUsageTrackingMiddleware()` factory function generates Express middleware that automatically tracks request metrics including processing time, request count, and data transfer volumes. Custom usage extractors can be provided to capture application-specific metrics like token counts from LLM responses.
-
-**Resource types supported:**
-
-The metering system supports diverse resource types including API requests, input/output/total tokens, compute units, processing time in milliseconds, bytes transferred, storage consumption, GPU time, and embedding dimensions. This flexibility enables metering for virtually any billable resource in modern API services.
-
-### v2 Enhancements
-
-The x402 v2 specification introduces several compatibility updates that improve standards compliance and developer experience. The most significant change replaces the deprecated `X-Payment` header with the modern `Payment` header, aligning with IETF conventions that avoid the `X-*` prefix for custom headers. All payment payloads now require explicit versioning via the `x402Version` field, which must be set to `2` for v2 compliance.
-
-Response headers follow the same modern pattern: `Payment-Required` replaces `X-Payment-Required`, `Payment-Response` replaces `X-Payment-Response`, and `Payment-Signature` replaces `X-Payment-Signature`. The Tributary SDK automatically handles both legacy and v2 clients, accepting requests with either header format and responding with the appropriate version based on client capability signaling.
-
-Payment requirements are now structured as comma-separated key-value pairs rather than JSON objects, improving readability and compatibility with standard HTTP header parsing. The scheme field supports three payment models: `deferred` for subscription-based access, `x402://payg` for metered pay-as-you-go billing, and `x402://prepaid` for credit-based prepayment systems.
-
-### Integration Example
-
-The following example demonstrates a complete Express.js integration using the x402 middleware with metering for a pay-as-you-go API:
-
-```typescript
-import express from "express";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { Tributary } from "@tributary-so/sdk";
-import { createX402Middleware, createUsageTracker, TokenMeter, ComputeMeter } from "@tributary-so/x402";
-
-const app = express();
-const connection = new Connection(process.env.RPC_URL!);
-const sdk = new Tributary(process.env.PROGRAM_ID!, connection);
-
-const x402Middleware = createX402Middleware({
-  scheme: "x402://payg",
+const middleware = createX402Middleware({
+  scheme: "deferred",
   network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
   amount: 100,
   recipient: process.env.RECIPIENT_WALLET!,
   gateway: process.env.GATEWAY!,
   tokenMint: process.env.TOKEN_MINT!,
-  maxAmountPerPeriod: 10000,
-  periodLengthSeconds: 86400,
-  maxChunkAmount: 1000,
+  paymentFrequency: "monthly",
   jwtSecret: process.env.JWT_SECRET!,
   sdk,
   connection,
 });
 
-// Apply x402 middleware to protected routes
-app.use("/api/premium", x402Middleware);
-
-// Usage tracking middleware
-const tracker = await createUsageTracker(
-  sdk,
-  connection,
-  policyAddress,
-  1000
-);
-
-// Token counting middleware for LLM endpoints
-app.use("/api/chat", async (req, res, next) => {
-  const originalSend = res.send;
-  let responseBody: any;
-
-  res.send = function(body) {
-    responseBody = body;
-    return originalSend.call(this, body);
-  };
-
-  res.on("finish", () => {
-    const inputTokens = TokenMeter.estimateFromText(req.body?.prompt || "");
-    const outputTokens = responseBody ? TokenMeter.estimateFromText(responseBody) : 0;
-    const computeUnits = ComputeMeter.calculateForLLM("gpt-4", inputTokens, outputTokens);
-
-    tracker.trackUsage(req.requestId, {
-      "tokens.in": inputTokens,
-      "tokens.out": outputTokens,
-      "tokens.total": inputTokens + outputTokens,
-      "compute.units": computeUnits,
-    });
-  });
-
-  next();
-});
-
-// Premium endpoint with usage tracking
-app.post("/api/chat", (req, res) => {
-  const response = /* LLM inference */;
-  res.json(response);
-});
+app.use("/api/premium", middleware);
 ```
 
-**x402 Flow:**
+**Payment handling flow:** For each incoming request the middleware (1) checks
+for an existing JWT in the Authorization header and verifies the policy
+on-chain; (2) checks for a `Payment` header containing a base64-encoded
+transaction, simulates, submits, confirms, and issues a JWT; (3) if neither is
+present, returns HTTP 402 with a `Payment-Required` header containing the
+payment quote.
 
-1. Client requests protected content via `/api/premium/endpoint`
-2. Middleware checks for JWT in Authorization header—returns 402 with `Payment-Required` header if missing
-3. Client creates payment transaction using Tributary SDK, sends base64-encoded transaction in `Payment` header
-4. Server simulates transaction, submits to Solana, waits for confirmation, verifies on-chain policy creation
-5. Server returns JWT in response body along with `Payment-Response` confirmation header
-6. Client caches JWT and includes it in future requests for seamless access
-7. Pay-as-you-go clients have usage tracked per period, with limits enforced automatically
+### Metering Utilities
+
+The x402 SDK includes three specialized metering utilities for tracking
+resource consumption in pay-as-you-go payment models:
+
+- **`TokenMeter`** — token-count estimation for LLM workflows (`estimateFromText`, `fromOpenAI`, `estimateFromJSON`).
+- **`ComputeMeter`** — compute-unit consumption per model (`calculateForLLM`, `calculateForEmbedding`, `calculateForFineTune`).
+- **`UsageTracker`** — period-based aggregation with configurable limits (`trackUsage`, `getCurrentPeriod`, `checkQuota`).
+
+The `createUsageTrackingMiddleware()` factory generates Express middleware that
+automatically tracks request metrics (processing time, request count, data
+transfer), with custom extractors for application-specific metrics like token
+counts.
+
+**Resource types supported:** API requests, input/output/total tokens, compute
+units, processing time, bytes transferred, storage, GPU time, embedding
+dimensions.
+
+### v2 Header Specification
+
+The x402 v2 implementation uses modern IETF-style headers instead of the
+deprecated `X-*` prefix. `Payment-Required` communicates payment requirements
+when access is denied, formatted as comma-separated key-value pairs. `Payment`
+carries the client's payment payload (base64-encoded JSON with the transaction
+data). `Payment-Response` confirms successful payment. All payloads require
+explicit `x402Version` field (`2` for v2). The scheme field supports three
+models: `deferred` (subscription), `x402://payg` (metered), `x402://prepaid`
+(credit-based).
+
+## Business Applications
+
+Tributary's primitive supports diverse use cases across the WHEN/PULL/ROUTE
+axes. The schedule models (Subscription / Milestone / Pay-as-you-go) cover the
+PULL axis; the composable hooks open up WHEN (condition-gated) and ROUTE
+(swap-routed) delivery.
+
+### SaaS & Software
+
+- **Subscription**: Monthly/annual software licenses
+- **Pay-as-you-go**: API usage billing, compute costs
+- **Milestone**: Custom development projects
+- **Composable**: Auto-rebalance fees into a treasury token via forward swap
+
+### Creator Economy
+
+- **Subscription**: Content memberships, fan support
+- **Milestone**: Series-based content creation
+- **Pay-as-you-go**: Premium content access
+
+### Professional Services
+
+- **Subscription**: Retainer agreements, ongoing support
+- **Milestone**: Project-based consulting, legal services
+- **Pay-as-you-go**: Hourly billing, usage-based services
+
+### DeFi & Web3
+
+- **Subscription**: Protocol fees, strategy access
+- **Milestone**: Grant disbursements, development milestones
+- **Pay-as-you-go**: Transaction fees, gas optimization
+- **Composable**: "If hot-wallet balance < threshold Then pull USDC and route WSOL to treasury" — same primitive, WHEN + ROUTE turned on
+
+### AI & Machine Learning
+
+- **Subscription**: Model access, API subscriptions
+- **Milestone**: Training milestones, model development
+- **Pay-as-you-go**: Token usage billing, compute time
 
 ## Business Model
 
-- **Revenue**: 1% protocol fee on all payments (volume-based discounts: 0.25%-1%)
-- **Provider Fees**: Configurable 2-3% typical rates
-- **Grants Program**: $500K fund for ecosystem development
-- **Year 1 Projections**: $180K-$1.08M protocol revenue
-
-## Team & Traction
-
-- **Experience**: 10+ years combined Web3, DeFi & payment systems experience
-- **Execution**: Rust/Solana experts + React specialists + security expertise
-- **Projects**: >5 operational projects on Solana
-- **Community**: Organic growth focus, developer-first outreach
-- **Funding**: Self-funded with treasury grants program
+- **Revenue**: 1% protocol fee on all payments (configurable per-gateway; volume-based discounts available)
+- **Gateway fees**: Configurable bps set by each gateway authority (typical 2–3%), sent to the gateway fee recipient
+- **Referral program**: Gateways opt into a 3-tier referral reward pool (up to 25% of the gateway fee carved into the pool, split across direct / level2 / level3)
+- **Grants Program**: Ecosystem development fund
 
 ## Roadmap
 
-- **Q1 2025**: Mainnet launch, design partner program
-- **Q2 2025**: Ecosystem growth, wallet integrations
-- **Q3 2025**: Enterprise features, cross-chain R&D
-- **Q4 2025**: Market leadership, advanced analytics
-- **2026**: Global expansion, multi-chain support
+Tributary matures along the three knobs, not along a feature checklist. Each
+era turns on another axis of the same primitive.
+
+### v1 — PULL axis (live on mainnet)
+
+- Three schedule models (Subscription, Milestone, Pay-as-you-go) fully implemented and tested
+- `PaymentPolicy` direct-pull execution in production (4,000+ pulls across six teams)
+- Full SDK suite (TypeScript SDK, React SDK, x402 middleware, payments client, oclif CLI)
+- API server + scheduler for gateway operators
+- Devnet + mainnet deployment, verifiable builds
+
+### v2 — WHEN + ROUTE axes (in development)
+
+- `ComposablePolicy` programmable pull with validation + forward hooks
+- Lighthouse validation CPI (condition-gated execution: balances, oracles, governance, custom assertions)
+- Meteora DLMM forward CPI (swap-routed settlement: pull one token, deliver another)
+- Permissionless composable execution via parameter-constrained relayers
+- Per-policy scheduler trigger model (off-chain state-poll)
+
+### Next — deeper ROUTE & WHEN (future)
+
+- Additional allowlisted forward programs beyond Meteora DLMM
+- Additional allowlisted validation programs beyond Lighthouse
+- Revenue splitting (pull once, route to N recipients)
+- Chained validation CPIs (multiple validators before forward)
+- Cross-protocol integration (encrypted trigger prices, multi-hop routes)
+
+> Architecture Decision Records (ADRs 0001–0016) in `apps/docs/adr/` capture
+> the _why_ behind every locked-in decision. 0001–0006 are v1 PaymentPolicy
+> era; 0007–0016 are v2 ComposablePolicy era. Code is the authority on current
+> state; ADRs are the authority on rationale.
 
 ## Competitive Landscape
 
-### Payment Protocols
+### Pull-payment protocols
 
-| Solution   | Custody       | Payment Types  | UX        | Solana Native | Status       |
-| ---------- | ------------- | -------------- | --------- | ------------- | ------------ |
-| Tributary  | Non-custodial | 3 types + upto | Excellent | Yes           | Production   |
-| Helio      | Custodial     | 1 type         | Good      | Yes           | Custody risk |
-| Superfluid | Non-custodial | 1 type         | Good      | No            | Wrong chain  |
-| Manual     | Manual        | Limited        | Poor      | No            | Status quo   |
+| Solution   | Custody       | Schedule Models        | Composable (WHEN+ROUTE) | Solana Native | Status          |
+| ---------- | ------------- | ---------------------- | ----------------------- | ------------- | --------------- |
+| Tributary  | Non-custodial | 3 (Sub/Milestone/PAYG) | Yes (Lighthouse + DLMM) | Yes           | v1 live, v2 dev |
+| Helio      | Custodial     | 1 (subscription only)  | No                      | Yes           | Custody risk    |
+| Superfluid | Non-custodial | 1 (streaming)          | No                      | No            | Wrong chain     |
+| Manual     | Manual        | Limited                | No                      | No            | Status quo      |
 
-### Smart Wallet Infrastructure (Adjacent Layer)
+### Smart-wallet infrastructure (adjacent layer)
 
-| Solution | Custody       | Payment Types     | Key Strength                                            | Relation to Tributary                             |
-| -------- | ------------- | ----------------- | ------------------------------------------------------- | ------------------------------------------------- |
-| Squads   | Non-custodial | Grid (stablecoin) | M-of-N multisig, $10B+ TVL, formally verified           | Complementary — team/DAO treasury mgmt            |
-| LazorKit | Non-custodial | None (app-level)  | Passkey-native, gasless UX via Kora paymaster           | Complementary — consumer auth layer               |
-| Swig     | Non-custodial | None (app-level)  | 65K roles, cross-chain identity, on-chain policy engine | Complementary — AI agent/developer access control |
+| Solution | Custody       | Key Strength                                            | Relation to Tributary                             |
+| -------- | ------------- | ------------------------------------------------------- | ------------------------------------------------- |
+| Squads   | Non-custodial | M-of-N multisig, $10B+ TVL, formally verified           | Complementary — team/DAO treasury mgmt            |
+| LazorKit | Non-custodial | Passkey-native, gasless UX via Kora paymaster           | Complementary — consumer auth layer               |
+| Swig     | Non-custodial | 65K roles, cross-chain identity, on-chain policy engine | Complementary — AI agent/developer access control |
 
-These smart wallets solve _who can authorize_; Tributary solves _what gets paid and when_. They compose naturally: Squads vault + Tributary scheduling = DAO recurring payments; LazorKit passkey + Tributary = gasless consumer subscriptions; Swig roles + Tributary pay-as-you-go = scoped AI agent billing.
+These smart wallets solve _who can authorize_; Tributary solves _what gets
+paid, when, and where it routes_. They compose naturally: Squads vault +
+Tributary scheduling = DAO recurring payments; LazorKit passkey + Tributary =
+gasless consumer subscriptions; Swig roles + Tributary pay-as-you-go = scoped
+AI agent billing.
 
-**Tributary Advantage**: Only solution offering multiple payment types (Subscriptions, Milestones, Pay-as-you-go, Up-to) with native Solana integration and non-custodial security. Smart wallets lack payment scheduling, milestone tracking, usage metering, and HTTP 402 — Tributary lacks access control, gas abstraction, and multi-party auth. The winning play is integration, not competition.
+**Tributary advantage**: the only primitive that composes all three knobs
+(WHEN / PULL / ROUTE) natively on Solana, non-custodially. Smart wallets lack
+payment scheduling, milestone tracking, usage metering, validation/forward
+hooks, and HTTP 402; Tributary lacks access control, gas abstraction, and
+multi-party auth. The winning play is integration, not competition.
 
 ## Key Differentiators
 
-1. **Multi-Payment Architecture**: Only protocol supporting Subscriptions, Milestones, and Pay-as-you-go models
-2. **Action Codes Integration**: Wallet-less payment initiation with secure approval
-3. **Non-custodial Security**: Funds remain in user wallets with delegation-based automation
-4. **Developer-first**: Complete SDK, React components, comprehensive documentation
-5. **Protocol Approach**: Network effects via provider ecosystem and extensible design
-6. **Production Ready**: Full CI/CD pipeline, comprehensive testing, audit pending
-7. **Speed + Cost**: Solana's 400ms finality, <$0.01 transactions
-8. **Team Velocity**: Built in 3 weeks; proven execution and rapid iteration
+1. **One primitive, three knobs** — WHEN / PULL / ROUTE compose into any rule-based payment, from "If Monday Then $10 to wallet" to "If oracle drifts 5% Then route to rebalance"
+2. **Two policy families** — `PaymentPolicy` (direct pull, v1 live) and `ComposablePolicy` (validation + forward, v2) sharing one schedule engine
+3. **Composable hooks** — opt-in Lighthouse validation + Meteora DLMM forward, hard-allowlisted, sentinel-disabled, with CPI signer sanitization
+4. **Non-custodial** — funds remain in user wallets; only SPL delegation is used
+5. **Permissionless execution** — any authorized gateway signer can trigger a due payment
+6. **Multi-model scheduling** — Subscription, Milestone (4 escrowed milestones), Pay-as-you-go (period caps)
+7. **Developer-first** — TypeScript SDK, React SDK, x402 middleware, payments client, oclif CLI, full docs + ADRs
+8. **Security hardening** — CPI allowlists, signer sanitization, intermediate-ATA isolation, mint-compatibility blocklist (Token-2022), emergency pause, `security.txt`
+9. **Speed + cost** — Solana's 400ms finality, sub-cent transactions
+10. **Production-proven** — v1 live on mainnet with real pull volume
+
+## Testing & Quality
+
+- **Rust unit tests** — `cargo test`
+- **Integration (PaymentPolicy)** — `anchor run test-integration` (Surfpool-backed)
+- **Composable policies** — `anchor run test-composable` (Surfpool)
+- **Surfpool topup (no swap)** — `anchor run test-topup`
+- **Surfpool topup (with swap)** — `anchor run test-topup-swap`
+- **Full suite** — `anchor test` (cargo + jest)
+- **CI/CD** — GitHub Actions, change-detected, per-package semantic-release
+
+See [`README.md`](./README.md) § Testing for the full matrix.
 
 ## Getting Started
 
-- **Website**: tributary.so
-- **Docs**: docs.tributary.so
-- **GitHub**: github.com/tributary-so
-- **Discord**: Community support and discussions
-- **SDK**: npm install @tributary-so/sdk
-- **Action Codes**: actioncode.app for wallet-less payments
-- **Action Docs**: docs.actioncodes.org for integration guides
+- **Website**: [tributary.so](https://tributary.so)
+- **Documentation**: [docs.tributary.so](https://docs.tributary.so)
+- **GitHub**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
+- **SDK**: `pnpm add @tributary-so/sdk`
+- **Action Codes**: [actioncode.app](https://actioncode.app) for wallet-less payments
+- **Quickstart**: clone, `pnpm install`, `make prep`, `make build`, then `make run_surfpool` + `anchor test`
 
 ## Contact & Resources
 
 - **Email**: <team@tributary.so>
-- **Twitter**: @tributary_so
-- **Blog**: Medium technical deep-dives
-- **YouTube**: Integration tutorials and demos
-- **Contribute**: Open source, grant programs available
+- **Twitter**: [@tributary_so](https://twitter.com/tributary_so)
+- **Security**: <security@tributary.so> (see [`SECURITY.md`](./SECURITY.md))
+- **Audit findings**: [`reports/`](./reports/)
+- **Contribute**: open source; see [`README.md`](./README.md) § Contributing
