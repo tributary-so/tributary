@@ -259,6 +259,7 @@ describe("Composable Topup Balance Flow", () => {
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       0, // 0 bps gateway fee — simplifies math
+      0, // schedulerShareBps — no scheduler cut in this test
       feeRecipient.publicKey, // fee recipient
       "Gateway",
       "https://tributary.so"
@@ -502,16 +503,18 @@ describe("Composable Topup Balance Flow", () => {
       { commitment: "processed" }
     );
 
-    // ── Fee calculation ─────────────────────────────────────────────────
+    // ── Fee calculation (ADR-0017 carve-out model) ─────────────────────
+    // totalFee = pull * gatewayFeeBps / 10000; protocolCut = totalFee * protocolShareBps / 10000.
+    // gatewayFeeBps is 0 here → totalFee = 0 → no carve-out flows at all.
     const config = await program.account.programConfig.fetch(configPDA);
-    const protocolFeeBps = config.protocolFeeBps;
+    const protocolShareBps = config.protocolShareBps;
     const gateway = await program.account.paymentGateway.fetch(gatewayPDA);
     const gatewayFeeBps = gateway.gatewayFeeBps;
 
     const inputAmount = 50_000_000;
-    const gatewayFee = Math.floor((inputAmount * gatewayFeeBps) / 10000);
-    const protocolFee = Math.floor((inputAmount * protocolFeeBps) / 10000);
-    const netInput = inputAmount - gatewayFee - protocolFee;
+    const totalFee = Math.floor((inputAmount * gatewayFeeBps) / 10000);
+    const protocolFee = Math.floor((totalFee * protocolShareBps) / 10000);
+    const netInput = inputAmount - totalFee;
     const expectedHotWalletBalance = 40_000_000 + netInput;
 
     // ── Verify balances ────────────────────────────────────────────────
@@ -557,7 +560,7 @@ describe("Composable Topup Balance Flow", () => {
   test("Execute topup again — fails (hotWallet above threshold)", async () => {
     await sdk.updateWallet(new anchor.Wallet(coldWallet));
 
-    // hotWallet should now have ~89.5 USDC (> 50 USDC threshold)
+    // hotWallet should now have ~90 USDC (> 50 USDC threshold)
     const hotBalance = await connection.getTokenAccountBalance(
       hotWalletUsdcAta
     );

@@ -6,7 +6,11 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { Tributary } from "../packages/sdk/src/sdk";
-import { getConfigPda, getGatewayPda, getUserPaymentPda } from "../packages/sdk/src/pda";
+import {
+  getConfigPda,
+  getGatewayPda,
+  getUserPaymentPda,
+} from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import { Tributary as TributaryIdl } from "../target/types/tributary";
 
@@ -59,7 +63,7 @@ describe("Surfpool - Mainnet Integration", () => {
       publicKey: configPDA,
       data: serialized.toString("hex"),
     });
-  })
+  });
 
   describe("USDC on mainnet-forked Surfnet", () => {
     test("fund keypairs via surfpool cheatcodes", async () => {
@@ -106,11 +110,15 @@ describe("Surfpool - Mainnet Integration", () => {
     test("create gateway", async () => {
       await sdk.updateWallet(new anchor.Wallet(admin));
 
-      gatewayPDA = getGatewayPda(gatewayAuthority.publicKey, program.programId).address;
+      gatewayPDA = getGatewayPda(
+        gatewayAuthority.publicKey,
+        program.programId
+      ).address;
 
       const gatewayIx = await sdk.createPaymentGateway(
         gatewayAuthority.publicKey,
         0, // 0 bps gateway fee — simplifies math
+        0, // schedulerShareBps — no scheduler cut in this test
         feeRecipient.publicKey, // fee recipient
         "Gateway",
         "https://tributary.so"
@@ -154,7 +162,5 @@ describe("Surfpool - Mainnet Integration", () => {
       expect(userPayment!.createdPoliciesCount).toBe(0);
       expect(userPayment!.isActive).toBe(true);
     });
-
   });
-
 });

@@ -308,6 +308,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       0, // 0 bps gateway fee — simplifies math
+      0, // schedulerShareBps — no scheduler cut in this test
       feeRecipient.publicKey,
       "Gateway",
       "https://tributary.so"
@@ -546,14 +547,15 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     );
     expect(Number(hotWsolAfter.value.amount)).toBeGreaterThan(400_000_000);
 
-    // Protocol fee (100 bps default) is taken in the OUTPUT mint (WSOL).
+    // Protocol fee is a carve-out of the gateway fee (ADR-0017). With
+    // gatewayFeeBps = 0, no total fee is generated → protocol receives
+    // nothing despite protocolShareBps > 0. Account is a fresh ATA (0).
     const config = await program.account.programConfig.fetch(configPDA);
-    if (config.protocolFeeBps > 0) {
-      const adminWsolAfter = await connection.getTokenAccountBalance(
-        adminWsolAta
-      );
-      expect(Number(adminWsolAfter.value.amount)).toBeGreaterThan(0);
-    }
+    expect(config.protocolShareBps).toBeGreaterThan(0);
+    const adminWsolAfter = await connection.getTokenAccountBalance(
+      adminWsolAta
+    );
+    expect(Number(adminWsolAfter.value.amount)).toBe(0);
 
     // Gateway fee = 0 bps → feeRecipient WSOL unchanged.
     const feeRecipientWsolAfter = await connection.getTokenAccountBalance(
@@ -702,10 +704,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     const keys = found.keys.map((k) =>
       k.pubkey.equals(SystemProgram.programId)
         ? {
-          pubkey: METEORA_DLMM_PUBKEY,
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        }
+            pubkey: METEORA_DLMM_PUBKEY,
+            isSigner: k.isSigner,
+            isWritable: k.isWritable,
+          }
         : k
     );
     return new TransactionInstruction({

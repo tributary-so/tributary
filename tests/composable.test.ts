@@ -288,6 +288,7 @@ describe("Composable Policies", () => {
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       250, // 2.5% fee
+      0, // schedulerShareBps — no scheduler cut in this test
       feeRecipient.publicKey,
       "composable test gateway",
       "https://test.tributary.so"

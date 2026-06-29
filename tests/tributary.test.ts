@@ -261,7 +261,7 @@ describe("Tributary", () => {
 
     expect(configAccount!.admin).toEqual(admin.publicKey);
     expect(configAccount!.feeRecipient).toEqual(admin.publicKey);
-    expect(configAccount!.protocolFeeBps).toBe(100);
+    expect(configAccount!.protocolShareBps).toBe(2000);
     expect(configAccount!.emergencyPause).toBe(false);
     expect(configAccount!.bump).toBe(configBump);
   });
@@ -296,6 +296,7 @@ describe("Tributary", () => {
     const createGatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       gatewayFeeBps,
+      0, // schedulerShareBps — no scheduler cut in this test
       feeRecipient.publicKey,
       "custom gateway",
       "https://example.com"
@@ -2329,18 +2330,18 @@ describe("Tributary", () => {
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-        l1Reward -
-        Math.floor((l1Reward * 100) / 10000)
+          l1Reward -
+          Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-        l2Reward -
-        Math.floor((l2Reward * 100) / 10000)
+          l2Reward -
+          Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-        l3Reward -
-        Math.floor((l3Reward * 100) / 10000)
+          l3Reward -
+          Math.floor((l3Reward * 100) / 10000)
       );
     });
 
@@ -2627,6 +2628,7 @@ describe("Tributary", () => {
       const createGatewayIx = await sdk.createPaymentGateway(
         newGatewayAuthority.publicKey,
         250,
+        0, // schedulerShareBps — no scheduler cut in this test
         newFeeRecipient.publicKey,
         "no referral gateway",
         "https://noreferral.example.com"
@@ -2823,6 +2825,7 @@ describe("Tributary", () => {
         const createGatewayIx = await sdk.createPaymentGateway(
           customFeeGatewayAuthority.publicKey,
           250, // 2.5% gateway fee
+          0, // schedulerShareBps — no scheduler cut in this test
           customFeeFeeRecipient.publicKey,
           "custom fee gateway",
           "https://customfee.example.com"
@@ -2900,7 +2903,7 @@ describe("Tributary", () => {
       await sdk.updateWallet(new anchor.Wallet(admin));
 
       const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gatewayBefore!.customProtocolFeeBps).toBe(0);
+      expect(gatewayBefore!.customProtocolShareBps).toBe(0);
       expect(gatewayBefore!.featureFlags & 0x04).toBe(0);
 
       const updateIx = await sdk.updateGatewayProtocolFee(
@@ -2914,7 +2917,7 @@ describe("Tributary", () => {
       });
 
       const gatewayAfter = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gatewayAfter!.customProtocolFeeBps).toBe(500);
+      expect(gatewayAfter!.customProtocolShareBps).toBe(500);
       expect(gatewayAfter!.featureFlags & 0x04).toBe(4);
     });
 
@@ -2933,7 +2936,7 @@ describe("Tributary", () => {
       });
 
       const gateway = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gateway!.customProtocolFeeBps).toBe(0);
+      expect(gateway!.customProtocolShareBps).toBe(0);
       expect(gateway!.featureFlags & 0x04).toBe(4);
 
       // Get initial balances
@@ -3140,10 +3143,10 @@ describe("Tributary", () => {
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
 
-  describe("H-01: Combined fee BPS validation (gross-mode underflow guard)", () => {
-    // config.protocol_fee_bps is initialized to 100; gateway_fee_bps + effective
-    // protocol fee must be < 10000 or every gross-mode payment reverts with
-    // ArithmeticOverflow (or, at exactly 10000, the recipient receives zero).
+  describe("Fee carve-out share constraint (ADR-0017)", () => {
+    // Constraint: effective_protocol_share + scheduler_share + referral_allocation ≤ 10000 bps.
+    // gateway_fee_bps is NOT part of this constraint (only ≤ 10000 on its own).
+    // config.protocol_share_bps defaults to 2000; at creation referral_allocation = 0.
     let h01GatewayAuthority: Keypair;
     let h01GatewayPDA: PublicKey;
     let h01FeeRecipient: Keypair;
@@ -3157,12 +3160,13 @@ describe("Tributary", () => {
         [h01FeeRecipient.publicKey, 1],
       ]);
 
-      // Create a gateway with a modest fee (500 bps). Combined with the default
-      // 100 bps protocol fee = 600 bps, well below the limit.
+      // Create a gateway with a modest fee (500 bps) and scheduler_share = 0.
+      // 2000 (default protocol share) + 0 + 0 = 2000, well below the limit.
       await sdk.updateWallet(new anchor.Wallet(admin));
       const createIx = await sdk.createPaymentGateway(
         h01GatewayAuthority.publicKey,
         500,
+        0, // schedulerShareBps
         h01FeeRecipient.publicKey,
         "h01 gateway",
         ""
@@ -3175,7 +3179,7 @@ describe("Tributary", () => {
       h01GatewayPDA = sdk.getGatewayPda(h01GatewayAuthority.publicKey).address;
     });
 
-    test("create_payment_gateway rejects when gateway_fee_bps + protocol_fee_bps >= 10000", async () => {
+    test("create_payment_gateway rejects when scheduler_share + protocol_share > 10000", async () => {
       const freshAuthority = Keypair.generate();
       const freshFeeRecipient = Keypair.generate();
       await batchFund([
@@ -3185,10 +3189,12 @@ describe("Tributary", () => {
 
       await sdk.updateWallet(new anchor.Wallet(admin));
 
-      // 9900 + 100 (default protocol fee) == 10000 → must be rejected
+      // 2000 (default protocol share) + 8001 (scheduler) = 10001 > 10000 → reject.
+      // gateway_fee_bps is irrelevant to the carve-out constraint, so use a small fee.
       const createIx = await sdk.createPaymentGateway(
         freshAuthority.publicKey,
-        9900,
+        100,
+        8001, // schedulerShareBps
         freshFeeRecipient.publicKey,
         "should fail combined",
         ""
@@ -3200,7 +3206,7 @@ describe("Tributary", () => {
         })
       ).rejects.toThrow();
 
-      // 9899 + 100 == 9999 < 10000 → must succeed
+      // 2000 + 8000 = 10000 ≤ 10000 → must succeed
       const okAuthority = Keypair.generate();
       const okFeeRecipient = Keypair.generate();
       await batchFund([
@@ -3209,7 +3215,8 @@ describe("Tributary", () => {
       ]);
       const okIx = await sdk.createPaymentGateway(
         okAuthority.publicKey,
-        9899,
+        100,
+        8000, // schedulerShareBps
         okFeeRecipient.publicKey,
         "should pass combined",
         ""
@@ -3222,41 +3229,27 @@ describe("Tributary", () => {
       const okGateway = await sdk.getPaymentGateway(
         sdk.getGatewayPda(okAuthority.publicKey).address
       );
-      expect(okGateway!.gatewayFeeBps).toBe(9899);
+      expect(okGateway!.schedulerShareBps).toBe(8000);
     });
 
-    test("change_gateway_fee_bps rejects when new fee + effective protocol fee >= 10000", async () => {
+    test("change_gateway_fee_bps no longer bound by the carve-out share constraint", async () => {
+      // ADR-0017 removed gateway_fee_bps from the share constraint; it is now
+      // only capped at ≤ 10000. A 9900 bps fee that used to be rejected (the
+      // old gateway_fee_bps + protocol_fee_bps < 10000 rule) is now accepted.
       await sdk.updateWallet(new anchor.Wallet(h01GatewayAuthority));
 
-      // 9900 + 100 (default protocol fee; custom fee disabled) == 10000 → reject
-      const rejectIx = await sdk.changeGatewayFeeBps(
-        h01GatewayAuthority.publicKey,
-        9900
-      );
-      const rejectTx = new Transaction().add(rejectIx);
-      await expect(
-        sendAndConfirmTransaction(connection, rejectTx, [h01GatewayAuthority], {
-          commitment: "processed" as Commitment,
-        })
-      ).rejects.toThrow();
-
-      // Gateway fee should be unchanged after rejection
-      const unchanged = await sdk.getPaymentGateway(h01GatewayPDA);
-      expect(unchanged!.gatewayFeeBps).toBe(500);
-
-      // 9899 + 100 == 9999 < 10000 → accept
       const okIx = await sdk.changeGatewayFeeBps(
         h01GatewayAuthority.publicKey,
-        9899
+        9900
       );
       const okTx = new Transaction().add(okIx);
       await sendAndConfirmTransaction(connection, okTx, [h01GatewayAuthority], {
         commitment: "processed" as Commitment,
       });
       const updated = await sdk.getPaymentGateway(h01GatewayPDA);
-      expect(updated!.gatewayFeeBps).toBe(9899);
+      expect(updated!.gatewayFeeBps).toBe(9900);
 
-      // Reset for the next test (500 + any custom fee must still be < 10000).
+      // Reset for the next test.
       const resetIx = await sdk.changeGatewayFeeBps(
         h01GatewayAuthority.publicKey,
         500
@@ -3272,10 +3265,24 @@ describe("Tributary", () => {
       );
     });
 
-    test("update_gateway_protocol_fee rejects when custom fee + gateway_fee_bps >= 10000", async () => {
+    test("update_gateway_protocol_fee rejects when custom_protocol_share + scheduler_share > 10000", async () => {
+      // Give the gateway a non-zero scheduler share so the carve-out constraint
+      // can actually bind below the 10000 cap on custom_protocol_share_bps.
+      await sdk.updateWallet(new anchor.Wallet(h01GatewayAuthority));
+      const schedIx = await sdk.updateGatewaySchedulerShare(
+        h01GatewayAuthority.publicKey,
+        1000
+      );
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(schedIx),
+        [h01GatewayAuthority],
+        { commitment: "processed" as Commitment }
+      );
+
       await sdk.updateWallet(new anchor.Wallet(admin));
 
-      // gateway_fee_bps = 500; custom = 9500 → 10000 → reject
+      // custom_protocol_share = 9500 (enabled) + scheduler 1000 = 10500 > 10000 → reject
       const rejectIx = await sdk.updateGatewayProtocolFee(
         h01GatewayAuthority.publicKey,
         true,
@@ -3288,27 +3295,27 @@ describe("Tributary", () => {
         })
       ).rejects.toThrow();
 
-      // custom_protocol_fee_bps must NOT have been written, and the
+      // custom_protocol_share_bps must NOT have been written, and the
       // FEATURE_CUSTOM_PROTOCOL_FEE bit must NOT be set (Solana rolls back
       // account state when an instruction fails).
       const unchanged = await sdk.getPaymentGateway(h01GatewayPDA);
-      expect(unchanged!.customProtocolFeeBps).toBe(0);
+      expect(unchanged!.customProtocolShareBps).toBe(0);
       expect(
         unchanged!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
       ).toBe(0);
 
-      // 500 + 9499 == 9999 < 10000 → accept
+      // 8900 + 1000 = 9900 ≤ 10000 → accept
       const okIx = await sdk.updateGatewayProtocolFee(
         h01GatewayAuthority.publicKey,
         true,
-        9499
+        8900
       );
       const okTx = new Transaction().add(okIx);
       await sendAndConfirmTransaction(connection, okTx, [admin], {
         commitment: "processed" as Commitment,
       });
       const updated = await sdk.getPaymentGateway(h01GatewayPDA);
-      expect(updated!.customProtocolFeeBps).toBe(9499);
+      expect(updated!.customProtocolShareBps).toBe(8900);
       expect(updated!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
         GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
       );
@@ -3333,6 +3340,7 @@ describe("Tributary", () => {
       const createIx = await sdk.createPaymentGateway(
         flagsGatewayAuthority.publicKey,
         100,
+        0, // schedulerShareBps — no scheduler cut in this test
         flagsFeeRecipient.publicKey,
         "flags test gateway",
         ""
@@ -3424,7 +3432,7 @@ describe("Tributary", () => {
       );
       expect(
         gateway!.featureFlags &
-        (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
       ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 
