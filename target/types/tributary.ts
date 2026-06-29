@@ -663,8 +663,17 @@ export type Tributary = {
           }
         },
         {
-          "name": "numValidationAccounts",
+          "name": "numPinnedAccounts",
           "type": "u8"
+        },
+        {
+          "name": "pinnedAccounts",
+          "type": {
+            "array": [
+              "pubkey",
+              2
+            ]
+          }
         },
         {
           "name": "validationData",
@@ -1490,7 +1499,13 @@ export type Tributary = {
         {
           "name": "feePayer",
           "docs": [
-            "Gateway signer, user, or recipient — whoever triggers execution"
+            "Fee payer / caller. The trusted three (`gateway.signer` /",
+            "`user_payment.owner` / `composable_policy.recipient`) always pass.",
+            "Any other signer is admitted ONLY when the gateway has the",
+            "ADR-0016 permissionless bit set (cold relayer). The",
+            "caller-conditional gate (mandatory min_output_amount for cold",
+            "relayers) is enforced in the handler — Anchor constraints can't",
+            "express \"depends on the policy's forward_config\"."
           ],
           "writable": true,
           "signer": true
@@ -1644,6 +1659,16 @@ export type Tributary = {
           "name": "validationProgram",
           "docs": [
             "Pass SystemProgram when the policy has no validation configured."
+          ]
+        },
+        {
+          "name": "validationPda",
+          "docs": [
+            "ValidationPda — typed-deserialised in the handler when validation",
+            "is enabled (validation_program != SystemProgram). When validation",
+            "is disabled, the account does not exist on-chain and is left",
+            "untouched. The address is verified against program-derived seeds",
+            "before any bytes are read. See ADR-0016."
           ]
         },
         {
@@ -2950,6 +2975,11 @@ export type Tributary = {
       "code": 6059,
       "name": "invalidSchedulerFeeAccount",
       "msg": "Scheduler fee account must be owned by the fee_payer and match the source mint"
+    },
+    {
+      "code": 6060,
+      "name": "permissionlessExecutionRequiresMinOutput",
+      "msg": "Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)"
     }
   ],
   "types": [
@@ -3517,7 +3547,10 @@ export type Tributary = {
               "Gateway-scoped feature flags (bit-vector)",
               "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)",
               "Bit 1: Net amount mode (1 = net, 0 = gross/default)",
-              "Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)"
+              "Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)",
+              "Bit 3: Permissionless composable execution enabled (ADR-0016 —",
+              "admits third-party schedulers for conforming composable",
+              "policies; trusted caller path unchanged)"
             ],
             "type": "u8"
           },
@@ -4584,16 +4617,22 @@ export type Tributary = {
     },
     {
       "name": "validationConfig",
+      "docs": [
+        "Per-policy validation routing.",
+        "",
+        "The pinned-account arity (`num_pinned_accounts`) and the pinned pubkeys",
+        "themselves live on the `ValidationPda` account, not here — they are",
+        "owner-declared at creation and replay-validated at execute (ADR-0016,",
+        "closes validation-gaming vector d). This struct only records which",
+        "validation program (Lighthouse) the policy is bound to; `Pubkey::default()`",
+        "is the \"validation disabled\" sentinel."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "validationProgram",
             "type": "pubkey"
-          },
-          {
-            "name": "numValidationAccounts",
-            "type": "u8"
           }
         ]
       }

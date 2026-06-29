@@ -95,7 +95,8 @@ impl<'info> CreateComposablePolicy<'info> {
         policy_type: PolicyType,
         memo: [u8; 32],
         forward_config: ForwardConfig,
-        num_validation_accounts: u8,
+        num_pinned_accounts: u8,
+        pinned_accounts: [Pubkey; 2],
         validation_data: Vec<u8>,
     ) -> Result<()> {
         // Validate policy_type (delegates to PolicyType::validate which
@@ -188,8 +189,11 @@ impl<'info> CreateComposablePolicy<'info> {
                 validation_data.len() <= MAX_VALIDATION_DATA_SIZE,
                 TributaryError::ValidationDataTooLarge
             );
+            // Pinned-account arity is bounded by the `ValidationPda`
+            // capacity. The old `<= 10` loose bound is gone — pinning is
+            // structural now, not a caller promise. See ADR-0016.
             require!(
-                num_validation_accounts <= 10,
+                num_pinned_accounts as usize <= MAX_PINNED_ACCOUNTS,
                 TributaryError::InvalidValidationProgram
             );
         } else {
@@ -217,10 +221,7 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.memo = memo;
         composable_policy.forward_config = forward_config;
         composable_policy.validation_config = if has_validation {
-            ValidationConfig {
-                validation_program,
-                num_validation_accounts,
-            }
+            ValidationConfig { validation_program }
         } else {
             ValidationConfig::default()
         };
@@ -243,7 +244,7 @@ impl<'info> CreateComposablePolicy<'info> {
                 TributaryError::ValidationPdaMismatch
             );
 
-            let space = ValidationPda::space_for(validation_data.len());
+            let space = ValidationPda::SIZE;
             let rent = Rent::get()?;
             let lamports = rent.minimum_balance(space);
 
@@ -280,13 +281,25 @@ impl<'info> CreateComposablePolicy<'info> {
                 &[&seed_slices],
             )?;
 
-            // Write data
+            // Serialise the typed ValidationPda struct (discriminator +
+            // fields) in one go. Replaces the legacy manual offset-8/10
+            // writes — the layout now lives on the struct definition, so
+            // any field reorder is caught by `borsh_round_trip_preserves_fields`.
+            let typed = ValidationPda {
+                bump: validation_pda_key.1,
+                num_pinned_accounts,
+                pinned_accounts,
+                data_len: validation_data.len() as u16,
+                data: {
+                    let mut buf = [0u8; MAX_VALIDATION_DATA_SIZE];
+                    buf[..validation_data.len()].copy_from_slice(&validation_data);
+                    buf
+                },
+            };
             let mut account_data = validation_pda_info.try_borrow_mut_data()?;
-            let disc: &[u8] = &ValidationPda::DISCRIMINATOR;
-            account_data[..8].copy_from_slice(disc);
-            let data_len_u16 = validation_data.len() as u16;
-            account_data[8..10].copy_from_slice(&data_len_u16.to_le_bytes());
-            account_data[10..10 + validation_data.len()].copy_from_slice(&validation_data);
+            account_data[..8].copy_from_slice(&ValidationPda::DISCRIMINATOR);
+            let fields = typed.try_to_vec()?;
+            account_data[8..8 + fields.len()].copy_from_slice(&fields);
         }
 
         let user_payment = &mut ctx.accounts.user_payment;

@@ -6,7 +6,7 @@ use crate::{
     shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners},
     state::*,
 };
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, AccountDeserialize};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::Token;
 use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, TransferChecked};
@@ -193,7 +193,8 @@ fn build_forward_account_metas(
 }
 
 /// Run the optional validation CPI (Step 2). Returns the index into
-/// `remaining_accounts` where forward-program accounts begin.
+/// `remaining` where forward-program accounts begin — equal to the
+/// assertion's pinned-account arity (`num_pinned_accounts`).
 ///
 /// SECURITY (reports/C-1-validation-cpi-signer-leak.md): the validation
 /// CPI uses plain `invoke` — NO signer seeds. Validation programs
@@ -205,50 +206,63 @@ fn build_forward_account_metas(
 /// The composable_policy-owned intermediates (see handler) are funded only
 /// AFTER validation runs, so there is nothing for a validation program to
 /// sign for even if it wanted to.
+///
+/// The caller-supplied `remaining[0..num_pinned]` target accounts are
+/// pin-checked against `validation_pda.pinned_accounts` here (ADR-0016,
+/// closes vector d). Lighthouse sees exactly the accounts the owner
+/// declared at creation — a relayer cannot substitute a positional slot
+/// to trip the assertion against the wrong state.
+///
+/// Stack note: `ValidationPda` carries a `[u8; 1024]` assertion buffer,
+/// which alone would blow the SBF 4 KiB frame if materialised in the
+/// `execute_composable` handler. Keeping the typed deserialise + pin-check
+/// + CPI in this callee gives the 1 KiB struct its own stack frame.
 fn run_validation_cpi<'info>(
     remaining: &[AccountInfo<'info>],
+    validation_pda_info: &AccountInfo<'info>,
+    policy_key: &Pubkey,
     program_id: &Pubkey,
-    policy_key: Pubkey,
     validation_program: &AccountInfo<'info>,
-    num_val_accounts: usize,
 ) -> Result<usize> {
-    require!(!remaining.is_empty(), TributaryError::ValidationPdaMismatch);
-
+    // Verify the validation_pda address against program-derived seeds
+    // before trusting its bytes.
     let val_pda_key =
         Pubkey::find_program_address(&[VALIDATION_PDA_SEED, policy_key.as_ref()], program_id);
     require!(
-        remaining[0].key() == val_pda_key.0,
+        validation_pda_info.key() == val_pda_key.0,
         TributaryError::ValidationPdaMismatch
     );
 
-    // Read assertion data (scope the borrow).
-    let val_data = {
-        let val_pda_info = &remaining[0];
-        let data = val_pda_info.try_borrow_data()?;
-        require!(data.len() >= 10, TributaryError::InvalidValidationPda);
-        let data_len = u16::from_le_bytes([data[8], data[9]]) as usize;
-        let end = 10usize
-            .checked_add(data_len)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-        require!(end <= data.len(), TributaryError::InvalidValidationPda);
-        data[10..end].to_vec()
+    // Typed deserialisation — validates the Anchor discriminator + owner.
+    // Replaces the legacy raw-offset reads (offset 8/10). The 1 KiB
+    // `data` array lives in THIS frame, not the caller's.
+    let validation_pda: ValidationPda = {
+        let data = validation_pda_info.try_borrow_data()?;
+        let mut slice: &[u8] = &data;
+        ValidationPda::try_deserialize(&mut slice)?
     };
 
-    let val_accounts_end = 1 + num_val_accounts;
+    // Pin-check: remaining[0..num_pinned] must equal the owner-declared
+    // pinned_accounts, positionally. Closes ADR-0016 vector (d).
+    let num_pinned = validation_pda.num_pinned_accounts as usize;
     require!(
-        remaining.len() >= val_accounts_end,
+        remaining.len() >= num_pinned,
         TributaryError::ValidationPdaMismatch
     );
+    for i in 0..num_pinned {
+        require!(
+            remaining[i].key() == validation_pda.pinned_accounts[i],
+            TributaryError::ValidationPdaMismatch
+        );
+    }
 
-    let val_accounts: Vec<AccountInfo<'info>> = remaining[1..val_accounts_end]
-        .iter()
-        .map(|a| a.clone())
-        .collect();
+    let val_accounts: Vec<AccountInfo<'info>> =
+        remaining[..num_pinned].iter().map(|a| a.clone()).collect();
 
     let instruction = anchor_lang::solana_program::instruction::Instruction {
         program_id: validation_program.key(),
         accounts: build_validation_account_metas(&val_accounts),
-        data: val_data,
+        data: validation_pda.get_data().to_vec(),
     };
 
     // The callee program must be present in account_infos so the runtime
@@ -257,12 +271,12 @@ fn run_validation_cpi<'info>(
     all_infos.push(validation_program.clone());
     all_infos.extend(val_accounts.iter().cloned());
 
-    // Plain `invoke` — no signer seeds. See the security note on
-    // `run_validation_cpi`: validation is read-only and must not inherit
-    // any PDA signing authority (C-1).
+    // Plain `invoke` — no signer seeds. See the security note above:
+    // validation is read-only and must not inherit any PDA signing
+    // authority (C-1).
     anchor_lang::solana_program::program::invoke(&instruction, &all_infos)?;
 
-    Ok(val_accounts_end)
+    Ok(num_pinned)
 }
 
 /// Invoke the forward program (Step 5). Signs with ComposablePolicy PDA
@@ -558,13 +572,20 @@ fn process_output_and_sweep<'info>(
 
 #[derive(Accounts)]
 pub struct ExecuteComposable<'info> {
-    /// Gateway signer, user, or recipient — whoever triggers execution
+    /// Fee payer / caller. The trusted three (`gateway.signer` /
+    /// `user_payment.owner` / `composable_policy.recipient`) always pass.
+    /// Any other signer is admitted ONLY when the gateway has the
+    /// ADR-0016 permissionless bit set (cold relayer). The
+    /// caller-conditional gate (mandatory min_output_amount for cold
+    /// relayers) is enforced in the handler — Anchor constraints can't
+    /// express "depends on the policy's forward_config".
     #[account(
         mut,
         constraint = (
             fee_payer.key() == gateway.signer
             || fee_payer.key() == user_payment.owner
             || fee_payer.key() == composable_policy.recipient
+            || gateway.is_permissionless()
         ),
     )]
     pub fee_payer: Signer<'info>,
@@ -620,6 +641,14 @@ pub struct ExecuteComposable<'info> {
     /// CHECK: Validation program account (e.g. Lighthouse).
     /// Pass SystemProgram when the policy has no validation configured.
     pub validation_program: UncheckedAccount<'info>,
+
+    /// ValidationPda — typed-deserialised in the handler when validation
+    /// is enabled (validation_program != SystemProgram). When validation
+    /// is disabled, the account does not exist on-chain and is left
+    /// untouched. The address is verified against program-derived seeds
+    /// before any bytes are read. See ADR-0016.
+    /// CHECK: Validated in the handler (seeds + typed deserialisation).
+    pub validation_pda: UncheckedAccount<'info>,
 
     /// User's source token account. Must be owned by the user
     /// (user_payment.owner) and have either the UserPayment PDA (v1)
@@ -889,11 +918,28 @@ impl<'info> ExecuteComposable<'info> {
             .composable_policy
             .validation_config
             .validation_program;
-        let num_val_accounts = ctx
-            .accounts
-            .composable_policy
-            .validation_config
-            .num_validation_accounts as usize;
+        let has_validation = stored_validation_program != Pubkey::default();
+
+        // ── ADR-0016 caller-conditional gate ───────────────────────────
+        // The trusted three (gateway.signer / owner / recipient) always
+        // pass — a gateway's own scheduler may run any policy, including
+        // no-floor ones (`min_output_amount = None`). A cold relayer (any
+        // other signer, admitted because the gateway is permissionless)
+        // must run a CONFORMING policy: `min_output_amount = Some(m > 0)`.
+        // This is the route-agnostic, program-agnostic hard-loss shield
+        // — atomic revert unless the recipient receives ≥ the owner-set
+        // floor. None / Some(0) are rejected for the permissionless path.
+        // Trusted-caller execution is unchanged (backward-compat hatch).
+        let gateway_signer = ctx.accounts.gateway.signer;
+        let is_trusted_caller = caller_key == gateway_signer
+            || caller_key == ctx.accounts.user_payment.owner
+            || caller_key == recipient;
+        if !is_trusted_caller {
+            match min_output_amount {
+                Some(m) if m > 0 => { /* conforming — admit */ }
+                _ => return err!(TributaryError::PermissionlessExecutionRequiresMinOutput),
+            }
+        }
 
         // ── Resolve ComposablePolicy PDA signer seeds ──────────────────
         // ComposablePolicy owns the intermediate ATAs and signs every CPI
@@ -912,7 +958,7 @@ impl<'info> ExecuteComposable<'info> {
         // Strip it before validation/forward CPI so those parsers see only
         // their own accounts. Condition matches the caller's append rule:
         // is_permissionless && gateway.scheduler_share_bps > 0.
-        let gateway_signer = ctx.accounts.gateway.signer;
+        // (`gateway_signer` was snapshotted above for the ADR-0016 gate.)
         let scheduler_share_bps = ctx.accounts.gateway.scheduler_share_bps;
         let is_permissionless = caller_key != gateway_signer;
         let needs_scheduler_ata = is_permissionless && scheduler_share_bps > 0;
@@ -931,18 +977,27 @@ impl<'info> ExecuteComposable<'info> {
 
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
         // No signer seeds are passed — validation is read-only (C-1).
-        let forward_accounts_start = if stored_validation_program != Pubkey::default() {
+        //
+        // ValidationPda is a typed Anchor account (ADR-0016): typed
+        // deserialisation + seed check + pin-check of caller-supplied
+        // target accounts against owner-declared `pinned_accounts` happen
+        // inside `run_validation_cpi`. This closes vector (d): a relayer
+        // can no longer substitute a positional target to trip the
+        // Lighthouse assertion against the wrong state. The 1 KiB struct
+        // stays in the callee's SBF frame, not this handler's.
+        let forward_accounts_start = if has_validation {
             require!(
                 ctx.accounts.validation_program.key() == stored_validation_program,
                 TributaryError::ValidationPdaMismatch
             );
             let validation_program_info = ctx.accounts.validation_program.to_account_info();
+            let validation_pda_info = ctx.accounts.validation_pda.to_account_info();
             run_validation_cpi(
                 effective_remaining,
+                &validation_pda_info,
+                &policy_key,
                 ctx.program_id,
-                policy_key,
                 &validation_program_info,
-                num_val_accounts,
             )?
         } else {
             0

@@ -31,6 +31,9 @@ pub struct PaymentGateway {
     /// Bit 0: Referral program enabled (1 = enabled, 0 = disabled)
     /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
     /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
+    /// Bit 3: Permissionless composable execution enabled (ADR-0016 —
+    ///        admits third-party schedulers for conforming composable
+    ///        policies; trusted caller path unchanged)
     pub feature_flags: u8,
     /// What percentage of the **gateway fee** funds the referral pool.
     /// Units: basis points of the gateway fee. Range: 0..=2500.
@@ -85,6 +88,11 @@ impl PaymentGateway {
     pub const FEATURE_REFERRAL: u8 = 0x01;
     pub const FEATURE_NET_AMOUNT: u8 = 0x02;
     pub const FEATURE_CUSTOM_PROTOCOL_FEE: u8 = 0x04;
+    /// ADR-0016: gateway admits any signer for `execute_composable` when
+    /// set, subject to the caller-conditional gate (cold relayers must run
+    /// conforming policies — `min_output_amount = Some(>0)`). The trusted
+    /// three (gateway.signer / owner / recipient) always pass regardless.
+    pub const FEATURE_PERMISSIONLESS: u8 = 0x08;
 
     /// Validate that referral tier percentages sum to 100% (10000 bps)
     pub fn validate_referral_tiers(&self) -> Result<()> {
@@ -108,6 +116,15 @@ impl PaymentGateway {
     /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
     pub fn is_custom_protocol_fee_enabled(&self) -> bool {
         self.feature_flags & Self::FEATURE_CUSTOM_PROTOCOL_FEE != 0
+    }
+
+    /// Check if permissionless composable execution is enabled (ADR-0016).
+    /// When true, `execute_composable` admits any signer for conforming
+    /// composable policies — the caller-conditional gate (mandatory
+    /// min_output_amount for cold relayers) is enforced in the handler.
+    /// Bit 3: Permissionless execution enabled (1 = open relay, 0 = trusted-only).
+    pub fn is_permissionless(&self) -> bool {
+        self.feature_flags & Self::FEATURE_PERMISSIONLESS != 0
     }
 
     /// Effective protocol share bps for this gateway: the custom value when the
@@ -198,5 +215,38 @@ mod tests {
         gw.feature_flags |= PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
         gw.custom_protocol_share_bps = 2500;
         assert_eq!(gw.effective_protocol_share_bps(1000), 2500);
+    }
+
+    /// ADR-0016: the permissionless bit is independent of the fee/feature
+    /// bits and toggles cleanly. A gateway without the bit must reject
+    /// cold relayers (only the trusted three pass); with the bit set, the
+    /// caller-conditional gate in `execute_composable` takes over.
+    #[test]
+    fn permissionless_flag_toggles_independently() {
+        let mut gw = gateway_with_fee(500);
+        assert!(!gw.is_permissionless());
+        gw.feature_flags |= PaymentGateway::FEATURE_PERMISSIONLESS;
+        assert!(gw.is_permissionless());
+        // Other flags unaffected.
+        assert!(!gw.is_referral_enabled());
+        assert!(!gw.is_amount_net());
+        assert!(!gw.is_custom_protocol_fee_enabled());
+    }
+
+    /// Bit 0x08 must not collide with any existing feature flag — a
+    /// regression here would silently flip permissionless mode when a
+    /// gateway toggles referral / net / custom-fee.
+    #[test]
+    fn permissionless_bit_does_not_collide() {
+        assert_eq!(PaymentGateway::FEATURE_REFERRAL, 0x01);
+        assert_eq!(PaymentGateway::FEATURE_NET_AMOUNT, 0x02);
+        assert_eq!(PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE, 0x04);
+        assert_eq!(PaymentGateway::FEATURE_PERMISSIONLESS, 0x08);
+        // Mask of all known bits — no overlap.
+        let all = PaymentGateway::FEATURE_REFERRAL
+            | PaymentGateway::FEATURE_NET_AMOUNT
+            | PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+            | PaymentGateway::FEATURE_PERMISSIONLESS;
+        assert_eq!(all, 0x0F);
     }
 }

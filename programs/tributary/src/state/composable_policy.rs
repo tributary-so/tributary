@@ -70,21 +70,27 @@ impl ForwardConfig {
     }
 }
 
+/// Per-policy validation routing.
+///
+/// The pinned-account arity (`num_pinned_accounts`) and the pinned pubkeys
+/// themselves live on the `ValidationPda` account, not here — they are
+/// owner-declared at creation and replay-validated at execute (ADR-0016,
+/// closes validation-gaming vector d). This struct only records which
+/// validation program (Lighthouse) the policy is bound to; `Pubkey::default()`
+/// is the "validation disabled" sentinel.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ValidationConfig {
     pub validation_program: Pubkey,
-    pub num_validation_accounts: u8,
 }
 
 impl ValidationConfig {
-    pub const SIZE: usize = 32 + 1; // = 33 bytes
+    pub const SIZE: usize = 32; // = 32 bytes (validation_program only)
 }
 
 impl Default for ValidationConfig {
     fn default() -> Self {
         Self {
             validation_program: Pubkey::default(),
-            num_validation_accounts: 0,
         }
     }
 }
