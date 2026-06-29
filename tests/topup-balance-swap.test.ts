@@ -408,12 +408,19 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       .amount(1_000_000_000, "<")
       .build();
 
+    // Pinned target accounts (ADR-0016): the lighthouse facade owns the
+    // target_account(s). Normalise to the fixed-size [Pubkey; 2].
+    const pinnedAccounts: [PublicKey, PublicKey] = [
+      guard.accounts[0]?.pubkey ?? PublicKey.default,
+      guard.accounts[1]?.pubkey ?? PublicKey.default,
+    ];
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
         guard.numAccounts, // hotWallet WSOL ATA
+        pinnedAccounts,
         guard.data
       )
       .accountsStrict({
@@ -492,9 +499,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       isWritable: true,
     }));
 
+    // ADR-0016: ValidationPda is now a named account, NOT in remaining.
+    // remaining_accounts = [...lighthouseTargets, ...forwardAccounts].
     const remainingAccounts = [
-      // validation: [ValidationPDA, hotWallet WSOL ATA]
-      { pubkey: validationPDA, isSigner: false, isWritable: false },
+      // validation target: hotWallet WSOL ATA (Lighthouse reads amount).
       { pubkey: hotWalletWsolAta, isSigner: false, isWritable: false },
       // forward: DLMM swap accounts (see above)
       ...forwardAccounts,
@@ -510,6 +518,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
         gateway: gatewayPDA,
         config: configPDA,
         validationProgram: LIGHTHOUSE_PUBKEY,
+        validationPda: validationPDA,
         userTokenAccount: coldWalletUsdcAta,
         mint: USDC_MINT,
         outputMint: NATIVE_MINT,
@@ -603,7 +612,6 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       isWritable: true,
     }));
     const remainingAccounts = [
-      { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletWsolAta, isSigner: false, isWritable: false },
       ...forwardAccounts,
     ];
@@ -619,6 +627,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
           gateway: gatewayPDA,
           config: configPDA,
           validationProgram: LIGHTHOUSE_PUBKEY,
+          validationPda: validationPDA,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: NATIVE_MINT,

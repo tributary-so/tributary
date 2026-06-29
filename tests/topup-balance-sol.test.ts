@@ -394,12 +394,19 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       .lamports(SOL_TOPUP_THRESHOLD, "<")
       .build();
 
+    // Pinned target accounts (ADR-0016): the lighthouse facade owns the
+    // target_account(s). Normalise to the fixed-size [Pubkey; 2].
+    const pinnedAccounts: [PublicKey, PublicKey] = [
+      guard.accounts[0]?.pubkey ?? PublicKey.default,
+      guard.accounts[1]?.pubkey ?? PublicKey.default,
+    ];
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
         guard.numAccounts,
+        pinnedAccounts,
         guard.data
       )
       .accountsStrict({
@@ -468,9 +475,10 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       isWritable: true,
     }));
 
+    // ADR-0016: ValidationPda is a named account; remaining_accounts is
+    // the bare [target, ...forward] slice.
     const remainingAccounts = [
-      // validation: [ValidationPDA, hotWallet system wallet (SOL sensor)]
-      { pubkey: validationPDA, isSigner: false, isWritable: false },
+      // validation target: hotWallet system wallet (SOL sensor)
       { pubkey: hotWallet.publicKey, isSigner: false, isWritable: false },
       // forward: DLMM swap accounts
       ...forwardAccounts,
@@ -490,6 +498,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
         gateway: gatewayPDA,
         config: configPDA,
         validationProgram: LIGHTHOUSE_PUBKEY,
+        validationPda: validationPDA,
         userTokenAccount: coldWalletUsdcAta,
         mint: USDC_MINT,
         outputMint: NATIVE_MINT,
@@ -597,7 +606,6 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       isWritable: true,
     }));
     const remainingAccounts = [
-      { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWallet.publicKey, isSigner: false, isWritable: false },
       ...forwardAccounts,
     ];
@@ -613,6 +621,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
           gateway: gatewayPDA,
           config: configPDA,
           validationProgram: LIGHTHOUSE_PUBKEY,
+          validationPda: validationPDA,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: NATIVE_MINT,

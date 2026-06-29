@@ -363,13 +363,21 @@ describe("Composable Topup Balance Flow", () => {
       .amount(50_000_000, "<")
       .build();
 
-    // numValidationAccounts = 1 (hotWallet USDC ATA — the account Lighthouse reads)
+    // num_pinned_accounts = 1 (hotWallet USDC ATA — the account Lighthouse reads).
+    // ADR-0016: the target is owner-pinned at creation; the relayer cannot
+    // substitute it at execute. Pass the lighthouse facade's accounts as
+    // the fixed-size [Pubkey; 2], zero-padded.
+    const pinnedAccounts: [PublicKey, PublicKey] = [
+      guard.accounts[0]?.pubkey ?? PublicKey.default,
+      guard.accounts[1]?.pubkey ?? PublicKey.default,
+    ];
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
         guard.numAccounts,
+        pinnedAccounts,
         guard.data
       )
       .accountsStrict({
@@ -413,11 +421,12 @@ describe("Composable Topup Balance Flow", () => {
     expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
     expect(policy.forwardConfig.numDataChecks).toBe(0);
 
-    // Validation config
+    // Validation config — program stored, pinned arity lives on the
+    // ValidationPda (ADR-0016).
     expect(policy.validationConfig.validationProgram).toEqual(
       LIGHTHOUSE_PUBKEY
     );
-    expect(policy.validationConfig.numValidationAccounts).toBe(1);
+    expect(policy.validationConfig).not.toHaveProperty("numValidationAccounts");
 
     // PayAsYouGo policy
     expect(policy.policyType.payAsYouGo.maxAmountPerPeriod.toNumber()).toBe(
@@ -462,11 +471,12 @@ describe("Composable Topup Balance Flow", () => {
     );
     const intermediateOutputTokenAccount = intermediateInputTokenAccount;
 
-    // remaining_accounts: validation only — [ValidationPDA, hotWalletUsdcAta].
-    // The Lighthouse CPI reads hotWalletUsdcAta to assert amount < 50 USDC.
-    // No forward accounts are required (forward disabled).
+    // remaining_accounts (ADR-0016): ValidationPda was pulled out of the
+    // slice — it's now a named account on the instruction. The slice is
+    // `[...lighthouseTargets, ...forwardAccounts]` only. Here: just the
+    // hotWallet USDC ATA (the account Lighthouse reads). No forward
+    // accounts are required (forward disabled).
     const remainingAccounts = [
-      { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
     ];
 
@@ -478,6 +488,7 @@ describe("Composable Topup Balance Flow", () => {
       gateway: gatewayPDA,
       config: configPDA,
       validationProgram: LIGHTHOUSE_PUBKEY,
+      validationPda: validationPDA,
       userTokenAccount: coldWalletUsdcAta,
       mint: USDC_MINT,
       outputMint: USDC_MINT,
@@ -580,8 +591,9 @@ describe("Composable Topup Balance Flow", () => {
     const intermediateOutputTokenAccount = intermediateInputTokenAccount;
 
     // Validation only — no forward accounts (forward disabled).
+    // ValidationPda is a named account now; remaining_accounts is the
+    // bare target slice.
     const remainingAccounts = [
-      { pubkey: validationPDA, isSigner: false, isWritable: false },
       { pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false },
     ];
 
@@ -596,6 +608,7 @@ describe("Composable Topup Balance Flow", () => {
           gateway: gatewayPDA,
           config: configPDA,
           validationProgram: LIGHTHOUSE_PUBKEY,
+          validationPda: validationPDA,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: USDC_MINT,

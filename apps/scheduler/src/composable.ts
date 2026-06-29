@@ -19,7 +19,7 @@ import {
   ComposablePolicy,
   getValidationPda,
   getGatewayPda,
-  parseValidationPda,
+  parseValidationPdaData,
 } from "@tributary-so/sdk";
 import { exit } from "process";
 import {
@@ -382,7 +382,7 @@ class ComposableScheduler {
         fireable.push(p);
         continue;
       }
-      const valData = parseValidationPda(valAcct.data).data;
+      const valData = parseValidationPdaData(valAcct.data);
       const family = parseAssertionFamily(valData);
       const target = deriveValidationTarget(family, p.account);
       if (!target) {
@@ -499,7 +499,7 @@ class ComposableScheduler {
     );
     const acct = await this.sdk.connection.getAccountInfo(valPda);
     if (!acct?.data) return [valPda];
-    const valData = parseValidationPda(acct.data).data;
+    const valData = parseValidationPdaData(acct.data);
     const target = deriveValidationTarget(
       parseAssertionFamily(valData),
       policy

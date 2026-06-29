@@ -41,7 +41,7 @@ import type {
   ForwardConfig,
   PolicyStatus,
 } from "./types.js";
-import { GATEWAY_FEATURES } from "./constants";
+import { GATEWAY_FEATURES, MAX_PINNED_VALIDATION_ACCOUNTS } from "./constants";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -2042,6 +2042,15 @@ export class Tributary {
    * Composable policies allow execution of arbitrary instructions alongside
    * optional token forwards, enabling use cases like automated DCA, liquidation
    * protection, and cross-protocol interactions.
+   *
+   * The validation target accounts are **owner-pinned at creation**
+   * (ADR-0016, closes validation-gaming vector d): `pinnedAccounts` is
+   * stored in the on-chain `ValidationPda` and replay-validated at
+   * execute — a relayer cannot substitute a positional slot to trip the
+   * assertion against the wrong state. Pass exactly the Lighthouse
+   * builder's `.accounts` pubkeys here (arity derived from the array
+   * length; max 2).
+   *
    * @param tokenMint - Public key of the token to be paid
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
@@ -2049,7 +2058,9 @@ export class Tributary {
    * @param memo - Memo string to include with the policy (max 32 bytes)
    * @param forwardConfig - Token forwarding configuration
    * @param validationProgram - Validation program pubkey (PublicKey.default for no validation)
-   * @param numValidationAccounts - Number of validation accounts (0 if no validation)
+   * @param pinnedAccounts - Owner-declared Lighthouse target accounts (empty for none, max 2).
+   *   For a `lighthouse.tokenAccount(ata).amount(...).build()` assertion, pass `[ata]`.
+   *   For `accountDelta(a, b)`, pass `[a, b]`. For `sysvarClock()`, pass `[]`.
    * @param validationData - Validation assertion data (empty Buffer if no validation)
    * @param feePayer - Optional fee payer (defaults to provider wallet)
    * @returns Transaction instruction to create the composable policy
@@ -2062,10 +2073,24 @@ export class Tributary {
     memo: string,
     forwardConfig: ForwardConfig,
     validationProgram: PublicKey = PublicKey.default,
-    numValidationAccounts: number = 0,
+    pinnedAccounts: PublicKey[] = [],
     validationData: Buffer = Buffer.alloc(0),
     feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
+    if (pinnedAccounts.length > MAX_PINNED_VALIDATION_ACCOUNTS) {
+      throw new Error(
+        `pinnedAccounts: at most ${MAX_PINNED_VALIDATION_ACCOUNTS} targets (got ${pinnedAccounts.length})`
+      );
+    }
+    // Normalise to the fixed-size [Pubkey; 2] the on-chain instruction
+    // expects, zero-padded. Arity is derived from the input length so the
+    // caller doesn't have to pass it separately (single source of truth).
+    const numPinned = pinnedAccounts.length;
+    const pinnedAccountsFixed: [PublicKey, PublicKey] = [
+      pinnedAccounts[0] ?? PublicKey.default,
+      pinnedAccounts[1] ?? PublicKey.default,
+    ];
+
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -2111,7 +2136,8 @@ export class Tributary {
         policyType,
         memoBytes,
         forwardConfig,
-        numValidationAccounts,
+        numPinned,
+        pinnedAccountsFixed,
         validationData
       )
       .accountsStrict(accounts)
@@ -2197,12 +2223,24 @@ export class Tributary {
       ? policy.validationConfig.validationProgram
       : SystemProgram.programId;
 
+    // ValidationPda lives at a deterministic PDA off the composable policy.
+    // When validation is disabled, pass the derived address anyway — the
+    // on-chain account is never created in that case, and the program only
+    // deserialises it when `validationProgram != SystemProgram`. Keeping
+    // the field always-present matches the create flow and avoids an
+    // Anchor `Option<Account>` round-trip.
+    const { address: validationPdaAddress } = getValidationPda(
+      composablePolicy,
+      this.programId
+    );
+
     const accounts = {
       composablePolicy: composablePolicy,
       userPayment: policy.userPayment,
       gateway: policy.gateway,
       config: configPda,
       validationProgram,
+      validationPda: validationPdaAddress,
       userTokenAccount,
       mint: inputMint,
       outputMint,
@@ -2218,22 +2256,13 @@ export class Tributary {
       systemProgram: SystemProgram.programId,
     };
 
-    let resolvedRemaining = remainingAccounts ?? [];
-    if (hasValidation) {
-      const { address: validationPdaAddress } = getValidationPda(
-        composablePolicy,
-        this.programId
-      );
-      resolvedRemaining = [
-        { pubkey: validationPdaAddress, isSigner: false, isWritable: false },
-        ...resolvedRemaining,
-      ];
-    }
-
+    // ValidationPda was pulled out of `remaining_accounts` in ADR-0016:
+    // the slice is now `[...lighthouseTargetAccounts, ...forwardAccounts,
+    // (scheduler_ata?)]` — no leading ValidationPda entry.
     return await this.program.methods
       .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
       .accountsStrict(accounts)
-      .remainingAccounts(resolvedRemaining)
+      .remainingAccounts(remainingAccounts ?? [])
       .instruction();
   }
 

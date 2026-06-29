@@ -17,7 +17,12 @@ import {
   approve,
 } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
-import { SEEDS, IWallet, Tributary as TributarySDK } from "../packages/sdk/src";
+import {
+  SEEDS,
+  IWallet,
+  Tributary as TributarySDK,
+  parseValidationPda,
+} from "../packages/sdk/src";
 import { Buffer } from "buffer";
 import { getOnChainNow } from "./helpers/onChainNow";
 import { METEORA_DLMM_PUBKEY, LIGHTHOUSE_PUBKEY } from "./constants";
@@ -337,6 +342,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -420,12 +426,19 @@ describe("Composable Policies", () => {
 
     const validationData = Buffer.from("lighthouse-assert-data");
 
+    // Owner-pinned target account (ADR-0016). The test uses a dummy
+    // pubkey — the assertion data isn't a real Lighthouse instruction,
+    // so this policy is never executed; only the create-time storage of
+    // the pinned set is exercised here.
+    const pinnedTarget = Keypair.generate().publicKey;
+
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
         1,
+        [pinnedTarget, PublicKey.default],
         validationData
       )
       .accountsStrict({
@@ -458,22 +471,24 @@ describe("Composable Policies", () => {
     expect(policy.validationConfig.validationProgram).toEqual(
       LIGHTHOUSE_PUBKEY
     );
-    expect(policy.validationConfig.numValidationAccounts).toBe(1);
     expect(policy.status).toEqual({ active: {} });
 
-    // Verify ValidationPDA was created with correct data
-    const validationPdaAccount = await connection.getAccountInfo(
+    // ValidationPda is now a typed Anchor account (ADR-0016). The pinned
+    // arity lives on the PDA, not on ComposablePolicy.validationConfig
+    // (num_validation_accounts is dropped). The IDL doesn't register
+    // ValidationPda as a fetchable account (it enters as UncheckedAccount),
+    // so parse via the SDK raw-bytes helper.
+    const validationPdaRaw = await connection.getAccountInfo(
       validationPdaAddress
     );
-    expect(validationPdaAccount).not.toBeNull();
-    // Data layout: 8 (discriminator) + 2 (data_len u16) + data
-    const dataLen = validationPdaAccount!.data.readUInt16LE(8);
-    expect(dataLen).toBe(validationData.length);
-    const storedData = validationPdaAccount!.data.slice(
-      10,
-      10 + validationData.length
-    );
-    expect(Buffer.from(storedData)).toEqual(validationData);
+    expect(validationPdaRaw).not.toBeNull();
+    const parsed = parseValidationPda(Buffer.from(validationPdaRaw!.data));
+    expect(parsed.numPinnedAccounts).toBe(1);
+    expect(parsed.pinnedAccounts[0]).toEqual(pinnedTarget);
+    expect(parsed.pinnedAccounts).toHaveLength(1);
+    // data_len + active prefix round-trip the assertion bytes verbatim.
+    expect(parsed.dataLen).toBe(validationData.length);
+    expect(parsed.data).toEqual(validationData);
   });
 
   // ══════════════════════════════════════════════════════════════════════
@@ -510,6 +525,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -568,6 +584,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.from("some-data")
       )
       .accountsStrict({
@@ -626,6 +643,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -690,6 +708,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -761,6 +780,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -818,6 +838,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -948,6 +969,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -1073,6 +1095,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -1131,6 +1154,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         validationProgram: PublicKey.default,
+        validationPda: getValidationPda(
+          composablePolicyPDA,
+          program.programId
+        )[0],
         config: configPDA,
         userTokenAccount: userTokenAccount,
         mint: tokenMint,
@@ -1205,6 +1232,7 @@ describe("Composable Policies", () => {
         new Array(32).fill(0),
         defaultForwardConfig(tokenMint, secondMint),
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -1260,6 +1288,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         validationProgram: PublicKey.default,
+        validationPda: getValidationPda(
+          composablePolicyPDA,
+          program.programId
+        )[0],
         config: configPDA,
         userTokenAccount: userTokenAccount,
         mint: tokenMint,
@@ -1336,6 +1368,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         0,
+        [PublicKey.default, PublicKey.default],
         Buffer.alloc(0)
       )
       .accountsStrict({
@@ -1394,6 +1427,10 @@ describe("Composable Policies", () => {
         config: configPDA,
         userTokenAccount: userTokenAccount,
         validationProgram: PublicKey.default,
+        validationPda: getValidationPda(
+          composablePolicyPDA,
+          program.programId
+        )[0],
         mint: tokenMint,
         outputMint: secondMint,
         intermediateInputTokenAccount: getAssociatedTokenAddressSync(
@@ -1461,6 +1498,11 @@ describe("Composable Policies", () => {
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     const validationData = Buffer.from("validation-assertion-data-here");
 
+    // Two dummy pinned targets (accountDelta arity). Stored on the PDA,
+    // not validated at execute — this test only exercises create + delete.
+    const pinnedA = Keypair.generate().publicKey;
+    const pinnedB = Keypair.generate().publicKey;
+
     // Create with validation
     const createIx = await program.methods
       .createComposablePolicy(
@@ -1468,6 +1510,7 @@ describe("Composable Policies", () => {
         memo,
         forwardConfig,
         2,
+        [pinnedA, pinnedB],
         validationData
       )
       .accountsStrict({
@@ -1636,6 +1679,7 @@ describe("Composable Policies", () => {
           memo,
           forwardConfig,
           0,
+          [PublicKey.default, PublicKey.default],
           Buffer.alloc(0)
         )
         .accountsStrict({
@@ -1796,6 +1840,7 @@ describe("Composable Policies", () => {
           memo,
           forwardConfig,
           0,
+          [PublicKey.default, PublicKey.default],
           Buffer.alloc(0)
         )
         .accountsStrict({
@@ -1859,6 +1904,7 @@ describe("Composable Policies", () => {
           memo,
           forwardConfig,
           0,
+          [PublicKey.default, PublicKey.default],
           Buffer.alloc(0)
         )
         .accountsStrict({

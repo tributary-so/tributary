@@ -142,24 +142,82 @@ export type ByteRangeCheck = IdlTypes<Tributary>["byteRangeCheck"];
 
 /**
  * Validation PDA account structure.
- * Stores assertion data for composable policies with external validation.
- * Not IDL-derived — manually defined since ValidationPda is initialized via invoke_signed.
+ * Stores the Lighthouse assertion bytes for a composable policy plus the
+ * owner-pinned target accounts (ADR-0016).
+ *
+ * Note: the on-chain program deserialises this via `AccountDeserialize`
+ * inside `run_validation_cpi`. The IDL does NOT register it as a fetchable
+ * `program.account.validationPda` target because it is never declared as a
+ * typed `Account<'info, ValidationPda>` in any instruction context — it
+ * enters as an `UncheckedAccount` (optional, absent when validation is
+ * disabled). Off-chain consumers use {@link parseValidationPda} below.
  */
 export interface ValidationPdaAccount {
-  /** Length of stored validation data */
+  /** Canonical PDA bump. */
+  bump: number;
+  /** Arity of the active pinned-target slice (0/1/2). */
+  numPinnedAccounts: number;
+  /** Owner-declared Lighthouse target pubkeys, positional. Only
+   *  `[0..numPinnedAccounts]` are meaningful; the rest are zero-padded. */
+  pinnedAccounts: PublicKey[];
+  /** Length of the active assertion-data prefix. */
   dataLen: number;
-  /** Raw validation data (up to 1024 bytes) */
+  /** Active assertion bytes (passed verbatim to Lighthouse at execute). */
   data: Buffer;
 }
 
 /**
- * Parse a ValidationPda account from raw on-chain data.
- * Layout: 8 (Anchor discriminator) + 2 (data_len u16) + data
+ * Manual byte-layout constants for the on-chain `ValidationPda`. Kept in
+ * sync with `programs/tributary/src/state/validation_pda.rs`.
+ *
+ * Layout: 8 (disc) + 1 (bump) + 1 (num_pinned) + 64 (pinned[2]) +
+ *         2 (data_len) + data[1024]
+ */
+export const VALIDATION_PDA_LAYOUT = {
+  DISCRIMINATOR: 8,
+  BUMP: 1,
+  NUM_PINNED: 1,
+  PINNED: 32 * 2,
+  DATA_LEN: 2,
+  HEADER: 8 + 1 + 1 + 32 * 2 + 2, // = 76
+} as const;
+
+/**
+ * Parse a full `ValidationPda` from a raw account buffer (e.g.
+ * `connection.getAccountInfo(...).data`). Used by off-chain consumers
+ * (scheduler, indexers, tests) that don't go through Anchor's typed
+ * deserialiser.
+ *
+ * The on-chain program deserialises via `AccountDeserialize`; this is a
+ * pure-TS mirror that keeps the layout in lockstep.
  */
 export function parseValidationPda(data: Buffer): ValidationPdaAccount {
-  const dataLen = data.readUInt16LE(8);
+  const bump = data[8];
+  const numPinnedAccounts = data[9];
+  const pinnedAccounts: PublicKey[] = [];
+  for (let i = 0; i < numPinnedAccounts; i++) {
+    pinnedAccounts.push(
+      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32))
+    );
+  }
+  const dataLen = data.readUInt16LE(VALIDATION_PDA_LAYOUT.HEADER - 2);
   return {
+    bump,
+    numPinnedAccounts,
+    pinnedAccounts,
     dataLen,
-    data: data.subarray(10, 10 + dataLen),
+    data: data.subarray(
+      VALIDATION_PDA_LAYOUT.HEADER,
+      VALIDATION_PDA_LAYOUT.HEADER + dataLen
+    ),
   };
+}
+
+/**
+ * Read only the Lighthouse assertion-data slice from a raw `ValidationPda`
+ * account buffer. Convenience for consumers (scheduler pre-filter) that
+ * don't care about the pinned-set metadata.
+ */
+export function parseValidationPdaData(data: Buffer): Buffer {
+  return parseValidationPda(data).data;
 }
