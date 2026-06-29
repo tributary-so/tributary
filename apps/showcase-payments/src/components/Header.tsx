@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
+import { ClusterUiSelect } from "./cluster/cluster-ui";
 import { ChevronDown } from "lucide-react";
 import logo from "../assets/logo.png";
 
@@ -89,6 +90,7 @@ export function Header() {
                 </div>
               </div>
             </div>
+            <ClusterUiSelect />
             <ThemeToggle />
           </nav>
           <a

@@ -4,14 +4,13 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { clusterApiUrl } from "@solana/web3.js";
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const endpoint = import.meta.env.VITE_SOLANA_API ?? clusterApiUrl("devnet");
+const endpoint = import.meta.env.VITE_SOLANA_API;
 const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
 
 export function WalletProviders({ children }: { children: React.ReactNode }) {

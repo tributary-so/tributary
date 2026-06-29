@@ -4,7 +4,6 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { clusterApiUrl } from "@solana/web3.js";
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
@@ -12,7 +11,7 @@ import {
 import "@solana/wallet-adapter-react-ui/styles.css";
 import SubscriptionButtonExample from "@/components/SubscriptionButtonExampe";
 
-const endpoint = import.meta.env.VITE_SOLANA_API ?? clusterApiUrl("devnet");
+const endpoint = import.meta.env.VITE_SOLANA_API;
 const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
 console.log(`Using endpoint: ${endpoint}`);
 
@@ -26,6 +25,6 @@ const CheckoutDemo: React.FC = () => {
       </WalletProvider>
     </ConnectionProvider>
   );
-}
+};
 
 export default CheckoutDemo;
