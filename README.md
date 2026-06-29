@@ -246,6 +246,8 @@ Open [http://localhost:8000](http://localhost:8000).
 │   ├── scheduler/             # @tributary-so/scheduler — node-cron executor
 │   ├── cli/                   # @tributary-so/cli — oclif CLI (wallet/gateway/subscription/...)
 │   ├── showcase-payments/     # Integration showcase
+│   ├── showcase-topup-sol/   # Auto top-up (composable policy) showcase
+│   ├── showcase-payment-policies/  # Owner-direct policy creation showcase
 │   └── docs/                  # MkDocs Material site (uv / Python)
 │       └── adr/               # Architecture Decision Records (0001-0013)
 ├── tests/                     # Jest integration suite (Surfpool-backed)

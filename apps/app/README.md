@@ -53,7 +53,6 @@ apps/app/
     │   ├── app-providers.tsx  # React Query + Solana + HeroUI providers
     │   ├── dashboard/         # Main dashboard interface
     │   ├── account/           # Account management
-    │   ├── payment-policy/    # Payment policy creation
     │   ├── referral-program/  # Referral program page
     │   ├── cluster/           # Solana cluster UI
     │   ├── solana/            # Solana provider + wallet
@@ -193,15 +192,14 @@ Main landing page with:
 
 ## Routes
 
-| Path          | Component             | Description                 |
-| ------------- | --------------------- | --------------------------- |
-| `/`           | `LazyDashboard`       | Main dashboard landing page |
-| `/about`      | `LazyDashboard`       | About section (dashboard)   |
-| `/demo`       | `LazyDashboard`       | Demo section (dashboard)    |
-| `/docs`       | `LazyDashboard`       | Docs section (dashboard)    |
-| `/quickstart` | `LazyPaymentPolicy`   | Create payment policy       |
-| `/account`    | `LazyAccount`         | User account management     |
-| `/referral`   | `LazyReferralProgram` | Referral program page       |
+| Path        | Component             | Description                 |
+| ----------- | --------------------- | --------------------------- |
+| `/`         | `LazyDashboard`       | Main dashboard landing page |
+| `/about`    | `LazyDashboard`       | About section (dashboard)   |
+| `/demo`     | `LazyDashboard`       | Demo section (dashboard)    |
+| `/docs`     | `LazyDashboard`       | Docs section (dashboard)    |
+| `/account`  | `LazyAccount`         | User account management     |
+| `/referral` | `LazyReferralProgram` | Referral program page       |
 
 ## Available Scripts
 
@@ -243,7 +241,7 @@ pnpm build
 
 ### Component Architecture
 
-- **Feature Components**: Self-contained modules (dashboard, payment-policy, account)
+- **Feature Components**: Self-contained modules (dashboard, account)
 - **UI Components**: Reusable design system components in `ui/` directory
 - **Layout Components**: App-wide layout and navigation components
 - **Provider Components**: Context providers for HeroUI, Solana, and data fetching

@@ -39,6 +39,7 @@ packages/lighthouse/  Vendored official Lighthouse SDK (not on npm)
 tests/                Integration test suite (jest, runs against Surfpool)
 apps/docs/            MkDocs documentation site (what/how/why)
 apps/docs/adr/        Architecture Decision Records (numbered, immutable-once-deployed)
+apps/showcase-payment-policies/   Owner-direct policy creation showcase (HeroUI/jotai)
 CONTEXT.md            Domain glossary / ubiquitous language (single-context repo)
 landing/              React/Tailwind marketing site
 ```

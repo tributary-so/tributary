@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import PaymentPolicyForm, { PaymentPolicyFormData } from './payment-policy-form'
-import IntegrationCode from './integration-code'
+import PaymentPolicyForm, { PaymentPolicyFormData } from './policy-inputs'
+import IntegrationCode from './integration-snippet'
 
 export default function PaymentPolicyFeature() {
   const [formData, setFormData] = useState<PaymentPolicyFormData>({

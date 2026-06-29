@@ -19,6 +19,7 @@ import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
 import { today, getLocalTimeZone, fromDate } from '@internationalized/date'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DateValue = any
 
 function dateToDateValue(date: Date): DateValue {
@@ -354,9 +355,9 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
       }
 
       const txid = await createAndSendTransaction(instructions, wallet, connection)
-      console.log(txid);
+      console.log(txid)
       addToast({ title: 'Success', description: 'Payment policy created successfully!', color: 'success' })
-      setTimeout(() => navigate('/account'), 3000)
+      setTimeout(() => navigate('/'), 3000)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       addToast({ title: 'Error', description: 'Failed to create payment policy: ' + errorMessage, color: 'danger' })
@@ -826,12 +827,13 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
             onChange={handleInputChange}
             placeholder="e.g., ABC123"
             maxLength={6}
-            className={`w-full ${referralCodeValid === false
+            className={`w-full ${
+              referralCodeValid === false
                 ? 'border-overdue-500'
                 : referralCodeValid === true
-                  ? 'border-status-active-500'
-                  : ''
-              }`}
+                ? 'border-status-active-500'
+                : ''
+            }`}
             isInvalid={referralCodeValid === false}
             errorMessage={referralCodeValid === false ? 'Invalid referral code' : undefined}
             endContent={

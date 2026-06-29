@@ -78,12 +78,6 @@ export function AppHeader() {
             <Link to="/referral" className="transition-colors hover:text-foreground">
               REFERRAL
             </Link>
-            <Link
-              to="/quickstart"
-              className="bg-primary text-primary-foreground px-3 py-1 hover:bg-primary/90 transition-colors"
-            >
-              QUICK START
-            </Link>
             {connected && (
               <button
                 onClick={() => navigate('/account')}
@@ -142,13 +136,6 @@ export function AppHeader() {
               className="transition-colors hover:text-foreground"
             >
               Referral
-            </Link>
-            <Link
-              to="/quickstart"
-              onClick={() => setIsMenuOpen(false)}
-              className="bg-primary text-primary-foreground px-3 py-2 text-center"
-            >
-              Quick Start
             </Link>
             <div className="border-t border-border pt-3 mt-2">
               {connected && (

@@ -3,13 +3,6 @@ import { ExternalLink, Play, BookOpen, Code, Heart, Github, PlusCircle, Briefcas
 
 const actions = [
   {
-    icon: Play,
-    title: 'Quickstart',
-    description: 'Create your first payment policy',
-    link: '/quickstart',
-    internal: true,
-  },
-  {
     icon: BookOpen,
     title: 'Read Documentation',
     description: 'Learn how to integrate payment policies in your app',
@@ -93,11 +86,11 @@ export default function DashboardFeature() {
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Link
-              to="/quickstart"
+              to="/account"
               className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
             >
               <Play className="h-4 w-4" />
-              Get Started
+              View your policies
             </Link>
             <a
               href="https://tally.so/r/RGbbGl"
@@ -153,14 +146,16 @@ export default function DashboardFeature() {
       </div>
 
       <div className=" border border-border bg-muted/20 p-12 text-center">
-        <h2 className="mb-4 text-2xl font-bold">Ready to set up a payment policy?</h2>
-        <p className="mb-8 text-muted-foreground">Connect your wallet and create your first payment policy</p>
+        <h2 className="mb-4 text-2xl font-bold">Ready to view your policies?</h2>
+        <p className="mb-8 text-muted-foreground">
+          Connect your wallet to see and manage your recurring payment policies
+        </p>
         <Link
-          to="/quickstart"
+          to="/account"
           className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
         >
           <Play className="h-4 w-4" />
-          Start Now
+          View your policies
         </Link>
       </div>
     </section>

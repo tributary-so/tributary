@@ -4,9 +4,7 @@ import { AppProviders } from '@/components/app-providers'
 import { AppHeader } from '@/components/app-header'
 import { AppFooter } from '@/components/app-footer'
 
-const Dashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
-const Account = lazy(() => import('@/components/account/account-page'))
-const ReferalProgram = lazy(() => import('@/components/referral-program/ReferralProgramPage'))
+const CreatePolicy = lazy(() => import('@/components/create-policy'))
 
 function LoadingFallback() {
   return (
@@ -24,12 +22,7 @@ export function App() {
         <main className="mx-auto max-w-5xl px-4">
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
-              <Route index element={<Dashboard />} />
-              <Route path="about" element={<Dashboard />} />
-              <Route path="demo" element={<Dashboard />} />
-              <Route path="docs" element={<Dashboard />} />
-              <Route path="account" element={<Account />} />
-              <Route path="referral" element={<ReferalProgram />} />
+              <Route index element={<CreatePolicy />} />
             </Routes>
           </Suspense>
         </main>
