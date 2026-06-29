@@ -9,8 +9,7 @@ export interface Config {
 }
 
 const config: Config = {
-  rpcUrl:
-    import.meta.env.VITE_SOLANA_API || "https://api.mainnet-beta.solana.com",
+  rpcUrl: import.meta.env.VITE_SOLANA_API,
   programId:
     import.meta.env.VITE_TRIBUTARY_PROGRAM_ID ||
     "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",

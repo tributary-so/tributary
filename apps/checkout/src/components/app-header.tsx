@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
 import { WalletButton } from "./solana-provider";
+import { ClusterUiSelect } from "./cluster/cluster-ui";
 
 const navItems = [
   { label: "Docs", href: "https://docs.tributary.so" },
@@ -65,6 +66,7 @@ export function AppHeader() {
               </a>
             ))}
             <WalletButton />
+            <ClusterUiSelect />
             <ThemeToggle />
           </nav>
         </div>
@@ -107,8 +109,9 @@ export function AppHeader() {
                 {item.label}
               </a>
             ))}
-            <div className="border-t border-border pt-3 mt-2">
+            <div className="border-t border-border pt-3 mt-2 flex flex-col gap-3">
               <WalletButton />
+              <ClusterUiSelect />
             </div>
           </nav>
         </div>

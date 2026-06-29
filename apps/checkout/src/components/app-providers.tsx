@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ClusterProvider } from "./cluster/cluster-data-access";
 import { SolanaProvider } from "./solana-provider";
 import React from "react";
 
@@ -9,7 +10,9 @@ export function AppProviders({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <QueryClientProvider client={queryClient}>
-      <SolanaProvider>{children}</SolanaProvider>
+      <ClusterProvider>
+        <SolanaProvider>{children}</SolanaProvider>
+      </ClusterProvider>
     </QueryClientProvider>
   );
 }
