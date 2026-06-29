@@ -1142,7 +1142,7 @@ describe("Tributary", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(firstMilestoneAmount) -
-          BigInt(17500 /* fee */)
+          BigInt(12500 /* fee = 500000 × 250 bps / 10000 */)
         ).toString()
       );
 
@@ -1168,7 +1168,9 @@ describe("Tributary", () => {
       );
       const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
       const totalExpected =
-        firstMilestoneAmount + secondMilestoneAmount - 43750; /* fee */
+        firstMilestoneAmount +
+        secondMilestoneAmount -
+        31250; /* fee = 1250000 × 250 bps / 10000 */
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
@@ -1723,9 +1725,9 @@ describe("Tributary", () => {
       const afterFirstBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
-      // Account for protocol fees (100 bps = 1%) and gateway fees (250 bps = 2.5%)
-      // Total fees = 3.5% = 3500 on 100000 amount, net transfer = 96500
-      const expectedNetAmount = 100000 - Math.floor((100000 * 350) / 10000); // 96500
+      // Total fee = gateway_fee_bps only (250 bps = 2.5%). Protocol is a
+      // carve-out of the gateway fee, not an additional deduction (ADR-0017).
+      const expectedNetAmount = 100000 - Math.floor((100000 * 250) / 10000); // 97500
       expect(afterFirstBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
@@ -1759,9 +1761,9 @@ describe("Tributary", () => {
       const afterSecondBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
-      // Account for fees on both payments (3.5% total = 8750 on 250000 total)
+      // Total fee = gateway_fee_bps only (250 bps on 250000 cumulative)
       const expectedSecondNetAmount =
-        250000 - Math.floor((250000 * 350) / 10000); // 241250
+        250000 - Math.floor((250000 * 250) / 10000); // 243750
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
@@ -3094,24 +3096,25 @@ describe("Tributary", () => {
         }
       );
 
-      // Verify recipient got amount minus both gateway fee AND global protocol fee
+      // Verify recipient got amount minus total gateway fee (ADR-0017: protocol
+      // is a carve-out of the gateway fee, not an additional deduction).
       const finalRecipientBalance = await connection.getTokenAccountBalance(
         customFeeRecipientTokenAccount
       );
-      const gatewayFee = Math.floor((100000 * 250) / 10000); // 2.5% = 2500
-      const protocolFee = Math.floor((100000 * 100) / 10000); // 1% = 1000
-      const expectedRecipientAmount = 100000 - gatewayFee - protocolFee; // 87500
+      const totalFee = Math.floor((100000 * 250) / 10000); // 2.5% = 2500
+      const protocolCut = Math.floor((totalFee * 2000) / 10000); // 20% share = 500
+      const expectedRecipientAmount = 100000 - totalFee; // 97500
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
         parseInt(initialRecipientBalance.value.amount) + expectedRecipientAmount
       );
 
-      // Verify protocol fee WAS charged
+      // Verify protocol fee WAS charged (carve-out of the gateway fee)
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
           getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
-        parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolFee
+        parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolCut
       );
     });
   });
@@ -3520,14 +3523,12 @@ describe("Tributary", () => {
     let transferUserTokenAccount: PublicKey;
     let transferRecipient: Keypair;
 
-    const PROTOCOL_FEE_BPS = 100;
     const GATEWAY_FEE_BPS = 100;
 
     function calcFees(grossAmount: number) {
-      const gatewayFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
-      const protocolFee = Math.floor((grossAmount * PROTOCOL_FEE_BPS) / 10000);
-      const recipientAmount = grossAmount - gatewayFee - protocolFee;
-      return { gatewayFee, protocolFee, recipientAmount };
+      const totalFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
+      const recipientAmount = grossAmount - totalFee;
+      return { totalFee, recipientAmount };
     }
 
     beforeAll(async () => {
@@ -3562,7 +3563,8 @@ describe("Tributary", () => {
       ]);
 
       const transferAmount = new anchor.BN(500000);
-      const { recipientAmount } = calcFees(transferAmount.toNumber());
+      const { recipientAmount, totalFee } = calcFees(transferAmount.toNumber());
+      const referralPool = Math.floor((totalFee * 500) / 10000);
 
       const instructions = await sdk.transfer(
         tokenMint,
@@ -3586,7 +3588,9 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount) + recipientAmount
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
-        parseInt(initialUserBalance.value.amount) - transferAmount.toNumber()
+        parseInt(initialUserBalance.value.amount) -
+          transferAmount.toNumber() +
+          referralPool
       );
     });
 
@@ -3853,11 +3857,13 @@ describe("Tributary", () => {
       const transferAmounts = [100000, 200000, 150000];
       let totalGross = 0;
       let totalRecipient = 0;
+      let totalReferralDust = 0;
 
       for (let i = 0; i < transferAmounts.length; i++) {
-        const { recipientAmount } = calcFees(transferAmounts[i]);
+        const { recipientAmount, totalFee } = calcFees(transferAmounts[i]);
         totalGross += transferAmounts[i];
         totalRecipient += recipientAmount;
+        totalReferralDust += Math.floor((totalFee * 500) / 10000);
 
         const instructions = await sdk.transfer(
           tokenMint,
@@ -3882,7 +3888,9 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount) + totalRecipient
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
-        parseInt(initialUserBalance.value.amount) - totalGross
+        parseInt(initialUserBalance.value.amount) -
+          totalGross +
+          totalReferralDust
       );
     });
   });
