@@ -7,6 +7,8 @@ import { AppFooter } from '@/components/app-footer'
 const Dashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
 const Account = lazy(() => import('@/components/account/account-page'))
 const ReferalProgram = lazy(() => import('@/components/referral-program/ReferralProgramPage'))
+const GatewaysPage = lazy(() => import('@/components/gateway/gateways-page'))
+const GatewayManagePage = lazy(() => import('@/components/gateway/gateway-manage-page'))
 
 function LoadingFallback() {
   return (
@@ -30,6 +32,8 @@ export function App() {
               <Route path="docs" element={<Dashboard />} />
               <Route path="account" element={<Account />} />
               <Route path="referral" element={<ReferalProgram />} />
+              <Route path="gateways" element={<GatewaysPage />} />
+              <Route path="gateway/manage" element={<GatewayManagePage />} />
             </Routes>
           </Suspense>
         </main>
