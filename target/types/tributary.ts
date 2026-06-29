@@ -2940,6 +2940,16 @@ export type Tributary = {
       "code": 6057,
       "name": "nativeOutputRequiresWsol",
       "msg": "NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)"
+    },
+    {
+      "code": 6058,
+      "name": "missingSchedulerFeeAccount",
+      "msg": "Permissionless execution with scheduler_share_bps > 0 requires the scheduler fee account as the last remaining_account"
+    },
+    {
+      "code": 6059,
+      "name": "invalidSchedulerFeeAccount",
+      "msg": "Scheduler fee account must be owned by the fee_payer and match the source mint"
     }
   ],
   "types": [

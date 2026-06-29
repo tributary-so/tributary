@@ -1,11 +1,11 @@
 ---
 # tributary-5gf3
 title: Unified fee model with scheduler incentive (ADR-0017)
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-06-29T12:35:19Z
-updated_at: 2026-06-29T12:36:13Z
+updated_at: 2026-06-29T14:24:47Z
 ---
 
 Implements ADR-0017 (apps/docs/adr/0017-unified-fee-model.md), supersedes ADR-0006. Moves from two independent fee numbers (protocol_fee_bps + gateway_fee_bps) to ONE gateway_fee_bps (total) with carve-outs: protocol share (global, admin-set, per-gateway admin override), scheduler share (per-gateway, gateway-set — NEW), referral allocation (per-gateway, unchanged), gateway residual (balancing).
@@ -25,3 +25,12 @@ Proposed children (TDD per child):
 - F: Update tests (fee math, routing, constraint enforcement, NET_AMOUNT interaction)
 
 Sibling to tributary-pdj8 (permissionless composable execution). tributary-pdj8 opens execution to any caller; this epic provides the financial incentive for third parties to actually do it.
+
+## Summary of Changes
+
+All 6 children completed (A-F). Three commits:
+- 7f0fe81: Core unified fee model (A: fees.rs rewrite, B: struct changes, C: gateway config instructions)
+- a81ca50: Scheduler cut routing (D) + SDK APIs (E)
+- c51a201: Test file updates for all 6 test files (F)
+
+Build: cargo build ✓ | cargo test --lib: 79 passed | SDK build ✓ | tsc --noEmit: 0 errors in tests/

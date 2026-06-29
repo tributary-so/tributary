@@ -1,11 +1,11 @@
 ---
 # tributary-b8m7
 title: Update gateway config instructions — share constraint + scheduler share setter
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-06-29T12:49:25Z
-updated_at: 2026-06-29T12:49:25Z
+updated_at: 2026-06-29T13:12:05Z
 parent: tributary-5gf3
 blocked_by:
     - tributary-wuhf
@@ -25,3 +25,7 @@ Constraint to enforce at EVERY write site:
 where effective_protocol_share = custom_protocol_share_bps if FEATURE_CUSTOM_PROTOCOL_FEE set, else global protocol_share_bps from ProgramConfig.
 
 TDD: tests for constraint acceptance at boundary (9999 ok, 10001 reject), each write site enforces independently, admin-override path enforces.
+
+## Summary of Changes
+
+Done in 7f0fe81. create_payment_gateway accepts scheduler_share_bps. New update_gateway_scheduler_share instruction. update_gateway_referral_settings gains ProgramConfig + validate_share_constraint. update_gateway_protocol_fee renamed to share semantics. change_gateway_fee_bps uses validate_share_constraint. All write sites enforce the ≤10000 constraint.

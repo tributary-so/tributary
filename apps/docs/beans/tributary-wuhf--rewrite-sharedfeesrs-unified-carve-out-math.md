@@ -1,11 +1,11 @@
 ---
 # tributary-wuhf
 title: Rewrite shared/fees.rs — unified carve-out math
-status: in-progress
+status: completed
 type: task
 priority: high
 created_at: 2026-06-29T12:48:52Z
-updated_at: 2026-06-29T12:54:59Z
+updated_at: 2026-06-29T13:12:05Z
 parent: tributary-5gf3
 ---
 
@@ -34,3 +34,7 @@ Logic:
 6. NET_AMOUNT: gross → total_from_user = payment_amount, recipient = payment_amount − total_fee; net → total_from_user = payment_amount + total_fee, recipient = payment_amount
 
 TDD: write tests first covering — basic split math, residual-is-balancing-item, net vs gross, zero-shares edge cases, overflow checks.
+
+## Summary of Changes
+
+Implemented in commit 7f0fe81. New FeeBreakdown + calculate_fees with 7 fields (total_fee, protocol_cut, scheduler_cut, referral_pool, gateway_residual, recipient_amount, total_from_user). 6 unit tests. All 79 lib tests pass.

@@ -1,11 +1,11 @@
 ---
 # tributary-s6pq
 title: Add scheduler_share_bps to PaymentGateway; repurpose ProgramConfig field
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-06-29T12:49:25Z
-updated_at: 2026-06-29T12:49:25Z
+updated_at: 2026-06-29T13:12:05Z
 parent: tributary-5gf3
 blocked_by:
     - tributary-wuhf
@@ -25,3 +25,7 @@ ProgramConfig:
 Account sizing: PaymentGateway grows by 2 bytes (u16). Update SPACE constant. Pre-launch, no live accounts to migrate.
 
 TDD: account-init tests, serialize/deserialize round-trip, field-offset checks.
+
+## Summary of Changes
+
+Done in 7f0fe81. scheduler_share_bps added to PaymentGateway (2 bytes, padding reduced 117→115). custom_protocol_fee_bps renamed to custom_protocol_share_bps. ProgramConfig.protocol_fee_bps renamed to protocol_share_bps. validate_combined_bps → validate_share_constraint. effective_protocol_fee_bps → effective_protocol_share_bps. 4 gateway struct tests pass.
