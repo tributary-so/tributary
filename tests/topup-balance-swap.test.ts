@@ -383,7 +383,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       },
     };
 
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Topup WSOL swap").copy(Buffer.from(memo));
 
     const forwardConfig = {

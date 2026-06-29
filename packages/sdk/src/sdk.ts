@@ -2003,7 +2003,7 @@ export class Tributary {
    * @param recipient - Public key that receives the payments
    * @param gateway - Public key of the gateway that will execute payments
    * @param policyType - Policy configuration defining execution timing
-   * @param memo - Memo string to include with the policy (max 64 bytes)
+   * @param memo - Memo string to include with the policy (max 32 bytes)
    * @param forwardConfig - Token forwarding configuration
    * @param validationProgram - Validation program pubkey (PublicKey.default for no validation)
    * @param numValidationAccounts - Number of validation accounts (0 if no validation)
@@ -2035,7 +2035,7 @@ export class Tributary {
       userPaymentPda,
       policyId
     );
-    const memoBytes = encodeMemo(memo);
+    const memoBytes = encodeMemo(memo, 32);
 
     const { address: validationPdaAddress } = getValidationPda(
       composablePolicyPda.address,

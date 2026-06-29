@@ -103,7 +103,7 @@ pub struct ComposablePolicy {
     pub policy_type: PolicyType,
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,
-    pub memo: [u8; 64],
+    pub memo: [u8; 32],
     pub recipient: Pubkey,
     pub total_input: u64,
     pub total_output: u64,
@@ -124,7 +124,7 @@ impl ComposablePolicy {
         PolicyType::TOTAL_SIZE + // policy_type (same enum as PaymentPolicy)
         ForwardConfig::SIZE + // forward_config
         ValidationConfig::SIZE + // validation_config
-        64 + // memo: [u8; 64]
+        32 + // memo: [u8; 32]
         32 + // recipient: Pubkey
         8 + // total_input: u64
         8 + // total_output: u64

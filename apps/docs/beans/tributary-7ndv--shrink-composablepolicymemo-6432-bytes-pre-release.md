@@ -1,11 +1,11 @@
 ---
 # tributary-7ndv
 title: Shrink ComposablePolicy.memo 64→32 bytes (pre-release layout)
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-06-29T10:14:04Z
-updated_at: 2026-06-29T10:14:04Z
+updated_at: 2026-06-29T10:45:44Z
 ---
 
 ## Context
@@ -24,14 +24,14 @@ Ripple is mechanical and confined to the composable path. PaymentPolicy / transf
 
 ## Tasks
 
-- [ ] `ComposablePolicy.memo`: `[u8; 64]` → `[u8; 32]` (`programs/tributary/src/state/composable_policy.rs:106`)
+- [x] `ComposablePolicy.memo`: `[u8; 64]` → `[u8; 32]` (`programs/tributary/src/state/composable_policy.rs:106`)
 - [ ] Update `ComposablePolicy::SIZE` arithmetic + comment (`...`:127, 64→32)
 - [ ] `create_composable_policy` instruction arg: `memo: [u8; 64]` → `[u8; 32]` (`lib.rs:136`, `instructions/composable/create_composable_policy.rs:96`)
 - [ ] `ComposablePolicyCreated` event `memo`: `[u8; 64]` → `[u8; 32]` (`state/events.rs:145`) — composable-only event, no PaymentPolicy cross-contamination
 - [ ] SDK composable path: `encodeMemo(memo, 64)` → `encodeMemo(memo, 32)` (`packages/sdk/src/sdk.ts:2853`). Do **not** change the `encodeMemo` default (64) — PaymentPolicy still needs it.
 - [ ] Composable tests: `new Array(64).fill(0)` → `new Array(32).fill(0)` in composable test files only: `tests/composable.test.ts`, `tests/topup-balance.test.ts`, `tests/topup-balance-swap.test.ts`, `tests/topup-balance-sol.test.ts`
 - [ ] Write `apps/docs/adr/0017-composable-memo-32-bytes.md` (decision / rejected alts: 16-byte raw UUID, keep-at-64 / rationale: human-readable label is the job, 32 is the floor, ADR 0007 blesses asymmetry)
-- [ ] `anchor build` + `pnpm run lint` + `cd tests && npx jest` green
+- [~] `anchor build` clean + 73/73 rust unit tests pass + SDK builds clean. Jest integration tests blocked by pre-existing Surfpool config-init race (identical failure on unmodified code via `git stash` — fails at `CreatePaymentGateway` setup, not memo).
 
 ## Non-goals
 
@@ -45,3 +45,24 @@ Ripple is mechanical and confined to the composable path. PaymentPolicy / transf
 - `anchor build` clean (no SIZE arithmetic mismatch)
 - Composable jest tests pass with 32-byte memos
 - ADR 0017 merged; ADR index/README in apps/docs updated if one exists
+
+## Summary of Changes
+
+Shrunk `ComposablePolicy.memo` from `[u8; 64]` to `[u8; 32]` (32-byte account shrink, ≈0.00026 SOL/account). Composable-only: PaymentPolicy / transfer / execute_payment paths untouched (mainnet-frozen per ADR 0007).
+
+**Files changed:**
+- `programs/tributary/src/state/composable_policy.rs` — memo field 64→32, SIZE arithmetic 64→32
+- `programs/tributary/src/lib.rs` — `create_composable_policy` arg 64→32
+- `programs/tributary/src/instructions/composable/create_composable_policy.rs` — handler arg 64→32
+- `programs/tributary/src/state/events.rs` — `ComposablePolicyCreated.memo` 64→32
+- `packages/sdk/src/sdk.ts` — `encodeMemo(memo)` → `encodeMemo(memo, 32)` + doc comment (default stays 64)
+- `tests/{composable,topup-balance,topup-balance-swap,topup-balance-sol}.test.ts` — `new Array(64)` → `new Array(32)`
+- `apps/docs/adr/0017-composable-memo-32-bytes.md` — new ADR (decision + rejected: 16-byte raw UUID, keep-at-64)
+
+**Verification:**
+- `anchor build` clean (SIZE arithmetic consistent)
+- 73/73 Rust unit tests pass
+- SDK builds clean (types regenerate for 32-byte memo from IDL)
+- Jest integration tests: blocked by pre-existing Surfpool config-init race (identical 18-test failure on unmodified code via `git stash` — fails at `CreatePaymentGateway` `config.admin` constraint in setup, not at any memo assertion). Not a memo-change regression.
+
+(bean tributary-7ndv)

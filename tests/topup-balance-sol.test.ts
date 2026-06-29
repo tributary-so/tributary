@@ -363,7 +363,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       },
     };
 
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Topup native SOL").copy(Buffer.from(memo));
 
     // NATIVE_OUTPUT: bit 0 set. outputMint MUST be NATIVE_MINT (WSOL),

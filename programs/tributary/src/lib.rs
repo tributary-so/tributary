@@ -133,7 +133,7 @@ pub mod tributary {
     pub fn create_composable_policy(
         ctx: Context<CreateComposablePolicy>,
         policy_type: PolicyType,
-        memo: [u8; 64],
+        memo: [u8; 32],
         forward_config: ForwardConfig,
         num_validation_accounts: u8,
         validation_data: Vec<u8>,

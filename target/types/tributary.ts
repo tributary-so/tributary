@@ -650,7 +650,7 @@ export type Tributary = {
           "type": {
             "array": [
               "u8",
-              64
+              32
             ]
           }
         },
@@ -2994,7 +2994,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                64
+                32
               ]
             }
           },
@@ -3079,7 +3079,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                64
+                32
               ]
             }
           },
@@ -4424,7 +4424,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                210
+                212
               ]
             }
           }

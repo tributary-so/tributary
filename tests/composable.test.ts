@@ -313,7 +313,7 @@ describe("Composable Policies", () => {
     const now = await getOnChainNow(connection);
     const nextDue = now + 30 * 24 * 3600;
     const policyType = defaultSubscriptionPolicy(1_000_000, nextDue);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Test composable").copy(Buffer.from(memo));
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
@@ -412,7 +412,7 @@ describe("Composable Policies", () => {
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(500_000, now + 86400);
 
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("With validation").copy(Buffer.from(memo));
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
@@ -497,7 +497,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
 
     const rogueProgram = Keypair.generate().publicKey;
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
@@ -556,7 +556,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
     const rogueValidation = Keypair.generate().publicKey;
@@ -614,7 +614,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     forwardConfig.numDataChecks = 0;
@@ -676,7 +676,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
 
     // MAX_BYTE_RANGE_CHECKS == 4 on-chain. Sending 5 must be rejected at
     // create time with InsufficientByteRangeChecks.
@@ -741,7 +741,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
 
     // length = 16 with an 8-byte expected payload: offset + length = 16
     // <= 1024, so the existing overflow check passes, but the slice
@@ -807,7 +807,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(100_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Status test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
@@ -937,7 +937,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(50_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Delete test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
@@ -1045,7 +1045,7 @@ describe("Composable Policies", () => {
     const pastTime = (await getOnChainNow(connection)) - 3600;
     const policyType = defaultSubscriptionPolicy(100_000, pastTime);
 
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("ByteCheck test").copy(Buffer.from(memo));
 
     const expectedBytes = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -1201,7 +1201,7 @@ describe("Composable Policies", () => {
     const createIx = await program.methods
       .createComposablePolicy(
         policyType,
-        new Array(64).fill(0),
+        new Array(32).fill(0),
         defaultForwardConfig(tokenMint, secondMint),
         0,
         Buffer.alloc(0)
@@ -1325,7 +1325,7 @@ describe("Composable Policies", () => {
     const pastTime = (await getOnChainNow(connection)) - 3600;
     const policyType = defaultSubscriptionPolicy(100_000, pastTime);
 
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Paused exec test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
@@ -1455,7 +1455,7 @@ describe("Composable Policies", () => {
 
     const now = await getOnChainNow(connection);
     const policyType = defaultSubscriptionPolicy(50_000, now + 86400);
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Delete+Val test").copy(Buffer.from(memo));
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
     const validationData = Buffer.from("validation-assertion-data-here");
@@ -1616,7 +1616,7 @@ describe("Composable Policies", () => {
       const now = await getOnChainNow(connection);
       const nextDue = now + 30 * 24 * 3600;
       const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-      const memo = new Array(64).fill(0);
+      const memo = new Array(32).fill(0);
 
       b2PolicyId = 1;
       [b2ComposablePolicyPDA] = getComposablePolicyPda(
@@ -1785,7 +1785,7 @@ describe("Composable Policies", () => {
 
       const pastTime = (await getOnChainNow(connection)) - 3600;
       const policyType = defaultSubscriptionPolicy(100_000, pastTime);
-      const memo = new Array(64).fill(0);
+      const memo = new Array(32).fill(0);
       Buffer.from("B3 recipient test").copy(Buffer.from(memo));
       const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
@@ -1849,7 +1849,7 @@ describe("Composable Policies", () => {
 
       const pastTime = (await getOnChainNow(connection)) - 3600;
       const policyType = defaultSubscriptionPolicy(100_000, pastTime);
-      const memo = new Array(64).fill(0);
+      const memo = new Array(32).fill(0);
       const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
 
       const ix = await program.methods

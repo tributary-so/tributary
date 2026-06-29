@@ -334,7 +334,7 @@ describe("Composable Topup Balance Flow", () => {
       },
     };
 
-    const memo = new Array(64).fill(0);
+    const memo = new Array(32).fill(0);
     Buffer.from("Topup balance").copy(Buffer.from(memo));
 
     // Forward disabled: target_program = PublicKey.default is the "no

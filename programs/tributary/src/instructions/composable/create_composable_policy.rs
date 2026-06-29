@@ -93,7 +93,7 @@ impl<'info> CreateComposablePolicy<'info> {
     pub fn handler(
         ctx: Context<CreateComposablePolicy>,
         policy_type: PolicyType,
-        memo: [u8; 64],
+        memo: [u8; 32],
         forward_config: ForwardConfig,
         num_validation_accounts: u8,
         validation_data: Vec<u8>,

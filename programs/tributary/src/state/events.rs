@@ -142,7 +142,7 @@ pub struct ComposablePolicyCreated {
     pub recipient: Pubkey,
     pub policy_id: u32,
     pub policy_type: PolicyType,
-    pub memo: [u8; 64],
+    pub memo: [u8; 32],
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,
     pub has_validation_pda: bool,
