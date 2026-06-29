@@ -1,0 +1,47 @@
+---
+# tributary-7ndv
+title: Shrink ComposablePolicy.memo 64→32 bytes (pre-release layout)
+status: todo
+type: task
+priority: normal
+created_at: 2026-06-29T10:14:04Z
+updated_at: 2026-06-29T10:14:04Z
+---
+
+## Context
+
+"Grill" outcome (2026-06-29):
+
+- **Purpose**: `memo` is a **user-defined, human-readable label** so users can identify which service a transfer/execution corresponds to. Tracking is secondary. NOT a binary correlation-ID field.
+- **Deployment**: `ComposablePolicy` is **pre-release, zero live accounts** → free to reshape the layout. (`PaymentPolicy` is frozen on mainnet with user funds per ADR 0007 — out of scope.)
+- **Account shape**: memo 64→32, **keep `padding: [u8; 32]`** at 32. Account shrinks 32 bytes (≈0.00026 SOL/account, one-time, rent-payer). Padding stays as the deliberate future-field buffer — don't burn it for trivial savings.
+- **Why 32, not lower**: 32 bytes = a UUID-as-hex-string-without-dashes, and 32 ASCII chars is enough for short service labels. 16 (raw UUID binary) kills human-readable labels, which is the field's primary job.
+- **ADR**: ship **ADR 0017** alongside the change explaining the composable(32)/payment(64) memo asymmetry. ADR 0007 already blesses composable/payment flat-struct asymmetry; this is another instance.
+
+## Blast radius (composable-scoped)
+
+Ripple is mechanical and confined to the composable path. PaymentPolicy / transfer / execute_payment paths are **untouched** (they stay `[u8; 64]`).
+
+## Tasks
+
+- [ ] `ComposablePolicy.memo`: `[u8; 64]` → `[u8; 32]` (`programs/tributary/src/state/composable_policy.rs:106`)
+- [ ] Update `ComposablePolicy::SIZE` arithmetic + comment (`...`:127, 64→32)
+- [ ] `create_composable_policy` instruction arg: `memo: [u8; 64]` → `[u8; 32]` (`lib.rs:136`, `instructions/composable/create_composable_policy.rs:96`)
+- [ ] `ComposablePolicyCreated` event `memo`: `[u8; 64]` → `[u8; 32]` (`state/events.rs:145`) — composable-only event, no PaymentPolicy cross-contamination
+- [ ] SDK composable path: `encodeMemo(memo, 64)` → `encodeMemo(memo, 32)` (`packages/sdk/src/sdk.ts:2853`). Do **not** change the `encodeMemo` default (64) — PaymentPolicy still needs it.
+- [ ] Composable tests: `new Array(64).fill(0)` → `new Array(32).fill(0)` in composable test files only: `tests/composable.test.ts`, `tests/topup-balance.test.ts`, `tests/topup-balance-swap.test.ts`, `tests/topup-balance-sol.test.ts`
+- [ ] Write `apps/docs/adr/0017-composable-memo-32-bytes.md` (decision / rejected alts: 16-byte raw UUID, keep-at-64 / rationale: human-readable label is the job, 32 is the floor, ADR 0007 blesses asymmetry)
+- [ ] `anchor build` + `pnpm run lint` + `cd tests && npx jest` green
+
+## Non-goals
+
+- **Do NOT** touch `PaymentPolicy.memo`, `PaymentRecord.memo`, `PaymentPolicyCreated.memo`, the `transfer` instruction, or `execute_payment` — all stay 64 (mainnet-frozen).
+- **Do NOT** change `encodeMemo`'s default size (64).
+- **Do NOT** remove or resize `ComposablePolicy.padding`.
+- **Do NOT** add a new memo validation/trimming layer — caller responsibility.
+
+## Verification
+
+- `anchor build` clean (no SIZE arithmetic mismatch)
+- Composable jest tests pass with 32-byte memos
+- ADR 0017 merged; ADR index/README in apps/docs updated if one exists
