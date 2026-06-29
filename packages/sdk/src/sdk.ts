@@ -374,7 +374,10 @@ export class Tributary {
    * Creates a new payment gateway for processing recurring payments.
    * Gateways can charge fees and execute payments on behalf of users.
    * @param authority - Public key that controls the gateway
-   * @param gatewayFeeBps - Fee in basis points (100 bps = 1%) charged by the gateway
+   * @param gatewayFeeBps - Total fee in basis points (100 bps = 1%) charged by the gateway,
+   *   decomposed into protocol/scheduler/referral/residual shares (ADR-0017).
+   * @param schedulerShareBps - Share of the gateway fee routed to the scheduler (execute-tx signer).
+   *   Constraint: protocol_share + scheduler_share + referral_allocation ≤ 10000 bps.
    * @param gatewayFeeRecipient - Public key that receives gateway fees
    * @param name - Display name for the gateway (max 32 characters)
    * @param url - Website URL for the gateway (max 64 characters)
@@ -383,6 +386,7 @@ export class Tributary {
   async createPaymentGateway(
     authority: PublicKey,
     gatewayFeeBps: number,
+    schedulerShareBps: number,
     gatewayFeeRecipient: PublicKey,
     name: string,
     url: string
@@ -413,7 +417,12 @@ export class Tributary {
       systemProgram: SystemProgram.programId,
     };
     return await this.program.methods
-      .createPaymentGateway(gatewayFeeBps, nameBytes, urlBytes)
+      .createPaymentGateway(
+        gatewayFeeBps,
+        schedulerShareBps,
+        nameBytes,
+        urlBytes
+      )
       .accountsStrict(accounts)
       .instruction();
   }
@@ -1878,26 +1887,26 @@ export class Tributary {
   }
 
   /**
-   * Updates the custom protocol fee settings for a payment gateway.
+   * Updates the custom protocol share settings for a payment gateway (ADR-0017).
    * Only the protocol admin can modify these settings.
-   * This allows setting a gateway-specific protocol fee that overrides the global default.
+   * This allows setting a gateway-specific protocol share that overrides the global default.
    * @param gatewayAuthority - Public key of the gateway authority
-   * @param useCustomProtocolFee - Whether to use custom protocol fee (true) or global default (false)
-   * @param customProtocolFeeBps - Custom protocol fee in basis points (0-10000). Only used if useCustomProtocolFee is true.
-   * @returns Transaction instruction to update gateway protocol fee settings
+   * @param useCustomProtocolFee - Whether to use custom protocol share (true) or global default (false)
+   * @param customProtocolShareBps - Custom protocol share in basis points (0-10000). Only used if useCustomProtocolFee is true.
+   * @returns Transaction instruction to update gateway protocol share settings
    */
   async updateGatewayProtocolFee(
     gatewayAuthority: PublicKey,
     useCustomProtocolFee: boolean,
-    customProtocolFeeBps: number
+    customProtocolShareBps: number
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
     const { address: configPda } = getConfigPda(this.programId);
 
-    // Validate fee
-    if (customProtocolFeeBps > 10000) {
-      throw new Error("Protocol fee cannot exceed 10000 bps (100%)");
+    // Validate share
+    if (customProtocolShareBps > 10000) {
+      throw new Error("Protocol share cannot exceed 10000 bps (100%)");
     }
 
     const accounts = {
@@ -1910,8 +1919,42 @@ export class Tributary {
     return await this.program.methods
       .updateGatewayProtocolFee({
         useCustomProtocolFee,
-        customProtocolFeeBps,
+        customProtocolShareBps,
       })
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Updates the scheduler share of the gateway fee (ADR-0017).
+   * Gateway-authority-only. The scheduler share pays the execute-tx signer;
+   * when the gateway signer self-executes it merges into fee_recipient.
+   * Constraint: protocol_share + scheduler_share + referral_allocation ≤ 10000 bps,
+   * validated on-chain against the current ProgramConfig.
+   * @param gatewayAuthority - Public key of the gateway authority (must sign)
+   * @param schedulerShareBps - Share of the gateway fee routed to the scheduler (0-10000)
+   * @returns Transaction instruction to update gateway scheduler share
+   */
+  async updateGatewaySchedulerShare(
+    gatewayAuthority: PublicKey,
+    schedulerShareBps: number
+  ): Promise<TransactionInstruction> {
+    const authority = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    if (schedulerShareBps > 10000) {
+      throw new Error("Scheduler share cannot exceed 10000 bps (100%)");
+    }
+
+    const accounts = {
+      authority: authority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .updateGatewaySchedulerShare(schedulerShareBps)
       .accountsStrict(accounts)
       .instruction();
   }

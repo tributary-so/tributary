@@ -208,11 +208,35 @@ impl<'info> ExecutePayment<'info> {
 
         let seeds = &[signer_seeds];
 
+        // ── Scheduler cut routing (ADR-0017) ───────────────────────────
+        // Trusted path (fee_payer == gateway.signer): scheduler_cut merges
+        // into gateway.fee_recipient — single transfer.
+        // Permissionless path (anyone else): scheduler_cut routes to the
+        // caller's ATA, supplied as the LAST remaining_account. The
+        // account is stripped before referral processing so the referral
+        // parser sees only its own accounts.
+        let is_permissionless = fee_payer_key != gateway.signer;
+        let needs_scheduler_ata = is_permissionless && gateway.scheduler_share_bps > 0;
+
+        let (referral_slice, scheduler_ata_info) = if needs_scheduler_ata {
+            require!(
+                !remaining_accounts.is_empty(),
+                TributaryError::MissingSchedulerFeeAccount
+            );
+            let last = remaining_accounts.len() - 1;
+            (
+                &remaining_accounts[..last],
+                Some(remaining_accounts[last].clone()),
+            )
+        } else {
+            (remaining_accounts, None)
+        };
+
         // Process referral rewards if enabled (helper short-circuits when off).
         let _referral_pool = process_referral_rewards(
             gateway,
             fee_breakdown.total_fee,
-            remaining_accounts,
+            referral_slice,
             user_token_account_info.clone(),
             authority_info.clone(),
             AuthorityMode::PdaSigner(seeds),
@@ -227,13 +251,6 @@ impl<'info> ExecutePayment<'info> {
             user_owner,
         )?;
 
-        // gateway_residual already has referral excluded; merge scheduler_cut
-        // for now (D will add permissionless routing).
-        let gateway_amount = fee_breakdown
-            .gateway_residual
-            .checked_add(scheduler_cut)
-            .ok_or(TributaryError::ArithmeticOverflow)?;
-
         if recipient_amount > 0 {
             let cpi_accounts = TransferChecked {
                 from: user_token_account_info.clone(),
@@ -246,16 +263,71 @@ impl<'info> ExecutePayment<'info> {
             token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
         }
 
-        if gateway_amount > 0 {
-            let cpi_accounts = TransferChecked {
-                from: user_token_account_info.clone(),
-                mint: mint_info.clone(),
-                to: gateway_fee_account_info.clone(),
-                authority: authority_info.clone(),
-            };
-            let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
-            token_interface::transfer_checked(cpi_ctx, gateway_amount, mint_decimals)?;
+        if is_permissionless {
+            if scheduler_cut > 0 {
+                let scheduler_ata = scheduler_ata_info
+                    .as_ref()
+                    .ok_or(TributaryError::MissingSchedulerFeeAccount)?;
+                {
+                    let sta_data = scheduler_ata.try_borrow_data()?;
+                    require!(
+                        sta_data.len() >= 64,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                    let sta_mint = Pubkey::try_from(&sta_data[0..32]).unwrap_or_default();
+                    let sta_owner = Pubkey::try_from(&sta_data[32..64]).unwrap_or_default();
+                    require!(
+                        sta_mint == expected_mint,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                    require!(
+                        sta_owner == fee_payer_key,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                }
+                let cpi_accounts = TransferChecked {
+                    from: user_token_account_info.clone(),
+                    mint: mint_info.clone(),
+                    to: scheduler_ata.clone(),
+                    authority: authority_info.clone(),
+                };
+                let cpi_ctx =
+                    CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                token_interface::transfer_checked(cpi_ctx, scheduler_cut, mint_decimals)?;
+            }
+
+            if fee_breakdown.gateway_residual > 0 {
+                let cpi_accounts = TransferChecked {
+                    from: user_token_account_info.clone(),
+                    mint: mint_info.clone(),
+                    to: gateway_fee_account_info.clone(),
+                    authority: authority_info.clone(),
+                };
+                let cpi_ctx =
+                    CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                token_interface::transfer_checked(
+                    cpi_ctx,
+                    fee_breakdown.gateway_residual,
+                    mint_decimals,
+                )?;
+            }
+        } else {
+            let gateway_amount = fee_breakdown
+                .gateway_residual
+                .checked_add(scheduler_cut)
+                .ok_or(TributaryError::ArithmeticOverflow)?;
+
+            if gateway_amount > 0 {
+                let cpi_accounts = TransferChecked {
+                    from: user_token_account_info.clone(),
+                    mint: mint_info.clone(),
+                    to: gateway_fee_account_info.clone(),
+                    authority: authority_info.clone(),
+                };
+                let cpi_ctx =
+                    CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                token_interface::transfer_checked(cpi_ctx, gateway_amount, mint_decimals)?;
+            }
         }
 
         if protocol_cut > 0 {
@@ -321,9 +393,10 @@ impl<'info> ExecutePayment<'info> {
         });
 
         msg!(
-            "Payment executed: {} -> recipient, {} gateway fee, {} protocol fee",
+            "Payment executed: {} -> recipient, {} gateway fee, {} scheduler cut, {} protocol fee",
             recipient_amount,
-            gateway_amount,
+            fee_breakdown.gateway_residual,
+            if is_permissionless { scheduler_cut } else { 0 },
             protocol_cut
         );
 

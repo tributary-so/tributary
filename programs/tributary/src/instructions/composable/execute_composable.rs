@@ -352,6 +352,12 @@ fn process_output_and_sweep<'info>(
     min_output_amount: Option<u64>,
     intermediate_owner_seeds: &[&[&[u8]]],
     native_output: bool,
+    // ADR-0017 scheduler cut routing.
+    // None  → trusted path: merge scheduler_cut into gateway.fee_recipient.
+    // Some  → permissionless: split scheduler_cut → caller ATA, validate
+    //         owner == fee_payer_key && mint == output_mint.
+    fee_payer_key: Pubkey,
+    scheduler_ata: Option<&AccountInfo<'info>>,
 ) -> Result<(u64, u64, u64, u64)> {
     // ── Reload + verify output ──────────────────────────────────────
     let output_amount = read_token_amount(intermediate_output)?;
@@ -402,12 +408,6 @@ fn process_output_and_sweep<'info>(
         .checked_sub(total_fee)
         .ok_or(TributaryError::ArithmeticOverflow)?;
 
-    // gateway_residual merges with scheduler_cut for now (D adds routing).
-    let gateway_fee = fee_breakdown
-        .gateway_residual
-        .checked_add(scheduler_cut)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
     // min_output_amount check runs AFTER fee deduction — refers to the
     // NET amount the recipient receives (matches DeFi convention:
     // Uniswap/Jupiter amountOutMin). See
@@ -421,20 +421,81 @@ fn process_output_and_sweep<'info>(
         }
     }
 
-    // ── Claim gateway fee ───────────────────────────────────────────
-    if gateway_fee > 0 {
-        let cpi_accounts = TransferChecked {
-            from: intermediate_output.clone(),
-            mint: output_mint.clone(),
-            to: gateway_fee_account.clone(),
-            authority: intermediate_owner_info.clone(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
-            cpi_accounts,
-            intermediate_owner_seeds,
-        );
-        token_interface::transfer_checked(cpi_ctx, gateway_fee, output_mint_decimals)?;
+    // ── Claim gateway fee (with scheduler routing) ─────────────────
+    let gateway_fee = fee_breakdown
+        .gateway_residual
+        .checked_add(scheduler_cut)
+        .ok_or(TributaryError::ArithmeticOverflow)?;
+
+    match scheduler_ata {
+        Some(ata) => {
+            if scheduler_cut > 0 {
+                {
+                    let sta_data = ata.try_borrow_data()?;
+                    require!(
+                        sta_data.len() >= 64,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                    let sta_mint = Pubkey::try_from(&sta_data[0..32]).unwrap_or_default();
+                    let sta_owner = Pubkey::try_from(&sta_data[32..64]).unwrap_or_default();
+                    require!(
+                        sta_mint == output_mint.key(),
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                    require!(
+                        sta_owner == fee_payer_key,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                }
+                let cpi_accounts = TransferChecked {
+                    from: intermediate_output.clone(),
+                    mint: output_mint.clone(),
+                    to: ata.clone(),
+                    authority: intermediate_owner_info.clone(),
+                };
+                let cpi_ctx = CpiContext::new_with_signer(
+                    token_program.clone(),
+                    cpi_accounts,
+                    intermediate_owner_seeds,
+                );
+                token_interface::transfer_checked(cpi_ctx, scheduler_cut, output_mint_decimals)?;
+            }
+
+            if fee_breakdown.gateway_residual > 0 {
+                let cpi_accounts = TransferChecked {
+                    from: intermediate_output.clone(),
+                    mint: output_mint.clone(),
+                    to: gateway_fee_account.clone(),
+                    authority: intermediate_owner_info.clone(),
+                };
+                let cpi_ctx = CpiContext::new_with_signer(
+                    token_program.clone(),
+                    cpi_accounts,
+                    intermediate_owner_seeds,
+                );
+                token_interface::transfer_checked(
+                    cpi_ctx,
+                    fee_breakdown.gateway_residual,
+                    output_mint_decimals,
+                )?;
+            }
+        }
+        None => {
+            if gateway_fee > 0 {
+                let cpi_accounts = TransferChecked {
+                    from: intermediate_output.clone(),
+                    mint: output_mint.clone(),
+                    to: gateway_fee_account.clone(),
+                    authority: intermediate_owner_info.clone(),
+                };
+                let cpi_ctx = CpiContext::new_with_signer(
+                    token_program.clone(),
+                    cpi_accounts,
+                    intermediate_owner_seeds,
+                );
+                token_interface::transfer_checked(cpi_ctx, gateway_fee, output_mint_decimals)?;
+            }
+        }
     }
 
     // ── Claim protocol fee ──────────────────────────────────────────
@@ -846,6 +907,28 @@ impl<'info> ExecuteComposable<'info> {
         let signer_seeds: &[&[u8]] = &seed_slices;
         let intermediate_owner_seeds: &[&[&[u8]]] = &[signer_seeds];
 
+        // ── Scheduler cut routing strip (ADR-0017) ─────────────────────
+        // Permissionless path: the caller's ATA is the LAST remaining_account.
+        // Strip it before validation/forward CPI so those parsers see only
+        // their own accounts. Condition matches the caller's append rule:
+        // is_permissionless && gateway.scheduler_share_bps > 0.
+        let gateway_signer = ctx.accounts.gateway.signer;
+        let scheduler_share_bps = ctx.accounts.gateway.scheduler_share_bps;
+        let is_permissionless = caller_key != gateway_signer;
+        let needs_scheduler_ata = is_permissionless && scheduler_share_bps > 0;
+
+        let (effective_remaining, scheduler_ata_info) = if needs_scheduler_ata {
+            require!(
+                !ctx.remaining_accounts.is_empty(),
+                TributaryError::MissingSchedulerFeeAccount
+            );
+            let last = ctx.remaining_accounts.len() - 1;
+            let scheduler_ata = ctx.remaining_accounts[last].clone();
+            (&ctx.remaining_accounts[..last], Some(scheduler_ata))
+        } else {
+            (ctx.remaining_accounts, None)
+        };
+
         // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
         // No signer seeds are passed — validation is read-only (C-1).
         let forward_accounts_start = if stored_validation_program != Pubkey::default() {
@@ -855,7 +938,7 @@ impl<'info> ExecuteComposable<'info> {
             );
             let validation_program_info = ctx.accounts.validation_program.to_account_info();
             run_validation_cpi(
-                ctx.remaining_accounts,
+                effective_remaining,
                 ctx.program_id,
                 policy_key,
                 &validation_program_info,
@@ -959,7 +1042,7 @@ impl<'info> ExecuteComposable<'info> {
         // range are consumed in the disabled case.
         if target_program != Pubkey::default() {
             run_forward_cpi(
-                ctx.remaining_accounts,
+                effective_remaining,
                 forward_accounts_start,
                 target_program,
                 &instruction_data,
@@ -988,6 +1071,8 @@ impl<'info> ExecuteComposable<'info> {
             min_output_amount,
             intermediate_owner_seeds,
             native_output,
+            caller_key,
+            scheduler_ata_info.as_ref(),
         )?;
 
         // ── Step 10: VERIFY INTERMEDIATES EMPTY ────────────────────────

@@ -120,4 +120,8 @@ pub enum TributaryError {
     InvalidValidationPda,
     #[msg("NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)")]
     NativeOutputRequiresWsol,
+    #[msg("Permissionless execution with scheduler_share_bps > 0 requires the scheduler fee account as the last remaining_account")]
+    MissingSchedulerFeeAccount,
+    #[msg("Scheduler fee account must be owned by the fee_payer and match the source mint")]
+    InvalidSchedulerFeeAccount,
 }

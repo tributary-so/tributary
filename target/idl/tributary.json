@@ -743,6 +743,10 @@
           "type": "u16"
         },
         {
+          "name": "scheduler_share_bps",
+          "type": "u16"
+        },
+        {
           "name": "name",
           "type": {
             "array": [
@@ -2238,6 +2242,24 @@
         {
           "name": "authority",
           "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2248,6 +2270,73 @@
               "name": "UpdateGatewayReferralSettingsArgs"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "update_gateway_scheduler_share",
+      "discriminator": [
+        6,
+        120,
+        72,
+        177,
+        214,
+        33,
+        11,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "scheduler_share_bps",
+          "type": "u16"
         }
       ]
     }
@@ -3448,10 +3537,21 @@
             }
           },
           {
-            "name": "custom_protocol_fee_bps",
+            "name": "custom_protocol_share_bps",
             "docs": [
-              "Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.",
-              "When enabled, this overrides the default 100 bps protocol fee."
+              "Custom protocol share in basis points (bps). Only used if",
+              "FEATURE_CUSTOM_PROTOCOL_FEE is set. Overrides the global",
+              "`protocol_share_bps` from `ProgramConfig` for this gateway.",
+              "Units: share of the gateway fee (not bps-of-payment).",
+              "May be zero (subsidise a strategic partner)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "scheduler_share_bps",
+            "docs": [
+              "Scheduler share in basis points (bps) of the gateway fee.",
+              "Per-gateway, gateway-authority-set. Pays the execute-tx signer."
             ],
             "type": "u16"
           },
@@ -3463,7 +3563,7 @@
             "type": {
               "array": [
                 "u8",
-                117
+                115
               ]
             }
           }
@@ -4011,9 +4111,10 @@
             "type": "pubkey"
           },
           {
-            "name": "protocol_fee_bps",
+            "name": "protocol_share_bps",
             "docs": [
-              "Protocol fee in basis points (bps). Max 10,000 (100%)"
+              "Protocol share of the gateway fee in basis points (bps). Max 10,000 (100%).",
+              "This is the global default; per-gateway override via FEATURE_CUSTOM_PROTOCOL_FEE."
             ],
             "type": "u16"
           },
@@ -4070,7 +4171,7 @@
             "type": "pubkey"
           },
           {
-            "name": "protocol_fee_bps",
+            "name": "protocol_share_bps",
             "type": "u16"
           }
         ]
@@ -4258,16 +4359,10 @@
         "fields": [
           {
             "name": "use_custom_protocol_fee",
-            "docs": [
-              "Optional: Enable or disable custom protocol fee feature (bit 2)"
-            ],
             "type": "bool"
           },
           {
-            "name": "custom_protocol_fee_bps",
-            "docs": [
-              "Optional custom protocol fee in basis points (bps). Only used if feature is enabled."
-            ],
+            "name": "custom_protocol_share_bps",
             "type": "u16"
           }
         ]

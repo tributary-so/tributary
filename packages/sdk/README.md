@@ -330,6 +330,7 @@ executePayment(
 createPaymentGateway(
   authority: PublicKey,
   gatewayFeeBps: number,
+  schedulerShareBps: number,
   gatewayFeeRecipient: PublicKey,
   name: string,
   url: string
@@ -480,7 +481,8 @@ console.log(`Subscription created: ${signature}`);
 // Create a payment gateway
 const gatewayInstructions = await sdk.createPaymentGateway(
   wallet.publicKey, // gateway authority
-  500, // 5% gateway fee
+  500, // 5% total gateway fee
+  100, // 1% scheduler share (of the gateway fee)
   wallet.publicKey, // fee recipient
   "My Payment Gateway",
   "https://mygateway.com"

@@ -749,6 +749,10 @@ export type Tributary = {
           "type": "u16"
         },
         {
+          "name": "schedulerShareBps",
+          "type": "u16"
+        },
+        {
           "name": "name",
           "type": {
             "array": [
@@ -2244,6 +2248,24 @@ export type Tributary = {
         {
           "name": "authority",
           "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2254,6 +2276,73 @@ export type Tributary = {
               "name": "updateGatewayReferralSettingsArgs"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "updateGatewaySchedulerShare",
+      "discriminator": [
+        6,
+        120,
+        72,
+        177,
+        214,
+        33,
+        11,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "schedulerShareBps",
+          "type": "u16"
         }
       ]
     }
@@ -3454,10 +3543,21 @@ export type Tributary = {
             }
           },
           {
-            "name": "customProtocolFeeBps",
+            "name": "customProtocolShareBps",
             "docs": [
-              "Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.",
-              "When enabled, this overrides the default 100 bps protocol fee."
+              "Custom protocol share in basis points (bps). Only used if",
+              "FEATURE_CUSTOM_PROTOCOL_FEE is set. Overrides the global",
+              "`protocol_share_bps` from `ProgramConfig` for this gateway.",
+              "Units: share of the gateway fee (not bps-of-payment).",
+              "May be zero (subsidise a strategic partner)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "schedulerShareBps",
+            "docs": [
+              "Scheduler share in basis points (bps) of the gateway fee.",
+              "Per-gateway, gateway-authority-set. Pays the execute-tx signer."
             ],
             "type": "u16"
           },
@@ -3469,7 +3569,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                117
+                115
               ]
             }
           }
@@ -4017,9 +4117,10 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
-            "name": "protocolFeeBps",
+            "name": "protocolShareBps",
             "docs": [
-              "Protocol fee in basis points (bps). Max 10,000 (100%)"
+              "Protocol share of the gateway fee in basis points (bps). Max 10,000 (100%).",
+              "This is the global default; per-gateway override via FEATURE_CUSTOM_PROTOCOL_FEE."
             ],
             "type": "u16"
           },
@@ -4076,7 +4177,7 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
-            "name": "protocolFeeBps",
+            "name": "protocolShareBps",
             "type": "u16"
           }
         ]
@@ -4264,16 +4365,10 @@ export type Tributary = {
         "fields": [
           {
             "name": "useCustomProtocolFee",
-            "docs": [
-              "Optional: Enable or disable custom protocol fee feature (bit 2)"
-            ],
             "type": "bool"
           },
           {
-            "name": "customProtocolFeeBps",
-            "docs": [
-              "Optional custom protocol fee in basis points (bps). Only used if feature is enabled."
-            ],
+            "name": "customProtocolShareBps",
             "type": "u16"
           }
         ]
