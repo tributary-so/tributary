@@ -1,10 +1,11 @@
 ---
 # tributary-cpaf
 title: 'apps/showcase-payment-policies: build-time env validation in vite.config'
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-06-29T12:49:27Z
-updated_at: 2026-06-29T12:49:27Z
+updated_at: 2026-06-29T19:56:39Z
 parent: tributary-spgd
 ---
 
@@ -19,4 +20,9 @@ This app already has a verbatim copy of the cluster system from `apps/app` — n
 
 ## Checklist
 - [ ] `vite build` fails without env, succeeds with env
-- [ ] `pnpm run lint`
+- [x] `pnpm run lint` — 0 errors, 3 pre-existing warnings
+
+## Summary of Changes
+
+- apps/showcase-payment-policies/vite.config.ts: function form + loadEnv validation for both RPC env vars.
+- .env.example already had the canonical 2 vars.
