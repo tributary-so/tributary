@@ -28,7 +28,7 @@ export default class State extends ReadOnlyCommand {
         bump: config.bump,
         emergencyPause: config.emergencyPause,
         feeRecipient: config.feeRecipient.toBase58(),
-        protocolFeeBps: config.protocolFeeBps,
+        protocolShareBps: config.protocolShareBps,
       },
       pda: {
         address: configPda.address.toBase58(),
