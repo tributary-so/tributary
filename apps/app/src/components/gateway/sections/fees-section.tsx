@@ -31,8 +31,6 @@ export function FeesSection({ account, authority, onMutated }: FeesSectionProps)
   const netOn = (account.featureFlags & GATEWAY_FEATURES.NET_AMOUNT) !== 0
   const customOn = (account.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE) !== 0
 
-  const effectiveProtocolShare = customOn ? account.customProtocolShareBps : 2000
-
   const newFeeBpsNum = Number(feeBps)
   const feeValid = Number.isInteger(newFeeBpsNum) && newFeeBpsNum >= 0 && newFeeBpsNum < MAX_BPS
 
