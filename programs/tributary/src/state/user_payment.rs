@@ -30,7 +30,7 @@ pub struct UserPayment {
     pub active_composable_count: u32,
     pub created_composable_count: u32,
     /// Reserved space for future extensions
-    pub padding: [u8; 210],
+    pub padding: [u8; 212],
 }
 
 impl UserPayment {
@@ -47,5 +47,5 @@ impl UserPayment {
         1 + // is_active: bool
         1 + // bump: u8
         32 + // rent_payer: Pubkey
-        210; // padding: [u8; 210]
+        212; // padding: [u8; 212]
 }
