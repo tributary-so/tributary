@@ -31,18 +31,10 @@ export function FeesSection({ account, authority, onMutated }: FeesSectionProps)
   const netOn = (account.featureFlags & GATEWAY_FEATURES.NET_AMOUNT) !== 0
   const customOn = (account.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE) !== 0
 
-  // Effective protocol fee for the combined-guard on the gateway_fee_bps edit.
-  // When custom-fee is on, the gateway carries its own override; otherwise the
-  // global ProgramConfig.protocol_fee_bps applies (default 100) — we don't have
-  // the config account here, so fall back to the default for the guard.
-  const effectiveProtocolFee = customOn ? account.customProtocolFeeBps : 100
+  const effectiveProtocolShare = customOn ? account.customProtocolShareBps : 2000
 
   const newFeeBpsNum = Number(feeBps)
-  const feeValid =
-    Number.isInteger(newFeeBpsNum) &&
-    newFeeBpsNum >= 0 &&
-    newFeeBpsNum < MAX_BPS &&
-    newFeeBpsNum + effectiveProtocolFee < MAX_BPS
+  const feeValid = Number.isInteger(newFeeBpsNum) && newFeeBpsNum >= 0 && newFeeBpsNum < MAX_BPS
 
   const saveFeeBps = async () => {
     if (!sdk || !feeValid) return
@@ -145,8 +137,10 @@ export function FeesSection({ account, authority, onMutated }: FeesSectionProps)
         </div>
         {customOn && (
           <div className="flex items-baseline gap-2">
-            <span className="text-lg font-semibold text-foreground">{bpsToPercent(account.customProtocolFeeBps)}</span>
-            <span className="text-xs text-muted-foreground font-mono">({account.customProtocolFeeBps} bps)</span>
+            <span className="text-lg font-semibold text-foreground">
+              {bpsToPercent(account.customProtocolShareBps)}
+            </span>
+            <span className="text-xs text-muted-foreground font-mono">({account.customProtocolShareBps} bps)</span>
           </div>
         )}
       </div>

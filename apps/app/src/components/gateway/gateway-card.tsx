@@ -110,7 +110,7 @@ export function GatewayCard({ publicKey, account }: GatewayCardProps) {
           <Row label="Authority" value={account.authority.toString()} />
           <Row label="Fee recipient" value={truncatePk(account.feeRecipient)} />
           <Row label="Gateway fee" value={bpsToPercent(account.gatewayFeeBps)} />
-          {customFeeOn && <Row label="Custom protocol fee" value={bpsToPercent(account.customProtocolFeeBps)} />}
+          {customFeeOn && <Row label="Custom protocol share" value={bpsToPercent(account.customProtocolShareBps)} />}
           {referralOn && (
             <>
               <Row label="Referral allocation" value={bpsToPercent(account.referralAllocationBps)} />
