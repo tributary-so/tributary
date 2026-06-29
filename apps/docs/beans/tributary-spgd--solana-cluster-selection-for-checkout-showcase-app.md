@@ -1,11 +1,11 @@
 ---
 # tributary-spgd
 title: Solana cluster selection for checkout + showcase apps
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-06-29T12:48:29Z
-updated_at: 2026-06-29T12:48:29Z
+updated_at: 2026-06-29T20:17:23Z
 ---
 
 ## Goal
@@ -33,3 +33,17 @@ VITE_SOLANA_API=
 - apps/showcase-payments — full cluster system (new)
 - apps/showcase-topup-sol — strip surfpool + hardcoded fallbacks
 - apps/showcase-payment-policies — build-time env validation only
+
+<!-- hordr:workflow=coordinator -->
+
+## Summary of Changes
+
+All 5 children completed and committed individually:
+
+- tributary-20n1: apps/app build-time env validation (reference implementation)
+- tributary-cpaf: apps/showcase-payment-policies build-time env validation
+- tributary-exvl: apps/showcase-topup-sol stripped surfpool + hardcoded fallbacks
+- tributary-urc0: apps/checkout full cluster system (new)
+- tributary-a3zf: apps/showcase-payments full cluster system (new)
+
+All apps now use the same 2-env-var spec (VITE_SOLANA_API + VITE_SOLANA_API_DEVNET) with build-time validation. No hardcoded RPC URLs remain.
