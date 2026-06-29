@@ -1,26 +1,12 @@
-import { useConnection } from "@solana/wallet-adapter-react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Button,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Alert,
-} from "@heroui/react";
+import { useConnection } from '@solana/wallet-adapter-react'
+import { useQuery } from '@tanstack/react-query'
+import * as React from 'react'
 
-import { useCluster } from "./cluster-data-access";
+import { useCluster } from './cluster-data-access'
+import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Alert } from '@heroui/react'
 
-export function ExplorerLink({
-  path,
-  label,
-  className,
-}: {
-  path: string;
-  label: string;
-  className?: string;
-}) {
-  const { getExplorerUrl } = useCluster();
+export function ExplorerLink({ path, label, className }: { path: string; label: string; className?: string }) {
+  const { getExplorerUrl } = useCluster()
   return (
     <a
       href={getExplorerUrl(path)}
@@ -30,20 +16,20 @@ export function ExplorerLink({
     >
       {label}
     </a>
-  );
+  )
 }
 
 export function ClusterChecker({ children }: { children: React.ReactNode }) {
-  const { cluster } = useCluster();
-  const { connection } = useConnection();
+  const { cluster } = useCluster()
+  const { connection } = useConnection()
 
   const query = useQuery({
-    queryKey: ["version", { cluster, endpoint: connection.rpcEndpoint }],
+    queryKey: ['version', { cluster, endpoint: connection.rpcEndpoint }],
     queryFn: () => connection.getVersion(),
     retry: 1,
-  });
+  })
   if (query.isLoading) {
-    return null;
+    return null
   }
   if (query.isError || !query.data) {
     return (
@@ -51,26 +37,21 @@ export function ClusterChecker({ children }: { children: React.ReactNode }) {
         title="Connection Error"
         description={
           <>
-            Error connecting to cluster{" "}
-            <span className="font-bold">{cluster.name}</span>.
-            <Button
-              variant="flat"
-              onClick={() => query.refetch()}
-              className="ml-2"
-            >
+            Error connecting to cluster <span className="font-bold">{cluster.name}</span>.
+            <Button variant="flat" onClick={() => query.refetch()} className="ml-2">
               Refresh
             </Button>
           </>
         }
         color="danger"
       />
-    );
+    )
   }
-  return children;
+  return children
 }
 
 export function ClusterUiSelect() {
-  const { clusters, setCluster, cluster } = useCluster();
+  const { clusters, setCluster, cluster } = useCluster()
 
   return (
     <Dropdown>
@@ -87,5 +68,5 @@ export function ClusterUiSelect() {
         ))}
       </DropdownMenu>
     </Dropdown>
-  );
+  )
 }
