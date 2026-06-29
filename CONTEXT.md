@@ -239,9 +239,20 @@ flags. Single-sig (no timelock/multisig — see ADR 0006, known limitation).
 
 **Gateway signer**:
 The key actually authorised to call `execute_payment` /
-`execute_composable`. Set by the gateway authority; may be a different
-(hot) key. Execution is permissionless in the sense that any tx signed by
+`execute_composable` on the **trusted path**. Stored in
+`gateway.signer`; set by the gateway authority; may be a different (hot)
+key. Execution is permissionless in the sense that any tx signed by
 `gateway.signer` lands — there is no per-call ACL beyond it.
+
+**Scheduler**:
+The off-chain software that polls for triggers and submits execute
+transactions (per ADR-0014). A scheduler instance operated by the
+gateway authority signs with the **gateway signer** (the trusted path);
+a scheduler instance operated by anyone else signs with its own key
+(the **permissionless path**, per ADR-0016). "Scheduler" denotes the
+software/role, not a specific operator.
+_Avoid_: relayer (retired — see ADR-0016 update), keeper (implies the
+rejected registry model of ADR-0016 Path A), runner, cranker.
 
 **Fee payer**:
 The wallet that pays tx + rent costs. Configurable per-gateway ("fee
@@ -315,19 +326,38 @@ _Avoid_: pool config, swap config.
 ### Fees
 
 **Protocol fee**:
-A bps slice of every payment sent to `ProgramConfig.fee_recipient`.
-Default 100 bps; overridable per-gateway via the
-`FEATURE_CUSTOM_PROTOCOL_FEE` flag.
+A share of the gateway fee (not an independent bps-of-payment), sent to
+`ProgramConfig.fee_recipient`. The rate (`protocol_share_bps`) is global
+on `ProgramConfig`, protocol-admin-set. Per-gateway override via
+`FEATURE_CUSTOM_PROTOCOL_FEE` — the override is admin-granted (not
+gateway-controlled) and may be zero (subsidise a strategic partner).
+See ADR-0017 (supersedes ADR-0006).
 
 **Gateway fee**:
-A bps slice set by the gateway authority, sent to
-`gateway.fee_recipient`. Combined protocol + gateway fee must be
-<10000 bps (enforced at every write site).
+The ONE total fee number (`gateway_fee_bps`), gateway-authority-set,
+expressed in bps of the payment (gross or net per NET_AMOUNT). Decomposed
+at settle time into four carve-outs: protocol cut, scheduler cut,
+referral pool, gateway residual. The gateway residual routes to
+`gateway.fee_recipient`. Sum of all carve-out shares must be ≤ 10000 bps,
+enforced at every gateway-config write site. See ADR-0017.
+
+**Scheduler cut**:
+A per-gateway share (`scheduler_share_bps`) of the gateway fee, paid to
+the signer of the execute transaction — the incentive that makes
+permissionless execution (ADR-0016) economically viable for third-party
+schedulers. On the trusted path (`signer == gateway.signer`) the cut
+merges into `gateway.fee_recipient` (the gateway self-rebates); on the
+permissionless path it routes to the signer's token account supplied as
+a `remaining_account` (verified `owner == signer && mint == source_mint`).
 
 **Net amount mode**:
-Gateway flag (`FEATURE_NET_AMOUNT`): when set, the gateway fee is
-computed on the post-protocol-fee amount (gateway takes a slice of what
-the protocol left); when unset, both fees are computed on the gross.
+Gateway flag (`FEATURE_NET_AMOUNT`): determines who bears the fee by
+choosing where the pull amount is measured. **Gross mode (off):** the
+policy's face amount is pulled; fees are subtracted from it — recipient
+receives less than face, sender debited by exactly face. **Net mode
+(on):** fees are added on top of face; the sum is pulled — recipient
+receives exactly face, sender debited by face + fees. Orthogonal to how
+the total fee decomposes into shares. (See `shared/fees.rs`.)
 
 **Referral pool**:
 When `FEATURE_REFERRAL` is set, `referral_allocation_bps` of the gateway

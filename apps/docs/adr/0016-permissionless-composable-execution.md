@@ -1,14 +1,15 @@
-# Permissionless composable execution: parameter-constrained relayers
+# Permissionless composable execution: parameter-constrained schedulers
 
 `execute_composable` is opened to **any caller** (not only
 `gateway.signer` / `owner` / `recipient`), secured by **parameter
 constraints** on what the caller may influence — not by a registry of
-trusted keepers. The caller becomes a dumb relayer: it broadcasts a
-pre-agreed instruction, may take a tip, and cannot deviate from the
-policy owner's economics. This generalises ADR-0004's
-permissionless-execution principle from PaymentPolicy to ComposablePolicy
-and evolves ADR-0014's gateway-operated scheduler into an **open relay
-layer**: the gateway scheduler remains one valid keeper, no longer the
+trusted keepers. The caller is a **scheduler** — the same off-chain
+poll+execute software of ADR-0014 — that broadcasts a pre-agreed
+instruction, may take a tip, and cannot deviate from the policy owner's
+economics. This generalises ADR-0004's permissionless-execution principle
+from PaymentPolicy to ComposablePolicy and evolves ADR-0014's
+gateway-operated scheduler into an **open scheduler layer**: the
+gateway-operated scheduler remains one valid scheduler, no longer the
 only one.
 
 **Opt-in is per gateway, not per policy.** The gateway is the
@@ -22,16 +23,17 @@ a _trusted caller_ (`gateway.signer` / `owner` / `recipient`) is always
 admitted with no preconditions — so when a gateway flips the bit,
 existing non-conforming policies (`min_output_amount = None`) remain
 executable by the gateway's own scheduler
-(ADR-0014 status quo) and nothing breaks; a _cold relayer_ (any other
-signer) is admitted only because the gateway is permissionless, and then
-the policy must satisfy the preconditions below or the call reverts. Thus
-a "permissionless gateway" is precisely "additionally admits relayers
-for conforming policies" — the operator loses no capability, and gains
-relayer capacity for policies that meet the bar.
+(ADR-0014 status quo) and nothing breaks; a **third-party scheduler**
+(any other signer) is admitted only because the gateway is
+permissionless, and then the policy must satisfy the preconditions below
+or the call reverts. Thus a "permissionless gateway" is precisely
+"additionally admits third-party schedulers for conforming policies" —
+the operator loses no capability, and gains scheduler capacity for
+policies that meet the bar.
 
 **Threat model — what "damage" means.** Four vectors a permissionless
 caller could exploit: **(a) hard loss** (recipient receives less than the
-policy's guaranteed economics); **(b) MEV within the floor** (a keeper
+policy's guaranteed economics); **(b) MEV within the floor** (a third-party scheduler
 routes through an adverse-but-valid pool of the allowlisted forward
 program and captures the spread up to the owner-set floor — unavoidable
 on a public mempool regardless of permissions); **(c) griefing**
@@ -61,11 +63,11 @@ tokens it receives as a signer — but the only path that does not revert
 is "≥ floor of the output mint lands in `intermediate_output`." Atomic
 revert, not refund, is the mechanism; a failed attempt never moves the
 user's source funds. The floor is enforced at `execute_composable` only
-on the **cold-relayer path**: a relayer call against a permissionless
-gateway requires `min_output_amount = Some(>0)` (the current
-`Option<u64>` / `Some(0)` disable-paths are rejected for relayer
-execution). Trusted-caller execution is unchanged — a gateway's own
-scheduler may still run a no-floor policy.
+on the **permissionless path**: a third-party scheduler's call against a
+permissionless gateway requires `min_output_amount = Some(>0)` (the
+current `Option<u64>` / `Some(0)` disable-paths are rejected for
+permissionless execution). Trusted-caller execution is unchanged — a
+gateway's own scheduler may still run a no-floor policy.
 
 **Allowlist-growth vetting rule.** A program may be added to
 `ALLOWED_FORWARD_PROGRAMS` only if its output is **fully verifiable via
@@ -77,9 +79,9 @@ be characterised this way and must not be allowlisted.
 
 **Forward-account lookup table (optional MEV mitigation).** The
 forward program's account set (pool, route, oracles, event queues) is
-today fully caller-chosen — a relayer may route through any valid pool
-of the allowlisted program and capture the spread up to the
-`min_output_amount` floor (vector (b), accepted). This is the
+today fully caller-chosen — a third-party scheduler may route through
+any valid pool of the allowlisted program and capture the spread up to
+the `min_output_amount` floor (vector (b), accepted). This is the
 account-level analog of the byte-level `ByteRangeCheck` ADR-0009 already
 applies to the forward instruction data: the existing check pins _which
 instruction_ runs, this knob optionally pins _which accounts_ it runs

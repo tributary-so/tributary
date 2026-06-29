@@ -330,10 +330,25 @@ time >= due time. `PayAsYouGo` enforces a per-period cap instead.
 
 ### 3. Fee Distribution
 
-- Protocol fee: 100 bps (1%) deducted from each payment (configurable per-gateway)
-- Gateway fee: Configurable bps split between gateway and protocol
-- Math: `(amount * bps) / 10000` rounds down; dust goes to protocol
-- Composable `min_output_amount` is checked against **net** (post-fee) output
+Unified fee model (ADR-0017, supersedes ADR-0006): **one** `gateway_fee_bps`
+(gateway-authority-set) decomposed into carve-outs:
+
+- **Protocol cut**: `total_fee × protocol_share_bps` (global rate on
+  `ProgramConfig`; per-gateway admin-granted override via
+  `FEATURE_CUSTOM_PROTOCOL_FEE`, can be zero)
+- **Scheduler cut**: `total_fee × scheduler_share_bps` (per-gateway) — pays
+  the execute-tx signer; merges into `gateway.fee_recipient` when the
+  gateway signer self-executes, otherwise routes to the signer's ATA
+  (`remaining_account`)
+- **Referral pool**: `total_fee × referral_allocation_bps` (per-gateway,
+  tiered, `FEATURE_REFERRAL`)
+- **Gateway residual**: the rest → `gateway.fee_recipient`
+
+Constraint: `protocol_share + scheduler_share + referral_allocation ≤ 10000`
+(enforced at every gateway-config write site). NET_AMOUNT (gross/net pull
+basis) is orthogonal. No absolute protocol floor — the share rate is the
+mechanism. Composable `min_output_amount` is checked against **net**
+(post-fee) output.
 
 ### 4. Account Size Padding
 
@@ -388,14 +403,14 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 
 **v1 — PaymentPolicy era:**
 
-| ADR    | Title                                                              |
-| ------ | ------------------------------------------------------------------ |
-| [0001] | Account topology and the UserPayment-as-delegate model             |
-| [0002] | PolicyType: three variants in a 128-byte fixed layout              |
-| [0003] | Milestone release_condition as a bitmap                            |
-| [0004] | Permissionless execution and the standalone `transfer` instruction |
-| [0005] | Referral system: gateway-scoped, 3-level chain, ref-code in seeds  |
-| [0006] | Per-gateway fee model with feature-flag gating                     |
+| ADR    | Title                                                                   |
+| ------ | ----------------------------------------------------------------------- |
+| [0001] | Account topology and the UserPayment-as-delegate model                  |
+| [0002] | PolicyType: three variants in a 128-byte fixed layout                   |
+| [0003] | Milestone release_condition as a bitmap                                 |
+| [0004] | Permissionless execution and the standalone `transfer` instruction      |
+| [0005] | Referral system: gateway-scoped, 3-level chain, ref-code in seeds       |
+| [0006] | Per-gateway fee model with feature-flag gating _(superseded by [0017])_ |
 
 **v2 — ComposablePolicy era:**
 
@@ -410,7 +425,8 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0013] | Lighthouse SDK vendored with an anti-corruption facade in `@tributary-so/sdk`      |
 | [0014] | Composable scheduler trigger model: per-policy state-poll                          |
 | [0015] | Position Tributary as one primitive — "If This Then Money" (positioning)           |
-| [0016] | Permissionless composable execution: parameter-constrained relayers                |
+| [0016] | Permissionless composable execution: parameter-constrained schedulers              |
+| [0017] | Unified gateway fee model with scheduler incentive                                 |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -428,6 +444,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0014]: apps/docs/adr/0014-composable-scheduler-trigger-model.md
 [0015]: apps/docs/adr/0015-positioning-if-this-then-money.md
 [0016]: apps/docs/adr/0016-permissionless-composable-execution.md
+[0017]: apps/docs/adr/0017-unified-fee-model.md
 
 ## SDK
 

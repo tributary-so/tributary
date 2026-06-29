@@ -5,7 +5,7 @@ status: todo
 type: epic
 priority: high
 created_at: 2026-06-27T14:43:11Z
-updated_at: 2026-06-27T14:43:11Z
+updated_at: 2026-06-29T12:35:33Z
 ---
 
 Implements ADR-0016 (`apps/docs/adr/0016-permissionless-composable-execution.md`): open `execute_composable` to any caller on a permissionless gateway, secured by parameter constraints (not a keeper registry).
@@ -25,3 +25,5 @@ Children:
 - E: Reserve ForwardConfig sentinel + ForwardAccountsPda seed (optional, deferred)
 
 ADR-0016 is the authority on rationale. Tests folded into each child (TDD).
+
+Sibling epic: tributary-5gf3 (Unified fee model, ADR-0017) — provides the scheduler incentive that makes the permissionless path viable.

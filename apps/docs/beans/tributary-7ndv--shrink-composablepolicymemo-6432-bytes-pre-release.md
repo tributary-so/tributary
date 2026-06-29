@@ -1,11 +1,11 @@
 ---
 # tributary-7ndv
 title: Shrink ComposablePolicy.memo 64→32 bytes (pre-release layout)
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-06-29T10:14:04Z
-updated_at: 2026-06-29T10:45:44Z
+updated_at: 2026-06-29T10:48:11Z
 ---
 
 ## Context

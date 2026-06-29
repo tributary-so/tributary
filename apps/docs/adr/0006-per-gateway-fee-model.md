@@ -1,5 +1,12 @@
 # Per-gateway fee model with feature-flag gating
 
+> **SUPERSEDED by [ADR-0017](0017-unified-fee-model.md)** — retained for
+> rationale history. The unified gateway-fee carve-out model (one
+> `gateway_fee_bps` total, decomposed into protocol / scheduler /
+> referral / residual) replaces the two-independent-numbers model below.
+> The feature-flag descriptions below remain accurate; the fee math they
+> gate is what changed.
+
 Every payment splits a fee slice to the protocol (default 100 bps, sent
 to `ProgramConfig.fee_recipient`) and a fee slice to the gateway
 (`gateway.gateway_fee_bps`, sent to `gateway.fee_recipient`). Combined
