@@ -28,7 +28,7 @@ pub struct PaymentRecord {
 pub struct ProgramConfigCreated {
     pub admin: Pubkey,
     pub fee_recipient: Pubkey,
-    pub protocol_fee_bps: u16,
+    pub protocol_share_bps: u16,
 }
 
 /// An event that is thrown when a user payment account is created

@@ -98,13 +98,14 @@ impl<'info> TransferTokens<'info> {
         let fee_breakdown = crate::shared::fees::calculate_fees(
             amount,
             gateway.gateway_fee_bps,
-            gateway.custom_protocol_fee_bps,
-            config.protocol_fee_bps,
-            gateway.is_custom_protocol_fee_enabled(),
+            gateway.effective_protocol_share_bps(config.protocol_share_bps),
+            gateway.scheduler_share_bps,
+            gateway.referral_allocation_bps,
+            gateway.is_referral_enabled(),
             false,
         )?;
-        let mut gateway_fee = fee_breakdown.gateway_fee;
-        let protocol_fee = fee_breakdown.protocol_fee;
+        let protocol_cut = fee_breakdown.protocol_cut;
+        let scheduler_cut = fee_breakdown.scheduler_cut;
         let recipient_amount = fee_breakdown.recipient_amount;
 
         require!(
@@ -115,9 +116,9 @@ impl<'info> TransferTokens<'info> {
         // Process referral rewards if enabled (helper short-circuits when off).
         // NOTE: payment_policy_key = Pubkey::default() is a sentinel for
         // "no policy" — see audit finding L2. Not fixed here per M2 scope.
-        let referral_pool = process_referral_rewards(
+        let _referral_pool = process_referral_rewards(
             gateway,
-            gateway_fee,
+            fee_breakdown.total_fee,
             remaining_accounts,
             from_info.clone(),
             authority_info.clone(),
@@ -132,8 +133,10 @@ impl<'info> TransferTokens<'info> {
             clock.unix_timestamp,
             accounts.from.owner,
         )?;
-        gateway_fee = gateway_fee
-            .checked_sub(referral_pool)
+
+        let gateway_amount = fee_breakdown
+            .gateway_residual
+            .checked_add(scheduler_cut)
             .ok_or(TributaryError::ArithmeticOverflow)?;
 
         if recipient_amount > 0 {
@@ -147,7 +150,7 @@ impl<'info> TransferTokens<'info> {
             token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
         }
 
-        if gateway_fee > 0 {
+        if gateway_amount > 0 {
             let cpi_accounts = TransferChecked {
                 from: from_info.clone(),
                 mint: mint_info.clone(),
@@ -155,10 +158,10 @@ impl<'info> TransferTokens<'info> {
                 authority: authority_info.clone(),
             };
             let cpi_ctx = CpiContext::new(token_program_info.clone(), cpi_accounts);
-            token_interface::transfer_checked(cpi_ctx, gateway_fee, mint_decimals)?;
+            token_interface::transfer_checked(cpi_ctx, gateway_amount, mint_decimals)?;
         }
 
-        if protocol_fee > 0 {
+        if protocol_cut > 0 {
             let cpi_accounts = TransferChecked {
                 from: from_info,
                 mint: mint_info,
@@ -166,7 +169,7 @@ impl<'info> TransferTokens<'info> {
                 authority: authority_info,
             };
             let cpi_ctx = CpiContext::new(token_program_info, cpi_accounts);
-            token_interface::transfer_checked(cpi_ctx, protocol_fee, mint_decimals)?;
+            token_interface::transfer_checked(cpi_ctx, protocol_cut, mint_decimals)?;
         }
 
         emit!(PaymentRecord {
@@ -185,8 +188,8 @@ impl<'info> TransferTokens<'info> {
             "Transfer executed: {} (recipient: {}, gateway fee: {}, protocol fee: {})",
             recipient_amount,
             accounts.to.key(),
-            gateway_fee,
-            protocol_fee
+            gateway_amount,
+            protocol_cut
         );
 
         Ok(())

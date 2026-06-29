@@ -45,10 +45,17 @@ pub mod tributary {
     pub fn create_payment_gateway(
         ctx: Context<CreatePaymentGateway>,
         gateway_fee_bps: u16,
+        scheduler_share_bps: u16,
         name: [u8; 32],
         url: [u8; 64],
     ) -> Result<()> {
-        CreatePaymentGateway::handler_create_payment_gateway(ctx, gateway_fee_bps, name, url)
+        CreatePaymentGateway::handler_create_payment_gateway(
+            ctx,
+            gateway_fee_bps,
+            scheduler_share_bps,
+            name,
+            url,
+        )
     }
 
     pub fn create_payment_policy(
@@ -113,6 +120,13 @@ pub mod tributary {
         args: UpdateGatewayProtocolFeeArgs,
     ) -> Result<()> {
         UpdateGatewayProtocolFee::handle_update_gateway_protocol_fee(ctx, args)
+    }
+
+    pub fn update_gateway_scheduler_share(
+        ctx: Context<UpdateGatewaySchedulerShare>,
+        scheduler_share_bps: u16,
+    ) -> Result<()> {
+        UpdateGatewaySchedulerShare::handle_update_gateway_scheduler_share(ctx, scheduler_share_bps)
     }
 
     pub fn update_gateway_feature_flags(

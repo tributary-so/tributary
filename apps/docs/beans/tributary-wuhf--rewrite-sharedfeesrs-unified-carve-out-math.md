@@ -1,11 +1,11 @@
 ---
 # tributary-wuhf
 title: Rewrite shared/fees.rs — unified carve-out math
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-06-29T12:48:52Z
-updated_at: 2026-06-29T12:48:52Z
+updated_at: 2026-06-29T12:54:59Z
 parent: tributary-5gf3
 ---
 

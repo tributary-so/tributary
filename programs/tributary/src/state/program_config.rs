@@ -8,8 +8,9 @@ pub struct ProgramConfig {
     pub admin: Pubkey,
     /// Key that receives protocol fees from all payments
     pub fee_recipient: Pubkey,
-    /// Protocol fee in basis points (bps). Max 10,000 (100%)
-    pub protocol_fee_bps: u16,
+    /// Protocol share of the gateway fee in basis points (bps). Max 10,000 (100%).
+    /// This is the global default; per-gateway override via FEATURE_CUSTOM_PROTOCOL_FEE.
+    pub protocol_share_bps: u16,
     /// DEPRECATED: Maximum number of active policies allowed per user. Attention tumbstone!
     pub _deprecated: u32,
     /// Emergency pause flag - when true, all payments are blocked
@@ -24,7 +25,7 @@ impl ProgramConfig {
     pub const SIZE: usize = 8 + // discriminator
         32 + // admin: Pubkey
         32 + // fee_recipient: Pubkey
-        2 + // protocol_fee_bps: u16
+        2 + // protocol_share_bps: u16
         4 + // _deprecated: u32
         1 + // emergency_pause: bool
         1 + // bump: u8

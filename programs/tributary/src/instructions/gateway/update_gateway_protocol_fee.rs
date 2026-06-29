@@ -5,10 +5,8 @@ use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct UpdateGatewayProtocolFeeArgs {
-    /// Optional: Enable or disable custom protocol fee feature (bit 2)
     pub use_custom_protocol_fee: bool,
-    /// Optional custom protocol fee in basis points (bps). Only used if feature is enabled.
-    pub custom_protocol_fee_bps: u16,
+    pub custom_protocol_share_bps: u16,
 }
 
 #[derive(Accounts)]
@@ -47,22 +45,17 @@ impl<'info> UpdateGatewayProtocolFee<'info> {
         }
 
         require!(
-            args.custom_protocol_fee_bps <= 10000,
+            args.custom_protocol_share_bps <= 10000,
             TributaryError::InvalidFeeBps
         );
-        gateway.custom_protocol_fee_bps = args.custom_protocol_fee_bps;
+        gateway.custom_protocol_share_bps = args.custom_protocol_share_bps;
 
-        // H-01: combined BPS (gateway + effective protocol fee) must stay < 10000.
-        // The feature flag has already been toggled above, so
-        // `effective_protocol_fee_bps` reflects the post-write state.
-        let effective_protocol_bps =
-            gateway.effective_protocol_fee_bps(ctx.accounts.config.protocol_fee_bps);
-        gateway.validate_combined_bps(effective_protocol_bps)?;
+        gateway.validate_share_constraint(ctx.accounts.config.protocol_share_bps)?;
 
         msg!(
-            "Gateway protocol fee updated: use_custom_protocol_fee={}, custom_protocol_fee_bps={}",
+            "Gateway protocol share updated: use_custom={}, custom_protocol_share_bps={}",
             gateway.feature_flags & PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE != 0,
-            gateway.custom_protocol_fee_bps
+            gateway.custom_protocol_share_bps
         );
 
         Ok(())

@@ -40,10 +40,10 @@ impl<'info> CreatePaymentGateway<'info> {
     pub fn handler_create_payment_gateway(
         ctx: Context<CreatePaymentGateway>,
         gateway_fee_bps: u16,
+        scheduler_share_bps: u16,
         name: [u8; 32],
         url: [u8; 64],
     ) -> Result<()> {
-        // Validate fee basis points
         require!(gateway_fee_bps <= 10000, TributaryError::InvalidFeeBps);
 
         let gateway = &mut ctx.accounts.gateway;
@@ -52,6 +52,7 @@ impl<'info> CreatePaymentGateway<'info> {
         gateway.authority = ctx.accounts.authority.key();
         gateway.fee_recipient = ctx.accounts.fee_recipient.key();
         gateway.gateway_fee_bps = gateway_fee_bps;
+        gateway.scheduler_share_bps = scheduler_share_bps;
         gateway.is_active = true;
         gateway.created_at = clock.unix_timestamp;
         gateway.bump = ctx.bumps.gateway;
@@ -59,9 +60,7 @@ impl<'info> CreatePaymentGateway<'info> {
         gateway.url = url;
         gateway.signer = ctx.accounts.authority.key();
 
-        // H-01: validate gateway_fee_bps + config.protocol_fee_bps < 10000 so
-        // gross-mode recipient math cannot underflow on this gateway.
-        gateway.validate_combined_bps(ctx.accounts.config.protocol_fee_bps)?;
+        gateway.validate_share_constraint(ctx.accounts.config.protocol_share_bps)?;
 
         emit!(PaymentGatewayCreated {
             authority: gateway.authority,

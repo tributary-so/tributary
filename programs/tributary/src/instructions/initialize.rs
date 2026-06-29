@@ -34,14 +34,14 @@ impl<'info> Initialize<'info> {
         config.admin = ctx.accounts.admin.key();
         config.fee_recipient = ctx.accounts.admin.key();
 
-        config.protocol_fee_bps = 100; // 1%
+        config.protocol_share_bps = 2000; // 20% of gateway fee → protocol
         config.emergency_pause = false;
         config.bump = ctx.bumps.config;
 
         emit!(ProgramConfigCreated {
             admin: config.admin,
             fee_recipient: config.fee_recipient,
-            protocol_fee_bps: config.protocol_fee_bps,
+            protocol_share_bps: config.protocol_share_bps,
         });
 
         msg!("Program initialized with admin: {:?}", config.admin);

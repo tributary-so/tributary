@@ -383,25 +383,29 @@ fn process_output_and_sweep<'info>(
     let fee_breakdown = crate::shared::fees::calculate_fees(
         output_amount,
         gateway.gateway_fee_bps,
-        gateway.custom_protocol_fee_bps,
-        config.protocol_fee_bps,
-        gateway.is_custom_protocol_fee_enabled(),
+        gateway.effective_protocol_share_bps(config.protocol_share_bps),
+        gateway.scheduler_share_bps,
+        gateway.referral_allocation_bps,
+        gateway.is_referral_enabled(),
         gateway.is_amount_net(),
     )?;
-    let gateway_fee = fee_breakdown.gateway_fee;
-    let protocol_fee = fee_breakdown.protocol_fee;
-
-    let total_fees = gateway_fee
-        .checked_add(protocol_fee)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
+    let total_fee = fee_breakdown.total_fee;
+    let protocol_cut = fee_breakdown.protocol_cut;
+    let scheduler_cut = fee_breakdown.scheduler_cut;
 
     require!(
-        total_fees <= output_amount,
+        total_fee <= output_amount,
         TributaryError::InsufficientOutputAmount
     );
 
     let sweep_amount = output_amount
-        .checked_sub(total_fees)
+        .checked_sub(total_fee)
+        .ok_or(TributaryError::ArithmeticOverflow)?;
+
+    // gateway_residual merges with scheduler_cut for now (D adds routing).
+    let gateway_fee = fee_breakdown
+        .gateway_residual
+        .checked_add(scheduler_cut)
         .ok_or(TributaryError::ArithmeticOverflow)?;
 
     // min_output_amount check runs AFTER fee deduction — refers to the
@@ -434,7 +438,7 @@ fn process_output_and_sweep<'info>(
     }
 
     // ── Claim protocol fee ──────────────────────────────────────────
-    if protocol_fee > 0 {
+    if protocol_cut > 0 {
         let cpi_accounts = TransferChecked {
             from: intermediate_output.clone(),
             mint: output_mint.clone(),
@@ -446,7 +450,7 @@ fn process_output_and_sweep<'info>(
             cpi_accounts,
             intermediate_owner_seeds,
         );
-        token_interface::transfer_checked(cpi_ctx, protocol_fee, output_mint_decimals)?;
+        token_interface::transfer_checked(cpi_ctx, protocol_cut, output_mint_decimals)?;
     }
 
     // ── Sweep remainder → recipient ─────────────────────────────────
@@ -488,7 +492,7 @@ fn process_output_and_sweep<'info>(
         }
     }
 
-    Ok((output_amount, gateway_fee, protocol_fee, sweep_amount))
+    Ok((output_amount, gateway_fee, protocol_cut, sweep_amount))
 }
 
 #[derive(Accounts)]

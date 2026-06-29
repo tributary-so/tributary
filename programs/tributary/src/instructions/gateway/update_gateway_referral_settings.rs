@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::error::TributaryError;
-use crate::state::PaymentGateway;
+use crate::state::{PaymentGateway, ProgramConfig};
 use anchor_lang::prelude::*;
 
 /// Arguments for updating gateway referral settings
@@ -29,6 +29,12 @@ pub struct UpdateGatewayReferralSettings<'info> {
     pub gateway: Box<Account<'info, PaymentGateway>>,
 
     pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [CONFIG_SEED],
+        bump = config.bump,
+    )]
+    pub config: Box<Account<'info, ProgramConfig>>,
 }
 
 impl<'info> UpdateGatewayReferralSettings<'info> {
@@ -66,6 +72,8 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
         if !gateway.referral_tiers_bps.is_empty() {
             gateway.validate_referral_tiers()?;
         }
+
+        gateway.validate_share_constraint(ctx.accounts.config.protocol_share_bps)?;
 
         msg!(
             "Gateway referral settings updated: feature_flags={}, allocation_bps={}",
