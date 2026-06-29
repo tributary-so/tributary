@@ -6,16 +6,16 @@ import { getTokenPrecisionAtom } from '@/lib/token-store'
 import { useAtomValue } from 'jotai'
 import { BN } from '@coral-xyz/anchor'
 import { PublicKey } from '@solana/web3.js'
+import { CheckoutSessionManager, type LineItem } from '@tributary-so/payments'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { ghcolors } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 
-interface LineItem {
-  description: string
-  unitPrice: number
-  quantity: number
-}
+// ponytail: module-level singleton; setBaseUrl carries the '#' so encodeUrl emits
+// a HashRouter-friendly URL (apps/checkout uses HashRouter).
+const checkoutManager = new CheckoutSessionManager()
+checkoutManager.setBaseUrl('https://checkout.tributary.so/#')
 
 interface CheckoutParams {
   successUrl: string
@@ -94,40 +94,6 @@ function getPaymentInterval(
     default:
       return { interval: PaymentInterval.Weekly, customInterval: 0 }
   }
-}
-
-function encodeSubscriptionUrl(params: {
-  tokenMint: string
-  recipient: string
-  gateway: string
-  amount: number
-  autoRenew: boolean
-  maxRenewals: number | null
-  paymentFrequency: string
-  startTime: number | null
-  trackingId: string
-  lineItems: LineItem[]
-  successUrl?: string
-  cancelUrl?: string
-}): string {
-  const data = {
-    tm: params.tokenMint,
-    r: params.recipient,
-    g: params.gateway,
-    a: params.amount.toString(),
-    ar: params.autoRenew,
-    mr: params.maxRenewals?.toString() || 'null',
-    pf: params.paymentFrequency,
-    st: params.startTime?.toString() || 'null',
-    tid: params.trackingId,
-    li: params.lineItems ? JSON.stringify(params.lineItems) : '[]',
-    su: params.successUrl || 'null',
-    cu: params.cancelUrl || 'null',
-  }
-  const jsonString = JSON.stringify(data)
-  const base64 = Buffer.from(jsonString).toString('base64')
-  const encoded = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-  return `https://checkout.tributary.so/#/subscribe/${encoded}`
 }
 
 function generateTrackingId(): string {
@@ -225,7 +191,8 @@ export default function IntegrationCode({ formData, onLineItemsActive }: Integra
   const generateCheckoutUrl = (): string => {
     const amount = computedAmount || parseFloat(validated.formData.amount || '0')
 
-    return encodeSubscriptionUrl({
+    return checkoutManager.encodeSubscriptionUrl({
+      mode: 'subscription',
       tokenMint: validated.tokenMint,
       recipient: validated.recipient,
       gateway: validated.gateway,

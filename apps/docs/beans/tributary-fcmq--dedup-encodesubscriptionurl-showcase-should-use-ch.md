@@ -1,11 +1,11 @@
 ---
 # tributary-fcmq
 title: 'Dedup encodeSubscriptionUrl: showcase should use CheckoutSessionManager from @tributary-so/payments'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-06-28T19:20:42Z
-updated_at: 2026-06-29T06:02:20Z
+updated_at: 2026-06-29T06:52:04Z
 ---
 
 Surfaced during m96d execution. apps/showcase-payment-policies/src/components/integration-snippet.tsx hand-rolls an encodeSubscriptionUrl function to build 'https://checkout.tributary.so/#/subscribe/<base64>' URLs. apps/checkout uses the canonical CheckoutSessionManager.encodeSubscriptionUrl() from @tributary-so/payments for the same format.
@@ -30,3 +30,18 @@ Resolution requires (NOT a quick swap):
 - OR: add `m` to the showcase encoder (keeps its correct URL scheme, fixes payload) and leave CheckoutSessionManager's hash bug as a separate issue.
 
 Scope is now cross-package (packages/payments + apps/checkout + apps/showcase-payment-policies). Recommend a focused grilling before touching — needs a decision on canonical URL scheme (depends on checkout deployment) and whether CheckoutSessionManager's hashless URL is a live bug or masked by an SPA fallback.
+
+## Summary of Changes (2026-06-28)
+
+Resolved per grilling Q1 (option a + LineItem import). apps/showcase-payment-policies/src/components/integration-snippet.tsx now uses the canonical encoder:
+
+- Deleted the hand-rolled encodeSubscriptionUrl function (lines 99-131).
+- Added module-level singleton: `const checkoutManager = new CheckoutSessionManager(); checkoutManager.setBaseUrl('https://checkout.tributary.so/#')` — setBaseUrl injects the '#' so encodeUrl emits a HashRouter-friendly URL (apps/checkout uses HashRouter). The hashless-default 'bug' in encodeUrl was never a bug; it's a config knob.
+- Call site now: `checkoutManager.encodeSubscriptionUrl({ mode: 'subscription', ... })`.
+- Replaced the local LineItem interface with `import { CheckoutSessionManager, type LineItem } from '@tributary-so/payments'` (structurally identical; barrel re-exports both).
+- Kept local generateTrackingId (still used at call site; out of scope).
+- Added @tributary-so/payments (workspace:*) to the showcase's package.json.
+
+LATENT BUG FIXED: the old encoder omitted the 'm' (mode) field, which CheckoutSessionManager.validateDecodedData requires (!data.m). Old showcase-generated URLs would have failed decode in apps/checkout. The canonical encoder emits mode, so generated URLs now decode correctly.
+
+Build + lint clean (3 pre-existing react-refresh warnings only).
