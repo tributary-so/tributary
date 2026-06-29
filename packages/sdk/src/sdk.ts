@@ -1799,6 +1799,37 @@ export class Tributary {
   }
 
   /**
+   * Deletes a user payment account, closing it and refunding rent to the owner.
+   * Only the owner can delete their own user payment account, and only when it
+   * has no active policies or composables. Blocked while the program is paused.
+   * @param tokenMint - Public key of the token mint
+   * @returns Transaction instruction to delete the user payment account
+   */
+  async deleteUserPayment(
+    tokenMint: PublicKey
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      owner: owner,
+      config: configPda,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      rentPayer: owner,
+    };
+
+    return await this.program.methods
+      .deleteUserPayment()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Changes the signer authorized to execute payments for a gateway.
    * Only the gateway authority can change the signer.
    * @param gatewayAuthority - Public key of the current gateway authority
