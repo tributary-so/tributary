@@ -5,9 +5,11 @@ status: todo
 type: task
 priority: low
 created_at: 2026-06-27T14:43:59Z
-updated_at: 2026-06-27T14:44:15Z
+updated_at: 2026-06-29T16:45:59Z
 parent: tributary-pdj8
 ---
+
+**DEFERRED per epic tributary-pdj8** (low priority; optional route pinning).
 
 Reserves the data-layout space for the OPTIONAL forward-account lookup table from ADR-0016, so the route-pinning knob can ship later without an account migration. Does NOT implement the validation read — just reserves the field + seed. Low priority; can be deferred until the route-pinning knob is actually wanted.
 

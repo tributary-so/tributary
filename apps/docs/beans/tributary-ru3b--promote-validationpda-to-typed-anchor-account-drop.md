@@ -1,11 +1,11 @@
 ---
 # tributary-ru3b
 title: Promote ValidationPda to typed Anchor account; drop num_validation_accounts
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-06-27T14:43:59Z
-updated_at: 2026-06-27T14:44:15Z
+updated_at: 2026-06-29T16:03:59Z
 parent: tributary-pdj8
 ---
 
@@ -30,3 +30,23 @@ Update `ValidationPda::SIZE` / `space_for`. Max arity 2 sets the `[Pubkey; 2]` c
 **Tests**: Rust unit tests for the pinning/validation logic; update `tests/topup-balance*.test.ts` to supply pinned accounts at create and assert relayer substitution reverts.
 
 **Acceptance**: validation accounts owner-pinned at creation; relayer cannot substitute them; num_validation_accounts gone; Anchor owns the layout (no offset-8/10 reads remain).
+
+## Progress (Task A)
+
+- [x] ValidationPda promoted to typed Anchor account (bump / num_pinned_accounts / pinned_accounts[2] / data_len / data[1024])
+- [x] Dropped num_validation_accounts from ValidationConfig + create_composable_policy args
+- [x] create_composable_policy writes typed struct via try_to_vec (no more offset-8/10 writes)
+- [x] execute_composable: ValidationPda pulled out of remaining_accounts into named UncheckedAccount field, typed-deserialised + seed-checked + pin-checked inside run_validation_cpi (callee frame keeps the 1KiB struct off the handler stack)
+- [x] Rust unit tests: size, pinned slice arity, data_len slice, borsh round-trip
+- [x] cargo test: 83 passed
+
+## Summary of Changes (Task A)
+
+- `state/validation_pda.rs`: promoted to typed Anchor account. Fields: bump, num_pinned_accounts, pinned_accounts[2], data_len, data[1024]. SIZE=1100. Added pinned()/get_data() helpers + Default impl. 6 new unit tests (size, pinned arity, data_len slice, borsh round-trip, freshness guards).
+- `state/composable_policy.rs`: dropped num_validation_accounts from ValidationConfig. SIZE 33→32 (pre-launch, no migration).
+- `instructions/composable/create_composable_policy.rs`: handler now accepts (num_pinned_accounts, pinned_accounts: [Pubkey; 2]) instead of num_validation_accounts. Writes the typed ValidationPda via try_to_vec (replaces offset-8/10 manual writes). Arity bounded by MAX_PINNED_ACCOUNTS.
+- `instructions/composable/execute_composable.rs`: added named validation_pda UncheckedAccount field. run_validation_cpi now (a) verifies PDA seeds, (b) typed-deserialises ValidationPda via AccountDeserialize (replaces raw offset reads), (c) pin-checks remaining_accounts[0..num_pinned] == pinned_accounts, (d) runs the Lighthouse CPI. The 1KiB struct lives in the callee frame, keeping the handler under the SBF 4KiB stack budget.
+- `lib.rs`: create_composable_policy signature updated.
+- `error.rs`: existing InvalidValidationPda / ValidationPdaMismatch reused for pin-check failures.
+
+cargo test: 83 passed (7 new ValidationPda tests + all pre-existing green).
