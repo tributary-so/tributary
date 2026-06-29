@@ -3943,20 +3943,9 @@ describe("Tributary", () => {
       expect(userPayment).not.toBeNull();
       expect(userPayment!.activePoliciesCount).toBe(0);
 
-      const { address: configPda } = sdk.getConfigPda();
-
       const ownerBalanceBefore = await connection.getBalance(user.publicKey);
 
-      const deleteUserPaymentIx = await program.methods
-        .deleteUserPayment()
-        .accountsStrict({
-          owner: user.publicKey,
-          userPayment: userPaymentPDA,
-          tokenMint: tokenMint,
-          rentPayer: user.publicKey,
-          config: configPda,
-        })
-        .instruction();
+      const deleteUserPaymentIx = await sdk.deleteUserPayment(tokenMint);
 
       const tx = new Transaction().add(deleteUserPaymentIx);
       await sendAndConfirmTransaction(connection, tx, [user], {

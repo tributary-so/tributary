@@ -1,11 +1,11 @@
 ---
 # tributary-d2i0
 title: 'SDK: add deleteUserPayment method (delete_user_payment)'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-06-29T07:51:25Z
-updated_at: 2026-06-29T07:51:25Z
+updated_at: 2026-06-29T19:44:13Z
 ---
 
 Standalone prerequisite (NOT a child of `tributary-hy8a` — the epic's "Out of
@@ -49,3 +49,10 @@ exists.
 ## Workflow
 
 routing: implementer · unblocks `cli-user-delete`.
+
+## Summary of Changes
+
+- Added `Tributary.deleteUserPayment(tokenMint)` to `packages/sdk/src/sdk.ts`, mirroring `deletePaymentPolicy`/`deletePaymentGateway` style. Resolves UserPayment + ProgramConfig PDAs, owner signs, refunds rent to owner, honors `!emergency_pause`.
+- Already re-exported via existing `export * from "./sdk"` in `packages/sdk/src/index.ts` (no change needed).
+- Replaced hand-built `deleteUserPayment` instruction in `tests/tributary.test.ts` with `sdk.deleteUserPayment(tokenMint)`.
+- Verified: `cd packages/sdk && pnpm run build` green; `tsc --noEmit` on test file clean; built `.d.ts`/JS contain the new method.
