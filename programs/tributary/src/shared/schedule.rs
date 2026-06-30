@@ -12,7 +12,9 @@
 //! [`calculate_next_payment_due`], which uses real calendar
 //! months (Jan 31 + 1 month → Feb 28/29) — the same algorithm used by both
 //! the subscription and composable Timed paths. No fixed-seconds lookup is
-//! used anywhere (see `reports/M-04-inconsistent-month-arithmetic.md`).
+//! used anywhere. Calendar-month correctness is pinned by a differential
+//! proptest against `chrono` (see the `proptest` module at the bottom of the
+//! in-file tests).
 
 use crate::error::TributaryError;
 use crate::state::{
@@ -148,6 +150,11 @@ fn add_months(timestamp: i64, months: i32) -> Result<i64> {
             .checked_add(1)
             .ok_or(TributaryError::ArithmeticOverflow)?;
     }
+    // ponytail: dead in prod — skip_months only ever passes {1,3,6,12}.
+    // Retained (not deleted) because the chrono differential proptest below
+    // fuzzes only positive n (the production path), and a unit test still
+    // exercises this branch directly. Delete this branch only if you also
+    // remove its test and tighten add_months to `u32` months.
     while new_month < 1 {
         new_month = new_month
             .checked_add(12)
@@ -1209,5 +1216,164 @@ mod tests {
         assert_eq!(get_days_in_month(2024, 2), 29);
         assert_eq!(get_days_in_month(2020, 2), 29);
         assert_eq!(get_days_in_month(2000, 2), 29);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Differential property tests: prove `add_months` / `calculate_next_payment_due`
+// match the `chrono` oracle over the realistic subscription window, and that
+// `skip_months` respects the MAX_MONTHLY_ITERATIONS DoS guard. Positive
+// months only — the production path. Negative months are exercised by the
+// unit test above and marked dead-in-prod at the branch site.
+// ──────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use crate::state::PaymentFrequency;
+    use chrono::{Months, TimeZone, Utc};
+    use proptest::prelude::*;
+
+    // Production range: ts >= 0 (Solana `Clock::get().unix_timestamp` is
+    // always positive, and `next_payment_due` is only ever seeded from `now`
+    // then advanced via `add_months`). Our `add_months` decomposes ts via
+    // `ts / 86400` and `ts % 86400`; for ts < 0 the remainder takes the
+    // dividend's sign (Rust), so seconds_in_day goes negative and the
+    // reassembled date diverges from chrono by up to a day. That path is
+    // unreachable in production and explicitly out of scope for this proof.
+    // Upper bound ~year 2400: covers century/leap-year edges (2000/2024/
+    // 2100/2400) and is well inside both our i32-cast guard and chrono's
+    // DateTime range.
+    const TS_MIN: i64 = 0;
+    const TS_MAX: i64 = 13_560_000_000;
+
+    /// The four calendar-month PaymentFrequency variants paired with their
+    /// step size in months. Daily/Weekly/Custom are O(1) fixed-interval and
+    /// not differential-tested against chrono (they have no calendar math).
+    fn calendar_freq() -> impl Strategy<Value = (PaymentFrequency, u32)> {
+        prop::sample::select(vec![
+            (PaymentFrequency::Monthly, 1u32),
+            (PaymentFrequency::Quarterly, 3),
+            (PaymentFrequency::SemiAnnually, 6),
+            (PaymentFrequency::Annually, 12),
+        ])
+    }
+
+    // add_months(ts, n) for positive n must equal chrono's
+    // checked_add_months, which clamps the day to the new month's last
+    // day (the M-04 semantic: Jan 31 + 1 = Feb 28/29).
+    proptest! {
+        #[test]
+        fn add_months_matches_chrono_for_positive_n(
+            ts in TS_MIN..TS_MAX,
+            n in 1u32..=12u32,
+        ) {
+            let Some(dt) = Utc.timestamp_opt(ts, 0).single() else {
+                return Ok(()); // chrono can't represent — skip, defensive.
+            };
+            let expected = dt
+                .checked_add_months(Months::new(n))
+                .expect("chrono overflow — should not happen in range");
+
+            let actual = add_months(ts, n as i32).expect("our add_months overflowed in range");
+
+            prop_assert_eq!(
+                actual,
+                expected.timestamp(),
+                "ts={}, n={}: our add_months disagrees with chrono",
+                ts,
+                n
+            );
+        }
+    }
+
+    // For every calendar-variant PaymentFrequency, `calculate_next_payment_due`
+    // (a) returns a timestamp strictly after `now` (monotonic advance), and
+    // (b) lands exactly on the date chrono produces by repeatedly adding
+    // `step` months from `due` until past `now` — i.e. our iterative clamp-
+    // at-each-step matches chrono's per-call clamp. Gaps that would need more
+    // than MAX_MONTHLY_ITERATIONS steps are excluded here (the cap is
+    // exercised by `skip_months_respects_max_iterations_cap` below).
+    proptest! {
+        #[test]
+        fn next_due_monotonic_and_lands_on_chrono_date(
+            due in TS_MIN..TS_MAX,
+            gap_secs in 0i64..(200 * 365 * 86_400), // `now` is 0..~200y after `due`
+            freq_and_step in calendar_freq(),
+        ) {
+            let (freq, step) = freq_and_step;
+            let now = due.saturating_add(gap_secs).min(TS_MAX);
+            let Some(due_dt) = Utc.timestamp_opt(due, 0).single() else {
+                return Ok(()); // chrono can't represent — skip, defensive.
+            };
+
+            // Mirror skip_months's iterative add (clamp-at-each-step) with
+            // chrono. Bail if it'd need more than MAX_MONTHLY_ITERATIONS steps
+            // — that's the cap test's domain, not this one's.
+            let mut dt = due_dt;
+            let mut steps = 0u32;
+            while dt.timestamp() <= now {
+                steps = steps.saturating_add(1);
+                if steps > MAX_MONTHLY_ITERATIONS {
+                    return Ok(()); // over the cap — out of scope here.
+                }
+                dt = dt.checked_add_months(Months::new(step)).unwrap();
+            }
+
+            let result = calculate_next_payment_due(due, &freq, now)
+                .expect("gap within cap must not overflow");
+            prop_assert!(
+                result > now,
+                "result ({}) must advance strictly past now ({})",
+                result,
+                now
+            );
+            prop_assert_eq!(
+                result,
+                dt.timestamp(),
+                "due={}, now={}, step={}: result not on chrono-derived date",
+                due,
+                now,
+                step
+            );
+        }
+    }
+
+    // `skip_months` bails with `ArithmeticOverflow` when more than
+    // MAX_MONTHLY_ITERATIONS (1200) monthly steps would be needed, and
+    // succeeds otherwise. Uses day=15 (never clamps) so iteration count is
+    // exactly the calendar-month gap.
+    proptest! {
+        #[test]
+        fn skip_months_respects_max_iterations_cap(
+            start_year in 1970i32..=2100,
+            months_back in 1100u32..=1300, // straddle the 1200 cap
+        ) {
+            let due_dt = Utc
+                .with_ymd_and_hms(start_year, 1, 15, 0, 0, 0)
+                .single()
+                .unwrap();
+            let now_dt = due_dt
+                .checked_add_months(Months::new(months_back))
+                .unwrap();
+            let due = due_dt.timestamp();
+            let now = now_dt.timestamp();
+
+            let res = calculate_next_payment_due(due, &PaymentFrequency::Monthly, now);
+            // A gap of K months needs K+1 adds to escape (the last add crosses
+            // from <=now to >now). The loop allows at most MAX adds, so gaps of
+            // MAX months or more (K >= MAX) fail; gaps under MAX succeed.
+            if months_back >= MAX_MONTHLY_ITERATIONS {
+                prop_assert!(
+                    res.is_err(),
+                    "gap of {} months must bail (>= {} adds needed, cap {})",
+                    months_back,
+                    months_back + 1,
+                    MAX_MONTHLY_ITERATIONS
+                );
+            } else {
+                let result = res.expect("gap under cap must succeed");
+                prop_assert!(result > now);
+            }
+        }
     }
 }
