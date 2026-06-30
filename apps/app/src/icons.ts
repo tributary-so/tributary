@@ -17,4 +17,5 @@ export {
   Target,
   Zap,
   Inbox,
+  Send,
 } from 'lucide-react'
