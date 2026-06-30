@@ -68,6 +68,9 @@
       "program": {
         "description": "Protocol configuration - program initialization and config queries"
       },
+      "config": {
+        "description": "Read-only protocol config inspection (ProgramConfig, emergency_pause)"
+      },
       "user": {
         "description": "User Payment accounts - create, list, and inspect user payment state"
       },

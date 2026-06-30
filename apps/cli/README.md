@@ -12,16 +12,20 @@ $ tributary COMMAND
 ## Commands
 
 <!-- commands -->
+* [`cli config show`](#cli-config-show)
 * [`cli gateway create`](#cli-gateway-create)
 * [`cli gateway delete`](#cli-gateway-delete)
 * [`cli gateway feature-flags`](#cli-gateway-feature-flags)
 * [`cli gateway fee-bps`](#cli-gateway-fee-bps)
 * [`cli gateway fee-recipient`](#cli-gateway-fee-recipient)
 * [`cli gateway list`](#cli-gateway-list)
+* [`cli gateway protocol-fee`](#cli-gateway-protocol-fee)
+* [`cli gateway referral-settings`](#cli-gateway-referral-settings)
 * [`cli gateway show`](#cli-gateway-show)
 * [`cli gateway signer`](#cli-gateway-signer)
 * [`cli help [COMMAND]`](#cli-help-command)
 * [`cli payment execute`](#cli-payment-execute)
+* [`cli payment transfer`](#cli-payment-transfer)
 * [`cli pda config`](#cli-pda-config)
 * [`cli pda delegate`](#cli-pda-delegate)
 * [`cli pda gateway`](#cli-pda-gateway)
@@ -45,7 +49,6 @@ $ tributary COMMAND
 * [`cli referral create`](#cli-referral-create)
 * [`cli referral show`](#cli-referral-show)
 * [`cli referral show-owner`](#cli-referral-show-owner)
-* [`cli state`](#cli-state)
 * [`cli user create`](#cli-user-create)
 * [`cli user list`](#cli-user-list)
 * [`cli user show`](#cli-user-show)
@@ -53,6 +56,30 @@ $ tributary COMMAND
 * [`cli wallet balance`](#cli-wallet-balance)
 * [`cli wallet create`](#cli-wallet-create)
 * [`cli wallet import PATH`](#cli-wallet-import-path)
+
+## `cli config show`
+
+Show the global ProgramConfig (read-only; emergency_pause has no on-chain setter)
+
+```
+USAGE
+  $ cli config show [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+
+DESCRIPTION
+  Show the global ProgramConfig (read-only; emergency_pause has no on-chain setter)
+
+EXAMPLES
+  $ cli config show
+
+  $ cli config show -c https://api.mainnet-beta.solana.com
+```
+
+_See code: [src/commands/config/show.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/config/show.ts)_
 
 ## `cli gateway create`
 
@@ -207,6 +234,59 @@ EXAMPLES
 
 _See code: [src/commands/gateway/list.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/gateway/list.ts)_
 
+## `cli gateway protocol-fee`
+
+Set a custom per-gateway protocol fee share (protocol-admin only; effective only with FEATURE_CUSTOM_PROTOCOL_FEE)
+
+```
+USAGE
+  $ cli gateway protocol-fee -a <value> [-c <value>] [-k <value>] [-e | -d] [-s <value>]
+
+FLAGS
+  -a, --authority=<value>       (required) Gateway authority public key
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -d, --disable                 Disable custom protocol fee (revert to global rate)
+  -e, --enable                  Enable custom protocol fee share
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -s, --share-bps=<value>       Protocol share in bps (0-10000)
+
+DESCRIPTION
+  Set a custom per-gateway protocol fee share (protocol-admin only; effective only with FEATURE_CUSTOM_PROTOCOL_FEE)
+
+EXAMPLES
+  $ cli gateway protocol-fee --authority GATEWAY_AUTH --enable --share-bps 50
+
+  $ cli gateway protocol-fee --authority GATEWAY_AUTH --disable
+```
+
+_See code: [src/commands/gateway/protocol-fee.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/gateway/protocol-fee.ts)_
+
+## `cli gateway referral-settings`
+
+Update gateway referral settings (gateway-authority only; ADR-0005/ADR-0011)
+
+```
+USAGE
+  $ cli gateway referral-settings -a <value> -b <value> -t <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -a, --authority=<value>                (required) Gateway authority public key
+  -b, --referral-allocation-bps=<value>  (required) Referral allocation share of the gateway fee (bps, max 2500)
+  -c, --connection-url=<value>           [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection
+                                         URL (env: SOLANA_API)
+  -k, --keypath=<value>                  [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -t, --referral-tiers-bps=<value>       (required) Three L1/L2/L3 tier shares (comma-sep, must sum to 10000)
+
+DESCRIPTION
+  Update gateway referral settings (gateway-authority only; ADR-0005/ADR-0011)
+
+EXAMPLES
+  $ cli gateway referral-settings --authority ALICE --referral-allocation-bps 1000 --referral-tiers-bps 5000,3000,2000
+```
+
+_See code: [src/commands/gateway/referral-settings.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/gateway/referral-settings.ts)_
+
 ## `cli gateway show`
 
 Show detailed information about a payment gateway
@@ -303,6 +383,35 @@ EXAMPLES
 ```
 
 _See code: [src/commands/payment/execute.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/payment/execute.ts)_
+
+## `cli payment transfer`
+
+Transfer tokens via the Tributary fee+referral integrated transfer instruction (ADR-0004)
+
+```
+USAGE
+  $ cli payment transfer -m <value> -r <value> -g <value> -a <value> [-c <value>] [-k <value>] [--memo <value>]
+    [--referral-code <value>]
+
+FLAGS
+  -a, --amount=<value>          (required) Amount in smallest token unit
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -g, --gateway=<value>         (required) Gateway public key (routes fees + referral rewards)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --token-mint=<value>      (required) SPL token mint address
+  -r, --recipient=<value>       (required) Recipient public key
+      --memo=<value>            Memo string to attach
+      --referral-code=<value>   Optional 6-char referral code
+
+DESCRIPTION
+  Transfer tokens via the Tributary fee+referral integrated transfer instruction (ADR-0004)
+
+EXAMPLES
+  $ cli payment transfer -m <MINT> -r <RECIPIENT> -g <GATEWAY> -a 1000000 --memo "invoice #42"
+```
+
+_See code: [src/commands/payment/transfer.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/payment/transfer.ts)_
 
 ## `cli pda config`
 
@@ -715,10 +824,10 @@ Create a payment policy (subscription / milestone / pay-as-you-go)
 
 ```
 USAGE
-  $ cli policy create -m <value> -r <value> -g <value> [-c <value>] [-k <value>] [-v
-    subscription|milestone|pay-as-you-go] [--memo <value>] [-a <value>] [-f daily|weekly|monthly|yearly] [--auto-renew]
-    [--max-renewals <value>] [--amounts <value>] [--timestamps <value>] [--release-condition <value>] [--max-per-period
-    <value>] [--max-chunk <value>] [--period-seconds <value>]
+  $ cli policy create -g <value> -r <value> -m <value> [-c <value>] [-k <value>] [-a <value>] [--amounts <value>]
+    [--auto-renew] [-f daily|weekly|monthly|yearly] [--max-chunk <value>] [--max-per-period <value>] [--max-renewals
+    <value>] [--memo <value>] [--period-seconds <value>] [--release-condition <value>] [--timestamps <value>] [-v
+    subscription|milestone|pay-as-you-go]
 
 FLAGS
   -a, --amount=<value>             [subscription] Payment amount in smallest token unit
@@ -787,7 +896,7 @@ Change a payment policy status (pause / resume / delete)
 
 ```
 USAGE
-  $ cli policy status -p <value> -m <value> -s paused|active|deleted [-c <value>] [-k <value>]
+  $ cli policy status -p <value> -s paused|active|deleted -m <value> [-c <value>] [-k <value>]
 
 FLAGS
   -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
@@ -942,30 +1051,6 @@ EXAMPLES
 ```
 
 _See code: [src/commands/referral/show-owner.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/referral/show-owner.ts)_
-
-## `cli state`
-
-Dump the global ProgramConfig state account
-
-```
-USAGE
-  $ cli state [-c <value>] [-k <value>]
-
-FLAGS
-  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
-                                (env: SOLANA_API)
-  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
-
-DESCRIPTION
-  Dump the global ProgramConfig state account
-
-EXAMPLES
-  $ cli state
-
-  $ cli state -c https://api.mainnet-beta.solana.com
-```
-
-_See code: [src/commands/state.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/state.ts)_
 
 ## `cli user create`
 

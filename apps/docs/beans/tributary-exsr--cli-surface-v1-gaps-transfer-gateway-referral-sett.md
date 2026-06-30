@@ -1,11 +1,11 @@
 ---
 # tributary-exsr
 title: 'CLI: surface v1 gaps — transfer, gateway referral-settings, protocol-fee'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-06-29T07:51:25Z
-updated_at: 2026-06-29T07:51:25Z
+updated_at: 2026-06-30T07:32:11Z
 parent: tributary-hy8a
 blocked_by:
     - tributary-p6n3
@@ -85,3 +85,7 @@ emergency-pause` is **unsurfaceable** and is deferred to a separate contract
 ## Workflow
 
 routing: implementer · signer model per ADR-0006.
+
+## Summary of Changes
+
+Added payment transfer (wraps sdk.transfer, ADR-0004 fee+referral integrated). Added gateway referral-settings (wraps sdk.updateGatewayReferralSettings, ADR-0005/0011). Added gateway protocol-fee (wraps sdk.updateGatewayProtocolFee, admin-only, requires FEATURE_CUSTOM_PROTOCOL_FEE). Moved state.ts to config/show.ts (renamed command, now surfaces emergency_pause read-only — no setter instruction exists on-chain). Gateway feature-flags help already documents 0x08 PERMISSIONLESS bit via GATEWAY_FEATURES constant.
