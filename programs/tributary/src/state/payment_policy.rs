@@ -88,6 +88,18 @@ pub enum PolicyType {
         expiry_date: Option<i64>, // 9 bytes  (1 + 8) — None = never expires
         padding: [u8; 103],       // 103 bytes padding (total: 8+8+9+103 = 128)
     },
+    /// Single-use, time-bound authorization to transfer up to `max_amount`.
+    /// The actual settled amount is caller-supplied at execute time (determined
+    /// by the resource server after usage); `0 <= actual <= max_amount` is
+    /// enforced on-chain. `valid_after <= 0` means immediate; `deadline` is
+    /// mandatory (x402 `upto` scheme). Always transitions to `Completed` after
+    /// one settlement. Recipient-triggerable like PayAsYouGo. See ADR-0020.
+    UpTo {
+        max_amount: u64,    // 8 bytes  — ceiling on the settlement amount
+        valid_after: i64,   // 8 bytes  — earliest settlement; <= 0 = immediate
+        deadline: i64,      // 8 bytes  — hard expiry, MUST be > 0 and > valid_after
+        padding: [u8; 104], // 104 bytes padding (total: 8+8+8+104 = 128)
+    },
 }
 
 impl PolicyType {
@@ -142,6 +154,12 @@ impl PolicyType {
                 expiry_date,
                 ..
             } => crate::policies::validate_one_time_policy(*amount, *due_date, *expiry_date),
+            PolicyType::UpTo {
+                max_amount,
+                valid_after,
+                deadline,
+                ..
+            } => crate::policies::validate_up_to_policy(*max_amount, *valid_after, *deadline),
         }
     }
 }

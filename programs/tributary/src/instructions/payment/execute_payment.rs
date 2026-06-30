@@ -169,12 +169,20 @@ impl<'info> ExecutePayment<'info> {
         )?;
         let payment_amount = schedule_amount;
 
-        // Only in the case of PayAsYouGo can the recipient trigger payments.
+        // Only PayAsYouGo and UpTo allow the recipient to trigger execution.
+        // PayAsYouGo: provider claims chunks as usage accrues.
+        // UpTo: resource server (often the recipient) settles the actual
+        // amount after measuring usage. Subscription / Milestone / OneTime
+        // require the gateway signer or the owner — the recipient cannot
+        // pull on their own authority.
         // (Milestone release_condition::RELEASE_RECIPIENT authorizes the
         // recipient to release escrow, but the caller must still be the
         // gateway signer or owner — see validate_policy_execution above.)
         if fee_payer_key == payment_policy.recipient {
-            if !matches!(&payment_policy.policy_type, PolicyType::PayAsYouGo { .. }) {
+            if !matches!(
+                &payment_policy.policy_type,
+                PolicyType::PayAsYouGo { .. } | PolicyType::UpTo { .. }
+            ) {
                 return Err(TributaryError::Unauthorized.into());
             }
         }

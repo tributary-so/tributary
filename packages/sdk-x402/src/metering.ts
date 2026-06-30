@@ -11,6 +11,7 @@
 
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
+import BN from "bn.js";
 
 // Type-only import for Express (optional dependency)
 type ExpressNextFunction = (err?: any) => void;
@@ -504,6 +505,25 @@ export interface UsageReport {
   withinLimits: boolean;
   /** Estimated cost for current usage */
   estimatedCost: number;
+}
+
+/**
+ * Settle an `upto` authorization from accumulated usage. Computes
+ * `actual = min(totalCost, maxAmount)` and returns the settle instruction
+ * for the facilitator to sign+send. Single-use: after the instruction lands,
+ * the policy transitions `Active → Completed`.
+ *
+ * Caller is responsible for tracking the `requestId` ↔ policy binding.
+ */
+export async function settleFromUsage(
+  sdk: Tributary,
+  tracker: UsageTracker,
+  policyPda: string,
+  maxAmount: number
+): Promise<ReturnType<Tributary["executePayment"]>> {
+  const period = tracker.getCurrentPeriod();
+  const actual = Math.min(period.totalCost, maxAmount);
+  return sdk.executePayment(new PublicKey(policyPda), new BN(actual));
 }
 
 /**

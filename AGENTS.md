@@ -140,6 +140,12 @@ All variants are exactly 128 bytes (fixed-size for account stability):
   to `Completed`. `due_date <= 0` means immediate; `expiry_date = None` means
   never expires. Full gateway lifecycle (PDA, pausable, deletable, schedulable,
   composable hooks). Not the standalone `transfer` instruction (ADR-0004).
+- **UpTo** (ADR-0020) — single-use, time-bound variable-amount authorization.
+  The actual settled amount is caller-supplied at execute time, bounded by
+  `max_amount` (`0 <= actual <= max`). `valid_after <= 0` means immediate;
+  `deadline` is mandatory (`> 0`, `> valid_after`). Recipient-triggerable
+  (like PayAsYouGo). The x402 `upto` scheme primitive — settle what was
+  actually used, once.
 
 ### SDK usage
 
@@ -433,6 +439,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | 0017   | Composable Memo 32-bytes                                                                |
 | [0018] | Unified gateway fee model with scheduler incentive                                      |
 | [0019] | OneTime payment policy variant (fixed amount, single execution, full gateway lifecycle) |
+| [0020] | UpTo scheme: variable-amount single-settlement authorization (x402 `upto`)              |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -452,6 +459,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0016]: apps/docs/adr/0016-permissionless-composable-execution.md
 [0018]: apps/docs/adr/0018-unified-fee-model.md
 [0019]: apps/docs/adr/0019-onetime-policy-variant.md
+[0020]: apps/docs/adr/0020-upto-scheme-and-policy-variant.md
 
 ## SDK
 
