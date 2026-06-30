@@ -1,11 +1,11 @@
 ---
 # tributary-piso
 title: 'CLI: delegate lifecycle — approve/revoke/migrate'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-06-29T07:51:25Z
-updated_at: 2026-06-29T07:51:25Z
+updated_at: 2026-06-30T07:36:22Z
 parent: tributary-hy8a
 blocked_by:
     - tributary-p6n3
@@ -62,3 +62,7 @@ the delegate, or wants to re-approve after a revoke) has no CLI path.
 ## Workflow
 
 routing: implementer · delegate model per ADR-0001.
+
+## Summary of Changes
+
+Added delegate topic with approve/revoke/migrate commands. delegate approve uses @solana/spl-token createApproveInstruction with delegate = UserPayment PDA. delegate revoke uses createRevokeInstruction. delegate migrate wraps sdk.migrateDelegate. All three support --amount unlimited (u64::MAX).

@@ -13,6 +13,9 @@ $ tributary COMMAND
 
 <!-- commands -->
 * [`cli config show`](#cli-config-show)
+* [`cli delegate approve`](#cli-delegate-approve)
+* [`cli delegate migrate`](#cli-delegate-migrate)
+* [`cli delegate revoke`](#cli-delegate-revoke)
 * [`cli gateway create`](#cli-gateway-create)
 * [`cli gateway delete`](#cli-gateway-delete)
 * [`cli gateway feature-flags`](#cli-gateway-feature-flags)
@@ -80,6 +83,82 @@ EXAMPLES
 ```
 
 _See code: [src/commands/config/show.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/config/show.ts)_
+
+## `cli delegate approve`
+
+Approve the UserPayment PDA as token delegate on the source ATA (ADR-0001)
+
+```
+USAGE
+  $ cli delegate approve -m <value> -a <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -a, --amount=<value>          (required) Delegated amount in smallest token unit, or "unlimited" for u64::MAX
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --mint=<value>            (required) SPL token mint address
+
+DESCRIPTION
+  Approve the UserPayment PDA as token delegate on the source ATA (ADR-0001)
+
+EXAMPLES
+  $ cli delegate approve --mint <MINT> --amount 1000000
+
+  $ cli delegate approve --mint <MINT> --amount unlimited
+```
+
+_See code: [src/commands/delegate/approve.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/delegate/approve.ts)_
+
+## `cli delegate migrate`
+
+Migrate from the legacy global PaymentsDelegate PDA to the per-mint UserPayment PDA delegate (ADR-0001 back-compat bridge)
+
+```
+USAGE
+  $ cli delegate migrate -m <value> -a <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -a, --amount=<value>          (required) Delegated amount in smallest token unit, or "unlimited" for u64::MAX
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --mint=<value>            (required) SPL token mint address
+
+DESCRIPTION
+  Migrate from the legacy global PaymentsDelegate PDA to the per-mint UserPayment PDA delegate (ADR-0001 back-compat
+  bridge)
+
+EXAMPLES
+  $ cli delegate migrate --mint <MINT> --amount 1000000
+
+  $ cli delegate migrate --mint <MINT> --amount unlimited
+```
+
+_See code: [src/commands/delegate/migrate.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/delegate/migrate.ts)_
+
+## `cli delegate revoke`
+
+Revoke the token delegate from the source ATA (subsequent payment execute fails until re-approved)
+
+```
+USAGE
+  $ cli delegate revoke -m <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --mint=<value>            (required) SPL token mint address
+
+DESCRIPTION
+  Revoke the token delegate from the source ATA (subsequent payment execute fails until re-approved)
+
+EXAMPLES
+  $ cli delegate revoke --mint <MINT>
+```
+
+_See code: [src/commands/delegate/revoke.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/delegate/revoke.ts)_
 
 ## `cli gateway create`
 
@@ -240,7 +319,7 @@ Set a custom per-gateway protocol fee share (protocol-admin only; effective only
 
 ```
 USAGE
-  $ cli gateway protocol-fee -a <value> [-c <value>] [-k <value>] [-e | -d] [-s <value>]
+  $ cli gateway protocol-fee -a <value> [-c <value>] [-k <value>] [-d | -e] [-s <value>]
 
 FLAGS
   -a, --authority=<value>       (required) Gateway authority public key
@@ -390,7 +469,7 @@ Transfer tokens via the Tributary fee+referral integrated transfer instruction (
 
 ```
 USAGE
-  $ cli payment transfer -m <value> -r <value> -g <value> -a <value> [-c <value>] [-k <value>] [--memo <value>]
+  $ cli payment transfer -a <value> -g <value> -r <value> -m <value> [-c <value>] [-k <value>] [--memo <value>]
     [--referral-code <value>]
 
 FLAGS

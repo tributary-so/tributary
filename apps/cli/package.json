@@ -80,6 +80,9 @@
       "policy": {
         "description": "Payment policies - create (subscription/milestone/pay-as-you-go), list, change status"
       },
+      "delegate": {
+        "description": "Token delegate lifecycle - approve, revoke, migrate"
+      },
       "payment": {
         "description": "Payment execution - trigger recurring payment processing"
       },
