@@ -1,6 +1,8 @@
 .anchor
 .DS_Store
 target
+!target/idl
+!target/types
 **/*.rs.bk
 node_modules
 test-ledger
@@ -24,3 +26,9 @@ apps/cli/keypair.json
 coverage
 .surfpool
 apps/docs/site/
+
+!packages/lighthouse/dist
+
+# OpenAPI spec — generated dynamically by the API server
+apps/api/openapi.yaml
+apps/docs/docs/api/openapi.yaml

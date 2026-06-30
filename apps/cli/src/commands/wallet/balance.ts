@@ -1,17 +1,17 @@
 import {Flags} from '@oclif/core'
 import {Connection} from '@solana/web3.js'
 
-import {WalletlessCommand} from '../../lib/base-command.js'
+import {BaseCommand} from '../../lib/base-command.js'
 import {readKeypairFromFile} from '../../lib/utils.js'
 
-export default class WalletBalance extends WalletlessCommand {
+export default class WalletBalance extends BaseCommand {
   static description = 'Display SOL and optional SPL token balances for the current wallet'
   static examples = [
     '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> <%= command.id %> --token-mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   ]
   static flags = {
-    ...WalletlessCommand.baseFlags,
+    ...BaseCommand.baseFlags,
     'token-mint': Flags.string({
       char: 'm',
       description: 'SPL token mint address to check balance for',

@@ -40,7 +40,7 @@ export default function ReferralProgramPage() {
               </div>
               <h3 className="text-lg font-semibold text-lando-text mb-2">Create Your Code</h3>
               <p className="text-sm text-lando-muted">
-                Generate a unique 6-character referral code when you create your first subscription
+                Generate a unique 6-character referral code when you create your first payment policy
               </p>
             </div>
 

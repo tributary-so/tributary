@@ -27,6 +27,14 @@ export const GATEWAY_FEATURES = {
   NET_AMOUNT: 0x02,
   /** Bit 2: Custom protocol fee enabled — overrides default 100 bps (1 = enabled) */
   CUSTOM_PROTOCOL_FEE: 0x04,
+  /**
+   * Bit 3: Permissionless composable execution enabled (ADR-0016).
+   * When set, `executeComposable` admits any signer for CONFORMING
+   * composable policies (min_output_amount = Some(>0)). The trusted three
+   * (gateway signer / owner / recipient) always pass regardless. The
+   * caller-conditional gate is enforced on-chain.
+   */
+  PERMISSIONLESS: 0x08,
 } as const;
 
 /**
@@ -46,4 +54,17 @@ export const SEEDS = {
   PAYMENTS: "payments",
   /** Seed for referral account PDAs */
   REFERRAL: "referral",
+  /** Seed for composable policy PDAs */
+  COMPOSABLE_POLICY: "composable_policy",
+  /** Seed for validation PDAs (stores assertion data for composable policies with validation) */
+  VALIDATION_PDA: "composable_validation",
 } as const;
+
+/**
+ * Capacity of the owner-pinned Lighthouse target-account set on a
+ * `ValidationPda` (ADR-0016). Covers the highest assertion arity in use
+ * today (`accountDelta` = 2). Callers pass a `PublicKey[]` to
+ * `getCreateComposablePolicyInstruction` and the SDK normalises it to the
+ * fixed-size `[Pubkey; 2]` the on-chain instruction expects.
+ */
+export const MAX_PINNED_VALIDATION_ACCOUNTS = 2;

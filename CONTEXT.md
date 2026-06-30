@@ -116,3 +116,267 @@ through CTA. It is the sticky handle that replaces the three-dialect mess.
 - **"PaymentPolicy vs ComposablePolicy"** — internal/protocol vocabulary;
   fine for developer docs, wrong register for the landing page's headline
   story. They are two configurations of the same policy primitive.
+
+## Concept
+
+A non-custodial recurring-payments protocol on Solana. A user delegates a
+token allowance to a program-controlled account; a permissionless gateway
+signer pulls against that allowance on a schedule and routes the funds to a
+recipient, with protocol and gateway fees taken in-flight.
+
+Two account families carry the protocol:
+
+- **PaymentPolicy** — direct pull: program pulls tokens from the user's ATA
+  straight to the recipient (one CPI, fee-split inline).
+- **ComposablePolicy** — programmable pull: program pulls into a transient
+  intermediate ATA, optionally runs a read-only validation CPI, optionally
+  runs a forward CPI (swap), then settles to the recipient.
+
+Both reuse the same `PolicyType` schedule enum, the same `UserPayment`
+scope, the same `PaymentGateway` fee/signer config, and the same fee math.
+
+## Language
+
+### Core accounts
+
+**UserPayment**:
+Per-`(owner, token_mint)` account that scopes a user's activity for one
+mint. Carries the per-mint policy counters, the active-policy counters, and
+— critically — its PDA is the token delegate on the user's source ATA.
+_Avoid_: wallet, account, balance.
+
+**PaymentGateway**:
+Per-authority service account that configures the gateway fee, the gateway
+signer, the fee recipient, the referral programme, and the per-gateway
+feature flags. Execution is permissionless but gated by `gateway.signer`.
+_Avoid_: merchant, payee config.
+
+**PaymentPolicy**:
+A direct pull-payment contract: schedule + recipient + gateway. Execution
+transfers tokens `user_token → recipient_token` in a single CPI with fees
+routed inline. Identified by `policy_id` drawn from
+`user_payment.created_policies_count`.
+_Avoid_: subscription (that is one _variant_), plan, mandate.
+
+**ComposablePolicy**:
+A programmable pull-payment contract: schedule + recipient + gateway +
+optional validation hook + optional forward hook. Identified by `policy_id`
+drawn from `user_payment.created_composable_count` (independent ID space
+from PaymentPolicy).
+_Avoid_: swap-policy, trigger policy.
+
+**PolicyHeader** (v2):
+The shared prefix on `ComposablePolicy` carrying the fields it has in
+common with `PaymentPolicy` (discriminator, version, bump, user_payment,
+gateway, status, rent_payer). `PaymentPolicy` does **not** embed this
+struct — it predates it and its layout is frozen.
+
+**ProgramConfig**:
+Singleton (`["config"]`) holding the protocol admin, the protocol fee
+recipient, the protocol fee in bps, and the emergency-pause flag.
+
+**ValidationPda**:
+Optional separate account (`["composable_validation", composable_policy]`)
+holding the assertion byte-blob (≤1024 bytes) a ComposablePolicy's
+validation hook replays via CPI. Lives outside `ComposablePolicy` because
+the policy account itself cannot grow.
+
+**ReferralAccount**:
+A 6-character referral code registered against a gateway. Referral chains
+are at most 3 levels deep, gateway-scoped, and the ref-code is part of the
+PDA seed.
+
+### Schedule
+
+**PolicyType**:
+The shared 128-byte fixed-layout enum describing how a policy advances.
+Three variants: `Subscription`, `Milestone`, `PayAsYouGo`. Identical bytes
+on both `PaymentPolicy` and `ComposablePolicy`. Composable v1 briefly had
+its own `ScheduleType`; it was unified back into `PolicyType` before
+release (see ADR 0007).
+_Avoid_: schedule, plan type.
+
+**Subscription**:
+Fixed `amount` pulled every `payment_frequency` until `max_renewals` is
+reached, or indefinitely if `auto_renew`. Execution is gated by
+`next_payment_due`.
+_Avoid_: recurring, plan.
+
+**Milestone**:
+Up to four `(amount, timestamp)` pairs held in escrow. Released per the
+`release_condition` bitmap: bit 0 = due-date check, bits 1–3 = which
+signer may release (mutually exclusive: gateway / owner / recipient).
+_Avoid_: escrow payment, vesting.
+
+**PayAsYouGo**:
+Usage-based: each execution claims up to `max_chunk_amount`, capped at
+`max_amount_per_period` per `period_length_seconds`. Period resets
+automatically. This is the **only** variant that accepts a caller-supplied
+amount at execute time (`forward_amount` on the composable path, the
+`amount` arg on the direct path).
+_Avoid_: metered, usage plan.
+
+**PolicyStatus**:
+The lifecycle state shared by both policy families: `Active`, `Paused`,
+`Completed`. (Payment v1 had its own `PaymentStatus`; unified into
+`PolicyStatus`.)
+
+### Roles
+
+**Owner**:
+The user whose ATA is being pulled from. Counterpart of `recipient`.
+_Avoid_: payer, customer.
+
+**Recipient**:
+The wallet a policy pays to. May be any pubkey; for ComposablePolicy the
+`output_mint` may differ from the input mint (the forward hook swaps).
+_Avoid_: payee, merchant.
+
+**Gateway authority**:
+The wallet that controls a `PaymentGateway`. Can rotate the gateway
+signer, change fee settings, change the fee recipient, and toggle feature
+flags. Single-sig (no timelock/multisig — see ADR 0006, known limitation).
+
+**Gateway signer**:
+The key actually authorised to call `execute_payment` /
+`execute_composable` on the **trusted path**. Stored in
+`gateway.signer`; set by the gateway authority; may be a different (hot)
+key. Execution is permissionless in the sense that any tx signed by
+`gateway.signer` lands — there is no per-call ACL beyond it.
+
+**Scheduler**:
+The off-chain software that polls for triggers and submits execute
+transactions (per ADR-0014). A scheduler instance operated by the
+gateway authority signs with the **gateway signer** (the trusted path);
+a scheduler instance operated by anyone else signs with its own key
+(the **permissionless path**, per ADR-0016). "Scheduler" denotes the
+software/role, not a specific operator.
+_Avoid_: relayer (retired — see ADR-0016 update), keeper (implies the
+rejected registry model of ADR-0016 Path A), runner, cranker.
+
+**Fee payer**:
+The wallet that pays tx + rent costs. Configurable per-gateway ("fee
+sponsoring"). Distinct from `owner`, `recipient`, and gateway signer.
+
+**Protocol admin**:
+The wallet that controls `ProgramConfig` — protocol fee bps, fee
+recipient, emergency pause. Distinct from the Solana BPF upgrade
+authority (operational, off-chain — see SECURITY.md).
+
+### Execution
+
+**Delegate**:
+The token-program delegate approved on the user's source ATA. In current
+code this is the **`UserPayment` PDA**. A legacy global `PaymentsDelegate`
+PDA (`["payments"]`) is still accepted by `execute_composable` for
+backwards compatibility; new flows must use the `UserPayment` PDA.
+
+**Delegated amount**:
+The remaining token allowance the delegate may pull. `execute_*` fails
+with `InsufficientDelegatedAmount` if the pull would exceed it.
+
+**Pull**:
+The transfer from the user's source ATA executed by the delegate. Direct
+path: `user_token → recipient_token`. Composable path:
+`user_token → intermediate_input_ata`.
+
+**Intermediate ATA** (composable only):
+A transient ATA owned by the **ComposablePolicy PDA** (not the
+UserPayment PDA — see ADR 0008). Exists only for the duration of one
+`execute_composable` call; created fresh at the start, closed at the end.
+
+**Validation hook** (composable only):
+A read-only CPI into Lighthouse that can veto an execution if an
+on-chain assertion fails (e.g. "hot wallet balance below threshold").
+Disabled by setting `validation_program = SystemProgram`.
+
+**Forward hook** (composable only):
+A token-transform CPI into a hard-allowlisted program (currently Meteora
+DLMM) that converts the pulled input token into the delivery token before
+settlement (e.g. pull USDC, deliver WSOL). Disabled by setting
+`target_program = Pubkey::default()`.
+
+**Settlement**:
+The final leg of `execute_composable`: fees and principal are routed from
+the intermediate ATA(s) to the protocol fee account, gateway fee account,
+and recipient. When the NATIVE_OUTPUT flag is set, the output intermediate
+is closed to native SOL via `closeAccount` rather than transferred as
+WSOL.
+
+**Trigger**:
+The boolean predicate "this policy would execute successfully right now."
+Composed of schedule-readiness AND validation-predicate-readiness AND
+delegation-sufficiency AND funded-balance. Distinct from validation (the
+Lighthouse hook specifically) and from schedule (the timing predicate). A
+policy with a valid schedule but a failing validation has no trigger. The
+composable scheduler evaluates triggers off-chain every poll cycle; only
+policies whose trigger is true proceed to simulation and fire.
+_Avoid_: eligibility, readiness, due (that is schedule-specific).
+
+**Forward context**:
+The off-chain per-`inputMint:outputMint` metadata an executor needs to
+build a forward instruction: the specific pool address (e.g. which DLMM
+`lbPair`), the swap-level slippage convention, and any SDK quirks (e.g.
+`hostFeeIn` rewrite). Not stored on-chain — the `ComposablePolicy` carries
+only byte-range pins on the instruction discriminator. Lives in the
+executor's static config map, keyed by mint pair. A policy whose mint pair
+has no forward context is skipped silently by the scheduler.
+_Avoid_: pool config, swap config.
+
+### Fees
+
+**Protocol fee**:
+A share of the gateway fee (not an independent bps-of-payment), sent to
+`ProgramConfig.fee_recipient`. The rate (`protocol_share_bps`) is global
+on `ProgramConfig`, protocol-admin-set. Per-gateway override via
+`FEATURE_CUSTOM_PROTOCOL_FEE` — the override is admin-granted (not
+gateway-controlled) and may be zero (subsidise a strategic partner).
+See ADR-0017 (supersedes ADR-0006).
+
+**Gateway fee**:
+The ONE total fee number (`gateway_fee_bps`), gateway-authority-set,
+expressed in bps of the payment (gross or net per NET_AMOUNT). Decomposed
+at settle time into four carve-outs: protocol cut, scheduler cut,
+referral pool, gateway residual. The gateway residual routes to
+`gateway.fee_recipient`. Sum of all carve-out shares must be ≤ 10000 bps,
+enforced at every gateway-config write site. See ADR-0017.
+
+**Scheduler cut**:
+A per-gateway share (`scheduler_share_bps`) of the gateway fee, paid to
+the signer of the execute transaction — the incentive that makes
+permissionless execution (ADR-0016) economically viable for third-party
+schedulers. On the trusted path (`signer == gateway.signer`) the cut
+merges into `gateway.fee_recipient` (the gateway self-rebates); on the
+permissionless path it routes to the signer's token account supplied as
+a `remaining_account` (verified `owner == signer && mint == source_mint`).
+
+**Net amount mode**:
+Gateway flag (`FEATURE_NET_AMOUNT`): determines who bears the fee by
+choosing where the pull amount is measured. **Gross mode (off):** the
+policy's face amount is pulled; fees are subtracted from it — recipient
+receives less than face, sender debited by exactly face. **Net mode
+(on):** fees are added on top of face; the sum is pulled — recipient
+receives exactly face, sender debited by face + fees. Orthogonal to how
+the total fee decomposes into shares. (See `shared/fees.rs`.)
+
+**Referral pool**:
+When `FEATURE_REFERRAL` is set, `referral_allocation_bps` of the gateway
+fee is diverted into a pool; `referral_tiers_bps` then splits that pool
+across up to three chain levels. The tiers are a split of the pool, not a
+split of the gateway fee directly.
+
+### Mints
+
+**Source mint**:
+The token pulled from the user. Equals `user_payment.token_mint`.
+
+**Output mint** (composable only):
+The token delivered to the recipient. Equals the source mint when forward
+is disabled; otherwise whatever the forward hook produces. May be
+`NATIVE_MINT` (WSOL) for the NATIVE_OUTPUT pattern.
+
+**Mint compatibility check**:
+`validate_mint_compatible` — rejects mints carrying any of six dangerous
+Token-2022 extensions at `UserPayment` create-time: TransferHook,
+ConfidentialTransferMint, NonTransferable, PermanentDelegate,
+TransferFeeConfig, MintCloseAuthority. Run once per (user, mint) pair.

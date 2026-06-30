@@ -1,16 +1,16 @@
 import {Flags} from '@oclif/core'
 
-import {ReadOnlyCommand} from '../../lib/base-command.js'
+import {BaseCommand} from '../../lib/base-command.js'
 import {formatDate, parsePublicKey} from '../../lib/utils.js'
 
-export default class UserShow extends ReadOnlyCommand {
+export default class UserShow extends BaseCommand {
   static description = 'Show details of a user payment account'
-static examples = [
+  static examples = [
     '<%= config.bin %> user show --user-payment 9ZNTfG4Ny3g5HmM2qSyoF8eJ7dQeK61dnY6gMqDdKBgE',
     '<%= config.bin %> user show -u 9ZNTfG4Ny3g5HmM2qSyoF8eJ7dQeK61dnY6gMqDdKBgE',
   ]
-static flags = {
-    ...ReadOnlyCommand.baseFlags,
+  static flags = {
+    ...BaseCommand.baseFlags,
     'user-payment': Flags.string({
       char: 'u',
       description: 'User payment account public key to inspect',
@@ -21,19 +21,11 @@ static flags = {
   public async run(): Promise<void> {
     const {flags} = await this.parse(UserShow)
     const userPayment = parsePublicKey(flags['user-payment'])
+    if (!userPayment) this.error('Invalid user payment account address')
 
-    if (!userPayment) {
-      this.error('Invalid user payment account address')
-      return
-    }
-
-    const sdk = await this.getSDK()
+    const sdk = await this.getReadOnlySDK()
     const account = await sdk.getUserPayment(userPayment)
-
-    if (!account) {
-      this.error('User payment account not found')
-      return
-    }
+    if (!account) this.error('User payment account not found')
 
     this.output({
       command: 'user show',

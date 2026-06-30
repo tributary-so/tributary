@@ -6,7 +6,7 @@ export type IWallet = {
   publicKey: PublicKey;
   signTransaction<T>(tx: T): Promise<T>;
   signAllTransactions<T>(txs: T[]): Promise<T[]>;
-}
+};
 
 /**
  * Result of a Program Derived Address (PDA) derivation operation.
@@ -59,6 +59,13 @@ export type UserPayment = IdlAccounts<Tributary>["userPayment"];
  */
 export type PaymentPolicy = IdlAccounts<Tributary>["paymentPolicy"];
 
+/**
+ * Composable policy account structure.
+ * Defines a composable payment policy that can execute arbitrary instructions
+ * alongside optional token forwards.
+ */
+export type ComposablePolicy = IdlAccounts<Tributary>["composablePolicy"];
+
 // IDL-derived types - These types are automatically generated from the Anchor IDL
 // and represent enums and structs used within the Tributary program.
 
@@ -75,10 +82,30 @@ export type PolicyType = IdlTypes<Tributary>["policyType"];
 export type PaymentFrequency = IdlTypes<Tributary>["paymentFrequency"];
 
 /**
- * Status of a payment execution.
- * Tracks whether payments were successful, failed, or are pending.
+ * Lifecycle status of a policy (PaymentPolicy or ComposablePolicy).
+ * Unified on-chain enum: `active | paused | completed`.
+ *
+ * - `active`: payments can be executed.
+ * - `paused`: owner-initiated pause (toggleable via `changePaymentPolicyStatus`
+ *   / `changeComposablePolicyStatus`).
+ * - `completed`: program-internal terminal state. For PaymentPolicy this is
+ *   set by the program when a subscription hits `max_renewals` or all
+ *   milestones are released; it is NOT accepted from owners in
+ *   `change_payment_policy_status`. PayAsYouGo never auto-completes (no
+ *   global max).
+ *
+ * Note: accounts that terminated before the unification keep their legacy
+ * `paused` status; only new terminal transitions write `completed`.
  */
-export type PaymentStatus = IdlTypes<Tributary>["paymentStatus"];
+export type PolicyStatus = IdlTypes<Tributary>["policyStatus"];
+
+/**
+ * @deprecated Use {@link PolicyStatus}. Unified with `PolicyStatus` on-chain;
+ * the separate `paymentStatus` IDL type has been removed. This alias is a
+ * widening (it now also includes `completed`) so existing call sites passing
+ * `{ active: {} }` / `{ paused: {} }` keep compiling. Removed next minor.
+ */
+export type PaymentStatus = PolicyStatus;
 
 /**
  * Record of a completed payment.
@@ -91,3 +118,106 @@ export type PaymentRecord = IdlTypes<Tributary>["paymentRecord"];
  * Tracks a user's referral code, referrer chain, and earned rewards.
  */
 export type ReferralAccount = IdlAccounts<Tributary>["referralAccount"];
+
+// Composable policy types - These types will resolve once the IDL is regenerated
+// after `anchor build`. They resolve to `any` until the IDL includes them.
+
+/**
+ * Forward configuration for composable policies.
+ * Specifies token forwarding behavior during composable execution.
+ */
+export type ForwardConfig = IdlTypes<Tributary>["forwardConfig"];
+
+/**
+ * Validation configuration for composable policies.
+ * Defines validation rules applied during composable execution.
+ */
+export type ValidationConfig = IdlTypes<Tributary>["validationConfig"];
+
+/**
+ * Byte range check for composable policy validation.
+ * Specifies a range of bytes to validate in instruction data.
+ */
+export type ByteRangeCheck = IdlTypes<Tributary>["byteRangeCheck"];
+
+/**
+ * Validation PDA account structure.
+ * Stores the Lighthouse assertion bytes for a composable policy plus the
+ * owner-pinned target accounts (ADR-0016).
+ *
+ * Note: the on-chain program deserialises this via `AccountDeserialize`
+ * inside `run_validation_cpi`. The IDL does NOT register it as a fetchable
+ * `program.account.validationPda` target because it is never declared as a
+ * typed `Account<'info, ValidationPda>` in any instruction context — it
+ * enters as an `UncheckedAccount` (optional, absent when validation is
+ * disabled). Off-chain consumers use {@link parseValidationPda} below.
+ */
+export interface ValidationPdaAccount {
+  /** Canonical PDA bump. */
+  bump: number;
+  /** Arity of the active pinned-target slice (0/1/2). */
+  numPinnedAccounts: number;
+  /** Owner-declared Lighthouse target pubkeys, positional. Only
+   *  `[0..numPinnedAccounts]` are meaningful; the rest are zero-padded. */
+  pinnedAccounts: PublicKey[];
+  /** Length of the active assertion-data prefix. */
+  dataLen: number;
+  /** Active assertion bytes (passed verbatim to Lighthouse at execute). */
+  data: Buffer;
+}
+
+/**
+ * Manual byte-layout constants for the on-chain `ValidationPda`. Kept in
+ * sync with `programs/tributary/src/state/validation_pda.rs`.
+ *
+ * Layout: 8 (disc) + 1 (bump) + 1 (num_pinned) + 64 (pinned[2]) +
+ *         2 (data_len) + data[1024]
+ */
+export const VALIDATION_PDA_LAYOUT = {
+  DISCRIMINATOR: 8,
+  BUMP: 1,
+  NUM_PINNED: 1,
+  PINNED: 32 * 2,
+  DATA_LEN: 2,
+  HEADER: 8 + 1 + 1 + 32 * 2 + 2, // = 76
+} as const;
+
+/**
+ * Parse a full `ValidationPda` from a raw account buffer (e.g.
+ * `connection.getAccountInfo(...).data`). Used by off-chain consumers
+ * (scheduler, indexers, tests) that don't go through Anchor's typed
+ * deserialiser.
+ *
+ * The on-chain program deserialises via `AccountDeserialize`; this is a
+ * pure-TS mirror that keeps the layout in lockstep.
+ */
+export function parseValidationPda(data: Buffer): ValidationPdaAccount {
+  const bump = data[8];
+  const numPinnedAccounts = data[9];
+  const pinnedAccounts: PublicKey[] = [];
+  for (let i = 0; i < numPinnedAccounts; i++) {
+    pinnedAccounts.push(
+      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32))
+    );
+  }
+  const dataLen = data.readUInt16LE(VALIDATION_PDA_LAYOUT.HEADER - 2);
+  return {
+    bump,
+    numPinnedAccounts,
+    pinnedAccounts,
+    dataLen,
+    data: data.subarray(
+      VALIDATION_PDA_LAYOUT.HEADER,
+      VALIDATION_PDA_LAYOUT.HEADER + dataLen
+    ),
+  };
+}
+
+/**
+ * Read only the Lighthouse assertion-data slice from a raw `ValidationPda`
+ * account buffer. Convenience for consumers (scheduler pre-filter) that
+ * don't care about the pinned-set metadata.
+ */
+export function parseValidationPdaData(data: Buffer): Buffer {
+  return parseValidationPda(data).data;
+}

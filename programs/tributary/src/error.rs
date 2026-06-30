@@ -8,14 +8,10 @@ pub enum TributaryError {
     InvalidAmount,
     #[msg("Invalid payment frequency")]
     InvalidFrequency,
-    #[msg("Maximum policies per user reached")]
-    MaxPoliciesReached,
     #[msg("Unauthorized")]
     Unauthorized,
     #[msg("Invalid policy status transition")]
     InvalidPolicyStatusTransition,
-    #[msg("Payment policy not found")]
-    PolicyNotFound,
     #[msg("Insufficient delegated amount")]
     InsufficientDelegatedAmount,
     #[msg("Payment is not yet due")]
@@ -34,8 +30,6 @@ pub enum TributaryError {
     InvalidPaymentDueDate,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
-    #[msg("Referral program feature is not enabled")]
-    ReferralFeatureNotEnabled,
     #[msg("Invalid referral allocation - must be <= 2500 bps")]
     InvalidReferralAllocation,
     #[msg("Invalid referral tiers - must sum to 10000 bps")]
@@ -70,18 +64,66 @@ pub enum TributaryError {
     InvalidTokenAccount,
     #[msg("Mismatch between number referrers and atas!")]
     MismatchAtaReferralAccountNumbers,
-    #[msg("Referral account already exists for this code")]
-    ReferralAccountAlreadyExists,
     #[msg("Token mint mismatch between accounts")]
     TokenMintMismatch,
-    #[msg("Token-2022 TransferHook mints are not currently supported")]
-    TransferHookNotSupported,
+    #[msg("Token-2022 Extension currently not supported")]
+    UnsupportedTokenExtension,
     #[msg("Distinct Pubkeys required!")]
     DistinctPubKeysRequired,
     #[msg("Invalid feature flags")]
     InvalidFeatureFlags,
     #[msg("Cannot delete user payment with active policies")]
     HasActivePolicies,
+    #[msg("Cannot delete user payment with active composable policies")]
+    HasActiveComposables,
     #[msg("Invalid rent payer")]
     InvalidRentPayer,
+    #[msg("Forward program not whitelisted")]
+    InvalidForwardProgram,
+    #[msg("Validation program not whitelisted")]
+    InvalidValidationProgram,
+    #[msg("Byte range check failed")]
+    ByteRangeCheckFailed,
+    #[msg("Insufficient output amount after forward CPI")]
+    InsufficientOutputAmount,
+    #[msg("Must have at least one byte range check")]
+    InsufficientByteRangeChecks,
+    #[msg("Validation PDA does not match derived address")]
+    ValidationPdaMismatch,
+    #[msg("Validation data exceeds maximum size")]
+    ValidationDataTooLarge,
+    #[msg("Validation program set but no data provided")]
+    ValidationDataRequired,
+    #[msg("Validation not configured but data was provided")]
+    ValidationNotRequired,
+    #[msg("Combined fee BPS must be less than 10000")]
+    CombinedFeeBpsExceedsMax,
+    #[msg("At least one ByteRangeCheck must start at offset 0 to pin the instruction selector")]
+    DiscriminatorCheckRequired,
+    #[msg("Only the upgrade authority can initialize the program")]
+    UnauthorizedInitializer,
+    #[msg("Intermediate token account address does not match the derived ATA")]
+    IntermediateAccountMismatch,
+    #[msg("Intermediate token account already exists — it must be freshly created each execution")]
+    IntermediateAccountAlreadyExists,
+    #[msg("Forward CPI requires at least one remaining account")]
+    MissingForwardAccounts,
+    #[msg("Forward CPI produced no output (intermediate output balance is zero)")]
+    ForwardProducedNoOutput,
+    #[msg("Forward disabled (target_program = default) requires input_mint == output_mint")]
+    ForwardDisabledRequiresSameMint,
+    #[msg("Payer ReferralAccount does not match the paying wallet")]
+    PayerReferralMismatch,
+    #[msg("Duplicate ReferralAccount supplied in remaining_accounts")]
+    DuplicateReferralAccount,
+    #[msg("ValidationPDA is malformed — data_len out of bounds")]
+    InvalidValidationPda,
+    #[msg("NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)")]
+    NativeOutputRequiresWsol,
+    #[msg("Permissionless execution with scheduler_share_bps > 0 requires the scheduler fee account as the last remaining_account")]
+    MissingSchedulerFeeAccount,
+    #[msg("Scheduler fee account must be owned by the fee_payer and match the source mint")]
+    InvalidSchedulerFeeAccount,
+    #[msg("Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)")]
+    PermissionlessExecutionRequiresMinOutput,
 }

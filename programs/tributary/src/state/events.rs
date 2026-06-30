@@ -1,4 +1,6 @@
-use super::payment_policy::{PaymentStatus, PolicyType};
+use super::composable_policy::{ForwardConfig, ValidationConfig};
+use super::payment_policy::PolicyType;
+use super::policy_status::PolicyStatus;
 use anchor_lang::prelude::*;
 
 /// An event that is thrown when a payment takes place
@@ -9,6 +11,12 @@ pub struct PaymentRecord {
     pub amount: u64,
     pub timestamp: i64,
     pub memo: [u8; 64],
+    /// Post-increment payment counter. For the Nth execution of a policy,
+    /// `record_id == N` (starts at 1, not 0). The increment happens inside
+    /// `strategy.execute()` (`policies/traits.rs`) before `should_pause_policy`
+    /// runs, so `Subscription::max_renewals` ceilings are honored exactly.
+    /// Indexers that assumed 0-indexed records must add 1 to historical data
+    /// or use `payment_count - 1` for backward display.
     pub record_id: u32,
     pub payer: Pubkey,
     pub recipient: Pubkey,
@@ -20,8 +28,7 @@ pub struct PaymentRecord {
 pub struct ProgramConfigCreated {
     pub admin: Pubkey,
     pub fee_recipient: Pubkey,
-    pub protocol_fee_bps: u16,
-    pub max_policies_per_user: u32,
+    pub protocol_share_bps: u16,
 }
 
 /// An event that is thrown when a user payment account is created
@@ -82,8 +89,8 @@ pub struct GatewayFeeBpsChanged {
 #[event]
 pub struct PaymentPolicyStatusChanged {
     pub payment_policy: Pubkey,
-    pub old_status: PaymentStatus,
-    pub new_status: PaymentStatus,
+    pub old_status: PolicyStatus,
+    pub new_status: PolicyStatus,
 }
 
 /// An event that is thrown when a payment policy is deleted
@@ -124,4 +131,50 @@ pub struct ReferralRewardDistributedRecord {
     pub payment_amount: u64,
     pub timestamp: i64,
     pub rewards: [Option<ReferralReward>; 3],
+}
+
+/// An event that is thrown when a composable policy is created
+#[event]
+pub struct ComposablePolicyCreated {
+    pub composable_policy: Pubkey,
+    pub user_payment: Pubkey,
+    pub gateway: Pubkey,
+    pub recipient: Pubkey,
+    pub policy_id: u32,
+    pub policy_type: PolicyType,
+    pub memo: [u8; 32],
+    pub forward_config: ForwardConfig,
+    pub validation_config: ValidationConfig,
+    pub has_validation_pda: bool,
+}
+
+/// An event that is thrown when a composable policy is executed
+#[event]
+pub struct ComposableExecuted {
+    pub composable_policy: Pubkey,
+    pub gateway: Pubkey,
+    pub target_program: Pubkey,
+    pub input_amount: u64,
+    pub output_amount: u64,
+    pub gateway_fee: u64,
+    pub protocol_fee: u64,
+    pub recipient: Pubkey,
+    pub timestamp: i64,
+    pub record_id: u32,
+}
+
+/// An event that is thrown when a composable policy status is changed
+#[event]
+pub struct ComposablePolicyStatusChanged {
+    pub composable_policy: Pubkey,
+    pub old_status: PolicyStatus,
+    pub new_status: PolicyStatus,
+}
+
+/// An event that is thrown when a composable policy is deleted
+#[event]
+pub struct ComposablePolicyDeleted {
+    pub composable_policy: Pubkey,
+    pub user_payment: Pubkey,
+    pub policy_id: u32,
 }

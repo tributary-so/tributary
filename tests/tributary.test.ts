@@ -6,6 +6,7 @@ import {
   LAMPORTS_PER_SOL,
   Commitment,
   Transaction,
+  TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
@@ -30,6 +31,12 @@ import {
 } from "../packages/sdk/src";
 import assert from "assert";
 import { Buffer } from "buffer";
+const ADMIN_KEYPAIR = [
+  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
+  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
+  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
+  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
+];
 
 describe("Tributary", () => {
   const provider = anchor.AnchorProvider.env();
@@ -41,19 +48,20 @@ describe("Tributary", () => {
   let connection: any;
 
   // Common variables
-  let admin: Keypair;
-  let user: Keypair;
+  const admin = Keypair.fromSecretKey(Uint8Array.from(ADMIN_KEYPAIR));
+  const user = Keypair.generate();
+  const mintAuthority = Keypair.generate();
+  const gatewayAuthority = Keypair.generate();
+  const gatewayExecutionSigner = Keypair.generate();
+  const feeRecipient = Keypair.generate();
+  const recipient = Keypair.generate();
+
   let configPDA: PublicKey;
   let configBump: number;
   let tokenMint: PublicKey;
   let userTokenAccount: PublicKey;
-  let mintAuthority: Keypair;
-  let gatewayAuthority: Keypair;
-  let gatewayExecutionSigner: Keypair;
-  let feeRecipient: Keypair;
   let gatewayPDA: PublicKey;
   let gatewayBump: number;
-  let recipient: Keypair;
   let recipientTokenAccount: PublicKey;
   let userPaymentPDA: PublicKey;
   let userPaymentBump: number;
@@ -137,15 +145,6 @@ describe("Tributary", () => {
     // Create Solana Kite connection
     connection = provider.connection;
     sdk = new TributarySDK(connection, wallet as IWallet);
-
-    // Create wallets
-    admin = Keypair.generate();
-    user = Keypair.generate();
-    mintAuthority = Keypair.generate();
-    gatewayAuthority = Keypair.generate();
-    feeRecipient = Keypair.generate();
-    gatewayExecutionSigner = Keypair.generate();
-    recipient = Keypair.generate();
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
@@ -243,18 +242,26 @@ describe("Tributary", () => {
     // Update SDK to use admin wallet for this operation
     await sdk.updateWallet(new anchor.Wallet(admin));
 
-    const initIx = await sdk.initialize(admin.publicKey);
+    const initIx = await sdk.initialize(
+      provider.wallet.publicKey,
+      admin.publicKey
+    );
     const tx = new Transaction().add(initIx);
 
-    await sendAndConfirmTransaction(connection, tx, [admin], {
-      commitment: "processed" as Commitment,
-    });
+    await sendAndConfirmTransaction(
+      connection,
+      tx,
+      [provider.wallet.payer!, admin],
+      {
+        commitment: "processed" as Commitment,
+      }
+    );
 
     const configAccount = await sdk.getProgramConfig(configPDA);
 
     expect(configAccount!.admin).toEqual(admin.publicKey);
     expect(configAccount!.feeRecipient).toEqual(admin.publicKey);
-    expect(configAccount!.protocolFeeBps).toBe(100);
+    expect(configAccount!.protocolShareBps).toBe(2000);
     expect(configAccount!.emergencyPause).toBe(false);
     expect(configAccount!.bump).toBe(configBump);
   });
@@ -289,6 +296,7 @@ describe("Tributary", () => {
     const createGatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       gatewayFeeBps,
+      0, // schedulerShareBps — no scheduler cut in this test
       feeRecipient.publicKey,
       "custom gateway",
       "https://example.com"
@@ -1134,7 +1142,7 @@ describe("Tributary", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(firstMilestoneAmount) -
-          BigInt(17500 /* fee */)
+          BigInt(12500 /* fee = 500000 × 250 bps / 10000 */)
         ).toString()
       );
 
@@ -1160,7 +1168,9 @@ describe("Tributary", () => {
       );
       const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
       const totalExpected =
-        firstMilestoneAmount + secondMilestoneAmount - 43750; /* fee */
+        firstMilestoneAmount +
+        secondMilestoneAmount -
+        31250; /* fee = 1250000 × 250 bps / 10000 */
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
@@ -1715,9 +1725,9 @@ describe("Tributary", () => {
       const afterFirstBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
-      // Account for protocol fees (100 bps = 1%) and gateway fees (250 bps = 2.5%)
-      // Total fees = 3.5% = 3500 on 100000 amount, net transfer = 96500
-      const expectedNetAmount = 100000 - Math.floor((100000 * 350) / 10000); // 96500
+      // Total fee = gateway_fee_bps only (250 bps = 2.5%). Protocol is a
+      // carve-out of the gateway fee, not an additional deduction (ADR-0017).
+      const expectedNetAmount = 100000 - Math.floor((100000 * 250) / 10000); // 97500
       expect(afterFirstBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
@@ -1751,9 +1761,9 @@ describe("Tributary", () => {
       const afterSecondBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
-      // Account for fees on both payments (3.5% total = 8750 on 250000 total)
+      // Total fee = gateway_fee_bps only (250 bps on 250000 cumulative)
       const expectedSecondNetAmount =
-        250000 - Math.floor((250000 * 350) / 10000); // 241250
+        250000 - Math.floor((250000 * 250) / 10000); // 243750
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
@@ -1900,7 +1910,7 @@ describe("Tributary", () => {
         );
         assert(false, "Expected payment to fail due to period limit");
       } catch (error: any) {
-        expect(error.message).toContain("InvalidAmount");
+        expect(error.message).toContain("InsufficientDelegatedAmount");
       }
     });
 
@@ -2234,13 +2244,17 @@ describe("Tributary", () => {
     });
 
     test("Execute subscription payment with referral rewards", async () => {
-      const [initialL1Balance, initialL2Balance, initialL3Balance, initialRecipientBalance] =
-        await Promise.all([
-          connection.getTokenAccountBalance(l1TokenAccount),
-          connection.getTokenAccountBalance(l2TokenAccount),
-          connection.getTokenAccountBalance(l3TokenAccount),
-          connection.getTokenAccountBalance(recipientTokenAccount),
-        ]);
+      const [
+        initialL1Balance,
+        initialL2Balance,
+        initialL3Balance,
+        initialRecipientBalance,
+      ] = await Promise.all([
+        connection.getTokenAccountBalance(l1TokenAccount),
+        connection.getTokenAccountBalance(l2TokenAccount),
+        connection.getTokenAccountBalance(l3TokenAccount),
+        connection.getTokenAccountBalance(recipientTokenAccount),
+      ]);
 
       const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
 
@@ -2309,11 +2323,12 @@ describe("Tributary", () => {
         (referralPool * gateway!.referralTiersBps[2]) / 10000
       );
 
-      const [finalL1Balance, finalL2Balance, finalL3Balance] = await Promise.all([
-        connection.getTokenAccountBalance(l1TokenAccount),
-        connection.getTokenAccountBalance(l2TokenAccount),
-        connection.getTokenAccountBalance(l3TokenAccount),
-      ]);
+      const [finalL1Balance, finalL2Balance, finalL3Balance] =
+        await Promise.all([
+          connection.getTokenAccountBalance(l1TokenAccount),
+          connection.getTokenAccountBalance(l2TokenAccount),
+          connection.getTokenAccountBalance(l3TokenAccount),
+        ]);
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
@@ -2330,6 +2345,150 @@ describe("Tributary", () => {
           l3Reward -
           Math.floor((l3Reward * 100) / 10000)
       );
+    });
+
+    test("C-02: rejects chain not anchored by payer's ReferralAccount", async () => {
+      // Use the transfer instruction (no PaymentNotDue check) to exercise
+      // the referral validation path. Attacker supplies a FAKE first account
+      // (their own referral account) instead of the payer's real one.
+      // Pre-fix this would have routed rewards to the attacker; post-fix it
+      // must fail because the first remaining account is interpreted as the
+      // payer's ReferralAccount and its owner != paying wallet.
+      const attacker = Keypair.generate();
+      await batchFund([[attacker.publicKey, 5]]);
+
+      await sdk.updateWallet(new anchor.Wallet(attacker));
+      const a1 = "ATCK01";
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(
+          await sdk.createReferralAccount(gatewayPDA, a1, null)
+        ),
+        [attacker],
+        { commitment: "processed" as Commitment }
+      );
+      const a1Pda = sdk.getReferralPda(gatewayPDA, Buffer.from(a1)).address;
+
+      // Build a legitimate transfer ix for the payer (with referral chain),
+      // then patch the remaining_accounts to inject the attacker's account.
+      await sdk.updateWallet(new anchor.Wallet(payer));
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("c-02 transfer attacker").copy(memo);
+      const legitimateIxs = await sdk.transfer(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(100000),
+        Array.from(memo),
+        "PAYER1"
+      );
+      const goodIx = legitimateIxs[legitimateIxs.length - 1];
+      // TransferTokens has 9 named accounts; rest are remaining_accounts.
+      const trailingCount = goodIx.keys.length - 9;
+      expect(trailingCount).toBeGreaterThan(0);
+      const namedKeys = goodIx.keys.slice(
+        0,
+        goodIx.keys.length - trailingCount
+      );
+
+      const patchedKeys = [
+        ...namedKeys,
+        // position 0: attacker's own ReferralAccount masquerading as payer's
+        { pubkey: a1Pda, isWritable: false, isSigner: false },
+      ];
+
+      const badIx = new TransactionInstruction({
+        programId: goodIx.programId,
+        data: goodIx.data,
+        keys: patchedKeys,
+      });
+
+      let caught: any = null;
+      try {
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(badIx),
+          [payer],
+          { commitment: "processed" as Commitment }
+        );
+      } catch (e: any) {
+        caught = e;
+      }
+      expect(caught).not.toBeNull();
+      const errMsg = caught?.message ?? "";
+      const expected =
+        errMsg.includes("PayerReferralMismatch") ||
+        errMsg.includes("InvalidReferralChainOrdering") ||
+        errMsg.includes("ReferrerAccountInvalid") ||
+        errMsg.includes("InvalidReferralAccountDiscriminator");
+      if (!expected) {
+        throw new Error(`expected security error, got: ${errMsg}`);
+      }
+    });
+
+    test("C-02: rejects duplicate referral accounts in chain", async () => {
+      // Construct a chain where L1 and L2 are the same account. Must fail
+      // with DuplicateReferralAccount.
+      const payerReferralPda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from("PAYER1")
+      ).address;
+      const l1Pda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from("REF001")
+      ).address;
+
+      await sdk.updateWallet(new anchor.Wallet(payer));
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("c-02 transfer dup").copy(memo);
+      const legitimateIxs = await sdk.transfer(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(100000),
+        Array.from(memo),
+        "PAYER1"
+      );
+      const goodIx = legitimateIxs[legitimateIxs.length - 1];
+      const namedKeys = goodIx.keys.slice(0, goodIx.keys.length - 7);
+
+      // [payer_referral, L1, L1_dup, ATA_L1, ATA_L1_dup]
+      const patchedKeys = [
+        ...namedKeys,
+        { pubkey: payerReferralPda, isWritable: false, isSigner: false },
+        { pubkey: l1Pda, isWritable: true, isSigner: false },
+        { pubkey: l1Pda, isWritable: true, isSigner: false }, // duplicate!
+        { pubkey: l1TokenAccount, isWritable: true, isSigner: false },
+        { pubkey: l1TokenAccount, isWritable: true, isSigner: false },
+      ];
+
+      const dupIx = new TransactionInstruction({
+        programId: goodIx.programId,
+        data: goodIx.data,
+        keys: patchedKeys,
+      });
+
+      let caught: any = null;
+      try {
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(dupIx),
+          [payer],
+          { commitment: "processed" as Commitment }
+        );
+      } catch (e: any) {
+        caught = e;
+      }
+      expect(caught).not.toBeNull();
+      const errMsg = caught?.message ?? "";
+      const expected =
+        errMsg.includes("DuplicateReferralAccount") ||
+        errMsg.includes("InvalidReferralChainOrdering");
+      if (!expected) {
+        throw new Error(
+          `expected DuplicateReferralAccount or InvalidReferralChainOrdering, got: ${errMsg}`
+        );
+      }
     });
 
     test("Setup Referral program with only L1 referrer", async () => {
@@ -2471,6 +2630,7 @@ describe("Tributary", () => {
       const createGatewayIx = await sdk.createPaymentGateway(
         newGatewayAuthority.publicKey,
         250,
+        0, // schedulerShareBps — no scheduler cut in this test
         newFeeRecipient.publicKey,
         "no referral gateway",
         "https://noreferral.example.com"
@@ -2667,6 +2827,7 @@ describe("Tributary", () => {
         const createGatewayIx = await sdk.createPaymentGateway(
           customFeeGatewayAuthority.publicKey,
           250, // 2.5% gateway fee
+          0, // schedulerShareBps — no scheduler cut in this test
           customFeeFeeRecipient.publicKey,
           "custom fee gateway",
           "https://customfee.example.com"
@@ -2744,7 +2905,7 @@ describe("Tributary", () => {
       await sdk.updateWallet(new anchor.Wallet(admin));
 
       const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gatewayBefore!.customProtocolFeeBps).toBe(0);
+      expect(gatewayBefore!.customProtocolShareBps).toBe(0);
       expect(gatewayBefore!.featureFlags & 0x04).toBe(0);
 
       const updateIx = await sdk.updateGatewayProtocolFee(
@@ -2758,7 +2919,7 @@ describe("Tributary", () => {
       });
 
       const gatewayAfter = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gatewayAfter!.customProtocolFeeBps).toBe(500);
+      expect(gatewayAfter!.customProtocolShareBps).toBe(500);
       expect(gatewayAfter!.featureFlags & 0x04).toBe(4);
     });
 
@@ -2777,7 +2938,7 @@ describe("Tributary", () => {
       });
 
       const gateway = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gateway!.customProtocolFeeBps).toBe(0);
+      expect(gateway!.customProtocolShareBps).toBe(0);
       expect(gateway!.featureFlags & 0x04).toBe(4);
 
       // Get initial balances
@@ -2935,24 +3096,25 @@ describe("Tributary", () => {
         }
       );
 
-      // Verify recipient got amount minus both gateway fee AND global protocol fee
+      // Verify recipient got amount minus total gateway fee (ADR-0017: protocol
+      // is a carve-out of the gateway fee, not an additional deduction).
       const finalRecipientBalance = await connection.getTokenAccountBalance(
         customFeeRecipientTokenAccount
       );
-      const gatewayFee = Math.floor((100000 * 250) / 10000); // 2.5% = 2500
-      const protocolFee = Math.floor((100000 * 100) / 10000); // 1% = 1000
-      const expectedRecipientAmount = 100000 - gatewayFee - protocolFee; // 87500
+      const totalFee = Math.floor((100000 * 250) / 10000); // 2.5% = 2500
+      const protocolCut = Math.floor((totalFee * 2000) / 10000); // 20% share = 500
+      const expectedRecipientAmount = 100000 - totalFee; // 97500
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
         parseInt(initialRecipientBalance.value.amount) + expectedRecipientAmount
       );
 
-      // Verify protocol fee WAS charged
+      // Verify protocol fee WAS charged (carve-out of the gateway fee)
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
           getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
-        parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolFee
+        parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolCut
       );
     });
   });
@@ -2984,6 +3146,185 @@ describe("Tributary", () => {
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
 
+  describe("Fee carve-out share constraint (ADR-0017)", () => {
+    // Constraint: effective_protocol_share + scheduler_share + referral_allocation ≤ 10000 bps.
+    // gateway_fee_bps is NOT part of this constraint (only ≤ 10000 on its own).
+    // config.protocol_share_bps defaults to 2000; at creation referral_allocation = 0.
+    let h01GatewayAuthority: Keypair;
+    let h01GatewayPDA: PublicKey;
+    let h01FeeRecipient: Keypair;
+
+    beforeAll(async () => {
+      h01GatewayAuthority = Keypair.generate();
+      h01FeeRecipient = Keypair.generate();
+
+      await batchFund([
+        [h01GatewayAuthority.publicKey, 5],
+        [h01FeeRecipient.publicKey, 1],
+      ]);
+
+      // Create a gateway with a modest fee (500 bps) and scheduler_share = 0.
+      // 2000 (default protocol share) + 0 + 0 = 2000, well below the limit.
+      await sdk.updateWallet(new anchor.Wallet(admin));
+      const createIx = await sdk.createPaymentGateway(
+        h01GatewayAuthority.publicKey,
+        500,
+        0, // schedulerShareBps
+        h01FeeRecipient.publicKey,
+        "h01 gateway",
+        ""
+      );
+      const tx = new Transaction().add(createIx);
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      h01GatewayPDA = sdk.getGatewayPda(h01GatewayAuthority.publicKey).address;
+    });
+
+    test("create_payment_gateway rejects when scheduler_share + protocol_share > 10000", async () => {
+      const freshAuthority = Keypair.generate();
+      const freshFeeRecipient = Keypair.generate();
+      await batchFund([
+        [freshAuthority.publicKey, 1],
+        [freshFeeRecipient.publicKey, 1],
+      ]);
+
+      await sdk.updateWallet(new anchor.Wallet(admin));
+
+      // 2000 (default protocol share) + 8001 (scheduler) = 10001 > 10000 → reject.
+      // gateway_fee_bps is irrelevant to the carve-out constraint, so use a small fee.
+      const createIx = await sdk.createPaymentGateway(
+        freshAuthority.publicKey,
+        100,
+        8001, // schedulerShareBps
+        freshFeeRecipient.publicKey,
+        "should fail combined",
+        ""
+      );
+      const tx = new Transaction().add(createIx);
+      await expect(
+        sendAndConfirmTransaction(connection, tx, [admin], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // 2000 + 8000 = 10000 ≤ 10000 → must succeed
+      const okAuthority = Keypair.generate();
+      const okFeeRecipient = Keypair.generate();
+      await batchFund([
+        [okAuthority.publicKey, 1],
+        [okFeeRecipient.publicKey, 1],
+      ]);
+      const okIx = await sdk.createPaymentGateway(
+        okAuthority.publicKey,
+        100,
+        8000, // schedulerShareBps
+        okFeeRecipient.publicKey,
+        "should pass combined",
+        ""
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const okGateway = await sdk.getPaymentGateway(
+        sdk.getGatewayPda(okAuthority.publicKey).address
+      );
+      expect(okGateway!.schedulerShareBps).toBe(8000);
+    });
+
+    test("change_gateway_fee_bps no longer bound by the carve-out share constraint", async () => {
+      // ADR-0017 removed gateway_fee_bps from the share constraint; it is now
+      // only capped at ≤ 10000. A 9900 bps fee that used to be rejected (the
+      // old gateway_fee_bps + protocol_fee_bps < 10000 rule) is now accepted.
+      await sdk.updateWallet(new anchor.Wallet(h01GatewayAuthority));
+
+      const okIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        9900
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [h01GatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
+      const updated = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(updated!.gatewayFeeBps).toBe(9900);
+
+      // Reset for the next test.
+      const resetIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        500
+      );
+      const resetTx = new Transaction().add(resetIx);
+      await sendAndConfirmTransaction(
+        connection,
+        resetTx,
+        [h01GatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+    });
+
+    test("update_gateway_protocol_fee rejects when custom_protocol_share + scheduler_share > 10000", async () => {
+      // Give the gateway a non-zero scheduler share so the carve-out constraint
+      // can actually bind below the 10000 cap on custom_protocol_share_bps.
+      await sdk.updateWallet(new anchor.Wallet(h01GatewayAuthority));
+      const schedIx = await sdk.updateGatewaySchedulerShare(
+        h01GatewayAuthority.publicKey,
+        1000
+      );
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(schedIx),
+        [h01GatewayAuthority],
+        { commitment: "processed" as Commitment }
+      );
+
+      await sdk.updateWallet(new anchor.Wallet(admin));
+
+      // custom_protocol_share = 9500 (enabled) + scheduler 1000 = 10500 > 10000 → reject
+      const rejectIx = await sdk.updateGatewayProtocolFee(
+        h01GatewayAuthority.publicKey,
+        true,
+        9500
+      );
+      const rejectTx = new Transaction().add(rejectIx);
+      await expect(
+        sendAndConfirmTransaction(connection, rejectTx, [admin], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // custom_protocol_share_bps must NOT have been written, and the
+      // FEATURE_CUSTOM_PROTOCOL_FEE bit must NOT be set (Solana rolls back
+      // account state when an instruction fails).
+      const unchanged = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(unchanged!.customProtocolShareBps).toBe(0);
+      expect(
+        unchanged!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      ).toBe(0);
+
+      // 8900 + 1000 = 9900 ≤ 10000 → accept
+      const okIx = await sdk.updateGatewayProtocolFee(
+        h01GatewayAuthority.publicKey,
+        true,
+        8900
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+      const updated = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(updated!.customProtocolShareBps).toBe(8900);
+      expect(updated!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
+        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      );
+    });
+  });
+
   describe("Gateway feature flags", () => {
     let flagsGatewayAuthority: Keypair;
     let flagsGatewayPDA: PublicKey;
@@ -3002,6 +3343,7 @@ describe("Tributary", () => {
       const createIx = await sdk.createPaymentGateway(
         flagsGatewayAuthority.publicKey,
         100,
+        0, // schedulerShareBps — no scheduler cut in this test
         flagsFeeRecipient.publicKey,
         "flags test gateway",
         ""
@@ -3181,14 +3523,12 @@ describe("Tributary", () => {
     let transferUserTokenAccount: PublicKey;
     let transferRecipient: Keypair;
 
-    const PROTOCOL_FEE_BPS = 100;
     const GATEWAY_FEE_BPS = 100;
 
     function calcFees(grossAmount: number) {
-      const gatewayFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
-      const protocolFee = Math.floor((grossAmount * PROTOCOL_FEE_BPS) / 10000);
-      const recipientAmount = grossAmount - gatewayFee - protocolFee;
-      return { gatewayFee, protocolFee, recipientAmount };
+      const totalFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
+      const recipientAmount = grossAmount - totalFee;
+      return { totalFee, recipientAmount };
     }
 
     beforeAll(async () => {
@@ -3223,7 +3563,8 @@ describe("Tributary", () => {
       ]);
 
       const transferAmount = new anchor.BN(500000);
-      const { recipientAmount } = calcFees(transferAmount.toNumber());
+      const { recipientAmount, totalFee } = calcFees(transferAmount.toNumber());
+      const referralPool = Math.floor((totalFee * 500) / 10000);
 
       const instructions = await sdk.transfer(
         tokenMint,
@@ -3247,7 +3588,9 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount) + recipientAmount
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
-        parseInt(initialUserBalance.value.amount) - transferAmount.toNumber()
+        parseInt(initialUserBalance.value.amount) -
+          transferAmount.toNumber() +
+          referralPool
       );
     });
 
@@ -3347,9 +3690,14 @@ describe("Tributary", () => {
           1000000n
         )
       );
-      await sendAndConfirmTransaction(connection, ataTx, [admin, mintAuthority], {
-        commitment: "processed" as Commitment,
-      });
+      await sendAndConfirmTransaction(
+        connection,
+        ataTx,
+        [admin, mintAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
 
       await sdk.updateWallet(new anchor.Wallet(transferUser));
 
@@ -3509,11 +3857,13 @@ describe("Tributary", () => {
       const transferAmounts = [100000, 200000, 150000];
       let totalGross = 0;
       let totalRecipient = 0;
+      let totalReferralDust = 0;
 
       for (let i = 0; i < transferAmounts.length; i++) {
-        const { recipientAmount } = calcFees(transferAmounts[i]);
+        const { recipientAmount, totalFee } = calcFees(transferAmounts[i]);
         totalGross += transferAmounts[i];
         totalRecipient += recipientAmount;
+        totalReferralDust += Math.floor((totalFee * 500) / 10000);
 
         const instructions = await sdk.transfer(
           tokenMint,
@@ -3538,7 +3888,9 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount) + totalRecipient
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
-        parseInt(initialUserBalance.value.amount) - totalGross
+        parseInt(initialUserBalance.value.amount) -
+          totalGross +
+          totalReferralDust
       );
     });
   });
@@ -3591,20 +3943,9 @@ describe("Tributary", () => {
       expect(userPayment).not.toBeNull();
       expect(userPayment!.activePoliciesCount).toBe(0);
 
-      const { address: configPda } = sdk.getConfigPda();
-
       const ownerBalanceBefore = await connection.getBalance(user.publicKey);
 
-      const deleteUserPaymentIx = await program.methods
-        .deleteUserPayment()
-        .accountsStrict({
-          owner: user.publicKey,
-          userPayment: userPaymentPDA,
-          tokenMint: tokenMint,
-          rentPayer: user.publicKey,
-          config: configPda,
-        })
-        .instruction();
+      const deleteUserPaymentIx = await sdk.deleteUserPayment(tokenMint);
 
       const tx = new Transaction().add(deleteUserPaymentIx);
       await sendAndConfirmTransaction(connection, tx, [user], {

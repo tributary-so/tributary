@@ -11,10 +11,11 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
-    "@tributary-so/sdk": "workspace:*",
+    "@meteora-ag/dlmm": "1.9.10",
     "@solana/kit": "^3.0.3",
     "@solana/spl-token": "^0.4.13",
-    "@solana/web3.js": "^1.98.4"
+    "@solana/web3.js": "^1.98.4",
+    "@tributary-so/sdk": "workspace:*"
   },
   "version": "1.7.0",
   "scripts": {

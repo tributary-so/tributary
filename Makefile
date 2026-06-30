@@ -10,6 +10,18 @@ SOL_ARGS:=--with-compute-unit-price 1000 \
 prep:
 	avm use 0.31.0
 
+test:
+	anchor test
+
+run_surfpool:
+	surfpool start --legacy-anchor-compatibility --watch
+
+test_surfpool:
+	anchor run test-surfpool
+	anchor run test-topup
+
+all_tests: test test_surfpool
+
 # Devnet ######################################
 devnet_expand:
 	solana program extend $(PROGRAM_ID) 20480

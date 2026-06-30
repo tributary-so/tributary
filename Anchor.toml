@@ -24,10 +24,20 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "anchor run test-cargo && anchor run test-integration"
+test = "anchor run test-cargo && anchor run test-integration && anchor run test-composable"
 test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
+test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"
+
+# Surfpool tests
+surfpool = "anchor run test-surfpool && anchor run test-topup && anchor run test-topup-swap && anchor run test-topup-sol"
 test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
+test-topup = "npx jest ./tests/topup-balance.test.ts --preset ts-jest"
+test-topup-swap = "npx jest ./tests/topup-balance-swap.test.ts --preset ts-jest"
+test-topup-sol = "npx jest ./tests/topup-balance-sol.test.ts --preset ts-jest"
 
 [test]
 startup_wait = 20000
+
+# This deploys the program using --upgradeable-program, and the initial upgrade authority will be set to provider.wallet
+upgradeable = true

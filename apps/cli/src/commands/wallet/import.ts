@@ -1,10 +1,10 @@
 import {Args} from '@oclif/core'
 import {resolve} from 'node:path'
 
-import {WalletlessCommand} from '../../lib/base-command.js'
+import {BaseCommand} from '../../lib/base-command.js'
 import {readKeypairFromFile} from '../../lib/utils.js'
 
-export default class WalletImport extends WalletlessCommand {
+export default class WalletImport extends BaseCommand {
   static args = {
     path: Args.string({
       description: 'Path to keypair JSON file to import',

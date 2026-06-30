@@ -1,15 +1,15 @@
-import {ReadOnlyCommand} from '../../lib/base-command.js'
+import {BaseCommand} from '../../lib/base-command.js'
 import {formatDate} from '../../lib/utils.js'
 
-export default class UserList extends ReadOnlyCommand {
+export default class UserList extends BaseCommand {
   static description = 'List all user payment accounts'
-static examples = ['<%= config.bin %> user list']
-static flags = {
-    ...ReadOnlyCommand.baseFlags,
+  static examples = ['<%= config.bin %> user list']
+  static flags = {
+    ...BaseCommand.baseFlags,
   }
 
   public async run(): Promise<void> {
-    const sdk = await this.getSDK()
+    const sdk = await this.getReadOnlySDK()
     const userPayments = await sdk.getAllUserPayments()
 
     const users = userPayments.map(({account, publicKey}) => ({

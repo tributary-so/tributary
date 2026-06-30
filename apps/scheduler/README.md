@@ -111,9 +111,10 @@ pnpm start
 
 ### Optional
 
-| Variable        | Description                    | Default                  |
-| --------------- | ------------------------------ | ------------------------ |
-| `CRON_SCHEDULE` | Cron expression (UTC timezone) | `0 * * * *` (every hour) |
+| Variable            | Description                                       | Default                  |
+| ------------------- | ------------------------------------------------- | ------------------------ |
+| `CRON_SCHEDULE`     | Cron expression for PaymentPolicy execution (UTC) | `0 * * * *` (every hour) |
+| `ENABLE_COMPOSABLE` | Start the ComposablePolicy poll loop (`true`/`1`) | `false`                  |
 
 ### Cron Schedule Examples
 

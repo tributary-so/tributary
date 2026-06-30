@@ -31,18 +31,37 @@ pub struct PaymentGateway {
     /// Bit 0: Referral program enabled (1 = enabled, 0 = disabled)
     /// Bit 1: Net amount mode (1 = net, 0 = gross/default)
     /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
+    /// Bit 3: Permissionless composable execution enabled (ADR-0016 —
+    ///        admits third-party schedulers for conforming composable
+    ///        policies; trusted caller path unchanged)
     pub feature_flags: u8,
-    /// Gateway-scoped referral program allocation (in basis points)
-    /// 0 = no referral program, 2500 = 25% of gateway fee can be used for referrals
+    /// What percentage of the **gateway fee** funds the referral pool.
+    /// Units: basis points of the gateway fee. Range: 0..=2500.
+    ///   - 0    = referral program inactive (no pool is carved out)
+    ///   - 1000 = 10% of the gateway fee becomes the referral pool
+    ///   - 2500 = 25% of the gateway fee (hard cap)
+    /// The remaining `(10000 - referral_allocation_bps)` bps of the gateway fee
+    /// stays with the gateway fee recipient.
     pub referral_allocation_bps: u16,
-    /// Gateway-scoped referral tier distribution as [level1, level2, level3]
-    /// Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%
+    /// How the referral pool is split across the 3 chain levels
+    /// `[level1 (direct referrer), level2, level3]`. Units: basis points of the
+    /// **referral pool** (NOT of the gateway fee). Must sum to 10000 (100%).
+    /// Example: with `referral_allocation_bps = 1000` and
+    /// `referral_tiers_bps = [5000, 3000, 2000]`, the actual cut of the gateway
+    /// fee is L1 = 5%, L2 = 3%, L3 = 2% (each tier_bps × allocation / 10000).
+    /// Misreading these as "bps of gateway fee per level" overpays by 10x.
     pub referral_tiers_bps: [u16; 3],
-    /// Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.
-    /// When enabled, this overrides the default 100 bps protocol fee.
-    pub custom_protocol_fee_bps: u16,
+    /// Custom protocol share in basis points (bps). Only used if
+    /// FEATURE_CUSTOM_PROTOCOL_FEE is set. Overrides the global
+    /// `protocol_share_bps` from `ProgramConfig` for this gateway.
+    /// Units: share of the gateway fee (not bps-of-payment).
+    /// May be zero (subsidise a strategic partner).
+    pub custom_protocol_share_bps: u16,
+    /// Scheduler share in basis points (bps) of the gateway fee.
+    /// Per-gateway, gateway-authority-set. Pays the execute-tx signer.
+    pub scheduler_share_bps: u16,
     /// Padding for future fields
-    pub padding: [u8; 117],
+    pub padding: [u8; 115],
 }
 
 impl PaymentGateway {
@@ -60,24 +79,25 @@ impl PaymentGateway {
         1 + // feature_flags: u8
         2 + // referral_allocation_bps: u16
         6 + // referral_tiers_bps: [u16; 3] = 2*3 = 6
-        2 + // custom_protocol_fee_bps: u16
-        117; // padding
+        2 + // custom_protocol_share_bps: u16
+        2 + // scheduler_share_bps: u16
+        115; // padding
 }
 
 impl PaymentGateway {
     pub const FEATURE_REFERRAL: u8 = 0x01;
     pub const FEATURE_NET_AMOUNT: u8 = 0x02;
     pub const FEATURE_CUSTOM_PROTOCOL_FEE: u8 = 0x04;
+    /// ADR-0016: gateway admits any signer for `execute_composable` when
+    /// set, subject to the caller-conditional gate (cold relayers must run
+    /// conforming policies — `min_output_amount = Some(>0)`). The trusted
+    /// three (gateway.signer / owner / recipient) always pass regardless.
+    pub const FEATURE_PERMISSIONLESS: u8 = 0x08;
 
     /// Validate that referral tier percentages sum to 100% (10000 bps)
     pub fn validate_referral_tiers(&self) -> Result<()> {
-        if self.referral_tiers_bps.len() != 3 {
-            return Err(TributaryError::InvalidReferralTiers.into());
-        }
-
         let total: u16 = self.referral_tiers_bps.iter().sum();
         require!(total == 10000, TributaryError::InvalidReferralTiers);
-
         Ok(())
     }
 
@@ -96,5 +116,137 @@ impl PaymentGateway {
     /// Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)
     pub fn is_custom_protocol_fee_enabled(&self) -> bool {
         self.feature_flags & Self::FEATURE_CUSTOM_PROTOCOL_FEE != 0
+    }
+
+    /// Check if permissionless composable execution is enabled (ADR-0016).
+    /// When true, `execute_composable` admits any signer for conforming
+    /// composable policies — the caller-conditional gate (mandatory
+    /// min_output_amount for cold relayers) is enforced in the handler.
+    /// Bit 3: Permissionless execution enabled (1 = open relay, 0 = trusted-only).
+    pub fn is_permissionless(&self) -> bool {
+        self.feature_flags & Self::FEATURE_PERMISSIONLESS != 0
+    }
+
+    /// Effective protocol share bps for this gateway: the custom value when the
+    /// feature flag is set, otherwise the protocol-wide default share.
+    pub fn effective_protocol_share_bps(&self, config_protocol_share_bps: u16) -> u16 {
+        if self.is_custom_protocol_fee_enabled() {
+            self.custom_protocol_share_bps
+        } else {
+            config_protocol_share_bps
+        }
+    }
+
+    /// Validate that the sum of all fee carve-out shares is ≤ 10000 bps.
+    /// Shares: protocol + scheduler + referral. The gateway residual is the
+    /// balancing item and must not go negative.
+    ///
+    /// Call after all share fields have their final (post-write) values.
+    pub fn validate_share_constraint(&self, config_protocol_share_bps: u16) -> Result<()> {
+        let effective_protocol = self.effective_protocol_share_bps(config_protocol_share_bps);
+        let total = (effective_protocol as u32)
+            .checked_add(self.scheduler_share_bps as u32)
+            .ok_or(TributaryError::ArithmeticOverflow)?
+            .checked_add(self.referral_allocation_bps as u32)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
+        require!(total <= 10_000, TributaryError::CombinedFeeBpsExceedsMax);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn gateway_with_fee(bps: u16) -> PaymentGateway {
+        PaymentGateway {
+            authority: Pubkey::default(),
+            fee_recipient: Pubkey::default(),
+            gateway_fee_bps: bps,
+            is_active: true,
+            padding1: 0,
+            created_at: 0,
+            bump: 0,
+            name: [0; 32],
+            url: [0; 64],
+            signer: Pubkey::default(),
+            feature_flags: 0,
+            referral_allocation_bps: 0,
+            referral_tiers_bps: [0; 3],
+            custom_protocol_share_bps: 0,
+            scheduler_share_bps: 0,
+            padding: [0; 115],
+        }
+    }
+
+    #[test]
+    fn share_constraint_accepts_at_limit() {
+        let mut gw = gateway_with_fee(500);
+        gw.scheduler_share_bps = 1000;
+        gw.referral_allocation_bps = 2000;
+        // 3000 + 1000 + 2000 = 6000 <= 10000
+        assert!(gw.validate_share_constraint(3000).is_ok());
+    }
+
+    #[test]
+    fn share_constraint_rejects_over_limit() {
+        let mut gw = gateway_with_fee(500);
+        gw.scheduler_share_bps = 4000;
+        gw.referral_allocation_bps = 2000;
+        // 5000 + 4000 + 2000 = 11000 > 10000
+        assert!(gw.validate_share_constraint(5000).is_err());
+    }
+
+    #[test]
+    fn share_constraint_custom_protocol_override() {
+        let mut gw = gateway_with_fee(500);
+        gw.feature_flags |= PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
+        gw.custom_protocol_share_bps = 0;
+        gw.scheduler_share_bps = 5000;
+        gw.referral_allocation_bps = 5000;
+        // 0 + 5000 + 5000 = 10000 <= 10000 (boundary OK)
+        assert!(gw.validate_share_constraint(9999).is_ok());
+    }
+
+    #[test]
+    fn effective_protocol_share_picks_custom_when_enabled() {
+        let mut gw = gateway_with_fee(500);
+        assert_eq!(gw.effective_protocol_share_bps(1000), 1000);
+        gw.feature_flags |= PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
+        gw.custom_protocol_share_bps = 2500;
+        assert_eq!(gw.effective_protocol_share_bps(1000), 2500);
+    }
+
+    /// ADR-0016: the permissionless bit is independent of the fee/feature
+    /// bits and toggles cleanly. A gateway without the bit must reject
+    /// cold relayers (only the trusted three pass); with the bit set, the
+    /// caller-conditional gate in `execute_composable` takes over.
+    #[test]
+    fn permissionless_flag_toggles_independently() {
+        let mut gw = gateway_with_fee(500);
+        assert!(!gw.is_permissionless());
+        gw.feature_flags |= PaymentGateway::FEATURE_PERMISSIONLESS;
+        assert!(gw.is_permissionless());
+        // Other flags unaffected.
+        assert!(!gw.is_referral_enabled());
+        assert!(!gw.is_amount_net());
+        assert!(!gw.is_custom_protocol_fee_enabled());
+    }
+
+    /// Bit 0x08 must not collide with any existing feature flag — a
+    /// regression here would silently flip permissionless mode when a
+    /// gateway toggles referral / net / custom-fee.
+    #[test]
+    fn permissionless_bit_does_not_collide() {
+        assert_eq!(PaymentGateway::FEATURE_REFERRAL, 0x01);
+        assert_eq!(PaymentGateway::FEATURE_NET_AMOUNT, 0x02);
+        assert_eq!(PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE, 0x04);
+        assert_eq!(PaymentGateway::FEATURE_PERMISSIONLESS, 0x08);
+        // Mask of all known bits — no overlap.
+        let all = PaymentGateway::FEATURE_REFERRAL
+            | PaymentGateway::FEATURE_NET_AMOUNT
+            | PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+            | PaymentGateway::FEATURE_PERMISSIONLESS;
+        assert_eq!(all, 0x0F);
     }
 }

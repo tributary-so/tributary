@@ -52,7 +52,7 @@ The familiar model. Fixed amount, regular interval.
 
 **Great for:** SaaS tools, memberships, streaming, recurring donations
 
-[Learn more](policies/subscription.md)
+[Learn more](protocol-reference/payment-policy/subscription.md)
 
 ### Milestone Payments
 
@@ -64,7 +64,7 @@ Pay for deliverables, not time. Split a project into up to 4 milestones.
 
 **Great for:** Freelance projects, consulting, software development, content series
 
-[Learn more](policies/milestone.md)
+[Learn more](protocol-reference/payment-policy/milestone.md)
 
 ### Pay-as-you-go
 
@@ -76,7 +76,7 @@ Use first, pay later. Providers claim what you owe within limits you set.
 
 **Great for:** AI APIs, cloud computing, utility services, anything metered
 
-[Learn more](policies/payasyougo.md)
+[Learn more](protocol-reference/payment-policy/payasyougo.md)
 
 ---
 
@@ -88,7 +88,7 @@ One-click setup, total transparency, full control. Every payment is on-chain. Yo
 
 ### Developers
 
-Drop in a [React component or hook](sdk-react/index.md) and you're done. Need more control? Use the [TypeScript SDK](sdk.md). Going no-code? Generate [checkout links](checkout.md) in seconds. Everything is [open-source](https://github.com/tributary-so/tributary).
+Drop in a [React component or hook](integration-guide/pull-payments/sdk-react/index.md) and you're done. Need more control? Use the [TypeScript SDK](integration-guide/pull-payments/sdk.md). Going no-code? Generate [checkout links](integration-guide/pull-payments/checkout.md) in seconds. Everything is [open-source](https://github.com/tributary-so/tributary).
 
 ### Businesses
 
@@ -96,7 +96,7 @@ Accept recurring payments globally without the KYC bottleneck. Pay ~1% instead o
 
 ### Payment Providers
 
-Build your own payment service on top of Tributary. Earn fees by running a [Payment Gateway](providers.md). Focus on UX — the protocol handles the complexity.
+Build your own payment service on top of Tributary. Earn fees by running a [Payment Gateway](operate/providers.md). Focus on UX — the protocol handles the complexity.
 
 ---
 
@@ -117,24 +117,22 @@ More ideas in [Use Cases](use-cases.md).
 
 ## Get Started
 
-1. **Pick your integration** — [React SDK](sdk-react/index.md), [TypeScript SDK](sdk.md), or [Checkout Links](checkout.md)
-2. **Choose a payment type** — [Subscription](policies/subscription.md), [Milestone](policies/milestone.md), or [Pay-as-you-go](policies/payasyougo.md)
+1. **Pick your integration** — [React SDK](integration-guide/pull-payments/sdk-react/index.md), [TypeScript SDK](integration-guide/pull-payments/sdk.md), or [Checkout Links](integration-guide/pull-payments/checkout.md)
+2. **Choose a payment type** — [Subscription](protocol-reference/payment-policy/subscription.md), [Milestone](protocol-reference/payment-policy/milestone.md), or [Pay-as-you-go](protocol-reference/payment-policy/payasyougo.md)
 3. **Go live** — deploy on Solana mainnet in minutes
-4. **Monitor** — track payments via [REST API](api/rest-api.md) or [WebSocket API](api/websocket.md)
 
 !!! question "Questions?"
 
-    Check the [FAQ](faq.md) or read the [Architecture Overview](architecture.md).
+    Check the [FAQ](faq.md) or read the [Protocol Overview](protocol-reference/overview.md).
 
 ## Developer Tools
 
-- **[TypeScript SDK](sdk.md#typescript-sdk-tributary-sosdk)** - Complete protocol interaction
-- **[React SDK](sdk-react/index.md)** - Pre-built payment components and React hooks
-- **[Payments SDK](sdk.md#payments-sdk-tributary-sopayments)** - Simple Payments API with hosted checkout page (zero API keys)
-- **[x402 SDK](sdk.md#x402-sdk-tributary-sox402)** - HTTP 402 middleware for API monetization
-- **[CLI](sdk.md#cli-tributary-socli)** - Protocol management tools
+- **[TypeScript SDK](integration-guide/pull-payments/sdk.md#typescript-sdk-tributary-sosdk)** - Complete protocol interaction
+- **[React SDK](integration-guide/pull-payments/sdk-react/index.md)** - Pre-built payment components and React hooks
+- **[Payments SDK](integration-guide/pull-payments/sdk.md#payments-sdk-tributary-sopayments)** - Simple Payments API with hosted checkout page (zero API keys)
+- **[x402 SDK](integration-guide/pull-payments/sdk.md#x402-sdk-tributary-sox402)** - HTTP 402 middleware for API monetization
+- **[CLI](integration-guide/pull-payments/sdk.md#cli-tributary-socli)** - Protocol management tools
 - **[REST API](./api/rest-api.md)** - Query subscriptions, events, manage webhooks
-- **[WebSocket API](./api/websocket.md)** - Real-time payment notifications
 
 ---
 

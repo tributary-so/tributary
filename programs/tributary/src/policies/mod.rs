@@ -1,21 +1,15 @@
+//! Create-time validators for each `PolicyType` variant.
+//!
+//! Execute-time validation + schedule advancement live in
+//! [`crate::shared::schedule`] (`validate_policy_execution`,
+//! `advance_policy`), shared by both `execute_payment` and
+//! `execute_composable`. There is no per-strategy trait or factory here —
+//! dispatch is a single `match` over `PolicyType` in one place.
+
 pub mod milestone;
 pub mod pay_as_you_go;
 pub mod subscription;
-pub mod traits;
 
-pub use milestone::{validate_milestone_policy, MilestoneStrategy};
-pub use pay_as_you_go::{validate_payg_policy, PayAsYouGoStrategy};
-pub use subscription::{validate_subscription_policy, SubscriptionStrategy};
-pub use traits::*;
-
-use crate::state::{PaymentPolicy, PolicyType};
-use anchor_lang::prelude::*;
-
-/// Factory function to get appropriate strategy for policy type
-pub fn get_policy_strategy(payment_policy: &PaymentPolicy) -> Result<Box<dyn PolicyStrategy>> {
-    match &payment_policy.policy_type {
-        PolicyType::Subscription { .. } => Ok(Box::new(SubscriptionStrategy)),
-        PolicyType::Milestone { .. } => Ok(Box::new(MilestoneStrategy)),
-        PolicyType::PayAsYouGo { .. } => Ok(Box::new(PayAsYouGoStrategy)),
-    }
-}
+pub use milestone::validate_milestone_policy;
+pub use pay_as_you_go::validate_payg_policy;
+pub use subscription::validate_subscription_policy;

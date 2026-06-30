@@ -140,12 +140,6 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
                 <span className="text-subscription-700 font-medium">Referral Pool ({referralAllocationPercent}%)</span>
                 <span className="font-bold text-subscription-700">${referralPool.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-secondary-50 px-2 ">
-                <span className="text-secondary-700 font-medium">
-                  Gateway Business Fee ({100 - referralAllocationPercent}%)
-                </span>
-                <span className="font-bold text-secondary-700">${gatewayBusinessFee.toFixed(2)}</span>
-              </div>
               <div className="flex justify-between items-center py-2 border-b border-lando-border bg-blue-50 px-2 ">
                 <span className="text-blue-700 font-medium">
                   Gateway Business Fee ({100 - referralAllocationPercent}%)

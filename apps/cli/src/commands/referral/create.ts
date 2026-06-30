@@ -6,48 +6,30 @@ import {parsePublicKey} from '../../lib/utils.js'
 
 export default class ReferralCreate extends BaseCommand {
   static description = 'Create a referral account'
-static examples = [
+  static examples = [
     '<%= config.bin %> <%= command.id %> --gateway GATEWAY_PUBKEY',
     '<%= config.bin %> <%= command.id %> --gateway GATEWAY_PUBKEY --code MYCODE',
     '<%= config.bin %> <%= command.id %> -g GATEWAY_PUBKEY -c MYCODE -r REFERRER_PUBKEY',
   ]
-static flags = {
+  static flags = {
     ...BaseCommand.baseFlags,
-    code: Flags.string({
-      char: 'c',
-      description: 'Referral code (auto-generated if not provided)',
-    }),
-    gateway: Flags.string({
-      char: 'g',
-      description: 'Gateway public key',
-      required: true,
-    }),
-    referrer: Flags.string({
-      char: 'r',
-      description: 'Referrer public key (for nested referrals)',
-    }),
+    code: Flags.string({char: 'c', description: 'Referral code (auto-generated if not provided)'}),
+    gateway: Flags.string({char: 'g', description: 'Gateway public key', required: true}),
+    referrer: Flags.string({char: 'r', description: 'Referrer public key (for nested referrals)'}),
   }
 
   public async run(): Promise<void> {
     const {flags} = await this.parse(ReferralCreate)
 
     const gateway = parsePublicKey(flags.gateway)
-    if (!gateway) {
-      this.error('Invalid gateway public key')
-      return
-    }
+    if (!gateway) this.error('Invalid gateway public key')
 
     const code = flags.code ?? Math.random().toString(36).slice(2, 8).toUpperCase()
 
     let referrer: PublicKey | undefined
     if (flags.referrer) {
-      const parsed = parsePublicKey(flags.referrer)
-      if (!parsed) {
-        this.error('Invalid referrer public key')
-        return
-      }
-
-      referrer = parsed
+      referrer = parsePublicKey(flags.referrer) ?? undefined
+      if (!referrer) this.error('Invalid referrer public key')
     }
 
     const sdk = await this.getSDK()

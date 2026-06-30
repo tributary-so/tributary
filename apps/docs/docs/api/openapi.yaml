@@ -1,0 +1,1418 @@
+openapi: 3.0.0
+info:
+  title: Tributary API
+  version: 1.9.0
+  description: >-
+    Modular Express API for subscription and payment services on Solana.
+    Provides health checks, subscription status lookups, on-chain event queries,
+    webhook management, JWT issuance, JWKS publishing, and admin key rotation.
+  license:
+    name: MIT
+servers:
+  - url: https://api.tributary.so
+    description: Production
+  - url: http://localhost:3002
+    description: Local development
+components:
+  securitySchemes:
+    AdminApiKey:
+      type: apiKey
+      in: header
+      name: x-admin-key
+      description: Admin API key (ADMIN_API_KEY env var on the server).
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        timestamp:
+          type: integer
+          description: Unix epoch milliseconds.
+    Webhook:
+      type: object
+      required:
+        - id
+        - gateway_pubkey
+        - endpoint_url
+        - active
+      properties:
+        id:
+          type: integer
+          example: 1
+        gateway_pubkey:
+          type: string
+          minLength: 32
+          maxLength: 44
+          description: Gateway authority public key.
+        endpoint_url:
+          type: string
+          format: uri
+          description: Webhook target URL.
+        active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+tags:
+  - name: Health
+    description: Service health probes
+  - name: Skill
+    description: Lando skill markdown generation
+  - name: Subscriptions
+    description: Recurring subscription lookups
+  - name: OneTime
+    description: One-time payment lookups
+  - name: Events
+    description: On-chain event queries
+  - name: Webhooks
+    description: Webhook endpoint management
+  - name: Tokens
+    description: JWT issuance for active subscriptions
+  - name: JWKS
+    description: JWT key set publishing
+  - name: Admin
+    description: Administrative key rotation
+paths:
+  /v1/webhooks:
+    post:
+      summary: Register a webhook
+      description: Creates a new webhook subscription for a gateway.
+      tags:
+        - Webhooks
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - gateway_pubkey
+                - endpoint_url
+              properties:
+                gateway_pubkey:
+                  type: string
+                  minLength: 32
+                  maxLength: 44
+                  description: Gateway authority public key.
+                endpoint_url:
+                  type: string
+                  format: uri
+                  description: HTTPS (or HTTP) URL Tributary will POST events to.
+                active:
+                  type: boolean
+                  default: true
+                  description: Whether the webhook is active immediately.
+      responses:
+        '201':
+          description: Webhook created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          description: Missing fields or invalid URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List webhooks
+      description: Returns all webhooks, optionally filtered to active only and paginated.
+      tags:
+        - Webhooks
+      operationId: listWebhooks
+      parameters:
+        - in: query
+          name: active_only
+          schema:
+            type: boolean
+            default: false
+          description: When `true`, return only active webhooks.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: Webhook list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/webhooks/gateway/{gatewayPubkey}:
+    get:
+      summary: List webhooks for a gateway
+      description: Returns all webhooks registered for the given gateway.
+      tags:
+        - Webhooks
+      operationId: listWebhooksByGateway
+      parameters:
+        - in: path
+          name: gatewayPubkey
+          required: true
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: active_only
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Webhook list for the gateway.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete all webhooks for a gateway
+      tags:
+        - Webhooks
+      operationId: deleteWebhooksByGateway
+      parameters:
+        - in: path
+          name: gatewayPubkey
+          required: true
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+      responses:
+        '204':
+          description: Deleted.
+        '404':
+          description: No webhooks found for gateway.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/webhooks/{id}:
+    get:
+      summary: Get a webhook by ID
+      tags:
+        - Webhooks
+      operationId: getWebhook
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Webhook record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          description: Invalid ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Toggle a webhook's active flag
+      tags:
+        - Webhooks
+      operationId: updateWebhook
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - active
+              properties:
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated webhook.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          description: Invalid ID or body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a webhook
+      tags:
+        - Webhooks
+      operationId: deleteWebhook
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Deleted.
+        '400':
+          description: Invalid ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/tokens/issue:
+    post:
+      summary: Issue a short-lived JWT
+      description: >
+        Validates that the caller has an active subscription policy (or a recent
+        payment transaction signature) and issues a JWT bound to the
+        subscription. Rate-limited to 200 requests per minute per wallet.
+      tags:
+        - Tokens
+      operationId: issueToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                walletPublicKey:
+                  type: string
+                  minLength: 32
+                  maxLength: 44
+                  description: >-
+                    Caller wallet public key (required unless
+                    `transactionSignature` is supplied).
+                tokenMint:
+                  type: string
+                  minLength: 32
+                  maxLength: 44
+                  description: SPL token mint of the subscription.
+                policyAddress:
+                  type: string
+                  minLength: 32
+                  maxLength: 44
+                  description: Specific payment policy address.
+                recipient:
+                  type: string
+                  minLength: 32
+                  maxLength: 44
+                  description: Recipient wallet public key.
+                transactionSignature:
+                  type: string
+                  pattern: ^[1-9A-HJ-NP-Za-km-z]{87,88}$
+                  description: Base58 transaction signature of a recent payment.
+                trackingId:
+                  type: string
+                  description: Checkout tracking ID.
+      responses:
+        '200':
+          description: JWT issued.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Token bundle (shape defined by the token issuer service).
+        '400':
+          description: Invalid request body (bad public key, signature, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No active subscription or transaction not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Payment record found but does not match the caller.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Token issuance failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/subscriptions:
+    get:
+      summary: Look up subscription details
+      description: >
+        Returns matching subscription policy records. Provide at least one
+        filter (up to three combined). If `walletPublicKey` is given,
+        `tokenMint` is also required.
+      tags:
+        - Subscriptions
+      operationId: getSubscriptions
+      parameters:
+        - in: query
+          name: trackingId
+          schema:
+            type: string
+          description: Tracking ID assigned at checkout.
+        - in: query
+          name: userPublicKey
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+          description: User (owner) wallet public key.
+        - in: query
+          name: walletPublicKey
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+          description: User wallet public key (requires `tokenMint`).
+        - in: query
+          name: gatewayPublicKey
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+          description: Gateway authority public key.
+        - in: query
+          name: tokenMint
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+          description: SPL token mint. Defaults to USDC when omitted.
+        - in: query
+          name: recipient
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+          description: Recipient wallet public key.
+      responses:
+        '200':
+          description: Matching subscription records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - timestamp
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      description: >-
+                        Subscription policy record (gateway, recipient,
+                        schedule, status).
+                  timestamp:
+                    type: integer
+                    description: Unix epoch ms.
+        '400':
+          description: >-
+            Invalid filter combination (missing/required pair, &lt;1 or &gt;3
+            filters).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No matching subscription found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/skill/{encoded}:
+    get:
+      summary: Generate Lando skill markdown
+      description: >
+        Decodes a base64-encoded checkout session, fetches mint decimals
+        on-chain, converts the human-readable amount to its integer
+        representation, and renders a `text/markdown` skill document the Lando
+        agent uses to drive the subscription checkout.
+      tags:
+        - Skill
+      operationId: getSkillMarkdown
+      parameters:
+        - in: path
+          name: encoded
+          required: true
+          schema:
+            type: string
+          description: >-
+            Base64-encoded subscription parameters produced by
+            `CheckoutSessionManager`.
+      responses:
+        '200':
+          description: Rendered skill markdown.
+          content:
+            text/markdown:
+              schema:
+                type: string
+        '400':
+          description: Missing or invalid `encoded` parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Failed to fetch mint info or render template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/onetime/{trackingId}:
+    get:
+      summary: Look up one-time payment
+      description: >
+        Returns one-time payment records for a tracking ID. Optionally filter by
+        recipient and paginate with `limit` / `offset`.
+      tags:
+        - OneTime
+      operationId: getOneTimePayment
+      parameters:
+        - in: path
+          name: trackingId
+          required: true
+          schema:
+            type: string
+          description: Tracking ID assigned at checkout.
+        - in: query
+          name: recipient
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+          description: Filter by recipient wallet public key.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+          description: Maximum records to return.
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of records to skip.
+      responses:
+        '200':
+          description: Matching one-time payment record(s).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - timestamp
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    oneOf:
+                      - type: object
+                        description: Single record (when exactly one matches).
+                      - type: array
+                        items:
+                          type: object
+                        description: Multiple records.
+                  timestamp:
+                    type: integer
+                    description: Unix epoch ms.
+        '400':
+          description: Missing `trackingId`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No matching payment found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/jwks:
+    get:
+      summary: JWKS (mounted under /.well-known too)
+      description: >
+        Returns the JSON Web Key Set used to verify JWTs issued by
+        `/v1/tokens/issue`. Cached publicly for 1 hour. Also served at
+        `/.well-known/jwks.json` for OIDC-style discovery.
+      tags:
+        - JWKS
+      operationId: getJwks
+      responses:
+        '200':
+          description: JWKS document.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - keys
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      description: JWK (RFC 7517) — kid, kty, alg, use, crv, x, y.
+  /v1/health:
+    get:
+      summary: Health check
+      description: Returns service liveness, name, and version.
+      tags:
+        - Health
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - timestamp
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - status
+                      - service
+                      - version
+                    properties:
+                      status:
+                        type: string
+                        example: ok
+                      service:
+                        type: string
+                        example: tributary-api
+                      version:
+                        type: string
+                        example: 1.9.0
+                  timestamp:
+                    type: integer
+                    description: Unix epoch milliseconds.
+                    example: 1719300000000
+  /v1/events:
+    get:
+      summary: Query on-chain events
+      description: >
+        Polymorphic event lookup. Exactly one filter mode is applied per
+        request, evaluated in this priority order: `signature` → `slot` →
+        `trackingId` → `eventName` → `startTime`/`endTime`. If none match, a
+        generic `searchEvents` is run.
+      tags:
+        - Events
+      operationId: queryEvents
+      parameters:
+        - in: query
+          name: signature
+          schema:
+            type: string
+          description: Transaction signature (returns a single event or 404).
+        - in: query
+          name: slot
+          schema:
+            type: integer
+          description: Solana slot number.
+        - in: query
+          name: eventName
+          schema:
+            type: string
+          description: Event name filter.
+        - in: query
+          name: trackingId
+          schema:
+            type: string
+          description: Encoded memo tracking ID (matched via 64-byte memo encoding).
+        - in: query
+          name: startTime
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: endTime
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: minSlot
+          schema:
+            type: integer
+        - in: query
+          name: maxSlot
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Event record(s).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    description: Single event (when `signature` is supplied).
+                  - type: array
+                    items:
+                      type: object
+                    description: Event list.
+        '404':
+          description: Event not found (signature lookup).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/events/count:
+    get:
+      summary: Count events
+      description: Returns a count of events optionally filtered by name and/or time range.
+      tags:
+        - Events
+      operationId: countEvents
+      parameters:
+        - in: query
+          name: eventName
+          schema:
+            type: string
+        - in: query
+          name: startTime
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: endTime
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Event count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - count
+                properties:
+                  count:
+                    type: integer
+                    example: 42
+  /v1/events/names:
+    get:
+      summary: All known event names
+      description: Returns the distinct set of event names indexed in the database.
+      tags:
+        - Events
+      operationId: getEventNames
+      responses:
+        '200':
+          description: Distinct event names.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /v1/events/names/tributary:
+    get:
+      summary: Tributary event names
+      description: >-
+        Returns the canonical set of event names emitted by the Tributary
+        program.
+      tags:
+        - Events
+      operationId: getTributaryEventNames
+      responses:
+        '200':
+          description: Tributary event names.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /v1/events/payments:
+    get:
+      summary: Payment records
+      description: >-
+        Returns `PaymentRecord` events optionally filtered by gateway and/or
+        policy.
+      tags:
+        - Events
+      operationId: getPaymentEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: paymentPolicy
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Payment record events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/payments/stats:
+    get:
+      summary: Payment statistics
+      description: >-
+        Aggregated payment statistics (count, volume) optionally filtered by
+        gateway and/or time range.
+      tags:
+        - Events
+      operationId: getPaymentStats
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: startTime
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: endTime
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Payment statistics.
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/events/policies/created:
+    get:
+      summary: PolicyCreated events
+      description: Returns `PaymentPolicyCreated` events.
+      tags:
+        - Events
+      operationId: getPolicyCreatedEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: recipient
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: userPayment
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Policy-created event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/policies/deleted:
+    get:
+      summary: PolicyDeleted events
+      tags:
+        - Events
+      operationId: getPolicyDeletedEvents
+      parameters:
+        - in: query
+          name: paymentPolicy
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: owner
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Policy-deleted event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/policies/status-changed:
+    get:
+      summary: PolicyStatusChanged events
+      tags:
+        - Events
+      operationId: getPolicyStatusChangedEvents
+      parameters:
+        - in: query
+          name: paymentPolicy
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Policy status-change event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/gateways/created:
+    get:
+      summary: GatewayCreated events
+      tags:
+        - Events
+      operationId: getGatewayCreatedEvents
+      parameters:
+        - in: query
+          name: authority
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Gateway-created event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/gateways/deleted:
+    get:
+      summary: GatewayDeleted events
+      tags:
+        - Events
+      operationId: getGatewayDeletedEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: authority
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Gateway-deleted event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/gateways/fee-bps-changed:
+    get:
+      summary: GatewayFeeBpsChanged events
+      tags:
+        - Events
+      operationId: getGatewayFeeBpsChangedEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Fee-bps-change event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/gateways/fee-recipient-changed:
+    get:
+      summary: GatewayFeeRecipientChanged events
+      tags:
+        - Events
+      operationId: getGatewayFeeRecipientChangedEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Fee-recipient-change event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/gateways/signer-changed:
+    get:
+      summary: GatewaySignerChanged events
+      tags:
+        - Events
+      operationId: getGatewaySignerChangedEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Signer-change event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/referrals/rewards:
+    get:
+      summary: ReferralRewardDistributed events
+      tags:
+        - Events
+      operationId: getReferralRewardEvents
+      parameters:
+        - in: query
+          name: gateway
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: paymentPolicy
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Referral-reward event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/user-payments/created:
+    get:
+      summary: UserPaymentCreated events
+      tags:
+        - Events
+      operationId: getUserPaymentCreatedEvents
+      parameters:
+        - in: query
+          name: owner
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: tokenMint
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: User-payment-created event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/program/config-created:
+    get:
+      summary: ProgramConfigCreated events
+      tags:
+        - Events
+      operationId: getProgramConfigCreatedEvents
+      parameters:
+        - in: query
+          name: admin
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 44
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Program-config-created event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/events/typed/{eventName}:
+    get:
+      summary: Typed event lookup
+      description: Returns strongly-typed events for the given Tributary event name.
+      tags:
+        - Events
+      operationId: getTypedEvents
+      parameters:
+        - in: path
+          name: eventName
+          required: true
+          schema:
+            type: string
+          description: Tributary event name (see `/v1/events/names/tributary`).
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Typed event list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/admin/keys/rotate:
+    post:
+      summary: Rotate the JWT signing key
+      description: >
+        Generates a new signing key, promotes it as active, and keeps the
+        previous key in the JWKS for a grace period so in-flight tokens continue
+        to validate. Requires the `x-admin-key` header.
+      tags:
+        - Admin
+      operationId: rotateKey
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Key rotation result.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - newKid
+                  - oldKid
+                  - gracePeriodEndsAt
+                properties:
+                  message:
+                    type: string
+                    example: Key rotated successfully
+                  newKid:
+                    type: string
+                    description: New active key ID.
+                  oldKid:
+                    type: string
+                    description: Previous key ID (still in JWKS during grace).
+                  gracePeriodEndsAt:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp after which the old key is retired.
+        '401':
+          description: Missing or incorrect admin API key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

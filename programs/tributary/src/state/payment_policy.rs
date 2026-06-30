@@ -1,7 +1,7 @@
+use super::policy_status::PolicyStatus;
 use anchor_lang::prelude::*;
 
-/// Bitmap flags for milestone release conditions.
-///
+/// Bitmap flags for milestone release conditions.///
 /// Bit layout:
 ///   - Bit 0 (0b0001): Check due date before release
 ///   - Bit 1 (0b0010): Gateway authority must sign
@@ -34,19 +34,6 @@ pub enum PaymentFrequency {
     Annually,
     /// Custom payment interval defined in seconds
     Custom(u64),
-}
-
-impl PaymentFrequency {
-    /// Validates payment frequency
-    pub fn validate(&self) -> Result<()> {
-        if let PaymentFrequency::Custom(interval) = self {
-            require!(
-                *interval > 0,
-                crate::error::TributaryError::InvalidFrequency
-            );
-        }
-        Ok(())
-    }
 }
 
 /// The PolicyType enum implements different payment schemes. The initial policy
@@ -160,17 +147,6 @@ impl PolicyType {
     }
 }
 
-/// Status enum for payment policies indicating whether payments can be executed.
-/// Active policies allow payment execution, while Paused policies prevent
-/// automatic payment processing until reactivated.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
-pub enum PaymentStatus {
-    /// Policy is active and payments can be executed
-    Active,
-    /// Policy is paused and payments cannot be executed
-    Paused,
-}
-
 /// This structure connects a UserPayment (user/mint) with a Policy, a Gateway.
 /// This is structure that actually specifies subscription payment as you would
 /// expect from an invoice. The SDK would setup these PaymentPolicy
@@ -184,8 +160,10 @@ pub struct PaymentPolicy {
     pub gateway: Pubkey,
     /// Type and parameters of this payment policy
     pub policy_type: PolicyType,
-    /// Current status of this payment policy
-    pub status: PaymentStatus,
+    /// Current status of this payment policy (Active | Paused | Completed).
+    /// `Completed` is terminal and set only by the program when the policy is
+    /// exhausted; owners may only toggle Active<->Paused.
+    pub status: PolicyStatus,
     /// Human-readable memo/description (64 bytes max)
     pub memo: [u8; 64],
     /// Total amount paid out under this policy (cumulative)
@@ -212,7 +190,7 @@ impl PaymentPolicy {
         32 + // recipient: Pubkey
         32 + // gateway: Pubkey
         PolicyType::TOTAL_SIZE + // policy type size (includes enum discriminator)
-        1 + // status: PaymentStatus
+        1 + // status: PolicyStatus
         64 + // memo: [u8; 64]
         8 + // total_paid: u64
         4 + // payment_count: u32

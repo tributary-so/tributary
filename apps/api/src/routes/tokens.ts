@@ -7,6 +7,85 @@ const router: Router = Router();
 
 const BASE58_TX_SIG_RE = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
 
+/**
+ * @openapi
+ * /v1/tokens/issue:
+ *   post:
+ *     summary: Issue a short-lived JWT
+ *     description: >
+ *       Validates that the caller has an active subscription policy (or a
+ *       recent payment transaction signature) and issues a JWT bound to the
+ *       subscription. Rate-limited to 200 requests per minute per wallet.
+ *     tags: [Tokens]
+ *     operationId: issueToken
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               walletPublicKey:
+ *                 type: string
+ *                 minLength: 32
+ *                 maxLength: 44
+ *                 description: Caller wallet public key (required unless `transactionSignature` is supplied).
+ *               tokenMint:
+ *                 type: string
+ *                 minLength: 32
+ *                 maxLength: 44
+ *                 description: SPL token mint of the subscription.
+ *               policyAddress:
+ *                 type: string
+ *                 minLength: 32
+ *                 maxLength: 44
+ *                 description: Specific payment policy address.
+ *               recipient:
+ *                 type: string
+ *                 minLength: 32
+ *                 maxLength: 44
+ *                 description: Recipient wallet public key.
+ *               transactionSignature:
+ *                 type: string
+ *                 pattern: '^[1-9A-HJ-NP-Za-km-z]{87,88}$'
+ *                 description: Base58 transaction signature of a recent payment.
+ *               trackingId:
+ *                 type: string
+ *                 description: Checkout tracking ID.
+ *     responses:
+ *       200:
+ *         description: JWT issued.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: Token bundle (shape defined by the token issuer service).
+ *       400:
+ *         description: Invalid request body (bad public key, signature, etc.).
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: No active subscription or transaction not found.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       422:
+ *         description: Payment record found but does not match the caller.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       429:
+ *         description: Rate limit exceeded.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Token issuance failure.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 router.post(
   "/issue",
   walletRateLimit({ windowMs: 60 * 1000, maxRequests: 200 }),
