@@ -330,7 +330,7 @@ time >= due time. `PayAsYouGo` enforces a per-period cap instead.
 
 ### 3. Fee Distribution
 
-Unified fee model (ADR-0017, supersedes ADR-0006): **one** `gateway_fee_bps`
+Unified fee model (ADR-0018, supersedes ADR-0006): **one** `gateway_fee_bps`
 (gateway-authority-set) decomposed into carve-outs:
 
 - **Protocol cut**: `total_fee × protocol_share_bps` (global rate on
@@ -410,7 +410,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0003] | Milestone release_condition as a bitmap                                 |
 | [0004] | Permissionless execution and the standalone `transfer` instruction      |
 | [0005] | Referral system: gateway-scoped, 3-level chain, ref-code in seeds       |
-| [0006] | Per-gateway fee model with feature-flag gating _(superseded by [0017])_ |
+| [0006] | Per-gateway fee model with feature-flag gating _(superseded by [0018])_ |
 
 **v2 — ComposablePolicy era:**
 
@@ -426,7 +426,8 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0014] | Composable scheduler trigger model: per-policy state-poll                          |
 | [0015] | Position Tributary as one primitive — "If This Then Money" (positioning)           |
 | [0016] | Permissionless composable execution: parameter-constrained schedulers              |
-| [0017] | Unified gateway fee model with scheduler incentive                                 |
+| 0017   | Composable Memo 32-bytes                                                           |
+| [0018] | Unified gateway fee model with scheduler incentive                                 |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -444,7 +445,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0014]: apps/docs/adr/0014-composable-scheduler-trigger-model.md
 [0015]: apps/docs/adr/0015-positioning-if-this-then-money.md
 [0016]: apps/docs/adr/0016-permissionless-composable-execution.md
-[0017]: apps/docs/adr/0017-unified-fee-model.md
+[0018]: apps/docs/adr/0018-unified-fee-model.md
 
 ## SDK
 
