@@ -1,17 +1,36 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Gift, Users, TrendingUp } from 'lucide-react'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { useSDK } from '@/lib/client'
-import type { PaymentGateway } from '@tributary-so/sdk'
+import { GATEWAY_FEATURES, type PaymentGateway, type ProgramConfig } from '@tributary-so/sdk'
 import ReferralProgramExplainer from './ReferralProgramExplainer'
 import ReferralAccountForm from './referral-account-form'
+
+// ADR-0018 default protocol share of the gateway fee, set at `initialize`.
+const DEFAULT_PROTOCOL_SHARE_BPS = 2000
 
 export default function ReferralProgramPage() {
   const { connection } = useConnection()
   const wallet = useWallet()
   const sdk = useSDK(wallet, connection)
   const [selectedGateway, setSelectedGateway] = useState<PaymentGateway | null>(null)
+  const [programConfig, setProgramConfig] = useState<ProgramConfig | null>(null)
+
+  // Fetch the singleton ProgramConfig once for the global protocol share.
+  useEffect(() => {
+    if (!sdk || programConfig) return
+    let cancelled = false
+    sdk
+      .getProgramConfig(sdk.getConfigPda().address)
+      .then((cfg) => {
+        if (!cancelled) setProgramConfig(cfg)
+      })
+      .catch((error) => console.error('Error fetching program config:', error))
+    return () => {
+      cancelled = true
+    }
+  }, [sdk, programConfig])
 
   const handleGatewayChange = async (gatewayPubkey: string) => {
     if (!sdk) return
@@ -23,6 +42,16 @@ export default function ReferralProgramPage() {
       setSelectedGateway(null)
     }
   }
+
+  // Mirror gateway.effective_protocol_share_bps(config.protocol_share_bps):
+  // custom override when FEATURE_CUSTOM_PROTOCOL_FEE is set, else global default.
+  const effectiveProtocolShareBps = (() => {
+    if (!selectedGateway) return DEFAULT_PROTOCOL_SHARE_BPS
+    if (selectedGateway.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE) {
+      return selectedGateway.customProtocolShareBps
+    }
+    return programConfig?.protocolShareBps ?? DEFAULT_PROTOCOL_SHARE_BPS
+  })()
 
   return (
     <div className="min-h-screen bg-lando-bg py-12 px-4">
@@ -69,7 +98,7 @@ export default function ReferralProgramPage() {
         <div className="flex justify-center">
           <ReferralAccountForm onGatewayChange={handleGatewayChange} />
         </div>
-        <ReferralProgramExplainer gateway={selectedGateway} />
+        <ReferralProgramExplainer gateway={selectedGateway} protocolShareBps={effectiveProtocolShareBps} />
       </div>
     </div>
   )
