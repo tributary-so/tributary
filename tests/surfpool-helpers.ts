@@ -1,9 +1,10 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
-export { USDC_MINT, TOKEN_PROGRAM_ID };
+export { USDC_MINT, USDT_MINT, TOKEN_PROGRAM_ID };
 
 export class SurfpoolHelper {
   constructor(private connection: Connection) {}

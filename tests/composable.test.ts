@@ -9,13 +9,7 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
-import {
-  createMint,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountIdempotent,
-  mintTo,
-  approve,
-} from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, approve } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
 import {
   SEEDS,
@@ -26,6 +20,7 @@ import {
 import { Buffer } from "buffer";
 import { getOnChainNow } from "./helpers/onChainNow";
 import { METEORA_DLMM_PUBKEY, LIGHTHOUSE_PUBKEY } from "./constants";
+import { SurfpoolHelper, USDC_MINT, USDT_MINT } from "./surfpool-helpers";
 
 const ADMIN_KEYPAIR = [
   238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
@@ -123,21 +118,38 @@ describe("Composable Policies", () => {
   let userSecondMintTokenAccount: PublicKey; // token account for gateway signer (= recipient in composable) — OUTPUT mint
   let gatewaySignerInputTokenAccount: PublicKey; // token account for gateway signer — INPUT mint (still used for some setups)
 
+  // Surfpool cheatcode handle — set in beforeAll.
+  let surfpool: SurfpoolHelper;
+
   async function fund(account: PublicKey, amount: number): Promise<void> {
-    const tx = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: provider.wallet.publicKey,
-        toPubkey: account,
-        lamports: amount * LAMPORTS_PER_SOL,
-      })
-    );
-    await provider.sendAndConfirm(tx, null, {
-      commitment: "processed" as Commitment,
+    await surfpool.setAccount({
+      publicKey: account,
+      lamports: amount * LAMPORTS_PER_SOL,
     });
+  }
+
+  // Surfpool's setTokenAccount creates the ATA implicitly and sets an absolute
+  // balance — a combined createAssociatedTokenAccountIdempotent + mintTo.
+  async function ensureTokenAccount(
+    owner: PublicKey,
+    mint: PublicKey,
+    amount = 0
+  ): Promise<PublicKey> {
+    const ata = getAssociatedTokenAddressSync(mint, owner);
+    await surfpool.setTokenAccount({ owner, mint, amount });
+    return ata;
   }
 
   beforeAll(async () => {
     sdk = new TributarySDK(connection, wallet as IWallet);
+
+    // Fail fast unless we're on a Surfpool mainnet-fork.
+    surfpool = new SurfpoolHelper(connection);
+    if (!(await surfpool.isSurfpool())) {
+      throw new Error(
+        "Not running against Surfpool. Start with: surfpool start --legacy-anchor-compatibility --no-tui"
+      );
+    }
 
     user = Keypair.generate();
     mintAuthority = Keypair.generate();
@@ -157,37 +169,17 @@ describe("Composable Policies", () => {
       fund(feeRecipient.publicKey, 1),
     ]);
 
-    // Create two token mints (input & output)
-    tokenMint = await createMint(
-      connection,
-      mintAuthority,
-      mintAuthority.publicKey,
-      null,
-      6
-    );
-    secondMint = await createMint(
-      connection,
-      mintAuthority,
-      mintAuthority.publicKey,
-      null,
-      6
-    );
+    // Two real mainnet mints (6 decimals each), forked via Surfpool — no
+    // createMint / mintAuthority needed. INPUT = USDC, OUTPUT = USDT so the
+    // forward/swap path still exercises two distinct mints.
+    tokenMint = USDC_MINT;
+    secondMint = USDT_MINT;
 
-    // User token account (input mint)
-    userTokenAccount = getAssociatedTokenAddressSync(tokenMint, user.publicKey);
-    await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
+    // User token account (input mint) — 100 USDC.
+    userTokenAccount = await ensureTokenAccount(
+      user.publicKey,
       tokenMint,
-      user.publicKey
-    );
-    await mintTo(
-      connection,
-      mintAuthority,
-      tokenMint,
-      userTokenAccount,
-      mintAuthority,
-      BigInt(100_000_000) // 100 tokens
+      100_000_000
     );
 
     // Gateway PDA
@@ -213,50 +205,25 @@ describe("Composable Policies", () => {
     );
 
     // Recipient token account (OUTPUT mint = secondMint) — receives swept output
-    userSecondMintTokenAccount = await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
-      secondMint,
-      gatewayAuthority.publicKey
+    userSecondMintTokenAccount = await ensureTokenAccount(
+      gatewayAuthority.publicKey,
+      secondMint
     );
 
     // Also create an INPUT-mint account for the gateway signer (used by some
     // older assertions / funding paths; harmless to keep around).
-    gatewaySignerInputTokenAccount =
-      await createAssociatedTokenAccountIdempotent(
-        connection,
-        admin,
-        tokenMint,
-        gatewayAuthority.publicKey
-      );
+    gatewaySignerInputTokenAccount = await ensureTokenAccount(
+      gatewayAuthority.publicKey,
+      tokenMint
+    );
 
     // Fee recipient token accounts — both INPUT and OUTPUT mint, since the
     // new flow takes fees from the OUTPUT (secondMint), but legacy code paths
     // and other tests may still reference input-mint fee accounts.
-    await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
-      tokenMint,
-      feeRecipient.publicKey
-    );
-    await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
-      secondMint,
-      feeRecipient.publicKey
-    );
-    await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
-      tokenMint,
-      admin.publicKey
-    );
-    await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
-      secondMint,
-      admin.publicKey
-    );
+    await ensureTokenAccount(feeRecipient.publicKey, tokenMint);
+    await ensureTokenAccount(feeRecipient.publicKey, secondMint);
+    await ensureTokenAccount(admin.publicKey, tokenMint);
+    await ensureTokenAccount(admin.publicKey, secondMint);
   });
 
   // ── Bootstrap: init program, create user payment, create gateway ──────
@@ -1134,12 +1101,7 @@ describe("Composable Policies", () => {
       secondMint,
       user.publicKey
     );
-    await createAssociatedTokenAccountIdempotent(
-      connection,
-      admin,
-      secondMint,
-      user.publicKey
-    );
+    await ensureTokenAccount(user.publicKey, secondMint);
 
     await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
 
@@ -1618,23 +1580,10 @@ describe("Composable Policies", () => {
       b2User = Keypair.generate();
       await fund(b2User.publicKey, 10);
 
-      b2UserTokenAccount = getAssociatedTokenAddressSync(
+      b2UserTokenAccount = await ensureTokenAccount(
+        b2User.publicKey,
         tokenMint,
-        b2User.publicKey
-      );
-      await createAssociatedTokenAccountIdempotent(
-        connection,
-        admin,
-        tokenMint,
-        b2User.publicKey
-      );
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        b2UserTokenAccount,
-        mintAuthority,
-        BigInt(10_000_000)
+        10_000_000
       );
 
       [b2UserPaymentPDA] = PublicKey.findProgramAddressSync(
