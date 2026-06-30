@@ -53,6 +53,7 @@ $ tributary COMMAND
 * [`cli referral show`](#cli-referral-show)
 * [`cli referral show-owner`](#cli-referral-show-owner)
 * [`cli user create`](#cli-user-create)
+* [`cli user delete`](#cli-user-delete)
 * [`cli user list`](#cli-user-list)
 * [`cli user show`](#cli-user-show)
 * [`cli wallet address`](#cli-wallet-address)
@@ -90,7 +91,7 @@ Approve the UserPayment PDA as token delegate on the source ATA (ADR-0001)
 
 ```
 USAGE
-  $ cli delegate approve -m <value> -a <value> [-c <value>] [-k <value>]
+  $ cli delegate approve -a <value> -m <value> [-c <value>] [-k <value>]
 
 FLAGS
   -a, --amount=<value>          (required) Delegated amount in smallest token unit, or "unlimited" for u64::MAX
@@ -116,7 +117,7 @@ Migrate from the legacy global PaymentsDelegate PDA to the per-mint UserPayment 
 
 ```
 USAGE
-  $ cli delegate migrate -m <value> -a <value> [-c <value>] [-k <value>]
+  $ cli delegate migrate -a <value> -m <value> [-c <value>] [-k <value>]
 
 FLAGS
   -a, --amount=<value>          (required) Delegated amount in smallest token unit, or "unlimited" for u64::MAX
@@ -1155,6 +1156,31 @@ EXAMPLES
 ```
 
 _See code: [src/commands/user/create.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/user/create.ts)_
+
+## `cli user delete`
+
+Delete a user payment account (closes the account, refunds rent to owner)
+
+```
+USAGE
+  $ cli user delete -m <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --mint=<value>            (required) SPL token mint address of the user payment account to delete
+
+DESCRIPTION
+  Delete a user payment account (closes the account, refunds rent to owner)
+
+EXAMPLES
+  $ cli user delete --mint <MINT>
+
+  $ cli user delete -m <MINT>
+```
+
+_See code: [src/commands/user/delete.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/user/delete.ts)_
 
 ## `cli user list`
 

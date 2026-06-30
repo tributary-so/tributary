@@ -1,11 +1,11 @@
 ---
 # tributary-zllt
 title: 'CLI: user delete (delete_user_payment)'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-06-29T07:51:25Z
-updated_at: 2026-06-29T07:51:57Z
+updated_at: 2026-06-30T07:37:47Z
 parent: tributary-hy8a
 blocked_by:
     - tributary-p6n3
@@ -59,3 +59,7 @@ and is unblocked.
 ## Workflow
 
 routing: implementer · cannot start until SDK `deleteUserPayment` ships.
+
+## Summary of Changes
+
+Added user delete command wrapping sdk.deleteUserPayment(mint). Fails cleanly on-chain if open policies remain. Rent refunded to owner.
