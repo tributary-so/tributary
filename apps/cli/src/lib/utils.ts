@@ -1,5 +1,5 @@
 import {Connection, Keypair, PublicKey} from '@solana/web3.js'
-import {IWallet, Tributary} from '@tributary-so/sdk'
+import {Tributary} from '@tributary-so/sdk'
 import BN from 'bn.js'
 import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
@@ -34,19 +34,13 @@ export function output(data: unknown): void {
   }
 }
 
-export function createSDK(
-  connectionUrl: string,
-  keypath: string,
-): {connection: Connection; sdk: Tributary; wallet: IWallet} {
+export function createSDK(connectionUrl: string, keypath: string): Tributary {
   const connection = new Connection(connectionUrl)
   const keypair = readKeypairFromFile(keypath)
-  const sdk = new Tributary(connection, keypair)
-  return {connection, sdk, wallet: sdk.provider.wallet as IWallet}
+  return new Tributary(connection, keypair)
 }
 
-export function createReadOnlySDK(connectionUrl: string): {connection: Connection; sdk: Tributary} {
+export function createReadOnlySDK(connectionUrl: string): Tributary {
   const connection = new Connection(connectionUrl)
-  const keypair = Keypair.generate()
-  const sdk = new Tributary(connection, keypair)
-  return {connection, sdk}
+  return new Tributary(connection, Keypair.generate())
 }

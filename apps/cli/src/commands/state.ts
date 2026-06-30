@@ -1,17 +1,17 @@
-import {ReadOnlyCommand} from '../lib/base-command.js'
+import {BaseCommand} from '../lib/base-command.js'
 
-export default class State extends ReadOnlyCommand {
+export default class State extends BaseCommand {
   static description = 'Dump the global ProgramConfig state account'
   static examples = [
     '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> state -c https://api.mainnet-beta.solana.com',
   ]
   static flags = {
-    ...ReadOnlyCommand.baseFlags,
+    ...BaseCommand.baseFlags,
   }
 
   public async run(): Promise<void> {
-    const sdk = await this.getSDK()
+    const sdk = await this.getReadOnlySDK()
     const configPda = sdk.getConfigPda()
     const config = await sdk.getProgramConfig(configPda.address)
 

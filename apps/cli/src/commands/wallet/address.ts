@@ -1,7 +1,7 @@
-import {WalletlessCommand} from '../../lib/base-command.js'
+import {BaseCommand} from '../../lib/base-command.js'
 import {readKeypairFromFile} from '../../lib/utils.js'
 
-export default class WalletAddress extends WalletlessCommand {
+export default class WalletAddress extends BaseCommand {
   static description = 'Display the public key of the current wallet'
   static examples = [
     '<%= config.bin %> <%= command.id %>',

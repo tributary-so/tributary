@@ -1,16 +1,16 @@
 import {Flags} from '@oclif/core'
 
-import {ReadOnlyCommand} from '../../lib/base-command.js'
+import {BaseCommand} from '../../lib/base-command.js'
 import {parsePublicKey} from '../../lib/utils.js'
 
-export default class SubscriptionList extends ReadOnlyCommand {
+export default class SubscriptionList extends BaseCommand {
   static description = 'List payment policies for a user payment account'
   static examples = [
     '<%= config.bin %> <%= command.id %> --user-payment <USER_PAYMENT_PUBKEY>',
     '<%= config.bin %> <%= command.id %> -u <USER_PAYMENT_PUBKEY>',
   ]
   static flags = {
-    ...ReadOnlyCommand.baseFlags,
+    ...BaseCommand.baseFlags,
     'user-payment': Flags.string({
       char: 'u',
       description: 'User payment account public key to list policies for',
@@ -20,12 +20,10 @@ export default class SubscriptionList extends ReadOnlyCommand {
 
   public async run(): Promise<void> {
     const {flags} = await this.parse(SubscriptionList)
-
     const userPayment = parsePublicKey(flags['user-payment'])
     if (!userPayment) this.error('Invalid user payment public key')
 
-    const sdk = await this.getSDK()
-
+    const sdk = await this.getReadOnlySDK()
     const userPaymentAccount = await sdk.getUserPayment(userPayment)
     const policies = await sdk.getPaymentPoliciesByUserPayment(userPayment)
 

@@ -1,11 +1,11 @@
 ---
 # tributary-p6n3
 title: 'CLI: Track C cleanup — collapse base classes, dedup commands, fix README'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-06-29T07:51:24Z
-updated_at: 2026-06-29T07:51:24Z
+updated_at: 2026-06-30T07:19:46Z
 parent: tributary-hy8a
 ---
 
@@ -75,3 +75,9 @@ lines removable). Concrete moves:
 ## Workflow
 
 routing: implementer · no external routing table supplied for this epic.
+
+<!-- hordr:workflow=implement -->
+
+## Summary of Changes
+
+Collapsed 3 base classes to 1 BaseCommand with getSDK/getReadOnlySDK + send/sendAll helpers. Deleted duplicate program/config.ts. Fixed memo padding to use encodeMemo. Made --policy required on payments execute. Regenerated README from scratch. Extracted releaseRules to .releaserc.json. Compacted all command output objects and flag declarations. Net src: 1717 to 1346 (-371 lines).

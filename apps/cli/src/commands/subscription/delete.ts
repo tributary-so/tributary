@@ -1,4 +1,3 @@
-import * as anchor from '@coral-xyz/anchor'
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../lib/base-command.js'
@@ -12,31 +11,18 @@ export default class SubscriptionDelete extends BaseCommand {
   ]
   static flags = {
     ...BaseCommand.baseFlags,
-    'policy-id': Flags.string({
-      char: 'p',
-      description: 'Policy ID number',
-      required: true,
-    }),
-    'token-mint': Flags.string({
-      char: 'm',
-      description: 'Token mint address',
-      required: true,
-    }),
+    'policy-id': Flags.string({char: 'p', description: 'Policy ID number', required: true}),
+    'token-mint': Flags.string({char: 'm', description: 'Token mint address', required: true}),
   }
 
   public async run(): Promise<void> {
     const {flags} = await this.parse(SubscriptionDelete)
-
     const tokenMint = parsePublicKey(flags['token-mint'])
     if (!tokenMint) this.error('Invalid token mint address')
-
     const policyId = Number.parseInt(flags['policy-id'], 10)
 
     const sdk = await this.getSDK()
-    const instruction = await sdk.deletePaymentPolicy(tokenMint, policyId)
-    const tx = new anchor.web3.Transaction()
-    tx.add(instruction)
-    const signature = await sdk.provider.sendAndConfirm(tx)
+    const signature = await this.send(await sdk.deletePaymentPolicy(tokenMint, policyId))
 
     this.output({
       command: 'subscription delete',
