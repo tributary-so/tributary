@@ -87,7 +87,7 @@ Both reuse the same `PolicyType` enum, the same `UserPayment` account, the same
 | Docs            | MkDocs Material (`uv` / Python)                                                     |
 | Package Manager | pnpm workspaces (root `10.28.2`)                                                    |
 | CI/CD           | GitHub Actions, semantic-release (per-package), ghcr.io Docker                      |
-| Testing         | Jest, Anchor tests, Surfpool localnet                                               |
+| Testing         | Jest, Anchor tests, Surfpool mainnet-fork                                           |
 
 ## Prerequisites
 
@@ -157,23 +157,30 @@ cp apps/api/.env.example apps/api/.env
 
 ### 5. Run Tests
 
-Integration tests run against Surfpool (a local Solana fork). Start it in one
-terminal:
+All tests (Rust unit tests + every jest integration suite) run against a
+**Surfpool mainnet-fork**. The program is deployed on mainnet, so the fork
+carries real config and token state (USDC, USDT, Meteora pools, …) that the
+tests seed via Surfpool cheatcodes — there is no separate deploy step (Surfpool
+auto-deploys the program from `target/deploy/` on start).
+
+Start Surfpool in one terminal, then run the whole suite with a single command:
 
 ```bash
-make run_surfpool
-# → surfpool start --legacy-anchor-compatibility --watch
+# Terminal 1 — start the fork
+surfpool start --legacy-anchor-compatibility --no-tui
+# (or: make run_surfpool)
+
+# Terminal 2 — run everything (Rust + every jest suite); first failure aborts
+anchor run surfpool
+# (or: make test_surfpool)
 ```
 
-Then run the test suites:
+> [!WARNING] > **`anchor test` no longer runs the suite.** It builds the program, prints a
+> redirect message, and exits non-zero. Use `anchor run surfpool` against a
+> running Surfpool instance instead. Plain `cargo test` still works for the
+> Rust unit tests only.
 
-```bash
-anchor test          # runs cargo tests + integration + composable jest suites
-# or individually:
-make test_surfpool   # surfpool + topup suites
-```
-
-See [Testing](#testing) for the full matrix.
+See [Testing](#testing) for the per-suite matrix.
 
 ### 6. Start a Frontend Dev Server
 
@@ -703,25 +710,25 @@ Each app documents its own variables in its `.env.example`. See
 
 ### Root (`package.json` + `Makefile`)
 
-| Command              | Description                                               |
-| -------------------- | --------------------------------------------------------- |
-| `pnpm install`       | Install all workspace dependencies                        |
-| `pnpm run lint`      | Lint all workspaces                                       |
-| `pnpm run lint:fix`  | Auto-fix lint issues                                      |
-| `make prep`          | Pin Anchor (`avm use 0.31.0`)                             |
-| `make build`         | Build contract + all packages + all apps + docs           |
-| `make test`          | `anchor test`                                             |
-| `make run_surfpool`  | Start Surfpool localnet (`--legacy-anchor-compatibility`) |
-| `make test_surfpool` | Run Surfpool + topup test suites                          |
-| `make all_tests`     | Run `make test && make test_surfpool`                     |
+| Command               | Description                                                                  |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `pnpm install`        | Install all workspace dependencies                                           |
+| `pnpm run lint`       | Lint all workspaces                                                          |
+| `pnpm run lint:fix`   | Auto-fix lint issues                                                         |
+| `make prep`           | Pin Anchor (`avm use 0.31.0`)                                                |
+| `make build`          | Build contract + all packages + all apps + docs                              |
+| `make run_surfpool`   | Start Surfpool mainnet-fork (`--legacy-anchor-compatibility`)                |
+| `make test_surfpool`  | Run the full suite against Surfpool (`anchor run surfpool`)                  |
+| `make test`           | `anchor test` — prints a redirect message (use `make test_surfpool` instead) |
+| `anchor run surfpool` | Full suite (Rust + every jest suite) against a running Surfpool instance     |
 
 ### Program (`programs/tributary`)
 
-| Command        | Description                          |
-| -------------- | ------------------------------------ |
-| `anchor build` | Build `.so` + IDL → `target/deploy/` |
-| `anchor test`  | cargo tests + jest integration       |
-| `cargo test`   | Rust unit tests only                 |
+| Command        | Description                                        |
+| -------------- | -------------------------------------------------- |
+| `anchor build` | Build `.so` + IDL → `target/deploy/`               |
+| `anchor test`  | No-op — prints a redirect to `anchor run surfpool` |
+| `cargo test`   | Rust unit tests only                               |
 
 ### Deployment (`Makefile`)
 
@@ -765,33 +772,48 @@ Each app documents its own variables in its `.env.example`. See
 
 ### Test matrix
 
-| Suite                          | Command                       | Runner     | Requires            |
-| ------------------------------ | ----------------------------- | ---------- | ------------------- |
-| Rust unit tests                | `cargo test`                  | cargo      | Rust toolchain      |
-| Integration (regular policies) | `anchor run test-integration` | jest       | Surfpool / localnet |
-| Composable policies            | `anchor run test-composable`  | jest       | Surfpool            |
-| Surfpool topup (no swap)       | `anchor run test-topup`       | jest       | Surfpool            |
-| Surfpool topup (with swap)     | `anchor run test-topup-swap`  | jest       | Surfpool            |
-| Surfpool full                  | `anchor run test-surfpool`    | jest       | Surfpool            |
-| Everything                     | `anchor test`                 | cargo+jest | Surfpool            |
+Every suite runs against a Surfpool mainnet-fork (the program is deployed on
+mainnet, so the fork supplies real config / token / pool state). Rust unit
+tests are cluster-agnostic.
+
+| Suite                          | Command                       | Runner | Requires |
+| ------------------------------ | ----------------------------- | ------ | -------- |
+| Rust unit tests                | `anchor run test-cargo`       | cargo  | Rust     |
+| Integration (regular policies) | `anchor run test-integration` | jest   | Surfpool |
+| Composable policies            | `anchor run test-composable`  | jest   | Surfpool |
+| Surfpool harness               | `anchor run test-surfpool`    | jest   | Surfpool |
+| Surfpool topup (no swap)       | `anchor run test-topup`       | jest   | Surfpool |
+| Surfpool topup (with swap)     | `anchor run test-topup-swap`  | jest   | Surfpool |
+| Surfpool topup (SOL)           | `anchor run test-topup-sol`   | jest   | Surfpool |
+| **Everything**                 | **`anchor run surfpool`**     | all    | Surfpool |
 
 ### Running the full suite
 
 ```bash
-# Terminal 1 — start a local validator
+# Terminal 1 — start the Surfpool mainnet-fork
 make run_surfpool
 
-# Terminal 2 — run tests
-anchor test
+# Terminal 2 — run the whole suite (first failure aborts)
+anchor run surfpool
 ```
 
-`anchor test` is wired in `Anchor.toml` to run:
+`anchor run surfpool` is wired in `Anchor.toml` to chain every suite in order:
 
 ```
-test-cargo      → cargo test
-test-integration→ jest ./tests/tributary.test.ts
-test-composable → jest ./tests/composable.test.ts
+test-cargo       → cargo test
+test-integration → jest ./tests/tributary.test.ts
+test-composable  → jest ./tests/composable.test.ts
+test-surfpool    → jest ./tests/surfpool.test.ts
+test-topup       → jest ./tests/topup-balance.test.ts
+test-topup-swap  → jest ./tests/topup-balance-swap.test.ts
+test-topup-sol   → jest ./tests/topup-balance-sol.test.ts
 ```
+
+> [!IMPORTANT] > `anchor test` is intentionally a no-op that prints a redirect message and
+> exits non-zero. The suite must be driven via `anchor run surfpool` (or
+> `make test_surfpool`) against a running Surfpool instance, because Surfpool
+> auto-deploys the program from `target/deploy/` and the tests rely on the
+> forked mainnet state (USDC/USDT mints, the existing `ProgramConfig`, …).
 
 ### Test files
 
@@ -937,19 +959,26 @@ gh workflow run main.yaml -f post_release=true
 ### Surfpool / integration tests fail
 
 > [!WARNING]
-> Integration tests **require** Surfpool. Plain `anchor test` without it will
-> fail to connect.
+> All jest suites **require** a running Surfpool mainnet-fork. `anchor test`
+> no longer runs them — it prints a redirect message and exits. Use
+> `anchor run surfpool` instead.
 
 ```bash
 # Start Surfpool first (separate terminal)
 make run_surfpool
 
-# Then run tests
-anchor test
+# Then run the whole suite (Rust + every jest suite)
+anchor run surfpool
 
 # If Surfpool is stuck, restart it:
 surfpool start --legacy-anchor-compatibility --no-tui
 ```
+
+> [!TIP]
+> Surfpool persists fork overrides between runs. If a test fails because an
+> account (e.g. `ProgramConfig`) is in an unexpected state from a prior run,
+> restart Surfpool to get back to a pristine mainnet fork, then re-run
+> `anchor run surfpool`.
 
 ### `execute_payment` / `execute_composable` fails
 
@@ -1036,7 +1065,7 @@ Report vulnerabilities to **security@tributary.so** per the policy in
 1. Fork the repository.
 2. Create a feature branch: `git checkout -b feature/your-feature`.
 3. **Write tests first** (TDD) — mirror source structure with `.test.ts`.
-4. Run the suite: `make run_surfpool` then `anchor test`.
+4. Run the suite: `make run_surfpool` (start the fork), then `make test_surfpool` (or `anchor run surfpool`).
 5. Lint: `pnpm run lint` (must be clean).
 6. Commit with **conventional commits** (gitmoji — releases are automated).
 7. Open a pull request.

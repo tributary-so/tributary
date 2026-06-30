@@ -11,6 +11,26 @@ on:
         type: string
         required: false
         default: ""
+      # Optional cargo features to pass to `anchor build` (e.g. "mainnet").
+      features:
+        type: string
+        required: false
+        default: ""
+      # Surfpool version tag to install (default: latest). Pin for reproducibility.
+      surfpool_version:
+        type: string
+        required: false
+        default: "latest"
+
+env:
+  # Surfpool exposes the standard Solana JSON-RPC on localhost:8899.
+  ANCHOR_PROVIDER_URL: http://127.0.0.1:8899
+  ANCHOR_WALLET: /home/runner/.config/solana/id.json
+  # Surfpool forks mainnet, whose RPC is slower than localnet; several suites
+  # (getProgramAccounts enumeration, milestone/referral graphs) exceed jest's
+  # 5s default. jest.config.js sets 90s, but keep CI from SIGKILLing early.
+  SURFPOOL_HOST: "127.0.0.1"
+  SURFPOOL_PORT: "8899"
 
 jobs:
   test:
@@ -45,6 +65,15 @@ jobs:
           anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
           node_version: 22
 
+      - name: Ensure test wallet exists
+        shell: bash
+        run: |
+          mkdir -p "$(dirname "$ANCHOR_WALLET")"
+          if [ ! -f "$ANCHOR_WALLET" ]; then
+            solana-keygen new --no-bip39-passphrase --silent --outfile "$ANCHOR_WALLET"
+          fi
+          echo "Wallet: $(solana-keygen pubkey "$ANCHOR_WALLET")"
+
       - name: Cache node_modules
         uses: actions/cache@v3
         with:
@@ -62,24 +91,130 @@ jobs:
             test-ledger/
           shared-key: "anchor-test-${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}-${{ inputs.solana_version || steps.versions.outputs.solana_version }}"
 
-      - name: Run Anchor Tests
+      # ── Program build ────────────────────────────────────────────────────
+      # Build the .so up front. `anchor run surfpool` does not build itself;
+      # Surfpool auto-deploys target/deploy/tributary.so on start.
+      - name: Build program
         shell: bash
         env:
           CARGO_INCREMENTAL: 1
           CARGO_NET_RETRY: 10
           RUST_BACKTRACE: 1
         run: |
-          echo "Running tests for program: tributary"
-                  FEATURES="${{ inputs.features }}"
-          if [ ! -z "$FEATURES" ]; then
-            FEATURES="--features $FEATURES"
+          echo "Building program: tributary"
+          FEATURES="${{ inputs.features }}"
+          if [ -n "$FEATURES" ]; then
+            anchor build -- --features "$FEATURES"
+          else
+            anchor build
           fi
+          test -f target/deploy/tributary.so
 
-          anchor test -- $FEATURES
+      # ── Surfpool: install + start + warm up ──────────────────────────────
+      - name: Install Surfpool
+        shell: bash
+        run: |
+          VERSION="${{ inputs.surfpool_version }}" curl -sL https://run.surfpool.run/ | bash
+          # Installer drops the binary in ~/.local/bin; expose it to later steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/surfpool" --version
+
+      - name: Start Surfpool (background)
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          # `--no-tui` for non-interactive CI; `--legacy-anchor-compatibility`
+          # exposes the standard localhost:8899 JSON-RPC that Anchor/Jest use.
+          surfpool start --legacy-anchor-compatibility --no-tui > "$RUNNER_TEMP/surfpool.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/surfpool.pid"
+          echo "Surfpool PID: $(cat "$RUNNER_TEMP/surfpool.pid")"
+
+          echo "Waiting for Surfpool RPC to become healthy..."
+          for i in $(seq 1 60); do
+            if curl -sf -X POST "http://$SURFPOOL_HOST:$SURFPOOL_PORT" \
+                -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
+                | grep -q '"ok"'; then
+              echo "Surfpool healthy after ${i} poll(s)."
+              exit 0
+            fi
+            # Bail early if the process died.
+            if ! kill -0 "$(cat "$RUNNER_TEMP/surfpool.pid")" 2>/dev/null; then
+              echo "::error::Surfpool process exited during startup"
+              cat "$RUNNER_TEMP/surfpool.log" || true
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::Surfpool did not become healthy in 120s"
+          cat "$RUNNER_TEMP/surfpool.log" || true
+          exit 1
+
+      # Surfpool lazy-forks mainnet on first query. Pre-warm by pulling the
+      # program's full account set once (a superset of any filtered
+      # getProgramAccounts call the tests make) so the first such call inside a
+      # test doesn't stall on cold-fork latency — the main source of CI flakes.
+      - name: Warm up Surfpool fork
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          PROGRAM="TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
+          echo "Warming mainnet fork (getProgramAccounts on $PROGRAM)..."
+          # Single thorough fetch; tolerate up to 3 min for the lazy load.
+          if curl -sf --max-time 180 -X POST "http://$SURFPOOL_HOST:$SURFPOOL_PORT" \
+              -H 'Content-Type: application/json' \
+              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getProgramAccounts\",\"params\":[\"$PROGRAM\"]}" \
+              -o /dev/null; then
+            echo "Fork warm."
+          else
+            echo "::warning::Fork warm-up fetch did not complete within 180s; continuing anyway."
+          fi
+          # Brief settle period after the bulk fetch.
+          sleep 3
+
+      # ── Run the suite ────────────────────────────────────────────────────
+      # `anchor run surfpool` chains cargo test + every jest suite against the
+      # running Surfpool fork (see Anchor.toml). It does NOT build or deploy —
+      # both happened above (build step + Surfpool auto-deploy on start).
+      - name: Run Anchor Tests
+        timeout-minutes: 30
+        shell: bash
+        env:
+          CARGO_INCREMENTAL: 1
+          CARGO_NET_RETRY: 10
+          RUST_BACKTRACE: 1
+        run: |
+          echo "Running suite for program: tributary (via \`anchor run surfpool\`)"
+          anchor run surfpool
+
+      # ── Diagnostics + cleanup ────────────────────────────────────────────
+      - name: Dump Surfpool log on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "::group::Surfpool log (tail)"
+          tail -n 400 "$RUNNER_TEMP/surfpool.log" 2>/dev/null || true
+          echo "::endgroup::"
+
+      - name: Upload Surfpool log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surfpool-log
+          path: ${{ runner.temp }}/surfpool.log
+          if-no-files-found: ignore
+
+      - name: Stop Surfpool
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/surfpool.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/surfpool.pid")" 2>/dev/null || true
+          fi
 
       - name: Check Test Results
         if: ${{ failure() }}
         shell: bash
         run: |
-          echo "Tests failed! Check the logs above for details."
+          echo "Tests failed! Check the Surfpool log artifact + logs above for details."
           exit 1

@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   PublicKey,
   Keypair,
-  SystemProgram,
   LAMPORTS_PER_SOL,
   Commitment,
   Transaction,
@@ -12,10 +11,8 @@ import {
 import {
   createMint,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccount,
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
-  mintTo,
   approve,
   revoke,
   getAccount,
@@ -29,6 +26,7 @@ import {
   TributarySDK,
   encodeMemo,
 } from "../packages/sdk/src";
+import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import assert from "assert";
 import { Buffer } from "buffer";
 const ADMIN_KEYPAIR = [
@@ -70,81 +68,93 @@ describe("Tributary", () => {
   let paymentsDelegate: PublicKey;
   let sdk: TributarySDK;
 
+  // Surfpool cheatcode handle — set in beforeAll. Helpers below route funding
+  // and token seeding through it instead of SystemProgram.transfer / mintTo.
+  let surfpool: SurfpoolHelper;
+  // ATA address → owner, populated by batchCreateATAs so batchMintTo can
+  // resolve owners for Surfpool's owner-keyed setTokenAccount cheatcode.
+  const ataOwnerMap = new Map<string, PublicKey>();
+
   async function fund(account: PublicKey, amount: number): Promise<void> {
-    const transaction = new anchor.web3.Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: provider.wallet.publicKey,
-        toPubkey: account,
-        lamports: amount * LAMPORTS_PER_SOL,
-      })
-    );
-    await provider.sendAndConfirm(transaction, null, {
-      commitment: "processed" as Commitment,
+    await surfpool.setAccount({
+      publicKey: account,
+      lamports: amount * LAMPORTS_PER_SOL,
     });
   }
 
   async function batchFund(pairs: [PublicKey, number][]): Promise<void> {
-    const transaction = new anchor.web3.Transaction();
     for (const [account, amount] of pairs) {
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: provider.wallet.publicKey,
-          toPubkey: account,
-          lamports: amount * LAMPORTS_PER_SOL,
-        })
-      );
+      await surfpool.setAccount({
+        publicKey: account,
+        lamports: amount * LAMPORTS_PER_SOL,
+      });
     }
-    await provider.sendAndConfirm(transaction, null, {
-      commitment: "processed" as Commitment,
+  }
+
+  // Surfpool's setTokenAccount is absolute (sets the amount field, creating
+  // the ATA implicitly). To preserve mintTo's additive semantics we read the
+  // current balance first, then set current + amount.
+  async function creditTokenAccount(
+    owner: PublicKey,
+    amount: bigint,
+    mint: PublicKey = tokenMint
+  ): Promise<void> {
+    const ata = getAssociatedTokenAddressSync(mint, owner);
+    let current = 0n;
+    try {
+      const info = await connection.getTokenAccountBalance(ata);
+      if (info.value) current = BigInt(info.value.amount);
+    } catch {
+      // ATA doesn't exist yet — setTokenAccount will create it.
+    }
+    await surfpool.setTokenAccount({
+      owner,
+      mint,
+      amount: Number(current + amount),
     });
   }
 
   async function batchCreateATAs(
     ownerPublicKeys: PublicKey[]
   ): Promise<PublicKey[]> {
-    const ataAddresses = ownerPublicKeys.map((owner) =>
-      getAssociatedTokenAddressSync(tokenMint, owner)
-    );
-    const tx = new Transaction();
-    for (let i = 0; i < ownerPublicKeys.length; i++) {
-      tx.add(
-        createAssociatedTokenAccountInstruction(
-          admin.publicKey,
-          ataAddresses[i],
-          ownerPublicKeys[i],
-          tokenMint
-        )
-      );
-    }
-    await provider.sendAndConfirm(tx, [admin], {
-      commitment: "processed" as Commitment,
+    const ataAddresses = ownerPublicKeys.map((owner) => {
+      const ata = getAssociatedTokenAddressSync(tokenMint, owner);
+      ataOwnerMap.set(ata.toBase58(), owner);
+      return ata;
     });
+    // Ensure zero-balance ATAs exist (later balance reads assume presence).
+    for (const owner of ownerPublicKeys) {
+      await surfpool.setTokenAccount({ owner, mint: tokenMint, amount: 0 });
+    }
     return ataAddresses;
   }
 
   async function batchMintTo(
     targets: { address: PublicKey; amount: bigint }[]
   ): Promise<void> {
-    const tx = new Transaction();
     for (const target of targets) {
-      tx.add(
-        createMintToInstruction(
-          tokenMint,
-          target.address,
-          mintAuthority.publicKey,
-          target.amount
-        )
-      );
+      const owner = ataOwnerMap.get(target.address.toBase58());
+      if (!owner) {
+        throw new Error(
+          `batchMintTo: unknown ATA ${target.address.toBase58()} (call batchCreateATAs first)`
+        );
+      }
+      await creditTokenAccount(owner, target.amount);
     }
-    await provider.sendAndConfirm(tx, [mintAuthority], {
-      commitment: "processed" as Commitment,
-    });
   }
 
   beforeAll(async () => {
     // Create Solana Kite connection
     connection = provider.connection;
     sdk = new TributarySDK(connection, wallet as IWallet);
+
+    // Fail fast unless we're on a Surfpool mainnet-fork.
+    surfpool = new SurfpoolHelper(connection);
+    if (!(await surfpool.isSurfpool())) {
+      throw new Error(
+        "Not running against Surfpool. Start with: surfpool start --legacy-anchor-compatibility --no-tui"
+      );
+    }
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
@@ -162,35 +172,12 @@ describe("Tributary", () => {
       [recipient.publicKey, 1],
     ]);
 
-    // Create token mint
-    tokenMint = await createMint(
-      connection,
-      mintAuthority,
-      mintAuthority.publicKey,
-      null,
-      6
-    );
+    // Use the mainnet-forked USDC mint directly — no createMint needed.
+    tokenMint = USDC_MINT;
 
-    // Get associated token account address for the user
+    // Fund the user's USDC ATA (Surfpool setTokenAccount creates it implicitly).
     userTokenAccount = getAssociatedTokenAddressSync(tokenMint, user.publicKey);
-
-    // Create associated token account and mint tokens to it
-    await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      user.publicKey
-    );
-
-    // Mint tokens to the user's account
-    await mintTo(
-      connection,
-      mintAuthority,
-      tokenMint,
-      userTokenAccount,
-      mintAuthority,
-      1000000n // 1 token with 6 decimals
-    );
+    await creditTokenAccount(user.publicKey, 1_000_000n); // 1 USDC
 
     // Derive gateway PDA
     [gatewayPDA, gatewayBump] = PublicKey.findProgramAddressSync(
@@ -242,20 +229,25 @@ describe("Tributary", () => {
     // Update SDK to use admin wallet for this operation
     await sdk.updateWallet(new anchor.Wallet(admin));
 
-    const initIx = await sdk.initialize(
-      provider.wallet.publicKey,
-      admin.publicKey
+    // The program is deployed on mainnet, so the forked config PDA already
+    // exists and `initialize` (which allocates) would fail with "already in
+    // use". Seed the post-init config state via the Surfpool setAccount
+    // cheatcode — same fields the instruction would write. (Same pattern as
+    // surfpool.test.ts.)
+    const desired = await sdk.getProgramConfig(configPDA);
+    desired.admin = admin.publicKey;
+    desired.feeRecipient = admin.publicKey;
+    desired.protocolShareBps = 2000;
+    desired.emergencyPause = false;
+    desired.bump = configBump;
+    const serialized = await program.coder.accounts.encode(
+      "programConfig",
+      desired
     );
-    const tx = new Transaction().add(initIx);
-
-    await sendAndConfirmTransaction(
-      connection,
-      tx,
-      [provider.wallet.payer!, admin],
-      {
-        commitment: "processed" as Commitment,
-      }
-    );
+    await surfpool.setAccount({
+      publicKey: configPDA,
+      data: serialized.toString("hex"),
+    });
 
     const configAccount = await sdk.getProgramConfig(configPDA);
 
@@ -467,20 +459,25 @@ describe("Tributary", () => {
     });
 
     test("Get all payment policies using SDK", async () => {
-      // Get all payment policies
+      // Get all payment policies. On a mainnet fork this also returns
+      // mainnet's real policies, so locate the test's own policy by its
+      // userPayment PDA instead of assuming position [0].
       const allPolicies = await sdk.getAllPaymentPolicies();
 
       expect(allPolicies.length).toBeGreaterThan(0);
-      expect(allPolicies[0].account.policyId).toBe(1);
-      expect(allPolicies[0].account.userPayment).toEqual(userPaymentPDA);
-      expect(allPolicies[0].account.recipient).toEqual(recipient.publicKey);
-      expect(allPolicies[0].account.gateway).toEqual(gatewayPDA);
+      const ours = allPolicies.find((p) =>
+        p.account.userPayment.equals(userPaymentPDA)
+      );
+      expect(ours).toBeDefined();
+      expect(ours!.account.policyId).toBe(1);
+      expect(ours!.account.recipient).toEqual(recipient.publicKey);
+      expect(ours!.account.gateway).toEqual(gatewayPDA);
 
       // Verify the policy type is subscription
-      expect(allPolicies[0].account.policyType.subscription).toBeDefined();
-      expect(
-        allPolicies[0].account.policyType.subscription.amount.toNumber()
-      ).toBe(10000);
+      expect(ours!.account.policyType.subscription).toBeDefined();
+      expect(ours!.account.policyType.subscription.amount.toNumber()).toBe(
+        10000
+      );
     });
 
     test("Cannot execute subscription payment twice within period", async () => {
@@ -616,14 +613,7 @@ describe("Tributary", () => {
       );
 
       // Mint tokens to test user
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        userTokenAccount,
-        mintAuthority,
-        1000000n // 1 token with 6 decimals
-      );
+      await creditTokenAccount(user.publicKey, 1000000n); // 1 token with 6 decimals
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
@@ -685,14 +675,7 @@ describe("Tributary", () => {
       );
 
       // Mint tokens to test user 2
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        userTokenAccount,
-        mintAuthority,
-        1000000n // 1 token with 6 decimals
-      );
+      await creditTokenAccount(user.publicKey, 1000000n); // 1 token with 6 decimals
 
       // Get initial balances for test 2
       const initialRecipient2Balance = await connection.getTokenAccountBalance(

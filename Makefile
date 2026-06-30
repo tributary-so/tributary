@@ -16,11 +16,12 @@ test:
 run_surfpool:
 	surfpool start --legacy-anchor-compatibility --watch
 
+# Full suite (Rust + every jest suite) against a running Surfpool instance.
+# Start `make run_surfpool` in a separate terminal first.
 test_surfpool:
-	anchor run test-surfpool
-	anchor run test-topup
+	anchor run surfpool
 
-all_tests: test test_surfpool
+all_tests: test_surfpool
 
 # Devnet ######################################
 devnet_expand:

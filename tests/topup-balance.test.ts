@@ -8,7 +8,11 @@ import {
 } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
-import { Tributary as TributarySDK, lighthouse } from "../packages/sdk/src";
+import {
+  Tributary as TributarySDK,
+  lighthouse,
+  parseValidationPda,
+} from "../packages/sdk/src";
 import {
   getConfigPda,
   getGatewayPda,
@@ -437,13 +441,17 @@ describe("Composable Topup Balance Flow", () => {
     );
     expect(policy.policyType.payAsYouGo.currentPeriodTotal.toNumber()).toBe(0);
 
-    // Verify ValidationPDA was created with correct assertion data
+    // Verify ValidationPDA was created with correct assertion data. Decode via
+    // the SDK's parseValidationPda (mirrors the on-chain typed ValidationPda
+    // layout) rather than hand-rolled offsets — the struct gained bump /
+    // num_pinned_accounts / pinned_accounts[2] fields, so the legacy
+    // readUInt16LE(8) / slice(10, ...) reads the wrong bytes.
     const valPdaAccount = await connection.getAccountInfo(validationPDA);
     expect(valPdaAccount).not.toBeNull();
-    const dataLen = valPdaAccount!.data.readUInt16LE(8);
-    expect(dataLen).toBe(12);
-    const storedData = valPdaAccount!.data.slice(10, 10 + 12);
-    expect(Buffer.from(storedData)).toEqual(guard.data);
+    const parsed = parseValidationPda(valPdaAccount!.data);
+    expect(parsed.numPinnedAccounts).toBe(guard.numAccounts);
+    expect(parsed.dataLen).toBe(guard.data.length);
+    expect(Buffer.from(parsed.data)).toEqual(guard.data);
   });
 
   test("Execute topup — succeeds (hotWallet below threshold)", async () => {
