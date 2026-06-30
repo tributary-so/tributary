@@ -15,7 +15,7 @@ live at `https://api.tributary.so/openapi.yaml`. If the spec is unreachable
 the section below will be empty — the API server may be starting up or the
 domain is not yet deployed.
 
-[OAD(../../../api/openapi.yaml)]
+[OAD(./openapi.yaml)]
 
 ---
 
