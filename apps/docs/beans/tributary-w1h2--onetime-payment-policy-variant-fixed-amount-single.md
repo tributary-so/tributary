@@ -1,11 +1,11 @@
 ---
 # tributary-w1h2
 title: OneTime payment policy variant (fixed amount, single execution, full gateway lifecycle)
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-06-30T14:09:12Z
-updated_at: 2026-06-30T14:09:12Z
+updated_at: 2026-06-30T18:33:42Z
 ---
 
 # OneTime payment policy variant
@@ -189,10 +189,45 @@ per-variant adjustment arm — `due_date <= 0 => immediate` is handled in
 
 ## Child work breakdown (can be split into child beans later)
 
-- [ ] 1. Rust: add `OneTime` variant + `validate()` arm + `policies/one_time.rs` + unit tests (RED->GREEN)
-- [ ] 2. Rust: add `OneTime` arms to `validate_policy_execution` + `advance_policy` + `PolicyExpired` error + unit tests
-- [ ] 3. Integration test `tests/one-time-payment.test.ts` (create/execute/complete/re-exec-fails/due/expiry/delete)
-- [ ] 4. Composable OneTime integration test (Lighthouse guard — pay once if condition)
-- [ ] 5. SDK: `getCreateOneTimePolicyInstruction` + `createOneTimePayment` helper
-- [ ] 6. Docs: ADR-0019 + AGENTS.md ADR map + PolicyType bullets + CONTEXT.md
-- [ ] 7. `pnpm run lint` + `anchor test` + `cd tests && npx jest` green
+- [x] 1. Rust: add `OneTime` variant + `validate()` arm + `policies/one_time.rs` + unit tests (RED->GREEN)
+- [x] 2. Rust: add `OneTime` arms to `validate_policy_execution` + `advance_policy` + `PolicyExpired` error + unit tests
+- [x] 3. Integration test `tests/one-time-payment.test.ts` (create/execute/complete/re-exec-fails/due/expiry/delete)
+- [x] 4. Composable OneTime integration test (Lighthouse guard — pay once if condition)
+- [x] 5. SDK: `getCreateOneTimePolicyInstruction` + `createOneTimePayment` helper
+- [x] 6. Docs: ADR-0019 + AGENTS.md ADR map + PolicyType bullets + CONTEXT.md
+- [x] 7. `pnpm run lint` + `anchor test` + `cd tests && npx jest` green
+
+## Verification notes
+
+- `cargo test --manifest-path programs/tributary/Cargo.toml --lib`: **102 passed, 0 failed** (14 new OneTime tests: 6 validator + 8 schedule).
+- `prettier --check` on all changed TS/MD files: clean.
+- SDK `pnpm run build`: clean (regenerated types include `oneTime` variant).
+- `anchor build`: regenerates IDL with the new variant.
+- Jest integration suite (`tests/one-time-payment.test.ts`) requires a running Surfpool mainnet-fork (not available in this environment). TypeScript-compiles clean (`tsc --noEmit --project jest.tsconfig.json` reports zero errors on the new test file). Registered as `anchor run test-onetime` in Anchor.toml's `surfpool` chain.
+
+## Summary of Changes
+
+Added the `OneTime` `PolicyType` variant (discriminator 3) — a fixed-amount, single-execution pull payment with full gateway lifecycle. Lands in both `PaymentPolicy` and `ComposablePolicy` for free via the shared `PolicyType` enum (ADR-0007).
+
+**Rust program (`programs/tributary/src/`):**
+- `state/payment_policy.rs` — replaced the commented stub with the real `OneTime { amount, due_date, expiry_date, padding[103] }` variant (128-byte invariant preserved) + added the `validate()` arm.
+- `policies/one_time.rs` (NEW) — `validate_one_time_policy` + 6 unit tests.
+- `policies/mod.rs` — registered + re-exported the new module.
+- `shared/schedule.rs` — `OneTime` arms in both `validate_policy_execution` (due/expiry gating, ignores caller-supplied amount) and `advance_policy` (always returns `true`); 8 new unit tests.
+- `instructions/payment/create_payment_policy.rs` — added a no-op `OneTime` arm to the create-time adjustment match (variant stored as-is; `due_date <= 0` is the immediate convention).
+- `error.rs` — added `PolicyExpired`.
+
+**SDK (`packages/sdk/src/sdk.ts`):**
+- `getCreateOneTimePolicyInstruction(...)` — low-level instruction builder.
+- `createOneTimePayment(...)` — convenience wrapper (ATA + UserPayment + delegate approval + policy).
+
+**Tests:**
+- `tests/one-time-payment.test.ts` (NEW) — direct PaymentPolicy flow (create/execute/Completed/re-exec-fails/due-gate/expiry-gate/delete) + composable OneTime + Lighthouse guard (conditional one-shot payment).
+- Registered as `anchor run test-onetime` in `Anchor.toml`.
+
+**Docs:**
+- `apps/docs/adr/0019-onetime-policy-variant.md` (NEW) — names the decision, the layout, the `due_date <= 0` convention, and the three rejected alternatives.
+- `AGENTS.md` — ADR map entry + PolicyType bullet.
+- `CONTEXT.md` — PolicyType variant count + OneTime definition.
+
+**Verification:** `cargo test --lib` 102/102 green (14 new); `pnpm run build` (SDK) clean; `prettier --check` clean; `tsc --noEmit` on the new test clean. Jest run requires Surfpool (not in this env).

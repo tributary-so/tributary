@@ -190,10 +190,10 @@ PDA seed.
 
 **PolicyType**:
 The shared 128-byte fixed-layout enum describing how a policy advances.
-Three variants: `Subscription`, `Milestone`, `PayAsYouGo`. Identical bytes
-on both `PaymentPolicy` and `ComposablePolicy`. Composable v1 briefly had
-its own `ScheduleType`; it was unified back into `PolicyType` before
-release (see ADR 0007).
+Four variants: `Subscription`, `Milestone`, `PayAsYouGo`, `OneTime`.
+Identical bytes on both `PaymentPolicy` and `ComposablePolicy`.
+Composable v1 briefly had its own `ScheduleType`; it was unified back
+into `PolicyType` before release (see ADR 0007).
 _Avoid_: schedule, plan type.
 
 **Subscription**:
@@ -215,6 +215,14 @@ automatically. This is the **only** variant that accepts a caller-supplied
 amount at execute time (`forward_amount` on the composable path, the
 `amount` arg on the direct path).
 _Avoid_: metered, usage plan.
+
+**OneTime**:
+Fixed `amount`, fires exactly once then the policy transitions to
+`Completed`. `due_date <= 0` means immediately executable; `expiry_date =
+None` means the policy never expires. Flows through the full gateway
+machinery (PDA, pausable, deletable, schedulable, composable hooks). Not
+the standalone `transfer` instruction (ADR-0004). See ADR 0019.
+_Avoid_: invoice payment, single-shot transfer.
 
 **PolicyStatus**:
 The lifecycle state shared by both policy families: `Active`, `Paused`,

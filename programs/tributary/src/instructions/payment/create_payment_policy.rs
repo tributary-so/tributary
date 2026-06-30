@@ -97,6 +97,12 @@ impl<'info> CreatePaymentPolicy<'info> {
                 // Initialize the current period start time
                 *current_period_start = clock.unix_timestamp;
             }
+            PolicyType::OneTime { .. } => {
+                // OneTime stores due_date as-is. due_date <= 0 means
+                // "immediately executable" (handled at execute time); a
+                // positive due_date gates execution. No clamp here — the
+                // execute-time gate is the single source of truth.
+            }
         }
 
         let payment_policy = &mut ctx.accounts.payment_policy;

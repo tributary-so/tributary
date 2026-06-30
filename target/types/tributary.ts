@@ -2980,6 +2980,11 @@ export type Tributary = {
       "code": 6060,
       "name": "permissionlessExecutionRequiresMinOutput",
       "msg": "Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)"
+    },
+    {
+      "code": 6061,
+      "name": "policyExpired",
+      "msg": "One-time policy has expired"
     }
   ],
   "types": [
@@ -4127,6 +4132,34 @@ export type Tributary = {
                   "array": [
                     "u8",
                     88
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "oneTime",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              },
+              {
+                "name": "dueDate",
+                "type": "i64"
+              },
+              {
+                "name": "expiryDate",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    103
                   ]
                 }
               }

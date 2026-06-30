@@ -126,4 +126,6 @@ pub enum TributaryError {
     InvalidSchedulerFeeAccount,
     #[msg("Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)")]
     PermissionlessExecutionRequiresMinOutput,
+    #[msg("One-time policy has expired")]
+    PolicyExpired,
 }

@@ -274,6 +274,11 @@ impl<'a> MilestoneSigners<'a> {
 /// * **PayAsYouGo** — requires `provided_amount` (the chunk); validates
 ///   `0 < chunk <= max_chunk_amount` and that the projected period total
 ///   stays within `max_amount_per_period`; returns the chunk.
+/// * **OneTime** — `due_date <= 0` is immediately executable, otherwise
+///   requires `current_time >= due_date`; if `expiry_date` is set,
+///   requires `current_time <= expiry_date`. Returns the fixed `amount`.
+///   The caller-supplied `provided_amount` is ignored (mirrors
+///   Subscription).
 pub fn validate_policy_execution(
     policy_type: &PolicyType,
     current_time: i64,
@@ -358,6 +363,20 @@ pub fn validate_policy_execution(
             );
             Ok(chunk)
         }
+        PolicyType::OneTime {
+            amount,
+            due_date,
+            expiry_date,
+            ..
+        } => {
+            if *due_date > 0 {
+                require!(current_time >= *due_date, TributaryError::PaymentNotDue);
+            }
+            if let Some(exp) = expiry_date {
+                require!(current_time <= *exp, TributaryError::PolicyExpired);
+            }
+            Ok(*amount)
+        }
     }
 }
 
@@ -371,6 +390,10 @@ pub fn validate_policy_execution(
 ///   `current_milestone >= total_milestones`.
 /// * **PayAsYouGo** — resets or accumulates `current_period_total` based on
 ///   whether the period window has elapsed; never auto-completes.
+/// * **OneTime** — always completes. A one-time policy fires exactly once;
+///   `execute_payment` / `execute_composable` then sets
+///   `status = PolicyStatus::Completed`, and re-execution is blocked by the
+///   existing `status == Active` constraint.
 pub fn advance_policy(
     policy_type: &mut PolicyType,
     current_time: i64,
@@ -419,6 +442,12 @@ pub fn advance_policy(
                     .ok_or(TributaryError::ArithmeticOverflow)?;
             }
             Ok(false)
+        }
+        PolicyType::OneTime { .. } => {
+            // Always terminal after one execution. No state to mutate — the
+            // variant is immutable; only the enclosing account's `status`
+            // field flips to `Completed` in the caller.
+            Ok(true)
         }
     }
 }
@@ -825,6 +854,88 @@ mod tests {
                 assert_eq!(*current_period_total, 40);
             }
             _ => panic!("expected PayAsYouGo"),
+        }
+    }
+
+    // ── OneTime gating + advancement ──
+
+    /// Build a `PolicyType::OneTime` for tests.
+    fn one_time(amount: u64, due_date: i64, expiry_date: Option<i64>) -> PolicyType {
+        PolicyType::OneTime {
+            amount,
+            due_date,
+            expiry_date,
+            padding: [0u8; 103],
+        }
+    }
+
+    #[test]
+    fn onetime_immediate_executes_now() {
+        // due_date <= 0 → immediately executable.
+        let pt = one_time(100, 0, None);
+        let amount = validate_policy_execution(&pt, 0, None, &MilestoneSigners::none()).unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn onetime_negative_due_executes_now() {
+        // Negative due_date is also "immediate".
+        let pt = one_time(7, -1, None);
+        let amount = validate_policy_execution(&pt, 0, None, &MilestoneSigners::none()).unwrap();
+        assert_eq!(amount, 7);
+    }
+
+    #[test]
+    fn onetime_rejects_execution_before_due() {
+        let pt = one_time(100, FEB_29_2024, None);
+        let err = validate_policy_execution(&pt, JAN_31_2024, None, &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::PaymentNotDue));
+    }
+
+    #[test]
+    fn onetime_executes_at_due_boundary() {
+        let pt = one_time(100, FEB_29_2024, None);
+        let amount =
+            validate_policy_execution(&pt, FEB_29_2024, None, &MilestoneSigners::none()).unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn onetime_rejects_after_expiry() {
+        let pt = one_time(100, 0, Some(JAN_31_2024));
+        let err = validate_policy_execution(&pt, FEB_29_2024, None, &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::PolicyExpired));
+    }
+
+    #[test]
+    fn onetime_executes_at_expiry_boundary() {
+        // current_time == expiry is permitted (<=).
+        let pt = one_time(100, 0, Some(JAN_31_2024));
+        let amount =
+            validate_policy_execution(&pt, JAN_31_2024, None, &MilestoneSigners::none()).unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn onetime_ignores_provided_amount() {
+        // Caller-supplied amount is ignored — amount is fixed.
+        let pt = one_time(100, 0, None);
+        let amount =
+            validate_policy_execution(&pt, 0, Some(999), &MilestoneSigners::none()).unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn onetime_advance_always_completes() {
+        let mut pt = one_time(100, 0, None);
+        let should = advance_policy(&mut pt, 0, 100).unwrap();
+        assert!(should, "OneTime must always complete after one execution");
+        // Variant itself is unchanged.
+        match &pt {
+            PolicyType::OneTime { amount, .. } => assert_eq!(*amount, 100),
+            _ => panic!("expected OneTime"),
         }
     }
 
