@@ -21,7 +21,7 @@ $ tributary COMMAND
 * [`cli gateway show`](#cli-gateway-show)
 * [`cli gateway signer`](#cli-gateway-signer)
 * [`cli help [COMMAND]`](#cli-help-command)
-* [`cli payments execute`](#cli-payments-execute)
+* [`cli payment execute`](#cli-payment-execute)
 * [`cli pda config`](#cli-pda-config)
 * [`cli pda delegate`](#cli-pda-delegate)
 * [`cli pda gateway`](#cli-pda-gateway)
@@ -37,17 +37,15 @@ $ tributary COMMAND
 * [`cli plugins uninstall [PLUGIN]`](#cli-plugins-uninstall-plugin)
 * [`cli plugins unlink [PLUGIN]`](#cli-plugins-unlink-plugin)
 * [`cli plugins update`](#cli-plugins-update)
+* [`cli policy create`](#cli-policy-create)
+* [`cli policy list`](#cli-policy-list)
+* [`cli policy status`](#cli-policy-status)
 * [`cli program initialize`](#cli-program-initialize)
 * [`cli referral chain`](#cli-referral-chain)
 * [`cli referral create`](#cli-referral-create)
 * [`cli referral show`](#cli-referral-show)
 * [`cli referral show-owner`](#cli-referral-show-owner)
 * [`cli state`](#cli-state)
-* [`cli subscription create`](#cli-subscription-create)
-* [`cli subscription delete`](#cli-subscription-delete)
-* [`cli subscription list`](#cli-subscription-list)
-* [`cli subscription pause`](#cli-subscription-pause)
-* [`cli subscription resume`](#cli-subscription-resume)
 * [`cli user create`](#cli-user-create)
 * [`cli user list`](#cli-user-list)
 * [`cli user show`](#cli-user-show)
@@ -276,13 +274,13 @@ DESCRIPTION
 
 _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/6.2.49/src/commands/help.ts)_
 
-## `cli payments execute`
+## `cli payment execute`
 
 Execute a recurring payment
 
 ```
 USAGE
-  $ cli payments execute [-c <value>] [-k <value>] [-p <value> | -u <value>]
+  $ cli payment execute [-c <value>] [-k <value>] [-p <value> | -u <value>]
 
 FLAGS
   -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
@@ -295,16 +293,16 @@ DESCRIPTION
   Execute a recurring payment
 
 EXAMPLES
-  $ cli payments execute --policy <POLICY_PUBKEY>
+  $ cli payment execute --policy <POLICY_PUBKEY>
 
-  $ cli payments execute -p <POLICY_PUBKEY>
+  $ cli payment execute -p <POLICY_PUBKEY>
 
-  $ cli payments execute --user-payment <USER_PAYMENT_PUBKEY>
+  $ cli payment execute --user-payment <USER_PAYMENT_PUBKEY>
 
-  $ cli payments execute -u <USER_PAYMENT_PUBKEY>
+  $ cli payment execute -u <USER_PAYMENT_PUBKEY>
 ```
 
-_See code: [src/commands/payments/execute.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/payments/execute.ts)_
+_See code: [src/commands/payment/execute.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/payment/execute.ts)_
 
 ## `cli pda config`
 
@@ -711,6 +709,108 @@ DESCRIPTION
 
 _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/update.ts)_
 
+## `cli policy create`
+
+Create a payment policy (subscription / milestone / pay-as-you-go)
+
+```
+USAGE
+  $ cli policy create -m <value> -r <value> -g <value> [-c <value>] [-k <value>] [-v
+    subscription|milestone|pay-as-you-go] [--memo <value>] [-a <value>] [-f daily|weekly|monthly|yearly] [--auto-renew]
+    [--max-renewals <value>] [--amounts <value>] [--timestamps <value>] [--release-condition <value>] [--max-per-period
+    <value>] [--max-chunk <value>] [--period-seconds <value>]
+
+FLAGS
+  -a, --amount=<value>             [subscription] Payment amount in smallest token unit
+  -c, --connection-url=<value>     [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                   (env: SOLANA_API)
+  -f, --frequency=<option>         [default: monthly] [subscription] Payment frequency
+                                   <options: daily|weekly|monthly|yearly>
+  -g, --gateway=<value>            (required) Payment gateway public key
+  -k, --keypath=<value>            [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --token-mint=<value>         (required) SPL token mint address
+  -r, --recipient=<value>          (required) Payment recipient public key
+  -v, --variant=<option>           [default: subscription] Policy type variant
+                                   <options: subscription|milestone|pay-as-you-go>
+      --amounts=<value>            [milestone] Comma-separated milestone amounts (up to 4)
+      --[no-]auto-renew            [subscription] Auto-renew
+      --max-chunk=<value>          [pay-as-you-go] Max amount per chunk
+      --max-per-period=<value>     [pay-as-you-go] Max amount per period
+      --max-renewals=<value>       [subscription] Maximum number of renewals
+      --memo=<value>               Memo to attach to the policy (max 64 chars)
+      --period-seconds=<value>     [pay-as-you-go] Period length in seconds
+      --release-condition=<value>  [default: 1] [milestone] Release bitmap: bit0=due-date, bit1=gateway, bit2=owner,
+                                   bit3=recipient
+      --timestamps=<value>         [milestone] Comma-separated milestone due timestamps (unix seconds)
+
+DESCRIPTION
+  Create a payment policy (subscription / milestone / pay-as-you-go)
+
+EXAMPLES
+  $ cli policy create --variant subscription -m <MINT> -r <RECIPIENT> -g <GATEWAY> -a 1000000
+
+  $ cli policy create --variant milestone -m <MINT> -r <RECIPIENT> -g <GATEWAY> --amounts 1000,2000 --timestamps 1700000000,1800000000 --release-condition 1
+
+  $ cli policy create --variant pay-as-you-go -m <MINT> -r <RECIPIENT> -g <GATEWAY> --max-per-period 1000000 --max-chunk 100000 --period-seconds 86400
+```
+
+_See code: [src/commands/policy/create.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/policy/create.ts)_
+
+## `cli policy list`
+
+List payment policies for a user payment account
+
+```
+USAGE
+  $ cli policy list -u <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -u, --user-payment=<value>    (required) User payment account public key to list policies for
+
+DESCRIPTION
+  List payment policies for a user payment account
+
+EXAMPLES
+  $ cli policy list --user-payment <USER_PAYMENT_PUBKEY>
+
+  $ cli policy list -u <USER_PAYMENT_PUBKEY>
+```
+
+_See code: [src/commands/policy/list.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/policy/list.ts)_
+
+## `cli policy status`
+
+Change a payment policy status (pause / resume / delete)
+
+```
+USAGE
+  $ cli policy status -p <value> -m <value> -s paused|active|deleted [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --token-mint=<value>      (required) Token mint address
+  -p, --policy-id=<value>       (required) Policy ID number
+  -s, --status=<option>         (required) New status
+                                <options: paused|active|deleted>
+
+DESCRIPTION
+  Change a payment policy status (pause / resume / delete)
+
+EXAMPLES
+  $ cli policy status -m <MINT> -p 1 --status paused
+
+  $ cli policy status -m <MINT> -p 1 --status active
+
+  $ cli policy status -m <MINT> -p 1 --status deleted
+```
+
+_See code: [src/commands/policy/status.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/policy/status.ts)_
+
 ## `cli program initialize`
 
 Initialize the Tributary program
@@ -866,139 +966,6 @@ EXAMPLES
 ```
 
 _See code: [src/commands/state.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/state.ts)_
-
-## `cli subscription create`
-
-Create a subscription payment policy
-
-```
-USAGE
-  $ cli subscription create -a <value> -g <value> -r <value> -m <value> [-c <value>] [-k <value>] [--auto-renew] [-f
-    daily|weekly|monthly|yearly] [--max-renewals <value>] [--memo <value>]
-
-FLAGS
-  -a, --amount=<value>          (required) Payment amount in smallest token unit
-  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
-                                (env: SOLANA_API)
-  -f, --frequency=<option>      [default: monthly] Payment frequency
-                                <options: daily|weekly|monthly|yearly>
-  -g, --gateway=<value>         (required) Payment gateway public key
-  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
-  -m, --token-mint=<value>      (required) SPL token mint address
-  -r, --recipient=<value>       (required) Payment recipient public key
-      --[no-]auto-renew         Auto-renew the subscription
-      --max-renewals=<value>    Maximum number of renewals
-      --memo=<value>            Memo to attach to the policy (max 64 chars)
-
-DESCRIPTION
-  Create a subscription payment policy
-
-EXAMPLES
-  $ cli subscription create -m <MINT> -r <RECIPIENT> -g <GATEWAY> -a 1000000
-
-  $ cli subscription create -m <MINT> -r <RECIPIENT> -g <GATEWAY> -a 500000 -f weekly --no-auto-renew --max-renewals 12 --memo "Netflix"
-```
-
-_See code: [src/commands/subscription/create.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/subscription/create.ts)_
-
-## `cli subscription delete`
-
-Delete a payment policy
-
-```
-USAGE
-  $ cli subscription delete -p <value> -m <value> [-c <value>] [-k <value>]
-
-FLAGS
-  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
-                                (env: SOLANA_API)
-  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
-  -m, --token-mint=<value>      (required) Token mint address
-  -p, --policy-id=<value>       (required) Policy ID number
-
-DESCRIPTION
-  Delete a payment policy
-
-EXAMPLES
-  $ cli subscription delete -m <MINT> -p 1
-
-  $ cli subscription delete --token-mint <MINT> --policy-id 3
-```
-
-_See code: [src/commands/subscription/delete.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/subscription/delete.ts)_
-
-## `cli subscription list`
-
-List payment policies for a user payment account
-
-```
-USAGE
-  $ cli subscription list -u <value> [-c <value>] [-k <value>]
-
-FLAGS
-  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
-                                (env: SOLANA_API)
-  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
-  -u, --user-payment=<value>    (required) User payment account public key to list policies for
-
-DESCRIPTION
-  List payment policies for a user payment account
-
-EXAMPLES
-  $ cli subscription list --user-payment <USER_PAYMENT_PUBKEY>
-
-  $ cli subscription list -u <USER_PAYMENT_PUBKEY>
-```
-
-_See code: [src/commands/subscription/list.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/subscription/list.ts)_
-
-## `cli subscription pause`
-
-Pause a payment policy
-
-```
-USAGE
-  $ cli subscription pause -p <value> -m <value> [-c <value>] [-k <value>]
-
-FLAGS
-  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
-                                (env: SOLANA_API)
-  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
-  -m, --token-mint=<value>      (required) Token mint address
-  -p, --policy-id=<value>       (required) Policy ID number
-
-DESCRIPTION
-  Pause a payment policy
-
-EXAMPLES
-  $ cli subscription pause -m <MINT> -p 1
-```
-
-_See code: [src/commands/subscription/pause.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/subscription/pause.ts)_
-
-## `cli subscription resume`
-
-Resume a paused payment policy
-
-```
-USAGE
-  $ cli subscription resume -p <value> -m <value> [-c <value>] [-k <value>]
-
-FLAGS
-  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
-                                (env: SOLANA_API)
-  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
-  -m, --token-mint=<value>      (required) Token mint address
-  -p, --policy-id=<value>       (required) Policy ID number
-
-DESCRIPTION
-  Resume a paused payment policy
-
-EXAMPLES
-  $ cli subscription resume -m <MINT> -p 1
-```
-
-_See code: [src/commands/subscription/resume.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/subscription/resume.ts)_
 
 ## `cli user create`
 

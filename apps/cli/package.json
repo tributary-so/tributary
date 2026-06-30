@@ -74,10 +74,10 @@
       "gateway": {
         "description": "Payment gateway management - create, configure, and inspect gateways"
       },
-      "subscription": {
-        "description": "Subscription payment policies - create, list, pause, resume, and delete"
+      "policy": {
+        "description": "Payment policies - create (subscription/milestone/pay-as-you-go), list, change status"
       },
-      "payments": {
+      "payment": {
         "description": "Payment execution - trigger recurring payment processing"
       },
       "referral": {

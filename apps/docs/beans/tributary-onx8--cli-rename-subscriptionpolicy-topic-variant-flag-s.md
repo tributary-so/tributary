@@ -1,11 +1,11 @@
 ---
 # tributary-onx8
 title: 'CLI: rename subscription→policy topic + --variant flag + status collapse'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-06-29T07:51:25Z
-updated_at: 2026-06-29T07:51:25Z
+updated_at: 2026-06-30T07:27:37Z
 parent: tributary-hy8a
 blocked_by:
     - tributary-p6n3
@@ -73,3 +73,7 @@ execution topic to singular.
 ## Workflow
 
 routing: implementer · terminology authority = `CONTEXT.md`.
+
+## Summary of Changes
+
+Renamed subscription topic to policy. policy create now wires all three PolicyType variants via --variant subscription|milestone|pay-as-you-go. Collapsed pause/resume/delete into one policy status --status paused|active|deleted command. Renamed payments execute to payment execute (singular topic). subscription list is now policy list. Deleted subscription/ directory. Updated package.json topics. Regenerated README and manifest.

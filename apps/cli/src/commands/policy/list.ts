@@ -3,7 +3,7 @@ import {Flags} from '@oclif/core'
 import {BaseCommand} from '../../lib/base-command.js'
 import {parsePublicKey} from '../../lib/utils.js'
 
-export default class SubscriptionList extends BaseCommand {
+export default class PolicyList extends BaseCommand {
   static description = 'List payment policies for a user payment account'
   static examples = [
     '<%= config.bin %> <%= command.id %> --user-payment <USER_PAYMENT_PUBKEY>',
@@ -19,7 +19,7 @@ export default class SubscriptionList extends BaseCommand {
   }
 
   public async run(): Promise<void> {
-    const {flags} = await this.parse(SubscriptionList)
+    const {flags} = await this.parse(PolicyList)
     const userPayment = parsePublicKey(flags['user-payment'])
     if (!userPayment) this.error('Invalid user payment public key')
 
@@ -28,7 +28,7 @@ export default class SubscriptionList extends BaseCommand {
     const policies = await sdk.getPaymentPoliciesByUserPayment(userPayment)
 
     this.output({
-      command: 'subscription list',
+      command: 'policy list',
       filter: {userPayment: userPayment.toString()},
       policies: policies.map((p) => ({
         policyId: p.account.policyId,

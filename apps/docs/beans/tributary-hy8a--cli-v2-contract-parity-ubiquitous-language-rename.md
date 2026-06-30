@@ -5,7 +5,7 @@ status: todo
 type: epic
 priority: high
 created_at: 2026-06-28T19:19:01Z
-updated_at: 2026-06-29T07:53:42Z
+updated_at: 2026-06-30T06:31:38Z
 ---
 
 ## Why
@@ -128,3 +128,5 @@ to an epic Open Question.
 **Critical path:** `tributary-p6n3` (cleanup) → everything else in parallel,
 except `tributary-bq1l` which also waits on `tributary-3pvf`, and
 `tributary-zllt` which also waits on `tributary-d2i0`.
+
+<!-- hordr:workflow=coordinator -->
