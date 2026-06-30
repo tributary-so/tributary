@@ -1,11 +1,11 @@
 ---
 # tributary-bq1l
 title: 'CLI: composable topic — create/execute/status/delete'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-06-29T07:51:25Z
-updated_at: 2026-06-29T07:51:25Z
+updated_at: 2026-06-30T08:01:07Z
 parent: tributary-hy8a
 blocked_by:
     - tributary-p6n3
@@ -117,3 +117,7 @@ a `--composable` flag on `policy create` — see Decision below.
 
 routing: implementer · cannot start until `tributary-3pvf` lands the pinned
 validation accounts in the SDK facade.
+
+## Summary of Changes
+
+Added composable topic with create/execute/status/delete commands. composable create supports --variant (PolicyType enum), --validation (JSON spec consumed by lighthouse facade per ADR-0013), --forward (program + discriminator + min-output + native-output per ADR-0009/0010). composable execute assembles remaining_accounts positionally, rejects --forward-amount for non-PayAsYouGo client-side (ADR-0010 #2). composable status wraps changeComposablePolicyStatus. composable delete wraps deleteComposablePolicy. Added composable topic to package.json.

@@ -83,6 +83,9 @@
       "delegate": {
         "description": "Token delegate lifecycle - approve, revoke, migrate"
       },
+      "composable": {
+        "description": "Composable pull payments - create, execute, status, delete (ADR-0007)"
+      },
       "payment": {
         "description": "Payment execution - trigger recurring payment processing"
       },

@@ -12,6 +12,10 @@ $ tributary COMMAND
 ## Commands
 
 <!-- commands -->
+* [`cli composable create`](#cli-composable-create)
+* [`cli composable delete`](#cli-composable-delete)
+* [`cli composable execute POLICY`](#cli-composable-execute-policy)
+* [`cli composable status`](#cli-composable-status)
 * [`cli config show`](#cli-config-show)
 * [`cli delegate approve`](#cli-delegate-approve)
 * [`cli delegate migrate`](#cli-delegate-migrate)
@@ -60,6 +64,142 @@ $ tributary COMMAND
 * [`cli wallet balance`](#cli-wallet-balance)
 * [`cli wallet create`](#cli-wallet-create)
 * [`cli wallet import PATH`](#cli-wallet-import-path)
+
+## `cli composable create`
+
+Create a composable pull-payment policy (validation + optional forward hooks; ADR-0007/0009)
+
+```
+USAGE
+  $ cli composable create -g <value> -r <value> -m <value> [-c <value>] [-k <value>] [-a <value>] [--forward <value>]
+    [--forward-discriminator <value>] [-f daily|weekly|monthly|yearly] [--max-chunk <value>] [--max-per-period <value>]
+    [--memo <value>] [--min-output <value>] [--native-output] [--output-mint <value>] [--period-seconds <value>]
+    [--validation <value>] [-v subscription|milestone|pay-as-you-go]
+
+FLAGS
+  -a, --amount=<value>                 [subscription] Amount in smallest token unit
+  -c, --connection-url=<value>         [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection
+                                       URL (env: SOLANA_API)
+  -f, --frequency=<option>             [default: monthly] [subscription] Frequency
+                                       <options: daily|weekly|monthly|yearly>
+  -g, --gateway=<value>                (required) Gateway public key
+  -k, --keypath=<value>                [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --token-mint=<value>             (required) SPL input token mint
+  -r, --recipient=<value>              (required) Recipient public key (output-mint delivery target)
+  -v, --variant=<option>               [default: subscription] PolicyType variant
+                                       <options: subscription|milestone|pay-as-you-go>
+      --forward=<value>                Forward program public key (enables the swap hook). Omit to disable (same-mint
+                                       topup sentinel).
+      --forward-discriminator=<value>  Hex forward-instruction discriminator for offset-0 ByteRangeCheck (required when
+                                       --forward is set)
+      --max-chunk=<value>              [pay-as-you-go] Max chunk amount
+      --max-per-period=<value>         [pay-as-you-go] Max amount per period
+      --memo=<value>                   Policy memo (max 32 chars)
+      --min-output=<value>             Minimum NET (post-fee) output amount
+      --native-output                  Unwrap WSOL → SOL via closeAccount sweep (requires output-mint = WSOL)
+      --output-mint=<value>            Forward output mint (defaults to token-mint for same-mint topup)
+      --period-seconds=<value>         [pay-as-you-go] Period length in seconds
+      --validation=<value>             Lighthouse validation spec JSON file path (or - for stdin). Omit to disable
+                                       validation (SystemProgram sentinel).
+
+DESCRIPTION
+  Create a composable pull-payment policy (validation + optional forward hooks; ADR-0007/0009)
+
+EXAMPLES
+  $ cli composable create --variant pay-as-you-go -m <MINT> -r <RECIPIENT> -g <GATEWAY> --max-per-period 100000000 --max-chunk 50000000 --period-seconds 2592000
+
+  $ cli composable create -m <MINT> -r <RECIPIENT> -g <GATEWAY> --variant subscription -a 1000000 --frequency monthly --validation guard.json
+```
+
+_See code: [src/commands/composable/create.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/composable/create.ts)_
+
+## `cli composable delete`
+
+Delete a composable policy permanently
+
+```
+USAGE
+  $ cli composable delete -p <value> -m <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --token-mint=<value>      (required) Token mint address
+  -p, --policy-id=<value>       (required) Composable policy ID number
+
+DESCRIPTION
+  Delete a composable policy permanently
+
+EXAMPLES
+  $ cli composable delete -m <MINT> -p 1
+```
+
+_See code: [src/commands/composable/delete.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/composable/delete.ts)_
+
+## `cli composable execute POLICY`
+
+Execute a composable policy (single relayer fire; the scheduler loop is off-chain per ADR-0014)
+
+```
+USAGE
+  $ cli composable execute POLICY [-c <value>] [-k <value>] [--forward-accounts <value>] [--forward-amount <value>]
+    [--forward-ix <value>] [--validation-accounts <value>]
+
+ARGUMENTS
+  POLICY  Composable policy public key
+
+FLAGS
+  -c, --connection-url=<value>       [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                     (env: SOLANA_API)
+  -k, --keypath=<value>              [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+      --forward-accounts=<value>     Comma-separated forward program account pubkeys (for forward-enabled policies)
+      --forward-amount=<value>       Forward pull amount (PayAsYouGo only; ADR-0010 #2). Rejected client-side for
+                                     subscription/milestone.
+      --forward-ix=<value>           Forward program instruction data file (or - for stdin). Empty when forward is
+                                     disabled.
+      --validation-accounts=<value>  Comma-separated Lighthouse target account pubkeys (for validation-enabled policies)
+
+DESCRIPTION
+  Execute a composable policy (single relayer fire; the scheduler loop is off-chain per ADR-0014)
+
+EXAMPLES
+  $ cli composable execute <COMPOSABLE_POLICY_PUBKEY>
+
+  $ cli composable execute <COMPOSABLE_POLICY_PUBKEY> --forward-ix fwd-instruction.bin
+
+  $ cli composable execute <COMPOSABLE_POLICY_PUBKEY> --forward-amount 50000000
+```
+
+_See code: [src/commands/composable/execute.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/composable/execute.ts)_
+
+## `cli composable status`
+
+Change a composable policy status (active / paused / completed)
+
+```
+USAGE
+  $ cli composable status -p <value> -s active|paused|completed -m <value> [-c <value>] [-k <value>]
+
+FLAGS
+  -c, --connection-url=<value>  [default: https://api.devnet.solana.com, env: SOLANA_API] Solana RPC connection URL
+                                (env: SOLANA_API)
+  -k, --keypath=<value>         [default: keypair.json, env: KEY_PATH] Path to keypair file (env: KEY_PATH)
+  -m, --token-mint=<value>      (required) Token mint address
+  -p, --policy-id=<value>       (required) Composable policy ID number
+  -s, --status=<option>         (required) New status
+                                <options: active|paused|completed>
+
+DESCRIPTION
+  Change a composable policy status (active / paused / completed)
+
+EXAMPLES
+  $ cli composable status -m <MINT> -p 1 --status paused
+
+  $ cli composable status -m <MINT> -p 1 --status active
+```
+
+_See code: [src/commands/composable/status.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/composable/status.ts)_
 
 ## `cli config show`
 
