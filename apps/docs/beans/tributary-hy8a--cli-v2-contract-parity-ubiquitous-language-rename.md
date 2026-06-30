@@ -1,11 +1,11 @@
 ---
 # tributary-hy8a
 title: 'CLI v2: contract-parity + ubiquitous-language rename'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-06-28T19:19:01Z
-updated_at: 2026-06-30T06:31:38Z
+updated_at: 2026-06-30T08:01:30Z
 ---
 
 ## Why
@@ -130,3 +130,15 @@ except `tributary-bq1l` which also waits on `tributary-3pvf`, and
 `tributary-zllt` which also waits on `tributary-d2i0`.
 
 <!-- hordr:workflow=coordinator -->
+
+## Summary of Changes
+
+All 6 children completed:
+- tributary-p6n3: Track C cleanup (−371 lines, collapsed 3 base classes → 1)
+- tributary-onx8: Renamed subscription→policy topic, --variant flag, collapsed status
+- tributary-exsr: Surfaced transfer, referral-settings, protocol-fee, config show
+- tributary-piso: Delegate lifecycle (approve/revoke/migrate)
+- tributary-zllt: user delete (delete_user_payment)
+- tributary-bq1l: Composable topic (create/execute/status/delete)
+
+CLI now has full contract parity: every on-chain instruction is surfaceable.
