@@ -78,23 +78,16 @@ pub enum PolicyType {
         current_period_total: u64,  // 8 bytes - Amount claimed in current period so far
         padding: [u8; 88],          // 88 bytes padding
     },
-    // Future variants can be added like this:
-    // Installment {
-    //     total_amount: u64,              // 8 bytes - Maximum amount that can be withdrawn (X$)
-    //     num_installments: u32,          // 4 bytes - Number of installments (Y)
-    //     installment_amount: u64,        // 8 bytes - Amount per installment (total_amount / num_installments)
-    //     period: PaymentFrequency,       // 9 bytes - Frequency of installments (e.g., Monthly)
-    //     start_date: i64,                // 8 bytes - When installments begin
-    //     next_installment_due: i64,      // 8 bytes - Next payment timestamp
-    //     installments_completed: u32,    // 4 bytes - Track progress
-    //     padding: [u8; 87],              // 87 bytes padding (total: 8+4+8+9+8+8+4+87=128)
-    // },
-    // OneTime {
-    //     amount: u64,                // 8 bytes
-    //     due_date: i64,              // 8 bytes
-    //     grace_period_seconds: u64,  // 8 bytes
-    //     padding: [u8; 104],        // 104 bytes padding
-    // },
+    /// One-time fixed-amount pull payment. Fires exactly once, then the policy
+    /// transitions to `Completed`. `due_date <= 0` means immediately executable;
+    /// `expiry_date = None` means the policy never expires. Flows through the
+    /// full gateway machinery (fees, referrals, composable hooks) — see ADR-0019.
+    OneTime {
+        amount: u64,              // 8 bytes  — fixed payment amount, must be > 0
+        due_date: i64,            // 8 bytes  — earliest execution; <= 0 = immediate
+        expiry_date: Option<i64>, // 9 bytes  (1 + 8) — None = never expires
+        padding: [u8; 103],       // 103 bytes padding (total: 8+8+9+103 = 128)
+    },
 }
 
 impl PolicyType {
@@ -143,6 +136,12 @@ impl PolicyType {
                 *max_chunk_amount,
                 *period_length_seconds,
             ),
+            PolicyType::OneTime {
+                amount,
+                due_date,
+                expiry_date,
+                ..
+            } => crate::policies::validate_one_time_policy(*amount, *due_date, *expiry_date),
         }
     }
 }

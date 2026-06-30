@@ -672,6 +672,76 @@ export class Tributary {
   }
 
   /**
+   * Gets a transaction instruction to create a one-time payment policy.
+   * This is a low-level method that returns only the instruction.
+   * Use createOneTimePayment() for the full setup including ATAs and approvals.
+   *
+   * One-time policies fire exactly once, then transition to `Completed`. They
+   * flow through the full gateway machinery (fees, referrals, composable
+   * hooks) — see ADR-0019.
+   *
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payment
+   * @param gateway - Public key of the gateway that will execute the payment
+   * @param amount - Fixed amount to pay (in smallest token units), must be > 0
+   * @param dueDate - Earliest execution timestamp; `null`/`<= 0` means immediate
+   * @param expiryDate - Hard deadline after which execution is rejected; `null` = never expires
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param feePayer - Optional explicit fee payer (defaults to the provider wallet)
+   * @returns Transaction instruction to create the one-time payment policy
+   */
+  async getCreateOneTimePolicyInstruction(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    amount: BN,
+    dueDate: BN | null,
+    expiryDate: BN | null,
+    memo: number[],
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+
+    if (amount.lte(new BN(0))) {
+      throw new Error("amount must be greater than 0");
+    }
+
+    const policyType: PolicyType = {
+      oneTime: {
+        amount: amount,
+        // dueDate <= 0 means "immediate" — store null as 0 on-chain.
+        dueDate: dueDate ?? new BN(0),
+        expiryDate: expiryDate,
+        padding: new Array(103).fill(0),
+      },
+    };
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+    return await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Creates a complete subscription setup including ATAs, user payment account, policy, and token approvals.
    * This is the high-level method for creating subscriptions that handles all the setup automatically.
    * @param tokenMint - Public key of the token to be paid
@@ -1248,6 +1318,180 @@ export class Tributary {
       } else if (
         currentDelegate === delegate.toString() &&
         currentDelegatedAmount !== finalApprovalAmount.toString()
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
+      const approveIx = this.getApprovalInstruction(
+        ownerTokenAccount,
+        delegate,
+        user,
+        finalApprovalAmount
+      );
+      instructions.push(revokeIx);
+      instructions.push(approveIx);
+    }
+
+    return instructions;
+  }
+
+  /**
+   * Creates a complete one-time payment setup including ATAs, user payment
+   * account, policy, and token approvals. One-time policies fire exactly
+   * once then transition to `Completed`. See ADR-0019.
+   *
+   * Use getCreateOneTimePolicyInstruction() for just the instruction without
+   * setup.
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway
+   * @param amount - Fixed amount to pay (in smallest token units), must be > 0
+   * @param dueDate - Earliest execution timestamp; `null`/omitted means immediate
+   * @param expiryDate - Hard deadline after which execution is rejected; `null` = never expires
+   * @param memo - Memo bytes for the payment policy
+   * @param approvalAmount - Optional specific approval amount (defaults to `amount`)
+   * @param referralCode - Optional 6-character referral code
+   * @param feePayer - Optional explicit fee payer
+   * @returns Array of transaction instructions for the complete setup
+   */
+  async createOneTimePayment(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    amount: BN,
+    memo: number[],
+    dueDate?: BN | null,
+    expiryDate?: BN | null,
+    approvalAmount?: BN,
+    referralCode?: string,
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const instructions: TransactionInstruction[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    // If userPayment doesn't exist, create it first
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      instructions.push(createUserPaymentIx);
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      instructions.push(createReferralIx);
+    }
+
+    // Build policy type — dueDate null/<=0 means immediate (stored as 0).
+    const policyType: PolicyType = {
+      oneTime: {
+        amount: amount,
+        dueDate: dueDate ?? new BN(0),
+        expiryDate: expiryDate ?? null,
+        padding: new Array(103).fill(0),
+      },
+    };
+
+    // Determine policy ID
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const { address: configPda } = getConfigPda(this.programId);
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      config: configPda,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    // Create payment policy instruction
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+
+    instructions.push(createPaymentPolicyIx);
+
+    // One-time fires exactly once — approval is exactly the amount (the
+    // gateway fee is taken on top of this gross pull, so the delegate must
+    // cover amount + fees). Use the provided approvalAmount or default to
+    // `amount` plus a small fee headroom buffer (caller can override with
+    // an explicit approvalAmount if they know the gateway fee precisely).
+    const finalApprovalAmount: BN = approvalAmount ?? amount;
+
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const delegate = userPaymentPda;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
+        needsApproval = true;
+      } else if (
+        currentDelegate === delegate.toString() &&
+        new BN(currentDelegatedAmount).lt(finalApprovalAmount)
       ) {
         needsApproval = true;
       } else if (currentDelegate === paymentsDelegatePda.toString()) {

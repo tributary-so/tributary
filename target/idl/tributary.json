@@ -2974,6 +2974,11 @@
       "code": 6060,
       "name": "PermissionlessExecutionRequiresMinOutput",
       "msg": "Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)"
+    },
+    {
+      "code": 6061,
+      "name": "PolicyExpired",
+      "msg": "One-time policy has expired"
     }
   ],
   "types": [
@@ -4121,6 +4126,34 @@
                   "array": [
                     "u8",
                     88
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "OneTime",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              },
+              {
+                "name": "due_date",
+                "type": "i64"
+              },
+              {
+                "name": "expiry_date",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    103
                   ]
                 }
               }

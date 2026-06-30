@@ -136,6 +136,10 @@ All variants are exactly 128 bytes (fixed-size for account stability):
 - **PayAsYouGo** — usage-based: claim up to `max_chunk_amount` per call, capped
   at `max_amount_per_period` per `period_length_seconds`. Period resets
   automatically.
+- **OneTime** (ADR-0019) — fixed `amount`, fires exactly once then transitions
+  to `Completed`. `due_date <= 0` means immediate; `expiry_date = None` means
+  never expires. Full gateway lifecycle (PDA, pausable, deletable, schedulable,
+  composable hooks). Not the standalone `transfer` instruction (ADR-0004).
 
 ### SDK usage
 
@@ -414,20 +418,21 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 
 **v2 — ComposablePolicy era:**
 
-| ADR    | Title                                                                              |
-| ------ | ---------------------------------------------------------------------------------- |
-| [0007] | ComposablePolicy as a separate account type, not a PolicyType variant              |
-| [0008] | Composable CPI privilege boundary (intermediate ATA ownership + signer sanitizing) |
-| [0009] | Composable hooks: sentinel-disabled, externally stored                             |
-| [0010] | Composable settlement semantics (NET min_output, PayAsYouGo-only forward_amount)   |
-| [0011] | Referral chain hardened at execution: re-validated + payer-bound                   |
-| [0012] | Mint compatibility: Token-2022 extension blocklist                                 |
-| [0013] | Lighthouse SDK vendored with an anti-corruption facade in `@tributary-so/sdk`      |
-| [0014] | Composable scheduler trigger model: per-policy state-poll                          |
-| [0015] | Position Tributary as one primitive — "If This Then Money" (positioning)           |
-| [0016] | Permissionless composable execution: parameter-constrained schedulers              |
-| 0017   | Composable Memo 32-bytes                                                           |
-| [0018] | Unified gateway fee model with scheduler incentive                                 |
+| ADR    | Title                                                                                   |
+| ------ | --------------------------------------------------------------------------------------- |
+| [0007] | ComposablePolicy as a separate account type, not a PolicyType variant                   |
+| [0008] | Composable CPI privilege boundary (intermediate ATA ownership + signer sanitizing)      |
+| [0009] | Composable hooks: sentinel-disabled, externally stored                                  |
+| [0010] | Composable settlement semantics (NET min_output, PayAsYouGo-only forward_amount)        |
+| [0011] | Referral chain hardened at execution: re-validated + payer-bound                        |
+| [0012] | Mint compatibility: Token-2022 extension blocklist                                      |
+| [0013] | Lighthouse SDK vendored with an anti-corruption facade in `@tributary-so/sdk`           |
+| [0014] | Composable scheduler trigger model: per-policy state-poll                               |
+| [0015] | Position Tributary as one primitive — "If This Then Money" (positioning)                |
+| [0016] | Permissionless composable execution: parameter-constrained schedulers                   |
+| 0017   | Composable Memo 32-bytes                                                                |
+| [0018] | Unified gateway fee model with scheduler incentive                                      |
+| [0019] | OneTime payment policy variant (fixed amount, single execution, full gateway lifecycle) |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -446,6 +451,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0015]: apps/docs/adr/0015-positioning-if-this-then-money.md
 [0016]: apps/docs/adr/0016-permissionless-composable-execution.md
 [0018]: apps/docs/adr/0018-unified-fee-model.md
+[0019]: apps/docs/adr/0019-onetime-policy-variant.md
 
 ## SDK
 
