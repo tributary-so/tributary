@@ -104,8 +104,7 @@ pub struct ComposablePolicy {
     pub rent_payer: Pubkey,
     /// Reuses the same `PolicyType` enum as `PaymentPolicy`. Before
     /// unification this was a separate `ScheduleType`; the two were
-    /// byte-identical duplicates (see `reports/M-04-inconsistent-month-arithmetic.md`
-    /// for the consolidation rationale).
+    /// byte-identical duplicates and were consolidated into a single enum.
     pub policy_type: PolicyType,
     pub forward_config: ForwardConfig,
     pub validation_config: ValidationConfig,

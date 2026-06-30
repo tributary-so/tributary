@@ -860,8 +860,8 @@ impl<'info> ExecuteComposable<'info> {
         // `execute_payment`. Both policy families (PaymentPolicy +
         // ComposablePolicy) share one `match` over `PolicyType` for timing
         // gates, milestone release_condition signer bits, and PayAsYouGo
-        // chunk/period bounds. See reports/M-04-inconsistent-month-arithmetic.md
-        // for the calendar-month math this also relies on.
+        // chunk/period bounds. The calendar-month math this relies on is
+        // pinned by a differential proptest in `shared/schedule.rs`.
         let caller_key = ctx.accounts.fee_payer.key();
         let schedule_amount = validate_policy_execution(
             &composable_policy.policy_type,
