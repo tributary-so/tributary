@@ -595,7 +595,7 @@ export default function Futardio() {
               We have already secured quotes from freelancer auditors as well as
               reputable audit firms ranging from 10k$ to 40k$ including an offer
               from Adevar where we have already received a 10k$ grant from
-              Adevar with Tribtuary. A separate proposal will be brought forward
+              Adevar with Tributay. A separate proposal will be brought forward
               to fund the Audit out of Treasury funds. Excess funds of the Audit
               budget will either be returned via buyback or re-allocated with a
               separate proposal. No automatic re-purposing without prior
