@@ -1,15 +1,19 @@
+import { useMemo } from 'react'
 import { Connection, TransactionInstruction, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import { WalletContextState } from '@solana/wallet-adapter-react'
 import { Tributary, type IWallet } from '@tributary-so/sdk'
 
-
 /**
- * Hook-like function to get SDK instance
- * Use this in React components to get the SDK
+ * Returns a stable Tributary SDK instance, memoized on connection + wallet.
+ * Identity must be stable across renders so downstream useEffect([sdk]) hooks
+ * do not loop (a fresh `new Tributary` each render hammers the RPC → 429).
  */
 export function useSDK(wallet: WalletContextState, connection: Connection) {
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  return new Tributary(connection, wallet as any as IWallet)
+  return useMemo(
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    () => new Tributary(connection, wallet as any as IWallet),
+    [connection, wallet],
+  )
 }
 
 /**
