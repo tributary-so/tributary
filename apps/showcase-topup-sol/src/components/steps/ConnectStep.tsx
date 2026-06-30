@@ -1,7 +1,8 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { USDC_MINT } from "@/lib/pools";
+import { getUsdcMint } from "@/lib/pools";
+import { useCluster } from "@/components/cluster/cluster-data-access";
 import { rawToUsdc } from "@/lib/units";
 import { SkeletonReveal } from "@/components/transitions";
 import { StepShell } from "@/components/StepShell";
@@ -10,12 +11,19 @@ import { StepShell } from "@/components/StepShell";
 export function ConnectStep() {
   const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
+  const { cluster } = useCluster();
+  const usdcMint = getUsdcMint(cluster.network);
 
   const balance = useQuery({
-    queryKey: ["usdc-balance", publicKey?.toBase58(), connection.rpcEndpoint],
+    queryKey: [
+      "usdc-balance",
+      publicKey?.toBase58(),
+      cluster.name,
+      connection.rpcEndpoint,
+    ],
     queryFn: async () => {
       if (!publicKey) return null;
-      const ata = getAssociatedTokenAddressSync(USDC_MINT, publicKey);
+      const ata = getAssociatedTokenAddressSync(usdcMint, publicKey);
       try {
         const resp = await connection.getTokenAccountBalance(ata);
         return Number(resp.value.amount);

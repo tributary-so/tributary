@@ -23,13 +23,14 @@ import {
 } from "@tributary-so/sdk";
 import type { TopupFormState } from "@/lib/form";
 import {
-  USDC_MINT,
+  getUsdcMint,
   WSOL_MINT,
   METEORA_DLMM_PUBKEY,
   FORWARD_FLAG_NATIVE_OUTPUT,
 } from "@/lib/pools";
 import { usdcToRaw, solToLamports } from "@/lib/units";
 import { buildSwapQuote } from "@/lib/meteora";
+import { useCluster } from "@/components/cluster/cluster-data-access";
 
 export interface CreateResult {
   signature: string;
@@ -52,6 +53,8 @@ type Status = "idle" | "preparing" | "sending" | "success" | "error";
 export function useCreateTopupPolicy() {
   const { connection } = useConnection();
   const wallet = useWallet();
+  const { cluster } = useCluster();
+  const usdcMint = getUsdcMint(cluster.network);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
@@ -94,20 +97,17 @@ export function useCreateTopupPolicy() {
         // ── Resolve UserPayment ────────────────────────────────────────
         const userPaymentPda = getUserPaymentPda(
           coldWallet,
-          USDC_MINT,
+          usdcMint,
           sdk.programId
         ).address;
         const userPaymentAccount =
           await sdk.program.account.userPayment.fetchNullable(userPaymentPda);
         if (!userPaymentAccount) {
-          ixs.push(await sdk.createUserPayment(USDC_MINT));
+          ixs.push(await sdk.createUserPayment(usdcMint));
         }
 
         // ── Resolve cold-wallet USDC ATA ───────────────────────────────
-        const coldUsdcAta = getAssociatedTokenAddressSync(
-          USDC_MINT,
-          coldWallet
-        );
+        const coldUsdcAta = getAssociatedTokenAddressSync(usdcMint, coldWallet);
         const ataInfo = await connection.getAccountInfo(coldUsdcAta);
         if (!ataInfo) {
           ixs.push(
@@ -115,7 +115,7 @@ export function useCreateTopupPolicy() {
               coldWallet,
               coldUsdcAta,
               coldWallet,
-              USDC_MINT,
+              usdcMint,
               TOKEN_PROGRAM_ID,
               ASSOCIATED_TOKEN_PROGRAM_ID
             )
@@ -142,7 +142,7 @@ export function useCreateTopupPolicy() {
         const quote = await buildSwapQuote(
           connection,
           poolAddress,
-          USDC_MINT,
+          usdcMint,
           WSOL_MINT,
           new BN(chunkRaw.toString()),
           form.slippageBps
@@ -168,7 +168,7 @@ export function useCreateTopupPolicy() {
         // ── ForwardConfig (Meteora DLMM USDC→WSOL, optional NATIVE_OUTPUT)
         const forwardConfig = {
           targetProgram: METEORA_DLMM_PUBKEY,
-          inputMint: USDC_MINT,
+          inputMint: usdcMint,
           outputMint: WSOL_MINT, // NATIVE_OUTPUT requires WSOL
           minOutputAmount: null,
           forwardFlags: form.unwrap ? FORWARD_FLAG_NATIVE_OUTPUT : 0,
@@ -200,7 +200,7 @@ export function useCreateTopupPolicy() {
 
         // ── Build createComposablePolicy instruction ──────────────────
         const createIx = await sdk.getCreateComposablePolicyInstruction(
-          USDC_MINT,
+          usdcMint,
           hotWallet, // recipient
           gateway,
           policyType,
@@ -247,7 +247,7 @@ export function useCreateTopupPolicy() {
         throw e;
       }
     },
-    [connection, wallet]
+    [connection, wallet, usdcMint]
   );
 
   return { status, error, result, submit, reset };

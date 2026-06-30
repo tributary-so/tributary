@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { NATIVE_MINT } from "@solana/spl-token";
+import { ClusterNetwork } from "@/components/cluster/cluster-data-access";
 
 /**
  * Meteora DLMM program id — the sole entry in Tributary's
@@ -16,10 +17,28 @@ export const METEORA_DLMM_PUBKEY = new PublicKey(
  */
 export const FORWARD_FLAG_NATIVE_OUTPUT = 1;
 
-/** USDC (mainnet, 6 decimals) — the input/funding mint. */
-export const USDC_MINT = new PublicKey(
+/** USDC on mainnet (Circle, 6 decimals) — the input/funding mint. */
+export const USDC_MINT_MAINNET = new PublicKey(
   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 );
+
+/**
+ * USDC on devnet. No canonical Circle USDC exists there; this is the
+ * widely-used test mint (Solana Cookbook convention).
+ */
+export const USDC_MINT_DEVNET = new PublicKey(
+  "4zMMC9sPQTHBiRWvU86m3MQYxAfFhCuJxKgjESUWnWRC"
+);
+
+/**
+ * Resolve the funding mint for the active cluster network.
+ * Defaults to mainnet for unknown/custom clusters.
+ */
+export function getUsdcMint(network?: ClusterNetwork): PublicKey {
+  return network === ClusterNetwork.Devnet
+    ? USDC_MINT_DEVNET
+    : USDC_MINT_MAINNET;
+}
 
 /** WSOL — the swap output mint (unwrapped to native SOL when NATIVE_OUTPUT on). */
 export const WSOL_MINT = NATIVE_MINT;
@@ -42,7 +61,7 @@ export const PRESET_POOLS: PresetPool[] = [
   {
     label: "SOL / USDC",
     address: new PublicKey("BGm1tav58oGcsQJehL9WXBFXF7D27vZsKefj4xJKD5Y"),
-    inMint: USDC_MINT,
+    inMint: USDC_MINT_MAINNET,
     outMint: WSOL_MINT,
   },
 ];

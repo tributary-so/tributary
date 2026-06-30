@@ -10,6 +10,17 @@ interface LineItem {
   unitPrice: number;
 }
 
+/**
+ * Solana cluster the checkout link is valid for. Encoded into the URL blob so
+ * the paying side knows which network to talk to. Defaults to "mainnet" when
+ * absent (backward compat with links minted before this field existed).
+ */
+export type Cluster = "mainnet" | "devnet" | "testnet";
+
+export const DEFAULT_CLUSTER: Cluster = "mainnet";
+
+const ALLOWED_CLUSTERS: readonly Cluster[] = ["mainnet", "devnet", "testnet"];
+
 export interface SubscriptionParams {
   mode: "subscription";
   tokenMint: string;
@@ -24,6 +35,8 @@ export interface SubscriptionParams {
   lineItems?: LineItem[];
   successUrl?: string;
   cancelUrl?: string;
+  /** Cluster the link is valid for. Omit → "mainnet". */
+  cluster?: Cluster;
 }
 
 export interface OneTimeParams {
@@ -35,6 +48,8 @@ export interface OneTimeParams {
   memo?: string;
   successUrl?: string;
   cancelUrl?: string;
+  /** Cluster the link is valid for. Omit → "mainnet". */
+  cluster?: Cluster;
 }
 
 export type CheckoutParams = SubscriptionParams | OneTimeParams;
@@ -54,6 +69,7 @@ export interface EncodedSessionData {
   memo?: string; // custom memo - one-time only
   su: string; // successUrl or "null"
   cu: string; // cancelUrl or "null"
+  c?: Cluster; // cluster - defaults to "mainnet" when absent
 }
 
 export class CheckoutSessionManager {
@@ -140,6 +156,7 @@ export class CheckoutSessionManager {
       tid: params.trackingId || this.generateTrackingId(),
       su: params.successUrl || "null",
       cu: params.cancelUrl || "null",
+      c: params.cluster ?? DEFAULT_CLUSTER,
     };
 
     if (params.mode === "subscription") {
@@ -227,6 +244,11 @@ export class CheckoutSessionManager {
       throw new Error(`Invalid amount (${amount})`);
     }
 
+    // Resolve cluster — default to mainnet for links predating this field.
+    const cluster: Cluster = ALLOWED_CLUSTERS.includes(data.c)
+      ? data.c
+      : DEFAULT_CLUSTER;
+
     // Handle based on mode
     if (data.m === "subscription") {
       if (!data.g) {
@@ -264,6 +286,7 @@ export class CheckoutSessionManager {
         lineItems,
         successUrl: data.su === "null" ? undefined : data.su,
         cancelUrl: data.cu === "null" ? undefined : data.cu,
+        cluster,
       };
     } else if (data.m === "payment") {
       return {
@@ -275,6 +298,7 @@ export class CheckoutSessionManager {
         memo: data.memo,
         successUrl: data.su === "null" ? undefined : data.su,
         cancelUrl: data.cu === "null" ? undefined : data.cu,
+        cluster,
       };
     } else {
       throw new Error(`Invalid mode (${data.m})`);
