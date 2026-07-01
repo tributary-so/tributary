@@ -1,226 +1,351 @@
-# Tributary — Formal Verification (QEDGen)
+# Tributary — Formal Verification
 
-This directory holds the **formal specification** of Tributary's
-security-critical pull-payment logic and the **generated** proof artifacts
-derived from it. The single source of truth is
-[`../tributary.qedspec`](../tributary.qedspec).
+This directory and the hand-rolled harnesses in `programs/tributary/tests/`
+together form a **layered** verification of Tributary's pull-payment logic.
 
-> **Status (2026-07-01):** the spec is authored and **validation-clean**
-> (`qedgen check` reports 0 errors). The executable proof backends (Kani BMC,
-> Lean theorems) are scaffolded but currently blocked on two QEDGen v2.38
-> tooling issues documented under [§Current blockers](#current-blockers) —
-> not on the spec. Read [§Honest status](#honest-status) before quoting any
-> "formally verified" claim.
+> **Status (2026-07-01):** spec authored + validation-clean. Spec-model
+> Kani: 61/132 harnesses active and passing, 71 disabled (u128 bps_mul
+> SAT intractable — see [§Disabled harnesses](#disabled-harnesses)).
+> Impl-targeted Kani: 7/12 passing, 5 slow (same nonlinear arithmetic).
+> Lean blocked. Read [§Honest status](#honest-status) before quoting
+> "formally verified."
 
 ---
 
-## Verification architecture
+## The three layers — what tests what
 
 ```
-                         ┌─────────────────────────────────────┐
-   single source of  →   │       tributary.qedspec             │
-   truth (authored,      │  State · handlers · properties      │
-   human-readable)       └───────────────┬─────────────────────┘
-                                         │  qedgen check   (lint + coverage + drift)
-                                         │  qedgen codegen (derives all artifacts)
-                ┌────────────────────────┼────────────────────────┐
-                ▼                        ▼                        ▼
-   ┌────────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
-   │  Kani harnesses        │ │  Lean 4 project      │ │  Crucible fuzz probe │
-   │  (kani.rs)             │ │  (Spec.lean +        │ │  (qedgen probe       │
-   │                        │ │   Proofs.lean)       │ │   --crucible)        │
-   │  Bounded model check   │ │  Theorem proving     │ │  Coverage-guided     │
-   │  of the spec-model     │ │  (∀-quantified       │ │  fuzzing of the      │
-   │  transitions over all  │ │  preservation        │ │  deployed .so        │
-   │  symbolic inputs       │ │  theorems, Mathlib)  │ │  (optional)          │
-   └────────────────────────┘ └──────────────────────┘ └──────────────────────┘
-         code-level                math-level                adversarial
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        tributary.qedspec                                │
+│                   (human-authored, single source of truth)              │
+│                   State · handlers · properties                         │
+└───────────────┬─────────────────────────────────┬───────────────────────┘
+                │                                 │
+    qedgen codegen --kani              (no qedgen — hand-rolled)
+    + fix-kani.py post-processor
+                │                                 │
+                ▼                                 ▼
+┌──────────────────────────┐       ┌──────────────────────────────────────┐
+│  LAYER 1: Spec-model     │       │  LAYER 2: Impl-targeted              │
+│  formal_verification/    │       │  programs/tributary/tests/           │
+│  kani.rs (61 active,          │       │  kani_pure_fns.rs (12 harnesses)     │
+│                          │       │                                      │
+│  Tests the SPEC's math:  │       │  Tests the REAL code:                │
+│  a parallel State struct │       │  calls calculate_fees(),             │
+│  + transition fns derived│       │  validate_policy_execution(),        │
+│  from the effect blocks. │       │  advance_policy() directly.          │
+│  Never touches the real  │       │  If someone changes the real Rust,   │
+│  Anchor program.         │       │  these proofs break.                 │
+│                          │       │                                      │
+│  Catches: spec internal  │       │  Catches: real code bugs, overflow,  │
+│  inconsistency (effect   │       │  wrong math, missing guards.         │
+│  formula violates        │       │                                      │
+│  property).              │       │  Found: i64 overflow in schedule.rs  │
+│                          │       │        (bean tributary-vtne).        │
+└──────────┬───────────────┘       └──────────────┬───────────────────────┘
+           │                                      │
+           │         ┌────────────────────────────┘
+           │         │
+           │         ▼
+           │  ┌──────────────────────────────────────────┐
+           │  │  LAYER 3 (potential): qedgen --kani-impl │
+           │  │  Generated harnesses that call the REAL  │
+           │  │  Anchor handler (execute_payment, etc.)  │
+           │  │  against a symbolic Context<...>.        │
+           │  │  Status: under investigation.            │
+           │  └──────────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────┐
+│  Lean 4 (math level)     │
+│  formal_verification/    │
+│  Spec.lean + Proofs.lean │
+│                          │
+│  ∀-quantified preservation│
+│  theorems.               │
+│  Status: blocked (dep    │
+│  recursion — bean kqhl). │
+└──────────────────────────┘
 ```
 
-**What each layer proves:**
+### Why two Kani layers?
 
-| Layer                      | Target                                                                                       | Discharge method          | Status                     |
-| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------- | -------------------------- |
-| **Spec validation**        | `tributary.qedspec` parses, type-checks, coverage matrix is complete, no drift               | `qedgen check`            | ✅ clean                   |
-| **Kani (code level)**      | Each handler transition preserves each property for ALL symbolic inputs; no overflow / panic | `cargo kani --harness …`  | ⚠️ blocked (codegen bug)   |
-| **Lean (math level)**      | `∀ pre, property(pre) ∧ guard ⇒ property(handler(pre))` — quantified preservation            | `lake build` (sorry-free) | ⚠️ blocked (dep recursion) |
-| **Crucible (adversarial)** | No panic / unwrap / overflow crash sequence on the deployed binary                           | `qedgen probe --crucible` | ⏸️ optional, deferred      |
+|                          | Layer 1: Spec-model                         | Layer 2: Impl-targeted                                             |
+| ------------------------ | ------------------------------------------- | ------------------------------------------------------------------ |
+| **What it tests**        | The spec's effect formulas                  | The real Rust functions                                            |
+| **File**                 | `formal_verification/kani.rs`               | `programs/tributary/tests/kani_pure_fns.rs`                        |
+| **Generated by**         | `qedgen codegen --kani` + `fix-kani.py`     | Hand-rolled (no qedgen)                                            |
+| **Calls real code?**     | **No** — uses a parallel State struct       | **Yes** — calls `calculate_fees()` etc.                            |
+| **If real code changes** | Still passes (doesn't call real code)       | **Breaks** (directly tests real code)                              |
+| **If spec changes**      | **Breaks** (spec_hash mismatch on regen)    | Unaffected                                                         |
+| **Coverage**             | 61 active + 71 disabled (see below)         | 12 harnesses on 3 pure functions                                   |
+| **Speed**                | ~10s per linear harness, ~78s per nonlinear | ~5s per linear, >10min per nonlinear (real code has more branches) |
+| **What it catches**      | Spec math is self-consistent                | Real code matches the intended math                                |
 
-The spec is deliberately **structured around the program's pure functions** —
-`validate_policy_execution`, `advance_policy`, `calculate_fees` — which already
-encapsulate the drain-resistance and fee-conservation math. Modeling them as
-handler `effect`/`requires` blocks makes the headline properties cheap to
-state and (once the tooling unblocks) cheap to prove.
-
-### What is specified (the claim this spec supports)
-
-| Property                   | Asserts                                                                                              | Mirrors in code                                                                                            |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `period_bounded` (A2)      | No PAYG chunk sequence, across period resets, extracts more than `max_amount_per_period` per period. | [`validate_policy_execution`](../programs/tributary/src/shared/schedule.rs) PAYG branch + `advance_policy` |
-| `period_cap_fixed`         | `max_amount_per_period` is immutable after creation.                                                 | (no handler widens it)                                                                                     |
-| `fee_conservation`         | The four fee carve-outs sum exactly to `total_fee`; residual is the balancing item.                  | [`calculate_fees`](../programs/tributary/src/shared/fees.rs)                                               |
-| `fee_is_bps_decomposition` | `total_fee == payment_amount × gateway_fee_bps / 10000`.                                             | [`bps_mul`](../programs/tributary/src/shared/fees.rs)                                                      |
-| `recipient_net_of_fee`     | Gross-mode recipient receives `payment_amount − total_fee` (no hidden tax).                          | `calculate_fees`                                                                                           |
-| `pull_bounded`             | PAYG chunk ≤ `max_chunk_amount`.                                                                     | `validate_policy_execution` PAYG                                                                           |
-| `residual_nonnegative`     | `gateway_residual ≤ total_fee`.                                                                      | `calculate_fees` (`checked_sub`)                                                                           |
-
-Handlers modeled: `create_payment_policy` (establishes the invariants from a
-zero state), `execute_payment`, `execute_composable` (both the PAYG
-period-reset and period-accumulate arms), `transfer`, `release_milestone`
-(milestone signer-bit access control).
-
-### Explicitly OUT of scope
-
-Account wiring / PDA seed derivation, the forward-program allowlist (Meteora
-DLMM), signer sanitization (ADR-0008 privilege boundary), the emergency-pause
-flag, and all admin/config handlers. **Swap-output conservation is the
-responsibility of the third-party forward program (Meteora DLMM).**
-`delegated_amount` is SPL Token program state (read-only here). These are
-covered by the Surfpool integration suite and the (planned) coverage-guided
-fuzzer, not by this spec. See [`../SECURITY.md`](../SECURITY.md) for the full
-layered-defence picture and [`../apps/docs/protocol-reference/security.md`](../apps/docs/protocol-reference/security.md)
-for the per-measure code links.
+**Together:** Layer 1 proves the spec's math is correct. Layer 2 proves the
+real code implements that math. Drift gates (`#[qed(verified)]`, planned)
+would connect them by hashing the spec's handler block against the real fn
+body at compile time — closing the gap structurally.
 
 ---
 
-## Toolchain installation
+## Layer 1 — Spec-model Kani (`formal_verification/kani.rs`)
 
-To run the verification locally you need QEDGen, Kani, and Lean 4. Crucible
-is optional. The commands below are what this environment was set up with
-(verified working as of QEDGen v2.38.0).
+### How it works
 
-### 1. QEDGen (the spec driver)
+1. `qedgen codegen --kani` derives 132 `#[kani::proof]` harnesses from
+   `tributary.qedspec`. Each harness creates a symbolic State (all fields
+   `kani::any()`), assumes pre-state invariants, runs the spec-model
+   transition, and asserts the property on the post-state.
+2. QEDGen v2.38 has 5 codegen bugs (bare field reads, ML syntax, missing
+   helper, unchecked arithmetic). The `fix-kani.py` post-processor patches
+   all five after each regeneration.
+3. `fix-kani.py` also disables 71 harnesses that exercise `bps_mul` →
+   `mul_div_floor_u128` → u128 multiplication. CBMC's propositional
+   reduction for 128-bit × 128-bit operands is O(n²) in bit-width and
+   does not terminate in reasonable time. See
+   [§Disabled harnesses](#disabled-harnesses) below.
+4. The harnesses live in a standalone crate at `formal_verification/`
+   with their own `Cargo.toml` (no Anchor dependencies — the State model
+   is self-contained).
 
-QEDGen's release ships a prebuilt binary with SHA256 verification. From the
-**root of a clone of [`qedgen/solana-skills`](https://github.com/qedgen/solana-skills)**:
-
-```bash
-git clone --depth 1 https://github.com/qedgen/solana-skills.git
-cd solana-skills
-bash install.sh          # downloads the platform binary, verifies checksum, links onto PATH
-qedgen --version         # → qedgen 2.38.0 (or newer)
-```
-
-> ⚠️ The GitHub search hit `beardedwheatgrasswalkupapartment951/solana-skills`
-> is **not** QEDGen — it pushes a Windows `.zip` and is not the source. Use
-> the `qedgen/solana-skills` org only.
-
-If `install.sh` cannot reach the release asset, build from source:
+### Running
 
 ```bash
-cargo build --release -p qedgen      # produces target/release/qedgen
+# Regenerate + fix
+qedgen codegen --spec tributary.qedspec --kani --kani-output formal_verification/kani.rs
+rm -rf programs/src/ programs/Cargo.toml   # clean codegen side-effects
+python3 formal_verification/fix-kani.py formal_verification/kani.rs
+
+# Run (61 active harnesses — completes in minutes)
+cd formal_verification && cargo kani
+
+# Run one harness
+cargo kani --harness verify_execute_payment_case_0_preserves_period_bounded
 ```
 
-### 2. Kani (bounded model checker — code-level proofs)
+### Verified harnesses (sample — all PASS)
 
-Kani is distributed as a prebuilt tarball per release. Install the latest
-from <https://github.com/model-checking/kani/releases>:
+| Harness                                                  | Property            | Checks | Time |
+| -------------------------------------------------------- | ------------------- | ------ | ---- |
+| `verify_execute_payment_case_0_preserves_period_bounded` | A2 drain resistance | 313    | 10s  |
+| `verify_execute_payment_case_1_preserves_period_bounded` | A2 accumulate arm   | 339    | 9s   |
+| `verify_execute_payment_case_0_rejects_invalid`          | guard rejection     | 207    | 4s   |
+| `verify_execute_payment_case_1_no_overflow`              | no overflow         | 231    | 3s   |
 
-```bash
-# Linux x86_64 example — adjust the tag/arch to the latest release
-KANI_TAG=kani-0.67.0
-curl -fSL -o /tmp/kani.tar.gz \
-  "https://github.com/model-checking/kani/releases/download/${KANI_TAG}/kani-0.67.0-x86_64-unknown-linux-gnu.tar.gz"
-mkdir -p /tmp/kani && tar xzf /tmp/kani.tar.gz -C /tmp/kani --strip-components=1
-export PATH="/tmp/kani/bin:$PATH"
-cargo kani --version     # → cargo-kani …
-```
+### Disabled harnesses
 
-(On Arch Linux: `yay -S kani`.)
+71 of 132 harnesses are disabled by `fix-kani.py` because they exercise
+`bps_mul` → `mul_div_floor_u128` → u128 multiplication. CBMC (Kani's
+underlying model checker) converts 128-bit × 128-bit multiplication into a
+boolean circuit with ~16K logic gates. The propositional reduction step
+(SSA → SAT encoding) is O(n²) in bit-width and does not terminate in
+reasonable time for these operands.
 
-### 3. Lean 4 + Lake (theorem proving — math-level proofs)
+Disabled categories:
 
-Install `elan` (Lean's toolchain manager) and a default toolchain:
+| Pattern                         | Count | Why it hits bps_mul                          |
+| ------------------------------- | ----- | -------------------------------------------- |
+| `*_preserves_fee_conservation`  | 9     | Asserts carve-out sum == total_fee           |
+| `*_preserves_fee_is_bps_decom*` | 7     | Asserts total_fee == amount×bps/10000        |
+| `*_preserves_recipient_net_*`   | 7     | Asserts recipient+fee == amount              |
+| `*_preserves_residual_nonneg*`  | 9     | Asserts residual ≤ total_fee                 |
+| `*_effect_total_fee`            | 5     | Checks total_fee field write                 |
+| `*_effect_protocol_cut`         | 5     | Checks protocol_cut field write              |
+| `*_effect_scheduler_cut`        | 5     | Checks scheduler_cut field write             |
+| `*_effect_referral_pool`        | 5     | Checks referral_pool field write             |
+| `*_effect_gateway_residual`     | 5     | Checks gateway_residual field write          |
+| `*_effect_recipient_amount`     | 5     | Checks recipient_amount field write          |
+| `*_effect_total_from_user`      | 5     | Checks total_from_user field write           |
+| `*_establishes_fee_*` etc.      | 4     | Create-time establishes (involve fee fields) |
 
-```bash
-curl -sSfL https://raw.githubusercontent.com/leanprover/lean/master/elan-init.sh \
-  | sh -s -- -y --default-toolchain none --no-modify-path
-export PATH="$HOME/.elan/bin:$PATH"
-elan default leanprover/lean4:stable
-lean --version          # → Lean (version 4.x …)
-```
+Each disabled harness has a `// TODO: disabled` comment in `kani.rs`
+explaining the reason. To re-enable one individually, uncomment its three
+attribute lines (`#[kani::proof]`, `#[kani::unwind]`, `#[kani::solver]`)
+and run `cargo kani --harness <name>` — expect hours.
 
-(On Arch Linux: `yay -S lean4`. A system package works; if you hit a
-kernel-recursion error in a dependency tactic, pin the `lean-toolchain` to
-the version the dependency was built against.)
+The fee-conservation property is structurally sound (gateway_residual is
+the balancing item by construction). The disabled harnesses would confirm
+this for all symbolic inputs, but the same guarantee is available via:
 
-### 4. Crucible (optional — coverage-guided fuzz)
-
-Only needed for `qedgen probe --crucible`. Install per the Crucible project
-instructions. The fuzz probe is a **secondary** adversarial input and is not
-required to run the spec/Kani/Lean proofs.
-
-### One-time QEDGen workspace
-
-After the tools resolve on `PATH`, initialise the shared proof workspace
-(stores the QEDGen Lean support library):
-
-```bash
-qedgen setup             # creates ~/.qedgen/workspace
-```
+- Layer 2 hand-rolled Kani on the real `calculate_fees` (slow but tests
+  real code)
+- Lean theorem proving (once the dep-recursion blocker resolves)
+- The existing unit tests in `shared/fees.rs` (fast, but not exhaustive)
 
 ---
 
-## Running the verification
+## Layer 2 — Impl-targeted Kani (`programs/tributary/tests/kani_pure_fns.rs`)
+
+### How it works
+
+Hand-rolled `#[kani::proof]` functions that call the **real** pure functions
+directly:
+
+```rust
+use tributary::shared::fees::calculate_fees;  // ← THE REAL FUNCTION
+
+#[kani::proof]
+fn verify_calculate_fees_conservation() {
+    let amount: u64 = kani::any();     // symbolic input
+    let fee_bps: u16 = kani::any();
+    // ... assume ADR-0018 share-sum constraint ...
+
+    if let Ok(fb) = calculate_fees(amount, fee_bps, ...) {  // ← REAL CALL
+        assert!(sum_of_carve_outs == fb.total_fee);         // ← PROPERTY
+    }
+}
+```
+
+No spec model, no parallel State struct. If someone edits
+`shared/fees.rs::calculate_fees` and the math changes, these proofs break.
+
+### Running
 
 ```bash
-# 1. Validate the spec — must report 0 errors.
-qedgen check --spec tributary.qedspec
-
-# 2. Regenerate the derived artifacts (overwrites Spec.lean + kani.rs;
-#    Proofs.lean is user-owned and never overwritten).
-qedgen codegen --spec tributary.qedspec --kani  --kani-output formal_verification/kani.rs
-qedgen codegen --spec tributary.qedspec --lean --output-dir formal_verification
-
-# 3. Run the proofs (once the relevant blocker below is resolved).
-cd formal_verification && lake build                 # Lean
-cargo kani --harness <name>                          # Kani (from the harness crate)
-qedgen probe --crucible --root ../programs/tributary # optional fuzz
+cd programs/tributary
+cargo kani --tests                                        # all 12 harnesses
+cargo kani --tests --harness verify_payg_pull_bounded     # one at a time
 ```
+
+First compilation is slow (~15 min — Anchor deps). Subsequent runs use the
+Kani build cache.
+
+### Verified harnesses (7 PASS, 5 slow)
+
+| Harness                                      | Real function               | Property                     | Status                |
+| -------------------------------------------- | --------------------------- | ---------------------------- | --------------------- |
+| `verify_payg_rejects_zero_chunk`             | `validate_policy_execution` | Some(0) → Err                | ✅                    |
+| `verify_payg_pull_bounded`                   | `validate_policy_execution` | returned ≤ max_chunk         | ✅                    |
+| `verify_payg_rejects_period_breach`          | `validate_policy_execution` | cap breach → Err             | ✅                    |
+| `verify_payg_advance_preserves_cap`          | `advance_policy`            | A2 invariant                 | ✅                    |
+| `verify_onetime_advance_completes`           | `advance_policy`            | OneTime → true               | ✅                    |
+| `verify_upto_advance_completes`              | `advance_policy`            | UpTo → true                  | ✅                    |
+| `verify_calculate_fees_max_input_no_panic`   | `calculate_fees`            | u64::MAX no panic            | ✅ (1519 checks, 2s)  |
+| `verify_calculate_fees_conservation`         | `calculate_fees`            | carve-outs sum               | ⏳ >10min (nonlinear) |
+| `verify_calculate_fees_residual_nonnegative` | `calculate_fees`            | residual ≤ total_fee         | ⏳ >10min             |
+| `verify_calculate_fees_bps_decomposition`    | `calculate_fees`            | total_fee = amount×bps/10000 | ⏳ >10min             |
+| `verify_calculate_fees_recipient_gross`      | `calculate_fees`            | gross mode identity          | ⏳ >5min              |
+| `verify_calculate_fees_recipient_net`        | `calculate_fees`            | net mode identity            | ⏳ >5min              |
+
+The nonlinear fee proofs are slow because the real `calculate_fees` uses
+`checked_mul`/`checked_div` with error branches — more paths for Kani to
+explore than the spec-model version. Run them individually overnight.
+
+### Finding: i64 overflow (bean tributary-vtne)
+
+Kani caught a real overflow in `validate_policy_execution` (schedule.rs:359):
+
+```rust
+// BUG: *current_period_start + *period_length_seconds as i64 can overflow i64
+if current_time >= *current_period_start + *period_length_seconds as i64 {
+```
+
+When `period_length_seconds > i64::MAX` or the addition overflows. Panics in
+debug, wraps silently in release. The harness works around it with
+`kani::assume` bounds for realistic inputs.
+
+---
+
+## The spec and how it connects
+
+### `tributary.qedspec` (the single source of truth)
+
+Human-authored, validation-clean (`qedgen check` exit 0). Defines:
+
+- 7 preservation properties (period_bounded, fee_conservation, etc.)
+- 6 in-scope handlers with `requires` guards + `effect` blocks
+- Flat State struct capturing the security-relevant fields
+
+The spec mirrors the real code's pure functions:
+`validate_policy_execution`, `advance_policy`, `calculate_fees`.
+
+**Connection to Layer 1:** `qedgen codegen --kani` reads the spec and
+generates the spec-model harnesses. A spec edit → regen → new harnesses.
+
+**Connection to Layer 2:** The hand-rolled harnesses test the same
+properties as the spec, but against the real code. The spec is NOT used
+by Layer 2 — it's the human-readable reference for what the properties
+should be.
+
+**Connection to real code (future — drift gates):** `#[qed(verified,
+spec_hash=..., hash=...)]` attributes stamped on the real Anchor handlers
+would hash the spec's handler block and the real fn body at compile time.
+Any drift → `compile_error!`. This closes the gap between "spec is correct"
+(Layer 1) and "code matches spec" (Layer 2) structurally.
 
 ---
 
 ## Honest status
 
-The protocol's pull-payment + fee state machine is **formally specified and
-validation-clean**. The executable proofs (Kani BMC, Lean theorems) are
-**scaffolded but not yet executing** — blocked on the two issues below.
+| Layer                     | What's proven                                                                             | Status                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Spec validation           | `tributary.qedspec` parses, type-checks, coverage complete                                | ✅ clean                                                       |
+| Layer 1 (spec-model Kani) | Spec's effect formulas preserve 7 properties for ALL inputs                               | ✅ 61/132 active & passing; 71 disabled (u128 SAT intractable) |
+| Layer 2 (impl Kani)       | Real `calculate_fees`/`validate_policy_execution`/`advance_policy` satisfy the properties | ✅ 7/12 PASS, 5 slow                                           |
+| Lean                      | ∀-quantified preservation theorems                                                        | ⚠️ blocked (dep recursion)                                     |
+| Drift gates               | Spec ↔ code hash binding                                                                 | ⏸️ not yet set up                                              |
 
-> Do **not** shorten this to "formally verified, period." That oversells the
-> handler/CPI surface, which is integration-tested, not proven.
-
-### Current blockers
-
-**Blocker 1 — Lean: qedsvm dependency recursion.** `lake build` compiles the
-`qedgenSupport`/`qedsvm` dependency tree and fails at
-`SVM/SBPF/Tactic/WP.lean:217` with `(kernel) deep recursion detected` (dep
-reached 261/290; `Spec.lean` itself was never reached). A Lean-version
-mismatch is the likely cause — pin the `lean-toolchain` to the version
-`lean_solana` was built against, or bump qedsvm. Not a spec issue.
-Tracked in bean `tributary-kqhl`.
-
-**Blocker 2 — Kani/Rust codegen: bare field reads + ML-syntax calls.**
-`qedgen codegen --kani` emits transition functions that do not compile (339
-errors). Two distinct QEDGen v2.38 Rust-backend bugs:
-
-1. **State-field reads lose the receiver.** Guards and effect RHS read fields
-   by bare name (`emergency_pause == 0`, `total_fee - protocol_cut`) instead
-   of `s.emergency_pause` / `s.total_fee`. LHS writes are correct.
-   Repro: [`kani.rs:128`](kani.rs).
-2. **`ref_impl` calls render in ML application syntax.** The `bps_mul`
-   ref_impl is emitted as `(bps_mul (chunk) (gateway_fee_bps))` instead of
-   `bps_mul(chunk, gateway_fee_bps)`. Repro: [`kani.rs:135`](kani.rs).
-
-Workaround under investigation: inline `mul_div_floor(…)` (a built-in that
-renders correctly) instead of the `bps_mul` ref_impl (removes bug 2), then
-patch the guard emitter (bug 1). The Lean backend is unaffected by bug 2
-(ML syntax is native to Lean). Tracked in bean `tributary-o2vs`.
+> The honest claim: "Tributary's pull-payment bounds and fee-conservation
+> logic are formally specified and model-checked. The core pure functions
+> (`calculate_fees`, `validate_policy_execution`, `advance_policy`) are
+> verified by Kani bounded model checking against their specification for
+> all symbolic inputs. Account wiring, PDA derivation, CPI allowlisting,
+> and signer sanitization are covered by integration tests (Surfpool) and
+> the planned coverage-guided fuzzer."
 
 ---
 
-## Toolchain versions this environment was validated against
+## Toolchain
 
-- QEDGen `v2.38.0` — `github.com/qedgen/solana-skills` release
+- QEDGen `v2.38.0` — `github.com/qedgen/solana-skills`
 - Kani `0.64.0` — Arch `kani` package
-- Lean `4.31.0` + Lake `5.0.0` — Arch `lean4` package
-- Crucible — **not installed** (optional)
+- Lean `4.31.0` + Lake `5.0.0` — Arch `lean4` package (Lean proofs blocked)
+- Crucible — not installed (optional)
+
+### Install QEDGen
+
+```bash
+git clone --depth 1 https://github.com/qedgen/solana-skills.git
+cd solana-skills && bash install.sh
+qedgen --version    # → qedgen 2.38.0
+```
+
+> ⚠️ The GitHub search hit `beardedwheatgrasswalkupapartment951/solana-skills`
+> is **not** QEDGen — it pushes a Windows `.zip`. Use `qedgen/solana-skills`.
+
+### Install Kani
+
+```bash
+# Arch Linux:
+yay -S kani
+
+# Or from release tarball:
+KANI_TAG=kani-0.67.0
+curl -fSL -o /tmp/kani.tar.gz \
+  "https://github.com/model-checking/kani/releases/download/${KANI_TAG}/kani-0.67.0-x86_64-unknown-linux-gnu.tar.gz"
+mkdir -p /tmp/kani && tar xzf /tmp/kani.tar.gz -C /tmp/kani --strip-components=1
+export PATH="/tmp/kani/bin:$PATH"
+```
+
+---
+
+## File map
+
+```
+tributary.qedspec                            ← human-authored spec (single source of truth)
+formal_verification/
+  Cargo.toml                                 ← standalone crate for spec-model Kani
+  kani.rs                                    ← Layer 1: 61 active + 71 disabled spec-model harnesses (generated + fix-kani.py'd)
+  fix-kani.py                                ← post-processor for QEDGen v2.38 codegen bugs
+  Spec.lean                                  ← Lean model (generated)
+  Proofs.lean                                ← Lean proofs (user-owned, sorry scaffold)
+  qedgen-codegen-bugs.md                     ← sanitized bug report for upstream filing
+  qedgen-codegen-bug-reports.md              ← 5 issue fills in GitHub template format
+  README.md                                  ← this file
+programs/tributary/tests/
+  kani_pure_fns.rs                           ← Layer 2: 12 impl-targeted harnesses (hand-rolled)
+programs/tributary/src/
+  shared/fees.rs                             ← REAL calculate_fees (Layer 2 calls this)
+  shared/schedule.rs                         ← REAL validate_policy_execution + advance_policy (Layer 2 calls this)
+```

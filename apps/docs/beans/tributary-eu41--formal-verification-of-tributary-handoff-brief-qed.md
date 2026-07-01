@@ -5,7 +5,7 @@ status: in-progress
 type: task
 priority: high
 created_at: 2026-07-01T06:51:07Z
-updated_at: 2026-07-01T09:27:32Z
+updated_at: 2026-07-01T15:50:18Z
 ---
 
 # Mission
@@ -170,3 +170,146 @@ Crucible (`qedgen probe --crucible`) remains in this bean's step 5 as an OPTIONA
 **Honest status:** pull-payment + fee state machine is formally SPECIFIED and validation-clean. Executable proofs (Kani/Lean) are scaffolded but blocked on documented QEDGen v2.38 tooling issues, not the spec. Do NOT claim 'formally verified' until Blockers 1 & 2 (formal_verification/README.md) resolve.
 
 **Remaining (depend on tooling fixes):** #[qed(verified)] drift gates + CI; finalize README claim once a backend executes; Crucible fuzz (optional, sibling Mollusk bean covers Layer-2).
+
+
+---
+
+## Spec audit — 2026-07-01 (agent pass over tributary.qedspec vs src/)
+
+Cross-checked the spec's `effect`/`requires` blocks against the three pure
+functions it claims to mirror (`shared/fees.rs::calculate_fees`,
+`shared/schedule.rs::validate_policy_execution` + `advance_policy`).
+**`qedgen check` is clean (exit 0);** the issues below are spec-vs-code
+faithfulness / scope gaps, not parse errors. Grouped by severity.
+
+### S1 — Soundness / over-claim (property false on a real code path)
+
+- **`recipient_net_of_fee` is false in NET mode.** The property asserts
+  `recipient_amount + total_fee == payment_amount`. The execute/execute_composable/
+  release_milestone `effect` blocks hardcode the GROSS identity
+  (`recipient_amount := payment_amount - total_fee`). But `calculate_fees`
+  (fees.rs:57-67) branches: in net mode `recipient_amount = payment_amount` and
+  `total_from_user = payment_amount + total_fee`. The spec carries
+  `is_net_mode : U8` in State but **no handler reads it** and **no `requires
+  is_net_mode == 0`** guards the property. README §"What is specified" labels
+  the property "Gross-mode" in prose, but the spec itself doesn't constrain it.
+  → A successful Kani/Lean proof of this property does NOT transfer to the
+  net-mode code path. **Fix: add `requires is_net_mode == 0` to the three
+  execute handlers** (one line each), or split into two mode-conditional
+  properties. Until then the "formally verified" claim for this property is an
+  over-statement.
+
+### S2 — Faithfulness (spec computes different values than code)
+
+- **`is_referral_enabled` ignored.** Spec always computes
+  `referral_pool := bps_mul(total_fee, referral_allocation_bps)`. Code
+  (fees.rs:43-47) zeroes `referral_pool` when `is_referral_enabled == false`.
+  `fee_conservation` still holds (residual is the balancing item either way),
+  but the spec's `gateway_residual` value diverges from the code's whenever
+  referral is disabled — i.e. the spec models a state transition the program
+  never takes. Benign for the *properties*; misleading as a model of
+  `calculate_fees`. Fix: branch on `is_referral_enabled`, or add
+  `requires is_referral_enabled == 1` and note the scope.
+
+### S3 — Scope gaps (bean body promised "all 4 PolicyType variants")
+
+The bean's IN-scope list names Subscription / Milestone / PayAsYouGo / OneTime
+for pull bounds. The spec models PAYG + Milestone only. Missing:
+
+- **Subscription** — `next_payment_due` gate + calendar-month advance; pull
+  bound would be `pulled_amount == amount` (fixed, not chunked).
+- **OneTime** (ADR-0019) — `due_date <= 0` immediate, `expiry_date` enforcement,
+  fixed `amount`, single-shot Active→Completed.
+- **UpTo** (ADR-0020) — `actual <= max_amount`, `valid_after`, strict `<`
+  deadline. This is the x402 primitive; arguably security-critical.
+
+`pull_bounded` as written (`pulled_amount <= max_chunk_amount`) is
+PAYG-specific and excludes these by construction. Either widen with per-variant
+properties, or shrink the bean's IN-scope claim to match.
+
+### S4 — Minor / faithfulness
+
+- **Milestone `else if` chain vs independent `requires`.** Code
+  (schedule.rs:329-344) evaluates RELEASE_GATEWAY → else-if OWNER → else-if
+  RECIPIENT (first-set-wins). Spec models the three as independent `requires`
+  (all evaluated). Sound only given the creation-time mutual-exclusivity
+  invariant (enforced in `policies/milestone.rs`, not in this spec). Spec is
+  *stricter* than code (over-approximates auth), so not a hole — but imprecise.
+  Consider an `invariant milestone_signer_bits_mutually_exclusive` to pin the
+  assumption the spec relies on.
+- **`current_period_start` not initialized** in `create_payment_policy` effect.
+  Defaults to 0; first execute sees `current_time >= 0 + period_secs` → reset
+  arm fires, which is correct. Benign but sloppy — should be explicit.
+- **Dead State fields:** `is_net_mode` and `is_referral_enabled` are carried
+  but never read (root of S1/S2). Either model the branches or drop the fields
+  and document the gross-mode + referral-enabled scope.
+- **`period_length_seconds as i64` cast** (schedule.rs:359,463) wraps on
+  absurd values; spec uses U64 with `checked_overflow_error`. Not a real issue
+  (periods are seconds, not e18), noting for completeness.
+
+### What's CORRECT (confirmed against source)
+
+- PAYG 3-arm match (reset / accumulate / abort) faithfully mirrors
+  `validate_policy_execution` PAYG branch + `advance_policy` PAYG branch. ✓
+- `fee_conservation` (residual as balancing item) holds in both gross and net,
+  referral on/off — structurally sound. ✓
+- `fee_is_bps_decomposition` (`total_fee == bps_mul(payment_amount,
+  gateway_fee_bps)`) — mode-independent. ✓
+- `residual_nonnegative` via checked_sub chain. ✓
+- Milestone bit decomposition matches `RELEASE_DUE_DATE=0b0001`,
+  `RELEASE_GATEWAY=0b0010`, `RELEASE_OWNER=0b0100`, `RELEASE_RECIPIENT=0b1000`
+  (state/payment_policy.rs:13-16). ✓
+- ADR-0018 share-sum bound captured as both `requires` (create) and
+  `invariant fee_share_sum_bounded`. ✓
+
+### Recommended priority
+
+1. **S1 fix** (one-line `requires is_net_mode == 0` per execute handler) —
+   closes the only over-claim that would survive a successful proof.
+2. **S2 decision** — branch or scope-restrict referral; pick one.
+3. **S3 decision** — either model Subscription/OneTime/UpTo (expands the claim)
+   or tighten the bean + README scope line to "PAYG + Milestone".
+4. S4 is cleanup; not blocking.
+
+
+---
+
+## Spec fixes applied — 2026-07-01 (same audit pass)
+
+Resolved S1, S2, S4 from the audit above. S3 (Subscription/OneTime/UpTo scope)
+documented as deferred. `qedgen check` exit 0, 26 warnings (all pre-existing
+"missing theorem" drift), 14 infos (all pre-existing P4 unused_field). No new
+issues from edits.
+
+**S1 FIXED — `requires is_net_mode == 0` on execute_payment,
+execute_composable, release_milestone.** Closes the recipient_net_of_fee
+over-claim: the property is now honestly scoped to gross mode (ADR-0018
+gross-mode = `recipient_amount = payment_amount - total_fee`). Net mode
+satisfies a different identity (`recipient_amount == payment_amount`) and is
+not claimed.
+
+**S2 FIXED — referral branch modeled in all 5 effect arms.**
+`referral_pool := if is_referral_enabled == 1 then bps_mul(total_fee,
+referral_allocation_bps) else 0` — faithfully mirrors `calculate_fees`
+(fees.rs:43-47). `fee_conservation` holds in both branches (residual is the
+balancing item); the spec's `gateway_residual` value now matches the code's
+for ALL inputs, not just referral-enabled.
+
+**S4a ADDED — `invariant milestone_signer_bits_mutually_exclusive`.** Pins
+the creation-time assumption (at most one of gateway/owner/recipient bits set)
+that the release_milestone `requires` clauses rely on. The code uses an
+else-if chain (first-set-wins); the spec models independent requires, which is
+sound only given this invariant.
+
+**S4b FIXED — `current_period_start := 0` in create_payment_policy effect.**
+Was uninitialized; defaults to 0 (correct — first execute sees reset arm).
+Now explicit.
+
+**S3 DOCUMENTED — header scope tightened.** "Pull-amount bounds for every
+PolicyType variant" → "PayAsYouGo (chunk cap) and Milestone (signer-bit auth).
+Subscription / OneTime / UpTo pull bounds are DEFERRED." Decision to widen
+scope deferred to user.
+
+## kani-impl investigation (2026-07-01)
+
+Tried qedgen codegen --kani-impl. Result: 0 harnesses generated (infrastructure only, no #[kani::proof] functions). Our spec has no ensures clauses — kani-impl generates harnesses that assert ensures postconditions; without ensures, nothing to emit. Even with ensures: (1) context builders are todo!() stubs, (2) struct names don't match real Anchor structs, (3) Anchor account validation can't be bypassed symbolically. NOT viable for Tributary. Layer 2 hand-rolled (kani_pure_fns.rs) is the path.

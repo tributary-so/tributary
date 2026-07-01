@@ -7,12 +7,17 @@
 // properties the execute handlers must satisfy.
 //
 // IN SCOPE (provable here):
-//   - Pull-amount bounds for every PolicyType variant.
+//   - Pull-amount bounds for PayAsYouGo (chunk cap) and Milestone
+//     (signer-bit access control). Subscription / OneTime / UpTo pull
+//     bounds are DEFERRED — see bean tributary-eu41 §S3.
 //   - PAYG cross-period drain-resistance (A2): no chunk sequence, across
 //     period resets, extracts more than `max_amount_per_period` per period.
 //   - Fee conservation: carve-outs sum to `total_fee`, residual >= 0, no
-//     overflow for ALL inputs. Composable reuses `calculate_fees`, so its
-//     sweep conservation is the SAME property.
+//     overflow for ALL inputs (both referral-enabled and disabled).
+//     Composable reuses `calculate_fees`, so its sweep conservation is
+//     the SAME property.
+//   - Gross-mode recipient guarantee (recipient_net_of_fee): scoped to
+//     `is_net_mode == 0` via requires on execute handlers.
 //   - Access control: milestone release_condition signer-bit authorization.
 //
 // OUT OF SCOPE (integration-tested only — see Honest Claim in README):
@@ -118,6 +123,7 @@ handler create_payment_policy
     max_chunk_amount        := max_chunk
     period_length_seconds   := period_secs
     current_period_total    := 0
+    current_period_start    := 0
     gateway_fee_bps         := fee_bps
     protocol_share_bps      := proto_share
     scheduler_share_bps     := sched_share
@@ -153,6 +159,9 @@ handler execute_payment (chunk : U64) (current_time : U64) : State -> State {
   // validate_policy_execution — PAYG chunk bounds
   requires chunk > 0 else InvalidAmount
   requires chunk <= max_chunk_amount else InvalidAmount
+  // recipient_net_of_fee is a gross-mode property (ADR-0018); net mode
+  // satisfies recipient_amount == payment_amount (different identity, not claimed).
+  requires is_net_mode == 0
 
   match
     // Period window elapsed AND new-period cap holds → reset.
@@ -166,7 +175,7 @@ handler execute_payment (chunk : U64) (current_time : U64) : State -> State {
           total_fee            := bps_mul(chunk, gateway_fee_bps)
           protocol_cut         := bps_mul(total_fee, protocol_share_bps)
           scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := bps_mul(total_fee, referral_allocation_bps)
+          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
           gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
           recipient_amount     := payment_amount - total_fee
           total_from_user      := payment_amount
@@ -181,7 +190,7 @@ handler execute_payment (chunk : U64) (current_time : U64) : State -> State {
           total_fee            := bps_mul(chunk, gateway_fee_bps)
           protocol_cut         := bps_mul(total_fee, protocol_share_bps)
           scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := bps_mul(total_fee, referral_allocation_bps)
+          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
           gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
           recipient_amount     := payment_amount - total_fee
           total_from_user      := payment_amount
@@ -201,6 +210,7 @@ handler execute_composable (chunk : U64) (current_time : U64) (min_output : U64)
   requires policy_status == 0 else PolicyPaused
   requires chunk > 0 else InvalidAmount
   requires chunk <= max_chunk_amount else InvalidAmount
+  requires is_net_mode == 0
 
   match
     | current_time >= current_period_start + period_length_seconds
@@ -213,7 +223,7 @@ handler execute_composable (chunk : U64) (current_time : U64) (min_output : U64)
           total_fee            := bps_mul(chunk, gateway_fee_bps)
           protocol_cut         := bps_mul(total_fee, protocol_share_bps)
           scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := bps_mul(total_fee, referral_allocation_bps)
+          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
           gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
           recipient_amount     := payment_amount - total_fee
           total_from_user      := payment_amount
@@ -227,7 +237,7 @@ handler execute_composable (chunk : U64) (current_time : U64) (min_output : U64)
           total_fee            := bps_mul(chunk, gateway_fee_bps)
           protocol_cut         := bps_mul(total_fee, protocol_share_bps)
           scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := bps_mul(total_fee, referral_allocation_bps)
+          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
           gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
           recipient_amount     := payment_amount - total_fee
           total_from_user      := payment_amount
@@ -270,12 +280,13 @@ handler release_milestone (current_time : U64) (due_timestamp : U64) : State -> 
   // bit3 RELEASE_RECIPIENT — if set, caller must be the recipient.
   requires release_requires_recipient == 0 or caller_is_recipient == 1
     else Unauthorized
+  requires is_net_mode == 0
   effect {
     pulled_amount    := payment_amount
     total_fee        := bps_mul(payment_amount, gateway_fee_bps)
     protocol_cut     := bps_mul(total_fee, protocol_share_bps)
     scheduler_cut    := bps_mul(total_fee, scheduler_share_bps)
-    referral_pool    := bps_mul(total_fee, referral_allocation_bps)
+    referral_pool    := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
     gateway_residual := total_fee - protocol_cut - scheduler_cut - referral_pool
     recipient_amount := payment_amount - total_fee
     total_from_user  := payment_amount
@@ -316,7 +327,9 @@ property fee_is_bps_decomposition :
   preserved_by all except [create_payment_policy, transfer]
 
 // Gross-mode recipient receives payment minus the full fee (no hidden tax).
-// Nonlinear via total_fee — Lean + Kani discharge targets.
+// Scoped to gross mode via `requires is_net_mode == 0` on execute handlers;
+// net mode satisfies recipient_amount == payment_amount (different identity,
+// not claimed here). Nonlinear via total_fee — Lean + Kani discharge targets.
 property recipient_net_of_fee :
   (state.recipient_amount + state.total_fee) == state.payment_amount
   preserved_by all except [create_payment_policy, transfer]
@@ -341,6 +354,13 @@ property residual_nonnegative :
 
 invariant fee_share_sum_bounded :
   (state.protocol_share_bps + state.scheduler_share_bps + state.referral_allocation_bps) <= BPS_DENOMINATOR
+
+// Milestone signer bits 1-3 are mutually exclusive — enforced at policy
+// creation (policies/milestone.rs::validate_milestone_policy), not by any
+// in-scope handler. The release_milestone requires clauses rely on this:
+// the code uses an else-if chain (first-set-wins), so at most one bit fires.
+invariant milestone_signer_bits_mutually_exclusive :
+  (state.release_requires_gateway + state.release_requires_owner + state.release_requires_recipient) <= 1
 
 // Documentation-only invariants (kept as comments, not `invariant` blocks,
 // to avoid vacuous `theorem : True := trivial` codegen). These are real
