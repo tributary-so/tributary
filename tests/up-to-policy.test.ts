@@ -21,6 +21,7 @@ import {
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
+import { sendAndConfirmWithRetry } from "./helpers/sendWithRetry";
 import assert from "assert";
 import { Buffer } from "buffer";
 
@@ -100,7 +101,7 @@ describe("UpTo payment policy", () => {
     signers: Keypair[]
   ): Promise<void> {
     const tx = new Transaction().add(...ixs);
-    await sendAndConfirmTransaction(connection, tx, signers, {
+    await sendAndConfirmWithRetry(connection, tx, signers, {
       commitment: "processed" as Commitment,
     });
   }
