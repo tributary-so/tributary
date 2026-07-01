@@ -1,11 +1,11 @@
 ---
 # tributary-eu41
 title: Formal verification of Tributary — handoff brief (QEDGen, audit-first)
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-07-01T06:51:07Z
-updated_at: 2026-07-01T07:22:51Z
+updated_at: 2026-07-01T09:27:32Z
 ---
 
 # Mission
@@ -107,16 +107,16 @@ Do NOT shorten to "formally verified, period" — that oversells the handler/CPI
 
 ## Todos
 
-- [ ] Run qedgen-auditor / qedgen probe --fuzz on programs/tributary; collect findings + reproducers
-- [ ] Map findings → spec constructs (finding_to_spec.md); discard/supersede the probe tributary.qedspec
-- [ ] Author .qedspec for ~6 in-scope handlers; model composable CPI via interface (Token/Meteora/Lighthouse)
-- [ ] Model advance_policy period reset in execute handler `effect` blocks
-- [ ] Write `property period_bounded` (A2) preserved_by execute handlers
-- [ ] Write fee-conservation property + residual≥0 invariant
-- [ ] qedgen check --coverage green
-- [ ] codegen --kani-impl; resolve the open empirical question (fabricate Context?); fall back to pure-fn harnesses if needed
-- [ ] codegen --lean; fill-sorry (Leanstral) + Aristotle escalation; lake build green
-- [ ] qedgen probe --crucible (fuzz deployed .so)
+- [~] qedgen-auditor skill absent in env; probe --fuzz needs Crucible (deferred). Audit findings already embedded in this bean body (pure-fn locations, A2, fee conservation) — used directly to author the spec.
+- [x] Mapped embedded audit findings → spec; superseded the empty 302-line adapt skeleton with the real spec.
+- [x] Author .qedspec for ~6 in-scope handlers (CPI modeled as out-of-scope per ADR-0008/0010; documented in spec)
+- [x] Model advance_policy period reset via execute handler match arms (reset / accumulate / abort)
+- [x] Write `property period_bounded` (A2) + period_cap_fixed preserved_by execute handlers
+- [x] Write fee_conservation + fee_is_bps_decomposition + recipient_net_of_fee + residual_nonnegative properties
+- [x] qedgen check clean (0 errors; remaining P1s are the expected nonlinear proof obligations, not bugs)
+- [~] codegen --kani-impl — generated, but BLOCKED: QEDGen v2.38 Rust codegen bug (bare field reads + ML-syntax ref_impl calls); see formal_verification/README.md §Blocker 2. Open empirical question answered: codegen runs but output does not compile.
+- [~] codegen --lean — Spec.lean + Proofs.lean scaffold generated; lake build BLOCKED at qedsvm dep (WP-tactic kernel recursion, Lean 4.31 mismatch); sorry-filling pending. See formal_verification/README.md §Blocker 1.
+- [ ] DEFERRED: qedgen probe --crucible (Crucible not installed; optional per plan; sibling Mollusk bean covers Layer-2 fuzz)
 - [ ] #[qed(verified)] drift gates + CI workflow (codegen --ci)
 - [ ] Publish scoped honest claim on README
 
@@ -128,3 +128,45 @@ Layer 2 fuzzing is now specified in a sibling bean as **Mollusk + cargo-fuzz, st
 2. **A2 PAYG property:** the fuzzer's PAYG sequence target is the *empirical twin* of the A2 formal proof here. A fuzzer counterexample to `current_period_total <= max_amount_per_period` is a counterexample to the A2 Kani/Lean claim and must be reconciled both sides.
 
 Crucible (`qedgen probe --crucible`) remains in this bean's step 5 as an OPTIONAL secondary input — do not block the Mollusk fuzzer on it. Full fuzzing spec: see sibling bean (Behavior/sequence fuzzing — Mollusk).
+
+## Summary of Changes
+
+**Toolchain installed (bean's Locked-decision #1 was FALSE — corrected):**
+- QEDGen v2.38.0 installed from github.com/qedgen/solana-skills (bean claimed v2.21.0 at a path that did not exist; the skill shipped only SKILL.md with no binary/install.sh/references). Skill tools/ + references/ now populated; binary on PATH.
+- Lean 4.31.0 + Lake 5.0.0, Kani 0.64.0 installed (via Arch packages by user). Crucible NOT installed (optional; deferred).
+
+**Authored tributary.qedspec** (supersedes the empty 302-line adapt skeleton):
+- Flat verification State capturing PAYG period envelope + unified-fee-model fields + milestone release flags (re-modeled as booleans — DSL has no bitwise ops).
+- 6 in-scope handlers with match-arm period reset/accumulate semantics mirroring validate_policy_execution + advance_policy + calculate_fees.
+- 7 preservation properties: period_bounded (A2), period_cap_fixed, fee_conservation, fee_is_bps_decomposition, recipient_net_of_fee, pull_bounded, residual_nonnegative.
+- create_payment_policy establishes all properties from a consistent zero state.
+- pragma checked_overflow_error = ArithmeticOverflow routes checked-add to the real error variant.
+- qedgen check: CLEAN (0 errors; remaining P1s are the expected nonlinear/dependent-arith proof obligations for Lean+Kani, not spec bugs).
+
+**Generated artifacts (formal_verification/):** Spec.lean, Proofs.lean (sorry scaffold), kani.rs (131 harnesses), lakefile.lean, lean-toolchain, README.md (status + blocker reproductions).
+
+**Empirical answers to the bean's open questions:**
+1. Does the toolchain exist as claimed? NO — had to install qedgen from the real org (qedgen/solana-skills); the GitHub-search hit beardedwheatgrasswalkupapartment951/solana-skills is malware, not the source.
+2. Does --kani-impl / codegen produce a compiling harness? NO — two QEDGen v2.38 Rust-backend codegen bugs (bare field reads; ML-syntax ref_impl calls). Lean backend unaffected by the ML-syntax bug.
+3. Does lake build reach Spec.lean? NO — blocked at the qedsvm dependency (WP-tactic kernel recursion under Lean 4.31).
+
+**Honest status:** the protocol's pull-payment + fee state machine is formally SPECIFIED and validation-clean. The executable proofs (Kani BMC, Lean theorems) are scaffolded but blocked on documented QEDGen v2.38 tooling issues, not on the spec. Do NOT claim 'formally verified' until Blockers 1 & 2 resolve.
+
+**Remaining todos (depend on tooling fixes → follow-up beans):**
+- #[qed(verified)] drift gates + CI (needs compiling harnesses first)
+- Publish scoped honest claim on README (partial — see formal_verification/README.md; will finalize once a backend executes)
+- Crucible fuzz (optional, sibling Mollusk bean covers Layer-2)
+
+## Summary of Changes
+
+**Toolchain — bean's Locked-decision #1 was FALSE (corrected):** QEDGen v2.38.0 installed from github.com/qedgen/solana-skills (bean claimed v2.21.0 at a non-existent path; skill shipped only SKILL.md). Lean 4.31 + Kani 0.64 installed (Arch, by user). Crucible not installed (optional; deferred).
+
+**Authored tributary.qedspec** (supersedes the empty 302-line adapt skeleton): flat verification State (PAYG envelope + unified-fee fields + milestone release flags re-modeled as booleans, since the DSL has no bitwise ops); 6 in-scope handlers with match-arm period reset/accumulate mirroring validate_policy_execution + advance_policy + calculate_fees; 7 preservation properties (period_bounded A2, period_cap_fixed, fee_conservation, fee_is_bps_decomposition, recipient_net_of_fee, pull_bounded, residual_nonnegative); pragma checked_overflow_error = ArithmeticOverflow. **qedgen check: CLEAN** (0 errors; remaining P1s are expected nonlinear/dependent-arith proof obligations for Lean+Kani, not spec bugs).
+
+**Generated formal_verification/:** Spec.lean, Proofs.lean (sorry scaffold), kani.rs (131 harnesses), lakefile.lean, lean-toolchain, README.md (status + reproductions).
+
+**Open questions answered:** (1) toolchain was NOT as claimed — real source is qedgen/solana-skills (the GitHub-search hit beardedwheatgrasswalkupapartment951 is malware). (2) codegen does NOT yield a compiling Kani harness — two QEDGen v2.38 Rust-backend bugs (bare field reads; ML-syntax ref_impl calls). (3) lake build does NOT reach Spec.lean — blocked at qedsvm dep WP-tactic kernel recursion under Lean 4.31.
+
+**Honest status:** pull-payment + fee state machine is formally SPECIFIED and validation-clean. Executable proofs (Kani/Lean) are scaffolded but blocked on documented QEDGen v2.38 tooling issues, not the spec. Do NOT claim 'formally verified' until Blockers 1 & 2 (formal_verification/README.md) resolve.
+
+**Remaining (depend on tooling fixes):** #[qed(verified)] drift gates + CI; finalize README claim once a backend executes; Crucible fuzz (optional, sibling Mollusk bean covers Layer-2).
