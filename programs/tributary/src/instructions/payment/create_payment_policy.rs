@@ -103,6 +103,12 @@ impl<'info> CreatePaymentPolicy<'info> {
                 // positive due_date gates execution. No clamp here — the
                 // execute-time gate is the single source of truth.
             }
+            PolicyType::UpTo { .. } => {
+                // UpTo stores valid_after/deadline as-is. valid_after <= 0
+                // means "immediately executable" (handled at execute time).
+                // No clamp — the execute-time gate is the single source of
+                // truth. See ADR-0020.
+            }
         }
 
         let payment_policy = &mut ctx.accounts.payment_policy;

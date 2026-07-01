@@ -4158,6 +4158,32 @@
                 }
               }
             ]
+          },
+          {
+            "name": "UpTo",
+            "fields": [
+              {
+                "name": "max_amount",
+                "type": "u64"
+              },
+              {
+                "name": "valid_after",
+                "type": "i64"
+              },
+              {
+                "name": "deadline",
+                "type": "i64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    104
+                  ]
+                }
+              }
+            ]
           }
         ]
       }

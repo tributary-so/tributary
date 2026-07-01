@@ -406,6 +406,13 @@ describe("OneTime payment policy", () => {
     let validationPDA: PublicKey;
     let composablePolicyId: number;
 
+    // The Lighthouse guard asserts recipient USDC balance < 1 USDC. Earlier
+    // tests in this file paid the same recipient 50+ USDC via direct
+    // PaymentPolicy executions. Reset to 0 so the assertion holds.
+    beforeAll(async () => {
+      await creditTokenAccount(recipient.publicKey, 0);
+    });
+
     test("create composable OneTime with Lighthouse guard", async () => {
       await sdk.updateWallet(new anchor.Wallet(user));
 

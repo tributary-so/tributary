@@ -155,6 +155,25 @@ describe("x402 Middleware", () => {
         expect.stringContaining('scheme="deferred"')
       );
     });
+
+    it("should support x402://upto scheme with maxAmount/deadline", async () => {
+      const uptoOptions = {
+        ...defaultOptions,
+        scheme: "x402://upto",
+        maxAmount: 1_000_000,
+        validAfter: 1_700_000_000,
+        deadline: 1_800_000_000,
+      };
+      const uptoMiddleware = createX402Middleware(uptoOptions);
+
+      await uptoMiddleware(mockReq, mockRes, mockNext);
+
+      const headerValue = mockRes.set.mock.calls[0][1];
+      expect(headerValue).toContain('scheme="x402://upto"');
+      expect(headerValue).toContain("maxAmount=1000000");
+      expect(headerValue).toContain("validAfter=1700000000");
+      expect(headerValue).toContain("deadline=1800000000");
+    });
   });
 
   describe("Payment Accept Array", () => {

@@ -73,6 +73,8 @@ nav:
           - Subscription: protocol-reference/payment-policy/subscription.md
           - Milestone: protocol-reference/payment-policy/milestone.md
           - Pay-as-you-go: protocol-reference/payment-policy/payasyougo.md
+          - One-Time: protocol-reference/payment-policy/onetime.md
+          - UpTo: protocol-reference/payment-policy/upto.md
           - Referral Program: protocol-reference/payment-policy/referral-program.md
       - Composable Policy:
           - Overview: protocol-reference/composable-policy/overview.md

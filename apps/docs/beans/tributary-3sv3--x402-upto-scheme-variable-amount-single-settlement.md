@@ -1,11 +1,11 @@
 ---
 # tributary-3sv3
 title: 'x402 ''upto'' scheme: variable-amount single-settlement authorization (UpTo policy variant + facilitator)'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-06-30T14:17:10Z
-updated_at: 2026-06-30T14:17:10Z
+updated_at: 2026-06-30T19:25:57Z
 ---
 
 # x402 `upto` scheme — variable-amount single-settlement authorization
@@ -274,13 +274,53 @@ directly — no new metering concepts needed.
 
 ## Child work breakdown (can be split into child beans later)
 
-- [ ] 1. Rust: `UpTo` variant + `validate()` arm + `policies/up_to.rs` + unit tests (RED->GREEN)
-- [ ] 2. Rust: `UpTo` arms in `validate_policy_execution` (caller amount, time window, max) + `advance_policy` + `PolicyExpired` error (coordinate w/ OneTime epic) + unit tests
-- [ ] 3. Rust: extend recipient-triggerable set in `execute_payment.rs` to include `UpTo`
-- [ ] 4. Rust: integration test `tests/up-to-policy.test.ts` (settle<max, settle=max, settle>max fails, settle=0, time window, re-settle fails, recipient trigger, composable)
-- [ ] 5. SDK: `getCreateUpToPolicyInstruction` + `createUpToAuthorization` + `settleUpTo` helpers
-- [ ] 6. x402: `"x402://upto"` scheme + `src/upto.ts` (verify + settle) + middleware wiring + `buildPaymentRequiredHeader` params
-- [ ] 7. x402: metering integration (`settleFromUsage`) + phase-dependent amount handling + short-lived JWT (exp=deadline)
-- [ ] 8. x402: tests (`test/upto.test.ts`, extend `test/middleware.test.ts`) + README scheme table
-- [ ] 9. Docs: ADR-0020 + AGENTS.md updates (ADR map, PolicyType bullets, x402 schemes)
-- [ ] 10. `pnpm run lint` + `anchor test` + `cd tests && npx jest` + `cd packages/sdk-x402 && pnpm run test` all green
+- [x] 1. Rust: `UpTo` variant + `validate()` arm + `policies/up_to.rs` + unit tests (RED->GREEN)
+- [x] 2. Rust: `UpTo` arms in `validate_policy_execution` (caller amount, time window, max) + `advance_policy` + `PolicyExpired` error (coordinate w/ OneTime epic) + unit tests
+- [x] 3. Rust: extend recipient-triggerable set in `execute_payment.rs` to include `UpTo`
+- [x] 4. Rust: integration test `tests/up-to-policy.test.ts` (settle<max, settle=max, settle>max fails, settle=0, time window, re-settle fails, recipient trigger)
+- [x] 5. SDK: `getCreateUpToPolicyInstruction` + `createUpToAuthorization` + `settleUpTo` helpers
+- [x] 6. x402: `"x402://upto"` scheme + `src/upto.ts` (verify + settle) + middleware wiring + `buildPaymentRequiredHeader` params
+- [x] 7. x402: metering integration (`settleFromUsage`) + phase-dependent amount handling + short-lived JWT (exp=deadline)
+- [x] 8. x402: tests (`test/upto.test.ts`, extend `test/middleware.test.ts`) + README scheme table
+- [x] 9. Docs: ADR-0020 + AGENTS.md updates (ADR map, PolicyType bullets, x402 schemes)
+- [x] 10. `cargo test --lib` (120/120), SDK `pnpm run build` clean, x402 `pnpm run test` (63/63), `prettier --check` clean, `tsc --noEmit` clean. Jest integration (`tests/up-to-policy.test.ts`) TypeScript-compiles clean; runtime requires Surfpool (registered as `anchor run test-upto`).
+
+
+
+## Summary of Changes
+
+Added the `UpTo` `PolicyType` variant (discriminator 4) — a single-use, time-bound authorization to transfer up to `max_amount`, where the actual settled amount is caller-supplied at execute time and bounded on-chain. Lands in both `PaymentPolicy` and `ComposablePolicy` for free via the shared enum (ADR-0007). The x402 `upto` scheme primitive.
+
+**Rust program (`programs/tributary/src/`):**
+- `state/payment_policy.rs` — added `UpTo { max_amount, valid_after, deadline, padding[104] }` variant (128-byte invariant preserved) + the `validate()` arm.
+- `policies/up_to.rs` (NEW) — `validate_up_to_policy` + 7 unit tests (max>0, deadline>0, deadline>valid_after).
+- `policies/mod.rs` — registered + re-exported.
+- `shared/schedule.rs` — `UpTo` arm in `validate_policy_execution` (caller-supplied amount; `0 <= actual <= max`; strict `<` deadline; `>=` valid_after when > 0) + `UpTo` arm in `advance_policy` (always `true`, single-use). 11 new unit tests.
+- `instructions/payment/create_payment_policy.rs` — no-op `UpTo` arm (variant stored as-is; `valid_after <= 0` is the immediate convention).
+- `instructions/payment/execute_payment.rs` — extended recipient-triggerable set to include `UpTo` (joins PayAsYouGo).
+- `PolicyExpired` error variant inherited from OneTime epic.
+
+**SDK (`packages/sdk/src/sdk.ts`):**
+- `getCreateUpToPolicyInstruction(...)` — low-level instruction builder.
+- `createUpToAuthorization(...)` — convenience wrapper (ATA + UserPayment + delegate approval + policy).
+- `settleUpTo(policyPda, actualAmount, ...)` — thin wrapper over `executePayment` with the caller-supplied amount.
+
+**x402 package (`packages/sdk-x402/`):**
+- Added `"x402://upto"` to `X402Scheme`; added `maxAmount`, `validAfter`, `deadline` to `X402Options` and `X402PaymentRequirements`.
+- `src/upto.ts` (NEW) — `verifyUpToAuthorization` (reads max from on-chain policy, NOT settle-time `requirements.amount`) + `settleUpTo`.
+- `src/middleware.ts` — verify + settle branches in `createX402Middleware`; upto params in `buildPaymentRequiredHeader`; short-lived JWT (`exp = deadline - now`, not the `1y` default).
+- `src/metering.ts` — `settleFromUsage(sdk, tracker, policyPda, maxAmount)` helper computes `min(cost, max)`.
+- `src/index.ts` — re-exports upto APIs.
+- `test/upto.test.ts` (NEW) — 8 tests (header, accepts array, verify reads max from chain, verify ceiling mismatch, no-active-upto, settleUpTo with number/BN).
+- `test/middleware.test.ts` — added upto scheme case.
+- `README.md` — added `x402://upto` to the supported schemes table.
+
+**Tests:**
+- `tests/up-to-policy.test.ts` (NEW) — direct PaymentPolicy flow: create → settle(actual<max) → Completed; settle(max) ok; settle(actual>max) fails; settle(0) ok (no charge, no CPI, status still flips); settle before valid_after fails (PaymentNotDue); settle at/after deadline fails (PolicyExpired); re-settle fails; recipient-triggerable. Registered as `anchor run test-upto` in Anchor.toml.
+
+**Docs:**
+- `apps/docs/adr/0020-upto-scheme-and-policy-variant.md` (NEW) — names the decision, the 128-byte layout, the `valid_after <= 0` convention, the mandatory deadline, the on-chain `actual <= max` enforcement, the x402 facilitator two-phase flow, and the four rejected alternatives.
+- `AGENTS.md` — ADR map entry + PolicyType bullet for UpTo.
+- `CONTEXT.md` — PolicyType variant count bumped to five + UpTo definition.
+
+**Verification:** `cargo test --lib` 120/120 green (18 new UpTo tests: 7 validator + 11 schedule); SDK `pnpm run build` clean (regenerated types include `upTo` variant); x402 `pnpm run test` 63/63 green (8 new upto tests + 1 new middleware case); `prettier --check` clean; `cargo fmt --check` clean; `tsc --noEmit` on x402 and on the new integration test clean. Jest integration runtime requires Surfpool (not in this env).

@@ -1517,6 +1517,278 @@ export class Tributary {
   }
 
   /**
+   * Gets a transaction instruction to create an `upto` authorization policy.
+   * Single-use, time-bound: the actual settled amount is caller-supplied at
+   * execute time, bounded by `maxAmount`. See ADR-0020.
+   *
+   * Use createUpToAuthorization() for the full setup including ATAs and approvals.
+   *
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payment
+   * @param gateway - Public key of the gateway that will execute the payment
+   * @param maxAmount - Ceiling on the settlement amount (smallest token units), must be > 0
+   * @param validAfter - Earliest settlement timestamp; `null`/`<= 0` means immediate
+   * @param deadline - Hard expiry (strict `<` at execute time); MUST be > 0 and > validAfter
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param feePayer - Optional explicit fee payer (defaults to the provider wallet)
+   * @returns Transaction instruction to create the `upto` policy
+   */
+  async getCreateUpToPolicyInstruction(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmount: BN,
+    validAfter: BN | null,
+    deadline: BN,
+    memo: number[],
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+
+    if (maxAmount.lte(new BN(0))) {
+      throw new Error("maxAmount must be greater than 0");
+    }
+    if (deadline.lte(new BN(0))) {
+      throw new Error("deadline must be greater than 0");
+    }
+
+    const policyType: PolicyType = {
+      upTo: {
+        maxAmount: maxAmount,
+        // validAfter <= 0 means "immediate" — store null as 0 on-chain.
+        validAfter: validAfter ?? new BN(0),
+        deadline: deadline,
+        padding: new Array(104).fill(0),
+      },
+    };
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+    return await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Creates a complete `upto` authorization setup including ATAs, user payment
+   * account, policy, and token approvals. The authorization lets the resource
+   * server / facilitator settle up to `maxAmount` once, within
+   * `[validAfter, deadline]`. See ADR-0020.
+   *
+   * Use getCreateUpToPolicyInstruction() for just the instruction without setup.
+   *
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway
+   * @param maxAmount - Ceiling on the settlement amount (smallest token units)
+   * @param deadline - Hard expiry timestamp; MUST be > 0
+   * @param memo - Memo bytes for the payment policy
+   * @param validAfter - Earliest settlement timestamp; omitted/`null` means immediate
+   * @param approvalAmount - Optional specific approval amount (defaults to `maxAmount`)
+   * @param referralCode - Optional 6-character referral code
+   * @param feePayer - Optional explicit fee payer
+   * @returns Array of transaction instructions for the complete setup
+   */
+  async createUpToAuthorization(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmount: BN,
+    deadline: BN,
+    memo: number[],
+    validAfter?: BN | null,
+    approvalAmount?: BN,
+    referralCode?: string,
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const instructions: TransactionInstruction[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      instructions.push(createUserPaymentIx);
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      instructions.push(createReferralIx);
+    }
+
+    // Build policy type — validAfter null/<=0 means immediate (stored as 0).
+    const policyType: PolicyType = {
+      upTo: {
+        maxAmount: maxAmount,
+        validAfter: validAfter ?? new BN(0),
+        deadline: deadline,
+        padding: new Array(104).fill(0),
+      },
+    };
+
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const { address: configPda } = getConfigPda(this.programId);
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      config: configPda,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+    instructions.push(createPaymentPolicyIx);
+
+    // UpTo fires exactly once — approval covers maxAmount plus fee headroom
+    // (gateway fee is taken on top of the gross pull). Caller can override
+    // with an explicit approvalAmount if they know the gateway fee precisely.
+    const finalApprovalAmount: BN = approvalAmount ?? maxAmount;
+
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const delegate = userPaymentPda;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
+        needsApproval = true;
+      } else if (
+        currentDelegate === delegate.toString() &&
+        new BN(currentDelegatedAmount).lt(finalApprovalAmount)
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
+      const approveIx = this.getApprovalInstruction(
+        ownerTokenAccount,
+        delegate,
+        user,
+        finalApprovalAmount
+      );
+      instructions.push(revokeIx);
+      instructions.push(approveIx);
+    }
+
+    return instructions;
+  }
+
+  /**
+   * Settle an `upto` authorization with the actual amount (determined by the
+   * resource server after usage). Thin wrapper over `executePayment` that
+   * pins the caller-supplied amount — on-chain enforces `0 <= actual <= max`
+   * and the `[validAfter, deadline)` window. See ADR-0020.
+   *
+   * @param paymentPolicyPda - Public key of the `upto` payment policy
+   * @param actualAmount - Actual settle amount (smallest token units); MAY be 0
+   * @param recipient - Public key of the payment recipient (optional if in policy)
+   * @param tokenMint - Public key of the token mint (optional if in policy)
+   * @param gateway - Public key of the payment gateway (optional if in policy)
+   * @param user - Public key of the payment user (optional if in policy)
+   * @returns Array of transaction instructions including ATA creation and settlement
+   */
+  async settleUpTo(
+    paymentPolicyPda: PublicKey,
+    actualAmount: BN,
+    recipient?: PublicKey,
+    tokenMint?: PublicKey,
+    gateway?: PublicKey,
+    user?: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    return this.executePayment(
+      paymentPolicyPda,
+      actualAmount,
+      recipient,
+      tokenMint,
+      gateway,
+      user
+    );
+  }
+
+  /**
    * Executes a payment for a given payment policy.
    * This method handles the complete payment execution flow including fee calculations and token transfers.
    * @param paymentPolicyPda - Public key of the payment policy account

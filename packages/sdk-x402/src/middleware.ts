@@ -3,13 +3,20 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { Transaction } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 import type { PaymentPolicy } from "@tributary-so/sdk";
+import { verifyUpToAuthorization } from "./upto";
 import jwt from "jsonwebtoken";
 
 /**
  * x402 v2 Payment Scheme Types
- * Supports both subscription (deferred) and pay-as-you-go (x402://payg) schemes
+ * Supports both subscription (deferred), pay-as-you-go (x402://payg),
+ * prepaid (x402://prepaid), and single-use variable-amount authorization
+ * (x402://upto).
  */
-export type X402Scheme = "deferred" | "x402://payg" | "x402://prepaid";
+export type X402Scheme =
+  | "deferred"
+  | "x402://payg"
+  | "x402://prepaid"
+  | "x402://upto";
 
 /**
  * x402 v2 Payment Requirements (sent in Payment-Required header)
@@ -47,6 +54,12 @@ export interface X402PaymentRequirements {
   periodLengthSeconds?: number;
   /** For pay-as-you-go: maximum chunk amount per request */
   maxChunkAmount?: number;
+  /** For upto: ceiling on the settlement amount (max authorization) */
+  maxAmount?: number;
+  /** For upto: earliest settlement timestamp (<= 0 / omitted = immediate) */
+  validAfter?: number;
+  /** For upto: hard expiry timestamp (settlement rejected at/after) */
+  deadline?: number;
 }
 
 /**
@@ -111,6 +124,12 @@ export interface X402Options {
   periodLengthSeconds?: number;
   /** Max chunk amount for pay-as-you-go */
   maxChunkAmount?: number;
+  /** For upto: ceiling on the settlement amount (max authorization) */
+  maxAmount?: number;
+  /** For upto: earliest settlement timestamp (<= 0 / omitted = immediate) */
+  validAfter?: number;
+  /** For upto: hard expiry timestamp (settlement rejected at/after) */
+  deadline?: number;
   /** JWT secret for token generation */
   jwtSecret: string;
   /** Tributary SDK instance */
@@ -159,6 +178,16 @@ function buildPaymentRequiredHeader(
     }
     if (options.maxChunkAmount !== undefined) {
       parts.push(`maxChunkAmount=${options.maxChunkAmount}`);
+    }
+  } else if (options.scheme === "x402://upto") {
+    if (options.maxAmount !== undefined) {
+      parts.push(`maxAmount=${options.maxAmount}`);
+    }
+    if (options.validAfter !== undefined) {
+      parts.push(`validAfter=${options.validAfter}`);
+    }
+    if (options.deadline !== undefined) {
+      parts.push(`deadline=${options.deadline}`);
     }
   }
 
@@ -420,6 +449,42 @@ export function createX402Middleware(options: X402Options) {
                     .json({ error: "Pay-as-you-go period exhausted" });
                 }
               }
+            } else if (decoded.scheme === "x402://upto") {
+              // UpTo: single-use authorization. The JWT is the verify-phase
+              // credential; the resource is metered until settle. The auth
+              // is still valid as long as the policy is Active and the
+              // deadline hasn't passed.
+              const uptoData = policy.policyType.upTo;
+              if (uptoData) {
+                const now = Date.now() / 1000;
+                const deadline = uptoData.deadline.toNumber();
+                if (now < deadline) {
+                  (req as any).x402Policy = {
+                    policyAddress: decoded.policyAddress,
+                    scheme: decoded.scheme,
+                    maxAmount: uptoData.maxAmount.toNumber(),
+                    deadline,
+                  };
+                  return next();
+                } else {
+                  // Deadline passed — authorization expired, require new payment.
+                  return res
+                    .status(402)
+                    .set(
+                      "payment-required",
+                      buildPaymentRequiredHeader(
+                        options,
+                        `${req.protocol}://${req.get("host")}${
+                          req.originalUrl
+                        }`,
+                        `upto_${Date.now()}_${Math.random()
+                          .toString(36)
+                          .slice(2)}`
+                      )
+                    )
+                    .json({ error: "upto authorization expired" });
+                }
+              }
             } else {
               // Subscription - active and valid
               (req as any).x402Policy = {
@@ -511,12 +576,35 @@ export function createX402Middleware(options: X402Options) {
             new PublicKey(options.gateway),
             new PublicKey(options.recipient)
           );
+        } else if (options.scheme === "x402://upto") {
+          preVerification = await verifyUpToAuthorization(
+            options.sdk,
+            userPublicKey,
+            // At verify time, amount = max (the ceiling).
+            options.maxAmount ?? options.amount,
+            new PublicKey(options.tokenMint),
+            new PublicKey(options.gateway),
+            new PublicKey(options.recipient)
+          );
         } else {
           preVerification = { success: false };
         }
 
         if (preVerification.success) {
           console.log("✓ Existing payment found, returning JWT early");
+
+          // JWT expiration: upto is short-lived (bounded by deadline);
+          // other schemes keep the long-lived 1y default.
+          const jwtOptions: jwt.SignOptions = {};
+          if (options.scheme === "x402://upto" && options.deadline) {
+            // exp in seconds since epoch — jwt library convention.
+            jwtOptions.expiresIn = Math.max(
+              1,
+              options.deadline - Math.floor(Date.now() / 1000)
+            );
+          } else {
+            jwtOptions.expiresIn = "1y";
+          }
 
           // Create JWT for existing subscription/policy
           const token = jwt.sign(
@@ -529,9 +617,11 @@ export function createX402Middleware(options: X402Options) {
               gateway: options.gateway,
               maxAmountPerPeriod: options.maxAmountPerPeriod,
               periodLengthSeconds: options.periodLengthSeconds,
+              maxAmount: options.maxAmount,
+              deadline: options.deadline,
             },
             options.jwtSecret,
-            { expiresIn: "1y" }
+            jwtOptions
           );
 
           const timestamp = Date.now();
@@ -616,6 +706,16 @@ export function createX402Middleware(options: X402Options) {
             new PublicKey(options.gateway),
             new PublicKey(options.recipient)
           );
+        } else if (options.scheme === "x402://upto") {
+          verification = await verifyUpToAuthorization(
+            options.sdk,
+            userPublicKey,
+            // At verify time, amount = max (the ceiling).
+            options.maxAmount ?? options.amount,
+            new PublicKey(options.tokenMint),
+            new PublicKey(options.gateway),
+            new PublicKey(options.recipient)
+          );
         } else {
           verification = { success: false, error: "Unsupported scheme" };
         }
@@ -629,6 +729,18 @@ export function createX402Middleware(options: X402Options) {
 
         console.log("✓ Payment verified");
 
+        // JWT expiration: upto is short-lived (bounded by deadline); other
+        // schemes keep the long-lived 1y default.
+        const postJwtOptions: jwt.SignOptions = {};
+        if (options.scheme === "x402://upto" && options.deadline) {
+          postJwtOptions.expiresIn = Math.max(
+            1,
+            options.deadline - Math.floor(Date.now() / 1000)
+          );
+        } else {
+          postJwtOptions.expiresIn = "1y";
+        }
+
         // Create JWT
         const token = jwt.sign(
           {
@@ -640,9 +752,11 @@ export function createX402Middleware(options: X402Options) {
             gateway: options.gateway,
             maxAmountPerPeriod: options.maxAmountPerPeriod,
             periodLengthSeconds: options.periodLengthSeconds,
+            maxAmount: options.maxAmount,
+            deadline: options.deadline,
           },
           options.jwtSecret,
-          { expiresIn: "1y" }
+          postJwtOptions
         );
 
         const timestamp = Date.now();
@@ -680,9 +794,13 @@ export function createX402Middleware(options: X402Options) {
     // console.log(`New ${options.scheme} payment quote requested`);
 
     const randomString = Math.random().toString(36).slice(2);
-    const paymentId = `${
-      options.scheme === "x402://payg" ? "payg" : "sub"
-    }_${Date.now()}_${randomString}`;
+    const schemePrefix =
+      options.scheme === "x402://payg"
+        ? "payg"
+        : options.scheme === "x402://upto"
+        ? "upto"
+        : "sub";
+    const paymentId = `${schemePrefix}_${Date.now()}_${randomString}`;
     const resource = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
 
     // Set the Payment-Required header (x402 v2 standard)
@@ -710,6 +828,9 @@ export function createX402Middleware(options: X402Options) {
           maxAmountPerPeriod: options.maxAmountPerPeriod,
           periodLengthSeconds: options.periodLengthSeconds,
           maxChunkAmount: options.maxChunkAmount,
+          maxAmount: options.maxAmount,
+          validAfter: options.validAfter,
+          deadline: options.deadline,
         },
       ],
     });

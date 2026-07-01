@@ -4164,6 +4164,32 @@ export type Tributary = {
                 }
               }
             ]
+          },
+          {
+            "name": "upTo",
+            "fields": [
+              {
+                "name": "maxAmount",
+                "type": "u64"
+              },
+              {
+                "name": "validAfter",
+                "type": "i64"
+              },
+              {
+                "name": "deadline",
+                "type": "i64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    104
+                  ]
+                }
+              }
+            ]
           }
         ]
       }

@@ -279,6 +279,12 @@ impl<'a> MilestoneSigners<'a> {
 ///   requires `current_time <= expiry_date`. Returns the fixed `amount`.
 ///   The caller-supplied `provided_amount` is ignored (mirrors
 ///   Subscription).
+/// * **UpTo** — single-use, time-bound variable-amount authorization. The
+///   settle amount is caller-supplied (`provided_amount`) and MUST satisfy
+///   `0 <= actual <= max_amount` (a zero settle is explicitly permitted —
+///   no usage means no charge). Requires `current_time >= valid_after`
+///   when `valid_after > 0`, and `current_time < deadline` (strict —
+///   x402 mandates explicit time bounds). Returns the actual amount.
 pub fn validate_policy_execution(
     policy_type: &PolicyType,
     current_time: i64,
@@ -377,6 +383,24 @@ pub fn validate_policy_execution(
             }
             Ok(*amount)
         }
+        PolicyType::UpTo {
+            max_amount,
+            valid_after,
+            deadline,
+            ..
+        } => {
+            // Settle amount is caller-supplied (determined by the resource
+            // server after usage). Unlike Subscription/OneTime (fixed), like
+            // PayAsYouGo (chunk). A zero settle is explicitly permitted — the
+            // x402 spec allows "no charge if no usage occurred".
+            let actual = provided_amount.ok_or(TributaryError::InvalidAmount)?;
+            require!(actual <= *max_amount, TributaryError::InvalidAmount);
+            if *valid_after > 0 {
+                require!(current_time >= *valid_after, TributaryError::PaymentNotDue);
+            }
+            require!(current_time < *deadline, TributaryError::PolicyExpired);
+            Ok(actual)
+        }
     }
 }
 
@@ -394,6 +418,9 @@ pub fn validate_policy_execution(
 ///   `execute_payment` / `execute_composable` then sets
 ///   `status = PolicyStatus::Completed`, and re-execution is blocked by the
 ///   existing `status == Active` constraint.
+/// * **UpTo** — always completes after one settlement. Same single-use
+///   guarantee as OneTime via the `Active → Completed` transition; the
+///   variant is immutable, only the enclosing account's `status` flips.
 pub fn advance_policy(
     policy_type: &mut PolicyType,
     current_time: i64,
@@ -447,6 +474,12 @@ pub fn advance_policy(
             // Always terminal after one execution. No state to mutate — the
             // variant is immutable; only the enclosing account's `status`
             // field flips to `Completed` in the caller.
+            Ok(true)
+        }
+        PolicyType::UpTo { .. } => {
+            // Single-use: always terminal after one settlement. Identical
+            // guarantee to OneTime — the variant is immutable; the enclosing
+            // account's `status` field flips to `Completed` in the caller.
             Ok(true)
         }
     }
@@ -936,6 +969,118 @@ mod tests {
         match &pt {
             PolicyType::OneTime { amount, .. } => assert_eq!(*amount, 100),
             _ => panic!("expected OneTime"),
+        }
+    }
+
+    // ── UpTo gating + advancement (ADR-0020) ──
+
+    /// Build a `PolicyType::UpTo` for tests.
+    fn up_to(max_amount: u64, valid_after: i64, deadline: i64) -> PolicyType {
+        PolicyType::UpTo {
+            max_amount,
+            valid_after,
+            deadline,
+            padding: [0u8; 104],
+        }
+    }
+
+    #[test]
+    fn upto_accepts_zero_settle() {
+        // actual == 0 is explicitly permitted (no usage → no charge).
+        let pt = up_to(100, 0, FEB_29_2024);
+        let amount =
+            validate_policy_execution(&pt, JAN_31_2024, Some(0), &MilestoneSigners::none())
+                .unwrap();
+        assert_eq!(amount, 0);
+    }
+
+    #[test]
+    fn upto_accepts_settle_below_max() {
+        let pt = up_to(100, 0, FEB_29_2024);
+        let amount =
+            validate_policy_execution(&pt, JAN_31_2024, Some(42), &MilestoneSigners::none())
+                .unwrap();
+        assert_eq!(amount, 42);
+    }
+
+    #[test]
+    fn upto_accepts_settle_equal_max() {
+        let pt = up_to(100, 0, FEB_29_2024);
+        let amount =
+            validate_policy_execution(&pt, JAN_31_2024, Some(100), &MilestoneSigners::none())
+                .unwrap();
+        assert_eq!(amount, 100);
+    }
+
+    #[test]
+    fn upto_rejects_settle_above_max() {
+        let pt = up_to(100, 0, FEB_29_2024);
+        let err = validate_policy_execution(&pt, JAN_31_2024, Some(101), &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn upto_rejects_missing_settle_amount() {
+        // Unlike Subscription/OneTime, UpTo requires a caller-supplied amount.
+        let pt = up_to(100, 0, FEB_29_2024);
+        let err = validate_policy_execution(&pt, JAN_31_2024, None, &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn upto_immediate_valid_after_executes_now() {
+        // valid_after <= 0 → immediately executable.
+        let pt = up_to(100, 0, FEB_29_2024);
+        let amount =
+            validate_policy_execution(&pt, 0, Some(50), &MilestoneSigners::none()).unwrap();
+        assert_eq!(amount, 50);
+    }
+
+    #[test]
+    fn upto_rejects_before_valid_after() {
+        let pt = up_to(100, FEB_29_2024, 2_000_000_000);
+        let err = validate_policy_execution(&pt, JAN_31_2024, Some(50), &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::PaymentNotDue));
+    }
+
+    #[test]
+    fn upto_executes_at_valid_after_boundary() {
+        let pt = up_to(100, FEB_29_2024, 2_000_000_000);
+        let amount =
+            validate_policy_execution(&pt, FEB_29_2024, Some(50), &MilestoneSigners::none())
+                .unwrap();
+        assert_eq!(amount, 50);
+    }
+
+    #[test]
+    fn upto_rejects_at_deadline_boundary() {
+        // Strict `<` — at the deadline the authorization has expired.
+        let pt = up_to(100, 0, FEB_29_2024);
+        let err = validate_policy_execution(&pt, FEB_29_2024, Some(50), &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::PolicyExpired));
+    }
+
+    #[test]
+    fn upto_rejects_after_deadline() {
+        let pt = up_to(100, 0, JAN_31_2024);
+        let err = validate_policy_execution(&pt, FEB_29_2024, Some(50), &MilestoneSigners::none())
+            .unwrap_err();
+        assert!(err == error!(TributaryError::PolicyExpired));
+    }
+
+    #[test]
+    fn upto_advance_always_completes() {
+        let mut pt = up_to(100, 0, FEB_29_2024);
+        let should = advance_policy(&mut pt, JAN_31_2024, 42).unwrap();
+        assert!(should, "UpTo must always complete after one settlement");
+        // Variant itself is unchanged.
+        match &pt {
+            PolicyType::UpTo { max_amount, .. } => assert_eq!(*max_amount, 100),
+            _ => panic!("expected UpTo"),
         }
     }
 

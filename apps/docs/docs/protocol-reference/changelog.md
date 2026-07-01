@@ -13,6 +13,21 @@ citizens alongside direct pull payments.
 
 ### Added
 
+- **`PolicyType::OneTime`** (discriminator `3`) — fixed-amount, single-fire
+  pull payment with the full gateway lifecycle (PDA, pausable, deletable,
+  schedulable, composable hooks). `due_date <= 0` = immediate;
+  `expiry_date = None` = never expires. See ADR-0019.
+- **`PolicyType::UpTo`** (discriminator `4`) — single-use, time-bound
+  variable-amount authorization. Caller-supplied settle amount bounded by
+  `max_amount` (`0 <= actual <= max`, enforced on-chain from the immutable
+  policy). Recipient-triggerable like Pay-as-you-go. The x402 `upto`
+  primitive. See ADR-0020.
+- **`PolicyExpired`** error variant — shared by OneTime's `expiry_date` and
+  UpTo's `deadline` gates.
+- **SDK** — `getCreateOneTimePolicyInstruction` / `createOneTimePayment` and
+  `getCreateUpToPolicyInstruction` / `createUpToAuthorization` / `settleUpTo`.
+- **x402 package** — `"x402://upto"` scheme with verify + settle helpers
+  (`src/upto.ts`) and short-lived JWT (`exp = deadline`).
 - **`ComposablePolicy`** account and instructions (`create_composable_policy`,
   `execute_composable`, `change_composable_status`,
   `delete_composable_policy`) — programmable pull payments with optional

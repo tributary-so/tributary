@@ -340,12 +340,12 @@ await sdk.createPayAsYouGo(
 
 ## Comparison with Other Policy Types
 
-|                      | Subscription       | Milestone              | Pay-as-you-go       |
-| -------------------- | ------------------ | ---------------------- | ------------------- |
-| **Amount**           | Fixed per period   | Variable per milestone | Variable per claim  |
-| **Timing**           | Fixed schedule     | Event/timestamp based  | On-demand           |
-| **Flexibility**      | Low                | Medium                 | High                |
-| **Predictability**   | High               | Medium                 | Low                 |
-| **Best For**         | Recurring services | Project deliverables   | Variable usage      |
-| **User Control**     | Set up once        | Approve per milestone  | Period limits       |
-| **Provider Control** | None (automatic)   | Claim after approval   | Claim within limits |
+|                       | Subscription       | Milestone              | Pay-as-you-go       | OneTime               | UpTo                     |
+| --------------------- | ------------------ | ---------------------- | ------------------- | --------------------- | ------------------------ |
+| **Amount**            | Fixed per period   | Variable per milestone | Variable per claim  | Fixed, single fire    | Caller-supplied, ≤ max   |
+| **Timing**            | Fixed schedule     | Event/timestamp based  | On-demand           | Scheduled / immediate | `[validAfter, deadline)` |
+| **Fires**             | Recurring          | Up to 4 phases         | Many (within caps)  | Exactly once          | Exactly once             |
+| **Recipient trigger** | No                 | Per release_condition  | Yes                 | No                    | Yes                      |
+| **Zero settle**       | n/a                | n/a                    | Rejected (L-01)     | n/a                   | Allowed                  |
+| **Best For**          | Recurring services | Project deliverables   | Variable usage      | Invoices, one-shots   | Usage-based one-shot     |
+| **Provider Control**  | None (automatic)   | Claim after approval   | Claim within limits |

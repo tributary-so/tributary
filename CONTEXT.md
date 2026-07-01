@@ -190,7 +190,7 @@ PDA seed.
 
 **PolicyType**:
 The shared 128-byte fixed-layout enum describing how a policy advances.
-Four variants: `Subscription`, `Milestone`, `PayAsYouGo`, `OneTime`.
+Five variants: `Subscription`, `Milestone`, `PayAsYouGo`, `OneTime`, `UpTo`.
 Identical bytes on both `PaymentPolicy` and `ComposablePolicy`.
 Composable v1 briefly had its own `ScheduleType`; it was unified back
 into `PolicyType` before release (see ADR 0007).
@@ -223,6 +223,16 @@ None` means the policy never expires. Flows through the full gateway
 machinery (PDA, pausable, deletable, schedulable, composable hooks). Not
 the standalone `transfer` instruction (ADR-0004). See ADR 0019.
 _Avoid_: invoice payment, single-shot transfer.
+
+**UpTo**:
+Single-use, time-bound authorization to transfer up to `max_amount`. The
+actual settled amount is caller-supplied at execute time, bounded by
+`max_amount` (`0 <= actual <= max`). `valid_after <= 0` means immediate;
+`deadline` is mandatory (`> 0`, `> valid_after`). Recipient-triggerable
+(like PayAsYouGo). After one settlement the policy transitions to
+`Completed`. The x402 `upto` scheme primitive — settle what was actually
+used, once. See ADR 0020.
+_Avoid_: authorization hold, debit pre-auth.
 
 **PolicyStatus**:
 The lifecycle state shared by both policy families: `Active`, `Paused`,
