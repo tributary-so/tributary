@@ -207,7 +207,7 @@ export function useCreateTopupPolicy() {
           "Topup SOL",
           forwardConfig,
           LIGHTHOUSE_PROGRAM_ID,
-          guard.numAccounts,
+          [],
           guard.data
         );
         ixs.push(createIx);
