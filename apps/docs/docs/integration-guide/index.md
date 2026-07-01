@@ -154,7 +154,7 @@ app.use(
 1. **Learn the Protocol:** [Tributary Overview](../index.md)
 2. **Choose Your Integration:** Review quickstart guides above
 3. **JWT Authentication:** [Verify subscriptions after checkout](pull-payments/jwt-auth.md)
-4. **Explore Payment Types:** [Subscriptions](../protocol-reference/payment-policy/subscription.md), [Milestones](../protocol-reference/payment-policy/milestone.md), [Pay-as-you-go](../protocol-reference/payment-policy/payasyougo.md)
+4. **Explore Payment Types:** [Subscriptions](../protocol-reference/payment-policy/subscription.md), [Milestones](../protocol-reference/payment-policy/milestone.md), [Pay-as-you-go](../protocol-reference/payment-policy/payasyougo.md), [OneTime](../protocol-reference/payment-policy/onetime.md), [UpTo](../protocol-reference/payment-policy/upto.md)
 5. **Build:** Check [use cases](../use-cases.md) for inspiration
 
 ## Need Help?

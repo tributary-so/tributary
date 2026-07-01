@@ -21,6 +21,8 @@ import {
   Bot,
   Lock,
   Building2,
+  Zap,
+  Gauge,
 } from "lucide-react";
 import { useEffect } from "react";
 import TwitterWall from "@/components/TwitterWall";
@@ -76,6 +78,32 @@ const paymentTypes = [
     ],
     tags: ["AI/LLM", "API", "Cloud"],
     color: "blue-500",
+  },
+  {
+    name: "One-Time",
+    icon: Zap,
+    description: "Fire once, full lifecycle",
+    features: [
+      "Fixed amount, single fire",
+      "Schedulable (due date)",
+      "Optional expiry",
+      "Full fee + composable hooks",
+    ],
+    tags: ["Invoices", "Bonuses", "Escrow release"],
+    color: "amber-500",
+  },
+  {
+    name: "UpTo",
+    icon: Gauge,
+    description: "Authorize up to a max, settle actual usage",
+    features: [
+      "Single-use authorization",
+      "Caller-supplied settle (≤ max)",
+      "Time-bound [validAfter, deadline)",
+      "Recipient-triggerable (x402)",
+    ],
+    tags: ["x402 / HTTP 402", "LLM sessions", "Compute jobs"],
+    color: "purple-500",
   },
 ];
 
@@ -168,7 +196,7 @@ const faqs = [
   {
     question: "What is Tributary?",
     answer:
-      "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports three claim shapes: Subscriptions, Milestones, and Pay-as-you-go.",
+      "Tributary is a Solana-native protocol enabling automated, non-custodial recurring payments through token delegation. It supports five claim shapes: Subscriptions, Milestones, Pay-as-you-go, OneTime (fixed single-shot), and UpTo (single-use variable-amount authorization — the x402 'upto' primitive).",
   },
   {
     question: "How does token delegation work?",
@@ -554,7 +582,7 @@ export default function HomeContent() {
           <p className="text-muted-foreground leading-relaxed text-[15px]">
             Turn one knob of each axis —{" "}
             <span className="text-foreground">WHEN</span>=schedule,{" "}
-            <span className="text-foreground">PULL</span>=any of the three claim
+            <span className="text-foreground">PULL</span>=any of the five claim
             shapes, <span className="text-foreground">ROUTE</span>=wallet — and
             the primitive becomes recurring payments. That minimal config has
             executed{" "}

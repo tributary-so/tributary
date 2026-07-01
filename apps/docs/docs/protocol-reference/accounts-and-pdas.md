@@ -105,22 +105,22 @@ Feature-flag constants (on `PaymentGateway`):
 
 ### `PaymentPolicy` (602 bytes)
 
-| Field                       | Type            | Size | Description                                                    |
-| --------------------------- | --------------- | ---- | -------------------------------------------------------------- |
-| `_discriminator`            | `[u8; 8]`       | 8    |                                                                |
-| `user_payment`              | `Pubkey`        | 32   | Parent `UserPayment`                                           |
-| `recipient`                 | `Pubkey`        | 32   | Final funds recipient                                          |
-| `gateway`                   | `Pubkey`        | 32   | Executing gateway                                              |
-| `policy_type`               | `PolicyType`    | 129  | 1-byte tag + 128-byte body (Subscription/Milestone/PayAsYouGo) |
-| `status`                    | `PaymentStatus` | 1    | `Active` / `Paused`                                            |
-| `memo`                      | `[u8; 64]`      | 64   | Human-readable description                                     |
-| `total_paid`                | `u64`           | 8    | Cumulative payout                                              |
-| `payment_count`             | `u32`           | 4    | Executions so far                                              |
-| `created_at` / `updated_at` | `i64` × 2       | 16   |                                                                |
-| `policy_id`                 | `u32`           | 4    | Unique within this `UserPayment`                               |
-| `bump`                      | `u8`            | 1    |                                                                |
-| `rent_payer`                | `Pubkey`        | 32   | Refunded on close                                              |
-| `padding`                   | `[u8; 223]`     | 223  | Reserved                                                       |
+| Field                       | Type            | Size | Description                                                                 |
+| --------------------------- | --------------- | ---- | --------------------------------------------------------------------------- |
+| `_discriminator`            | `[u8; 8]`       | 8    |                                                                             |
+| `user_payment`              | `Pubkey`        | 32   | Parent `UserPayment`                                                        |
+| `recipient`                 | `Pubkey`        | 32   | Final funds recipient                                                       |
+| `gateway`                   | `Pubkey`        | 32   | Executing gateway                                                           |
+| `policy_type`               | `PolicyType`    | 129  | 1-byte tag + 128-byte body (Subscription/Milestone/PayAsYouGo/OneTime/UpTo) |
+| `status`                    | `PaymentStatus` | 1    | `Active` / `Paused`                                                         |
+| `memo`                      | `[u8; 64]`      | 64   | Human-readable description                                                  |
+| `total_paid`                | `u64`           | 8    | Cumulative payout                                                           |
+| `payment_count`             | `u32`           | 4    | Executions so far                                                           |
+| `created_at` / `updated_at` | `i64` × 2       | 16   |                                                                             |
+| `policy_id`                 | `u32`           | 4    | Unique within this `UserPayment`                                            |
+| `bump`                      | `u8`            | 1    |                                                                             |
+| `rent_payer`                | `Pubkey`        | 32   | Refunded on close                                                           |
+| `padding`                   | `[u8; 223]`     | 223  | Reserved                                                                    |
 
 ### `ComposablePolicy`
 

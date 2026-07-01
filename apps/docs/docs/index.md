@@ -118,7 +118,7 @@ More ideas in [Use Cases](use-cases.md).
 ## Get Started
 
 1. **Pick your integration** — [React SDK](integration-guide/pull-payments/sdk-react/index.md), [TypeScript SDK](integration-guide/pull-payments/sdk.md), or [Checkout Links](integration-guide/pull-payments/checkout.md)
-2. **Choose a payment type** — [Subscription](protocol-reference/payment-policy/subscription.md), [Milestone](protocol-reference/payment-policy/milestone.md), or [Pay-as-you-go](protocol-reference/payment-policy/payasyougo.md)
+2. **Choose a payment type** — [Subscription](protocol-reference/payment-policy/subscription.md), [Milestone](protocol-reference/payment-policy/milestone.md), [Pay-as-you-go](protocol-reference/payment-policy/payasyougo.md), [OneTime](protocol-reference/payment-policy/onetime.md), or [UpTo](protocol-reference/payment-policy/upto.md)
 3. **Go live** — deploy on Solana mainnet in minutes
 
 !!! question "Questions?"

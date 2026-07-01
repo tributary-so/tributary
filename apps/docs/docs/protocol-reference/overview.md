@@ -76,15 +76,17 @@ For the full PDA seed table and per-account field layouts, see
 
 ## The shared `PolicyType` enum
 
-All three variants are fixed at **128 bytes** (plus a 1-byte enum
+All five variants are fixed at **128 bytes** (plus a 1-byte enum
 discriminator = 129 bytes total). This is a hard invariant: changing padding
 breaks deserialization of every existing account.
 
-| Variant          | Semantics                                                                                                                                                                                      |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Subscription** | Fixed `amount` every `payment_frequency` until `max_renewals` reached (or forever if `auto_renew`). Gated by `next_payment_due`.                                                               |
-| **Milestone**    | Up to 4 `(amount, timestamp)` milestones held in escrow. Released via `release_condition` bitmap: bit0=due-date, bits1–3 are mutually-exclusive signer requirements (gateway/owner/recipient). |
-| **PayAsYouGo**   | Usage-based: claim up to `max_chunk_amount` per call, capped at `max_amount_per_period` per `period_length_seconds`. Period auto-resets.                                                       |
+| Variant          | Semantics                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Subscription** | Fixed `amount` every `payment_frequency` until `max_renewals` reached (or forever if `auto_renew`). Gated by `next_payment_due`.                                                                    |
+| **Milestone**    | Up to 4 `(amount, timestamp)` milestones held in escrow. Released via `release_condition` bitmap: bit0=due-date, bits1–3 are mutually-exclusive signer requirements (gateway/owner/recipient).      |
+| **PayAsYouGo**   | Usage-based: claim up to `max_chunk_amount` per call, capped at `max_amount_per_period` per `period_length_seconds`. Period auto-resets.                                                            |
+| **OneTime**      | Fixed `amount`, fires exactly once then `Completed`. `due_date <= 0` = immediate; `expiry_date = None` = never expires. Full gateway lifecycle. See ADR-0019.                                       |
+| **UpTo**         | Single-use, time-bound variable-amount authorization. Caller-supplied settle amount, `0 <= actual <= max_amount`, enforced on-chain from the immutable policy. Recipient-triggerable. See ADR-0020. |
 
 ## Fee distribution flow
 
