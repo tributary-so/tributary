@@ -27,6 +27,7 @@ import {
   encodeMemo,
 } from "../packages/sdk/src";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
+import { sendAndConfirmWithRetry } from "./helpers/sendWithRetry";
 import assert from "assert";
 import { Buffer } from "buffer";
 const ADMIN_KEYPAIR = [
@@ -1265,7 +1266,7 @@ describe("Tributary", () => {
         );
 
         const tx = new Transaction().add(createIx);
-        await sendAndConfirmTransaction(connection, tx, [user], {
+        await sendAndConfirmWithRetry(connection, tx, [user], {
           commitment: "processed" as Commitment,
         });
 
@@ -3119,7 +3120,7 @@ describe("Tributary", () => {
     );
     const tx = new Transaction().add(changeFeeBpsIx);
 
-    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+    await sendAndConfirmWithRetry(connection, tx, [gatewayAuthority], {
       commitment: "processed" as Commitment,
     });
 
@@ -3903,7 +3904,7 @@ describe("Tributary", () => {
 
         const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyId);
         const tx = new Transaction().add(deleteIx);
-        await sendAndConfirmTransaction(connection, tx, [user], {
+        await sendAndConfirmWithRetry(connection, tx, [user], {
           commitment: "processed" as Commitment,
         });
 
@@ -3911,11 +3912,12 @@ describe("Tributary", () => {
         expect(afterDelete).toBeNull();
       };
 
-      const promises = [];
+      // Sequential — parallel deletes overwhelm Surfpool on CI (2-core),
+      // causing blockhash expiry. Sequential is slightly slower in the happy
+      // path but never stalls the instance.
       for (let policyId = 1; policyId <= createdCount; policyId++) {
-        promises.push(deletePolicy(policyId));
+        await deletePolicy(policyId);
       }
-      await Promise.all(promises);
 
       const finalUserPayment = await sdk.getUserPayment(userPaymentPDA);
       expect(finalUserPayment!.activePoliciesCount).toBe(0);

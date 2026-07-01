@@ -28,6 +28,7 @@ import {
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
+import { sendAndConfirmWithRetry } from "./helpers/sendWithRetry";
 import { LIGHTHOUSE_PUBKEY } from "./constants";
 import assert from "assert";
 import { Buffer } from "buffer";
@@ -112,7 +113,7 @@ describe("OneTime payment policy", () => {
     extraPayer?: Keypair
   ): Promise<void> {
     const tx = new Transaction().add(...ixs);
-    await sendAndConfirmTransaction(connection, tx, signers, {
+    await sendAndConfirmWithRetry(connection, tx, signers, {
       commitment: "processed" as Commitment,
     });
     void extraPayer;
