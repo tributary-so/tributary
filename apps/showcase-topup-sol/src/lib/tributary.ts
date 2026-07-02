@@ -8,7 +8,8 @@ export {
   getGatewayPda,
   getUserPaymentPda,
   getComposablePolicyPda,
-  getValidationPda,
+  getPreValidationPda,
+  getPostValidationPda,
   getPaymentsDelegatePda,
 } from "@tributary-so/sdk";
 

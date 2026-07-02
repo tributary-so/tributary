@@ -2770,9 +2770,6 @@ export class Tributary {
       config.feeRecipient
     );
 
-    const hasPreValidation = isProgramCall(policy.preValidation);
-    const hasPostValidation = isProgramCall(policy.postValidation);
-
     const { address: preValidationPdaAddress } = getPreValidationPda(
       composablePolicy,
       this.programId

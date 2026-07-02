@@ -17,7 +17,7 @@ import DLMM from "@meteora-ag/dlmm";
 import {
   Tributary as TributarySDK,
   ComposablePolicy,
-  getValidationPda,
+  getPreValidationPda,
   getGatewayPda,
   parseValidationPdaData,
 } from "@tributary-so/sdk";
@@ -276,12 +276,8 @@ class ComposableScheduler {
   }
 
   private hasValidation(policy: ComposablePolicy): boolean {
-    const prog = policy.validationConfig?.validationProgram;
-    return (
-      !!prog &&
-      !prog.equals(PublicKey.default) &&
-      !prog.equals(SystemProgram.programId)
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return !!(policy.preValidation as any).programCall;
   }
 
   private async tick(): Promise<void> {
@@ -345,7 +341,7 @@ class ComposableScheduler {
 
     for (const p of scheduleReady) {
       if (!this.hasValidation(p.account)) continue;
-      const { address: valPda } = getValidationPda(
+      const { address: valPda } = getPreValidationPda(
         p.publicKey,
         this.sdk.programId
       );
@@ -373,7 +369,7 @@ class ComposableScheduler {
         fireable.push(p);
         continue;
       }
-      const { address: valPda } = getValidationPda(
+      const { address: valPda } = getPreValidationPda(
         p.publicKey,
         this.sdk.programId
       );
@@ -493,7 +489,7 @@ class ComposableScheduler {
   ): Promise<PublicKey[]> {
     if (!this.hasValidation(policy)) return [];
 
-    const { address: valPda } = getValidationPda(
+    const { address: valPda } = getPreValidationPda(
       composablePolicyPda,
       this.sdk.programId
     );

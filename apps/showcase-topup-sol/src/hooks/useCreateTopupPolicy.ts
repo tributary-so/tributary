@@ -167,18 +167,26 @@ export function useCreateTopupPolicy() {
 
         // ── ForwardConfig (Meteora DLMM USDC→WSOL, optional NATIVE_OUTPUT)
         const forwardConfig = {
-          targetProgram: METEORA_DLMM_PUBKEY,
+          instructionConstraint: {
+            programId: METEORA_DLMM_PUBKEY,
+            numDataChecks: 1,
+            dataChecks: [
+              { offset: 0, length: 8, expected: discriminator },
+              { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+              { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+              { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+            ],
+            numPinnedAccounts: 1,
+            pinnedAccounts: [
+              PublicKey.unique(),
+              PublicKey.default,
+              PublicKey.default,
+              PublicKey.default,
+            ],
+          },
           inputMint: usdcMint,
           outputMint: WSOL_MINT, // NATIVE_OUTPUT requires WSOL
-          minOutputAmount: null,
           forwardFlags: form.unwrap ? FORWARD_FLAG_NATIVE_OUTPUT : 0,
-          numDataChecks: 1,
-          dataChecks: [
-            { offset: 0, length: 8, expected: discriminator },
-            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-          ],
         };
 
         // ── Lighthouse guard: hot-wallet native SOL below threshold ────
@@ -206,7 +214,7 @@ export function useCreateTopupPolicy() {
           policyType,
           "Topup SOL",
           forwardConfig,
-          LIGHTHOUSE_PROGRAM_ID,
+          { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } },
           [],
           guard.data
         );
