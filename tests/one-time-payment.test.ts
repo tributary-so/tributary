@@ -24,7 +24,8 @@ import {
   getUserPaymentPda,
   getPaymentPolicyPda,
   getComposablePolicyPda,
-  getValidationPda,
+  getPreValidationPda,
+  getPostValidationPda,
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
@@ -32,6 +33,29 @@ import { sendAndConfirmWithRetry } from "./helpers/sendWithRetry";
 import { LIGHTHOUSE_PUBKEY } from "./constants";
 import assert from "assert";
 import { Buffer } from "buffer";
+
+// ── Composable v2.1 helpers (mirrors tests/composable.test.ts) ───────────
+const DISABLED_SPEC = { disabled: {} } as any;
+const DISABLED_INIT = {
+  numPinnedAccounts: 0,
+  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  validationData: Buffer.alloc(0),
+} as any;
+
+function programCallSpec(programId: PublicKey): any {
+  return { programCall: { programId } };
+}
+
+function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
+  return {
+    numPinnedAccounts: pinnedAccounts.length,
+    pinnedAccounts: [
+      pinnedAccounts[0] ?? PublicKey.default,
+      pinnedAccounts[1] ?? PublicKey.default,
+    ],
+    validationData: data,
+  };
+}
 
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -404,7 +428,8 @@ describe("OneTime payment policy", () => {
   // ComposablePolicy OneTime + Lighthouse guard — conditional one-shot payment.
   describe("composable OneTime + Lighthouse guard", () => {
     let composablePolicyPDA: PublicKey;
-    let validationPDA: PublicKey;
+    let preValidationPDA: PublicKey;
+    let postValidationPDA: PublicKey;
     let composablePolicyId: number;
 
     // The Lighthouse guard asserts recipient USDC balance < 1 USDC. Earlier
@@ -424,7 +449,11 @@ describe("OneTime payment policy", () => {
         composablePolicyId,
         program.programId
       ).address;
-      validationPDA = getValidationPda(
+      preValidationPDA = getPreValidationPda(
+        composablePolicyPDA,
+        program.programId
+      ).address;
+      postValidationPDA = getPostValidationPda(
         composablePolicyPDA,
         program.programId
       ).address;
@@ -441,21 +470,29 @@ describe("OneTime payment policy", () => {
       const memo = new Array(32).fill(0);
       Buffer.from("composable one-time").copy(Buffer.from(memo));
 
-      // Forward disabled (target_program = default sentinel) — same-mint
-      // pull → sweep, no swap.
+      // Forward disabled (instructionConstraint.programId = default sentinel)
+      // — same-mint pull → sweep, no swap.
       const forwardConfig = {
-        targetProgram: PublicKey.default,
         inputMint: USDC_MINT,
         outputMint: USDC_MINT,
-        minOutputAmount: null,
         forwardFlags: 0,
-        numDataChecks: 0,
-        dataChecks: [
-          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-        ],
+        instructionConstraint: {
+          programId: PublicKey.default,
+          numDataChecks: 0,
+          dataChecks: [
+            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+            { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+          ],
+          numPinnedAccounts: 0,
+          pinnedAccounts: [
+            PublicKey.default,
+            PublicKey.default,
+            PublicKey.default,
+            PublicKey.default,
+          ],
+        },
       };
 
       // Lighthouse: assert recipient USDC balance < 1 USDC.
@@ -465,19 +502,18 @@ describe("OneTime payment policy", () => {
         .amount(1_000_000, "<")
         .build();
 
-      const pinnedAccounts: [PublicKey, PublicKey] = [
-        guard.accounts[0]?.pubkey ?? PublicKey.default,
-        guard.accounts[1]?.pubkey ?? PublicKey.default,
-      ];
-
       const ix = await program.methods
         .createComposablePolicy(
           policyType,
           memo,
           forwardConfig,
-          guard.numAccounts,
-          pinnedAccounts,
-          guard.data
+          programCallSpec(LIGHTHOUSE_PUBKEY),
+          validationInit(
+            [guard.accounts[0]?.pubkey ?? PublicKey.default],
+            guard.data
+          ),
+          DISABLED_SPEC,
+          DISABLED_INIT
         )
         .accountsStrict({
           feePayer: user.publicKey,
@@ -487,8 +523,10 @@ describe("OneTime payment policy", () => {
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
-          validationPda: validationPDA,
-          validationProgram: LIGHTHOUSE_PUBKEY,
+          preValidationPda: preValidationPDA,
+          postValidationPda: postValidationPDA,
+          preValidationProgram: LIGHTHOUSE_PUBKEY,
+          postValidationProgram: SystemProgram.programId,
           inputMint: USDC_MINT,
           outputMint: USDC_MINT,
           systemProgram: SystemProgram.programId,
@@ -534,8 +572,10 @@ describe("OneTime payment policy", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationProgram: LIGHTHOUSE_PUBKEY,
-        validationPda: validationPDA!,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
+        preValidationPda: preValidationPDA!,
+        postValidationPda: postValidationPDA!,
         userTokenAccount,
         mint: USDC_MINT,
         outputMint: USDC_MINT,
@@ -589,8 +629,10 @@ describe("OneTime payment policy", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationProgram: LIGHTHOUSE_PUBKEY,
-        validationPda: validationPDA!,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
+        preValidationPda: preValidationPDA!,
+        postValidationPda: postValidationPDA!,
         userTokenAccount,
         mint: USDC_MINT,
         outputMint: USDC_MINT,

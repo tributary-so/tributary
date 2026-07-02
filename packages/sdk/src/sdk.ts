@@ -26,7 +26,8 @@ import {
   getComposablePolicyPda,
   getPaymentsDelegatePda,
   getReferralPda,
-  getValidationPda,
+  getPreValidationPda,
+  getPostValidationPda,
 } from "./pda";
 import type {
   IWallet,
@@ -39,9 +40,10 @@ import type {
   ReferralAccount,
   ComposablePolicy,
   ForwardConfig,
+  ValidationSpec,
   PolicyStatus,
 } from "./types.js";
-import { GATEWAY_FEATURES, MAX_PINNED_VALIDATION_ACCOUNTS } from "./constants";
+import { GATEWAY_FEATURES } from "./constants";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -389,7 +391,8 @@ export class Tributary {
     schedulerShareBps: number,
     gatewayFeeRecipient: PublicKey,
     name: string,
-    url: string
+    url: string,
+    initialFeatureFlags: number = 0
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const gateway = this.getGatewayPda(authority).address;
@@ -421,7 +424,8 @@ export class Tributary {
         gatewayFeeBps,
         schedulerShareBps,
         nameBytes,
-        urlBytes
+        urlBytes,
+        initialFeatureFlags
       )
       .accountsStrict(accounts)
       .instruction();
@@ -2619,24 +2623,24 @@ export class Tributary {
     policyType: PolicyType,
     memo: string,
     forwardConfig: ForwardConfig,
-    validationProgram: PublicKey = PublicKey.default,
-    pinnedAccounts: PublicKey[] = [],
-    validationData: Buffer = Buffer.alloc(0),
+    preValidation: ValidationSpec = { disabled: {} },
+    prePinnedAccounts: PublicKey[] = [],
+    preValidationData: Buffer = Buffer.alloc(0),
+    postValidation: ValidationSpec = { disabled: {} },
+    postPinnedAccounts: PublicKey[] = [],
+    postValidationData: Buffer = Buffer.alloc(0),
     feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
-    if (pinnedAccounts.length > MAX_PINNED_VALIDATION_ACCOUNTS) {
+    if (prePinnedAccounts.length > MAX_PINNED_ACCOUNTS) {
       throw new Error(
-        `pinnedAccounts: at most ${MAX_PINNED_VALIDATION_ACCOUNTS} targets (got ${pinnedAccounts.length})`
+        `prePinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${prePinnedAccounts.length})`
       );
     }
-    // Normalise to the fixed-size [Pubkey; 2] the on-chain instruction
-    // expects, zero-padded. Arity is derived from the input length so the
-    // caller doesn't have to pass it separately (single source of truth).
-    const numPinned = pinnedAccounts.length;
-    const pinnedAccountsFixed: [PublicKey, PublicKey] = [
-      pinnedAccounts[0] ?? PublicKey.default,
-      pinnedAccounts[1] ?? PublicKey.default,
-    ];
+    if (postPinnedAccounts.length > MAX_PINNED_ACCOUNTS) {
+      throw new Error(
+        `postPinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${postPinnedAccounts.length})`
+      );
+    }
 
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -2652,10 +2656,17 @@ export class Tributary {
     );
     const memoBytes = encodeMemo(memo, 32);
 
-    const { address: validationPdaAddress } = getValidationPda(
+    const { address: preValidationPdaAddress } = getPreValidationPda(
       composablePolicyPda.address,
       this.programId
     );
+    const { address: postValidationPdaAddress } = getPostValidationPda(
+      composablePolicyPda.address,
+      this.programId
+    );
+
+    const preProgram = specProgramOrDefault(preValidation);
+    const postProgram = specProgramOrDefault(postValidation);
 
     const accounts = {
       feePayer: feePayer ?? user,
@@ -2665,14 +2676,10 @@ export class Tributary {
       userPayment: userPaymentPda,
       gateway: gateway,
       config: configPda,
-      validationPda: validationPdaAddress,
-      validationProgram: validationProgram.equals(PublicKey.default)
-        ? SystemProgram.programId
-        : validationProgram,
-      // L-02: forward mints are validated on-chain against
-      // forwardConfig.inputMint/outputMint; auto-derive them from the
-      // caller-supplied config so consumers don't have to pass them
-      // explicitly.
+      preValidationPda: preValidationPdaAddress,
+      postValidationPda: postValidationPdaAddress,
+      preValidationProgram: preProgram,
+      postValidationProgram: postProgram,
       inputMint: forwardConfig.inputMint,
       outputMint: forwardConfig.outputMint,
       systemProgram: SystemProgram.programId,
@@ -2683,9 +2690,10 @@ export class Tributary {
         policyType,
         memoBytes,
         forwardConfig,
-        numPinned,
-        pinnedAccountsFixed,
-        validationData
+        preValidation,
+        makeValidationInit(prePinnedAccounts, preValidationData),
+        postValidation,
+        makeValidationInit(postPinnedAccounts, postValidationData)
       )
       .accountsStrict(accounts)
       .instruction();
@@ -2762,21 +2770,14 @@ export class Tributary {
       config.feeRecipient
     );
 
-    const hasValidation =
-      policy.validationConfig.validationProgram !== undefined &&
-      policy.validationConfig.validationProgram.toString() !==
-        PublicKey.default.toString();
-    const validationProgram = hasValidation
-      ? policy.validationConfig.validationProgram
-      : SystemProgram.programId;
+    const hasPreValidation = isProgramCall(policy.preValidation);
+    const hasPostValidation = isProgramCall(policy.postValidation);
 
-    // ValidationPda lives at a deterministic PDA off the composable policy.
-    // When validation is disabled, pass the derived address anyway — the
-    // on-chain account is never created in that case, and the program only
-    // deserialises it when `validationProgram != SystemProgram`. Keeping
-    // the field always-present matches the create flow and avoids an
-    // Anchor `Option<Account>` round-trip.
-    const { address: validationPdaAddress } = getValidationPda(
+    const { address: preValidationPdaAddress } = getPreValidationPda(
+      composablePolicy,
+      this.programId
+    );
+    const { address: postValidationPdaAddress } = getPostValidationPda(
       composablePolicy,
       this.programId
     );
@@ -2786,8 +2787,10 @@ export class Tributary {
       userPayment: policy.userPayment,
       gateway: policy.gateway,
       config: configPda,
-      validationProgram,
-      validationPda: validationPdaAddress,
+      preValidationProgram: specProgramOrDefault(policy.preValidation),
+      postValidationProgram: specProgramOrDefault(policy.postValidation),
+      preValidationPda: preValidationPdaAddress,
+      postValidationPda: postValidationPdaAddress,
       userTokenAccount,
       mint: inputMint,
       outputMint,
@@ -2890,19 +2893,25 @@ export class Tributary {
     const policy: ComposablePolicy =
       await this.program.account.composablePolicy.fetch(composablePolicyPda);
 
-    const hasValidation =
-      policy.validationConfig.validationProgram !== undefined &&
-      policy.validationConfig.validationProgram.toString() !==
-        PublicKey.default.toString();
-
     const remainingAccounts: AccountMeta[] = [];
-    if (hasValidation) {
-      const { address: validationPdaAddress } = getValidationPda(
+    if (isProgramCall(policy.preValidation)) {
+      const { address } = getPreValidationPda(
         composablePolicyPda,
         this.programId
       );
       remainingAccounts.push({
-        pubkey: validationPdaAddress,
+        pubkey: address,
+        isSigner: false,
+        isWritable: true,
+      });
+    }
+    if (isProgramCall(policy.postValidation)) {
+      const { address } = getPostValidationPda(
+        composablePolicyPda,
+        this.programId
+      );
+      remainingAccounts.push({
+        pubkey: address,
         isSigner: false,
         isWritable: true,
       });
@@ -3521,6 +3530,37 @@ export class Tributary {
     instructions.push(transferIx);
     return instructions;
   }
+}
+
+// ── ValidationSpec helpers (v2.1) ────────────────────────────────────
+
+const MAX_PINNED_ACCOUNTS = 2;
+
+function isProgramCall(spec: ValidationSpec): boolean {
+  return (spec as { programCall?: unknown }).programCall !== undefined;
+}
+
+function specProgramOrDefault(spec: ValidationSpec): PublicKey {
+  const pc = (spec as { programCall?: { programId: PublicKey } }).programCall;
+  return pc ? pc.programId : SystemProgram.programId;
+}
+
+function makeValidationInit(
+  pinnedAccounts: PublicKey[],
+  data: Buffer
+): {
+  numPinnedAccounts: number;
+  pinnedAccounts: [PublicKey, PublicKey];
+  validationData: Buffer;
+} {
+  return {
+    numPinnedAccounts: pinnedAccounts.length,
+    pinnedAccounts: [
+      pinnedAccounts[0] ?? PublicKey.default,
+      pinnedAccounts[1] ?? PublicKey.default,
+    ],
+    validationData: data,
+  };
 }
 
 // Legacy export for backward compatibility

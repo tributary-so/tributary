@@ -1,11 +1,11 @@
 ---
 # tributary-l9qw
 title: 'Implementation epic: InstructionConstraint + Unified ValidationSpec (pre/post)'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-02T08:00:51Z
-updated_at: 2026-07-02T11:46:17Z
+updated_at: 2026-07-02T13:06:07Z
 parent: tributary-zvku
 ---
 
@@ -126,3 +126,7 @@ ValidationSpec = Disabled | ProgramCall { program_id } | Inline { reserved, not 
 
 ### Supersedes
 Old ForwardAccountsPda design (ForwardAccountsPda separate PDA, sentinel, lazy-create) is SCRAPPED. The goal (route pinning for non-fungible outputs) is achieved via InstructionConstraint.pinned_accounts inline.
+
+## Summary of Changes
+
+All children complete: program contract (cjhh), SDK (ksdy), apps (none touched). Implementation epic done.

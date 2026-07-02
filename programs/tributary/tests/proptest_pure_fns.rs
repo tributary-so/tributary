@@ -5,8 +5,8 @@
 // Run:  cd programs/tributary && cargo test --test proptest_pure_fns
 // Deep: PROPTEST_CASES=10000 cargo test --test proptest_pure_fns
 
-use proptest::prelude::*;
 use anchor_lang::prelude::Pubkey;
+use proptest::prelude::*;
 use tributary::shared::fees::calculate_fees;
 use tributary::shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners};
 use tributary::state::PolicyType;
@@ -280,10 +280,13 @@ proptest! {
 // Target: programs/tributary/src/state/composable_policy.rs:15
 // ============================================================================
 
-use tributary::state::{ByteRangeCheck, ForwardConfig, MAX_BYTE_RANGE_CHECKS};
-use tributary::instructions::composable::execute_composable::validate_byte_ranges;
-use tributary::instructions::composable::create_composable_policy::validate_forward_config;
 use tributary::constants::{ALLOWED_FORWARD_PROGRAMS, NATIVE_MINT};
+use tributary::instructions::composable::create_composable_policy::validate_forward_config;
+use tributary::instructions::composable::execute_composable::validate_byte_ranges;
+use tributary::state::{
+    ByteRangeCheck, ForwardConfig, InstructionConstraint, MAX_BYTE_RANGE_CHECKS,
+    MAX_PINNED_FORWARD_ACCOUNTS,
+};
 
 proptest! {
     #[test]
@@ -349,15 +352,17 @@ proptest! {
         num_checks in 1u8..4,
     ) {
         let config = ForwardConfig {
-            target_program: Pubkey::default(), // disabled
+            instruction_constraint: InstructionConstraint {
+                program_id: Pubkey::default(),
+                num_data_checks: num_checks,
+                data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
+                num_pinned_accounts: 0,
+                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+            },
             input_mint: Pubkey::new_from_array(mint_a),
             output_mint: Pubkey::new_from_array(mint_b),
-            min_output_amount: None,
             forward_flags: 0,
-            num_data_checks: num_checks,
-            data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
         };
-        // Disabled + different mints + num_checks > 0 → must reject
         let result = validate_forward_config(&config);
         prop_assert!(result.is_err(), "disabled forward with mismatched mints or checks must reject");
     }
@@ -368,13 +373,16 @@ proptest! {
     ) {
         let pubkey = Pubkey::new_from_array(mint);
         let config = ForwardConfig {
-            target_program: Pubkey::default(),
+            instruction_constraint: InstructionConstraint {
+                program_id: Pubkey::default(),
+                num_data_checks: 0,
+                data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
+                num_pinned_accounts: 0,
+                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+            },
             input_mint: pubkey,
             output_mint: pubkey,
-            min_output_amount: None,
             forward_flags: 0,
-            num_data_checks: 0,
-            data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
         };
         let result = validate_forward_config(&config);
         prop_assert!(result.is_ok(), "disabled + same mint + 0 checks should be Ok");
@@ -384,17 +392,19 @@ proptest! {
     fn prop_native_output_requires_wsol_mint(
         non_wsol_mint in any::<[u8; 32]>(),
     ) {
-        // NATIVE_OUTPUT flag set, but output_mint ≠ NATIVE_MINT → must reject
         let mint = Pubkey::new_from_array(non_wsol_mint);
         prop_assume!(mint != NATIVE_MINT);
         let config = ForwardConfig {
-            target_program: ALLOWED_FORWARD_PROGRAMS[0],
+            instruction_constraint: InstructionConstraint {
+                program_id: ALLOWED_FORWARD_PROGRAMS[0],
+                num_data_checks: 1,
+                data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
+                num_pinned_accounts: 1,
+                pinned_accounts: [Pubkey::new_unique(), Pubkey::default(), Pubkey::default(), Pubkey::default()],
+            },
             input_mint: mint,
             output_mint: mint,
-            min_output_amount: None,
-            forward_flags: 1, // NATIVE_OUTPUT bit
-            num_data_checks: 1,
-            data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
+            forward_flags: 1,
         };
         let result = validate_forward_config(&config);
         prop_assert!(result.is_err(), "NATIVE_OUTPUT without WSOL output_mint must reject");

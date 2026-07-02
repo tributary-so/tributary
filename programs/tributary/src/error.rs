@@ -124,8 +124,12 @@ pub enum TributaryError {
     MissingSchedulerFeeAccount,
     #[msg("Scheduler fee account must be owned by the fee_payer and match the source mint")]
     InvalidSchedulerFeeAccount,
-    #[msg("Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)")]
-    PermissionlessExecutionRequiresMinOutput,
+    #[msg("Permissionless execution requires post_validation = ProgramCall OR forward route pinned (ADR-0016 safety net)")]
+    PermissionlessExecutionRequiresSafetyNet,
+    #[msg("Forward enabled but InstructionConstraint has zero effective pins (degenerate)")]
+    DegenerateForwardPins,
+    #[msg("Inline validation is not yet implemented")]
+    InlineValidationNotImplemented,
     #[msg("One-time policy has expired")]
     PolicyExpired,
 }

@@ -43,8 +43,21 @@ impl<'info> CreatePaymentGateway<'info> {
         scheduler_share_bps: u16,
         name: [u8; 32],
         url: [u8; 64],
+        initial_feature_flags: u8,
     ) -> Result<()> {
         require!(gateway_fee_bps <= 10000, TributaryError::InvalidFeeBps);
+
+        // Validate the initial feature flags — only known bits allowed.
+        // FEATURE_PERMISSIONLESS is frozen at create (tributary-1355): it
+        // is set here and cannot be toggled via update_gateway_feature_flags.
+        require!(
+            initial_feature_flags
+                <= (PaymentGateway::FEATURE_REFERRAL
+                    | PaymentGateway::FEATURE_NET_AMOUNT
+                    | PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+                    | PaymentGateway::FEATURE_PERMISSIONLESS),
+            TributaryError::InvalidFeatureFlags
+        );
 
         let gateway = &mut ctx.accounts.gateway;
         let clock = Clock::get()?;
@@ -59,6 +72,7 @@ impl<'info> CreatePaymentGateway<'info> {
         gateway.name = name;
         gateway.url = url;
         gateway.signer = ctx.accounts.authority.key();
+        gateway.feature_flags = initial_feature_flags;
 
         gateway.validate_share_constraint(ctx.accounts.config.protocol_share_bps)?;
 
@@ -71,11 +85,12 @@ impl<'info> CreatePaymentGateway<'info> {
         });
 
         msg!(
-            "Payment gateway created with authority: {:?}, fee: {} bps, name: {:?}, url: {:?}",
+            "Payment gateway created with authority: {:?}, fee: {} bps, name: {:?}, url: {:?}, flags: {}",
             gateway.authority,
             gateway.gateway_fee_bps,
             String::from_utf8_lossy(&name),
-            String::from_utf8_lossy(&url)
+            String::from_utf8_lossy(&url),
+            gateway.feature_flags
         );
 
         Ok(())

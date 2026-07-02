@@ -48,6 +48,7 @@ pub mod tributary {
         scheduler_share_bps: u16,
         name: [u8; 32],
         url: [u8; 64],
+        initial_feature_flags: u8,
     ) -> Result<()> {
         CreatePaymentGateway::handler_create_payment_gateway(
             ctx,
@@ -55,6 +56,7 @@ pub mod tributary {
             scheduler_share_bps,
             name,
             url,
+            initial_feature_flags,
         )
     }
 
@@ -149,18 +151,20 @@ pub mod tributary {
         policy_type: PolicyType,
         memo: [u8; 32],
         forward_config: ForwardConfig,
-        num_pinned_accounts: u8,
-        pinned_accounts: [Pubkey; 2],
-        validation_data: Vec<u8>,
+        pre_validation: ValidationSpec,
+        pre_init: ValidationInit,
+        post_validation: ValidationSpec,
+        post_init: ValidationInit,
     ) -> Result<()> {
         CreateComposablePolicy::handler(
             ctx,
             policy_type,
             memo,
             forward_config,
-            num_pinned_accounts,
-            pinned_accounts,
-            validation_data,
+            pre_validation,
+            pre_init,
+            post_validation,
+            post_init,
         )
     }
 

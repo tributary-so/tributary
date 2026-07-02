@@ -231,3 +231,46 @@ accepted. Per-account positional pinning (above) gives owners the same
 knob **optionally**, without making it the default.
 
 (bean tributary-whrl)
+
+---
+
+## Amendment (2026-07-02, bean tributary-zvku — Composable v2.1)
+
+**Structural changes shipped:**
+
+1. **InstructionConstraint replaces `target_program` + `ByteRangeCheck[]` +
+   the proposed `ForwardAccountsPda`.** All three collapse into one inline
+   struct on `ForwardConfig`. The separate `ForwardAccountsPda` typed
+   account (scrapped) is replaced by `pinned_accounts: [Pubkey; 4]` inline
+   on `InstructionConstraint`. `Pubkey::default()` entry = wildcard slot.
+   M=4 covers a Meteora DLMM route (lbPair + reserveX + reserveY + 1 wildcard).
+
+2. **Unified `ValidationSpec` (pre + post, same type).** `Disabled |
+ProgramCall { program_id } | Inline { reserved }`. `pre_validation`
+   replaces the old `ValidationConfig`. `post_validation` is NEW — runs
+   after FORWARD, before SETTLE. `Inline` errors at create (gated on
+   tributary-okhd). Two separate ValidationPda accounts: `pre` and `post`
+   seeds.
+
+3. **`min_output_amount` REMOVED.** `post_validation` generalizes it.
+   Owners use a Lighthouse assertion to check output.
+
+4. **Cold-relayer gate amended:**
+
+   ```
+   if !is_trusted_caller:
+       has_post_validation = matches!(post_validation, ProgramCall { .. })
+       has_route_pin = instruction_constraint.has_effective_pins()
+       require!(has_post_validation || has_route_pin)
+   ```
+
+5. **Degenerate-pin guard:** `create_composable_policy` rejects
+   `InstructionConstraint` with zero effective pins when forward is enabled.
+
+6. **Gateway permissionless bit frozen at create** (bean tributary-1355):
+   `FEATURE_PERMISSIONLESS` is set in `create_payment_gateway` and cannot
+   be flipped via `update_gateway_feature_flags` (preserved across writes
+   alongside `FEATURE_CUSTOM_PROTOCOL_FEE`).
+
+The OR-gate is **sound for fungible outputs only**; non-fungible
+(Velocity) is explicitly excluded until deferred epic tributary-2p5g.

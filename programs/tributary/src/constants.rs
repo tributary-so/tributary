@@ -8,7 +8,8 @@ pub const PAYMENT_POLICY_SEED: &[u8] = b"payment_policy";
 pub const PAYMENTS_SEED: &[u8] = b"payments";
 pub const REFERRAL_SEED: &[u8] = b"referral";
 pub const COMPOSABLE_POLICY_SEED: &[u8] = b"composable_policy";
-pub const VALIDATION_PDA_SEED: &[u8] = b"composable_validation";
+pub const VALIDATION_PDA_PRE_SEED: &[u8] = b"composable_validation_pre";
+pub const VALIDATION_PDA_POST_SEED: &[u8] = b"composable_validation_post";
 
 pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] =
     &[pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo")]; // meteora dlm

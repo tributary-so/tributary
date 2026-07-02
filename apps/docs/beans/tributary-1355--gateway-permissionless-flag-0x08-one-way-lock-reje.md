@@ -1,11 +1,11 @@
 ---
 # tributary-1355
 title: Gateway permissionless flag (0x08) one-way lock — reject clearing once set
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-02T08:01:05Z
-updated_at: 2026-07-02T11:43:58Z
+updated_at: 2026-07-02T12:48:47Z
 parent: tributary-cjhh
 ---
 
@@ -61,3 +61,10 @@ Stronger than the original spec above. The permissionless bit is **frozen at gat
 - [ ] Test: other bits (REFERRAL, NET_AMOUNT) still toggle freely.
 - [ ] Lines 31-37 comment corrected.
 - [ ] Error/message: setting 0x08 via update is silently ignored (preserved), OR rejected — pick the clearer UX (recommend: silently preserved, matching CUSTOM_PROTOCOL_FEE precedent).
+
+## Summary of Changes
+
+- create_payment_gateway now accepts initial_feature_flags param
+- update_gateway_feature_flags preserves FEATURE_PERMISSIONLESS across writes (frozen at create)
+- FEATURE_PERMISSIONLESS moved from freely-toggleable set to protected set (alongside FEATURE_CUSTOM_PROTOCOL_FEE)
+- 3 new unit tests for the preservation invariant

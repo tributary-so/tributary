@@ -1,4 +1,4 @@
-use super::composable_policy::{ForwardConfig, ValidationConfig};
+use super::composable_policy::{ForwardConfig, ValidationSpec};
 use super::payment_policy::PolicyType;
 use super::policy_status::PolicyStatus;
 use anchor_lang::prelude::*;
@@ -144,8 +144,10 @@ pub struct ComposablePolicyCreated {
     pub policy_type: PolicyType,
     pub memo: [u8; 32],
     pub forward_config: ForwardConfig,
-    pub validation_config: ValidationConfig,
-    pub has_validation_pda: bool,
+    pub pre_validation: ValidationSpec,
+    pub post_validation: ValidationSpec,
+    pub has_pre_validation_pda: bool,
+    pub has_post_validation_pda: bool,
 }
 
 /// An event that is thrown when a composable policy is executed

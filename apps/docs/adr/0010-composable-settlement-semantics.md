@@ -38,3 +38,16 @@ that surfaced during the audit / integration phase.
 Together these three rules make the composable money flow invariant:
 the gateway can never redirect funds to anyone except the pinned
 recipient, the protocol fee account, and the gateway fee account.
+
+---
+
+## Amendment (2026-07-02, bean tributary-zvku — Composable v2.1)
+
+**Rule 1 (`min_output_amount`) is REMOVED.** The `min_output_amount` field
+has been deleted from `ForwardConfig`. The new `post_validation` phase
+generalizes it: owners use a Lighthouse assertion to check output (or any
+other post-forward state). The NET/gross question is the owner's problem —
+the fee breakdown is emitted in the `ComposableExecuted` event for
+transparency.
+
+Rules 2 and 3 are unchanged.

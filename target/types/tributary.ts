@@ -498,12 +498,6 @@ export type Tributary = {
       "accounts": [
         {
           "name": "feePayer",
-          "docs": [
-            "Rent payer — only covers rent for the policy (and optional",
-            "ValidationPda) accounts. Receives rent back on delete. This",
-            "account is NOT the recipient. See",
-            "reports/B3-fee-payer-becomes-recipient-without-gateway-signer-constraint.md"
-          ],
           "writable": true,
           "signer": true
         },
@@ -512,14 +506,7 @@ export type Tributary = {
           "signer": true
         },
         {
-          "name": "recipient",
-          "docs": [
-            "an authority — the corresponding output-mint ATA is derived and",
-            "validated at execute time (`recipient_token_account.owner ==",
-            "composable_policy.recipient`). Must be non-default to prevent",
-            "accidental burn-to-nowhere policies. Mirrors the pattern in",
-            "`create_payment_policy::CreatePaymentPolicy::recipient`."
-          ]
+          "name": "recipient"
         },
         {
           "name": "composablePolicy",
@@ -603,33 +590,24 @@ export type Tributary = {
           }
         },
         {
-          "name": "validationPda",
+          "name": "preValidationPda",
           "writable": true
         },
         {
-          "name": "validationProgram",
-          "docs": [
-            "Pass SystemProgram when no validation is configured."
-          ]
+          "name": "postValidationPda",
+          "writable": true
         },
         {
-          "name": "inputMint",
-          "docs": [
-            "Forward input mint. Pinned against `forward_config.input_mint`",
-            "in the handler (Anchor constraints can't reach handler args) and",
-            "fully validated via `validate_mint_compatible` to reject Token-2022",
-            "TransferHook / PermanentDelegate / ConfidentialTransferMint etc.",
-            "that would break `transfer_checked` at execute time or drain the",
-            "PDA-owned intermediate ATA. See reports/L-02-mint-validation-call-sites-incomplete.md",
-            "and shared-base §17/§23."
-          ]
+          "name": "preValidationProgram"
         },
         {
-          "name": "outputMint",
-          "docs": [
-            "Forward output mint. Pinned against `forward_config.output_mint`",
-            "in the handler and validated the same way as `input_mint`."
-          ]
+          "name": "postValidationProgram"
+        },
+        {
+          "name": "inputMint"
+        },
+        {
+          "name": "outputMint"
         },
         {
           "name": "systemProgram",
@@ -663,21 +641,36 @@ export type Tributary = {
           }
         },
         {
-          "name": "numPinnedAccounts",
-          "type": "u8"
-        },
-        {
-          "name": "pinnedAccounts",
+          "name": "preValidation",
           "type": {
-            "array": [
-              "pubkey",
-              2
-            ]
+            "defined": {
+              "name": "validationSpec"
+            }
           }
         },
         {
-          "name": "validationData",
-          "type": "bytes"
+          "name": "preInit",
+          "type": {
+            "defined": {
+              "name": "validationInit"
+            }
+          }
+        },
+        {
+          "name": "postValidation",
+          "type": {
+            "defined": {
+              "name": "validationSpec"
+            }
+          }
+        },
+        {
+          "name": "postInit",
+          "type": {
+            "defined": {
+              "name": "validationInit"
+            }
+          }
         }
       ]
     },
@@ -778,6 +771,10 @@ export type Tributary = {
               64
             ]
           }
+        },
+        {
+          "name": "initialFeatureFlags",
+          "type": "u8"
         }
       ]
     },
@@ -1656,19 +1653,29 @@ export type Tributary = {
           }
         },
         {
-          "name": "validationProgram",
+          "name": "preValidationProgram",
           "docs": [
-            "Pass SystemProgram when the policy has no validation configured."
+            "Pass SystemProgram when pre_validation is Disabled."
           ]
         },
         {
-          "name": "validationPda",
+          "name": "postValidationProgram",
           "docs": [
-            "ValidationPda — typed-deserialised in the handler when validation",
-            "is enabled (validation_program != SystemProgram). When validation",
-            "is disabled, the account does not exist on-chain and is left",
-            "untouched. The address is verified against program-derived seeds",
-            "before any bytes are read. See ADR-0016."
+            "Pass SystemProgram when post_validation is Disabled."
+          ]
+        },
+        {
+          "name": "preValidationPda",
+          "docs": [
+            "Pre-validation PDA — typed-deserialised in the handler when",
+            "pre_validation is ProgramCall."
+          ]
+        },
+        {
+          "name": "postValidationPda",
+          "docs": [
+            "Post-validation PDA — typed-deserialised in the handler when",
+            "post_validation is ProgramCall."
           ]
         },
         {
@@ -2978,11 +2985,21 @@ export type Tributary = {
     },
     {
       "code": 6060,
-      "name": "permissionlessExecutionRequiresMinOutput",
-      "msg": "Permissionless execution requires min_output_amount = Some(>0) on the composable policy (ADR-0016 hard-loss shield)"
+      "name": "permissionlessExecutionRequiresSafetyNet",
+      "msg": "Permissionless execution requires post_validation = ProgramCall OR forward route pinned (ADR-0016 safety net)"
     },
     {
       "code": 6061,
+      "name": "degenerateForwardPins",
+      "msg": "Forward enabled but InstructionConstraint has zero effective pins (degenerate)"
+    },
+    {
+      "code": 6062,
+      "name": "inlineValidationNotImplemented",
+      "msg": "Inline validation is not yet implemented"
+    },
+    {
+      "code": 6063,
       "name": "policyExpired",
       "msg": "One-time policy has expired"
     }
@@ -3095,11 +3112,6 @@ export type Tributary = {
           },
           {
             "name": "policyType",
-            "docs": [
-              "Reuses the same `PolicyType` enum as `PaymentPolicy`. Before",
-              "unification this was a separate `ScheduleType`; the two were",
-              "byte-identical duplicates and were consolidated into a single enum."
-            ],
             "type": {
               "defined": {
                 "name": "policyType"
@@ -3115,10 +3127,18 @@ export type Tributary = {
             }
           },
           {
-            "name": "validationConfig",
+            "name": "preValidation",
             "type": {
               "defined": {
-                "name": "validationConfig"
+                "name": "validationSpec"
+              }
+            }
+          },
+          {
+            "name": "postValidation",
+            "type": {
+              "defined": {
+                "name": "validationSpec"
               }
             }
           },
@@ -3164,7 +3184,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                32
+                192
               ]
             }
           }
@@ -3225,15 +3245,27 @@ export type Tributary = {
             }
           },
           {
-            "name": "validationConfig",
+            "name": "preValidation",
             "type": {
               "defined": {
-                "name": "validationConfig"
+                "name": "validationSpec"
               }
             }
           },
           {
-            "name": "hasValidationPda",
+            "name": "postValidation",
+            "type": {
+              "defined": {
+                "name": "validationSpec"
+              }
+            }
+          },
+          {
+            "name": "hasPreValidationPda",
+            "type": "bool"
+          },
+          {
+            "name": "hasPostValidationPda",
             "type": "bool"
           }
         ]
@@ -3299,8 +3331,12 @@ export type Tributary = {
         "kind": "struct",
         "fields": [
           {
-            "name": "targetProgram",
-            "type": "pubkey"
+            "name": "instructionConstraint",
+            "type": {
+              "defined": {
+                "name": "instructionConstraint"
+              }
+            }
           },
           {
             "name": "inputMint",
@@ -3311,39 +3347,8 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
-            "name": "minOutputAmount",
-            "docs": [
-              "Minimum acceptable **net** output the recipient must receive,",
-              "measured AFTER gateway and protocol fees have been deducted",
-              "from the forward program's gross output. Matches DeFi convention",
-              "(Uniswap/Jupiter `amountOutMin`). Set to `None` or `Some(0)` to",
-              "disable the check. See",
-              "`reports/M5-min-output-amount-checked-before-fees.md`."
-            ],
-            "type": {
-              "option": "u64"
-            }
-          },
-          {
             "name": "forwardFlags",
             "type": "u8"
-          },
-          {
-            "name": "numDataChecks",
-            "type": "u8"
-          },
-          {
-            "name": "dataChecks",
-            "type": {
-              "array": [
-                {
-                  "defined": {
-                    "name": "byteRangeCheck"
-                  }
-                },
-                4
-              ]
-            }
           }
         ]
       }
@@ -3413,6 +3418,65 @@ export type Tributary = {
           {
             "name": "newSigner",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "instructionConstraint",
+      "docs": [
+        "Unified forward-program constraint: pins the instruction selector",
+        "(ByteRangeCheck[]) AND the positional forward-accounts (pinned_accounts[]).",
+        "",
+        "Absorbs the old `target_program` + `data_checks` fields and the scrapped",
+        "`ForwardAccountsPda` design into one inline struct. `program_id ==",
+        "Pubkey::default()` is the \"forward disabled\" sentinel.",
+        "",
+        "See ADR-0016 (amended) + bean tributary-q82g (REWRITTEN SCOPE)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programId",
+            "docs": [
+              "Was `target_program`. `Pubkey::default()` = forward disabled."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "numDataChecks",
+            "type": "u8"
+          },
+          {
+            "name": "dataChecks",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "byteRangeCheck"
+                  }
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "numPinnedAccounts",
+            "type": "u8"
+          },
+          {
+            "name": "pinnedAccounts",
+            "docs": [
+              "Positional pin on `remaining_accounts[forward_start+i]`.",
+              "`Pubkey::default()` entry = wildcard slot (no constraint)."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                4
+              ]
+            }
           }
         ]
       }
@@ -4674,23 +4738,70 @@ export type Tributary = {
       }
     },
     {
-      "name": "validationConfig",
+      "name": "validationInit",
       "docs": [
-        "Per-policy validation routing.",
-        "",
-        "The pinned-account arity (`num_pinned_accounts`) and the pinned pubkeys",
-        "themselves live on the `ValidationPda` account, not here — they are",
-        "owner-declared at creation and replay-validated at execute (ADR-0016,",
-        "closes validation-gaming vector d). This struct only records which",
-        "validation program (Lighthouse) the policy is bound to; `Pubkey::default()`",
-        "is the \"validation disabled\" sentinel."
+        "Caller-supplied init data for one validation phase (pre or post).",
+        "Only meaningful when the corresponding `ValidationSpec` is `ProgramCall`."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "validationProgram",
-            "type": "pubkey"
+            "name": "numPinnedAccounts",
+            "type": "u8"
+          },
+          {
+            "name": "pinnedAccounts",
+            "type": {
+              "array": [
+                "pubkey",
+                2
+              ]
+            }
+          },
+          {
+            "name": "validationData",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "validationSpec",
+      "docs": [
+        "Unified validation routing for both pre- and post-forward phases.",
+        "",
+        "- `Disabled` — no CPI, no ValidationPda loaded.",
+        "- `ProgramCall { program_id }` — CPI to an allowlisted program (Lighthouse)",
+        "with assertion data from the corresponding ValidationPda.",
+        "- `Inline` — reserved for future use; errors at create (gated on",
+        "tributary-okhd).",
+        "",
+        "See bean tributary-q82g (REWRITTEN SCOPE) + ADR-0016 amended."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "disabled"
+          },
+          {
+            "name": "programCall",
+            "fields": [
+              {
+                "name": "programId",
+                "type": "pubkey"
+              }
+            ]
+          },
+          {
+            "name": "inline",
+            "fields": [
+              {
+                "name": "reserved",
+                "type": "u8"
+              }
+            ]
           }
         ]
       }

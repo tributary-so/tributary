@@ -61,29 +61,41 @@ impl<'info> DeleteComposablePolicy<'info> {
         let rent_refund_target = destination.key();
 
         // Read state before closing anything (data is zeroed on close)
-        let has_validation =
-            composable_policy.validation_config.validation_program != Pubkey::default();
+        let has_pre = composable_policy.pre_validation.is_program_call();
+        let has_post = composable_policy.post_validation.is_program_call();
         let policy_key = composable_policy.key();
         let policy_id = composable_policy.policy_id;
 
-        // Close ValidationPDA if validation was configured. Rent goes to the
-        // same destination as the policy; the helper fully zeroes the data
-        // buffer (ValidationPda can carry up to MAX_VALIDATION_DATA_SIZE bytes
-        // of off-chain-relevant validation bytes).
-        if has_validation {
-            let remaining = ctx.remaining_accounts;
-            require!(!remaining.is_empty(), TributaryError::ValidationPdaMismatch);
+        let remaining = ctx.remaining_accounts;
 
+        // Close pre/post ValidationPDAs. They arrive as remaining_accounts in
+        // order: [pre_pda?, post_pda?]. Each is seed-verified before close.
+        let mut idx = 0;
+        if has_pre {
+            require!(!remaining.is_empty(), TributaryError::ValidationPdaMismatch);
             let val_pda_key = Pubkey::find_program_address(
-                &[crate::constants::VALIDATION_PDA_SEED, policy_key.as_ref()],
+                &[VALIDATION_PDA_PRE_SEED, policy_key.as_ref()],
                 ctx.program_id,
             );
             require!(
-                remaining[0].key() == val_pda_key.0,
+                remaining[idx].key() == val_pda_key.0,
                 TributaryError::ValidationPdaMismatch
             );
+            close_account(&remaining[idx], &destination)?;
+            idx += 1;
+        }
 
-            close_account(&remaining[0], &destination)?;
+        if has_post {
+            require!(idx < remaining.len(), TributaryError::ValidationPdaMismatch);
+            let val_pda_key = Pubkey::find_program_address(
+                &[VALIDATION_PDA_POST_SEED, policy_key.as_ref()],
+                ctx.program_id,
+            );
+            require!(
+                remaining[idx].key() == val_pda_key.0,
+                TributaryError::ValidationPdaMismatch
+            );
+            close_account(&remaining[idx], &destination)?;
         }
 
         // Close ComposablePolicy
