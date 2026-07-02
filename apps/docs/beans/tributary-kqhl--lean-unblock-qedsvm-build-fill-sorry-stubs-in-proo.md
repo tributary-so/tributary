@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: high
 created_at: 2026-07-01T09:28:05Z
-updated_at: 2026-07-01T18:01:23Z
+updated_at: 2026-07-02T12:01:34Z
+parent: tributary-nrjy
 ---
 
 lake build in formal_verification/ fails at the qedsvm dependency: SVM/SBPF/Tactic/WP.lean:217 (kernel) deep recursion detected under Lean 4.31.0 (dep reached 261/290; Spec.lean never compiled). Likely a Lean-version mismatch — pin lean-toolchain to the version lean_solana was built against, or bump qedsvm.

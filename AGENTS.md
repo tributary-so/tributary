@@ -486,3 +486,103 @@ Composable / topup tests live in `tests/topup-balance.test.ts` and
 
 **IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
 When making a commit, include the relevant bean IDs in the commit message.
+
+### Milestone structure (mandatory)
+
+Every body of work large enough to warrant a release ships as a **milestone**
+bean with a fixed type hierarchy. The bean `type` MUST match its level:
+
+```
+milestone            ← one per release / main topic
+├─ epic              ← thematic container, NEVER worked on directly
+│  ├─ feature        ← user-facing capability or distinct deliverable
+│  │  └─ task        ← concrete, grabbable unit of work
+│  └─ ...
+└─ ...
+```
+
+Levels map 1:1 to bean types: `milestone` → `epic` → `feature` → `task`.
+Never skip a level (no `task` directly under a `milestone`). The one
+exception: a standalone `feature: documentation` may sit directly under the
+milestone when docs is a single deliverable (no testing/implementation
+sub-structure needed). Epics and the milestone are containers only — they
+hold children, they are not executed. Wire parents with `--parent`.
+
+**Epic vs feature — the quick test:** epic groups features by theme
+(implementation, testing). Feature produces one concrete artifact (the
+program diff, the SDK update, the test suite). If it ships a diff to one
+layer of the repo, it's a feature; if it groups diffs across layers, it's
+an epic. When in doubt: a feature should be closeable with a single PR; an
+epic closes when all its child features close.
+
+### Canonical milestone template
+
+When the agent creates a milestone, it evaluates which of the following apply
+to the change at hand and instantiates **only** the relevant ones. Scope
+drives selection — not every milestone touches every layer. If a layer in the
+program structure is untouched, omit it.
+
+```
+milestone: <main topic>
+├─ epic: implementation
+│  ├─ feature: changes to program contract      ← programs/tributary/ (Rust/Anchor)
+│  ├─ feature: sdk compatibility                ← packages/sdk, sdk-react, sdk-x402, payments
+│  └─ feature: update of apps                   ← only the apps/ entries actually touched
+│     ├─ task: update apps/landing
+│     ├─ task: update apps/app
+│     ├─ task: update apps/checkout
+│     ├─ task: update apps/showcase-*           ← showcase-payment-policies, -payments, -topup-sol
+│     ├─ task: update apps/scheduler
+│     ├─ task: update apps/cli
+│     └─ task: ....
+├─ epic: testing
+│  ├─ feature: integration tests using surfpool ← tests/
+│  ├─ feature: formal verification updates      ← formal_verification/ + tributary.qedspec
+│  ├─ feature: update github ci/cd pipeline     ← .github/workflows
+│  └─ ....
+└─ feature: documentation                       ← README.md, apps/docs, apps/docs/adr/ (new ADR if a decision locks in)
+```
+
+### Rules for the agent producing the milestone
+
+1. **Read the change first.** Trace what the feature actually touches
+   (program? SDK only? an app? docs?) before creating any bean.
+2. **Pick levels by type.** `milestone` for the release, `epic` for each
+   theme (implementation / testing / …), `feature` per deliverable, `task`
+   per grabbable unit. Epics with no children = wrong; create the children.
+3. **Omit what doesn't apply.** A pure-SDK change needs no program-contract
+   feature. A doc-only milestone has no implementation epic. Don't pad.
+4. **One feature per `apps/` deliverable group**; one task per touched
+   `apps/<dir>`. Don't fan out tasks for untouched apps.
+5. **New ADR ⇒ documentation feature** (or its own epic if the decision is
+   the milestone). Code is authority on state; ADR is authority on rationale.
+6. **Link with `--parent` and `--blocked-by`** so the tree reflects real
+   dependencies (e.g. SDK feature blocked-by program-contract feature; apps
+   blocked-by SDK feature; tests blocked-by implementation epic).
+7. **Status flows up.** A milestone is `completed` only when all its leaf
+   tasks are `completed`. Epics close when all their features close.
+
+### Bean hygiene
+
+1. **Check before creating.** Run `beans list --json` and scan for existing
+   beans covering the same scope. Duplicates waste context. If a new bean
+   subsumes an old one, scrap the old with a `## Reasons for Scrapping`
+   section — don't leave both.
+2. **Restructuring.** When a grilling or design session changes scope,
+   rewrite bean bodies by appending a `## REWRITTEN SCOPE (date —
+supersedes content above)` section. Update titles via GraphQL (CLI has
+   no `--title` flag — see cheat sheet). Don't scrap and recreate beans
+   that have accumulated context; rewrite in place.
+3. **Design decisions → milestone body.** When a grilling resolves
+   architectural questions, capture them in the milestone body as a
+   "Design decisions" section with struct layouts, flow diagrams, and
+   rationale. Individual tasks under features carry the acceptance criteria
+   (TDD checklist).
+4. **Investigation beans.** Research that may never become actionable goes
+   as a `draft` epic with `low` priority. Don't create task children until
+   the investigation concludes and the scope is concrete.
+5. **Active milestones may supersede code state.** The AGENTS.md and ADRs
+   describe the _current deployed_ architecture. An active milestone's body
+   may contain design decisions that will change the code but haven't
+   landed yet. Always check `beans list --json --ready` for in-flight work
+   before assuming the docs reflect reality.

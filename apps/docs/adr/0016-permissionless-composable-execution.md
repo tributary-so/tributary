@@ -70,24 +70,73 @@ permissionless execution). Trusted-caller execution is unchanged — a
 gateway's own scheduler may still run a no-floor policy.
 
 **Allowlist-growth vetting rule.** A program may be added to
-`ALLOWED_FORWARD_PROGRAMS` only if its output is **fully verifiable via
-the `intermediate_output` balance delta under a mandatory
-`min_output_amount`**. This is the actual safety contract and replaces
-per-account vetting. Programs whose settlement fans out to multiple
-output accounts, or whose "output" is not a clean balance delta, cannot
-be characterised this way and must not be allowlisted.
+`ALLOWED_FORWARD_PROGRAMS` if its forward is securable by **either** of two
+independent safety nets:
 
-**Forward-account lookup table (optional MEV mitigation).** The
+- **(Fungible-output path — default.)** The output is fully verifiable via the
+  `intermediate_output` balance delta under a `min_output_amount` floor. This
+  is the route-agnostic, program-agnostic core and the only path currently
+  realised (Meteora DLMM). Programs whose settlement fans out to multiple
+  output accounts, or whose "output" is not a clean balance delta, cannot be
+  characterised this way.
+- **(Route-pinned path — additive.)** The forward's account set is fully pinned
+  at creation via the `ForwardAccountsPda` table (see below), so a third-party
+  scheduler cannot substitute accounts. This admits a cold relayer without a
+  `min_output_amount` floor **for fungible-output programs only** — the owner
+  has locked the exact route and accepted its price; the residual risk is
+  owner-accepted DEX state drift, not a relayer exploit.
+
+The cold-relayer gate is the OR of these: `min_output_amount = Some(>0)` **OR**
+`forward_accounts_pda` configured. Both are sound for fungible outputs. **Non-
+fungible-output programs** (settlement not a clean balance delta — e.g. a
+Velocity subaccount deposit) are **not** admitted by either path alone: route
+pinning is _necessary but not sufficient_ for them, because the settle phase
+and forward ix-data are not yet constrained for partial-consumption forwards.
+Allowlisting such a program is a separate decision (see "Non-fungible-output
+forwards" below) and must not be attempted under this rule as stated.
+
+**Forward-account lookup table (dual safety net).** The
 forward program's account set (pool, route, oracles, event queues) is
 today fully caller-chosen — a third-party scheduler may route through
 any valid pool of the allowlisted program and capture the spread up to
-the `min_output_amount` floor (vector (b), accepted). This is the
-account-level analog of the byte-level `ByteRangeCheck` ADR-0009 already
-applies to the forward instruction data: the existing check pins _which
-instruction_ runs, this knob optionally pins _which accounts_ it runs
-against. Owners who want to lock the route configure an optional
-positional lookup table; owners who don't, rely on `min_output_amount`
-alone.
+the `min_output_amount` floor (vector (b), accepted). The lookup table
+serves two roles depending on the forward's output class:
+
+- **Fungible outputs (swaps) — optional MEV-within-floor mitigation.** This is
+  the account-level analog of the byte-level `ByteRangeCheck` ADR-0009 already
+  applies to the forward instruction data: the existing check pins _which
+  instruction_ runs, this knob optionally pins _which accounts_ it runs
+  against. Owners who want to lock the route configure an optional
+  positional lookup table; owners who don't, rely on `min_output_amount`
+  alone. With a pinned route, a cold relayer is admitted even without a floor
+  — the owner locked the exact pool and accepted its price.
+- **Non-fungible outputs (e.g. Velocity subaccount deposits) — necessary-but-
+  not-sufficient prerequisite.** Route pinning fixes the account topology but
+  does not, by itself, make such forwards settleable or fully safe (see
+  "Non-fungible-output forwards" below). It is one of three prerequisites, not
+  a complete safety argument.
+
+**Non-fungible-output forwards (future; not realised by this ADR's current
+code).** A forward whose settlement is not a clean `intermediate_output`
+balance delta — e.g. a deposit that credits an external program's internal
+subaccount — breaks two assumptions that route pinning does not fix, so it is
+**not admitted** by the allowlist rule above as stated:
+
+1. **Settle phase.** `process_output_and_sweep` sweeps only
+   `intermediate_output` -> recipient. A partial-consumption forward (deposits
+   a configured amount, leaves residue in `intermediate_input`) strands that
+   residue. The settle phase must additionally sweep `intermediate_input`
+   residue -> **user** (owner token account), so unspent input returns to the
+   user. (Returning residue to the user also neutralises the "scheduler
+   deposits less than pulled" attack: the user simply receives the change back
+   and is never at a loss.)
+2. **Forward ix-data.** `ByteRangeCheck` pins the discriminator; the deposit
+   amount and other fields remain caller-supplied. Non-fungible forwards need
+   additional ix-data constraints to be fully safe under a cold relayer.
+
+Until both are implemented, non-fungible-output programs must not be added to
+`ALLOWED_FORWARD_PROGRAMS`. This is tracked as deferred work (bean
+tributary-l9qw is the route-pinning prerequisite).
 
 The table is an **address-lookup-table-format array** (`[Pubkey; N]`)
 stored in a Tributary-owned PDA — **not a literal on-chain Address

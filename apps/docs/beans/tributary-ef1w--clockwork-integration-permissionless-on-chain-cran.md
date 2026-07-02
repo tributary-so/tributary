@@ -1,11 +1,11 @@
 ---
 # tributary-ef1w
 title: 'Clockwork integration: permissionless on-chain cranking of due subscription PaymentPolicies'
-status: todo
+status: scrapped
 type: feature
 priority: normal
 created_at: 2026-07-01T12:27:52Z
-updated_at: 2026-07-01T12:27:52Z
+updated_at: 2026-07-02T12:01:58Z
 ---
 
 ## Goal
@@ -57,3 +57,15 @@ Integrate [clockwork-xyz/clockwork](https://github.com/clockwork-xyz/clockwork) 
 - ADR-0018: unified fee model — scheduler cut (`scheduler_share_bps`) routing must be resolved for the thread (open Q #2)
 - Existing off-chain scheduler: `apps/scheduler/` (node-cron, gateway-operated)
 - SDK subscription flow: `sdk.createSubscription(...)` in `packages/sdk`
+
+
+
+## STALE CHECK (2026-07-02)
+
+Clockwork (clockwork-xyz) shut down its mainnet operations. This integration may be dead. Recommend scrapping unless there's a fork or alternative being tracked. Decision needed from Fabian.
+
+
+
+## REASCTIONS FOR SCRAPPING (2026-07-02)
+
+Clockwork (clockwork-xyz) shut down mainnet operations. No active fork or alternative identified. Scrapping as stale. Reopen if a successor project emerges.

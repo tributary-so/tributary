@@ -1,11 +1,12 @@
 ---
 # tributary-eu41
 title: Formal verification of Tributary — handoff brief (QEDGen, audit-first)
-status: in-progress
+status: todo
 type: task
 priority: high
 created_at: 2026-07-01T06:51:07Z
-updated_at: 2026-07-01T18:01:10Z
+updated_at: 2026-07-02T12:01:34Z
+parent: tributary-nrjy
 ---
 
 # Mission

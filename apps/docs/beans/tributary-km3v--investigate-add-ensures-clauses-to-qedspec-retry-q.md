@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: low
 created_at: 2026-07-02T05:45:55Z
-updated_at: 2026-07-02T05:45:55Z
+updated_at: 2026-07-02T12:01:34Z
+parent: tributary-nrjy
 ---
 
 Future investigation: adding ensures postconditions to tributary.qedspec handlers would unlock qedgen codegen --kani-impl, which generates harnesses that call the REAL Anchor handler and assert ensures against the post-state. Currently generates 0 harnesses because the spec has no ensures clauses.

@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: high
 created_at: 2026-07-01T07:22:51Z
-updated_at: 2026-07-01T07:22:51Z
+updated_at: 2026-07-02T12:01:34Z
+parent: tributary-ujni
 ---
 
 # Mission

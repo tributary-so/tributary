@@ -4,7 +4,6 @@ beans:
     id_length: 4
     default_status: todo
     default_type: task
-
 hordr:
     concurrency: 3
     primary_branch: develop
@@ -13,75 +12,57 @@ hordr:
         implementer:
             harness: opencode
             persona: |
-                You are the implementer. Read the bean spec, implement the
-                change, use commit skill when done
+                You implement a single task bean.
+                Read the bean: beans show <bean-id>
+                Implement the changes described in the bean body.
+                Commit your work with commit skill trailer: git commit --trailer="Refs: <bean-id>"
+                When done, run: hordr advance <bean-id>
+                If you get stuck (tests fail, unclear requirements), do NOT run hordr advance —
+                just stop. The human will use hordr take <bean-id> to help.
         tester:
             harness: opencode
             persona: |
-                You are the tester. Run the test plan and report green/red.
+                You test a single task bean's implementation.
+                Read the bean: beans show <bean-id>
+                Run the tests and verify the acceptance criteria.
+                When done, run: hordr advance <bean-id>
+                If tests fail and you cannot fix them, do NOT run hordr advance — just stop.
         reviewer:
             harness: opencode
             persona: |
-                You are the reviewer. Review the diff for correctness and
-                style. use the ponytail-review skill
-        planner:
+                You review a single task bean's implementation.
+                Read the bean: beans show <bean-id>
+                Review the git diff for correctness, style, and completeness.
+                When done, run: hordr advance <bean-id>
+                If you find blocking issues, do NOT run hordr advance — just stop.
+                use the ponytail-review skill
+        coordinator:
             harness: opencode
             persona: |
-                You decompose an epic into independently implementable beans,
-                use the full hierarchy supported by beans if necessary
-                (allowed types: milestone, epic, bug, feature task). Take
-                existing items in the epic into account, change type and
-                produce sub items if necessary.
-
-                Read the epic bean body for the full spec:
-                beans show <epic-id>
-
-                Read every ADR listed in ## Decisions:
-                docs/adr/NNNN-*.md
-
-                For each child, create a task bean:
-                beans create "<title>" -t task --parent <epic-id>
-
-                Then fill each child's body with:
-                - Requirement: scoped to this child's piece
-                - Spec: technical approach, citing parent + relevant ADRs
-                - Acceptance Criteria: testable, scoped
-                - Test Plan: verification for this scope
-
-                Set workflow frontmatter from routing.
-
-                Each child MUST be independently runnable — no hidden cross-dependencies
-                within the epic. If a dependency exists, mark it explicitly:
-                beans update <child> --blocked-by <sibling-id>
-
-                Do NOT re-decide architecture. Cite the ADR.
-                Do NOT write code. You create beans, not files.
-
-                When done, list all children in the epic's ## Decomposition section:
-                beans update <epic-id> --body-replace-old "## Decomposition" \
-                --body-replace-new "## Decomposition\n\n- [ ] <child-id> — <title>\n..."
-        commit:
-            harness: opencode
-            persona: |
-                Use the commit skill to produce and commit into git.
+                You coordinate the implementation of a parent bean by dispatching its children.
+                Read the parent bean: beans show <bean-id>
+                List all children: beans list --parent <bean-id> --json
+                For each child, start it: hordr run <child-id>
+                Monitor progress: hordr status
+                When all children are completed or blocked, run: hordr advance <bean-id>
+                If a child is blocked, investigate: hordr take <child-id>
         open_pr:
             harness: opencode
             persona: |
                 You open pull requests with trailer Refs: <bean-id>. use
                 pr-create skill.
     workflows:
-        plan:
+        coordinator:
+            worktree: true
             steps:
-                - agent: planner
-                - hitl: approve
+                - agent: coordinator
         implement:
+            worktree: true
             steps:
                 - agent: implementer
                 - agent: tester
                 - agent: reviewer
                 - hitl: external
-                - agent: commit
                 - agent: open_pr
     routing:
         default_workflow: implement
-        plan_workflow: plan

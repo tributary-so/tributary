@@ -5,7 +5,8 @@ status: todo
 type: bug
 priority: high
 created_at: 2026-07-01T09:28:05Z
-updated_at: 2026-07-01T13:55:54Z
+updated_at: 2026-07-02T12:01:34Z
+parent: tributary-nrjy
 ---
 
 Generated formal_verification/kani.rs (131 harnesses) does not compile due to two QEDGen v2.38 Rust-backend codegen bugs:
