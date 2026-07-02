@@ -348,6 +348,26 @@ property residual_nonnegative :
   state.gateway_residual <= state.total_fee
   preserved_by all except [create_payment_policy, transfer]
 
+// ── Composable-specific properties (Layer 1 spec-model; Layer 2 covers
+// the real code via hand-rolled Kani/proptest — see kani_pure_fns.rs and
+// proptest_pure_fns.rs). ────────────────────────────────────────────
+
+// Referral pool is carved from total_fee (pool = fee × allocation_bps /
+// 10000), so it can never exceed the total fee. Conservation: the pool
+// is a SUBSET of the fee, not an addition to it.
+property referral_pool_bounded :
+  state.referral_pool <= state.total_fee
+  preserved_by all except [create_payment_policy, transfer]
+
+// Sweep non-negativity (composable min_output_amount check, ADR-0010):
+// after fee deduction, the recipient receives a non-negative amount.
+// recipient_amount = payment_amount - total_fee ≥ 0, enforced by the
+// checked_sub in calculate_fees. This is the NET (post-fee) guarantee
+// that composable's min_output_amount check relies on.
+property sweep_nonnegative :
+  state.recipient_amount <= state.payment_amount
+  preserved_by all except [create_payment_policy, transfer]
+
 // ════════════════════════════════════════════════════════════════════
 // INVARIANTS (documentation + Lean predicate obligations)
 // ════════════════════════════════════════════════════════════════════

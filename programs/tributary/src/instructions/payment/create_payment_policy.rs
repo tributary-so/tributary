@@ -3,6 +3,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
+use qedgen_macros::qed;
 
 #[derive(Accounts)]
 pub struct CreatePaymentPolicy<'info> {
@@ -60,6 +61,13 @@ pub struct CreatePaymentPolicy<'info> {
 
 impl<'info> CreatePaymentPolicy<'info> {
     /// Create a new payment policy with the specified type and memo.
+    #[qed(
+        verified,
+        spec = "../../tributary.qedspec",
+        handler = "create_payment_policy",
+        hash = "1b52a4a7fb1a17dd",
+        spec_hash = "ca789cdf001d0d82"
+    )]
     pub fn handler_create_payment_policy(
         ctx: Context<CreatePaymentPolicy>,
         policy_type: PolicyType,

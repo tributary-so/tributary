@@ -19,7 +19,7 @@ use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, Transf
 /// so a future regression in create-time validation (or a directly-
 /// serialized malformed account) cannot trigger an indexed panic.
 /// See reports/H-04-num-data-checks-unbounded-oob.md.
-fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: u8) -> Result<()> {
+pub fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: u8) -> Result<()> {
     let n = num_checks as usize;
     require!(n <= checks.len(), TributaryError::ByteRangeCheckFailed);
     for i in 0..n {

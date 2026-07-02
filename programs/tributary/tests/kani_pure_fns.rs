@@ -6,9 +6,10 @@
 // Run:  cd programs/tributary && cargo kani --tests
 //       cargo kani --tests --harness <name>
 
+use tributary::instructions::composable::execute_composable::validate_byte_ranges;
 use tributary::shared::fees::calculate_fees;
 use tributary::shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners};
-use tributary::state::PolicyType;
+use tributary::state::{ByteRangeCheck, PolicyType};
 
 // ============================================================================
 // calculate_fees — unified fee model (ADR-0018)
@@ -399,4 +400,83 @@ fn verify_upto_advance_completes() {
     if let Ok(should_complete) = advance_policy(&mut pt, now, amount) {
         assert!(should_complete, "UpTo must always complete");
     }
+}
+
+// ============================================================================
+// ByteRangeCheck::validate — OOB defense + no panic guarantee
+// Target: programs/tributary/src/state/composable_policy.rs:15
+// ============================================================================
+
+#[kani::proof]
+fn verify_byte_range_check_no_panic() {
+    let offset: u8 = kani::any();
+    let length: u8 = kani::any();
+    let expected: [u8; 8] = [
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+    ];
+    let check = ByteRangeCheck { offset, length, expected };
+
+    // Symbolic instruction data (up to 1024 bytes — but Kani can't handle
+    // that size symbolically; use a fixed small buffer).
+    let data: [u8; 32] = [
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(), kani::any(), kani::any(), kani::any(),
+    ];
+
+    // Must never panic — the H-06 defense (length > 8 → false) and the
+    // bounds check (offset + length > data.len() → false) prevent OOB.
+    let result = check.validate(&data);
+    kani::cover!(result || !result, "no panic for any inputs");
+}
+
+#[kani::proof]
+fn verify_byte_range_check_rejects_length_above_eight() {
+    let check = ByteRangeCheck {
+        offset: 0,
+        length: 9, // > 8 — must be rejected
+        expected: [0u8; 8],
+    };
+    let data = [0u8; 32];
+    assert!(!check.validate(&data), "length > 8 must return false (H-06)");
+}
+
+// ============================================================================
+// validate_byte_ranges — num_checks bound + no OOB (H-04 defense)
+// Target: programs/tributary/src/instructions/composable/execute_composable.rs:22
+// ============================================================================
+
+#[kani::proof]
+fn verify_validate_byte_ranges_no_panic() {
+    let num_checks: u8 = kani::any();
+    // Fixed-size checks array (4 = MAX_BYTE_RANGE_CHECKS)
+    let checks: [ByteRangeCheck; 4] = [
+        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
+        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
+        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
+        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
+    ];
+    let data: [u8; 32] = [kani::any(); 32];
+
+    // Must never panic — the num_checks > checks.len() guard prevents OOB.
+    let _ = validate_byte_ranges(&data, &checks, num_checks);
+    kani::cover!(true, "no panic for any num_checks value (H-04)");
+}
+
+#[kani::proof]
+fn verify_validate_byte_ranges_rejects_excess_num_checks() {
+    let checks: [ByteRangeCheck; 2] = [
+        ByteRangeCheck { offset: 0, length: 1, expected: [0u8; 8] },
+        ByteRangeCheck { offset: 0, length: 1, expected: [0u8; 8] },
+    ];
+    let data = [0u8; 16];
+    // num_checks > checks.len() → must Err (not panic)
+    let result = validate_byte_ranges(&data, &checks, 3);
+    assert!(result.is_err(), "num_checks > checks.len() must return Err (H-04)");
 }

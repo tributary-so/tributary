@@ -9,6 +9,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
+use qedgen_macros::qed;
 
 #[derive(Accounts)]
 pub struct TransferTokens<'info> {
@@ -65,6 +66,13 @@ pub struct TransferTokens<'info> {
 }
 
 impl<'info> TransferTokens<'info> {
+    #[qed(
+        verified,
+        spec = "../../tributary.qedspec",
+        handler = "transfer",
+        hash = "85195375ee7ac9aa",
+        spec_hash = "b93434031a6aa4c8"
+    )]
     pub fn handler(
         ctx: Context<'_, '_, 'info, 'info, TransferTokens<'info>>,
         amount: u64,

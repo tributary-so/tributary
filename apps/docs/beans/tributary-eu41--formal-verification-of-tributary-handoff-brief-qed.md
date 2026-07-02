@@ -5,7 +5,7 @@ status: in-progress
 type: task
 priority: high
 created_at: 2026-07-01T06:51:07Z
-updated_at: 2026-07-01T15:50:18Z
+updated_at: 2026-07-01T18:01:10Z
 ---
 
 # Mission
@@ -313,3 +313,55 @@ scope deferred to user.
 ## kani-impl investigation (2026-07-01)
 
 Tried qedgen codegen --kani-impl. Result: 0 harnesses generated (infrastructure only, no #[kani::proof] functions). Our spec has no ensures clauses — kani-impl generates harnesses that assert ensures postconditions; without ensures, nothing to emit. Even with ensures: (1) context builders are todo!() stubs, (2) struct names don't match real Anchor structs, (3) Anchor account validation can't be bypassed symbolically. NOT viable for Tributary. Layer 2 hand-rolled (kani_pure_fns.rs) is the path.
+
+
+## Update — Lean, proptests, drift gates (2026-07-01)
+
+### Lean — recursion blocker SOLVED
+
+Root cause: qedsvm v0.8.0 was built against Lean 4.30.0; the project pinned
+4.31.0. The version mismatch caused `(kernel) deep recursion detected` at
+`SVM/SBPF/Tactic/WP.lean:217`. Pinning `lean-toolchain` to
+`leanprover/lean4:v4.30.0` (matching qedsvm's requirement) fixes it.
+
+```bash
+echo 'leanprover/lean4:v4.30.0' > formal_verification/lean-toolchain
+elan toolchain install v4.30.0
+cd formal_verification && lake build
+```
+
+**New blocker:** Spec.lean has the SAME Bug A (bare field reads) as kani.rs.
+The Lean backend emits `emergency_pause = 0` instead of `s.emergency_pause = 0`
+in guard conditions, and bare field names in record-update RHS. The regex
+approach that worked for kani.rs fails on Lean because the record-update
+syntax (`{ s with field := value }`) makes it hard to distinguish write
+targets (before `:=`) from reads (after `:=`) via line-level regex. Needs a
+Lean-aware fixer or manual editing. Bean tributary-kqhl updated.
+
+### Proptests on REAL code — 13 PASSING
+
+`programs/tributary/tests/proptest_pure_fns.rs` — 13 hand-rolled proptests
+calling the real `calculate_fees`, `validate_policy_execution`, and
+`advance_policy` directly. All pass in 0.02s. Tests:
+- Fee conservation, residual nonneg, bps decomposition, gross/net mode,
+  referral-disabled zeros pool, overflow returns Err
+- PAYG rejects zero/oversize chunk, accepts valid chunk
+- PAYG never completes, OneTime/UpTo always complete
+
+These are the FAST counterpart to the slow Kani harnesses — same properties,
+random sampling (non-exhaustive) vs symbolic (exhaustive).
+
+### Drift gates — partial
+
+`qedgen adapt --program programs/tributary --spec tributary.qedspec`:
+- `create_payment_policy` → HASHED ✅ (found in real Anchor #[program] mod)
+- `transfer` → HASHED ✅
+- `execute_payment_case_0/1`, `execute_composable_case_0/1`,
+  `release_milestone` → NOT MAPPED (spec match-arm handler names don't exist
+  in the real Anchor program — it has `execute_payment` not
+  `execute_payment_case_0`)
+
+The match-arm split is a spec-model concept. To get drift gates on the
+execute handlers, either: (a) rename the spec handlers to match Anchor
+(`execute_payment` instead of `execute_payment_case_0`), or (b) use
+`--handler` overrides on `qedgen adapt`.

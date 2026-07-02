@@ -49,17 +49,17 @@ structure State where
 
 def create_payment_policyTransition (s : State) (signer : Pubkey) (max_per_period : Nat) (max_chunk : Nat) (period_secs : Nat) (fee_bps : Nat) (proto_share : Nat) (sched_share : Nat) (referral_share : Nat) : Option State :=
   if max_per_period > 0 ∧ max_chunk > 0 ∧ max_chunk ≤ max_per_period ∧ period_secs > 0 ∧ (proto_share + sched_share + referral_share) ≤ 10000 then
-    some { s with policy_status := 0, max_amount_per_period := max_per_period, max_chunk_amount := max_chunk, period_length_seconds := period_secs, current_period_total := 0, gateway_fee_bps := fee_bps, protocol_share_bps := proto_share, scheduler_share_bps := sched_share, referral_allocation_bps := referral_share, pulled_amount := 0, payment_amount := 0, total_fee := 0, protocol_cut := 0, scheduler_cut := 0, referral_pool := 0, gateway_residual := 0, recipient_amount := 0, total_from_user := 0 }
+    some { s with policy_status := 0, max_amount_per_period := max_per_period, max_chunk_amount := max_chunk, period_length_seconds := period_secs, current_period_total := 0, current_period_start := 0, gateway_fee_bps := fee_bps, protocol_share_bps := proto_share, scheduler_share_bps := sched_share, referral_allocation_bps := referral_share, pulled_amount := 0, payment_amount := 0, total_fee := 0, protocol_cut := 0, scheduler_cut := 0, referral_pool := 0, gateway_residual := 0, recipient_amount := 0, total_from_user := 0 }
   else none
 
 def execute_payment_case_0Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
   if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount then
-    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (bps_mul (total_fee) (referral_allocation_bps)), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
   else none
 
 def execute_payment_case_1Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
   if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount ∧ s.current_period_total + chunk ≤ 18446744073709551615 then
-    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (bps_mul (total_fee) (referral_allocation_bps)), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
   else none
 
 def execute_payment_otherwiseTransition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
@@ -69,12 +69,12 @@ def execute_payment_otherwiseTransition (s : State) (signer : Pubkey) (chunk : N
 
 def execute_composable_case_0Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) (min_output : Nat) : Option State :=
   if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount then
-    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (bps_mul (total_fee) (referral_allocation_bps)), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
   else none
 
 def execute_composable_case_1Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) (min_output : Nat) : Option State :=
   if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount ∧ s.current_period_total + chunk ≤ 18446744073709551615 then
-    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (bps_mul (total_fee) (referral_allocation_bps)), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
   else none
 
 def execute_composable_otherwiseTransition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) (min_output : Nat) : Option State :=
@@ -89,11 +89,14 @@ def transferTransition (s : State) (signer : Pubkey) (amount : Nat) : Option Sta
 
 def release_milestoneTransition (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat) : Option State :=
   if emergency_pause = 0 ∧ policy_status = 0 ∧ (release_due_date = 0 ∨ current_time ≥ due_timestamp) ∧ (release_requires_gateway = 0 ∨ caller_is_gateway = 1) ∧ (release_requires_owner = 0 ∨ caller_is_owner = 1) ∧ (release_requires_recipient = 0 ∨ caller_is_recipient = 1) then
-    some { s with pulled_amount := s.payment_amount, total_fee := (bps_mul (payment_amount) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (bps_mul (total_fee) (referral_allocation_bps)), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+    some { s with pulled_amount := s.payment_amount, total_fee := (bps_mul (payment_amount) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
   else none
 
 /-- Invariant: fee_share_sum_bounded -/
 theorem fee_share_sum_bounded (s : State) : (s.s.protocol_share_bps + s.s.scheduler_share_bps + s.s.referral_allocation_bps) ≤ 10000 := by sorry
+
+/-- Invariant: milestone_signer_bits_mutually_exclusive -/
+theorem milestone_signer_bits_mutually_exclusive (s : State) : (s.s.release_requires_gateway + s.s.release_requires_owner + s.s.release_requires_recipient) ≤ 1 := by sorry
 
 inductive Operation where
   | create_payment_policy (max_per_period : Nat) (max_chunk : Nat) (period_secs : Nat) (fee_bps : Nat) (proto_share : Nat) (sched_share : Nat) (referral_share : Nat)
