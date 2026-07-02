@@ -1190,6 +1190,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "qedgen-macros"
+version = "0.1.0"
+source = "git+https://github.com/qedgen/solana-skills?tag=v2.38.0#c22059b2a58f26d3f006a496deb346e57f13676a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sha2 0.10.9",
+ "syn 2.0.108",
+]
+
+[[package]]
 name = "qstring"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2945,6 +2956,7 @@ dependencies = [
  "chrono",
  "proc-macro2",
  "proptest",
+ "qedgen-macros",
  "quote",
  "solana-security-txt",
  "syn 1.0.109",

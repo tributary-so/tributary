@@ -86,6 +86,8 @@ nav:
           - vs Payment Policy: protocol-reference/composable-policy/vs-payment-policy.md
   - Operate:
       - Providers: operate/providers.md
+  - Development:
+      - Testing & Verification: development/testing.md
   - API: api/rest-api.md
 
 plugins:

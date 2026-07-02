@@ -349,7 +349,7 @@ impl<'info> CreateComposablePolicy<'info> {
 ///
 /// The per-check sanity loop + discriminator-pin requirement stay in the
 /// handler (they only run when forward is enabled).
-pub(crate) fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
+pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
     let forward_disabled = forward_config.target_program == Pubkey::default();
     require!(
         forward_disabled || ALLOWED_FORWARD_PROGRAMS.contains(&forward_config.target_program),

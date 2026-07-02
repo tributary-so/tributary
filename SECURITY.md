@@ -192,8 +192,60 @@ multisig-gated `change_gateway_signer`.
 
 ---
 
+## Smart-contract security & formal verification
+
+The policy above is about **operational** security (who can sign privileged
+calls). This section covers **contract-level** security — the guarantees the
+program itself enforces and how we gain confidence in them. There are four
+overlapping layers:
+
+| Layer                               | What it covers                                                                                  | Status                                                       | Where                                                                                                           |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **On-chain guards**                 | Pull-amount bounds, fee math, access control, CPI allowlists, emergency pause                   | ✅ live in the deployed program                              | [`apps/docs/protocol-reference/security.md`](apps/docs/protocol-reference/security.md) (per-measure code links) |
+| **Formal specification**            | The pull/fee state machine captured as preservation properties; `qedgen check` validation-clean | ✅ authored                                                  | [`formal_verification/README.md`](formal_verification/README.md), [`tributary.qedspec`](tributary.qedspec)      |
+| **Formal proofs (Kani BMC + Lean)** | Bounded model check over all inputs; ∀-quantified preservation theorems                         | ⚠️ scaffolded, blocked on QEDGen v2.38 tooling fixes         | [`formal_verification/README.md`](formal_verification/README.md) §Current blockers                              |
+| **Integration tests + fuzzing**     | Account wiring, PDA derivation, CPI behaviour, action-sequence fuzzing                          | ✅ Surfpool suite (~19k LOC); Mollusk+cargo-fuzz in progress | `tests/`, sibling bean `tributary-ya7m`                                                                         |
+
+### What the formal spec covers (and what it does not)
+
+**In scope of the specification:** pull-amount bounds for every payment-policy
+variant, PAYG cross-period drain-resistance (the A2 property — no chunk
+sequence can extract more than `max_amount_per_period` per period), unified
+fee conservation (carve-outs sum to `total_fee`, residual non-negative), and
+milestone signer-bit access control.
+
+**Out of scope (covered by integration tests + fuzzing instead):** account
+wiring, PDA seed derivation, the Meteora-DLMM forward allowlist, signer
+sanitization (the ADR-0008 privilege boundary), and the emergency-pause
+flag. **Swap-output conservation is the responsibility of the third-party
+forward program (Meteora DLMM)** — Tributary owns the pull → fee-split →
+route path and the `min_output_amount` net check, not the swap math itself.
+`delegated_amount` is SPL Token program state and is read-only here.
+
+### Honest current status
+
+The state machine is **formally specified and validation-clean**. We are
+deliberately **not** claiming "formally verified, period" yet: the executable
+proofs (Kani bounded model checking, Lean theorems) are scaffolded but
+currently blocked on two documented QEDGen v2.38 toolchain issues (a
+Rust/Kani codegen bug and a Lean dependency recursion limit), not on the
+spec. See [`formal_verification/README.md`](formal_verification/README.md)
+for reproductions and the remediation plan, and the follow-up beans
+(`tributary-o2vs`, `tributary-kqhl`, `tributary-c1jy`) for tracking.
+
+### Key decision records (the _why_)
+
+- [ADR-0008](apps/docs/adr/0008-composable-cpi-privilege-boundary.md) — Composable CPI privilege boundary (intermediate-ATA ownership + signer sanitization).
+- [ADR-0010](apps/docs/adr/0010-composable-settlement-semantics.md) — Composable settlement semantics (NET `min_output_amount`).
+- [ADR-0018](apps/docs/adr/0018-unified-fee-model.md) — Unified gateway fee model with scheduler incentive.
+- [ADR-0019](apps/docs/adr/0019-onetime-policy-variant.md) / [ADR-0020](apps/docs/adr/0020-upto-scheme-and-policy-variant.md) — OneTime / UpTo payment variants.
+
+---
+
 ## See Also
 
+- [`apps/docs/protocol-reference/security.md`](apps/docs/protocol-reference/security.md) — contract security measures, each linked to the source line that enforces it.
+- [`formal_verification/README.md`](formal_verification/README.md) — formal verification setup, toolchain install, and current proof status.
 - `reports/C-04-no-admin-key-rotation.md` — the finding that motivated this policy.
 - `reports/` (full audit findings list).
 - Scrapped `tributary-yqnw` (H-04) — the same Squads-first analysis applied to all
