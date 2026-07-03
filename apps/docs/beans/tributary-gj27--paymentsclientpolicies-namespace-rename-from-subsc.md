@@ -1,11 +1,11 @@
 ---
 # tributary-gj27
 title: PaymentsClient.policies namespace (rename from .subscriptions, soft-deprecate)
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:44:46Z
-updated_at: 2026-07-03T20:46:08Z
+updated_at: 2026-07-03T20:46:27Z
 parent: tributary-pg7r
 ---
 
