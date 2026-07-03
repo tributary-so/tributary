@@ -1,11 +1,11 @@
 ---
 # tributary-c206
 title: Grep monorepo — find and fix all old API surface occurrences
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-07-03T09:44:46Z
-updated_at: 2026-07-03T21:03:04Z
+updated_at: 2026-07-03T21:03:43Z
 parent: tributary-pg7r
 blocked_by:
     - tributary-zre4
