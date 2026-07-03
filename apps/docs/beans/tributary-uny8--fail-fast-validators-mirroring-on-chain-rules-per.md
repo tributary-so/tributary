@@ -1,11 +1,11 @@
 ---
 # tributary-uny8
 title: Fail-fast validators mirroring on-chain rules (per variant)
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:44:46Z
-updated_at: 2026-07-03T20:40:43Z
+updated_at: 2026-07-03T20:41:28Z
 parent: tributary-pg7r
 ---
 
