@@ -1,11 +1,11 @@
 ---
 # tributary-vtne
 title: i64 overflow in validate_policy_execution + advance_policy (schedule.rs)
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-07-01T15:46:24Z
-updated_at: 2026-07-01T17:22:56Z
+updated_at: 2026-07-03T07:27:45Z
 ---
 
 Kani found that *current_period_start + *period_length_seconds as i64 can overflow i64 when period_length_seconds > i64::MAX or when the sum exceeds i64::MAX. Panics in debug, wraps silently in release (wrong period comparison). Found by verify_payg_pull_bounded harness.
@@ -101,3 +101,17 @@ If the real code uses `saturating_add` (the correct fix), the spec-model
 harness should emit bare `+` (which the codegen already does) and let the
 `saturating_add` in the real transition function handle it — no post-
 processor intervention needed.
+
+## Summary of Changes
+
+- `schedule.rs:359` (`validate_policy_execution` PAYG branch) and `schedule.rs:463` (`advance_policy`): replaced bare `*current_period_start + *period_length_seconds as i64` with `(*current_period_start).saturating_add(*period_length_seconds as i64)`. Saturates at `i64::MAX` instead of panicking (debug) / wrapping (release).
+- `kani_pure_fns.rs`: removed the `period_secs <= 1_000_000_000_000` / `period_start <= 1_000_000_000_000` workaround assumes from `verify_payg_pull_bounded`, `verify_payg_rejects_period_breach`, and `verify_payg_advance_preserves_cap`. Updated the two harness-internal mirroring guards (lines 280, 335) to `saturating_add` so the harness logic matches the fixed real code.
+- `fix-kani.py`: removed the Bug E.2 `saturating_add` post-processor replacement (lines 96-106) that masked the bug at Layer 1. The real code now uses `saturating_add`, so the spec-model codegen's bare `+` no longer needs masking.
+- Added regression test `payg_period_guard_no_overflow_near_i64_max` (`schedule.rs`) exercising `current_period_start = i64::MAX - 100` + `period_length_seconds = 3600` — would panic under the old bare `+`.
+
+### Verification
+- `cargo test --lib`: 140 passed, 0 failed.
+- Kani (Layer 2): `verify_payg_pull_bounded` 0/1710 failed; `verify_payg_rejects_period_breach` ✓; `verify_payg_advance_preserves_cap` ✓ — all WITHOUT the workaround assumes.
+
+### Note
+The bean's claim that creation enforces "NO upper bound" on `period_length_seconds` is outdated: `policies/pay_as_you_go.rs:23` already requires `period_length_seconds <= i64::MAX as u64` (vector #1 — cast wrap — is prevented at creation). The `saturating_add` fix addresses vector #2 (addition overflow), which is what Kani caught.

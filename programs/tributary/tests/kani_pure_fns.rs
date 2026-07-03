@@ -232,11 +232,6 @@ fn verify_payg_pull_bounded() {
     kani::assume(max_chunk > 0);
     kani::assume(max_per_period >= max_chunk);
     kani::assume(period_secs > 0);
-    // Bound to realistic ranges to avoid i64 overflow in the real code's
-    // guard: current_period_start + period_length_seconds as i64.
-    // schedule.rs:359 — this is a known code issue (should use saturating_add).
-    kani::assume(period_secs > 0 && period_secs <= 1_000_000_000_000);
-    kani::assume(period_start >= 0 && period_start <= 1_000_000_000_000);
     kani::assume(period_total <= max_per_period);
 
     let pt = PolicyType::PayAsYouGo {
@@ -273,11 +268,10 @@ fn verify_payg_rejects_period_breach() {
 
     kani::assume(max_chunk > 0);
     kani::assume(max_per_period > 0);
-    kani::assume(period_secs > 0 && period_secs <= 1_000_000_000_000);
-    kani::assume(period_start >= 0 && period_start <= 1_000_000_000_000);
+    kani::assume(period_secs > 0);
 
     let now: i64 = kani::any();
-    kani::assume(now < period_start + period_secs as i64);
+    kani::assume(now < period_start.saturating_add(period_secs as i64));
 
     let chunk: u64 = kani::any();
     kani::assume(chunk > 0);
@@ -315,8 +309,7 @@ fn verify_payg_advance_preserves_cap() {
     kani::assume(max_per_period > 0);
     kani::assume(max_chunk > 0);
     kani::assume(max_chunk <= max_per_period);
-    kani::assume(period_secs > 0 && period_secs <= 1_000_000_000_000);
-    kani::assume(period_start >= 0 && period_start <= 1_000_000_000_000);
+    kani::assume(period_secs > 0);
     kani::assume(period_total <= max_per_period);
 
     let mut pt = PolicyType::PayAsYouGo {
@@ -332,7 +325,7 @@ fn verify_payg_advance_preserves_cap() {
     let amount: u64 = kani::any();
     kani::assume(amount <= max_chunk);
 
-    if now >= period_start + period_secs as i64 {
+    if now >= period_start.saturating_add(period_secs as i64) {
         // Period reset.
         if let Ok(should_complete) = advance_policy(&mut pt, now, amount) {
             assert!(!should_complete, "PAYG never auto-completes");

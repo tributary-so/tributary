@@ -355,14 +355,15 @@ pub fn validate_policy_execution(
             let chunk = provided_amount.ok_or(TributaryError::InvalidAmount)?;
             require!(chunk > 0, TributaryError::InvalidAmount);
             require!(chunk <= *max_chunk_amount, TributaryError::InvalidAmount);
-            let period_total =
-                if current_time >= *current_period_start + *period_length_seconds as i64 {
-                    chunk
-                } else {
-                    current_period_total
-                        .checked_add(chunk)
-                        .ok_or(TributaryError::ArithmeticOverflow)?
-                };
+            let period_total = if current_time
+                >= (*current_period_start).saturating_add(*period_length_seconds as i64)
+            {
+                chunk
+            } else {
+                current_period_total
+                    .checked_add(chunk)
+                    .ok_or(TributaryError::ArithmeticOverflow)?
+            };
             require!(
                 period_total <= *max_amount_per_period,
                 TributaryError::InsufficientDelegatedAmount
@@ -460,7 +461,8 @@ pub fn advance_policy(
             current_period_total,
             ..
         } => {
-            if current_time >= *current_period_start + *period_length_seconds as i64 {
+            if current_time >= (*current_period_start).saturating_add(*period_length_seconds as i64)
+            {
                 *current_period_start = current_time;
                 *current_period_total = amount;
             } else {
@@ -885,6 +887,40 @@ mod tests {
             } => {
                 assert_eq!(*current_period_start, 4000);
                 assert_eq!(*current_period_total, 40);
+            }
+            _ => panic!("expected PayAsYouGo"),
+        }
+    }
+
+    /// Regression (bean tributary-vtne): the period-elapsed guard
+    /// `current_period_start + period_length_seconds as i64` overflowed i64
+    /// when both operands were large. With `saturating_add` the sum clamps
+    /// to `i64::MAX` instead of panicking (debug) / wrapping (release).
+    /// Here `start + secs` exceeds `i64::MAX`, so the period is treated as
+    /// not-yet-elapsed for any realistic `now` → accumulate, not reset.
+    #[test]
+    fn payg_period_guard_no_overflow_near_i64_max() {
+        let start = i64::MAX - 100;
+        let secs: u64 = 3600;
+        // start + secs would overflow i64 under bare `+`.
+        let mut pt = payg(1000, 100, secs, start, 0);
+
+        // validate: chunk within bounds, period not elapsed → ok, echoes chunk.
+        let amt =
+            validate_policy_execution(&pt, start + 1, Some(50), &MilestoneSigners::none()).unwrap();
+        assert_eq!(amt, 50);
+
+        // advance: same period → accumulate (no reset, no panic).
+        let should = advance_policy(&mut pt, start + 1, 50).unwrap();
+        assert!(!should);
+        match &pt {
+            PolicyType::PayAsYouGo {
+                current_period_start,
+                current_period_total,
+                ..
+            } => {
+                assert_eq!(*current_period_start, start, "period start unchanged");
+                assert_eq!(*current_period_total, 50);
             }
             _ => panic!("expected PayAsYouGo"),
         }

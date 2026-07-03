@@ -93,17 +93,10 @@ def fix_overflow(text: str) -> str:
 
     # 2. Guard additions — saturating_add prevents overflow panic.
     #
-    # WARNING: saturating_add masks a REAL bug in the Anchor code.
-    # schedule.rs:359 and :463 do bare `*current_period_start +
-    # *period_length_seconds as i64` which overflows i64 for large
-    # period_length_seconds values. The spec-model harness (Layer 1)
-    # uses saturating_add (the INTENDED semantics), so it can't catch
-    # this bug. The bug IS caught by Layer 2 (kani_pure_fns.rs, which
-    # calls the real code without this fix). See bean tributary-vtne.
-    text = text.replace(
-        's.current_period_start + s.period_length_seconds',
-        's.current_period_start.saturating_add(s.period_length_seconds)',
-    )
+    # schedule.rs:359 and :463 now use saturating_add in the REAL code
+    # (bean tributary-vtne), so the spec-model codegen (bare +) matches
+    # the real semantics once wrapped. No post-processor intervention
+    # needed for the period-bound guard — left intact for the other guards.
     #    Guard subtraction: max_amount_per_period - current_period_total
     #    underflows when period_total > cap on unconstrained symbolic state.
     text = text.replace(
