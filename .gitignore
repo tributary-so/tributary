@@ -1,6 +1,7 @@
 .anchor
 .DS_Store
 
+formal_verification/target/
 target/**/*
 !target/idl/
 !target/idl/tributary.json
