@@ -18,7 +18,8 @@ import {
   getGatewayPda,
   getUserPaymentPda,
   getComposablePolicyPda,
-  getValidationPda,
+  getPreValidationPda,
+  getPostValidationPda,
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
@@ -26,6 +27,29 @@ import assert from "assert";
 import { Buffer } from "buffer";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { LIGHTHOUSE_PUBKEY } from "./constants";
+
+// ── Composable v2.1 helpers (mirrors tests/composable.test.ts) ───────────
+const DISABLED_SPEC = { disabled: {} } as any;
+const DISABLED_INIT = {
+  numPinnedAccounts: 0,
+  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  validationData: Buffer.alloc(0),
+} as any;
+
+function programCallSpec(programId: PublicKey): any {
+  return { programCall: { programId } };
+}
+
+function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
+  return {
+    numPinnedAccounts: pinnedAccounts.length,
+    pinnedAccounts: [
+      pinnedAccounts[0] ?? PublicKey.default,
+      pinnedAccounts[1] ?? PublicKey.default,
+    ],
+    validationData: data,
+  };
+}
 
 // A composable policy with forward_config.target_program = PublicKey.default
 // has its forward CPI disabled (the "no forward step" sentinel — mirrors the
@@ -74,7 +98,8 @@ describe("Composable Topup Balance Flow", () => {
   let userPaymentPDA: PublicKey;
   let paymentsDelegatePDA: PublicKey;
   let composablePolicyPDA: PublicKey;
-  let validationPDA: PublicKey;
+  let preValidationPDA: PublicKey;
+  let postValidationPDA: PublicKey;
 
   let coldWalletUsdcAta: PublicKey;
   let hotWalletUsdcAta: PublicKey;
@@ -320,7 +345,11 @@ describe("Composable Topup Balance Flow", () => {
       program.programId
     ).address;
 
-    validationPDA = getValidationPda(
+    preValidationPDA = getPreValidationPda(
+      composablePolicyPDA,
+      program.programId
+    ).address;
+    postValidationPDA = getPostValidationPda(
       composablePolicyPDA,
       program.programId
     ).address;
@@ -342,23 +371,31 @@ describe("Composable Topup Balance Flow", () => {
     const memo = new Array(32).fill(0);
     Buffer.from("Topup balance").copy(Buffer.from(memo));
 
-    // Forward disabled: target_program = PublicKey.default is the "no
-    // forward step" sentinel. The topup is a same-mint pull → sweep, so
-    // no swap program is involved. num_data_checks must be 0 (there is
-    // no forward instruction_data to byte-range validate).
+    // Forward disabled: instructionConstraint.programId = PublicKey.default
+    // is the "no forward step" sentinel. The topup is a same-mint pull →
+    // sweep, so no swap program is involved. num_data_checks must be 0
+    // (there is no forward instruction_data to byte-range validate).
     const forwardConfig = {
-      targetProgram: PublicKey.default,
       inputMint: USDC_MINT,
       outputMint: USDC_MINT,
-      minOutputAmount: null,
       forwardFlags: 0,
-      numDataChecks: 0,
-      dataChecks: [
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-      ],
+      instructionConstraint: {
+        programId: PublicKey.default,
+        numDataChecks: 0,
+        dataChecks: [
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+        ],
+        numPinnedAccounts: 0,
+        pinnedAccounts: [
+          PublicKey.default,
+          PublicKey.default,
+          PublicKey.default,
+          PublicKey.default,
+        ],
+      },
     };
 
     // Lighthouse validation: assert hotWallet USDC amount < 50 USDC
@@ -367,22 +404,18 @@ describe("Composable Topup Balance Flow", () => {
       .amount(50_000_000, "<")
       .build();
 
-    // num_pinned_accounts = 1 (hotWallet USDC ATA — the account Lighthouse reads).
-    // ADR-0016: the target is owner-pinned at creation; the relayer cannot
-    // substitute it at execute. Pass the lighthouse facade's accounts as
-    // the fixed-size [Pubkey; 2], zero-padded.
-    const pinnedAccounts: [PublicKey, PublicKey] = [
-      guard.accounts[0]?.pubkey ?? PublicKey.default,
-      guard.accounts[1]?.pubkey ?? PublicKey.default,
-    ];
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
-        guard.numAccounts,
-        pinnedAccounts,
-        guard.data
+        programCallSpec(LIGHTHOUSE_PUBKEY),
+        validationInit(
+          [guard.accounts[0]?.pubkey ?? PublicKey.default],
+          guard.data
+        ),
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
@@ -392,8 +425,10 @@ describe("Composable Topup Balance Flow", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPDA,
-        validationProgram: LIGHTHOUSE_PUBKEY,
+        preValidationPda: preValidationPDA,
+        postValidationPda: postValidationPDA,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
         inputMint: USDC_MINT,
         outputMint: USDC_MINT,
         systemProgram: SystemProgram.programId,
@@ -420,17 +455,20 @@ describe("Composable Topup Balance Flow", () => {
     // Recipient defaults to fee_payer (gateway signer = hotWallet)
     expect(policy.recipient).toEqual(hotWallet.publicKey);
 
-    // Forward config — disabled (target_program = default), no data checks
-    expect(policy.forwardConfig.targetProgram).toEqual(PublicKey.default);
-    expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
-    expect(policy.forwardConfig.numDataChecks).toBe(0);
-
-    // Validation config — program stored, pinned arity lives on the
-    // ValidationPda (ADR-0016).
-    expect(policy.validationConfig.validationProgram).toEqual(
-      LIGHTHOUSE_PUBKEY
+    // Forward config — disabled (programId = default), no data checks
+    expect(policy.forwardConfig.instructionConstraint.programId).toEqual(
+      PublicKey.default
     );
-    expect(policy.validationConfig).not.toHaveProperty("numValidationAccounts");
+    expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
+    expect(policy.forwardConfig.instructionConstraint.numDataChecks).toBe(0);
+
+    // Validation config — pre-validation is Lighthouse (ProgramCall),
+    // post-validation is disabled. Pinned arity lives on the pre
+    // ValidationPda (ADR-0016).
+    expect(policy.preValidation).toEqual({
+      programCall: { programId: LIGHTHOUSE_PUBKEY },
+    });
+    expect(policy.postValidation).toEqual({ disabled: {} });
 
     // PayAsYouGo policy
     expect(policy.policyType.payAsYouGo.maxAmountPerPeriod.toNumber()).toBe(
@@ -441,12 +479,12 @@ describe("Composable Topup Balance Flow", () => {
     );
     expect(policy.policyType.payAsYouGo.currentPeriodTotal.toNumber()).toBe(0);
 
-    // Verify ValidationPDA was created with correct assertion data. Decode via
-    // the SDK's parseValidationPda (mirrors the on-chain typed ValidationPda
-    // layout) rather than hand-rolled offsets — the struct gained bump /
-    // num_pinned_accounts / pinned_accounts[2] fields, so the legacy
-    // readUInt16LE(8) / slice(10, ...) reads the wrong bytes.
-    const valPdaAccount = await connection.getAccountInfo(validationPDA);
+    // Verify pre ValidationPDA was created with correct assertion data. Decode
+    // via the SDK's parseValidationPda (mirrors the on-chain typed
+    // ValidationPda layout), rather than hand-rolled offsets — the struct
+    // gained bump / num_pinned_accounts / pinned_accounts[2] fields, so the
+    // legacy readUInt16LE(8) / slice(10, ...) reads the wrong bytes.
+    const valPdaAccount = await connection.getAccountInfo(preValidationPDA);
     expect(valPdaAccount).not.toBeNull();
     const parsed = parseValidationPda(valPdaAccount!.data);
     expect(parsed.numPinnedAccounts).toBe(guard.numAccounts);
@@ -495,8 +533,10 @@ describe("Composable Topup Balance Flow", () => {
       userPayment: userPaymentPDA,
       gateway: gatewayPDA,
       config: configPDA,
-      validationProgram: LIGHTHOUSE_PUBKEY,
-      validationPda: validationPDA,
+      preValidationProgram: LIGHTHOUSE_PUBKEY,
+      postValidationProgram: SystemProgram.programId,
+      preValidationPda: preValidationPDA,
+      postValidationPda: postValidationPDA,
       userTokenAccount: coldWalletUsdcAta,
       mint: USDC_MINT,
       outputMint: USDC_MINT,
@@ -615,8 +655,10 @@ describe("Composable Topup Balance Flow", () => {
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
-          validationProgram: LIGHTHOUSE_PUBKEY,
-          validationPda: validationPDA,
+          preValidationProgram: LIGHTHOUSE_PUBKEY,
+          postValidationProgram: SystemProgram.programId,
+          preValidationPda: preValidationPDA,
+          postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: USDC_MINT,

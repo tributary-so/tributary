@@ -1,11 +1,11 @@
 ---
 # tributary-6bpl
 title: 'SDK: wire InstructionConstraint + post_validation + two ValidationPDAs'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-02T08:01:05Z
-updated_at: 2026-07-02T11:46:18Z
+updated_at: 2026-07-02T13:02:09Z
 parent: tributary-ksdy
 blocked_by:
     - tributary-q82g
@@ -100,3 +100,7 @@ The SDK resolves both ValidationPDAs by seed and injects them as named Option<Ac
 - [ ] packages/sdk builds clean (DTS + ESM).
 - [ ] Existing topup tests (topup-balance*.test.ts) updated and compiling against new IDL.
 - [ ] setPostValidationMinOutput helper produces correct Lighthouse assertion bytes.
+
+## Summary of Changes
+
+Completed alongside parent tributary-ksdy.

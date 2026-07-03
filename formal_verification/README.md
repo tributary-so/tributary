@@ -3,16 +3,22 @@
 This directory and the hand-rolled harnesses in `programs/tributary/tests/`
 together form a **layered** verification of Tributary's pull-payment logic.
 
-> **Status (2026-07-02):**
+> **Status (2026-07-02, updated for v2.1 — bean tributary-zvku):**
 >
 > | Layer                     | Status                                                               |
 > | ------------------------- | -------------------------------------------------------------------- |
-> | Spec validation           | ✅ clean (`qedgen check` exit 0, 9 properties, 6 handlers)           |
-> | Layer 1 (spec-model Kani) | ✅ 61/132 active & passing; 71 disabled (u128 SAT)                   |
+> | Spec validation           | ✅ clean (`qedgen check`, 9 properties, 6 handlers)                  |
+> | Layer 1 (spec-model Kani) | ✅ regenerated (spec-hash `8be6c4356e7458ef`); `min_output` removed  |
 > | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                          |
 > | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                            |
 > | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)          |
 > | Lean                      | ⚠️ recursion solved (4.30.0 pin); Spec.lean blocked on codegen Bug A |
+>
+> **v2.1 change:** `execute_composable` handler dropped its `min_output`
+> parameter (removed from the on-chain code; `post_validation` generalizes
+> it). The formal model was never affected — `min_output` was a pass-through
+> with no role in any property. Spec.lean + kani.rs regenerated from the
+> updated qedspec.
 
 ---
 
@@ -77,15 +83,15 @@ together form a **layered** verification of Tributary's pull-payment logic.
 
 ### What each layer catches (and doesn't)
 
-|                       | Layer 1 (spec-model Kani) | Layer 2 (impl Kani + proptest)    | Drift gates       | Lean             |
-| --------------------- | ------------------------- | --------------------------------- | ----------------- | ---------------- |
+|                       | Layer 1 (spec-model Kani) | Layer 2 (impl Kani + proptest)    | Drift gates      | Lean             |
+| --------------------- | ------------------------- | --------------------------------- | ---------------- | ---------------- |
 | **Tests**             | Spec's effect formulas    | Real Rust functions               | Spec ↔ code hash | Spec math        |
-| **Real code?**        | ❌ parallel State model   | ✅ calls real fns                 | N/A (hash only)   | ❌ spec model    |
-| **Exhaustive?**       | ✅ all symbolic inputs    | ✅ Kani (slow); proptest (random) | N/A               | ✅ ∀-quantified  |
-| **Fast?**             | ✅ 3-10s per harness      | Kani: 3s-10min; proptest: 0.03s   | ✅ compile-time   | ⚠️ minutes-hours |
-| **Catches spec bugs** | ✅                        | ❌                                | ❌                | ✅               |
-| **Catches code bugs** | ❌                        | ✅                                | ❌                | ❌               |
-| **Catches drift**     | ❌                        | ❌                                | ✅                | ❌               |
+| **Real code?**        | ❌ parallel State model   | ✅ calls real fns                 | N/A (hash only)  | ❌ spec model    |
+| **Exhaustive?**       | ✅ all symbolic inputs    | ✅ Kani (slow); proptest (random) | N/A              | ✅ ∀-quantified  |
+| **Fast?**             | ✅ 3-10s per harness      | Kani: 3s-10min; proptest: 0.03s   | ✅ compile-time  | ⚠️ minutes-hours |
+| **Catches spec bugs** | ✅                        | ❌                                | ❌               | ✅               |
+| **Catches code bugs** | ❌                        | ✅                                | ❌               | ❌               |
+| **Catches drift**     | ❌                        | ❌                                | ✅               | ❌               |
 
 ---
 

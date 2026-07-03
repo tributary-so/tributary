@@ -29,10 +29,10 @@ export const GATEWAY_FEATURES = {
   CUSTOM_PROTOCOL_FEE: 0x04,
   /**
    * Bit 3: Permissionless composable execution enabled (ADR-0016).
+   * Frozen at gateway creation — cannot be toggled via update_gateway_feature_flags.
    * When set, `executeComposable` admits any signer for CONFORMING
-   * composable policies (min_output_amount = Some(>0)). The trusted three
-   * (gateway signer / owner / recipient) always pass regardless. The
-   * caller-conditional gate is enforced on-chain.
+   * composable policies (post_validation or route pinned). The trusted three
+   * (gateway signer / owner / recipient) always pass regardless.
    */
   PERMISSIONLESS: 0x08,
 } as const;
@@ -56,15 +56,14 @@ export const SEEDS = {
   REFERRAL: "referral",
   /** Seed for composable policy PDAs */
   COMPOSABLE_POLICY: "composable_policy",
-  /** Seed for validation PDAs (stores assertion data for composable policies with validation) */
-  VALIDATION_PDA: "composable_validation",
+  /** Seed for pre-validation PDAs (stores assertion data for composable policies with pre-validation) */
+  VALIDATION_PDA_PRE: "composable_validation_pre",
+  /** Seed for post-validation PDAs (stores assertion data for composable policies with post-validation) */
+  VALIDATION_PDA_POST: "composable_validation_post",
 } as const;
 
 /**
- * Capacity of the owner-pinned Lighthouse target-account set on a
- * `ValidationPda` (ADR-0016). Covers the highest assertion arity in use
- * today (`accountDelta` = 2). Callers pass a `PublicKey[]` to
- * `getCreateComposablePolicyInstruction` and the SDK normalises it to the
- * fixed-size `[Pubkey; 2]` the on-chain instruction expects.
+ * Capacity of the forward-account pin set on InstructionConstraint
+ * (bean tributary-q82g). Covers a Meteora DLMM route.
  */
-export const MAX_PINNED_VALIDATION_ACCOUNTS = 2;
+export const MAX_PINNED_FORWARD_ACCOUNTS = 4;

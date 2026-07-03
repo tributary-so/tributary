@@ -20,7 +20,8 @@ import {
   getGatewayPda,
   getUserPaymentPda,
   getComposablePolicyPda,
-  getValidationPda,
+  getPreValidationPda,
+  getPostValidationPda,
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
@@ -29,6 +30,29 @@ import {
   METEORA_DLMM_SOL_USDC_POOL,
   LIGHTHOUSE_PUBKEY,
 } from "./constants";
+
+// ── Composable v2.1 helpers (mirrors tests/composable.test.ts) ───────────
+const DISABLED_SPEC = { disabled: {} } as any;
+const DISABLED_INIT = {
+  numPinnedAccounts: 0,
+  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  validationData: Buffer.alloc(0),
+} as any;
+
+function programCallSpec(programId: PublicKey): any {
+  return { programCall: { programId } };
+}
+
+function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
+  return {
+    numPinnedAccounts: pinnedAccounts.length,
+    pinnedAccounts: [
+      pinnedAccounts[0] ?? PublicKey.default,
+      pinnedAccounts[1] ?? PublicKey.default,
+    ],
+    validationData: data,
+  };
+}
 
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -77,7 +101,8 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
   let userPaymentPDA: PublicKey;
   let paymentsDelegatePDA: PublicKey;
   let composablePolicyPDA: PublicKey;
-  let validationPDA: PublicKey;
+  let preValidationPDA: PublicKey;
+  let postValidationPDA: PublicKey;
 
   // Input side (USDC)
   let coldWalletUsdcAta: PublicKey;
@@ -355,7 +380,11 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       composablePolicyId,
       program.programId
     ).address;
-    validationPDA = getValidationPda(
+    preValidationPDA = getPreValidationPda(
+      composablePolicyPDA,
+      program.programId
+    ).address;
+    postValidationPDA = getPostValidationPda(
       composablePolicyPDA,
       program.programId
     ).address;
@@ -387,19 +416,33 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     const memo = new Array(32).fill(0);
     Buffer.from("Topup WSOL swap").copy(Buffer.from(memo));
 
+    // Forward ENABLED: Meteora DLMM swap (USDC → WSOL). The
+    // instructionConstraint pins the swap selector (byte-range check at
+    // offset 0) AND pins the first forward account (degenerate-pin guard +
+    // execute-time positional pin-check, ADR-0021). swapIx.keys[0] is the
+    // lbPair — the first account remaining_mid[fwd_base] resolves to at
+    // execute (fwd_base = #pre-validation targets = 1).
     const forwardConfig = {
-      targetProgram: METEORA_DLMM_PUBKEY,
       inputMint: USDC_MINT,
       outputMint: NATIVE_MINT,
-      minOutputAmount: null, // disabled — slippage handled inside the swap ix
       forwardFlags: 0,
-      numDataChecks: 1,
-      dataChecks: [
-        { offset: 0, length: 8, expected: discriminator }, // pin swap selector
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-        { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-      ],
+      instructionConstraint: {
+        programId: METEORA_DLMM_PUBKEY,
+        numDataChecks: 1,
+        dataChecks: [
+          { offset: 0, length: 8, expected: discriminator }, // pin swap selector
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+          { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+        ],
+        numPinnedAccounts: 1,
+        pinnedAccounts: [
+          swapIx.keys[0].pubkey,
+          PublicKey.default,
+          PublicKey.default,
+          PublicKey.default,
+        ],
+      },
     };
 
     // Lighthouse: assert hotWallet WSOL balance < 1 WSOL before topping up.
@@ -408,20 +451,18 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
       .amount(1_000_000_000, "<")
       .build();
 
-    // Pinned target accounts (ADR-0016): the lighthouse facade owns the
-    // target_account(s). Normalise to the fixed-size [Pubkey; 2].
-    const pinnedAccounts: [PublicKey, PublicKey] = [
-      guard.accounts[0]?.pubkey ?? PublicKey.default,
-      guard.accounts[1]?.pubkey ?? PublicKey.default,
-    ];
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
-        guard.numAccounts, // hotWallet WSOL ATA
-        pinnedAccounts,
-        guard.data
+        programCallSpec(LIGHTHOUSE_PUBKEY),
+        validationInit(
+          [guard.accounts[0]?.pubkey ?? PublicKey.default],
+          guard.data
+        ),
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: hotWallet.publicKey,
@@ -431,8 +472,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPDA,
-        validationProgram: LIGHTHOUSE_PUBKEY,
+        preValidationPda: preValidationPDA,
+        postValidationPda: postValidationPDA,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
         inputMint: USDC_MINT,
         outputMint: NATIVE_MINT,
         systemProgram: SystemProgram.programId,
@@ -449,10 +492,12 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
     const policy = await program.account.composablePolicy.fetch(
       composablePolicyPDA
     );
-    expect(policy.forwardConfig.targetProgram).toEqual(METEORA_DLMM_PUBKEY);
+    expect(policy.forwardConfig.instructionConstraint.programId).toEqual(
+      METEORA_DLMM_PUBKEY
+    );
     expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
     expect(policy.forwardConfig.outputMint).toEqual(NATIVE_MINT);
-    expect(policy.forwardConfig.numDataChecks).toBe(1);
+    expect(policy.forwardConfig.instructionConstraint.numDataChecks).toBe(1);
     expect(policy.recipient).toEqual(hotWallet.publicKey);
     expect(policy.status).toEqual({ active: {} });
   });
@@ -517,8 +562,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationProgram: LIGHTHOUSE_PUBKEY,
-        validationPda: validationPDA,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
+        preValidationPda: preValidationPDA,
+        postValidationPda: postValidationPDA,
         userTokenAccount: coldWalletUsdcAta,
         mint: USDC_MINT,
         outputMint: NATIVE_MINT,
@@ -626,8 +673,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
-          validationProgram: LIGHTHOUSE_PUBKEY,
-          validationPda: validationPDA,
+          preValidationProgram: LIGHTHOUSE_PUBKEY,
+          postValidationProgram: SystemProgram.programId,
+          preValidationPda: preValidationPDA,
+          postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,
           mint: USDC_MINT,
           outputMint: NATIVE_MINT,

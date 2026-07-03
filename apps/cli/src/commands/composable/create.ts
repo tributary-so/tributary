@@ -87,18 +87,21 @@ function callBuilder(builder: unknown, method: string, value: bigint, operator: 
 
 function disabledForward(inputMint: PublicKey, outputMint: PublicKey): ForwardConfig {
   return {
-    dataChecks: [
-      {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-      {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-      {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-      {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-    ],
+    instructionConstraint: {
+      programId: PublicKey.default,
+      numDataChecks: 0,
+      dataChecks: [
+        {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+        {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+        {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+        {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+      ],
+      numPinnedAccounts: 0,
+      pinnedAccounts: [PublicKey.default, PublicKey.default, PublicKey.default, PublicKey.default],
+    },
     forwardFlags: 0,
     inputMint,
-    minOutputAmount: null,
-    numDataChecks: 0,
     outputMint,
-    targetProgram: PublicKey.default,
   }
 }
 
@@ -197,14 +200,14 @@ export default class ComposableCreate extends BaseCommand {
     }
 
     // Build validation
-    let validationProgram = PublicKey.default
+    let preValidation: Record<string, unknown> = {disabled: {}}
     let pinnedAccounts: PublicKey[] = []
     let validationData = Buffer.alloc(0)
     if (flags.validation) {
       const raw = flags.validation === '-' ? readFileSync(0, 'utf8') : readFileSync(flags.validation, 'utf8')
       const spec = JSON.parse(raw) as ValidationSpec
       const guard = buildValidation(spec)
-      validationProgram = LIGHTHOUSE_PROGRAM_ID
+      preValidation = {programCall: {programId: LIGHTHOUSE_PROGRAM_ID.toString()}}
       pinnedAccounts = guard.accounts.map((a) => a.pubkey)
       validationData = Buffer.from(guard.data)
     }
@@ -226,18 +229,21 @@ export default class ComposableCreate extends BaseCommand {
         ...Array.from({length: 8 - discBytes.length}, () => 0),
       ]
       forwardConfig = {
-        dataChecks: [
-          {expected, length: discBytes.length, offset: 0},
-          {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-          {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-          {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
-        ],
+        instructionConstraint: {
+          programId: fwdProgram,
+          numDataChecks: 1,
+          dataChecks: [
+            {expected, length: discBytes.length, offset: 0},
+            {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+            {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+            {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
+          ],
+          numPinnedAccounts: 1,
+          pinnedAccounts: [PublicKey.unique(), PublicKey.default, PublicKey.default, PublicKey.default],
+        },
         forwardFlags: flags['native-output'] ? 1 : 0,
         inputMint: tokenMint,
-        minOutputAmount: flags['min-output'] ? new BN(flags['min-output']) : null,
-        numDataChecks: 1,
         outputMint: outputMint!,
-        targetProgram: fwdProgram,
       }
     } else {
       forwardConfig = disabledForward(tokenMint, outputMint!)
@@ -251,7 +257,7 @@ export default class ComposableCreate extends BaseCommand {
       policyType as Parameters<typeof sdk.getCreateComposablePolicyInstruction>[3],
       flags.memo ?? '',
       forwardConfig,
-      validationProgram,
+      preValidation as Parameters<typeof sdk.getCreateComposablePolicyInstruction>[6],
       pinnedAccounts,
       Buffer.from(validationData),
     )

@@ -223,11 +223,11 @@ fn run_validation_cpi<'info>(
     policy_key: &Pubkey,
     program_id: &Pubkey,
     validation_program: &AccountInfo<'info>,
+    seed: &[u8],
 ) -> Result<usize> {
     // Verify the validation_pda address against program-derived seeds
     // before trusting its bytes.
-    let val_pda_key =
-        Pubkey::find_program_address(&[VALIDATION_PDA_SEED, policy_key.as_ref()], program_id);
+    let val_pda_key = Pubkey::find_program_address(&[seed, policy_key.as_ref()], program_id);
     require!(
         validation_pda_info.key() == val_pda_key.0,
         TributaryError::ValidationPdaMismatch
@@ -335,27 +335,18 @@ fn run_forward_cpi<'info>(
     Ok(())
 }
 
-/// Process the forward program's output: verify > 0, check min_output,
-/// calculate fees, deduct fees, sweep remainder to recipient.
+/// Process the forward program's output: verify > 0, calculate fees,
+/// deduct fees, sweep remainder to recipient.
 /// Returns `(output_amount, gateway_fee, protocol_fee, sweep_amount)`.
 ///
-/// When `native_output` is true the post-swap sweep unwraps the WSOL
-/// intermediate into native SOL via `closeAccount(intermediate_WSOL →
-/// recipient_wallet)`, instead of `transfer_checked` into the recipient's
-/// WSOL ATA. The `closeAccount` destination is validated in the handler
-/// to equal `composable_policy.recipient`, so there is no drain vector
-/// (the rejected alternative — a generic Token/wrap forward — would let
-/// the gateway redirect `closeAccount`'s `destination` to itself; see
-/// bean tributary-hgp7 + reports/native-output-sweep.md). Fees stay in
-/// WSOL (taken before the close). `sweep_amount` returned for accounting
-/// is the WSOL value unwrapped; rent shipped by `closeAccount` is a
-/// side-effect bonus to the recipient and excluded from `total_output`.
+/// NOTE: min_output_amount has been REMOVED (bean tributary-q82g). The
+/// post_validation phase generalizes it — owners use a Lighthouse assertion
+/// to check output. Fee breakdown is emitted in the ComposableExecuted event
+/// for transparency.
 fn process_output_and_sweep<'info>(
     intermediate_output: &AccountInfo<'info>,
     output_mint: &AccountInfo<'info>,
     output_mint_decimals: u8,
-    // ComposablePolicy PDA — owns the intermediate ATAs and signs every
-    // CPI that sweeps out of `intermediate_output`. NOT the UserPayment PDA.
     intermediate_owner_info: &AccountInfo<'info>,
     token_program: &AccountInfo<'info>,
     gateway: &PaymentGateway,
@@ -363,43 +354,14 @@ fn process_output_and_sweep<'info>(
     gateway_fee_account: &AccountInfo<'info>,
     protocol_fee_account: &AccountInfo<'info>,
     recipient_token_account: &AccountInfo<'info>,
-    min_output_amount: Option<u64>,
     intermediate_owner_seeds: &[&[&[u8]]],
     native_output: bool,
-    // ADR-0017 scheduler cut routing.
-    // None  → trusted path: merge scheduler_cut into gateway.fee_recipient.
-    // Some  → permissionless: split scheduler_cut → caller ATA, validate
-    //         owner == fee_payer_key && mint == output_mint.
     fee_payer_key: Pubkey,
     scheduler_ata: Option<&AccountInfo<'info>>,
 ) -> Result<(u64, u64, u64, u64)> {
-    // ── Reload + verify output ──────────────────────────────────────
     let output_amount = read_token_amount(intermediate_output)?;
     require!(output_amount > 0, TributaryError::ForwardProducedNoOutput);
 
-    // NOTE: min_output_amount is checked AFTER fee deduction below — it
-    // refers to the NET amount the recipient receives, matching DeFi
-    // convention (Uniswap/Jupiter amountOutMin). See
-    // reports/M5-min-output-amount-checked-before-fees.md.
-
-    // ── Calculate fees via shared helper ───────────────────────────
-    // M7 unification: route through `shared::fees::calculate_fees` so the
-    // bps math (rounding, overflow checks) has a single source of truth
-    // shared with `execute_payment`. We pass `is_amount_net` so any future
-    // change to fee accounting flows through both paths identically.
-    //
-    // Composable's invariant differs from `execute_payment`: fees are
-    // ALWAYS deducted from the forward program's realized gross output
-    // (there is no separate "user debit" to inflate — the user's pull
-    // already happened, sized independently of the swap result). We
-    // therefore consume only `gateway_fee` and `protocol_fee` from the
-    // breakdown; the `recipient_amount` / `total_from_user` fields model
-    // the `execute_payment` net-vs-gross split and don't apply here.
-    // `gateway_fee` and `protocol_fee` are themselves mode-independent
-    // (always `amount * bps / 10000`), so today's behavior is preserved
-    // exactly; the win is that the math can no longer drift between the
-    // two paths.
-    // See reports/M7-composable-diverges-from-shared-fee-schedule-patterns.md.
     let fee_breakdown = crate::shared::fees::calculate_fees(
         output_amount,
         gateway.gateway_fee_bps,
@@ -421,19 +383,6 @@ fn process_output_and_sweep<'info>(
     let sweep_amount = output_amount
         .checked_sub(total_fee)
         .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    // min_output_amount check runs AFTER fee deduction — refers to the
-    // NET amount the recipient receives (matches DeFi convention:
-    // Uniswap/Jupiter amountOutMin). See
-    // reports/M5-min-output-amount-checked-before-fees.md.
-    if let Some(min_output) = min_output_amount {
-        if min_output > 0 {
-            require!(
-                sweep_amount >= min_output,
-                TributaryError::InsufficientOutputAmount
-            );
-        }
-    }
 
     // ── Claim gateway fee (with scheduler routing) ─────────────────
     let gateway_fee = fee_breakdown
@@ -638,17 +587,23 @@ pub struct ExecuteComposable<'info> {
     )]
     pub config: Box<Account<'info, ProgramConfig>>,
 
-    /// CHECK: Validation program account (e.g. Lighthouse).
-    /// Pass SystemProgram when the policy has no validation configured.
-    pub validation_program: UncheckedAccount<'info>,
+    /// CHECK: Pre-validation program account (e.g. Lighthouse).
+    /// Pass SystemProgram when pre_validation is Disabled.
+    pub pre_validation_program: UncheckedAccount<'info>,
 
-    /// ValidationPda — typed-deserialised in the handler when validation
-    /// is enabled (validation_program != SystemProgram). When validation
-    /// is disabled, the account does not exist on-chain and is left
-    /// untouched. The address is verified against program-derived seeds
-    /// before any bytes are read. See ADR-0016.
+    /// CHECK: Post-validation program account.
+    /// Pass SystemProgram when post_validation is Disabled.
+    pub post_validation_program: UncheckedAccount<'info>,
+
+    /// Pre-validation PDA — typed-deserialised in the handler when
+    /// pre_validation is ProgramCall.
     /// CHECK: Validated in the handler (seeds + typed deserialisation).
-    pub validation_pda: UncheckedAccount<'info>,
+    pub pre_validation_pda: UncheckedAccount<'info>,
+
+    /// Post-validation PDA — typed-deserialised in the handler when
+    /// post_validation is ProgramCall.
+    /// CHECK: Validated in the handler (seeds + typed deserialisation).
+    pub post_validation_pda: UncheckedAccount<'info>,
 
     /// User's source token account. Must be owned by the user
     /// (user_payment.owner) and have either the UserPayment PDA (v1)
@@ -796,20 +751,26 @@ impl<'info> ExecuteComposable<'info> {
             );
         }
 
-        // ── Step 1: VALIDATE ───────────────────────────────────────────
-        // Byte-range checks validate the forward program's instruction_data.
-        // When the policy has no forward step (target_program = default,
-        // the "disabled" sentinel — see create_composable_policy), there
-        // is no instruction selector to pin and instruction_data is empty,
-        // so skip validation entirely.
-        let target_program_early = ctx.accounts.composable_policy.forward_config.target_program;
-        if target_program_early != Pubkey::default() {
+        // ── Step 1: BYTE-RANGE CHECKS ──────────────────────────────────
+        // Validate the forward instruction selector when forward is enabled.
+        let ic_program_id = ctx
+            .accounts
+            .composable_policy
+            .forward_config
+            .instruction_constraint
+            .program_id;
+        if ic_program_id != Pubkey::default() {
             validate_byte_ranges(
                 &instruction_data,
-                &ctx.accounts.composable_policy.forward_config.data_checks,
+                &ctx.accounts
+                    .composable_policy
+                    .forward_config
+                    .instruction_constraint
+                    .data_checks,
                 ctx.accounts
                     .composable_policy
                     .forward_config
+                    .instruction_constraint
                     .num_data_checks,
             )?;
         }
@@ -906,39 +867,37 @@ impl<'info> ExecuteComposable<'info> {
         // long-lived borrows of it kick in.
         let policy_key = ctx.accounts.composable_policy.key();
         let policy_id = ctx.accounts.composable_policy.policy_id;
-        let target_program = ctx.accounts.composable_policy.forward_config.target_program;
-        let min_output_amount = ctx
+        let target_program = ctx
             .accounts
             .composable_policy
             .forward_config
-            .min_output_amount;
+            .instruction_constraint
+            .program_id;
         let recipient = ctx.accounts.composable_policy.recipient;
-        let stored_validation_program = ctx
+        let pre_validation = ctx.accounts.composable_policy.pre_validation;
+        let post_validation = ctx.accounts.composable_policy.post_validation;
+        let instruction_constraint = ctx
             .accounts
             .composable_policy
-            .validation_config
-            .validation_program;
-        let has_validation = stored_validation_program != Pubkey::default();
+            .forward_config
+            .instruction_constraint;
 
-        // ── ADR-0016 caller-conditional gate ───────────────────────────
-        // The trusted three (gateway.signer / owner / recipient) always
-        // pass — a gateway's own scheduler may run any policy, including
-        // no-floor ones (`min_output_amount = None`). A cold relayer (any
-        // other signer, admitted because the gateway is permissionless)
-        // must run a CONFORMING policy: `min_output_amount = Some(m > 0)`.
-        // This is the route-agnostic, program-agnostic hard-loss shield
-        // — atomic revert unless the recipient receives ≥ the owner-set
-        // floor. None / Some(0) are rejected for the permissionless path.
-        // Trusted-caller execution is unchanged (backward-compat hatch).
+        // ── ADR-0016 caller-conditional gate (amended) ────────────────
+        // Cold relayers (non-trusted signers on permissionless gateways)
+        // must have a safety net: post_validation = ProgramCall OR the
+        // forward route is pinned (InstructionConstraint.has_effective_pins).
+        // Trusted three pass unconditionally.
         let gateway_signer = ctx.accounts.gateway.signer;
         let is_trusted_caller = caller_key == gateway_signer
             || caller_key == ctx.accounts.user_payment.owner
             || caller_key == recipient;
         if !is_trusted_caller {
-            match min_output_amount {
-                Some(m) if m > 0 => { /* conforming — admit */ }
-                _ => return err!(TributaryError::PermissionlessExecutionRequiresMinOutput),
-            }
+            let has_post_validation = post_validation.is_program_call();
+            let has_route_pin = instruction_constraint.has_effective_pins();
+            require!(
+                has_post_validation || has_route_pin,
+                TributaryError::PermissionlessExecutionRequiresSafetyNet
+            );
         }
 
         // ── Resolve ComposablePolicy PDA signer seeds ──────────────────
@@ -954,16 +913,11 @@ impl<'info> ExecuteComposable<'info> {
         let intermediate_owner_seeds: &[&[&[u8]]] = &[signer_seeds];
 
         // ── Scheduler cut routing strip (ADR-0017) ─────────────────────
-        // Permissionless path: the caller's ATA is the LAST remaining_account.
-        // Strip it before validation/forward CPI so those parsers see only
-        // their own accounts. Condition matches the caller's append rule:
-        // is_permissionless && gateway.scheduler_share_bps > 0.
-        // (`gateway_signer` was snapshotted above for the ADR-0016 gate.)
         let scheduler_share_bps = ctx.accounts.gateway.scheduler_share_bps;
         let is_permissionless = caller_key != gateway_signer;
         let needs_scheduler_ata = is_permissionless && scheduler_share_bps > 0;
 
-        let (effective_remaining, scheduler_ata_info) = if needs_scheduler_ata {
+        let (remaining_after_sched, scheduler_ata_info) = if needs_scheduler_ata {
             require!(
                 !ctx.remaining_accounts.is_empty(),
                 TributaryError::MissingSchedulerFeeAccount
@@ -975,33 +929,44 @@ impl<'info> ExecuteComposable<'info> {
             (ctx.remaining_accounts, None)
         };
 
-        // ── Step 2: VALIDATION CPI (if configured) ─────────────────────
-        // No signer seeds are passed — validation is read-only (C-1).
-        //
-        // ValidationPda is a typed Anchor account (ADR-0016): typed
-        // deserialisation + seed check + pin-check of caller-supplied
-        // target accounts against owner-declared `pinned_accounts` happen
-        // inside `run_validation_cpi`. This closes vector (d): a relayer
-        // can no longer substitute a positional target to trip the
-        // Lighthouse assertion against the wrong state. The 1 KiB struct
-        // stays in the callee's SBF frame, not this handler's.
-        let forward_accounts_start = if has_validation {
+        // ── Post-validation target strip (from end) ────────────────────
+        // Post-validation targets are the LAST entries (before scheduler ATA
+        // which was already stripped). We need to load the post ValidationPda
+        // to know how many to peel off.
+        let post_num_pinned = if post_validation.is_program_call() {
+            let post_pda_info = ctx.accounts.post_validation_pda.to_account_info();
+            let post_program_info = ctx.accounts.post_validation_program.to_account_info();
+            let post_program_id = post_validation.program_id();
             require!(
-                ctx.accounts.validation_program.key() == stored_validation_program,
+                post_program_info.key() == post_program_id,
                 TributaryError::ValidationPdaMismatch
             );
-            let validation_program_info = ctx.accounts.validation_program.to_account_info();
-            let validation_pda_info = ctx.accounts.validation_pda.to_account_info();
-            run_validation_cpi(
-                effective_remaining,
-                &validation_pda_info,
-                &policy_key,
+            // Just read num_pinned without running the CPI yet — we need
+            // the count to split remaining_accounts. The full CPI runs later.
+            let val_pda_key = Pubkey::find_program_address(
+                &[VALIDATION_PDA_POST_SEED, policy_key.as_ref()],
                 ctx.program_id,
-                &validation_program_info,
-            )?
+            );
+            require!(
+                post_pda_info.key() == val_pda_key.0,
+                TributaryError::ValidationPdaMismatch
+            );
+            let validation_pda: ValidationPda = {
+                let data = post_pda_info.try_borrow_data()?;
+                let mut slice: &[u8] = &data;
+                ValidationPda::try_deserialize(&mut slice)?
+            };
+            validation_pda.num_pinned_accounts as usize
         } else {
             0
         };
+
+        let post_start = remaining_after_sched.len().saturating_sub(post_num_pinned);
+        let post_val_accounts: Vec<AccountInfo<'info>> = remaining_after_sched[post_start..]
+            .iter()
+            .cloned()
+            .collect();
+        let remaining_mid: &[AccountInfo<'info>] = &remaining_after_sched[..post_start];
 
         // ── Cache account infos used by multiple steps ─────────────────
         let token_program_info = ctx.accounts.token_program.to_account_info();
@@ -1011,18 +976,9 @@ impl<'info> ExecuteComposable<'info> {
         let output_mint_decimals = ctx.accounts.output_mint.decimals;
         let user_token_info = ctx.accounts.user_token_account.to_account_info();
         let user_payment_info = ctx.accounts.user_payment.to_account_info();
-        // ComposablePolicy info — used as the intermediate-ATA owner/
-        // authority for create, sweep, and close CPIs.
         let composable_policy_info = ctx.accounts.composable_policy.to_account_info();
 
-        // ── Resolve pull delegate for Step 3 ───────────────────────────
-        // The user's token account may delegate to EITHER the UserPayment
-        // PDA (v1) or the global payments_delegate PDA (v0) — see
-        // MIGRATION.md. Only the initial pull (user → intermediate) uses
-        // the resolved authority; this is the ONLY CPI that can touch the
-        // user's source balance. All subsequent CPIs (forward, sweep,
-        // close) are signed by the ComposablePolicy PDA, which owns the
-        // intermediate ATAs but has no authority over user_token_account.
+        // ── Resolve pull delegate ──────────────────────────────────────
         let pull_resolution = resolve_delegate(
             &ctx.accounts.user_payment,
             user_payment_info.clone(),
@@ -1036,7 +992,7 @@ impl<'info> ExecuteComposable<'info> {
         let pull_seeds: &[&[&[u8]]] = &[pull_signer_seeds];
         let pull_authority = &pull_resolution.authority_info;
 
-        // ── Step 2.5: CREATE intermediate ATAs if needed ──────────────
+        // ── Create intermediate ATAs ───────────────────────────────────
         let fee_payer_info = ctx.accounts.fee_payer.to_account_info();
         let system_program_info = ctx.accounts.system_program.to_account_info();
         let atp_info = ctx.accounts.associated_token_program.to_account_info();
@@ -1054,8 +1010,6 @@ impl<'info> ExecuteComposable<'info> {
             &atp_info,
         )?;
 
-        // Only create the output ATA when it's a distinct account
-        // (input_mint != output_mint).
         if ctx.accounts.mint.key() != ctx.accounts.output_mint.key() {
             let output_ata_info = ctx
                 .accounts
@@ -1072,7 +1026,7 @@ impl<'info> ExecuteComposable<'info> {
             )?;
         }
 
-        // ── Step 3: FUND intermediate_input_token_account ──────
+        // ── Phase 1: PULL (user → intermediate_input) ──────────────────
         {
             let cpi_accounts = TransferChecked {
                 from: user_token_info.clone(),
@@ -1088,21 +1042,69 @@ impl<'info> ExecuteComposable<'info> {
             token_interface::transfer_checked(cpi_ctx, input_amount, input_mint_decimals)?;
         }
 
-        // ── Step 5: FORWARD CPI ────────────────────────────────────────
-        // Skipped when the policy has no forward step (target_program =
-        // default). For the same-mint topup path the intermediate was
-        // funded by the pull (Step 3) and input/output intermediates
-        // collapse into one account, so process_output_and_sweep reads
-        // the funded balance directly. No accounts beyond the validation
-        // range are consumed in the disabled case.
+        // ── Phase 2: PRE-VALIDATION CPI (if ProgramCall) ───────────────
+        // remaining_mid layout: [...preValTargets, ...forwardAccounts]
+        let forward_accounts_start = if pre_validation.is_program_call() {
+            let pre_program_info = ctx.accounts.pre_validation_program.to_account_info();
+            let pre_pda_info = ctx.accounts.pre_validation_pda.to_account_info();
+            require!(
+                pre_program_info.key() == pre_validation.program_id(),
+                TributaryError::ValidationPdaMismatch
+            );
+            run_validation_cpi(
+                remaining_mid,
+                &pre_pda_info,
+                &policy_key,
+                ctx.program_id,
+                &pre_program_info,
+                VALIDATION_PDA_PRE_SEED,
+            )?
+        } else {
+            0
+        };
+
+        // ── Phase 3: FORWARD CPI (if enabled) ──────────────────────────
+        // Pin-check: for each non-wildcard pinned slot, the corresponding
+        // remaining_account must match.
         if target_program != Pubkey::default() {
+            let n_pins = (instruction_constraint.num_pinned_accounts as usize)
+                .min(MAX_PINNED_FORWARD_ACCOUNTS);
+            let fwd_base = forward_accounts_start;
+            for i in 0..n_pins {
+                let pin = instruction_constraint.pinned_accounts[i];
+                if pin != Pubkey::default() {
+                    require!(
+                        fwd_base + i < remaining_mid.len(),
+                        TributaryError::MissingForwardAccounts
+                    );
+                    require!(
+                        remaining_mid[fwd_base + i].key() == pin,
+                        TributaryError::ByteRangeCheckFailed
+                    );
+                }
+            }
             run_forward_cpi(
-                effective_remaining,
+                remaining_mid,
                 forward_accounts_start,
                 target_program,
                 &instruction_data,
                 intermediate_owner,
                 signer_seeds,
+            )?;
+        }
+
+        // ── Phase 4: POST-VALIDATION CPI (if ProgramCall) ──────────────
+        if post_validation.is_program_call() {
+            let post_program_info = ctx.accounts.post_validation_program.to_account_info();
+            let post_pda_info = ctx.accounts.post_validation_pda.to_account_info();
+            // Reuse the already-stripped post_val_accounts.
+            run_validation_cpi(
+                &post_val_accounts,
+                &post_pda_info,
+                &policy_key,
+                ctx.program_id,
+                &post_program_info,
+                VALIDATION_PDA_POST_SEED,
             )?;
         }
 
@@ -1123,7 +1125,6 @@ impl<'info> ExecuteComposable<'info> {
             &ctx.accounts.gateway_fee_account.to_account_info(),
             &ctx.accounts.protocol_fee_account.to_account_info(),
             &ctx.accounts.recipient_token_account.to_account_info(),
-            min_output_amount,
             intermediate_owner_seeds,
             native_output,
             caller_key,

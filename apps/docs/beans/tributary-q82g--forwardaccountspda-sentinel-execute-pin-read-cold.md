@@ -1,11 +1,11 @@
 ---
 # tributary-q82g
 title: 'On-chain: InstructionConstraint + ValidationSpec + two ValidationPDAs + gate'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-07-02T08:01:05Z
-updated_at: 2026-07-02T11:46:18Z
+updated_at: 2026-07-02T12:48:47Z
 parent: tributary-cjhh
 ---
 
@@ -211,3 +211,14 @@ Padding grows ~154 bytes (ComposablePolicy NOT deployed, no migration):
 - [ ] min_output_amount removed from ForwardConfig. No floor check at settle.
 - [ ] Two ValidationPda seeds (pre/post) derive correctly. Each independently created/closed.
 - [ ] cargo test green. ForwardConfig::SIZE recomputed. ComposablePolicy::SIZE recomputed.
+
+## Summary of Changes
+
+- Replaced ForwardConfig fields (target_program/num_data_checks/data_checks/min_output_amount) with InstructionConstraint (program_id + data_checks + pinned_accounts inline)
+- Added ValidationSpec enum (Disabled/ProgramCall/Inline) replacing ValidationConfig
+- ComposablePolicy now carries pre_validation + post_validation (two ValidationSpec instances)
+- Two ValidationPda seeds: composable_validation_pre / composable_validation_post
+- Execute flow: PULL → PRE-VALIDATION → FORWARD (pin-checked) → POST-VALIDATION → SETTLE (no min_output check)
+- Cold-relayer gate: post_validation=ProgramCall OR instruction_constraint.has_effective_pins()
+- Degenerate-pin guard: create rejects zero-effective-pins InstructionConstraint when forward enabled
+- 139 unit tests + 21 proptests green; IDL regenerated

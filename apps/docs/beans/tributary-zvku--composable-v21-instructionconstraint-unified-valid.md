@@ -1,11 +1,11 @@
 ---
 # tributary-zvku
 title: Composable v2.1 — InstructionConstraint + Unified ValidationSpec
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-02T11:43:00Z
-updated_at: 2026-07-02T11:43:00Z
+updated_at: 2026-07-02T13:06:53Z
 ---
 
 Composable policy refactoring inspired by Squads smart-account-program analysis (bean tributary-ssd9). Three structural changes to the pre-launch ComposablePolicy account:
@@ -67,3 +67,33 @@ No realloc (deferred to tributary-okhd). All types use fixed arrays.
 - implementation: program contract + sdk + apps
 - testing: surfpool integration tests
 - documentation: ADR amendments (0010, 0016) + CONTEXT/README
+
+## Summary of Changes
+
+### Program contract (tributary-cjhh → q82g + 1355)
+- **InstructionConstraint** struct replaces target_program + ByteRangeCheck[] + scrapped ForwardAccountsPda
+- **ValidationSpec** enum (Disabled/ProgramCall/Inline) replaces ValidationConfig, instantiated as pre + post
+- Two ValidationPda seeds: composable_validation_pre / composable_validation_post
+- min_output_amount REMOVED — post_validation generalizes it
+- Execute flow: PULL → PRE-VALIDATION → FORWARD (pin-checked) → POST-VALIDATION → SETTLE
+- Cold-relayer OR-gate: post_validation=ProgramCall OR has_effective_pins()
+- Degenerate-pin guard at create
+- Gateway FEATURE_PERMISSIONLESS frozen at create (not toggleable post-create)
+- 160 Rust tests green (139 lib + 21 proptest), IDL regenerated
+
+### SDK (tributary-ksdy)
+- New constants: SEEDS.VALIDATION_PDA_PRE/POST, MAX_PINNED_FORWARD_ACCOUNTS
+- New PDA helpers: getPreValidationPda/getPostValidationPda
+- New types: InstructionConstraint, ValidationSpec (IDL-derived)
+- Updated getCreateComposablePolicyInstruction + executeComposable + deleteComposablePolicy
+- createPaymentGateway accepts initialFeatureFlags
+- SDK builds clean (tsup + tsc --noEmit)
+
+### Documentation (tributary-xzfo)
+- Amended ADR-0010, ADR-0016
+- Created ADR-0021
+- Updated AGENTS.md (ForwardConfig/ValidationSpec docs, execution flow, ADR map)
+
+### Deferred
+- Integration tests (tributary-3s4i/umov) — need Surfpool running, covered by Rust unit tests
+- Non-fungible-output forwards (tributary-2p5g) — explicitly out of scope, blocked by this milestone

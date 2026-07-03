@@ -46,10 +46,13 @@ function getComposablePolicyPda(
 
 function getValidationPda(
   composablePolicy: PublicKey,
-  programId: PublicKey
+  programId: PublicKey,
+  phase: "pre" | "post" = "pre"
 ): [PublicKey, number] {
+  const seed =
+    phase === "pre" ? SEEDS.VALIDATION_PDA_PRE : SEEDS.VALIDATION_PDA_POST;
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(SEEDS.VALIDATION_PDA), composablePolicy.toBuffer()],
+    [Buffer.from(seed), composablePolicy.toBuffer()],
     programId
   );
 }
@@ -68,13 +71,43 @@ function defaultForwardConfig(
   outputMint: PublicKey
 ): any {
   return {
-    targetProgram: METEORA_DLMM_PUBKEY,
     inputMint: inputMint,
     outputMint: outputMint,
-    minOutputAmount: null,
     forwardFlags: 0,
-    numDataChecks: 1,
-    dataChecks: defaultByteRangeChecks(),
+    instructionConstraint: {
+      programId: METEORA_DLMM_PUBKEY,
+      numDataChecks: 1,
+      dataChecks: defaultByteRangeChecks(),
+      numPinnedAccounts: 1,
+      pinnedAccounts: [
+        PublicKey.unique(),
+        PublicKey.default,
+        PublicKey.default,
+        PublicKey.default,
+      ],
+    },
+  };
+}
+
+const DISABLED_SPEC = { disabled: {} } as any;
+const DISABLED_INIT = {
+  numPinnedAccounts: 0,
+  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  validationData: Buffer.alloc(0),
+} as any;
+
+function programCallSpec(programId: PublicKey): any {
+  return { programCall: { programId } };
+}
+
+function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
+  return {
+    numPinnedAccounts: pinnedAccounts.length,
+    pinnedAccounts: [
+      pinnedAccounts[0] ?? PublicKey.default,
+      pinnedAccounts[1] ?? PublicKey.default,
+    ],
+    validationData: data,
   };
 }
 
@@ -298,9 +331,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const ix = await program.methods
@@ -308,9 +347,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -320,8 +360,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -346,11 +388,11 @@ describe("Composable Policies", () => {
     expect(policy.totalInput.toNumber()).toBe(0);
     expect(policy.totalOutput.toNumber()).toBe(0);
     expect(policy.paymentCount).toBe(0);
-    expect(policy.forwardConfig.targetProgram).toEqual(METEORA_DLMM_PUBKEY);
-    expect(policy.forwardConfig.numDataChecks).toBe(1);
-    expect(policy.validationConfig.validationProgram).toEqual(
-      PublicKey.default
+    expect(policy.forwardConfig.instructionConstraint.programId).toEqual(
+      METEORA_DLMM_PUBKEY
     );
+    expect(policy.forwardConfig.instructionConstraint.numDataChecks).toBe(1);
+    expect(policy.preValidation).toEqual({ disabled: {} });
 
     expect(policy.policyType.subscription.amount.toNumber()).toBe(1_000_000);
     expect(policy.policyType.subscription.autoRenew).toBe(true);
@@ -378,9 +420,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -404,9 +452,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        1,
-        [pinnedTarget, PublicKey.default],
-        validationData
+        programCallSpec(LIGHTHOUSE_PUBKEY),
+        validationInit([pinnedTarget], validationData),
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -416,8 +465,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: LIGHTHOUSE_PUBKEY,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -435,9 +486,9 @@ describe("Composable Policies", () => {
       composablePolicyPDA
     );
 
-    expect(policy.validationConfig.validationProgram).toEqual(
-      LIGHTHOUSE_PUBKEY
-    );
+    expect(policy.preValidation).toEqual({
+      programCall: { programId: LIGHTHOUSE_PUBKEY },
+    });
     expect(policy.status).toEqual({ active: {} });
 
     // ValidationPda is now a typed Anchor account (ADR-0016). The pinned
@@ -446,7 +497,7 @@ describe("Composable Policies", () => {
     // ValidationPda as a fetchable account (it enters as UncheckedAccount),
     // so parse via the SDK raw-bytes helper.
     const validationPdaRaw = await connection.getAccountInfo(
-      validationPdaAddress
+      preValidationPdaAddress
     );
     expect(validationPdaRaw).not.toBeNull();
     const parsed = parseValidationPda(Buffer.from(validationPdaRaw!.data));
@@ -473,9 +524,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -484,16 +541,17 @@ describe("Composable Policies", () => {
 
     const rogueProgram = Keypair.generate().publicKey;
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    forwardConfig.targetProgram = rogueProgram;
+    forwardConfig.instructionConstraint.programId = rogueProgram;
 
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -503,8 +561,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -533,9 +593,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -550,9 +616,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.from("some-data")
+        programCallSpec(rogueValidation),
+        validationInit([], Buffer.from("some-data")),
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -562,8 +629,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: rogueValidation,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: rogueValidation,
+        postValidationProgram: SystemProgram.programId,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -592,9 +661,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -602,16 +677,17 @@ describe("Composable Policies", () => {
     const memo = new Array(32).fill(0);
 
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    forwardConfig.numDataChecks = 0;
+    forwardConfig.instructionConstraint.numDataChecks = 0;
 
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -621,8 +697,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -655,9 +733,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -667,16 +751,17 @@ describe("Composable Policies", () => {
     // MAX_BYTE_RANGE_CHECKS == 4 on-chain. Sending 5 must be rejected at
     // create time with InsufficientByteRangeChecks.
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    forwardConfig.numDataChecks = 5;
+    forwardConfig.instructionConstraint.numDataChecks = 5;
 
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -686,8 +771,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -721,9 +808,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -735,7 +828,7 @@ describe("Composable Policies", () => {
     // `&expected[..16]` would panic on the `[u8; 8]` array. Must be
     // rejected at create time with ByteRangeCheckFailed.
     const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
-    forwardConfig.dataChecks[0] = {
+    forwardConfig.instructionConstraint.dataChecks[0] = {
       offset: 0,
       length: 16,
       expected: [1, 2, 3, 4, 5, 6, 7, 8],
@@ -746,9 +839,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -758,8 +852,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -788,9 +884,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const now = await getOnChainNow(connection);
@@ -804,9 +906,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -816,8 +919,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -917,9 +1022,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
@@ -935,9 +1046,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -947,8 +1059,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -1027,9 +1141,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const pastTime = (await getOnChainNow(connection)) - 3600;
@@ -1047,13 +1167,21 @@ describe("Composable Policies", () => {
     };
 
     const forwardConfig = {
-      targetProgram: METEORA_DLMM_PUBKEY,
       inputMint: tokenMint,
       outputMint: secondMint,
-      minOutputAmount: null,
       forwardFlags: 0,
-      numDataChecks: 1,
-      dataChecks: dataChecks,
+      instructionConstraint: {
+        programId: METEORA_DLMM_PUBKEY,
+        numDataChecks: 1,
+        dataChecks: dataChecks,
+        numPinnedAccounts: 1,
+        pinnedAccounts: [
+          PublicKey.unique(),
+          PublicKey.default,
+          PublicKey.default,
+          PublicKey.default,
+        ],
+      },
     };
 
     const createIx = await program.methods
@@ -1061,9 +1189,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -1073,8 +1202,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -1115,10 +1246,17 @@ describe("Composable Policies", () => {
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
-        validationProgram: PublicKey.default,
-        validationPda: getValidationPda(
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
+        preValidationPda: getValidationPda(
           composablePolicyPDA,
-          program.programId
+          program.programId,
+          "pre"
+        )[0],
+        postValidationPda: getValidationPda(
+          composablePolicyPDA,
+          program.programId,
+          "post"
         )[0],
         config: configPDA,
         userTokenAccount: userTokenAccount,
@@ -1179,9 +1317,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const pastTime = (await getOnChainNow(connection)) - 3600;
@@ -1193,9 +1337,10 @@ describe("Composable Policies", () => {
         policyType,
         new Array(32).fill(0),
         defaultForwardConfig(tokenMint, secondMint),
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -1205,8 +1350,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -1233,6 +1380,8 @@ describe("Composable Policies", () => {
       10_000_000
     );
 
+    // Ensure user has a secondMint ATA (recipient = user, output = secondMint)
+    await ensureTokenAccount(user.publicKey, secondMint);
     const recipientTokenAccount = getAssociatedTokenAddressSync(
       secondMint,
       user.publicKey
@@ -1249,10 +1398,17 @@ describe("Composable Policies", () => {
         composablePolicy: composablePolicyPDA,
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
-        validationProgram: PublicKey.default,
-        validationPda: getValidationPda(
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
+        preValidationPda: getValidationPda(
           composablePolicyPDA,
-          program.programId
+          program.programId,
+          "pre"
+        )[0],
+        postValidationPda: getValidationPda(
+          composablePolicyPDA,
+          program.programId,
+          "post"
         )[0],
         config: configPDA,
         userTokenAccount: userTokenAccount,
@@ -1312,9 +1468,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const pastTime = (await getOnChainNow(connection)) - 3600;
@@ -1329,9 +1491,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        0,
-        [PublicKey.default, PublicKey.default],
-        Buffer.alloc(0)
+        DISABLED_SPEC,
+        DISABLED_INIT,
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -1341,8 +1504,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: PublicKey.default,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -1388,10 +1553,17 @@ describe("Composable Policies", () => {
         gateway: gatewayPDA,
         config: configPDA,
         userTokenAccount: userTokenAccount,
-        validationProgram: PublicKey.default,
-        validationPda: getValidationPda(
+        preValidationProgram: PublicKey.default,
+        postValidationProgram: PublicKey.default,
+        preValidationPda: getValidationPda(
           composablePolicyPDA,
-          program.programId
+          program.programId,
+          "pre"
+        )[0],
+        postValidationPda: getValidationPda(
+          composablePolicyPDA,
+          program.programId,
+          "post"
         )[0],
         mint: tokenMint,
         outputMint: secondMint,
@@ -1446,9 +1618,15 @@ describe("Composable Policies", () => {
       program.programId
     );
 
-    const [validationPdaAddress] = getValidationPda(
+    const [preValidationPdaAddress] = getValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
+      "pre"
+    );
+    const [postValidationPdaAddress] = getValidationPda(
+      composablePolicyPDA,
+      program.programId,
+      "post"
     );
 
     const activeBefore = userPaymentBefore!.activeComposableCount ?? 0;
@@ -1471,9 +1649,10 @@ describe("Composable Policies", () => {
         policyType,
         memo,
         forwardConfig,
-        2,
-        [pinnedA, pinnedB],
-        validationData
+        programCallSpec(LIGHTHOUSE_PUBKEY),
+        validationInit([pinnedA, pinnedB], validationData),
+        DISABLED_SPEC,
+        DISABLED_INIT
       )
       .accountsStrict({
         feePayer: user.publicKey,
@@ -1483,8 +1662,10 @@ describe("Composable Policies", () => {
         userPayment: userPaymentPDA,
         gateway: gatewayPDA,
         config: configPDA,
-        validationPda: validationPdaAddress,
-        validationProgram: LIGHTHOUSE_PUBKEY,
+        preValidationPda: preValidationPdaAddress,
+        postValidationPda: postValidationPdaAddress,
+        preValidationProgram: LIGHTHOUSE_PUBKEY,
+        postValidationProgram: SystemProgram.programId,
         inputMint: tokenMint,
         outputMint: secondMint,
         systemProgram: SystemProgram.programId,
@@ -1499,7 +1680,9 @@ describe("Composable Policies", () => {
     );
 
     // Verify ValidationPDA exists
-    const valPdaBefore = await connection.getAccountInfo(validationPdaAddress);
+    const valPdaBefore = await connection.getAccountInfo(
+      preValidationPdaAddress
+    );
     expect(valPdaBefore).not.toBeNull();
 
     // Pause
@@ -1535,7 +1718,7 @@ describe("Composable Policies", () => {
       })
       .remainingAccounts([
         {
-          pubkey: validationPdaAddress,
+          pubkey: preValidationPdaAddress,
           isSigner: false,
           isWritable: true,
         },
@@ -1555,7 +1738,9 @@ describe("Composable Policies", () => {
     );
     expect(policyAfter).toBeNull();
 
-    const valPdaAfter = await connection.getAccountInfo(validationPdaAddress);
+    const valPdaAfter = await connection.getAccountInfo(
+      preValidationPdaAddress
+    );
     expect(valPdaAfter).toBeNull();
 
     const userPaymentAfter = await sdk.getUserPayment(userPaymentPDA);
@@ -1617,9 +1802,15 @@ describe("Composable Policies", () => {
         b2PolicyId,
         program.programId
       );
-      const [validationPdaAddress] = getValidationPda(
+      const [preValidationPdaAddress] = getValidationPda(
         b2ComposablePolicyPDA,
-        program.programId
+        program.programId,
+        "pre"
+      );
+      const [postValidationPdaAddress] = getValidationPda(
+        b2ComposablePolicyPDA,
+        program.programId,
+        "post"
       );
 
       const createIx = await program.methods
@@ -1627,9 +1818,10 @@ describe("Composable Policies", () => {
           defaultSubscriptionPolicy(1_000_000, nextDue),
           memo,
           forwardConfig,
-          0,
-          [PublicKey.default, PublicKey.default],
-          Buffer.alloc(0)
+          DISABLED_SPEC,
+          DISABLED_INIT,
+          DISABLED_SPEC,
+          DISABLED_INIT
         )
         .accountsStrict({
           feePayer: b2User.publicKey,
@@ -1639,8 +1831,10 @@ describe("Composable Policies", () => {
           userPayment: b2UserPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
+          preValidationPda: preValidationPdaAddress,
+          postValidationPda: postValidationPdaAddress,
+          preValidationProgram: PublicKey.default,
+          postValidationProgram: PublicKey.default,
           inputMint: tokenMint,
           outputMint: secondMint,
           systemProgram: SystemProgram.programId,
@@ -1772,9 +1966,15 @@ describe("Composable Policies", () => {
         composablePolicyId,
         program.programId
       );
-      const [validationPdaAddress] = getValidationPda(
+      const [preValidationPdaAddress] = getValidationPda(
         composablePolicyPDA,
-        program.programId
+        program.programId,
+        "pre"
+      );
+      const [postValidationPdaAddress] = getValidationPda(
+        composablePolicyPDA,
+        program.programId,
+        "post"
       );
 
       const pastTime = (await getOnChainNow(connection)) - 3600;
@@ -1788,9 +1988,10 @@ describe("Composable Policies", () => {
           policyType,
           memo,
           forwardConfig,
-          0,
-          [PublicKey.default, PublicKey.default],
-          Buffer.alloc(0)
+          DISABLED_SPEC,
+          DISABLED_INIT,
+          DISABLED_SPEC,
+          DISABLED_INIT
         )
         .accountsStrict({
           feePayer: user.publicKey,
@@ -1800,8 +2001,10 @@ describe("Composable Policies", () => {
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
+          preValidationPda: preValidationPdaAddress,
+          postValidationPda: postValidationPdaAddress,
+          preValidationProgram: PublicKey.default,
+          postValidationProgram: PublicKey.default,
           inputMint: tokenMint,
           outputMint: secondMint,
           systemProgram: SystemProgram.programId,
@@ -1837,9 +2040,15 @@ describe("Composable Policies", () => {
         composablePolicyId,
         program.programId
       );
-      const [validationPdaAddress] = getValidationPda(
+      const [preValidationPdaAddress] = getValidationPda(
         composablePolicyPDA,
-        program.programId
+        program.programId,
+        "pre"
+      );
+      const [postValidationPdaAddress] = getValidationPda(
+        composablePolicyPDA,
+        program.programId,
+        "post"
       );
 
       const pastTime = (await getOnChainNow(connection)) - 3600;
@@ -1852,9 +2061,10 @@ describe("Composable Policies", () => {
           policyType,
           memo,
           forwardConfig,
-          0,
-          [PublicKey.default, PublicKey.default],
-          Buffer.alloc(0)
+          DISABLED_SPEC,
+          DISABLED_INIT,
+          DISABLED_SPEC,
+          DISABLED_INIT
         )
         .accountsStrict({
           feePayer: user.publicKey,
@@ -1864,8 +2074,10 @@ describe("Composable Policies", () => {
           userPayment: userPaymentPDA,
           gateway: gatewayPDA,
           config: configPDA,
-          validationPda: validationPdaAddress,
-          validationProgram: PublicKey.default,
+          preValidationPda: preValidationPdaAddress,
+          postValidationPda: postValidationPdaAddress,
+          preValidationProgram: PublicKey.default,
+          postValidationProgram: PublicKey.default,
           inputMint: tokenMint,
           outputMint: secondMint,
           systemProgram: SystemProgram.programId,

@@ -124,15 +124,22 @@ export type ReferralAccount = IdlAccounts<Tributary>["referralAccount"];
 
 /**
  * Forward configuration for composable policies.
- * Specifies token forwarding behavior during composable execution.
+ * Contains InstructionConstraint (program pinning + account pinning) + mints + flags.
  */
 export type ForwardConfig = IdlTypes<Tributary>["forwardConfig"];
 
 /**
- * Validation configuration for composable policies.
- * Defines validation rules applied during composable execution.
+ * Instruction constraint for composable policies.
+ * Pins the forward program, its instruction selector, and positional accounts.
  */
-export type ValidationConfig = IdlTypes<Tributary>["validationConfig"];
+export type InstructionConstraint =
+  IdlTypes<Tributary>["instructionConstraint"];
+
+/**
+ * Validation spec for composable policies (pre or post forward).
+ * Disabled | ProgramCall { program_id } | Inline (reserved).
+ */
+export type ValidationSpec = IdlTypes<Tributary>["validationSpec"];
 
 /**
  * Byte range check for composable policy validation.
@@ -197,7 +204,7 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
   const pinnedAccounts: PublicKey[] = [];
   for (let i = 0; i < numPinnedAccounts; i++) {
     pinnedAccounts.push(
-      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32))
+      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32)),
     );
   }
   const dataLen = data.readUInt16LE(VALIDATION_PDA_LAYOUT.HEADER - 2);
@@ -208,7 +215,7 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
     dataLen,
     data: data.subarray(
       VALIDATION_PDA_LAYOUT.HEADER,
-      VALIDATION_PDA_LAYOUT.HEADER + dataLen
+      VALIDATION_PDA_LAYOUT.HEADER + dataLen,
     ),
   };
 }

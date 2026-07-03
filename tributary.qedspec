@@ -23,8 +23,9 @@
 // OUT OF SCOPE (integration-tested only — see Honest Claim in README):
 //   account wiring / PDA derivation, forward-program allowlist (Meteora),
 //   signer sanitization (ADR-0008), emergency-pause wiring, admin/config
-//   handlers. Swap-output conservation is Meteora DLMM's responsibility.
-//   `delegated_amount` is SPL Token program state (read-only here).
+//   handlers, post_validation assertions (Lighthouse). Swap-output
+//   conservation is Meteora DLMM's responsibility. `delegated_amount` is
+//   SPL Token program state (read-only here).
 
 spec Tributary
 program_id "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
@@ -202,9 +203,13 @@ handler execute_payment (chunk : U64) (current_time : U64) : State -> State {
 // ── execute_composable (PAYG branch) ────────────────────────────────
 // Reuses calculate_fees (ADR-0010) — the fee/sweep conservation obligation
 // is identical to execute_payment. The forward (swap) step is Meteora's
-// responsibility and is OUT of scope; `min_output_amount` net enforcement
-// is a one-line require on the post-fee output, captured as a requires.
-handler execute_composable (chunk : U64) (current_time : U64) (min_output : U64) : State -> State {
+// responsibility and is OUT of scope.
+//
+// v2.1 (bean tributary-zvku): min_output_amount was REMOVED from the code.
+// post_validation (a Lighthouse assertion) generalizes it. The formal model
+// was never affected — min_output was a pass-through parameter with no role
+// in any property. It is dropped here for spec-code fidelity.
+handler execute_composable (chunk : U64) (current_time : U64) : State -> State {
   permissionless
   requires emergency_pause == 0 else ProgramPaused
   requires policy_status == 0 else PolicyPaused
@@ -359,11 +364,13 @@ property referral_pool_bounded :
   state.referral_pool <= state.total_fee
   preserved_by all except [create_payment_policy, transfer]
 
-// Sweep non-negativity (composable min_output_amount check, ADR-0010):
+// Sweep non-negativity (composable settlement, ADR-0010 amended):
 // after fee deduction, the recipient receives a non-negative amount.
 // recipient_amount = payment_amount - total_fee ≥ 0, enforced by the
-// checked_sub in calculate_fees. This is the NET (post-fee) guarantee
-// that composable's min_output_amount check relies on.
+// checked_sub in calculate_fees. v2.1: min_output_amount was removed;
+// post_validation (Lighthouse assertion) generalizes the output floor.
+// This property models the structural invariant (fee ≤ payment), not
+// the owner-set floor (which is an assertion, not a state predicate).
 property sweep_nonnegative :
   state.recipient_amount <= state.payment_amount
   preserved_by all except [create_payment_policy, transfer]

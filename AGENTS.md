@@ -189,30 +189,41 @@ Both hooks are **opt-in** via sentinel values (disabled = `Pubkey::default` /
 `SystemProgram`). A composable policy with both disabled behaves like a
 PaymentPolicy but with a separate PDA namespace and an intermediate ATA hop.
 
-### Execution flow (3 phases)
+### Execution flow (5 phases, v2.1)
 
 ```
 execute_composable:
+  ┌─ Phase 0: BYTE-RANGE CHECKS + GATE ─────────────────────────────┐
+  │ Validate forward instruction_data against InstructionConstraint   │
+  │ data_checks (if forward enabled). Cold-relayer OR-gate:           │
+  │   has_post_validation || has_route_pin (ADR-0016 amended)        │
+  └──────────────────────────────────────────────────────────────────┘
   ┌─ Phase 1: PULL ──────────────────────────────────────────────────┐
-  │ UserPayment PDA signs transfer:                                  │
+  │ Create intermediate ATAs (owned by ComposablePolicy PDA).         │
+  │ UserPayment PDA signs transfer:                                   │
   │   user_token_account → intermediate_input_ata                    │
-  │ (intermediate ATAs are owned by ComposablePolicy PDA, NOT the    │
-  │  UserPayment PDA — decouples intermediate authority from the     │
-  │  user-source delegate)                                           │
   └──────────────────────────────────────────────────────────────────┘
-  ┌─ Phase 2: VALIDATE (optional) ───────────────────────────────────┐
-  │ CPI into validation_program (Lighthouse) with stored             │
-  │ validation_data + declared read-accounts. Fails the tx if the    │
-  │ assertion doesn't hold. Read-only — cannot move funds.           │
+  ┌─ Phase 2: PRE-VALIDATION (optional) ─────────────────────────────┐
+  │ If pre_validation = ProgramCall: CPI into validation_program     │
+  │ (Lighthouse) with assertion data from pre ValidationPda.         │
+  │ Fails the tx if the assertion doesn't hold. Read-only.           │
   └──────────────────────────────────────────────────────────────────┘
-  ┌─ Phase 3: FORWARD (optional) + SETTLE ───────────────────────────┐
-  │ If forward enabled: CPI into target_program (Meteora DLMM) to    │
-  │   swap intermediate_input_ata → intermediate_output_ata.         │
+  ┌─ Phase 3: FORWARD (optional) + PIN-CHECK ────────────────────────┐
+  │ If forward enabled: pin-check InstructionConstraint.pinned_accounts│
+  │ against remaining_accounts. CPI into target_program (Meteora DLMM)│
+  │ to swap intermediate_input_ata → intermediate_output_ata.        │
   │ Byte-range checks validate the forward instruction selector.     │
+  └──────────────────────────────────────────────────────────────────┘
+  ┌─ Phase 4: POST-VALIDATION (optional) ────────────────────────────┐
+  │ If post_validation = ProgramCall: CPI into validation_program    │
+  │ with assertion data from post ValidationPda. Replaces the old    │
+  │ min_output_amount check. Owners assert output ≥ floor, etc.     │
+  └──────────────────────────────────────────────────────────────────┘
+  ┌─ Phase 5: SETTLE ────────────────────────────────────────────────┐
   │ Sweep intermediate_output → recipient + protocol fee + gateway    │
-  │   fee. min_output_amount enforced on NET (post-fee) amount.      │
-  │ If forward disabled (sentinel): sweep input directly to recipient│
-  │   + fees (same-mint topup pattern).                              │
+  │ fee. NO min_output check (post_validation generalizes it).       │
+  │ If forward disabled (sentinel): sweep input directly to          │
+  │   recipient + fees (same-mint topup pattern).                    │
   └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -220,36 +231,51 @@ execute_composable:
 
 ```rust
 struct ForwardConfig {
-    target_program: Pubkey,       // Pubkey::default() = disabled (sentinel)
+    instruction_constraint: InstructionConstraint,  // see below
     input_mint: Pubkey,           // == user_payment.token_mint
     output_mint: Pubkey,          // recipient delivery mint
-    min_output_amount: Option<u64>, // NET (post-fee) minimum, DeFi convention
     forward_flags: u8,
+}
+
+struct InstructionConstraint {
+    program_id: Pubkey,       // Pubkey::default() = disabled (sentinel)
     num_data_checks: u8,
     data_checks: [ByteRangeCheck; 4], // pin forward instruction selector
+    num_pinned_accounts: u8,
+    pinned_accounts: [Pubkey; 4],     // positional, default() = wildcard slot
 }
 ```
 
-- `target_program` must be in `ALLOWED_FORWARD_PROGRAMS` (currently: Meteora DLMM
+- `program_id` must be in `ALLOWED_FORWARD_PROGRAMS` (currently: Meteora DLMM
   `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`). `Pubkey::default()` disables
   the forward step entirely.
 - When enabled, at least one `ByteRangeCheck` must pin the discriminator at
   offset 0 — prevents a gateway from swapping in an arbitrary instruction.
-- `min_output_amount` is checked against the **net** amount (after fees).
+- **Degenerate-pin guard**: `InstructionConstraint` with zero effective pins
+  is rejected at create when forward is enabled.
+- **min_output_amount REMOVED** (v2.1). `post_validation` generalizes it.
 
-### ValidationConfig
+### ValidationSpec (pre + post, same type)
 
 ```rust
-struct ValidationConfig {
-    validation_program: Pubkey,      // SystemProgram = disabled (sentinel)
-    num_validation_accounts: u8,     // ≤10 read-accounts for the assertion
+enum ValidationSpec {
+    Disabled,
+    ProgramCall { program_id: Pubkey },  // must be in ALLOWED_VALIDATION_PROGRAMS
+    Inline { reserved: u8 },             // not implemented, errors at create
 }
 ```
 
-The assertion **data** (≤1024 bytes) is stored in a separate `ValidationPda`
-account (`["composable_validation", composable_policy]`), not inline. At
-execute, the program CPIs into the validation program passing this data + the
-declared read-accounts as `remaining_accounts`.
+ComposablePolicy carries TWO instances: `pre_validation` (after PULL, before
+FORWARD) and `post_validation` (after FORWARD, before SETTLE).
+
+Two separate ValidationPda accounts:
+
+- `["composable_validation_pre", composable_policy]`
+- `["composable_validation_post", composable_policy]`
+
+Each independently created only when the corresponding `ValidationSpec` is
+`ProgramCall`. The assertion **data** (≤1024 bytes) is stored in the
+ValidationPda account, not inline.
 
 - `validation_program` must be in `ALLOWED_VALIDATION_PROGRAMS` (currently:
   Lighthouse `L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95`). `SystemProgram`
@@ -440,6 +466,8 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0018] | Unified gateway fee model with scheduler incentive                                      |
 | [0019] | OneTime payment policy variant (fixed amount, single execution, full gateway lifecycle) |
 | [0020] | UpTo scheme: variable-amount single-settlement authorization (x402 `upto`)              |
+| [0021] | Composable v2.1: InstructionConstraint + Unified ValidationSpec                         |
+| [0022] | Fixed-size PDAs (no realloc)                                                            |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -460,6 +488,8 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0018]: apps/docs/adr/0018-unified-fee-model.md
 [0019]: apps/docs/adr/0019-onetime-policy-variant.md
 [0020]: apps/docs/adr/0020-upto-scheme-and-policy-variant.md
+[0021]: apps/docs/adr/0021-composable-v21-instructionconstraint-validation-spec.md
+[0022]: apps/docs/adr/0022-fixed-size-pdas-no-realloc.md
 
 ## SDK
 
@@ -545,22 +575,24 @@ milestone: <main topic>
 
 ### Rules for the agent producing the milestone
 
-1. **Read the change first.** Trace what the feature actually touches
-   (program? SDK only? an app? docs?) before creating any bean.
-2. **Pick levels by type.** `milestone` for the release, `epic` for each
-   theme (implementation / testing / …), `feature` per deliverable, `task`
-   per grabbable unit. Epics with no children = wrong; create the children.
-3. **Omit what doesn't apply.** A pure-SDK change needs no program-contract
-   feature. A doc-only milestone has no implementation epic. Don't pad.
-4. **One feature per `apps/` deliverable group**; one task per touched
-   `apps/<dir>`. Don't fan out tasks for untouched apps.
-5. **New ADR ⇒ documentation feature** (or its own epic if the decision is
-   the milestone). Code is authority on state; ADR is authority on rationale.
-6. **Link with `--parent` and `--blocked-by`** so the tree reflects real
-   dependencies (e.g. SDK feature blocked-by program-contract feature; apps
-   blocked-by SDK feature; tests blocked-by implementation epic).
-7. **Status flows up.** A milestone is `completed` only when all its leaf
-   tasks are `completed`. Epics close when all their features close.
+- **Read the change first.** Trace what the feature actually touches
+  (program? SDK only? an app? docs?) before creating any bean.
+- **Pick levels by type.** `milestone` for the release, `epic` for each
+  theme (implementation / testing / …), `feature` per deliverable, `task`
+  per grabbable unit. Epics with no children = wrong; create the children.
+- **Omit what doesn't apply.** A pure-SDK change needs no program-contract
+  feature. A doc-only milestone has no implementation epic. Don't pad.
+- **One feature per `apps/` deliverable group**; one task per touched
+  `apps/<dir>`. Don't fan out tasks for untouched apps.
+- **New ADR ⇒ documentation feature** (or its own epic if the decision is
+  the milestone). Code is authority on state; ADR is authority on rationale.
+- **Program changes ⇒ Update of tributary.qedspec**; update the spec and
+  recreate the entire formal_verification directory accordingly!
+- **Link with `--parent` and `--blocked-by`** so the tree reflects real
+  dependencies (e.g. SDK feature blocked-by program-contract feature; apps
+  blocked-by SDK feature; tests blocked-by implementation epic).
+- **Status flows up.** A milestone is `completed` only when all its leaf
+  tasks are `completed`. Epics close when all their features close.
 
 ### Bean hygiene
 
