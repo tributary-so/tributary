@@ -26,14 +26,14 @@ npm install @tributary-so/payments
 ## Quick Start
 
 ```typescript
-import { PaymentsClient } from "@tributary-so/payments";
+import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 // Initialize with connection and tributary
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
 
 const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"],
@@ -64,14 +64,14 @@ window.location.href = session.url;
 ### One-Time Payment Quick Start
 
 ```typescript
-import { PaymentsClient } from "@tributary-so/payments";
+import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 // Initialize with connection and tributary
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
 
 const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"],
@@ -100,17 +100,17 @@ window.location.href = session.url;
 Check subscription status efficiently using our dual lookup strategy - either user-based OR gateway-based:
 
 ```typescript
-import { PaymentsClient } from "@tributary-so/payments";
+import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
 
 // Option 1: User-based lookup (for user-facing apps)
 async function checkUserSubscription() {
-  const status = await manager.subscriptions.checkStatus({
+  const status = await manager.policies.checkStatus({
     trackingId: "user_123_monthly_premium",
     userPublicKey: "USER_PUBLIC_KEY_HERE",
     tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -133,7 +133,7 @@ async function checkUserSubscription() {
 
 // Option 2: Gateway-based lookup (for gateway management)
 async function checkGatewaySubscription() {
-  const status = await manager.subscriptions.checkStatus({
+  const status = await manager.policies.checkStatus({
     trackingId: "user_123_monthly_premium",
     gatewayPublicKey: "GATEWAY_PUBLIC_KEY_HERE",
   });
@@ -172,13 +172,13 @@ checkUserSubscription();
 One-time payments are tracked via SPL transfers with memo fields. Status checking requires indexing (planned in Milestone 2):
 
 ```typescript
-import { PaymentsClient } from "@tributary-so/payments";
+import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
 
 // Check one-time payment status
 async function checkOneTimePayment() {
@@ -334,15 +334,17 @@ This enables:
 
 ### PaymentsClient
 
-The main client class - requires Connection and Tributary instances.
+The main client class. Pass an optional `PaymentTracker` to enable `.policies`
+queries; checkout sessions and one-time tracking need no tracker.
 
 ```typescript
+import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(connection, tributary);
+const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
 ```
 
 #### checkout.sessions.create()
@@ -435,14 +437,14 @@ Check subscription status using dual lookup strategy.
 
 ```typescript
 // User-based lookup
-const status = await manager.subscriptions.checkStatus({
+const status = await manager.policies.checkStatus({
   trackingId: "user_123_monthly_premium",
   userPublicKey: "USER_PUBLIC_KEY_HERE",
   tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 });
 
 // Gateway-based lookup
-const status = await manager.subscriptions.checkStatus({
+const status = await manager.policies.checkStatus({
   trackingId: "user_123_monthly_premium",
   gatewayPublicKey: "GATEWAY_PUBLIC_KEY_HERE",
 });
@@ -487,7 +489,7 @@ interface PolicyLookupOptions {
 Quick check if subscription is active (created + initial payment).
 
 ```typescript
-const isActive = await manager.subscriptions.isActive({
+const isActive = await manager.policies.isActive({
   trackingId: "user_123_monthly_premium",
   userPublicKey: "USER_PUBLIC_KEY_HERE",
 });
@@ -499,7 +501,7 @@ const isActive = await manager.subscriptions.isActive({
 Get detailed subscription information.
 
 ```typescript
-const details = await manager.subscriptions.getDetails({
+const details = await manager.policies.getDetails({
   trackingId: "user_123_monthly_premium",
   gatewayPublicKey: "GATEWAY_PUBLIC_KEY_HERE",
 });
@@ -568,6 +570,16 @@ The `tributaryConfig` object contains Tributary-specific settings:
 
 - `recipient`: The recipient public key (where payment goes) - no gateway needed
 - `trackingId`: Your unique identifier for tracking payment
+
+> **New in this release — full PaymentPolicy support.** `TributaryConfig` is now a
+> discriminated union covering all 6 checkout modes. Besides `subscription` and
+> `payment` (direct SPL transfer), the four policy variants — `milestone`,
+> `payAsYouGo`, `oneTime` (ADR-0019), `upTo` (ADR-0020) — are encodable into the
+> checkout deep-link and routed via the unified `/policy/` path. Pass a `variant`
+> field to select the arm; the legacy flat shape (no `variant`) is accepted with a
+> deprecation warning and treated as `subscription`. `PaymentsClient.subscriptions`
+> is a deprecated alias of `.policies` (which serves every variant, with an
+> optional `options.variant` filter).
 
 ## Tributary Configuration
 

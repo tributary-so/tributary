@@ -8,6 +8,7 @@ import { errorHandler } from "../middleware/errorHandler";
 jest.mock("@tributary-so/payments", () => ({
   CheckoutSessionManager: jest.fn().mockImplementation(() => ({
     decodeSubscriptionUrl: jest.fn().mockReturnValue({
+      mode: "subscription",
       tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       recipient: "8WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
       amount: 10.5,

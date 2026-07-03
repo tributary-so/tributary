@@ -113,8 +113,18 @@ export function PayPage() {
           <div className="border border-border/50 p-6">
             {isSubscription ? (
               <CheckoutForm sessionData={sessionData} />
-            ) : (
+            ) : sessionData.mode === "payment" ? (
               <PayForm sessionData={sessionData} />
+            ) : (
+              // New policy variants (milestone/payAsYouGo/oneTime/upTo) are
+              // routed via /policy/ and rendered by the hosted-checkout
+              // milestone (tributary-wwwh). The hash parser above only handles
+              // /subscribe/ and /pay/ today, so this branch is a forward-compat
+              // fallback rather than a reached path.
+              <div className="text-sm text-muted-foreground">
+                Policy variant &ldquo;{sessionData.mode}&rdquo; is not rendered
+                by this page yet.
+              </div>
             )}
           </div>
         </div>

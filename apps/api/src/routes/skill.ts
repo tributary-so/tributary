@@ -112,15 +112,24 @@ router.get(
     const sessionManager = new CheckoutSessionManager();
     const decoded = sessionManager.decodeSubscriptionUrl(encoded);
 
+    // This endpoint generates subscription skill markdown — narrow to the
+    // subscription arm; other policy variants are rejected with a clear 400.
+    if (decoded.mode !== "subscription") {
+      throw new ApiError(
+        400,
+        `This skill endpoint only handles subscription links (got mode=${decoded.mode})`
+      );
+    }
+
     // Fetch mint decimals and convert amount from float to integer
     const decimals = await getMintDecimals(decoded.tokenMint);
     const convertedAmount = convertAmountToInteger(decoded.amount, decimals);
 
     // Replace decoded amount with converted integer
-    const decodedWithConvertedAmount = {
+    const decodedWithConvertedAmount: SubscriptionParams = {
       ...decoded,
       amount: convertedAmount,
-    } as SubscriptionParams;
+    };
 
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");
     res.send(generateSkillMarkdown(decodedWithConvertedAmount, decimals));

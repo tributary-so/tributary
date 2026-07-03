@@ -6,7 +6,7 @@
  */
 
 import { Tributary } from "@tributary-so/sdk";
-import { PaymentsClient } from "./src/index";
+import { PaymentsClient, PaymentTracker } from "./src/index";
 import { Connection, Keypair } from "@solana/web3.js";
 import { Wallet } from "@coral-xyz/anchor";
 
@@ -16,8 +16,9 @@ const connection = new Connection(SOLANA_API);
 const tributary = new Tributary(connection, new Wallet(Keypair.generate()));
 
 async function example() {
-  // 1. Initialize the client (no API key required!)
-  const client = new PaymentsClient(tributary);
+  // 1. Initialize the client (no API key required!). Pass a PaymentTracker to
+  //    enable .policies queries; checkout / one-time tracking need no tracker.
+  const client = new PaymentsClient(new PaymentTracker(connection, tributary));
 
   // 2. Create a checkout session
   try {
