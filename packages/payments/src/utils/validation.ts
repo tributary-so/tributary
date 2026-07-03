@@ -1,10 +1,12 @@
 // Input validation utilities
 
-import { TributaryConfig } from "../types/tributary";
+import { LegacyTributaryConfig } from "../types/tributary";
 
 export class ValidationUtils {
-  // Validate Tributary configuration
-  static validateTributaryConfig(config: TributaryConfig): void {
+  // Validate the legacy Tributary configuration shape (common gateway /
+  // recipient / trackingId fields). Per-variant fail-fast validation of the
+  // new discriminated union lands in feature tributary-uny8.
+  static validateTributaryConfig(config: LegacyTributaryConfig): void {
     if (!config.gateway || !config.recipient || !config.trackingId) {
       throw new Error(
         "gateway, recipient, and trackingId are required in tributaryConfig"
