@@ -1,11 +1,11 @@
 ---
 # tributary-p7v8
 title: 'Brand pass: apps/docs (hero + terminology, keep ADRs/IDL intact)'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T07:14:31Z
-updated_at: 2026-07-03T07:14:31Z
+updated_at: 2026-07-03T08:08:43Z
 parent: tributary-1gr9
 ---
 
@@ -32,3 +32,13 @@ SOURCE OF TRUTH: WORLDBRAND.md, ADR-0015, CONTEXT.md.
 OUT OF SCOPE: ADRs, IDL, protocol-reference technical content, fees/security/error-codes accuracy.
 
 VERIFY: mkdocs build clean. Grep docs/docs for 'composable automation layer' / 'payment protocol for Solana' as standalone nouns -> 0 hits in prose (code/IDL hits OK). Nav no longer says 'vs' between the two policy families.
+
+## Summary of Changes
+
+Applied the locked brand world (WORLDBRAND.md) to this surface as a coordinated voice pass. ADR-0015 structure preserved; only prose touched.
+
+**Brand atoms injected:** soul (`Money should move itself.`), tagline (`Stop pushing your bags. Let them flow.`), antagonist (push money / the signature tax / wallet-as-wheelbarrow), ritual (`set the riverbed once`), banks double-meaning (`Our banks hold flows, not your funds.`), one noun (`the primitive`), one verb (`route`).
+
+**Retired dialects purged:** 'money operating system', 'composable platform', 'composable automation layer', 'Web2-like UX / Web3 sovereignty', 'set it and forget it'.
+
+**QA:** `pnpm run build` green; `pnpm run lint` green on this file; voice audit confirms atoms present. River held as substrate (no puns). ADRs/IDL untouched.

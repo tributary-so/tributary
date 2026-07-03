@@ -1,7 +1,14 @@
 # Tributary — Domain Glossary
 
 > The ubiquitous language for the Tributary protocol. Implementation-free.
-> Resolved during the landing-page narrative grilling (2026-06-26).
+> Resolved during the landing-page narrative grilling (2026-06-26); brand
+> layer locked in `WORLDBRAND.md` (2026-07-03).
+
+This glossary is the single source of truth for what every Tributary surface
+(landing, app, docs, pitch) calls things. The brand layer (§"Brand voice")
+governs prose; the technical terms (§"Language") govern code, IDL, and
+protocol reference. ADRs are the authority on _why_; this file is the
+authority on _what to call it_.
 
 ## The core term
 
@@ -12,6 +19,70 @@ destination to route to).
 
 Tributary is **one thing**, not a portfolio of products. Everything below is
 an aspect of the same primitive.
+
+> **Soul:** _Money should move itself._ The belief beneath every surface.
+> **Tagline:** _Stop pushing your bags. Let them flow._
+
+## Brand voice (locked 2026-07-03)
+
+One of each. Surfaces drift the instant a second synonym slips in.
+
+| Layer          | Sentence                                 | Role                                                   |
+| -------------- | ---------------------------------------- | ------------------------------------------------------ |
+| **Soul**       | _Money should move itself._              | The belief. Survives transmission.                     |
+| **Tagline**    | _Stop pushing your bags. Let them flow._ | The defiant headline. Names the villain.               |
+| **Motif**      | _If This Then Money._                    | The grammar (WHEN → PULL+ROUTE). The recurring handle. |
+| **Antagonist** | _Push money._ / _the signature tax._     | The villain. The wallet-as-wheelbarrow.                |
+
+- **One noun for the product:** **the primitive.** Never "platform,"
+  "solution," "ecosystem," "operating system." "Payments" and "composable"
+  are configurations of the primitive, not separate products.
+- **One verb for what users do:** **route.** Never "send," "pay," "transfer"
+  in hero/brand copy — those are push verbs, the antagonist's vocabulary.
+  (The verb survives untouched in technical/IDL contexts: `transfer` the
+  instruction, `execute_payment`, etc. The rule is prose-only.)
+- **One customer identity:** **the flow architect** — "I don't push bags, I
+  route rivers." Persona-B (developer) is the _means_; the flow architect is
+  the identity you hand them. (Variant under review: "keeper of the
+  watershed" for gateway operators — see `WORLDBRAND.md` open questions.)
+- **One ritual:** **the single delegation** — _"set the riverbed once."_ This
+  is the baptism moment the brand markets, not the cron job / scheduler tick.
+  See §Execution → **Delegate**.
+- **Register split:** crypto-native for the hero (defiant, "bags"/"push");
+  plain-money for downstream surfaces (checkout/app/docs — calm, "money moves
+  itself within rules you set"). Same belief, two registers.
+
+### The push/pull duality
+
+The antagonist (push) and the architecture (pull) are the same word.
+Tributary is, literally, a **pull-payment** primitive: delegate a puller once,
+the puller draws on rules. This is not metaphor bolted on — it is the
+protocol's name for itself. "Pull, don't push" is the technical handle;
+"stop pushing your bags" is the defiant handle. Same idea, two registers.
+
+## The river — image system (substrate, not pun)
+
+The name "Tributary" maps structurally onto the primitive. The river governs
+**image and motion**; it does **not** generate wordplay. No "make waves," no
+"liquid assets," no "sea of opportunity."
+
+| Hydrology                 | Tributary primitive                                                                                                                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Water**                 | Money                                                                                                                                                                                                                                        |
+| **Riverbed / banks**      | **The rules** (WHEN/PULL/ROUTE) — the channel money flows within. _Banks_ is the one double meaning worth owning: river banks = the rule channel; pointedly _not_ a custody bank. The single line: _"Our banks hold flows, not your funds."_ |
+| Current                   | The recurring schedule                                                                                                                                                                                                                       |
+| Source                    | The user's wallet — the PULL origin                                                                                                                                                                                                          |
+| Mouth / confluence        | ROUTE — where the flow lands (wallet, pool, LP)                                                                                                                                                                                              |
+| Sluice / lock gate        | Validation hook (Lighthouse) — opens or shuts the flow                                                                                                                                                                                       |
+| Tributary joining a river | Forward hook (DLMM swap) — one stream becomes another                                                                                                                                                                                        |
+| Watershed / basin         | The gateway — the drainage area a scheduler covers                                                                                                                                                                                           |
+| Gravity                   | Permissionless execution — water finds a way, any signer opens the gate                                                                                                                                                                      |
+| Aquifer                   | Non-custodial — your wallet, untouched until a rule fires                                                                                                                                                                                    |
+
+**Motion language: flow, not click.** Buttons don't press; gates open.
+Confirmations don't tick; currents arrive. The river is the grammar
+(WHEN/PULL/ROUTE) made visible: water doesn't "drive itself," it **follows
+the riverbed**.
 
 ## The three knobs (the primitive's axis model)
 
@@ -61,35 +132,44 @@ page's headline voice.
 
 ## Narrative spine
 
-One Setup → Conflict → Resolution, carried by protagonist C.
+One Setup → Conflict → Resolution, carried by the flow-architect protagonist.
 
 - **Setup:** Stablecoins made money digital, instant, global — ~$300B on
   chain.
-- **Conflict (the spine):** That money is **inert**. It only moves when a
-  human signs, and only to where that human manually routes it. No schedules,
-  no conditions, no autonomy. "Money that can't act on its own is money that
-  can't scale."
+- **Conflict (the spine):** That money is **inert** — and every rail before
+  Tributary is **push**-based: you hold a balance, you sign a transfer, the
+  balance drops. Every move needs a hand on the keypad. **The signature is
+  the tax; the wallet is a wheelbarrow.** "Money that can't act on its own is
+  money that can't scale."
 - **Resolution:** Tributary is the primitive that lets money **move itself**,
   within rules you set — one delegation, three knobs (WHEN/PULL/ROUTE),
-  non-custodial. "If This Then Money" is a literal description of the
-  Resolution, not a slogan.
+  non-custodial. _Set the riverbed once._ "If This Then Money" is a literal
+  description of the Resolution, not a slogan.
 
 Supporting beats (not rival setups): non-custodial is a _property_ of the
-resolution, not the headline; "missing infrastructure" is an _implication_
-felt mainly by builders, folded into the resolution rather than leading.
+resolution (the aquifer), not the headline; "missing infrastructure" is an
+_implication_ felt mainly by builders, folded into the resolution rather than
+leading.
 
 ## Canonical motif (the recurring handle)
 
-The page has **one motif**, used consistently from hero through knob-section
-through CTA. It is the sticky handle that replaces the three-dialect mess.
+The four locked atoms live in §"Brand voice" above. This section nails down
+the _register_ of each handle so the page doesn't drift back into three
+dialects.
 
 - **"If This Then Money"** — the canonical motif. A literal grammar of the
   primitive: WHEN (If This) -> PULL+ROUTE (Then Money). Recurs in every beat.
   Scales from the live minimal config ("If Monday Then $10 to wallet") to the
-  full config ("If oracle drifts 5% Then route to rebalance") -- same sentence,
+  full config ("If oracle drifts 5% Then route to rebalance") — same sentence,
   knobs turned up. One primitive maturing, not two products.
+- **"Money should move itself."** — the soul. State it on the hero, in the
+  docs header, in the README banner. The sentence that survives transmission.
+- **"Stop pushing your bags. Let them flow."** — the tagline. Names the
+  villain (push) and the resolution (flow) in one line.
 - **"self-driving money"** — the _gloss_ on the motif, used in sub-lines and
-  one-line explainers. Evocative but subordinate.
+  one-line explainers. Evocative but subordinate. (The river is the preferred
+  image system; "self-driving" describes the outcome, the riverbed describes
+  the grammar.)
 - **"the primitive"** — the _technical noun_ underneath, used only where
   precision beats poetry (the knob section, dev-adjacent copy).
 - **"composable automation layer"** — **retired** as a standalone noun (it is
@@ -106,10 +186,31 @@ through CTA. It is the sticky handle that replaces the three-dialect mess.
   live today, same primitive composes when WHEN + ROUTE open. Live/next status
   lives as micro-badges on the knobs, not as section architecture.
 
-## Terms to retire / avoid (overloaded)
+## Terms to retire / avoid
+
+**Brand-layer retirements (prose only — do NOT rename code/IDL):**
 
 - **"the payment protocol for Solana"** — describes only v1; undersells the
   primitive. Stop using as the headline frame.
+- **"money operating system" / "OS for Solana"** — retired. The one noun is
+  _the primitive_.
+- **"composable platform" / "composable automation layer"** as standalone
+  nouns — retired (two-products vocabulary). "Composable" survives only as an
+  adjective describing the v2 era of the one primitive.
+- **"Web2 experience on Web3 rails" / "Web2-like UX with Web3 security"** —
+  retired framing. Tributary is pull-based rails, not a Web2-skin-on-Web3
+  pitch. The familiarity is a property of the outcome, not the headline.
+- **"set it and forget it"** — Netflix/gym-membership framing. Replaced by
+  _"set the riverbed once"_ (the delegation ritual), which is the same idea
+  in the brand's own dialect.
+- **send / pay / transfer** as the verb for what users _do_ in brand copy —
+  those are push verbs (the antagonist's vocabulary). The one verb is
+  **route**. (Technical contexts are exempt: `transfer` the SPL instruction,
+  `execute_payment`, "the protocol transfers tokens" in protocol reference —
+  those describe mechanism, not user action.)
+
+**Overloaded technical terms:**
+
 - **"composable" as a standalone noun** — invites the reading that there are
   two products. Only use as an adjective describing the v2 era of the one
   primitive.
@@ -288,6 +389,9 @@ The token-program delegate approved on the user's source ATA. In current
 code this is the **`UserPayment` PDA**. A legacy global `PaymentsDelegate`
 PDA (`["payments"]`) is still accepted by `execute_composable` for
 backwards compatibility; new flows must use the `UserPayment` PDA.
+_Brand term:_ this single approval is **"setting the riverbed once"** — the
+one ritual the brand markets. The signature that turns a balance into a
+flow.
 
 **Delegated amount**:
 The remaining token allowance the delegate may pull. `execute_*` fails
@@ -349,7 +453,7 @@ A share of the gateway fee (not an independent bps-of-payment), sent to
 on `ProgramConfig`, protocol-admin-set. Per-gateway override via
 `FEATURE_CUSTOM_PROTOCOL_FEE` — the override is admin-granted (not
 gateway-controlled) and may be zero (subsidise a strategic partner).
-See ADR-0017 (supersedes ADR-0006).
+See ADR-0018 (supersedes ADR-0006).
 
 **Gateway fee**:
 The ONE total fee number (`gateway_fee_bps`), gateway-authority-set,
@@ -357,7 +461,7 @@ expressed in bps of the payment (gross or net per NET_AMOUNT). Decomposed
 at settle time into four carve-outs: protocol cut, scheduler cut,
 referral pool, gateway residual. The gateway residual routes to
 `gateway.fee_recipient`. Sum of all carve-out shares must be ≤ 10000 bps,
-enforced at every gateway-config write site. See ADR-0017.
+enforced at every gateway-config write site. See ADR-0018.
 
 **Scheduler cut**:
 A per-gateway share (`scheduler_share_bps`) of the gateway fee, paid to
