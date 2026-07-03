@@ -280,12 +280,16 @@ export default function HomeContent() {
             <br />
             <span className="gradient-text">Then Money.</span>
           </h1>
+          <p className="text-xl text-foreground max-w-3xl mx-auto lg:mx-0 font-medium">
+            Stop pushing your bags.{" "}
+            <span className="gradient-text">Let them flow.</span>
+          </p>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto lg:mx-0">
-            Stablecoins made money digital.{" "}
-            <span className="text-foreground">
-              Tributary makes it self-driving
-            </span>{" "}
-            — one primitive, three knobs, that moves money itself within rules
+            Crypto spent fifteen years winning the{" "}
+            <span className="text-foreground">balance</span>. Tributary built
+            the <span className="text-foreground">riverbed</span> — one
+            primitive, three knobs, that lets money{" "}
+            <span className="text-foreground">move itself</span> within rules
             you set. Non-custodial, on Solana.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row justify-center lg:justify-start">
@@ -313,24 +317,28 @@ export default function HomeContent() {
         //
       </div>
 
-      {/* ─── Setup + Conflict: inert money ─── */}
+      {/* ─── Setup + Conflict: the signature tax ─── */}
       <section id="conflict" className="py-16">
         <div className="mb-10 max-w-3xl space-y-3">
           <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
-            The Problem
+            The Signature Tax
           </p>
           <h2 className="text-3xl md:text-4xl font-bold leading-tight">
             <span className="text-foreground">
               Stablecoins made money digital.
             </span>{" "}
-            <span className="gradient-text">It&apos;s still inert.</span>
+            <span className="gradient-text">You still push it by hand.</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed text-[15px]">
-            ~$300B sits on chain — instant, global, native. But it only moves
-            when a human signs, and only to where that human manually sends it.
-            No schedules. No conditions. No autonomy. Every
-            &quot;automation&quot; in crypto is either a custodial bot that
-            holds your keys, or a calendar reminder that still needs you to
+            ~$300B sits on chain — instant, global, native. But every rail
+            before Tributary is <span className="text-foreground">push</span>
+            -based: you hold a balance, you sign a transfer, the balance drops.
+            Every move needs your hand on the keypad.{" "}
+            <span className="text-foreground">
+              The signature is the tax. The wallet is a wheelbarrow.
+            </span>{" "}
+            Every &quot;automation&quot; in crypto is either a custodial bot
+            that holds your keys, or a calendar reminder that still needs you to
             sign.{" "}
             <span className="text-foreground">
               Money that can&apos;t act on its own is money that can&apos;t
@@ -417,10 +425,11 @@ export default function HomeContent() {
             literally this primitive&apos;s grammar:{" "}
             <span className="text-foreground">WHEN</span> a condition holds,{" "}
             <span className="text-foreground">PULL</span> value and{" "}
-            <span className="text-foreground">ROUTE</span> it onward. Users
-            delegate spending authority once; Tributary never holds funds — it
-            pulls within approved limits and routes through any on-chain
-            program. One approval. Rules you define. Money moves within your
+            <span className="text-foreground">ROUTE</span> it onward. Delegate
+            spending authority once — <em>set the riverbed once</em> — and
+            Tributary never holds your funds. It pulls within approved limits
+            and routes through any on-chain program. Our banks hold flows, not
+            your funds. One approval. Rules you define. Money moves within your
             boundaries.
           </p>
         </div>
@@ -939,8 +948,11 @@ export default function HomeContent() {
       <section id="cta" className="py-16">
         <div className="border border-border bg-muted/20 p-12 text-center">
           <h2 className="mb-4 text-3xl font-bold">
-            <span className="gradient-text">If This Then Money.</span>
+            <span className="gradient-text">Money should move itself.</span>
           </h2>
+          <p className="mb-2 text-foreground max-w-xl mx-auto font-medium">
+            Stop pushing your bags. Let them flow.
+          </p>
           <p className="mb-8 text-muted-foreground max-w-xl mx-auto">
             One primitive, three knobs, live on Solana. Build on it — or back
             the layer underneath every flow. The minimal config runs today; the

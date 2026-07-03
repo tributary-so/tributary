@@ -1,11 +1,11 @@
 ---
 # tributary-lmrn
 title: Re-align pre-seed pitch to new brand
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T07:13:46Z
-updated_at: 2026-07-03T07:13:46Z
+updated_at: 2026-07-03T08:08:43Z
 parent: tributary-1gr9
 ---
 
@@ -41,3 +41,13 @@ OUT OF SCOPE: metrics numbers, economics, founder bio, TAM math (unless founder 
 NOTE: index.html is 135KB (Marp-generated) — edit index.md then rebuild, do not hand-edit the HTML.
 
 VERIFY: grep index.md for 'composable automation layer' / 'composable automation platform' → 0 hits. 'Stop pushing your bags' or 'Money should move itself' present. PDF rebuilt. Story arc matches landing hero.
+
+## Summary of Changes
+
+Applied the locked brand world (WORLDBRAND.md) to this surface as a coordinated voice pass. ADR-0015 structure preserved; only prose touched.
+
+**Brand atoms injected:** soul (`Money should move itself.`), tagline (`Stop pushing your bags. Let them flow.`), antagonist (push money / the signature tax / wallet-as-wheelbarrow), ritual (`set the riverbed once`), banks double-meaning (`Our banks hold flows, not your funds.`), one noun (`the primitive`), one verb (`route`).
+
+**Retired dialects purged:** 'money operating system', 'composable platform', 'composable automation layer', 'Web2-like UX / Web3 sovereignty', 'set it and forget it'.
+
+**QA:** `pnpm run build` green; `pnpm run lint` green on this file; voice audit confirms atoms present. River held as substrate (no puns). ADRs/IDL untouched.

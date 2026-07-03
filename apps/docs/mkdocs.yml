@@ -1,5 +1,5 @@
-site_name: Tributary Protocol Documentation
-site_description: Open-source, permissionless automated payment infrastructure for Solana
+site_name: Tributary — Money should move itself
+site_description: The rule-based money-moving primitive on Solana. Delegate once; money flows within rules you set. Pull, don't push.
 site_url: https://docs.tributary.so
 repo_url: https://github.com/tributary-so/tributary
 repo_name: tributary-so/tributary

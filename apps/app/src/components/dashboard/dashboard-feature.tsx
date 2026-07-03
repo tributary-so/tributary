@@ -78,11 +78,11 @@ export default function DashboardFeature() {
     <section className="py-12">
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr] lg:gap-16">
         <div className="flex flex-col items-start gap-4 text-left">
-          <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl">
-            Manage your payment policies in minutes
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Delegate once. Money moves itself within rules you set — non-custodial, on schedule.
+          <h1 className="text-3xl font-bold leading-snug tracking-tighter md:text-4xl">Set the riverbed once.</h1>
+          <p className="text-xl text-foreground">Money moves itself within rules you set.</p>
+          <p className="text-base text-muted-foreground">
+            One delegation, three knobs — non-custodial, on schedule.
+            <span className="text-foreground/70"> Pull, don&apos;t push.</span>
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Link
@@ -132,7 +132,7 @@ export default function DashboardFeature() {
 
       <div className="mb-8 max-w-2xl space-y-3">
         <h2 className="text-xl font-semibold">Quick Actions</h2>
-        <p className="text-muted-foreground">Get started with Tributary in minutes</p>
+        <p className="text-muted-foreground">Route your first flow in minutes</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -146,10 +146,8 @@ export default function DashboardFeature() {
       </div>
 
       <div className=" border border-border bg-muted/20 p-12 text-center">
-        <h2 className="mb-4 text-2xl font-bold">Ready to view your policies?</h2>
-        <p className="mb-8 text-muted-foreground">
-          Connect your wallet to see and manage your recurring payment policies
-        </p>
+        <h2 className="mb-4 text-2xl font-bold">Ready to route?</h2>
+        <p className="mb-8 text-muted-foreground">Connect your wallet to see and manage your flows</p>
         <Link
           to="/account"
           className="bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"

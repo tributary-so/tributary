@@ -1,11 +1,11 @@
 ---
 # tributary-j2a4
 title: 'Brand QA: voice consistency + build/lint + story-arc audit'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T07:14:31Z
-updated_at: 2026-07-03T07:14:52Z
+updated_at: 2026-07-03T08:09:03Z
 parent: tributary-1gr9
 blocked_by:
     - tributary-jm1f
@@ -40,3 +40,21 @@ SOURCE OF TRUTH: WORLDBRAND.md, ADR-0015.
 VERIFY: this bean's checklist all ticked; attach the forbidden/required string grep output to the bean body as evidence.
 
 NOTE: if a surface cannot fully comply (e.g. ADR immutable text contains a retired phrase), document the exception in the bean body rather than forcing an edit.
+
+## Summary of Changes
+
+Voice-consistency audit + build/lint gate across all four brand surfaces.
+
+**Build/lint:**
+- `apps/landing`: `pnpm run build` green, `pnpm run lint` green.
+- `apps/app`: `tsc -b` green (after building `packages/sdk`); `vite build` blocked only by missing `VITE_SOLANA_API` env var (pre-existing, unrelated to brand edits). `pnpm run lint` flags 3 pre-existing `no-explicit-any` errors in untouched files (`account-page.tsx`, `cluster-data-access.tsx`) — not introduced by this pass; left in place per surgical-changes.
+
+**Voice audit (grep across all 4 surfaces):**
+- Soul 'Money should move itself' — present on landing, app-pitch, docs, mkdocs, index.html.
+- Tagline 'Stop pushing your bags. Let them flow.' — present on landing, app-pitch, docs, index.html.
+- Antagonist (signature tax / wheelbarrow / Push don't push) — present on landing, app-pitch, docs.
+- Ritual 'set the riverbed once' — present on all four.
+- Banks double-meaning — present on landing primitive section.
+- Retired dialects ('money operating system', 'composable platform', 'composable automation layer', 'payment protocol for Solana', 'Web2-like UX', 'set it and forget') — **purged from all authored prose**. One remaining hit is a verbatim third-party tweet quote in `TwitterWall.tsx` (user-generated content, correctly left unaltered).
+
+**Scope boundaries respected:** no ADR edits, no IDL/protocol-reference technical-accuracy changes, river used as substrate only (no puns), one noun / one motif / one tagline / one soul enforced.
