@@ -33,6 +33,7 @@ export interface SubscriptionParams {
   startTime?: number | null;
   trackingId?: string;
   lineItems?: LineItem[];
+  memo?: string;
   successUrl?: string;
   cancelUrl?: string;
   /** Cluster the link is valid for. Omit → "mainnet". */
@@ -52,24 +53,150 @@ export interface OneTimeParams {
   cluster?: Cluster;
 }
 
-export type CheckoutParams = SubscriptionParams | OneTimeParams;
+/** Milestone policy (1-4 escrowed milestones, bitmap release condition). */
+export interface MilestoneParams {
+  mode: "milestone";
+  tokenMint: string;
+  recipient: string;
+  gateway: string;
+  milestoneAmounts: Array<number | string>;
+  milestoneTimestamps: number[];
+  releaseCondition: number;
+  totalMilestones: number;
+  trackingId?: string;
+  memo?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  cluster?: Cluster;
+}
+
+/** Pay-as-you-go policy (per-period cap + chunk cap). */
+export interface PayAsYouGoParams {
+  mode: "payAsYouGo";
+  tokenMint: string;
+  recipient: string;
+  gateway: string;
+  maxAmountPerPeriod: number | string;
+  maxChunkAmount: number | string;
+  periodLengthSeconds: number | string;
+  trackingId?: string;
+  memo?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  cluster?: Cluster;
+}
+
+/** OneTime PaymentPolicy variant (ADR-0019) — distinct from OneTimeParams (direct transfer). */
+export interface OneTimePolicyParams {
+  mode: "oneTime";
+  tokenMint: string;
+  recipient: string;
+  gateway: string;
+  amount: number | string;
+  /** <=0 / omitted = immediately executable. */
+  dueDate?: number;
+  /** Omitted = never expires. */
+  expiryDate?: number;
+  trackingId?: string;
+  memo?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  cluster?: Cluster;
+}
+
+/** UpTo policy variant (ADR-0020) — single-use variable-amount authorization. */
+export interface UpToParams {
+  mode: "upTo";
+  tokenMint: string;
+  recipient: string;
+  gateway: string;
+  maxAmount: number | string;
+  /** <=0 / omitted = immediate. */
+  validAfter?: number;
+  /** Mandatory, >0, > validAfter. */
+  deadline: number;
+  trackingId?: string;
+  memo?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  cluster?: Cluster;
+}
+
+export type CheckoutParams =
+  | SubscriptionParams
+  | OneTimeParams
+  | MilestoneParams
+  | PayAsYouGoParams
+  | OneTimePolicyParams
+  | UpToParams;
+
+/**
+ * Full discriminator union mirroring {@link CheckoutParams.mode}. Encoded
+ * into the URL blob's `m` field (milestone Axis 4). URL path is derivable
+ * from `m` (Axis 3): subscription→/subscribe/, payment→/pay/, others→/policy/.
+ */
+export type SessionMode =
+  | "subscription"
+  | "payment"
+  | "milestone"
+  | "payAsYouGo"
+  | "oneTime"
+  | "upTo";
+
+const POLICY_MODES: readonly SessionMode[] = [
+  "subscription",
+  "milestone",
+  "payAsYouGo",
+  "oneTime",
+  "upTo",
+];
+
+function isSessionMode(value: unknown): value is SessionMode {
+  return (
+    typeof value === "string" &&
+    ([...POLICY_MODES, "payment"] as readonly string[]).includes(value)
+  );
+}
+
+/** URL path segment for a given mode (Axis 3). */
+function pathForMode(m: SessionMode): string {
+  if (m === "subscription") return "/subscribe/";
+  if (m === "payment") return "/pay/";
+  return "/policy/"; // milestone, payAsYouGo, oneTime, upTo
+}
 
 export interface EncodedSessionData {
-  m: "subscription" | "payment"; // mode
+  m: SessionMode; // mode / discriminator
   tm: string; // tokenMint (base58)
   r: string; // recipient (base58)
-  g?: string; // gateway (base58) - subscription only
-  a: string; // amount (string number)
-  ar?: boolean; // autoRenew - subscription only
-  mr?: string; // maxRenewals (string number or "null") - subscription only
-  pf?: string; // paymentFrequency - subscription only
-  st?: string; // startTime (timestamp or "null") - subscription only
+  g?: string; // gateway (base58) — all policy variants, NOT direct-transfer payment
+  a?: string; // canonical single amount (subscription/oneTime/payment)
+  ar?: boolean; // autoRenew — subscription only
+  mr?: string; // maxRenewals ("null" or string number) — subscription only
+  pf?: string; // paymentFrequency — subscription only
+  st?: string; // startTime ("null" or timestamp) — subscription only
   tid: string; // trackingId
-  li?: string; // lineItems (JSON string) - subscription only
-  memo?: string; // custom memo - one-time only
+  li?: string; // lineItems (JSON string) — subscription only
+  memo?: string; // custom memo — payment / oneTime / others
   su: string; // successUrl or "null"
   cu: string; // cancelUrl or "null"
   c?: Cluster; // cluster - defaults to "mainnet" when absent
+  // milestone
+  ma?: string; // milestoneAmounts (JSON string of number/string[])
+  mt?: string; // milestoneTimestamps (JSON string of number[])
+  rc?: string; // releaseCondition (string number)
+  tn?: string; // totalMilestones (string number)
+  // payAsYouGo
+  mp?: string; // maxAmountPerPeriod (string number)
+  mc?: string; // maxChunkAmount (string number)
+  pl?: string; // periodLengthSeconds (string number)
+  // oneTime policy
+  dd?: string; // dueDate ("null" or timestamp)
+  ed?: string; // expiryDate ("null" or timestamp)
+  // upto
+  xm?: string; // maxAmount (string number)
+  va?: string; // validAfter ("null" or timestamp)
+  dl?: string; // deadline (string timestamp)
 }
 
 export class CheckoutSessionManager {
@@ -152,30 +279,64 @@ export class CheckoutSessionManager {
       m: params.mode,
       tm: params.tokenMint,
       r: params.recipient,
-      a: params.amount.toString(),
       tid: params.trackingId || this.generateTrackingId(),
       su: params.successUrl || "null",
       cu: params.cancelUrl || "null",
       c: params.cluster ?? DEFAULT_CLUSTER,
     };
 
-    if (params.mode === "subscription") {
+    // All policy variants carry a gateway; the direct-transfer `payment` mode does not.
+    if (params.mode !== "payment") {
       data.g = params.gateway;
-      data.ar = params.autoRenew;
-      data.mr = params.maxRenewals?.toString() || "null";
-      data.pf = params.paymentFrequency;
-      data.st = params.startTime?.toString() || "null";
-      data.li = params.lineItems ? JSON.stringify(params.lineItems) : "[]";
-    } else if (params.mode === "payment") {
-      data.memo = params.memo;
+    }
+
+    switch (params.mode) {
+      case "subscription":
+        data.a = params.amount.toString();
+        data.ar = params.autoRenew;
+        data.mr = params.maxRenewals?.toString() || "null";
+        data.pf = params.paymentFrequency;
+        data.st = params.startTime?.toString() || "null";
+        data.li = params.lineItems ? JSON.stringify(params.lineItems) : "[]";
+        if (params.memo) data.memo = params.memo;
+        break;
+      case "payment":
+        data.a = params.amount.toString();
+        if (params.memo) data.memo = params.memo;
+        break;
+      case "milestone":
+        data.ma = JSON.stringify(params.milestoneAmounts);
+        data.mt = JSON.stringify(params.milestoneTimestamps);
+        data.rc = params.releaseCondition.toString();
+        data.tn = params.totalMilestones.toString();
+        if (params.memo) data.memo = params.memo;
+        break;
+      case "payAsYouGo":
+        data.mp = params.maxAmountPerPeriod.toString();
+        data.mc = params.maxChunkAmount.toString();
+        data.pl = params.periodLengthSeconds.toString();
+        if (params.memo) data.memo = params.memo;
+        break;
+      case "oneTime":
+        data.a = params.amount.toString();
+        data.dd = params.dueDate == null ? "null" : params.dueDate.toString();
+        data.ed =
+          params.expiryDate == null ? "null" : params.expiryDate.toString();
+        if (params.memo) data.memo = params.memo;
+        break;
+      case "upTo":
+        data.xm = params.maxAmount.toString();
+        data.va =
+          params.validAfter == null ? "null" : params.validAfter.toString();
+        data.dl = params.deadline.toString();
+        if (params.memo) data.memo = params.memo;
+        break;
     }
 
     // Use Base64URL encoding (compact and URL-safe)
     const encoded = this.encodeAsBase64Url(data);
 
-    return params.mode === "subscription"
-      ? `${this.BASE_URL}/subscribe/${encoded}`
-      : `${this.BASE_URL}/pay/${encoded}`;
+    return `${this.BASE_URL}${pathForMode(params.mode)}${encoded}`;
   }
 
   // Decode subscription parameters from URL
@@ -222,14 +383,21 @@ export class CheckoutSessionManager {
     return `trib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Validate decoded data
-  private validateDecodedData(data: any): SubscriptionParams | OneTimeParams {
-    // Validate required common fields
-    if (!data.tm || !data.r || !data.a || !data.m) {
+  // Validate + parse decoded data into the right CheckoutParams arm.
+  // NOTE: validation here is STRUCTURAL (required fields present, parseable).
+  // Full fail-fast per-variant rules mirroring the on-chain validators land
+  // in feature tributary-uny8 (ValidationUtils.validatePolicyVariant).
+  private validateDecodedData(data: any): CheckoutParams {
+    if (!data || !data.tm || !data.r || !data.m) {
       throw new Error("Missing required fields in session data");
     }
 
-    // Validate public keys
+    if (!isSessionMode(data.m)) {
+      throw new Error(`Invalid mode (${data.m})`);
+    }
+    const m = data.m as SessionMode;
+
+    // Validate public keys (gateway optional only for direct-transfer payment)
     try {
       new PublicKey(data.tm);
       new PublicKey(data.r);
@@ -238,70 +406,165 @@ export class CheckoutSessionManager {
       throw new Error("Invalid public key format");
     }
 
-    // Validate amount
-    const amount = parseFloat(data.a);
-    if (isNaN(amount) || amount <= 0) {
-      throw new Error(`Invalid amount (${amount})`);
-    }
-
     // Resolve cluster — default to mainnet for links predating this field.
     const cluster: Cluster = ALLOWED_CLUSTERS.includes(data.c)
       ? data.c
       : DEFAULT_CLUSTER;
 
-    // Handle based on mode
-    if (data.m === "subscription") {
-      if (!data.g) {
-        throw new Error("Missing required gateway for subscription");
-      }
+    const successUrl = data.su === "null" ? undefined : data.su;
+    const cancelUrl = data.cu === "null" ? undefined : data.cu;
+    const trackingId = data.tid;
+    const memo = data.memo;
 
-      // Validate payment frequency
-      const validFrequencies = ["daily", "weekly", "monthly", "annually"];
-      if (!validFrequencies.includes(data.pf)) {
-        throw new Error(`Invalid payment frequency (${data.pf})!`);
-      }
-
-      // Parse line items if present
-      let lineItems: LineItem[] | undefined;
-      if (data.li && data.li !== "[]") {
-        try {
-          lineItems = JSON.parse(data.li);
-        } catch (error) {
-          console.warn("Failed to parse line items, using empty array");
-          lineItems = undefined;
+    switch (m) {
+      case "subscription": {
+        this.requireGateway(data, m);
+        const validFrequencies = ["daily", "weekly", "monthly", "annually"];
+        if (!validFrequencies.includes(data.pf)) {
+          throw new Error(`Invalid payment frequency (${data.pf})!`);
         }
+        const lineItems: LineItem[] | undefined =
+          data.li != null ? this.parseLineItems(data.li) : undefined;
+        return {
+          mode: "subscription",
+          tokenMint: data.tm,
+          recipient: data.r,
+          gateway: data.g,
+          amount: this.parseAmount(data.a),
+          autoRenew: data.ar === true,
+          maxRenewals: data.mr === "null" ? null : parseInt(data.mr),
+          paymentFrequency: data.pf,
+          startTime: data.st === "null" ? null : parseInt(data.st),
+          trackingId,
+          lineItems,
+          successUrl,
+          cancelUrl,
+          cluster,
+        };
       }
+      case "payment": {
+        return {
+          mode: "payment",
+          tokenMint: data.tm,
+          recipient: data.r,
+          amount: this.parseAmount(data.a),
+          trackingId,
+          memo,
+          successUrl,
+          cancelUrl,
+          cluster,
+        };
+      }
+      case "milestone": {
+        this.requireGateway(data, m);
+        return {
+          mode: "milestone",
+          tokenMint: data.tm,
+          recipient: data.r,
+          gateway: data.g,
+          milestoneAmounts: this.parseJson(data.ma, "milestoneAmounts"),
+          milestoneTimestamps: this.parseJson(data.mt, "milestoneTimestamps"),
+          releaseCondition: parseInt(data.rc),
+          totalMilestones: parseInt(data.tn),
+          trackingId,
+          memo,
+          successUrl,
+          cancelUrl,
+          cluster,
+        };
+      }
+      case "payAsYouGo": {
+        this.requireGateway(data, m);
+        return {
+          mode: "payAsYouGo",
+          tokenMint: data.tm,
+          recipient: data.r,
+          gateway: data.g,
+          maxAmountPerPeriod: this.parseAmount(data.mp),
+          maxChunkAmount: this.parseAmount(data.mc),
+          periodLengthSeconds: this.parseAmount(data.pl),
+          trackingId,
+          memo,
+          successUrl,
+          cancelUrl,
+          cluster,
+        };
+      }
+      case "oneTime": {
+        this.requireGateway(data, m);
+        return {
+          mode: "oneTime",
+          tokenMint: data.tm,
+          recipient: data.r,
+          gateway: data.g,
+          amount: this.parseAmount(data.a),
+          dueDate: this.parseOptionalInt(data.dd),
+          expiryDate: this.parseOptionalInt(data.ed),
+          trackingId,
+          memo,
+          successUrl,
+          cancelUrl,
+          cluster,
+        };
+      }
+      case "upTo": {
+        this.requireGateway(data, m);
+        return {
+          mode: "upTo",
+          tokenMint: data.tm,
+          recipient: data.r,
+          gateway: data.g,
+          maxAmount: this.parseAmount(data.xm),
+          validAfter: this.parseOptionalInt(data.va),
+          deadline: parseInt(data.dl),
+          trackingId,
+          memo,
+          successUrl,
+          cancelUrl,
+          cluster,
+        };
+      }
+    }
+  }
 
-      return {
-        mode: "subscription",
-        tokenMint: data.tm,
-        recipient: data.r,
-        gateway: data.g,
-        amount,
-        autoRenew: data.ar === true,
-        maxRenewals: data.mr === "null" ? null : parseInt(data.mr),
-        paymentFrequency: data.pf,
-        startTime: data.st === "null" ? null : parseInt(data.st),
-        trackingId: data.tid,
-        lineItems,
-        successUrl: data.su === "null" ? undefined : data.su,
-        cancelUrl: data.cu === "null" ? undefined : data.cu,
-        cluster,
-      };
-    } else if (data.m === "payment") {
-      return {
-        mode: "payment",
-        tokenMint: data.tm,
-        recipient: data.r,
-        amount,
-        trackingId: data.tid,
-        memo: data.memo,
-        successUrl: data.su === "null" ? undefined : data.su,
-        cancelUrl: data.cu === "null" ? undefined : data.cu,
-        cluster,
-      };
-    } else {
-      throw new Error(`Invalid mode (${data.m})`);
+  private requireGateway(data: any, m: SessionMode): void {
+    if (!data.g) {
+      throw new Error(`Missing required gateway for ${m}`);
+    }
+  }
+
+  private parseAmount(raw: string): number {
+    const n = Number(raw);
+    if (!isFinite(n)) {
+      throw new Error(`Invalid amount (${raw})`);
+    }
+    return n;
+  }
+
+  private parseOptionalInt(raw: string | undefined): number | undefined {
+    if (raw == null || raw === "null") return undefined;
+    const n = parseInt(raw);
+    if (isNaN(n)) throw new Error(`Invalid optional int (${raw})`);
+    return n;
+  }
+
+  private parseJson(raw: string | undefined, field: string): any {
+    if (raw == null) {
+      throw new Error(`Missing required field ${field}`);
+    }
+    try {
+      return JSON.parse(raw);
+    } catch (err) {
+      throw new Error(`Invalid ${field} encoding: ${(err as Error).message}`);
+    }
+  }
+
+  private parseLineItems(raw: string): LineItem[] | undefined {
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      console.warn("Failed to parse line items, using empty array");
+      return undefined;
     }
   }
 
