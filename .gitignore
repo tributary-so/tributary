@@ -1,8 +1,12 @@
 .anchor
 .DS_Store
-target
-!target/idl
-!target/types
+
+target/**/*
+!target/idl/
+!target/idl/tributary.json
+!target/types/
+!target/types/tributary.ts
+
 **/*.rs.bk
 node_modules
 test-ledger
