@@ -1,11 +1,11 @@
 ---
 # tributary-5lv3
-title: Add optional expiration date to Subscription, Milestone, and PayAsYouGo policies
+title: 'Implementation: PayAsYouGo expiration'
 status: todo
 type: epic
 priority: high
 created_at: 2026-07-02T09:13:36Z
-updated_at: 2026-07-02T12:01:44Z
+updated_at: 2026-07-02T13:04:30Z
 parent: tributary-f99q
 ---
 
@@ -49,3 +49,14 @@ Semantics: `None` = never expires (backward-compatible default). When `Some(ts)`
 
 - Changing OneTime/UpTo (already expire).
 - Admin/global expiry override (emergency pause already covers halting).
+
+## REWRITTEN SCOPE (2026-07-02 — supersedes content above)
+
+Repurposed as the **implementation epic** for the PayAsYouGo-only expiration milestone (tributary-f99q). Theme groups the code-bearing deliverables across layers. See the milestone body for the locked design decisions; children carry TDD acceptance criteria.
+
+Children:
+
+- feature: changes to program contract (`programs/tributary/`) — variant field, validation, execute-time gate, unit tests, backward-compat deserialization.
+- feature: sdk compatibility (`packages/sdk`) — optional `expiryDate` builder param + types. Blocked-by program contract.
+
+Removed from scope: Subscription and Milestone (see milestone non-goals).
