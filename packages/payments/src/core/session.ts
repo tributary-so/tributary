@@ -3,7 +3,6 @@
 import { TributaryCheckoutSession } from "../types/tributary";
 import { ValidationUtils } from "../utils/validation";
 import { PublicKey } from "@solana/web3.js";
-
 interface LineItem {
   description: string;
   quantity: number;
@@ -275,6 +274,9 @@ export class CheckoutSessionManager {
 
   // Encode checkout parameters into compact URL
   encodeUrl(params: CheckoutParams): string {
+    // Fail fast: reject inputs the chain would reject BEFORE producing a blob.
+    ValidationUtils.validatePolicyConfig(params);
+
     const data: EncodedSessionData = {
       m: params.mode,
       tm: params.tokenMint,
