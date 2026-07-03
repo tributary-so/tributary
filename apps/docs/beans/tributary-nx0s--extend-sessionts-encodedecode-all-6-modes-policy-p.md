@@ -1,11 +1,11 @@
 ---
 # tributary-nx0s
 title: Extend session.ts — encode/decode all 6 modes + /policy/ path
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:43:47Z
-updated_at: 2026-07-03T20:31:30Z
+updated_at: 2026-07-03T20:31:56Z
 parent: tributary-pg7r
 blocked_by:
     - tributary-zre4
