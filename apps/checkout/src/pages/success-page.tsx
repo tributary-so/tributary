@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
-import { TributaryJWTPayload, TributaryVerifier } from "@tributary-so/payments";
+import {
+  TributaryJWTPayload,
+  TributaryVerifier,
+  type SubscriptionPolicyClaim,
+} from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import config from "@/constants";
 import PaymentReceipt from "@/components/Receipt";
@@ -98,7 +102,14 @@ export function SuccessPage() {
   };
 
   const lastPayment = payload.lastPayments[0] ?? null;
-  const firstSub = payload.subscriptions[0] ?? null;
+  // ponytail: success-page's receipt rendering is subscription-shaped; filter
+  // the new discriminated `policies[]` to subscription variants. Other variants
+  // (milestone/payAsYouGo/oneTime/upTo) get their own success-page treatment
+  // in deferred bean tributary-5tg7.
+  const subscriptionPolicies = (payload.policies ?? []).filter(
+    (p): p is SubscriptionPolicyClaim => p.variant === "subscription"
+  );
+  const firstSub = subscriptionPolicies[0] ?? null;
   const mint = lastPayment?.tokenMint;
 
   const displayToken =
@@ -111,8 +122,8 @@ export function SuccessPage() {
     : 0;
 
   const subscriptionItems =
-    payload.subscriptions.length > 0
-      ? payload.subscriptions.map((sub) => ({
+    subscriptionPolicies.length > 0
+      ? subscriptionPolicies.map((sub) => ({
           label: `${
             sub.paymentFrequency.charAt(0).toUpperCase() +
             sub.paymentFrequency.slice(1)
