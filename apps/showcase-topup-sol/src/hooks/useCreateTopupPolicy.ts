@@ -158,7 +158,8 @@ export function useCreateTopupPolicy() {
             periodLengthSeconds: new BN(form.periodSeconds),
             currentPeriodStart: new BN(now),
             currentPeriodTotal: new BN(0),
-            padding: new Array(88).fill(0),
+            expiryDate: null,
+            padding: new Array(79).fill(0),
           },
         };
 

@@ -1,11 +1,11 @@
 ---
 # tributary-5lv3
 title: 'Implementation: PayAsYouGo expiration'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-02T09:13:36Z
-updated_at: 2026-07-02T13:04:30Z
+updated_at: 2026-07-04T10:46:42Z
 parent: tributary-f99q
 ---
 

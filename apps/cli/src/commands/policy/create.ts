@@ -21,6 +21,7 @@ export default class PolicyCreate extends BaseCommand {
     // milestone
     amounts: Flags.string({description: '[milestone] Comma-separated milestone amounts (up to 4)'}),
     'auto-renew': Flags.boolean({allowNo: true, default: true, description: '[subscription] Auto-renew'}),
+    'expiry': Flags.string({description: '[pay-as-you-go] Optional overall expiry (unix seconds); execution rejected after this time'}),
     frequency: Flags.string({
       char: 'f',
       default: 'monthly',
@@ -110,8 +111,12 @@ export default class PolicyCreate extends BaseCommand {
         new BN(flags['max-chunk']),
         new BN(flags['period-seconds']),
         memo,
+        undefined, // approvalAmount — calculated automatically
+        undefined, // referralCode
+        flags.expiry ? new BN(flags.expiry) : null,
       )
       summary = {
+        expiry: flags.expiry ?? 'never',
         maxChunkAmount: flags['max-chunk'],
         maxPerPeriod: flags['max-per-period'],
         periodSeconds: flags['period-seconds'],

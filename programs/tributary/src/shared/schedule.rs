@@ -273,7 +273,10 @@ impl<'a> MilestoneSigners<'a> {
 ///   `milestone_amounts[current_milestone]`.
 /// * **PayAsYouGo** — requires `provided_amount` (the chunk); validates
 ///   `0 < chunk <= max_chunk_amount` and that the projected period total
-///   stays within `max_amount_per_period`; returns the chunk.
+///   stays within `max_amount_per_period`; returns the chunk. If
+///   `expiry_date` is `Some(ts)` with `ts > 0`, requires
+///   `current_time <= expiry_date` (boundary permitted, mirroring OneTime).
+///   Orthogonal to the rolling period cap — whichever bound trips first.
 /// * **OneTime** — `due_date <= 0` is immediately executable, otherwise
 ///   requires `current_time >= due_date`; if `expiry_date` is set,
 ///   requires `current_time <= expiry_date`. Returns the fixed `amount`.
@@ -350,8 +353,18 @@ pub fn validate_policy_execution(
             period_length_seconds,
             current_period_start,
             current_period_total,
+            expiry_date,
             padding: _,
         } => {
+            // Optional overall expiry (ADR-0024). None = never; Some(ts>0)
+            // rejects once current_time > ts. Boundary current_time == expiry
+            // is permitted (<=), mirroring OneTime. Orthogonal to the period
+            // cap — whichever bound trips first wins.
+            if let Some(exp) = expiry_date {
+                if *exp > 0 {
+                    require!(current_time <= *exp, TributaryError::PolicyExpired);
+                }
+            }
             let chunk = provided_amount.ok_or(TributaryError::InvalidAmount)?;
             require!(chunk > 0, TributaryError::InvalidAmount);
             require!(chunk <= *max_chunk_amount, TributaryError::InvalidAmount);
@@ -781,13 +794,33 @@ mod tests {
         current_period_start: i64,
         current_period_total: u64,
     ) -> PolicyType {
+        payg_with_expiry(
+            max_amount_per_period,
+            max_chunk_amount,
+            period_length_seconds,
+            current_period_start,
+            current_period_total,
+            None,
+        )
+    }
+
+    /// Build a `PolicyType::PayAsYouGo` with an explicit `expiry_date`.
+    fn payg_with_expiry(
+        max_amount_per_period: u64,
+        max_chunk_amount: u64,
+        period_length_seconds: u64,
+        current_period_start: i64,
+        current_period_total: u64,
+        expiry_date: Option<i64>,
+    ) -> PolicyType {
         PolicyType::PayAsYouGo {
             max_amount_per_period,
             max_chunk_amount,
             period_length_seconds,
             current_period_start,
             current_period_total,
-            padding: [0u8; 88],
+            expiry_date,
+            padding: [0u8; 79],
         }
     }
 
@@ -924,6 +957,66 @@ mod tests {
             }
             _ => panic!("expected PayAsYouGo"),
         }
+    }
+
+    // ── PayAsYouGo expiry gate (ADR-0024) ──
+
+    /// `expiry_date = None` (default) never expires — backward compatible.
+    #[test]
+    fn payg_no_expiry_executes_anytime() {
+        let pt = payg(1000, 100, 3600, 0, 0);
+        // Far-future current_time still executes.
+        let amt =
+            validate_policy_execution(&pt, 9_999_999_999, Some(50), &MilestoneSigners::none())
+                .unwrap();
+        assert_eq!(amt, 50);
+    }
+
+    /// `Some(ts)` with `current_time > ts` → PolicyExpired.
+    #[test]
+    fn payg_rejects_after_expiry() {
+        let pt = payg_with_expiry(1000, 100, 3600, 0, 0, Some(1_700_000_000));
+        let err =
+            validate_policy_execution(&pt, 1_700_000_001, Some(50), &MilestoneSigners::none())
+                .unwrap_err();
+        assert!(err == error!(TributaryError::PolicyExpired));
+    }
+
+    /// Boundary `current_time == expiry` is permitted (<=), mirroring OneTime.
+    #[test]
+    fn payg_executes_at_expiry_boundary() {
+        let pt = payg_with_expiry(1000, 100, 3600, 0, 0, Some(1_700_000_000));
+        let amt =
+            validate_policy_execution(&pt, 1_700_000_000, Some(50), &MilestoneSigners::none())
+                .unwrap();
+        assert_eq!(amt, 50);
+    }
+
+    /// `Some(0)` / negative expiry is treated as "no gate" — the guard only
+    /// fires when `*exp > 0`. Matches the OneTime precedent of not
+    /// over-validating sentinel values at create; the gate is the single
+    /// source of truth.
+    #[test]
+    fn payg_zero_or_negative_expiry_treated_as_no_gate() {
+        for exp in [0i64, -1] {
+            let pt = payg_with_expiry(1000, 100, 3600, 0, 0, Some(exp));
+            let amt =
+                validate_policy_execution(&pt, 9_999_999_999, Some(50), &MilestoneSigners::none())
+                    .unwrap_or_else(|e| panic!("exp={exp} should not gate: {e:?}"));
+            assert_eq!(amt, 50);
+        }
+    }
+
+    /// Expiry is orthogonal to the period cap — a chunk that fits the period
+    /// but fires after expiry is still rejected (expiry trips first).
+    #[test]
+    fn payg_expiry_trips_before_period_cap() {
+        // period allows the chunk (0/1000, chunk 50 <= 100), but expiry passed.
+        let pt = payg_with_expiry(1000, 100, 3600, 0, 0, Some(1_700_000_000));
+        let err =
+            validate_policy_execution(&pt, 1_800_000_000, Some(50), &MilestoneSigners::none())
+                .unwrap_err();
+        assert!(err == error!(TributaryError::PolicyExpired));
     }
 
     // ── OneTime gating + advancement ──

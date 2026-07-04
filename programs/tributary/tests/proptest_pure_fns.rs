@@ -156,7 +156,8 @@ proptest! {
             period_length_seconds: period_secs,
             current_period_start: period_start,
             current_period_total: 0,
-            padding: [0u8; 88],
+            expiry_date: None,
+            padding: [0u8; 79],
         };
         let result = validate_policy_execution(&pt, now, Some(0), &MilestoneSigners::none());
         prop_assert!(result.is_err(), "PAYG must reject zero chunk");
@@ -178,7 +179,8 @@ proptest! {
             period_length_seconds: period_secs,
             current_period_start: period_start,
             current_period_total: 0,
-            padding: [0u8; 88],
+            expiry_date: None,
+            padding: [0u8; 79],
         };
         let result = validate_policy_execution(&pt, now, Some(oversize), &MilestoneSigners::none());
         prop_assert!(result.is_err(), "PAYG must reject chunk > max_chunk");
@@ -200,7 +202,8 @@ proptest! {
             period_length_seconds: period_secs,
             current_period_start: period_start,
             current_period_total: 0,
-            padding: [0u8; 88],
+            expiry_date: None,
+            padding: [0u8; 79],
         };
         let now = period_start + 100; // within period
         let result = validate_policy_execution(&pt, now, Some(chunk), &MilestoneSigners::none());
@@ -230,7 +233,8 @@ proptest! {
             period_length_seconds: period_secs,
             current_period_start: period_start,
             current_period_total: 0,
-            padding: [0u8; 88],
+            expiry_date: None,
+            padding: [0u8; 79],
         };
         if let Ok(should_complete) = advance_policy(&mut pt, now, amount) {
             prop_assert!(!should_complete, "PAYG must never auto-complete");

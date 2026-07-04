@@ -87,20 +87,20 @@ function callBuilder(builder: unknown, method: string, value: bigint, operator: 
 
 function disabledForward(inputMint: PublicKey, outputMint: PublicKey): ForwardConfig {
   return {
+    forwardFlags: 0,
+    inputMint,
     instructionConstraint: {
-      programId: PublicKey.default,
-      numDataChecks: 0,
       dataChecks: [
         {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
         {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
         {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
         {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
       ],
+      numDataChecks: 0,
       numPinnedAccounts: 0,
       pinnedAccounts: [PublicKey.default, PublicKey.default, PublicKey.default, PublicKey.default],
+      programId: PublicKey.default,
     },
-    forwardFlags: 0,
-    inputMint,
     outputMint,
   }
 }
@@ -115,6 +115,7 @@ export default class ComposableCreate extends BaseCommand {
     ...BaseCommand.baseFlags,
     // subscription
     amount: Flags.string({char: 'a', description: '[subscription] Amount in smallest token unit'}),
+    expiry: Flags.string({description: '[pay-as-you-go] Optional overall expiry (unix seconds); execution rejected after this time'}),
     // forward
     forward: Flags.string({
       description: 'Forward program public key (enables the swap hook). Omit to disable (same-mint topup sentinel).',
@@ -189,9 +190,10 @@ export default class ComposableCreate extends BaseCommand {
         payAsYouGo: {
           currentPeriodStart: new BN(now),
           currentPeriodTotal: new BN(0),
+          expiryDate: flags.expiry ? new BN(flags.expiry) : null,
           maxAmountPerPeriod: new BN(flags['max-per-period']),
           maxChunkAmount: new BN(flags['max-chunk']),
-          padding: Array.from({length: 88}).fill(0),
+          padding: Array.from({length: 79}).fill(0),
           periodLengthSeconds: new BN(flags['period-seconds']),
         },
       }
@@ -229,20 +231,20 @@ export default class ComposableCreate extends BaseCommand {
         ...Array.from({length: 8 - discBytes.length}, () => 0),
       ]
       forwardConfig = {
+        forwardFlags: flags['native-output'] ? 1 : 0,
+        inputMint: tokenMint,
         instructionConstraint: {
-          programId: fwdProgram,
-          numDataChecks: 1,
           dataChecks: [
             {expected, length: discBytes.length, offset: 0},
             {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
             {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
             {expected: [0, 0, 0, 0, 0, 0, 0, 0], length: 0, offset: 0},
           ],
+          numDataChecks: 1,
           numPinnedAccounts: 1,
           pinnedAccounts: [PublicKey.unique(), PublicKey.default, PublicKey.default, PublicKey.default],
+          programId: fwdProgram,
         },
-        forwardFlags: flags['native-output'] ? 1 : 0,
-        inputMint: tokenMint,
         outputMint: outputMint!,
       }
     } else {

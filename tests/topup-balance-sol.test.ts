@@ -389,7 +389,8 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
         periodLengthSeconds: new anchor.BN(30 * 24 * 3600),
         currentPeriodStart: new anchor.BN(now),
         currentPeriodTotal: new anchor.BN(0),
-        padding: new Array(88).fill(0),
+        expiryDate: null,
+        padding: new Array(79).fill(0),
       },
     };
 

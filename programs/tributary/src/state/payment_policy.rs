@@ -70,13 +70,17 @@ pub enum PolicyType {
     /// Pay-as-you-go payment model for AI agents and service providers.
     /// Providers can claim up to max_chunk_amount when they hit usage thresholds,
     /// with a maximum of max_amount_per_period per period. Period resets automatically.
+    /// `expiry_date = None` means the policy never expires (backward-compatible
+    /// default — legacy zeroed padding deserializes to `None`); `Some(ts)` with
+    /// `ts > 0` rejects execution once `current_time > ts`. See ADR-0024.
     PayAsYouGo {
         max_amount_per_period: u64, // 8 bytes - Total amount allowed per period
         max_chunk_amount: u64,      // 8 bytes - Max amount provider can claim in one go
         period_length_seconds: u64, // 8 bytes - Length of each period in seconds
         current_period_start: i64,  // 8 bytes - When current period started (unix timestamp)
         current_period_total: u64,  // 8 bytes - Amount claimed in current period so far
-        padding: [u8; 88],          // 88 bytes padding
+        expiry_date: Option<i64>,   // 9 bytes (1 + 8) - None = never expires
+        padding: [u8; 79],          // 79 bytes padding (total: 40+9+79 = 128)
     },
     /// One-time fixed-amount pull payment. Fires exactly once, then the policy
     /// transitions to `Completed`. `due_date <= 0` means immediately executable;

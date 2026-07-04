@@ -194,7 +194,8 @@ fn verify_payg_rejects_zero_chunk() {
         period_length_seconds: kani::any(),
         current_period_start: kani::any(),
         current_period_total: kani::any(),
-        padding: [0u8; 88],
+        expiry_date: None,
+        padding: [0u8; 79],
     };
     let now: i64 = kani::any();
     let result = validate_policy_execution(&pt, now, Some(0), &MilestoneSigners::none());
@@ -214,7 +215,8 @@ fn verify_payg_rejects_oversize_chunk() {
         period_length_seconds: kani::any(),
         current_period_start: kani::any(),
         current_period_total: kani::any(),
-        padding: [0u8; 88],
+        expiry_date: None,
+        padding: [0u8; 79],
     };
     let now: i64 = kani::any();
     let result = validate_policy_execution(&pt, now, Some(oversize), &MilestoneSigners::none());
@@ -240,7 +242,8 @@ fn verify_payg_pull_bounded() {
         period_length_seconds: period_secs,
         current_period_start: period_start,
         current_period_total: period_total,
-        padding: [0u8; 88],
+        expiry_date: None,
+        padding: [0u8; 79],
     };
     let chunk: u64 = kani::any();
     kani::assume(chunk > 0);
@@ -284,7 +287,8 @@ fn verify_payg_rejects_period_breach() {
         period_length_seconds: period_secs,
         current_period_start: period_start,
         current_period_total: period_total,
-        padding: [0u8; 88],
+        expiry_date: None,
+        padding: [0u8; 79],
     };
     let result = validate_policy_execution(&pt, now, Some(chunk), &MilestoneSigners::none());
     assert!(
@@ -318,7 +322,8 @@ fn verify_payg_advance_preserves_cap() {
         period_length_seconds: period_secs,
         current_period_start: period_start,
         current_period_total: period_total,
-        padding: [0u8; 88],
+        expiry_date: None,
+        padding: [0u8; 79],
     };
 
     let now: i64 = kani::any();
@@ -405,22 +410,56 @@ fn verify_byte_range_check_no_panic() {
     let offset: u8 = kani::any();
     let length: u8 = kani::any();
     let expected: [u8; 8] = [
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
     ];
-    let check = ByteRangeCheck { offset, length, expected };
+    let check = ByteRangeCheck {
+        offset,
+        length,
+        expected,
+    };
 
     // Symbolic instruction data (up to 1024 bytes — but Kani can't handle
     // that size symbolically; use a fixed small buffer).
     let data: [u8; 32] = [
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
-        kani::any(), kani::any(), kani::any(), kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
+        kani::any(),
     ];
 
     // Must never panic — the H-06 defense (length > 8 → false) and the
@@ -437,7 +476,10 @@ fn verify_byte_range_check_rejects_length_above_eight() {
         expected: [0u8; 8],
     };
     let data = [0u8; 32];
-    assert!(!check.validate(&data), "length > 8 must return false (H-06)");
+    assert!(
+        !check.validate(&data),
+        "length > 8 must return false (H-06)"
+    );
 }
 
 // ============================================================================
@@ -450,10 +492,26 @@ fn verify_validate_byte_ranges_no_panic() {
     let num_checks: u8 = kani::any();
     // Fixed-size checks array (4 = MAX_BYTE_RANGE_CHECKS)
     let checks: [ByteRangeCheck; 4] = [
-        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
-        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
-        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
-        ByteRangeCheck { offset: kani::any(), length: kani::any(), expected: [kani::any(); 8] },
+        ByteRangeCheck {
+            offset: kani::any(),
+            length: kani::any(),
+            expected: [kani::any(); 8],
+        },
+        ByteRangeCheck {
+            offset: kani::any(),
+            length: kani::any(),
+            expected: [kani::any(); 8],
+        },
+        ByteRangeCheck {
+            offset: kani::any(),
+            length: kani::any(),
+            expected: [kani::any(); 8],
+        },
+        ByteRangeCheck {
+            offset: kani::any(),
+            length: kani::any(),
+            expected: [kani::any(); 8],
+        },
     ];
     let data: [u8; 32] = [kani::any(); 32];
 
@@ -465,11 +523,22 @@ fn verify_validate_byte_ranges_no_panic() {
 #[kani::proof]
 fn verify_validate_byte_ranges_rejects_excess_num_checks() {
     let checks: [ByteRangeCheck; 2] = [
-        ByteRangeCheck { offset: 0, length: 1, expected: [0u8; 8] },
-        ByteRangeCheck { offset: 0, length: 1, expected: [0u8; 8] },
+        ByteRangeCheck {
+            offset: 0,
+            length: 1,
+            expected: [0u8; 8],
+        },
+        ByteRangeCheck {
+            offset: 0,
+            length: 1,
+            expected: [0u8; 8],
+        },
     ];
     let data = [0u8; 16];
     // num_checks > checks.len() → must Err (not panic)
     let result = validate_byte_ranges(&data, &checks, 3);
-    assert!(result.is_err(), "num_checks > checks.len() must return Err (H-04)");
+    assert!(
+        result.is_err(),
+        "num_checks > checks.len() must return Err (H-04)"
+    );
 }
