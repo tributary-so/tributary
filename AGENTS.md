@@ -468,6 +468,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0020] | UpTo scheme: variable-amount single-settlement authorization (x402 `upto`)              |
 | [0021] | Composable v2.1: InstructionConstraint + Unified ValidationSpec                         |
 | [0022] | Fixed-size PDAs (no realloc)                                                            |
+| [0024] | JWT payload generalized to `policies: PolicyClaim[]` (all 5 variants)                   |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -490,6 +491,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0020]: apps/docs/adr/0020-upto-scheme-and-policy-variant.md
 [0021]: apps/docs/adr/0021-composable-v21-instructionconstraint-validation-spec.md
 [0022]: apps/docs/adr/0022-fixed-size-pdas-no-realloc.md
+[0024]: apps/docs/adr/0024-jwt-payload-generalized-policyclaim-union.md
 
 ## SDK
 

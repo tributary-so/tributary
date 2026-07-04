@@ -1,11 +1,11 @@
 ---
 # tributary-pzp2
 title: Generalize JWT to all PaymentPolicy variants (authorization + payment proof)
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-03T09:18:25Z
-updated_at: 2026-07-03T09:45:18Z
+updated_at: 2026-07-04T12:58:29Z
 blocked_by:
     - tributary-f6yh
 ---
@@ -141,3 +141,26 @@ milestone: Generalize JWT to all PaymentPolicy variants
 - \`apps/showcase-payment-policies/src/components/policy-inputs.tsx\` — existing policy form to extend
 - \`programs/tributary/src/state/payment_policy.rs\` — on-chain PolicyType shapes
 - ADR-0019 (OneTime policy), ADR-0020 (UpTo), ADR-0004 (standalone transfer)
+
+## Summary of Changes
+
+### Implemented (this worktree)
+- **apps/api/src/services/token-issuer.ts** — generalized: dropped the subscription-only filter; new per-variant PolicyClaim builders (subscription/milestone/payAsYouGo/oneTime/upTo) with per-variant status vocabulary; new computePolicyExpiration using per-variant time fields (nextPaymentDue / last milestoneTimestamp / periodResetsAt / expiryDate / hard deadline); JWT payload now emits `policies: PolicyClaim[]` instead of `subscriptions`. JWT_DEFAULT_LIFETIME_SECONDS (default 1h) covers the no-time-field case.
+- **apps/api/src/services/subscription.ts** — extended padding-strip for oneTime + upTo (previously dropped silently with policyType=undefined). Type union widened to all 5 variants.
+- **apps/api/src/middleware/auth.ts** — JwtPayload now uses `policies?: PolicyClaim[]` (typed). Legacy `subscriptions` kept as deprecated alias for the rollout window.
+- **apps/api/src/routes/tokens.ts** + **apps/api/src/openapi.ts** — OpenAPI description generalized (no more 'subscription-only' language).
+- **apps/showcase-payments/src/components/PaymentDetails.tsx** — renders `payload.policies` (discriminated union, per-variant rows). Falls back to legacy `subscriptions` for tokens issued before the rollout.
+- **apps/api/src/__tests__/token-issuer.test.ts** — 14 new unit tests covering all 5 variants (claim shape + status transitions + exp derivation). All pass.
+- **apps/docs/adr/0024-jwt-payload-generalized-policyclaim-union.md** — new ADR documenting the decision, rejected alternatives, and rationale.
+- **AGENTS.md** — ADR-0024 wired into the ADR map.
+
+### Test verification
+- `apps/api`: 164 passing (150 baseline + 14 new); the 4 failures in tokens.route/subscription.route are pre-existing (walletPublicKey presence validation never enforced by the route) and unrelated to this change.
+- `apps/showcase-payments`: tsc clean, eslint clean (3 pre-existing warnings).
+- `packages/payments`: unchanged (the foundational PolicyClaim union landed in commit db4e952).
+
+### Deferred to follow-up beans (UI work, downstream of this API change)
+- **showcase-payment-policies** — OneTime + UpTo forms in `policy-inputs.tsx` + success/cancel URL inputs + JWT-issue-on-policy-create + redirect-to-success_url pattern. Blocked-by this API generalization (now unblocked).
+- **checkout naming reframe** — rename `mode: 'payment'` (direct transfer, ADR-0004) to 'direct payment' / 'instant payment' in UI copy to disambiguate from OneTime PolicyType (ADR-0019). Docs/types/UI copy only.
+- **showcase e2e** — policy-create → JWT → success-redirect e2e tests.
+- **api integration tests** — end-to-end tests covering all 5 variants through the real token-issuer pipeline (the unit tests added here cover the pure builder logic).

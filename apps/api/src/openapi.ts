@@ -89,7 +89,11 @@ const options: swaggerJsdoc.Options = {
       { name: "OneTime", description: "One-time payment lookups" },
       { name: "Events", description: "On-chain event queries" },
       { name: "Webhooks", description: "Webhook endpoint management" },
-      { name: "Tokens", description: "JWT issuance for active subscriptions" },
+      {
+        name: "Tokens",
+        description:
+          "JWT issuance for active payment policies (all 5 PolicyType variants) and direct payments",
+      },
       { name: "JWKS", description: "JWT key set publishing" },
       { name: "Admin", description: "Administrative key rotation" },
     ],

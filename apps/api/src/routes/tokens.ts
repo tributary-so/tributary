@@ -13,9 +13,14 @@ const BASE58_TX_SIG_RE = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
  *   post:
  *     summary: Issue a short-lived JWT
  *     description: >
- *       Validates that the caller has an active subscription policy (or a
- *       recent payment transaction signature) and issues a JWT bound to the
- *       subscription. Rate-limited to 200 requests per minute per wallet.
+ *       Validates that the caller has an active payment policy (any of the 5
+ *       PolicyType variants: Subscription, Milestone, PayAsYouGo, OneTime,
+ *       UpTo) OR a recent payment transaction signature, and issues a JWT
+ *       bound to the caller's wallet. The token carries a `policies[]` array
+ *       of discriminated `PolicyClaim` objects (authorization proof) and a
+ *       `lastPayments[]` array of recent `PaymentRecord` objects (payment
+ *       proof). Consumers decide which aspect to require. Rate-limited to 200
+ *       requests per minute per wallet.
  *     tags: [Tokens]
  *     operationId: issueToken
  *     requestBody:
