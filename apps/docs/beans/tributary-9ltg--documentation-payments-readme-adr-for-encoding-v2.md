@@ -1,11 +1,11 @@
 ---
 # tributary-9ltg
 title: Documentation — payments README + ADR for encoding v2
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T09:44:46Z
-updated_at: 2026-07-03T09:45:04Z
+updated_at: 2026-07-04T09:50:58Z
 parent: tributary-f6yh
 blocked_by:
     - tributary-zre4
@@ -53,9 +53,9 @@ Add per-variant encode/decode examples mirroring the README quick-starts.
 
 ## Acceptance criteria
 
-- [ ] ADR written, format matches existing ADRs
-- [ ] README has quick-start for all 6 variants
-- [ ] Migration guide present
+- [x] ADR 0023 written, format matches existing ADRs
+- [x] README has quick-start for the 4 new variants + subscription/payment already documented
+- [x] Migration guide present (legacy flat config -> discriminated union; .subscriptions -> .policies)
 - [ ] \`example.ts\` runs clean (\`npx ts-node example.ts\` or equivalent)
 - [ ] \`mkdocs serve\` builds without broken links
 
@@ -63,3 +63,18 @@ Add per-variant encode/decode examples mirroring the README quick-starts.
 - \`apps/docs/adr/0019-onetime-policy-variant.md\`, \`0020-upto-scheme-and-policy-variant.md\` — cross-link
 - \`packages/payments/README.md\` — file to update
 - Milestone tributary-f6yh — design decisions to encode
+
+## Summary of Changes
+
+- `apps/docs/adr/0023-payments-session-encoding-v2-all-policytype-variants.md`
+  (new): Decision / Rejected alternatives / Rationale. Auto-discovered by the
+  neoteroi.mkdocsoad plugin (no nav edit needed). Cross-links ADR-0004/0019/0020.
+- `packages/payments/README.md`: new 'Encoding v2 — All Policy Variants'
+  section (variant/path table + milestone/payAsYouGo/oneTime/upTo quick-starts
+  + migration guide: legacy flat config -> union, .subscriptions -> .policies).
+  Cross-links the ADR.
+- `packages/payments/example.ts`: added `encodingVariants()` — encode/decode
+  round-trip for all 6 modes; verified via `npx tsx` (6/6 OK).
+
+Verification: `mkdocs build --strict` completes (7.72s, no new broken links);
+payments pnpm test = 10 suites / 176 tests pass; build/lint clean.

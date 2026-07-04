@@ -11,6 +11,30 @@ interface OrderSummaryProps {
   sessionData: CheckoutParams;
 }
 
+/**
+ * Derive a display amount from any CheckoutParams arm. The single-amount
+ * variants (subscription/payment/oneTime) expose `amount` directly; the
+ * multi-amount variants expose a representative ceiling. Full per-variant
+ * rendering lives in the hosted-checkout milestone (tributary-wwwh).
+ */
+function amountOf(p: CheckoutParams): number {
+  switch (p.mode) {
+    case "subscription":
+    case "payment":
+    case "oneTime":
+      return Number(p.amount);
+    case "upTo":
+      return Number(p.maxAmount);
+    case "payAsYouGo":
+      return Number(p.maxAmountPerPeriod);
+    case "milestone": {
+      let total = 0;
+      for (const a of p.milestoneAmounts) total += Number(a);
+      return total;
+    }
+  }
+}
+
 export function OrderSummary({ sessionData }: OrderSummaryProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [tokenSymbol, setTokenSymbol] = useState<string | null>(null);
@@ -38,6 +62,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
   const isSubscription = sessionData.mode === "subscription";
   const lineItemCount =
     isSubscription && sessionData.lineItems ? sessionData.lineItems.length : 1;
+  const amount = amountOf(sessionData);
 
   return (
     <div className="border border-border">
@@ -61,7 +86,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
         <div className="flex items-center gap-3">
           <div className="text-right">
             <div className="font-semibold text-foreground">
-              {sessionData.amount.toFixed(2)}{" "}
+              {amount.toFixed(2)}{" "}
               {tokenSymbol ||
                 `${sessionData.tokenMint.slice(
                   0,
@@ -134,7 +159,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
                 {isSubscription ? "Subtotal" : "Payment amount"}
               </span>
               <span className="font-medium text-foreground text-sm">
-                {sessionData.amount.toFixed(2)}{" "}
+                {amount.toFixed(2)}{" "}
                 {tokenSymbol ||
                   `${sessionData.tokenMint.slice(
                     0,
@@ -175,7 +200,7 @@ export function OrderSummary({ sessionData }: OrderSummaryProps) {
               </span>
               <div className="text-right">
                 <span className="font-semibold text-foreground">
-                  {sessionData.amount.toFixed(2)}{" "}
+                  {amount.toFixed(2)}{" "}
                   {tokenSymbol ||
                     `${sessionData.tokenMint.slice(
                       0,

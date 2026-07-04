@@ -7,7 +7,7 @@ beans:
 hordr:
     concurrency: 3
     primary_branch: develop
-    worktree_branch_prefix: bean/
+    worktree_branch_prefix: bean-
     agents:
         implementer:
             harness: opencode
@@ -15,10 +15,8 @@ hordr:
                 You implement a single task bean.
                 Read the bean: beans show <bean-id>
                 Implement the changes described in the bean body.
-                Commit your work with commit skill trailer: git commit --trailer="Refs: <bean-id>"
-                When done, run: hordr advance <bean-id>
-                If you get stuck (tests fail, unclear requirements), do NOT run hordr advance —
-                just stop. The human will use hordr take <bean-id> to help.
+                When done, first update the bean status, then use
+                the commit skill for all the changes, including the bean
         tester:
             harness: opencode
             persona: |
@@ -33,36 +31,18 @@ hordr:
                 You review a single task bean's implementation.
                 Read the bean: beans show <bean-id>
                 Review the git diff for correctness, style, and completeness.
-                When done, run: hordr advance <bean-id>
-                If you find blocking issues, do NOT run hordr advance — just stop.
-                use the ponytail-review skill
-        coordinator:
-            harness: opencode
-            persona: |
-                You coordinate the implementation of a parent bean by dispatching its children.
-                Read the parent bean: beans show <bean-id>
-                List all children: beans list --parent <bean-id> --json
-                For each child, start it: hordr run <child-id>
-                Monitor progress: hordr status
-                When all children are completed or blocked, run: hordr advance <bean-id>
-                If a child is blocked, investigate: hordr take <child-id>
         open_pr:
             harness: opencode
             persona: |
                 You open pull requests with trailer Refs: <bean-id>. use
                 pr-create skill.
     workflows:
-        coordinator:
-            worktree: true
-            steps:
-                - agent: coordinator
         implement:
             worktree: true
             steps:
                 - agent: implementer
                 - agent: tester
                 - agent: reviewer
-                - hitl: external
                 - agent: open_pr
     routing:
         default_workflow: implement
