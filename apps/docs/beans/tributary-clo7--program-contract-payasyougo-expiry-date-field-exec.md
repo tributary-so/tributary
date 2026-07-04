@@ -1,11 +1,11 @@
 ---
 # tributary-clo7
 title: 'Program contract: PayAsYouGo expiry_date field + execute gate'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-02T13:05:05Z
-updated_at: 2026-07-02T13:05:39Z
+updated_at: 2026-07-04T10:22:26Z
 parent: tributary-5lv3
 ---
 
@@ -27,3 +27,12 @@ Add optional `expiry_date: Option<i64>` to the PayAsYouGo variant and enforce it
 
 - No new `PolicyStatus`. Soft execute-time gate only.
 - Orthogonal to the rolling period cap — whichever trips first wins.
+
+## Summary of Changes
+
+- `PayAsYouGo` variant: added `expiry_date: Option<i64>` (9 bytes), padding 88→79 (ADR-0002 invariant preserved at 128 bytes).
+- `validate_policy_execution` PayAsYouGo arm: gate `current_time <= expiry` when `Some(ts>0)`; boundary permitted (<=), mirroring OneTime; orthogonal to period cap.
+- `validate()` / `validate_payg_policy` unchanged — the match `..` ignores the new field; no due_date to order against, gate is single source of truth (OneTime precedent).
+- 5 new unit tests in `shared/schedule.rs` (no-expiry, after-expiry reject, boundary permit, zero/negative sentinel, expiry-vs-cap orthogonality).
+- Updated all `PayAsYouGo` construction sites in kani/proptest harnesses (padding 88→79, `expiry_date: None`).
+- qed hash stable (handler source unchanged). Backward-compatible: zeroed legacy padding deserializes to `None`.

@@ -4191,11 +4191,17 @@ export type Tributary = {
                 "type": "u64"
               },
               {
+                "name": "expiryDate",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
                 "name": "padding",
                 "type": {
                   "array": [
                     "u8",
-                    88
+                    79
                   ]
                 }
               }

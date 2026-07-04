@@ -37,19 +37,21 @@ PolicyType::PayAsYouGo {
     period_length_seconds: u64,     // Duration of each period (seconds)
     current_period_start: i64,      // When current period started (unix timestamp)
     current_period_total: u64,      // Amount claimed so far in current period
-    padding: [u8; 88],              // 128-byte alignment
+    expiry_date: Option<i64>,       // Optional overall expiry; None = never (ADR-0024)
+    padding: [u8; 79],              // 128-byte alignment
 }
 ```
 
 ### Key Fields
 
-| Field                   | Description                                                                                           |
-| ----------------------- | ----------------------------------------------------------------------------------------------------- |
-| `max_amount_per_period` | Ceiling for total claims within one period. Resets when period rolls over.                            |
-| `max_chunk_amount`      | Maximum the provider can claim in a single `execute_payment` call. Prevents large unexpected pulls.   |
-| `period_length_seconds` | Billing cycle duration. Any value in seconds — hourly, daily, weekly, monthly, etc.                   |
-| `current_period_start`  | Timestamp when the current period began. Used to calculate period expiry.                             |
-| `current_period_total`  | Running total of claims in the current period. Checked against `max_amount_per_period` on each claim. |
+| Field                   | Description                                                                                                                                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `max_amount_per_period` | Ceiling for total claims within one period. Resets when period rolls over.                                                                                                                                  |
+| `max_chunk_amount`      | Maximum the provider can claim in a single `execute_payment` call. Prevents large unexpected pulls.                                                                                                         |
+| `period_length_seconds` | Billing cycle duration. Any value in seconds — hourly, daily, weekly, monthly, etc.                                                                                                                         |
+| `current_period_start`  | Timestamp when the current period began. Used to calculate period expiry.                                                                                                                                   |
+| `current_period_total`  | Running total of claims in the current period. Checked against `max_amount_per_period` on each claim.                                                                                                       |
+| `expiry_date`           | Optional overall expiration (ADR-0024). `None` = never expires; `Some(ts)` rejects execution once `current_time > ts` (boundary `<=` permitted). Orthogonal to the period cap — whichever trips first wins. |
 
 ### Account Size
 
@@ -115,6 +117,34 @@ const periods = {
   custom: new BN(whatever_you_want),
 };
 ```
+
+### Optional Overall Expiry (ADR-0024)
+
+Pass an `expiryDate` to cap the authorization with a hard deadline, independent
+of the rolling period cap. `null`/omitted = never expires (the default).
+
+```typescript
+// $100/month, $10/chunk, but the whole authorization stops after 90 days.
+const ninetyDays = Math.floor(Date.now() / 1000) + 86400 * 90;
+
+const instructions = await sdk.createPayAsYouGo(
+  USDC_MINT,
+  provider,
+  gateway,
+  new BN(100_000_000), // max/period
+  new BN(10_000_000), // max/chunk
+  new BN(86400 * 30), // 30-day period
+  memo,
+  undefined, // approvalAmount (auto)
+  undefined, // referralCode
+  new BN(ninetyDays) // expiryDate — rejects execution once current_time > expiry
+);
+```
+
+Once `current_time > expiry_date`, both `execute_payment` and
+`execute_composable` fail with `TributaryError::PolicyExpired`. The boundary
+`current_time == expiry` is permitted. To reclaim the delegate approval after
+expiry, call `delete_payment_policy`.
 
 ## How It Works
 

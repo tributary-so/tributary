@@ -1,11 +1,11 @@
 ---
 # tributary-f99q
 title: PayAsYouGo policy expiration (optional expiry_date)
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-02T12:00:19Z
-updated_at: 2026-07-02T13:04:30Z
+updated_at: 2026-07-04T10:46:42Z
 ---
 
 Three of five PolicyType variants (Subscription, Milestone, PayAsYouGo) have no overall expiration date. OneTime has expiry_date; UpTo has deadline. This milestone adds optional expiration to the remaining three so payers can set 'this authorization stops after timestamp X' without manually pausing/deleting.
@@ -49,3 +49,17 @@ tributary-f99q (milestone)
 - OneTime / UpTo changes (already expire).
 - Top-level / cross-variant expiry field (rejected).
 - On-chain "Expired" PolicyStatus transition (soft gate only).
+
+
+
+## Milestone completion (2026-07-04)
+
+All child features landed:
+- `tributary-clo7` (program contract) ✅ — field + gate + 5 unit tests
+- `tributary-ykyd` (SDK) ✅ — `expiryDate` on both builders + CLI flags
+- `tributary-yg0j` (integration tests) ✅ — `tests/payasyougo-expiry.test.ts`
+- `tributary-tspw` (documentation) ✅ — ADR-0024 + AGENTS.md + payasyougo.md
+
+Note: ADR number is **0024**, not 0021 as the tree stub suggested — 0021 was already taken by composable v2.1.
+
+Verification: 159 Rust unit tests pass (5 new), `cargo build` clean (qed hash stable), `@tributary-so/sdk` build green, `@tributary-so/cli` tsc + eslint green, jest.tsconfig typecheck clean for all touched files.

@@ -507,6 +507,7 @@ export class Tributary {
    * @param maxChunkAmount - Maximum amount that can be claimed in a single payment
    * @param periodLengthSeconds - Length of each period in seconds
    * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param expiryDate - Optional hard deadline (unix seconds); when `current_time > expiryDate` execution is rejected. `null`/omitted = never expires (ADR-0024).
    * @returns Transaction instruction to create the pay-as-you-go payment policy
    */
   async getCreatePayAsYouGoPolicyInstruction(
@@ -517,6 +518,7 @@ export class Tributary {
     maxChunkAmount: BN,
     periodLengthSeconds: BN,
     memo: number[],
+    expiryDate?: BN | null,
     feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
@@ -551,7 +553,8 @@ export class Tributary {
         periodLengthSeconds: periodLengthSeconds,
         currentPeriodStart: new BN(Math.floor(Date.now() / 1000)), // Initialize to current time
         currentPeriodTotal: new BN(0), // Initialize to 0
-        padding: new Array(88).fill(0),
+        expiryDate: expiryDate ?? null, // null = never expires (ADR-0024)
+        padding: new Array(79).fill(0),
       },
     };
     const accounts = {
@@ -1177,6 +1180,8 @@ export class Tributary {
    * @param periodLengthSeconds - Length of each period in seconds
    * @param memo - Memo bytes for the payment policy
    * @param approvalAmount - Optional specific approval amount (calculated automatically if not provided)
+   * @param referralCode - Optional referral code
+   * @param expiryDate - Optional hard deadline (unix seconds); `null`/omitted = never expires (ADR-0024)
    * @returns Array of transaction instructions for complete setup
    */
   async createPayAsYouGo(
@@ -1189,6 +1194,7 @@ export class Tributary {
     memo: number[],
     approvalAmount?: BN,
     referralCode?: string,
+    expiryDate?: BN | null,
     feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
@@ -1251,7 +1257,8 @@ export class Tributary {
         periodLengthSeconds: periodLengthSeconds,
         currentPeriodStart: new BN(currentTime),
         currentPeriodTotal: new BN(0),
-        padding: new Array(88).fill(0),
+        expiryDate: expiryDate ?? null, // null = never expires (ADR-0024)
+        padding: new Array(79).fill(0),
       },
     };
 

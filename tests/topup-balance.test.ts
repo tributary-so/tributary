@@ -364,7 +364,8 @@ describe("Composable Topup Balance Flow", () => {
         periodLengthSeconds: new anchor.BN(30 * 24 * 3600), // 30 days
         currentPeriodStart: new anchor.BN(now),
         currentPeriodTotal: new anchor.BN(0),
-        padding: new Array(88).fill(0),
+        expiryDate: null,
+        padding: new Array(79).fill(0),
       },
     };
 

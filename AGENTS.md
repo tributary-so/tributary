@@ -135,7 +135,9 @@ All variants are exactly 128 bytes (fixed-size for account stability):
   exclusive).
 - **PayAsYouGo** — usage-based: claim up to `max_chunk_amount` per call, capped
   at `max_amount_per_period` per `period_length_seconds`. Period resets
-  automatically.
+  automatically. Optional `expiry_date` (ADR-0024): `None` = never expires;
+  `Some(ts)` with `ts > 0` rejects execution once `current_time > ts`
+  (boundary `<=` permitted). Orthogonal to the period cap.
 - **OneTime** (ADR-0019) — fixed `amount`, fires exactly once then transitions
   to `Completed`. `due_date <= 0` means immediate; `expiry_date = None` means
   never expires. Full gateway lifecycle (PDA, pausable, deletable, schedulable,
@@ -468,6 +470,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0020] | UpTo scheme: variable-amount single-settlement authorization (x402 `upto`)              |
 | [0021] | Composable v2.1: InstructionConstraint + Unified ValidationSpec                         |
 | [0022] | Fixed-size PDAs (no realloc)                                                            |
+| [0024] | Optional PayAsYouGo expiration (per-variant `expiry_date`)                              |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -490,6 +493,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0020]: apps/docs/adr/0020-upto-scheme-and-policy-variant.md
 [0021]: apps/docs/adr/0021-composable-v21-instructionconstraint-validation-spec.md
 [0022]: apps/docs/adr/0022-fixed-size-pdas-no-realloc.md
+[0024]: apps/docs/adr/0024-payasyougo-optional-expiration.md
 
 ## SDK
 

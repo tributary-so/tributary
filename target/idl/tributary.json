@@ -4185,11 +4185,17 @@
                 "type": "u64"
               },
               {
+                "name": "expiry_date",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
                 "name": "padding",
                 "type": {
                   "array": [
                     "u8",
-                    88
+                    79
                   ]
                 }
               }
