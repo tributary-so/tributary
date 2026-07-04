@@ -1,11 +1,11 @@
 ---
 # tributary-f6yh
 title: Payments package — full PaymentPolicy support + base64 session encoding for all variants
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-03T09:42:47Z
-updated_at: 2026-07-03T09:42:47Z
+updated_at: 2026-07-04T09:51:31Z
 ---
 
 # Payments package — full PaymentPolicy support + session encoding

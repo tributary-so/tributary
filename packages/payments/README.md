@@ -317,6 +317,117 @@ The encoded data includes:
 
 - _none_
 
+## Encoding v2 — All Policy Variants
+
+> See [ADR-0023](../../apps/docs/adr/0023-payments-session-encoding-v2-all-policytype-variants.md)
+> for the rationale behind this encoding.
+
+`TributaryConfig` is a **discriminated union** over six `variant` values. The
+encoder emits three URL paths:
+
+| `variant`      | URL path            | On-chain result                           |
+| -------------- | ------------------- | ----------------------------------------- |
+| `subscription` | `/subscribe/{blob}` | PaymentPolicy (Subscription)              |
+| `payment`      | `/pay/{blob}`       | direct SPL transfer (ADR-0004), no policy |
+| `milestone`    | `/policy/{blob}`    | PaymentPolicy (Milestone)                 |
+| `payAsYouGo`   | `/policy/{blob}`    | PaymentPolicy (PayAsYouGo)                |
+| `oneTime`      | `/policy/{blob}`    | PaymentPolicy (OneTime, ADR-0019)         |
+| `upTo`         | `/policy/{blob}`    | PaymentPolicy (UpTo, ADR-0020)            |
+
+`encodeUrl` runs the fail-fast per-variant validators before emitting a blob,
+mirroring the on-chain `validate_*_policy` rules exactly — a valid blob is
+always chain-acceptable.
+
+### Milestone quick-start
+
+```typescript
+const url = manager.encodeUrl({
+  mode: "milestone",
+  variant: "milestone",
+  tokenMint: USDC,
+  recipient: RECIPIENT,
+  gateway: GATEWAY,
+  milestoneAmounts: [1_000_000, 2_000_000], // 1-4 u64 amounts
+  milestoneTimestamps: [1_700_000_000, 1_710_000_000], // absolute, ascending
+  releaseCondition: 0b0001, // bit0 = due-date gate
+  totalMilestones: 2,
+  trackingId: "project_milestone_x",
+});
+```
+
+### Pay-as-you-go quick-start
+
+```typescript
+const url = manager.encodeUrl({
+  mode: "payAsYouGo",
+  variant: "payAsYouGo",
+  tokenMint: USDC,
+  recipient: RECIPIENT,
+  gateway: GATEWAY,
+  maxAmountPerPeriod: 10_000_000, // per-period cap (u64)
+  maxChunkAmount: 1_000_000, // max per claim; must be <= period cap
+  periodLengthSeconds: 86_400, // 1 day
+  trackingId: "agent_usage_acct",
+});
+```
+
+### OneTime policy quick-start (ADR-0019)
+
+```typescript
+const url = manager.encodeUrl({
+  mode: "oneTime",
+  variant: "oneTime",
+  tokenMint: USDC,
+  recipient: RECIPIENT,
+  gateway: GATEWAY,
+  amount: 5_000_000,
+  dueDate: 1_700_000_000, // optional; <=0 / omitted = immediate
+  expiryDate: 1_800_000_000, // optional; omitted = never expires
+  trackingId: "invoice_42",
+});
+```
+
+### UpTo quick-start (ADR-0020, x402 `upto`)
+
+```typescript
+const url = manager.encodeUrl({
+  mode: "upTo",
+  variant: "upTo",
+  tokenMint: USDC,
+  recipient: RECIPIENT,
+  gateway: GATEWAY,
+  maxAmount: 10_000_000, // ceiling on the settlement amount
+  validAfter: 1_700_000_000, // optional; <=0 / omitted = immediate
+  deadline: 1_800_000_000, // MANDATORY, >0, > validAfter
+  trackingId: "x402_session_99",
+});
+```
+
+### Migration: legacy flat config → discriminated union
+
+The pre-v2 `TributaryConfig` was a flat interface that could only express
+subscriptions implicitly. It is retained as `LegacyTributaryConfig` for one
+release. The `resolveTributaryConfig(input)` shim translates it to the
+`subscription` variant and emits a `console.warn`.
+
+```typescript
+// BEFORE (deprecated, still works — warns on use)
+const cfg = { gateway, recipient, trackingId, autoRenew: true };
+
+// AFTER (canonical)
+const cfg = {
+  variant: "subscription",
+  gateway,
+  recipient,
+  trackingId,
+  autoRenew: true,
+};
+```
+
+Likewise `PaymentsClient.subscriptions` is a deprecated alias of
+`.policies` (which serves every variant, with an optional `options.variant`
+filter). Migrate callers at your leisure this release.
+
 ## MEMO Format
 
 Tracking IDs are stored in Solana transaction MEMO fields as well as in events
