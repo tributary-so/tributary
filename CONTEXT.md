@@ -413,17 +413,43 @@ on-chain assertion fails (e.g. "hot wallet balance below threshold").
 Disabled by setting `validation_program = SystemProgram`.
 
 **Forward hook** (composable only):
-A token-transform CPI into a hard-allowlisted program (currently Meteora
-DLMM) that converts the pulled input token into the delivery token before
-settlement (e.g. pull USDC, deliver WSOL). Disabled by setting
+A CPI into a hard-allowlisted program that runs against the pulled input.
+Two shapes, encoded by `output_mint` (see **Settlement shape**): a
+**token-transform** forward (currently Meteora DLMM) converts input into a
+delivery token before settlement (e.g. pull USDC, deliver WSOL); an **act**
+forward consumes input and delivers value _outside_ Tributary's
+intermediates (e.g. increasing collateral in a lending program) and
+produces no output token. Disabled by setting
 `target_program = Pubkey::default()`.
 
 **Settlement**:
-The final leg of `execute_composable`: fees and principal are routed from
-the intermediate ATA(s) to the protocol fee account, gateway fee account,
-and recipient. When the NATIVE_OUTPUT flag is set, the output intermediate
-is closed to native SOL via `closeAccount` rather than transferred as
-WSOL.
+The final leg of `execute_composable`. Fees are assessed on the **gross
+pull** (`face + fee`, NET-on-pull — hardcoded for composable) and skimmed
+from `intermediate_input` _before_ the forward runs. Residual input (the
+forward under-consumed) returns to the **user**; any output the forward
+produced sweeps to the **recipient**. Fee accounts are denominated in the
+**source mint**, not the output mint. When NATIVE_OUTPUT is set, the output
+intermediate is closed to native SOL via `closeAccount` rather than
+transferred as WSOL.
+
+**Settlement shape** (composable only):
+The execution topology a ComposablePolicy takes, determined by
+`forward_config.output_mint`:
+
+- **Deliver mode** — `output_mint` is a real mint (`!= Pubkey::default()`).
+  The forward is expected to produce output tokens in `intermediate_output`;
+  `execute_composable` enforces `output_amount > 0` and sweeps to recipient.
+  The swap / topup case. `output_mint` is only used for the output sweep +
+  intermediate_output ATA validation — fees are input-side regardless.
+- **Act mode** — `output_mint == Pubkey::default()` (sentinel). The forward
+  consumes input and delivers value externally (e.g. a Velocity-style
+  collateral increase). No output ATA is created, no output sweep runs, and
+  the `>0` guard is skipped. The forward program must still be in
+  `ALLOWED_FORWARD_PROGRAMS`.
+
+Create-time invariant: `forward disabled && output_mint != input_mint` is
+rejected (nonsensical — no transform configured, but different delivery
+mint).
 
 **Trigger**:
 The boolean predicate "this policy would execute successfully right now."
@@ -481,6 +507,13 @@ receives less than face, sender debited by exactly face. **Net mode
 receives exactly face, sender debited by face + fees. Orthogonal to how
 the total fee decomposes into shares. (See `shared/fees.rs`.)
 
+For **ComposablePolicy**, NET-on-pull is **hardcoded**: the gross pull is
+always `face + fee`, skimmed from `intermediate_input` before the forward
+runs. The gateway flag is ignored on the composable path — the forward
+instruction must encode `amount_in = face`, which requires the pull to be
+net-denominated for ix stability (see ADR-0026). PaymentPolicy continues
+to honor the flag.
+
 **Referral pool**:
 When `FEATURE_REFERRAL` is set, `referral_allocation_bps` of the gateway
 fee is diverted into a pool; `referral_tiers_bps` then splits that pool
@@ -495,7 +528,9 @@ The token pulled from the user. Equals `user_payment.token_mint`.
 **Output mint** (composable only):
 The token delivered to the recipient. Equals the source mint when forward
 is disabled; otherwise whatever the forward hook produces. May be
-`NATIVE_MINT` (WSOL) for the NATIVE_OUTPUT pattern.
+`NATIVE_MINT` (WSOL) for the NATIVE_OUTPUT pattern. In **act mode**
+(`Pubkey::default()` sentinel) no output token is expected — the forward
+delivers value externally and no output sweep runs.
 
 **Mint compatibility check**:
 `validate_mint_compatible` — rejects mints carrying any of six dangerous
