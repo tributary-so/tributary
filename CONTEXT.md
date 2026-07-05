@@ -479,7 +479,10 @@ policy's face amount is pulled; fees are subtracted from it — recipient
 receives less than face, sender debited by exactly face. **Net mode
 (on):** fees are added on top of face; the sum is pulled — recipient
 receives exactly face, sender debited by face + fees. Orthogonal to how
-the total fee decomposes into shares. (See `shared/fees.rs`.)
+the total fee decomposes into shares. (See `shared/fees.rs`.) For
+**composable** policies, net mode is **hardcoded on** (ADR-0026): the fee
+is always added on top of face, and the gross pull is skimmed in
+`input_mint` before the forward runs.
 
 **Referral pool**:
 When `FEATURE_REFERRAL` is set, `referral_allocation_bps` of the gateway
@@ -495,7 +498,32 @@ The token pulled from the user. Equals `user_payment.token_mint`.
 **Output mint** (composable only):
 The token delivered to the recipient. Equals the source mint when forward
 is disabled; otherwise whatever the forward hook produces. May be
-`NATIVE_MINT` (WSOL) for the NATIVE_OUTPUT pattern.
+`NATIVE_MINT` (WSOL) for the NATIVE_OUTPUT pattern. In **act mode**
+(ADR-0026), `output_mint` is the sentinel `Pubkey::default()` — the forward
+consumes input but produces no fungible output token (e.g. a Velocity
+subaccount deposit); no output ATA is created and no delivery sweep runs.
+
+### Settlement shapes (composable, ADR-0026)
+
+**Deliver, no transform** (same-mint topup):
+Forward disabled, `output_mint == input_mint`. Single intermediate: the
+gross pull is skimmed (fee → input_mint fee accounts), then the remainder
+(face) is swept to the recipient. Classic subscription / pay-as-you-go
+topup.
+
+**Deliver, transform** (swap):
+Forward enabled, `output_mint` set and `!= input_mint`. The forward (e.g.
+Meteora DLMM) swaps the pulled input into the output token; the output is
+swept to the recipient. Tributary asserts `output_amount > 0` (the output
+EXISTS); the AMOUNT floor is the owner's `post_validation` job.
+
+**Act** (Velocity / collateral deposit):
+Forward enabled, `output_mint == Pubkey::default()` (sentinel). The
+forward consumes input but settles into a non-token balance sheet (e.g. a
+perp subaccount). Tributary asserts nothing about delivery — no `>0`
+guard, no output ATA, no deliver sweep. Any under-consumed input residue is
+returned to the user. The owner's `post_validation` is the only settlement
+floor.
 
 **Mint compatibility check**:
 `validate_mint_compatible` — rejects mints carrying any of six dangerous

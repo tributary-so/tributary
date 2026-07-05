@@ -51,3 +51,22 @@ the fee breakdown is emitted in the `ComposableExecuted` event for
 transparency.
 
 Rules 2 and 3 are unchanged.
+
+---
+
+## Amendment (2026-07-05, bean tributary-cqr4 — Composable v2.2: input-side fees)
+
+**Rule 1's successor (the `>0` guard) is now mode-conditional.** With the
+move to input-side fees (ADR-0026), Tributary no longer calculates fees on
+the output balance — the `>0` check survives only as an **existence
+assertion** on the forward's output, and only in **deliver-transform** mode.
+
+| Settlement shape                  | `>0` guard                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Deliver, no transform (same-mint) | n/a — no forward, no output                                                   |
+| Deliver, transform (swap)         | **KEPT** — Tributary asserts output EXISTS                                    |
+| Act (Velocity/collateral)         | **SKIPPED** — no fungible output; owner's `post_validation` is the only floor |
+
+The output AMOUNT floor (how much output is "enough") remains the owner's
+job via `post_validation` in all modes. Tributary's role is accountability
+that delivery happened at all — and in act mode, by definition, it did not.

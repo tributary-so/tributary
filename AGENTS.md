@@ -191,7 +191,7 @@ Both hooks are **opt-in** via sentinel values (disabled = `Pubkey::default` /
 `SystemProgram`). A composable policy with both disabled behaves like a
 PaymentPolicy but with a separate PDA namespace and an intermediate ATA hop.
 
-### Execution flow (5 phases, v2.1)
+### Execution flow (5 phases, v2.2)
 
 ```
 execute_composable:
@@ -200,10 +200,14 @@ execute_composable:
   │ data_checks (if forward enabled). Cold-relayer OR-gate:           │
   │   has_post_validation || has_route_pin (ADR-0016 amended)        │
   └──────────────────────────────────────────────────────────────────┘
-  ┌─ Phase 1: PULL ──────────────────────────────────────────────────┐
-  │ Create intermediate ATAs (owned by ComposablePolicy PDA).         │
-  │ UserPayment PDA signs transfer:                                   │
-  │   user_token_account → intermediate_input_ata                    │
+  ┌─ Phase 1: PULL (gross, NET-on-pull hardcoded) ──────────────────┐
+  │ Pull face + fee from user → intermediate_input. Delegate +       │
+  │ balance + PayAsYouGo caps all bind on GROSS (ADR-0026).          │
+  └──────────────────────────────────────────────────────────────────┘
+  ┌─ Phase 1b: SKIM FEES (input-side, ADR-0026) ────────────────────┐
+  │ Skim protocol + gateway + scheduler cuts from                    │
+  │ intermediate_input → input_mint fee accounts. After skim,        │
+  │ intermediate_input holds exactly `face` (what forward consumes).  │
   └──────────────────────────────────────────────────────────────────┘
   ┌─ Phase 2: PRE-VALIDATION (optional) ─────────────────────────────┐
   │ If pre_validation = ProgramCall: CPI into validation_program     │
@@ -213,19 +217,21 @@ execute_composable:
   ┌─ Phase 3: FORWARD (optional) + PIN-CHECK ────────────────────────┐
   │ If forward enabled: pin-check InstructionConstraint.pinned_accounts│
   │ against remaining_accounts. CPI into target_program (Meteora DLMM)│
-  │ to swap intermediate_input_ata → intermediate_output_ata.        │
+  │ to swap intermediate_input → intermediate_output.                │
   │ Byte-range checks validate the forward instruction selector.     │
   └──────────────────────────────────────────────────────────────────┘
   ┌─ Phase 4: POST-VALIDATION (optional) ────────────────────────────┐
   │ If post_validation = ProgramCall: CPI into validation_program    │
-  │ with assertion data from post ValidationPda. Replaces the old    │
-  │ min_output_amount check. Owners assert output ≥ floor, etc.     │
+  │ with assertion data from post ValidationPda. The owner's floor    │
+  │ on output (deliver-transform) or settlement (act mode).          │
   └──────────────────────────────────────────────────────────────────┘
-  ┌─ Phase 5: SETTLE ────────────────────────────────────────────────┐
-  │ Sweep intermediate_output → recipient + protocol fee + gateway    │
-  │ fee. NO min_output check (post_validation generalizes it).       │
-  │ If forward disabled (sentinel): sweep input directly to          │
-  │   recipient + fees (same-mint topup pattern).                    │
+  ┌─ Phase 5: SETTLE (shape-dependent, ADR-0026) ────────────────────┐
+  │ Three shapes:                                                    │
+  │  • deliver-no-transform: sweep intermediate_input (face) → recip │
+  │  • deliver-transform: sweep intermediate_output → recipient      │
+  │    (>0 guard KEPT); input residue → user                        │
+  │  • act: input residue → user; NO deliver sweep, NO >0 guard      │
+  │ Fees already skimmed in Phase 1b — settle moves only principal.  │
   └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -255,7 +261,13 @@ struct InstructionConstraint {
   offset 0 — prevents a gateway from swapping in an arbitrary instruction.
 - **Degenerate-pin guard**: `InstructionConstraint` with zero effective pins
   is rejected at create when forward is enabled.
-- **min_output_amount REMOVED** (v2.1). `post_validation` generalizes it.
+- **output_mint** has three semantics (ADR-0026):
+  - `== input_mint` + forward disabled → **deliver-no-transform** (same-mint topup)
+  - set, `!= input_mint` + forward enabled → **deliver-transform** (swap)
+  - `Pubkey::default()` + forward enabled → **act mode** (no fungible output;
+    e.g. Velocity subaccount deposit). No output ATA, no deliver sweep, no `>0` guard.
+- **min_output_amount REMOVED** (v2.1). `post_validation` generalizes it. The
+  `>0` guard survives only in deliver-transform mode as an existence assertion.
 
 ### ValidationSpec (pre + post, same type)
 
@@ -385,8 +397,11 @@ Unified fee model (ADR-0018, supersedes ADR-0006): **one** `gateway_fee_bps`
 Constraint: `protocol_share + scheduler_share + referral_allocation ≤ 10000`
 (enforced at every gateway-config write site). NET_AMOUNT (gross/net pull
 basis) is orthogonal. No absolute protocol floor — the share rate is the
-mechanism. Composable `min_output_amount` is checked against **net**
-(post-fee) output.
+mechanism. **Composable fee path is input-side** (ADR-0026): fees are
+skimmed from the gross pull in `input_mint` before the forward runs;
+NET-on-pull is hardcoded (the `FEATURE_NET_AMOUNT` flag is ignored for
+composable). PaymentPolicy still honors the flag (fees off the payment
+amount).
 
 ### 4. Account Size Padding
 
@@ -473,6 +488,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0023] | Payments session encoding v2 — all PolicyType variants                                  |
 | [0024] | Optional PayAsYouGo expiration (per-variant `expiry_date`)                              |
 | [0025] | JWT payload generalized to `policies: PolicyClaim[]` (all 5 variants)                   |
+| [0026] | Composable input-side fees + act/deliver settlement shapes                              |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -498,6 +514,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0023]: apps/docs/adr/0023-payments-session-encoding-v2-all-policytype-variants.md
 [0024]: apps/docs/adr/0024-payasyougo-optional-expiration.md
 [0025]: apps/docs/adr/0025-jwt-payload-generalized-policyclaim-union.md
+[0026]: apps/docs/adr/0026-composable-input-side-fees-act-deliver-shapes.md
 
 ## SDK
 

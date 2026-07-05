@@ -90,7 +90,16 @@ pub struct CreateComposablePolicy<'info> {
     pub post_validation_program: UncheckedAccount<'info>,
 
     pub input_mint: Box<InterfaceAccount<'info, Mint>>,
-    pub output_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    /// Output mint. In **deliver** modes (forward disabled, or forward
+    /// enabled with a concrete output_mint) this is the recipient's
+    /// delivery mint and MUST be a real SPL Mint. In **act mode**
+    /// (ADR-0026 — forward enabled, `output_mint == Pubkey::default()`)
+    /// the caller passes SystemProgram here; there is no output token to
+    /// deliver and no output ATA is created. Validated conditionally in
+    /// the handler.
+    /// CHECK: validated in handler; mint compatibility checked when concrete.
+    pub output_mint: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -115,12 +124,24 @@ impl<'info> CreateComposablePolicy<'info> {
             ctx.accounts.input_mint.key() == forward_config.input_mint,
             TributaryError::TokenMintMismatch
         );
-        require!(
-            ctx.accounts.output_mint.key() == forward_config.output_mint,
-            TributaryError::TokenMintMismatch
-        );
+        // Output-mint account validation is mode-conditional (ADR-0026):
+        //  - act mode (sentinel output_mint): pass SystemProgram, skip mint
+        //    compatibility (no output token exists).
+        //  - deliver modes: the passed account MUST equal the declared
+        //    output_mint AND be a Token-2022-clean SPL Mint.
+        if forward_config.output_mint == Pubkey::default() {
+            require!(
+                ctx.accounts.output_mint.key() == ctx.accounts.system_program.key(),
+                TributaryError::InvalidOutputMintAccount
+            );
+        } else {
+            require!(
+                ctx.accounts.output_mint.key() == forward_config.output_mint,
+                TributaryError::TokenMintMismatch
+            );
+            validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
+        }
         validate_mint_compatible(&ctx.accounts.input_mint.to_account_info())?;
-        validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
 
         // ByteRangeCheck sanity + discriminator-pin (same as before, now
         // reading from instruction_constraint).
@@ -366,6 +387,14 @@ fn init_validation_pda<'info>(
 }
 
 /// Validate the forward-program portion of a `ForwardConfig`.
+///
+/// Settlement shapes (ADR-0026):
+/// - **deliver, no transform**: forward disabled, `output_mint == input_mint`.
+/// - **deliver, transform**: forward enabled, `output_mint` set (!= input_mint).
+/// - **act**: forward enabled, `output_mint == Pubkey::default()` (sentinel) —
+///   forward consumes input but produces no fungible output token; the
+///   program skips the output ATA + deliver sweep, and the `output_amount > 0`
+///   guard. Owner's `post_validation` is the only settlement floor.
 pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
     let ic = &forward_config.instruction_constraint;
     let forward_disabled = ic.is_disabled();
@@ -380,8 +409,13 @@ pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
             ic.num_data_checks == 0,
             TributaryError::InsufficientByteRangeChecks
         );
+        // Deliver-no-transform: output_mint MUST equal input_mint. A disabled
+        // forward with a different output_mint would misroute the payment —
+        // there is no transform step to reconcile the two mints. The
+        // Pubkey::default() sentinel (act mode) is only meaningful WITH a
+        // forward enabled.
         require!(
-            forward_config.input_mint == forward_config.output_mint,
+            forward_config.output_mint == forward_config.input_mint,
             TributaryError::ForwardDisabledRequiresSameMint
         );
     } else {
@@ -396,8 +430,14 @@ pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
             ic.has_effective_pins(),
             TributaryError::DegenerateForwardPins
         );
+        // Act-mode output-mint sentinel is allowed; any other output_mint
+        // value triggers deliver-transform semantics (validated at execute
+        // by the >0 guard + output ATA creation).
     }
 
+    // NATIVE_OUTPUT only makes sense in deliver-transform mode — it pins
+    // `output_mint == NATIVE_MINT` so the WSOL→SOL closeAccount sweep is
+    // well-defined. Act mode has no output mint to unwrap.
     if forward_config.is_native_output() {
         require!(
             forward_config.output_mint == NATIVE_MINT,
@@ -457,6 +497,13 @@ mod tests {
             output_mint: Pubkey::new_unique(),
             forward_flags: 0,
         }
+    }
+
+    /// Act-mode config: forward enabled, output_mint = sentinel.
+    fn act_mode_config(target: Pubkey, num_data_checks: u8) -> ForwardConfig {
+        let mut cfg = enabled_config(target, num_data_checks);
+        cfg.output_mint = Pubkey::default();
+        cfg
     }
 
     #[test]
@@ -542,5 +589,33 @@ mod tests {
     fn disabled_forward_allows_zero_pins() {
         let mint = same_mint();
         assert!(validate_forward_config(&disabled_config(mint, 0)).is_ok());
+    }
+
+    /// Act mode (ADR-0026): forward enabled + sentinel output_mint is valid.
+    #[test]
+    fn act_mode_accepts_sentinel_output_mint() {
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        assert!(validate_forward_config(&act_mode_config(allowlisted, 1)).is_ok());
+    }
+
+    /// NATIVE_OUTPUT flag is incompatible with act mode (no output to unwrap).
+    #[test]
+    fn act_mode_rejects_native_output_flag() {
+        let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
+        let mut cfg = act_mode_config(allowlisted, 1);
+        cfg.forward_flags = FORWARD_FLAG_NATIVE_OUTPUT;
+        assert!(validate_forward_config(&cfg).is_err());
+    }
+
+    /// Deliver-transform with sentinel output_mint is NOT act mode and NOT
+    /// deliver — output_mint sentinel requires forward enabled (act mode)
+    /// OR is just invalid. A disabled forward with sentinel output_mint is
+    /// rejected by the same-mint rule.
+    #[test]
+    fn disabled_forward_rejects_sentinel_output_mint() {
+        let mint = same_mint();
+        let mut cfg = disabled_config(mint, 0);
+        cfg.output_mint = Pubkey::default(); // sentinel != mint
+        assert!(validate_forward_config(&cfg).is_err());
     }
 }
