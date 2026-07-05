@@ -16,6 +16,8 @@ export default function PaymentPolicyFeature() {
     maxRenewals: '',
     approvalAmount: '',
     referralCode: '',
+    successUrl: '',
+    cancelUrl: '',
     milestoneAmounts: ['', '', '', ''],
     milestoneDates: Array.from({ length: 4 }, (_, i) => {
       const date = new Date()
@@ -28,6 +30,10 @@ export default function PaymentPolicyFeature() {
     maxAmountPerPeriod: '',
     maxChunkAmount: '',
     periodLengthSeconds: '2592000',
+    oneTimeDueDate: null,
+    oneTimeExpiryDate: null,
+    upToValidAfter: null,
+    upToDeadline: null,
   })
 
   const [lineItemsActive, setLineItemsActive] = useState(false)
@@ -41,7 +47,11 @@ export default function PaymentPolicyFeature() {
       ? 'border-l-subscription-600'
       : formData.policyType === 'milestone'
       ? 'border-l-milestone-600'
-      : 'border-l-payasyougo-600'
+      : formData.policyType === 'payasyougo'
+      ? 'border-l-payasyougo-600'
+      : formData.policyType === 'onetime'
+      ? 'border-l-onetime-600'
+      : 'border-l-upto-600'
 
   return (
     <div className="w-full flex-1 bg-background font-sans">

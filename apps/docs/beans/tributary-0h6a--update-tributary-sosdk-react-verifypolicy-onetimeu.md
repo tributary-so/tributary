@@ -1,11 +1,11 @@
 ---
 # tributary-0h6a
 title: Update @tributary-so/sdk-react — verifyPolicy + OneTime/UpTo buttons + JWT issuance helper
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:20:19Z
-updated_at: 2026-07-03T09:22:50Z
+updated_at: 2026-07-05T07:53:30Z
 parent: tributary-ml90
 blocked_by:
     - tributary-5pd3
@@ -133,3 +133,13 @@ typed-per-variant access.
 - \`packages/sdk/src/instructions/\` — low-level policy creation helpers (verify
   OneTime + UpTo instruction builders exist)
 - Milestone tributary-pzp2 — design decisions
+
+## Summary of Changes
+
+- types.ts: added CreateOneTimeParams/Result, CreateUpToParams/Result, UseCreateOneTimeReturn, UseCreateUpToReturn
+- hooks/useCreateOneTime.ts + useCreateUpTo.ts: mirror useCreatePayAsYouGo pattern; call sdk.createOneTimePayment and sdk.createUpToAuthorization respectively
+- components/OneTimeButton.tsx + UpToButton.tsx: mirror PayAsYouGoButton
+- helpers/issuePolicyToken.ts: generalized polling helper, replaces both issueSubscriptionToken and issueOneTimeToken. 404 polls (slot lag), other errors surface immediately
+- hooks/index.ts + src/index.ts: export everything
+- useTributaryToken already aligned (uses TributaryJWTPayload which now has policies[])
+- pnpm run build clean

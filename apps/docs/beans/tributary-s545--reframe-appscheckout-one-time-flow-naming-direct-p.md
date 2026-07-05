@@ -1,11 +1,11 @@
 ---
 # tributary-s545
 title: Reframe apps/checkout one-time flow naming (direct payment vs OneTime policy)
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T09:21:20Z
-updated_at: 2026-07-03T09:22:28Z
+updated_at: 2026-07-05T07:58:24Z
 parent: tributary-ml90
 ---
 
@@ -89,3 +89,11 @@ to showcase-payment-policies for the policy-based flow.
 - \`packages/payments/src/types/tributary.ts\` — \`mode\` field
 - ADR-0004 (standalone transfer), ADR-0019 (OneTime policy)
 - Milestone tributary-pzp2 — design decision #3
+
+## Summary of Changes
+
+- apps/checkout/src/components/pay-form.tsx: badge 'One-time' → 'Direct payment'; title 'Complete payment' → 'Complete direct payment'; help text added explaining the distinction. Imports updated to use new helper names.
+- apps/checkout/src/lib/tributary.ts: createOneTimePayment → createDirectPayment; issueOneTimeToken → issueDirectPaymentToken; CreateOneTimePaymentParams → CreateDirectPaymentParams. Deprecated aliases (createOneTimePayment, issueOneTimeToken, CreateOneTimePaymentParams) kept as type/value aliases for one release.
+- packages/payments/src/types/tributary.ts: 'mode: "payment"' field documented as direct SPL transfer (ADR-0004), distinct from OneTime PolicyType (ADR-0019).
+- apps/checkout/README.md: 'One-Time Payments' → 'Direct Payments'; new 'Direct payment vs OneTime policy' section with comparison table.
+- pnpm run build + tsc clean in apps/checkout.

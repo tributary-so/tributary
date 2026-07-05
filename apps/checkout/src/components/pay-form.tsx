@@ -5,7 +5,12 @@ import { OneTimeParams } from "@tributary-so/payments";
 import { CheckCircle2, Wallet, Loader2, Lock, XCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { createOneTimePayment, issueOneTimeToken } from "@/lib/tributary";
+// Reframe (tributary-s545): the hosted-checkout "one-time" flow uses the
+// standalone `transfer` instruction (ADR-0004) — moves money immediately,
+// creates NO policy. Renamed the helpers to `createDirectPayment` /
+// `issueDirectPaymentToken` to distinguish from the OneTime PolicyType
+// (ADR-0019). Deprecated aliases keep 3rd-party forks working.
+import { createDirectPayment, issueDirectPaymentToken } from "@/lib/tributary";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -59,7 +64,7 @@ export function PayForm({ sessionData }: PayFormProps) {
       const recipient = new PublicKey(sessionData.recipient);
       const memo = sessionData.memo || sessionData.trackingId;
 
-      const signature = await createOneTimePayment({
+      const signature = await createDirectPayment({
         wallet,
         recipientWallet: recipient,
         amount: sessionData.amount,
@@ -75,7 +80,7 @@ export function PayForm({ sessionData }: PayFormProps) {
       setRedirecting(true);
       setConfirming(true);
       try {
-        const { token } = await issueOneTimeToken(
+        const { token } = await issueDirectPaymentToken(
           wallet.publicKey!,
           signature,
           sessionData.tokenMint
@@ -183,14 +188,15 @@ export function PayForm({ sessionData }: PayFormProps) {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-semibold text-foreground">
-            Complete payment
+            Complete direct payment
           </h2>
           <span className="px-2 py-0.5 text-xs font-medium border border-border uppercase tracking-[0.08em]">
-            One-time
+            Direct payment
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Review the details and confirm your single payment
+          Funds transfer immediately to the recipient. For scheduled or
+          policy-based single-shot payments, use the OneTime policy flow.
         </p>
       </div>
 
