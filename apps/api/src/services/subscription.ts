@@ -50,6 +50,8 @@ export type SubscriptionDetails = Omit<
     | { subscription: StrippedPolicyVariant }
     | { payAsYouGo: StrippedPolicyVariant }
     | { milestone: StrippedPolicyVariant }
+    | { oneTime: StrippedPolicyVariant }
+    | { upTo: StrippedPolicyVariant }
     | undefined;
   policyAccount: PublicKey;
 };
@@ -60,7 +62,7 @@ export type SubscriptionDetails = Omit<
  * @returns Matched payment policies with BN/padding artifacts normalized away
  */
 export async function getSubscriptionDetails(
-  options: PolicyLookupOptions
+  options: PolicyLookupOptions,
 ): Promise<SubscriptionDetails[]> {
   const connection = getConnection();
   const tracker = new PaymentTracker(connection);
@@ -89,6 +91,22 @@ export async function getSubscriptionDetails(
       policyType = {
         milestone: {
           ...account.policyType.milestone,
+          padding: undefined,
+        },
+      };
+    }
+    if ("oneTime" in account.policyType) {
+      policyType = {
+        oneTime: {
+          ...account.policyType.oneTime,
+          padding: undefined,
+        },
+      };
+    }
+    if ("upTo" in account.policyType) {
+      policyType = {
+        upTo: {
+          ...account.policyType.upTo,
           padding: undefined,
         },
       };

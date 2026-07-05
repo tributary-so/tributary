@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { jwtVerify, importJWK, errors } from "jose";
 import { getSigningKeyByKid } from "../services/jwks";
+import type { PolicyClaim, PaymentRecord } from "@tributary-so/payments";
 
 const JWT_ISSUER = process.env.JWT_ISSUER || "https://api.tributary.so";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "tributary-checkout";
@@ -11,8 +12,15 @@ export interface JwtPayload {
   aud: string;
   iat: number;
   exp: number;
-  subscriptions?: any[];
-  lastPayments?: any[];
+  /**
+   * Discriminated `PolicyClaim[]` (per ADR-0023). Was `subscriptions` pre-v2;
+   * legacy tokens carrying the old field may still arrive during the rollout
+   * window — keep the optional alias so verification does not break.
+   */
+  policies?: PolicyClaim[];
+  /** @deprecated pre-v2 alias of {@link policies}. */
+  subscriptions?: PolicyClaim[];
+  lastPayments?: PaymentRecord[];
   [key: string]: unknown;
 }
 
