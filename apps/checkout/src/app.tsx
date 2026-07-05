@@ -29,6 +29,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/subscribe/*" element={<PayPage />} />
             <Route path="/pay/*" element={<PayPage />} />
+            <Route path="/policy/*" element={<PayPage />} />
             <Route path="/success" element={<SuccessPage />} />
             <Route path="/cancel" element={<CancelPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
