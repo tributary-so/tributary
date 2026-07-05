@@ -13,6 +13,7 @@ import webhooksRouter from "./webhooks";
 import tokensRouter from "./tokens";
 import jwksRouter from "./jwks";
 import adminRouter from "./admin";
+import gatewayRouter from "./gateway";
 
 const router: Router = Router();
 
@@ -47,5 +48,8 @@ router.use("/tokens", tokensRouter);
 
 // Admin routes (key rotation)
 router.use("/admin", adminRouter);
+
+// Gateway merchant layer (auth + merchant endpoints)
+router.use("/gateway", gatewayRouter);
 
 export default router;

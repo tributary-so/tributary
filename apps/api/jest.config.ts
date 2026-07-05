@@ -28,7 +28,10 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!(@tributary-so/payments|@tributary-so/sdk))",
+    // ponytail: pnpm nests packages under .pnpm/<pkg>@<ver>/node_modules/<pkg>.
+    // The optional prefix lets both flat and nested layouts resolve jose
+    // (ESM-only) so ts-jest can transform it.
+    "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?(@tributary-so/payments|@tributary-so/sdk|jose))",
   ],
   setupFilesAfterEnv: ["<rootDir>/src/__tests__/setup.ts"],
 };

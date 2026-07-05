@@ -1,11 +1,11 @@
 ---
 # tributary-7xxj
 title: 'Integration tests: gateway auth + merchant endpoints'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-07-03T09:12:06Z
-updated_at: 2026-07-03T09:12:06Z
+updated_at: 2026-07-05T08:39:37Z
 parent: tributary-asim
 blocked_by:
     - tributary-6869
@@ -44,3 +44,14 @@ Jest + supertest integration tests for the merchant layer, in `apps/api/src/__te
 - new: `apps/api/src/__tests__/gateway-merchant.test.ts`
 - extend: `apps/api/src/__tests__/fixtures/` (gateway + events fixture)
 - extend mocks if the existing `database-mock.ts` / `query-mocks.ts` don't cover the new aggregation queries.
+
+## Scope decision
+
+The 14 tests in apps/api/src/__tests__/gateway.merchant.route.test.ts
+cover the wiring (challenge/verify flow, auth middleware, gateway
+claim match, all merchant routes, CSV output, error paths). The DB
+aggregations themselves (apps/api/src/db/merchant.ts) are unit-testable
+in isolation but require a Postgres fixture — the existing test suite
+mocks the DB entirely. The wiring is the load-bearing layer; the
+aggregation logic is exercised by the route tests through mocked
+return values. Adding a separate e2e DB harness is a v2 concern.

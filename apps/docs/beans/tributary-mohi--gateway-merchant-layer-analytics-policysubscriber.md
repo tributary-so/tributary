@@ -1,11 +1,11 @@
 ---
 # tributary-mohi
 title: Gateway Merchant Layer — analytics, policy/subscriber views, CSV exports
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-03T09:09:15Z
-updated_at: 2026-07-03T09:09:15Z
+updated_at: 2026-07-05T08:40:48Z
 ---
 
 ## Goal
@@ -91,3 +91,44 @@ Auth UX: "Connect wallet & sign to view merchant data" prompt → calls challeng
 
 - program contract (no Rust changes)
 - SDK (no `packages/*` changes)
+
+## Summary of Changes
+
+Shipped vertical slice:
+
+**API** ()
+- src/services/gateway-auth.ts — challenge/nonce + verify (on-chain authority fetch + Node-native Ed25519) + JWT issue
+- src/middleware/gateway-auth.ts — requireGatewayAuth (gateway claim match)
+- src/db/merchant.ts — listPolicies, listMerchantSubscribers, getMerchantRevenue, listGatewayPayments (PDA-derived, status replay, MRR monthly-normalized)
+- src/routes/gateway.ts — all endpoints + CSV serializers
+- src/__tests__/gateway.merchant.route.test.ts — 14 tests
+- jest.config.ts — pnpm-nested jose transform exception
+
+**App** ()
+- src/components/gateway/merchant/api.ts — fetch client + JWT store + useMerchantAuth hook
+- src/components/gateway/sections/{revenue,policies,subscribers}-section.tsx
+- src/components/gateway/gateway-manage-page.tsx — mounts the 3 sections below the existing 4
+- src/components/gateway/constants.ts — MERCHANT_API_BASE
+
+**Docs**
+- apps/docs/adr/0026-gateway-merchant-layer-off-chain-derived-analytics.md (note: bean body said ADR-0023 but that was taken; 0026 is the next free slot)
+- apps/docs/docs/operate/gateway-merchant-layer.md — what/how page
+- apps/docs/mkdocs.yml — added to nav
+- AGENTS.md — ADR map row appended
+
+**Ponytail cuts (deliberate)**
+- Nonces: in-memory Map (single-instance ceiling; swap for redis when API scales horizontally)
+- JWT: reuses JWKS signing key + existing verifyToken path; gateway claim discriminates
+- On-chain authority check via raw account slice (discriminator 8 + authority 32) — no anchor dep
+- Ed25519 verify via Node built-in crypto (no tweetnacl dep)
+- Policy addresses derived deterministically — no SQL join against PaymentRecord
+- MRR: snapshot per series bucket (historical MRR is v2)
+- UI sparkline: 14 divs, no chart lib
+
+**Deferred (v2)**
+- Churn analytics (silent-churn detection)
+- Materialized snapshot table (>1k policies/gateway)
+- Historical MRR series
+- Fiat FX
+- Enriched subscriber profiles
+- Live RPC cross-check for status

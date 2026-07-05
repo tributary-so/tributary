@@ -86,6 +86,7 @@ nav:
           - vs Payment Policy: protocol-reference/composable-policy/vs-payment-policy.md
   - Operate:
       - Providers: operate/providers.md
+      - Gateway Merchant Layer: operate/gateway-merchant-layer.md
   - Development:
       - Testing & Verification: development/testing.md
   - API: api/rest-api.md

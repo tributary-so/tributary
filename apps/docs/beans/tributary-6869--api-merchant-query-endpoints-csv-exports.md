@@ -1,11 +1,11 @@
 ---
 # tributary-6869
 title: 'API: merchant query endpoints + CSV exports'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:11:22Z
-updated_at: 2026-07-03T09:11:22Z
+updated_at: 2026-07-05T08:36:27Z
 parent: tributary-6egw
 blocked_by:
     - tributary-nepb
@@ -67,3 +67,21 @@ Distinct wallets (`payer` from `PaymentRecord`, `owner` from `UserPaymentCreated
 
 - On-the-fly is a deliberate v1 ceiling (see milestone). Queries must be gateway-scoped at the SQL level (index on `data->>'gateway'` is already implied by existing patterns; confirm with EXPLAIN if slow).
 - MRR monthly-normalization: Monthly=×1, BiWeekly=×2/2.17..., Weekly=×4.33, Daily=×30.4, etc. — encode the same frequency→monthly factor map used by the SDK's `getPaymentFrequency`. Single source of truth: import from `@tributary-so/sdk` if available, else duplicate with a `ponytail:` comment naming the SDK as the canonical source.
+
+## Implementation notes
+
+- Single merchant module: apps/api/src/db/merchant.ts
+- Status derived by replaying Created → StatusChanged → Deleted events
+- Policy PDA derived deterministically from (user_payment, policy_id) — no join needed
+- MRR: Σ active Subscription.amount normalized monthly; PayAsYouGo/Milestone/OneTime/UpTo excluded
+- Series: daily/weekly buckets, MRR is current snapshot per bucket (historical MRR is v2)
+- CSV: minimal in-place serializer, no dep added
+
+## Summary of Changes
+
+- apps/api/src/db/merchant.ts — listPolicies, listSubscribers, getMerchantRevenue, listGatewayPayments
+- apps/api/src/routes/gateway.ts — all merchant endpoints + CSV serializers
+- apps/api/src/__tests__/gateway.merchant.route.test.ts — 14 tests covering auth + merchant routes
+- Reuses PolicyRecord/PolicyCreated/StatusChanged/Deleted event queries
+- PDA derived deterministically from (user_payment, policy_id)
+- ADR-0026 drafted
