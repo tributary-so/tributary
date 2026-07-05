@@ -251,8 +251,9 @@ describe("Composable Policies", () => {
     );
 
     // Fee recipient token accounts — both INPUT and OUTPUT mint, since the
-    // new flow takes fees from the OUTPUT (secondMint), but legacy code paths
-    // and other tests may still reference input-mint fee accounts.
+    // composable fee path is input-side post-ADR-0026 (fees skimmed from
+    // the gross pull in input_mint BEFORE the forward), but legacy code
+    // paths and other tests may still reference output-mint fee accounts.
     await ensureTokenAccount(feeRecipient.publicKey, tokenMint);
     await ensureTokenAccount(feeRecipient.publicKey, secondMint);
     await ensureTokenAccount(admin.publicKey, tokenMint);
@@ -1274,11 +1275,11 @@ describe("Composable Policies", () => {
         ),
         recipientTokenAccount,
         gatewayFeeAccount: getAssociatedTokenAddressSync(
-          secondMint,
+          tokenMint,
           feeRecipient.publicKey
         ),
         protocolFeeAccount: getAssociatedTokenAddressSync(
-          secondMint,
+          tokenMint,
           admin.publicKey
         ),
         tokenProgram: new PublicKey(
@@ -1426,11 +1427,11 @@ describe("Composable Policies", () => {
         ),
         recipientTokenAccount,
         gatewayFeeAccount: getAssociatedTokenAddressSync(
-          secondMint,
+          tokenMint,
           feeRecipient.publicKey
         ),
         protocolFeeAccount: getAssociatedTokenAddressSync(
-          secondMint,
+          tokenMint,
           admin.publicKey
         ),
         tokenProgram: new PublicKey(
@@ -1579,11 +1580,11 @@ describe("Composable Policies", () => {
         ),
         recipientTokenAccount: userSecondMintTokenAccount,
         gatewayFeeAccount: getAssociatedTokenAddressSync(
-          secondMint,
+          tokenMint,
           feeRecipient.publicKey
         ),
         protocolFeeAccount: getAssociatedTokenAddressSync(
-          secondMint,
+          tokenMint,
           admin.publicKey
         ),
         tokenProgram: new PublicKey(
