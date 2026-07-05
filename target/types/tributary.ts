@@ -607,7 +607,16 @@ export type Tributary = {
           "name": "inputMint"
         },
         {
-          "name": "outputMint"
+          "name": "outputMint",
+          "docs": [
+            "Output mint. In **deliver** modes (forward disabled, or forward",
+            "enabled with a concrete output_mint) this is the recipient's",
+            "delivery mint and MUST be a real SPL Mint. In **act mode**",
+            "(ADR-0026 — forward enabled, `output_mint == Pubkey::default()`)",
+            "the caller passes SystemProgram here; there is no output token to",
+            "deliver and no output ATA is created. Validated conditionally in",
+            "the handler."
+          ]
         },
         {
           "name": "systemProgram",
@@ -1691,15 +1700,19 @@ export type Tributary = {
         {
           "name": "mint",
           "docs": [
-            "Input mint (== forward_config.input_mint == user_payment.token_mint)."
+            "Input mint (== fc_input_mint == user_payment.token_mint)."
           ]
         },
         {
           "name": "outputMint",
           "docs": [
-            "Output mint (== forward_config.output_mint). Required for the",
-            "`transfer_checked` calls on the output leg (fees + sweep)."
-          ]
+            "Output mint. Required for the deliver-transform `transfer_checked`",
+            "calls on the output leg (fees + sweep) and the intermediate-output",
+            "ATA. In **act mode** (ADR-0026 — `output_mint == Pubkey::default()`)",
+            "the caller passes SystemProgram here; the handler skips output-ATA",
+            "creation, the deliver sweep, and the `output_amount > 0` guard."
+          ],
+          "writable": true
         },
         {
           "name": "intermediateInputTokenAccount",
@@ -1736,14 +1749,17 @@ export type Tributary = {
         {
           "name": "gatewayFeeAccount",
           "docs": [
-            "Gateway fee account (output_mint)."
+            "Gateway fee account. Post-ADR-0026 the composable fee path is",
+            "**input-side**: fees are skimmed from the gross pull in `input_mint`",
+            "before the forward runs, so this account MUST be denominated in",
+            "`input_mint` (== `fc_input_mint`)."
           ],
           "writable": true
         },
         {
           "name": "protocolFeeAccount",
           "docs": [
-            "Protocol fee account (output_mint)."
+            "Protocol fee account (input_mint). See `gateway_fee_account`."
           ],
           "writable": true
         },
@@ -3002,6 +3018,21 @@ export type Tributary = {
       "code": 6063,
       "name": "policyExpired",
       "msg": "One-time policy has expired"
+    },
+    {
+      "code": 6064,
+      "name": "invalidOutputMintAccount",
+      "msg": "Act-mode (sentinel output_mint) requires the SystemProgram as the output_mint account"
+    },
+    {
+      "code": 6065,
+      "name": "actModeRequiresForward",
+      "msg": "Act-mode settlement (no output delivery) requires forward to be enabled"
+    },
+    {
+      "code": 6066,
+      "name": "inputResidueSweepFailed",
+      "msg": "Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user"
     }
   ],
   "types": [

@@ -335,61 +335,63 @@ fn run_forward_cpi<'info>(
     Ok(())
 }
 
-/// Process the forward program's output: verify > 0, calculate fees,
-/// deduct fees, sweep remainder to recipient.
-/// Returns `(output_amount, gateway_fee, protocol_fee, sweep_amount)`.
+/// Skim protocol + gateway + scheduler fees from `intermediate_input`
+/// AFTER the gross pull, BEFORE the forward runs (ADR-0026).
 ///
-/// NOTE: min_output_amount has been REMOVED (bean tributary-q82g). The
-/// post_validation phase generalizes it — owners use a Lighthouse assertion
-/// to check output. Fee breakdown is emitted in the ComposableExecuted event
-/// for transparency.
-fn process_output_and_sweep<'info>(
-    intermediate_output: &AccountInfo<'info>,
-    output_mint: &AccountInfo<'info>,
-    output_mint_decimals: u8,
+/// Composable fee path is **input-side** and **NET-on-pull** (hardcoded):
+/// the pull moves `face + fee` from the user; the fee is decomposed into
+/// protocol / scheduler / gateway-residual carve-outs and routed to the
+/// respective `input_mint` accounts. What remains in `intermediate_input`
+/// is exactly `face` — the amount the forward instruction consumes
+/// (`amount_in = face`), making the forward ix relayer-agnostic and
+/// ix-stable regardless of gateway-fee-bps changes.
+///
+/// Returns `(total_fee, protocol_cut, gateway_fee, scheduler_cut)` for the
+/// event. `gateway_fee` is `gateway_residual + scheduler_cut` (the gateway's
+/// take, possibly routed partly to the scheduler ATA on the permissionless
+/// path).
+fn skim_input_fees<'info>(
+    intermediate_input: &AccountInfo<'info>,
+    input_mint: &AccountInfo<'info>,
+    input_mint_decimals: u8,
     intermediate_owner_info: &AccountInfo<'info>,
     token_program: &AccountInfo<'info>,
     gateway: &PaymentGateway,
     config: &ProgramConfig,
     gateway_fee_account: &AccountInfo<'info>,
     protocol_fee_account: &AccountInfo<'info>,
-    recipient_token_account: &AccountInfo<'info>,
     intermediate_owner_seeds: &[&[&[u8]]],
-    native_output: bool,
     fee_payer_key: Pubkey,
     scheduler_ata: Option<&AccountInfo<'info>>,
+    face_amount: u64,
 ) -> Result<(u64, u64, u64, u64)> {
-    let output_amount = read_token_amount(intermediate_output)?;
-    require!(output_amount > 0, TributaryError::ForwardProducedNoOutput);
-
+    // NET-on-pull hardcoded for composable: fee is ADDED on top of face.
+    // calculate_fees with is_net_mode=true yields total_fee = face × bps and
+    // total_from_user = face + total_fee (the gross pull, already moved).
     let fee_breakdown = crate::shared::fees::calculate_fees(
-        output_amount,
+        face_amount,
         gateway.gateway_fee_bps,
         gateway.effective_protocol_share_bps(config.protocol_share_bps),
         gateway.scheduler_share_bps,
         gateway.referral_allocation_bps,
         gateway.is_referral_enabled(),
-        gateway.is_amount_net(),
+        true, // NET-on-pull hardcoded (ADR-0026)
     )?;
     let total_fee = fee_breakdown.total_fee;
     let protocol_cut = fee_breakdown.protocol_cut;
     let scheduler_cut = fee_breakdown.scheduler_cut;
 
     require!(
-        total_fee <= output_amount,
-        TributaryError::InsufficientOutputAmount
+        total_fee <= face_amount || face_amount.checked_add(total_fee).is_some(),
+        TributaryError::ArithmeticOverflow
     );
 
-    let sweep_amount = output_amount
-        .checked_sub(total_fee)
-        .ok_or(TributaryError::ArithmeticOverflow)?;
-
-    // ── Claim gateway fee (with scheduler routing) ─────────────────
     let gateway_fee = fee_breakdown
         .gateway_residual
         .checked_add(scheduler_cut)
         .ok_or(TributaryError::ArithmeticOverflow)?;
 
+    // ── Scheduler cut (permissionless path only) ───────────────────
     match scheduler_ata {
         Some(ata) => {
             if scheduler_cut > 0 {
@@ -401,8 +403,9 @@ fn process_output_and_sweep<'info>(
                     );
                     let sta_mint = Pubkey::try_from(&sta_data[0..32]).unwrap_or_default();
                     let sta_owner = Pubkey::try_from(&sta_data[32..64]).unwrap_or_default();
+                    // Scheduler ATA is input-side (ADR-0026).
                     require!(
-                        sta_mint == output_mint.key(),
+                        sta_mint == input_mint.key(),
                         TributaryError::InvalidSchedulerFeeAccount
                     );
                     require!(
@@ -411,8 +414,8 @@ fn process_output_and_sweep<'info>(
                     );
                 }
                 let cpi_accounts = TransferChecked {
-                    from: intermediate_output.clone(),
-                    mint: output_mint.clone(),
+                    from: intermediate_input.clone(),
+                    mint: input_mint.clone(),
                     to: ata.clone(),
                     authority: intermediate_owner_info.clone(),
                 };
@@ -421,13 +424,13 @@ fn process_output_and_sweep<'info>(
                     cpi_accounts,
                     intermediate_owner_seeds,
                 );
-                token_interface::transfer_checked(cpi_ctx, scheduler_cut, output_mint_decimals)?;
+                token_interface::transfer_checked(cpi_ctx, scheduler_cut, input_mint_decimals)?;
             }
 
             if fee_breakdown.gateway_residual > 0 {
                 let cpi_accounts = TransferChecked {
-                    from: intermediate_output.clone(),
-                    mint: output_mint.clone(),
+                    from: intermediate_input.clone(),
+                    mint: input_mint.clone(),
                     to: gateway_fee_account.clone(),
                     authority: intermediate_owner_info.clone(),
                 };
@@ -439,15 +442,15 @@ fn process_output_and_sweep<'info>(
                 token_interface::transfer_checked(
                     cpi_ctx,
                     fee_breakdown.gateway_residual,
-                    output_mint_decimals,
+                    input_mint_decimals,
                 )?;
             }
         }
         None => {
             if gateway_fee > 0 {
                 let cpi_accounts = TransferChecked {
-                    from: intermediate_output.clone(),
-                    mint: output_mint.clone(),
+                    from: intermediate_input.clone(),
+                    mint: input_mint.clone(),
                     to: gateway_fee_account.clone(),
                     authority: intermediate_owner_info.clone(),
                 };
@@ -456,16 +459,16 @@ fn process_output_and_sweep<'info>(
                     cpi_accounts,
                     intermediate_owner_seeds,
                 );
-                token_interface::transfer_checked(cpi_ctx, gateway_fee, output_mint_decimals)?;
+                token_interface::transfer_checked(cpi_ctx, gateway_fee, input_mint_decimals)?;
             }
         }
     }
 
-    // ── Claim protocol fee ──────────────────────────────────────────
+    // ── Protocol cut ───────────────────────────────────────────────
     if protocol_cut > 0 {
         let cpi_accounts = TransferChecked {
-            from: intermediate_output.clone(),
-            mint: output_mint.clone(),
+            from: intermediate_input.clone(),
+            mint: input_mint.clone(),
             to: protocol_fee_account.clone(),
             authority: intermediate_owner_info.clone(),
         };
@@ -474,49 +477,115 @@ fn process_output_and_sweep<'info>(
             cpi_accounts,
             intermediate_owner_seeds,
         );
-        token_interface::transfer_checked(cpi_ctx, protocol_cut, output_mint_decimals)?;
+        token_interface::transfer_checked(cpi_ctx, protocol_cut, input_mint_decimals)?;
     }
 
-    // ── Sweep remainder → recipient ─────────────────────────────────
-    if sweep_amount > 0 {
-        if native_output {
-            // Unwrap WSOL → native SOL: close the WSOL intermediate into the
-            // recipient's system wallet. closeAccount sends the entire
-            // remaining WSOL value (= sweep_amount) as native SOL, plus the
-            // rent lamports of the closed ATA (a side-effect bonus to the
-            // recipient). Authority = ComposablePolicy PDA (owns the
-            // intermediate); destination validated in the handler to equal
-            // `composable_policy.recipient`. No drain vector: the destination
-            // is constrained on-chain, unlike a generic closeAccount forward.
-            // See bean tributary-hgp7 + reports/native-output-sweep.md.
-            close_token_account(
-                intermediate_output,
-                recipient_token_account,
-                intermediate_owner_info,
-                token_program,
-                // close_token_account wraps the seeds in `&[signer_seeds]`,
-                // so we pass the inner &[&[u8]] slice it expects. The
-                // ComposablePolicy PDA owns the intermediate and signs here
-                // with the SAME seeds used for the fee/sweep CPIs above.
-                intermediate_owner_seeds[0],
-            )?;
-        } else {
-            let cpi_accounts = TransferChecked {
-                from: intermediate_output.clone(),
-                mint: output_mint.clone(),
-                to: recipient_token_account.clone(),
-                authority: intermediate_owner_info.clone(),
-            };
-            let cpi_ctx = CpiContext::new_with_signer(
-                token_program.clone(),
-                cpi_accounts,
-                intermediate_owner_seeds,
-            );
-            token_interface::transfer_checked(cpi_ctx, sweep_amount, output_mint_decimals)?;
-        }
-    }
+    Ok((total_fee, protocol_cut, gateway_fee, scheduler_cut))
+}
 
-    Ok((output_amount, gateway_fee, protocol_cut, sweep_amount))
+/// Sweep the intermediate_output balance to the recipient (deliver-transform
+/// mode). Enforces the `output_amount > 0` guard — Tributary asserts the
+/// output EXISTS; the output AMOUNT floor is the owner's job via
+/// `post_validation`. Returns the swept amount.
+fn sweep_output_to_recipient<'info>(
+    intermediate_output: &AccountInfo<'info>,
+    output_mint: &AccountInfo<'info>,
+    output_mint_decimals: u8,
+    intermediate_owner_info: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    recipient_token_account: &AccountInfo<'info>,
+    intermediate_owner_seeds: &[&[&[u8]]],
+    native_output: bool,
+) -> Result<u64> {
+    let output_amount = read_token_amount(intermediate_output)?;
+    require!(output_amount > 0, TributaryError::ForwardProducedNoOutput);
+
+    if native_output {
+        close_token_account(
+            intermediate_output,
+            recipient_token_account,
+            intermediate_owner_info,
+            token_program,
+            intermediate_owner_seeds[0],
+        )?;
+    } else if output_amount > 0 {
+        let cpi_accounts = TransferChecked {
+            from: intermediate_output.clone(),
+            mint: output_mint.clone(),
+            to: recipient_token_account.clone(),
+            authority: intermediate_owner_info.clone(),
+        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            cpi_accounts,
+            intermediate_owner_seeds,
+        );
+        token_interface::transfer_checked(cpi_ctx, output_amount, output_mint_decimals)?;
+    }
+    Ok(output_amount)
+}
+
+/// Sweep an intermediate balance back to the user's source token account.
+/// Used for the intermediate_input residue when a forward under-consumed
+/// (deliver-transform + act modes, ADR-0026). The fee was already skimmed
+/// on the gross pull; the residue is the un-consumed portion of `face` and
+/// is non-refundable as far as fees go — the user authorized the gross pull,
+/// the fee is earned on authorization, the residue is returned principal.
+fn sweep_input_residual_to_user<'info>(
+    intermediate_input: &AccountInfo<'info>,
+    input_mint: &AccountInfo<'info>,
+    input_mint_decimals: u8,
+    intermediate_owner_info: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    user_token_account: &AccountInfo<'info>,
+    intermediate_owner_seeds: &[&[&[u8]]],
+) -> Result<u64> {
+    let residue = read_token_amount(intermediate_input)?;
+    if residue > 0 {
+        let cpi_accounts = TransferChecked {
+            from: intermediate_input.clone(),
+            mint: input_mint.clone(),
+            to: user_token_account.clone(),
+            authority: intermediate_owner_info.clone(),
+        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            cpi_accounts,
+            intermediate_owner_seeds,
+        );
+        token_interface::transfer_checked(cpi_ctx, residue, input_mint_decimals)?;
+    }
+    Ok(residue)
+}
+
+/// Deliver-no-transform sweep: move the full `face` balance from
+/// intermediate_input to the recipient (forward never ran, the intermediate
+/// holds exactly `face` after fee skim). Single-mint, single-intermediate.
+fn sweep_input_to_recipient<'info>(
+    intermediate_input: &AccountInfo<'info>,
+    input_mint: &AccountInfo<'info>,
+    input_mint_decimals: u8,
+    intermediate_owner_info: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    recipient_token_account: &AccountInfo<'info>,
+    intermediate_owner_seeds: &[&[&[u8]]],
+) -> Result<u64> {
+    let amount = read_token_amount(intermediate_input)?;
+    if amount > 0 {
+        let cpi_accounts = TransferChecked {
+            from: intermediate_input.clone(),
+            mint: input_mint.clone(),
+            to: recipient_token_account.clone(),
+            authority: intermediate_owner_info.clone(),
+        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            cpi_accounts,
+            intermediate_owner_seeds,
+        );
+        token_interface::transfer_checked(cpi_ctx, amount, input_mint_decimals)?;
+    }
+    Ok(amount)
 }
 
 #[derive(Accounts)]
@@ -621,7 +690,7 @@ pub struct ExecuteComposable<'info> {
     )]
     pub user_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Input mint (== forward_config.input_mint == user_payment.token_mint).
+    /// Input mint (== fc_input_mint == user_payment.token_mint).
     #[account(
         constraint = mint.key() == composable_policy.forward_config.input_mint,
         constraint = mint.key() == user_payment.token_mint
@@ -629,12 +698,14 @@ pub struct ExecuteComposable<'info> {
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
 
-    /// Output mint (== forward_config.output_mint). Required for the
-    /// `transfer_checked` calls on the output leg (fees + sweep).
-    #[account(
-        constraint = output_mint.key() == composable_policy.forward_config.output_mint,
-    )]
-    pub output_mint: Box<InterfaceAccount<'info, Mint>>,
+    /// Output mint. Required for the deliver-transform `transfer_checked`
+    /// calls on the output leg (fees + sweep) and the intermediate-output
+    /// ATA. In **act mode** (ADR-0026 — `output_mint == Pubkey::default()`)
+    /// the caller passes SystemProgram here; the handler skips output-ATA
+    /// creation, the deliver sweep, and the `output_amount > 0` guard.
+    /// CHECK: conditionally validated in the handler.
+    #[account(mut)]
+    pub output_mint: UncheckedAccount<'info>,
 
     /// UserPayment PDA's intermediate input token account (input_mint ATA).
     /// Created via CPI if non-existent; closed at end to reclaim rent for
@@ -661,25 +732,22 @@ pub struct ExecuteComposable<'info> {
     #[account(mut)]
     pub recipient_token_account: UncheckedAccount<'info>,
 
-    /// Gateway fee account (output_mint).
+    /// Gateway fee account. Post-ADR-0026 the composable fee path is
+    /// **input-side**: fees are skimmed from the gross pull in `input_mint`
+    /// before the forward runs, so this account MUST be denominated in
+    /// `input_mint` (== `fc_input_mint`).
     #[account(
         mut,
-        // associated_token::mint = output_mint,
-        // associated_token::authority = gateway.fee_recipient,
-        // associated_token::token_program = token_program,
-        constraint = gateway_fee_account.mint == composable_policy.forward_config.output_mint
+        constraint = gateway_fee_account.mint == composable_policy.forward_config.input_mint
             @ TributaryError::TokenMintMismatch,
         constraint = gateway_fee_account.owner == gateway.fee_recipient,
     )]
     pub gateway_fee_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Protocol fee account (output_mint).
+    /// Protocol fee account (input_mint). See `gateway_fee_account`.
     #[account(
         mut,
-        // associated_token::mint = output_mint,
-        // associated_token::authority = config.fee_recipient,
-        // associated_token::token_program = token_program,
-        constraint = protocol_fee_account.mint == composable_policy.forward_config.output_mint
+        constraint = protocol_fee_account.mint == composable_policy.forward_config.input_mint
             @ TributaryError::TokenMintMismatch,
         constraint = protocol_fee_account.owner == config.fee_recipient,
     )]
@@ -699,56 +767,85 @@ impl<'info> ExecuteComposable<'info> {
         let clock = Clock::get()?;
         let now = clock.unix_timestamp;
 
-        // Re-validate both mints at execution time. Token-2022 extensions
+        // Re-validate the input mint at execution time. Token-2022 extensions
         // (TransferHook, TransferFee) are mutable post-creation, so the input
         // mint that was clean at create_user_payment could have turned hostile.
-        // The output mint has never been validated at all, yet this instruction
-        // creates a PDA-controlled intermediate ATA for it — a PermanentDelegate
-        // output mint would drain that intermediate.
         validate_mint_compatible(&ctx.accounts.mint.to_account_info())?;
-        validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
 
-        // ── Validate recipient destination (conditional on NATIVE_OUTPUT) ──
-        // Anchor constraints are static, so `recipient_token_account` is an
-        // UncheckedAccount. In normal mode it must be the recipient's
-        // output-mint ATA (replicates the two checks that used to live on
-        // the accounts struct). In NATIVE_OUTPUT mode it is the recipient's
-        // system wallet — the WSOL value gets shipped there as native SOL
-        // via `closeAccount`. See bean tributary-hgp7.
-        //
-        // We avoid `InterfaceAccount::<TokenAccount>::try_from` here: the
-        // returned `InterfaceAccount` borrows the `AccountInfo` for `'info`
-        // but the local `to_account_info()` binding isn't `'info`-long,
-        // causing E0597. Instead we deserialize the two fields we need
-        // (mint: bytes 0..32, owner: bytes 32..64) directly from the raw
-        // SPL token account layout, which is exactly what the Anchor
-        // constraints would have validated anyway.
+        // Extract settlement-shape flags + key mints as small primitives.
+        // Keeping the full 267-byte ForwardConfig live blew the SBF frame
+        // (ADR-0026 stack-pressure fix). These scalars are all the handler
+        // needs; the typed struct is re-read only in scoped blocks below.
+        let is_act = ctx.accounts.composable_policy.forward_config.is_act_mode();
+        let is_deliver_transform = ctx
+            .accounts
+            .composable_policy
+            .forward_config
+            .is_deliver_transform();
+        let needs_output_ata = ctx
+            .accounts
+            .composable_policy
+            .forward_config
+            .needs_output_ata();
+        let fc_output_mint = ctx.accounts.composable_policy.forward_config.output_mint;
+        let fc_input_mint = ctx.accounts.composable_policy.forward_config.input_mint;
         let native_output = ctx
             .accounts
             .composable_policy
             .forward_config
             .is_native_output();
-        if native_output {
+
+        // ── Output-mint validation (mode-conditional, ADR-0026) ────────
+        // Act mode: no output mint — skip compatibility check, but require
+        // the passed account to be SystemProgram (defence-in-depth against a
+        // bogus account being marked writable).
+        // Deliver modes: validate the passed output_mint account equals the
+        // declared output_mint and is Token-2022-clean.
+        if !is_act {
+            validate_mint_compatible(&ctx.accounts.output_mint.to_account_info())?;
             require!(
-                ctx.accounts.recipient_token_account.key()
-                    == ctx.accounts.composable_policy.recipient,
-                TributaryError::Unauthorized
-            );
-        } else {
-            let rta_info = ctx.accounts.recipient_token_account.to_account_info();
-            let data = rta_info.try_borrow_data()?;
-            // SPL Token account layout: mint at 0..32, owner at 32..64.
-            require!(data.len() >= 64, TributaryError::InvalidTokenAccount);
-            let rta_mint = Pubkey::try_from(&data[0..32]).unwrap_or_default();
-            let rta_owner = Pubkey::try_from(&data[32..64]).unwrap_or_default();
-            require!(
-                rta_mint == ctx.accounts.composable_policy.forward_config.output_mint,
+                ctx.accounts.output_mint.key() == fc_output_mint,
                 TributaryError::TokenMintMismatch
             );
+        } else {
             require!(
-                rta_owner == ctx.accounts.composable_policy.recipient,
-                TributaryError::Unauthorized
+                ctx.accounts.output_mint.key() == ctx.accounts.system_program.key(),
+                TributaryError::InvalidOutputMintAccount
             );
+        }
+
+        // ── Validate recipient destination (only in deliver modes) ────
+        // Act mode produces no token output for the recipient — the
+        // recipient_token_account is unused for delivery (it still must be
+        // passed as a fixed account slot, but we don't validate it).
+        // Deliver modes replicate the two checks that used to live on the
+        // accounts struct (mint + owner) for the output (or input, in
+        // deliver-no-transform) mint.
+        if !is_act {
+            if native_output {
+                require!(
+                    ctx.accounts.recipient_token_account.key()
+                        == ctx.accounts.composable_policy.recipient,
+                    TributaryError::Unauthorized
+                );
+            } else {
+                let rta_info = ctx.accounts.recipient_token_account.to_account_info();
+                let data = rta_info.try_borrow_data()?;
+                require!(data.len() >= 64, TributaryError::InvalidTokenAccount);
+                let rta_mint = Pubkey::try_from(&data[0..32]).unwrap_or_default();
+                let rta_owner = Pubkey::try_from(&data[32..64]).unwrap_or_default();
+                // deliver-no-transform: recipient ATA is input_mint; else output_mint.
+                let expected_mint = if is_deliver_transform {
+                    fc_output_mint
+                } else {
+                    fc_input_mint
+                };
+                require!(rta_mint == expected_mint, TributaryError::TokenMintMismatch);
+                require!(
+                    rta_owner == ctx.accounts.composable_policy.recipient,
+                    TributaryError::Unauthorized
+                );
+            }
         }
 
         // ── Step 1: BYTE-RANGE CHECKS ──────────────────────────────────
@@ -800,66 +897,110 @@ impl<'info> ExecuteComposable<'info> {
             TributaryError::IntermediateAccountMismatch
         );
 
-        let expected_output_ata = Pubkey::find_program_address(
-            &[
-                intermediate_owner.as_ref(),
-                ctx.accounts.token_program.key().as_ref(),
-                ctx.accounts.output_mint.key().as_ref(),
-            ],
-            ctx.accounts.associated_token_program.key,
-        )
-        .0;
-        require!(
-            ctx.accounts.intermediate_output_token_account.key() == expected_output_ata,
-            TributaryError::IntermediateAccountMismatch
-        );
+        // The output ATA is only used in deliver-transform mode (a distinct
+        // output mint is swept to the recipient). Act mode and deliver-no-
+        // transform skip it — act produces no fungible output, deliver-no-
+        // transform reuses the input intermediate. (ADR-0026)
+        if needs_output_ata {
+            let expected_output_ata = Pubkey::find_program_address(
+                &[
+                    intermediate_owner.as_ref(),
+                    ctx.accounts.token_program.key().as_ref(),
+                    ctx.accounts.output_mint.key().as_ref(),
+                ],
+                ctx.accounts.associated_token_program.key,
+            )
+            .0;
+            require!(
+                ctx.accounts.intermediate_output_token_account.key() == expected_output_ata,
+                TributaryError::IntermediateAccountMismatch
+            );
+        }
 
         let composable_policy = &mut ctx.accounts.composable_policy;
 
-        // ── Validate policy + resolve base amount ──────────────────────
-        // Routes through `shared::schedule` — the same dispatch path used by
-        // `execute_payment`. Both policy families (PaymentPolicy +
-        // ComposablePolicy) share one `match` over `PolicyType` for timing
-        // gates, milestone release_condition signer bits, and PayAsYouGo
-        // chunk/period bounds. The calendar-month math this relies on is
-        // pinned by a differential proptest in `shared/schedule.rs`.
+        // ── Validate policy + resolve face amount ──────────────────────
+        // Routes through `shared::schedule`. Both policy families share one
+        // `match` over `PolicyType` for timing gates, milestone release_condition
+        // signer bits, and PayAsYouGo chunk/period bounds. The calendar-month
+        // math this relies on is pinned by a differential proptest in
+        // `shared/schedule.rs`.
+        //
+        // PayAsYouGo caps bind on GROSS (face + fee) for composable (ADR-0026):
+        // we resolve the caller's face, compute gross, then validate gross
+        // against the caps. Non-PayAsYouGo variants validate timing/signers
+        // with `None` (forward_amount is rejected for them — closes C-1).
         let caller_key = ctx.accounts.fee_payer.key();
-        let schedule_amount = validate_policy_execution(
-            &composable_policy.policy_type,
-            now,
-            forward_amount,
-            &MilestoneSigners {
-                caller: &caller_key,
-                gateway_signer: &ctx.accounts.gateway.signer,
-                owner: &ctx.accounts.user_payment.owner,
-                recipient: &composable_policy.recipient,
-            },
-        )?;
+        let milestone_signers = MilestoneSigners {
+            caller: &caller_key,
+            gateway_signer: &ctx.accounts.gateway.signer,
+            owner: &ctx.accounts.user_payment.owner,
+            recipient: &composable_policy.recipient,
+        };
 
-        // Resolve the actual input amount.
-        // - PayAsYouGo: the caller-supplied `forward_amount` IS the chunk
-        //   (validated inside `validate_policy_execution` above).
-        // - Subscription / Milestone: the configured `schedule_amount` is
-        //   authoritative. Rejecting `forward_amount` here closes C-1: an
-        //   adversarial gateway signer could otherwise charge above the
-        //   agreed schedule by passing `forward_amount = Some(larger)`.
-        let input_amount = match forward_amount {
+        // Resolve face_amount BEFORE validation. PayAsYouGo takes the caller's
+        // forward_amount as face; other variants reject forward_amount and
+        // resolve face from the schedule.
+        let face_amount = match forward_amount {
             Some(amt) => match &composable_policy.policy_type {
                 PolicyType::PayAsYouGo { .. } => amt,
                 _ => return err!(TributaryError::InvalidAmount),
             },
             None => {
-                require!(schedule_amount > 0, TributaryError::InvalidAmount);
-                schedule_amount
+                let s = validate_policy_execution(
+                    &composable_policy.policy_type,
+                    now,
+                    None,
+                    &milestone_signers,
+                )?;
+                require!(s > 0, TributaryError::InvalidAmount);
+                s
             }
         };
 
+        // ── Compute fee on face (NET-on-pull hardcoded, ADR-0026) ──────
+        // Composable pulls GROSS = face + fee. The delegate, balance, AND
+        // PayAsYouGo caps all bind on gross — both user-protective: a fee-bps
+        // hike can fail execution at the delegate OR at a cap. Scoped so the
+        // FeeBreakdown (~56 bytes) is released before later locals.
+        let gross_pull = {
+            let fee_preview = crate::shared::fees::calculate_fees(
+                face_amount,
+                ctx.accounts.gateway.gateway_fee_bps,
+                ctx.accounts
+                    .gateway
+                    .effective_protocol_share_bps(ctx.accounts.config.protocol_share_bps),
+                ctx.accounts.gateway.scheduler_share_bps,
+                ctx.accounts.gateway.referral_allocation_bps,
+                ctx.accounts.gateway.is_referral_enabled(),
+                true, // NET-on-pull hardcoded
+            )?;
+            face_amount
+                .checked_add(fee_preview.total_fee)
+                .ok_or(TributaryError::ArithmeticOverflow)?
+        };
+
+        // PayAsYouGo: validate gross against chunk/period caps (ADR-0026).
+        // Non-PayAsYouGo already validated above (timing + signers).
+        if matches!(composable_policy.policy_type, PolicyType::PayAsYouGo { .. }) {
+            validate_policy_execution(
+                &composable_policy.policy_type,
+                now,
+                Some(gross_pull),
+                &milestone_signers,
+            )?;
+        }
+
         require!(
-            ctx.accounts.user_token_account.delegated_amount >= input_amount,
+            ctx.accounts.user_token_account.delegated_amount >= gross_pull,
             TributaryError::InsufficientDelegatedAmount
         );
         require!(
-            ctx.accounts.user_token_account.amount >= input_amount,
+            ctx.accounts.user_token_account.amount >= gross_pull,
+            TributaryError::InsufficientBalance
+        );
+        require!(
+            ctx.accounts.user_token_account.amount >= gross_pull,
             TributaryError::InsufficientBalance
         );
 
@@ -969,23 +1110,27 @@ impl<'info> ExecuteComposable<'info> {
         let remaining_mid: &[AccountInfo<'info>] = &remaining_after_sched[..post_start];
 
         // ── Cache account infos used by multiple steps ─────────────────
+        // Only cache infos that are referenced across multiple phases. SBF
+        // stack pressure (ADR-0026): each AccountInfo clone is ~120 bytes,
+        // so single-use infos are created inline at their call site.
         let token_program_info = ctx.accounts.token_program.to_account_info();
         let input_mint_info = ctx.accounts.mint.to_account_info();
         let input_mint_decimals = ctx.accounts.mint.decimals;
-        let output_mint_info = ctx.accounts.output_mint.to_account_info();
-        let output_mint_decimals = ctx.accounts.output_mint.decimals;
         let user_token_info = ctx.accounts.user_token_account.to_account_info();
-        let user_payment_info = ctx.accounts.user_payment.to_account_info();
         let composable_policy_info = ctx.accounts.composable_policy.to_account_info();
 
         // ── Resolve pull delegate ──────────────────────────────────────
-        let pull_resolution = resolve_delegate(
-            &ctx.accounts.user_payment,
-            user_payment_info.clone(),
-            ctx.accounts.payments_delegate.to_account_info(),
-            ctx.bumps.payments_delegate,
-            &ctx.accounts.user_token_account.delegate,
-        )?;
+        // (user_payment_info is single-use here — create + consume in scope.)
+        let pull_resolution = {
+            let user_payment_info = ctx.accounts.user_payment.to_account_info();
+            resolve_delegate(
+                &ctx.accounts.user_payment,
+                user_payment_info,
+                ctx.accounts.payments_delegate.to_account_info(),
+                ctx.bumps.payments_delegate,
+                &ctx.accounts.user_token_account.delegate,
+            )?
+        };
         let pull_seed_slices: Vec<&[u8]> =
             pull_resolution.seeds.iter().map(|s| s.as_slice()).collect();
         let pull_signer_seeds: &[&[u8]] = &pull_seed_slices;
@@ -993,40 +1138,48 @@ impl<'info> ExecuteComposable<'info> {
         let pull_authority = &pull_resolution.authority_info;
 
         // ── Create intermediate ATAs ───────────────────────────────────
+        // system_program_info + atp_info are only used for ATA creation.
         let fee_payer_info = ctx.accounts.fee_payer.to_account_info();
-        let system_program_info = ctx.accounts.system_program.to_account_info();
-        let atp_info = ctx.accounts.associated_token_program.to_account_info();
         let input_ata_info = ctx
             .accounts
             .intermediate_input_token_account
             .to_account_info();
-        create_ata(
-            &input_ata_info,
-            &fee_payer_info,
-            &composable_policy_info,
-            &input_mint_info,
-            &system_program_info,
-            &token_program_info,
-            &atp_info,
-        )?;
-
-        if ctx.accounts.mint.key() != ctx.accounts.output_mint.key() {
-            let output_ata_info = ctx
-                .accounts
-                .intermediate_output_token_account
-                .to_account_info();
+        {
+            let system_program_info = ctx.accounts.system_program.to_account_info();
+            let atp_info = ctx.accounts.associated_token_program.to_account_info();
             create_ata(
-                &output_ata_info,
+                &input_ata_info,
                 &fee_payer_info,
                 &composable_policy_info,
-                &output_mint_info,
+                &input_mint_info,
                 &system_program_info,
                 &token_program_info,
                 &atp_info,
             )?;
+
+            // The output ATA is created ONLY in deliver-transform mode.
+            if needs_output_ata {
+                let output_ata_info = ctx
+                    .accounts
+                    .intermediate_output_token_account
+                    .to_account_info();
+                let output_mint_info = ctx.accounts.output_mint.to_account_info();
+                create_ata(
+                    &output_ata_info,
+                    &fee_payer_info,
+                    &composable_policy_info,
+                    &output_mint_info,
+                    &system_program_info,
+                    &token_program_info,
+                    &atp_info,
+                )?;
+            }
         }
 
         // ── Phase 1: PULL (user → intermediate_input) ──────────────────
+        // NET-on-pull hardcoded (ADR-0026): the pull moves GROSS = face + fee.
+        // The fee is skimmed off in the next step; the forward then consumes
+        // exactly `face` from intermediate_input.
         {
             let cpi_accounts = TransferChecked {
                 from: user_token_info.clone(),
@@ -1039,8 +1192,32 @@ impl<'info> ExecuteComposable<'info> {
             };
             let cpi_ctx =
                 CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, pull_seeds);
-            token_interface::transfer_checked(cpi_ctx, input_amount, input_mint_decimals)?;
+            token_interface::transfer_checked(cpi_ctx, gross_pull, input_mint_decimals)?;
         }
+
+        // ── Phase 1b: SKIM FEES from intermediate_input (ADR-0026) ──────
+        // Fees are input-side: protocol + gateway + scheduler cuts are
+        // routed to input_mint accounts BEFORE the forward runs. After this,
+        // intermediate_input holds exactly `face` — the amount the forward
+        // instruction consumes (amount_in = face), making the forward ix
+        // relayer-agnostic and ix-stable regardless of fee-bps changes.
+        let gateway = &ctx.accounts.gateway;
+        let config = &ctx.accounts.config;
+        let (_total_fee, protocol_fee, gateway_fee, _scheduler_cut) = skim_input_fees(
+            &input_ata_info,
+            &input_mint_info,
+            input_mint_decimals,
+            &composable_policy_info,
+            &token_program_info,
+            gateway,
+            config,
+            &ctx.accounts.gateway_fee_account.to_account_info(),
+            &ctx.accounts.protocol_fee_account.to_account_info(),
+            intermediate_owner_seeds,
+            caller_key,
+            scheduler_ata_info.as_ref(),
+            face_amount,
+        )?;
 
         // ── Phase 2: PRE-VALIDATION CPI (if ProgramCall) ───────────────
         // remaining_mid layout: [...preValTargets, ...forwardAccounts]
@@ -1108,45 +1285,93 @@ impl<'info> ExecuteComposable<'info> {
             )?;
         }
 
-        // ── Steps 6–9: verify output, fees, sweep ──────────────────────
-        let gateway = &ctx.accounts.gateway;
-        let config = &ctx.accounts.config;
+        // ── Phase 5: SETTLEMENT (shape-dependent, ADR-0026) ────────────
+        // Three shapes, each with a distinct residual-routing rule:
+        //  1. deliver-no-transform (forward disabled, same mint): the full
+        //     `face` is swept to the recipient. No forward ran, no residue.
+        //  2. deliver-transform (forward enabled, distinct output_mint): the
+        //     forward produced output in intermediate_output — sweep it to
+        //     the recipient (>0 guard KEPT). Any under-consumed input residue
+        //     goes back to the user.
+        //  3. act (forward enabled, sentinel output_mint): the forward
+        //     consumed input but produced no fungible output. Sweep the input
+        //     residue back to the user. No deliver sweep, no >0 guard.
+        let mut output_amount: u64 = 0;
+        let mut sweep_amount: u64 = 0;
 
-        let (output_amount, gateway_fee, protocol_fee, sweep_amount) = process_output_and_sweep(
-            &ctx.accounts
-                .intermediate_output_token_account
-                .to_account_info(),
-            &output_mint_info,
-            output_mint_decimals,
-            &composable_policy_info,
-            &token_program_info,
-            gateway,
-            config,
-            &ctx.accounts.gateway_fee_account.to_account_info(),
-            &ctx.accounts.protocol_fee_account.to_account_info(),
-            &ctx.accounts.recipient_token_account.to_account_info(),
-            intermediate_owner_seeds,
-            native_output,
-            caller_key,
-            scheduler_ata_info.as_ref(),
-        )?;
+        if is_deliver_transform {
+            // Deliver the forward's output to the recipient. output_mint_info
+            // + decimals created lazily (only this branch needs them).
+            let output_mint_info = ctx.accounts.output_mint.to_account_info();
+            let output_mint_decimals = {
+                let data = output_mint_info.try_borrow_data()?;
+                require!(data.len() >= 45, TributaryError::InvalidTokenAccount);
+                data[44]
+            };
+            output_amount = sweep_output_to_recipient(
+                &ctx.accounts
+                    .intermediate_output_token_account
+                    .to_account_info(),
+                &output_mint_info,
+                output_mint_decimals,
+                &composable_policy_info,
+                &token_program_info,
+                &ctx.accounts.recipient_token_account.to_account_info(),
+                intermediate_owner_seeds,
+                native_output,
+            )?;
+            sweep_amount = output_amount;
 
-        // ── Step 10: VERIFY INTERMEDIATES EMPTY ────────────────────────
-        // Closure of the intermediate ATAs (rent → fee_payer) is a
-        // follow-up; for now we enforce zero balances so nothing is
-        // stranded silently.
-        let input_check = read_token_amount(
-            &ctx.accounts
-                .intermediate_input_token_account
-                .to_account_info(),
-        )?;
+            // Return any under-consumed input residue to the user.
+            // (Forward may consume less than `face` — e.g. a swap that
+            // short-fills. The user authorized the gross pull; the residue
+            // is returned principal, fee already earned on authorization.)
+            let _residue = sweep_input_residual_to_user(
+                &input_ata_info,
+                &input_mint_info,
+                input_mint_decimals,
+                &composable_policy_info,
+                &token_program_info,
+                &user_token_info,
+                intermediate_owner_seeds,
+            )?;
+        } else if is_act {
+            // Act mode: no output delivery. Return input residue to user.
+            // The forward consumed input for a non-token settlement (e.g.
+            // Velocity subaccount deposit); whatever it didn't consume comes
+            // back. Tributary asserts nothing about delivery — owner's
+            // post_validation is the only floor.
+            let _residue = sweep_input_residual_to_user(
+                &input_ata_info,
+                &input_mint_info,
+                input_mint_decimals,
+                &composable_policy_info,
+                &token_program_info,
+                &user_token_info,
+                intermediate_owner_seeds,
+            )?;
+        } else {
+            // deliver-no-transform: forward disabled, single intermediate
+            // holding `face` after fee skim. Sweep it all to the recipient.
+            sweep_amount = sweep_input_to_recipient(
+                &input_ata_info,
+                &input_mint_info,
+                input_mint_decimals,
+                &composable_policy_info,
+                &token_program_info,
+                &ctx.accounts.recipient_token_account.to_account_info(),
+                intermediate_owner_seeds,
+            )?;
+            output_amount = sweep_amount;
+        }
+
+        // ── VERIFY INTERMEDIATES EMPTY ─────────────────────────────────
+        // After settlement, both intermediates must be at zero balance —
+        // closure of the ATAs (rent → fee_payer) happens at the end.
+        let input_check = read_token_amount(&input_ata_info)?;
         require!(input_check == 0, TributaryError::InsufficientBalance);
 
-        // In NATIVE_OUTPUT mode the WSOL intermediate was already closed by
-        // the sweep (closeAccount zeroes it), so `read_token_amount` would
-        // fail with `data.len() < 72`. Skip the check — `closeAccount` is
-        // atomic, so the balance is provably zero (or the whole tx reverted).
-        if !native_output {
+        if needs_output_ata && !native_output {
             let output_check = read_token_amount(
                 &ctx.accounts
                     .intermediate_output_token_account
@@ -1155,22 +1380,28 @@ impl<'info> ExecuteComposable<'info> {
             require!(output_check == 0, TributaryError::InsufficientBalance);
         }
 
-        // ── Step 11: UPDATE STATE ──────────────────────────────────────
+        // ── UPDATE STATE ───────────────────────────────────────────────
         let composable_policy = &mut ctx.accounts.composable_policy;
 
-        // Advance the policy now that the execution succeeded. For
-        // Subscription this advances `next_payment_due` via calendar-month
-        // math (M-04), for Milestone it bumps `current_milestone`, for
-        // PayAsYouGo it updates the rolling period total. Returns
-        // `should_complete` for one-shot / exhausted policies. Shared with
-        // `execute_payment`.
+        // Advance the policy. PayAsYouGo accumulates `gross_pull` into the
+        // rolling period total (caps bind on gross, ADR-0026). Other variants
+        // advance on face (the schedule amount). Returns `should_complete`
+        // for one-shot / exhausted policies.
+        let advance_amount =
+            if matches!(composable_policy.policy_type, PolicyType::PayAsYouGo { .. }) {
+                gross_pull
+            } else {
+                face_amount
+            };
         let should_complete =
-            advance_policy(&mut composable_policy.policy_type, now, input_amount)?;
+            advance_policy(&mut composable_policy.policy_type, now, advance_amount)?;
 
+        // total_input tracks the actual gross tokens pulled from the user.
         composable_policy.total_input = composable_policy
             .total_input
-            .checked_add(input_amount)
+            .checked_add(gross_pull)
             .ok_or(TributaryError::ArithmeticOverflow)?;
+        // total_output tracks what the recipient received (in their mint).
         composable_policy.total_output = composable_policy
             .total_output
             .checked_add(sweep_amount)
@@ -1191,7 +1422,7 @@ impl<'info> ExecuteComposable<'info> {
             composable_policy: policy_key,
             gateway: ctx.accounts.gateway.key(),
             target_program,
-            input_amount,
+            input_amount: face_amount,
             output_amount,
             gateway_fee,
             protocol_fee,
@@ -1201,20 +1432,21 @@ impl<'info> ExecuteComposable<'info> {
         });
 
         msg!(
-            "Composable executed: policy={}, input={}, output={}, swept={}, gateway_fee={}, protocol_fee={}",
+            "Composable executed: policy={}, face={}, gross={}, output={}, swept={}, gateway_fee={}, protocol_fee={}",
             policy_id,
-            input_amount,
+            face_amount,
+            gross_pull,
             output_amount,
             sweep_amount,
             gateway_fee,
             protocol_fee,
         );
 
-        // ── Step 12: CLOSE intermediate token accounts ────────────────
-        // Both intermediates are closed to return rent to the fee_payer.
-        // The ComposablePolicy PDA owns both ATAs and signs the close CPI.
-        // When input_mint == output_mint they're the same account — close
-        // only once.
+        // ── CLOSE intermediate token accounts ──────────────────────────
+        // The input intermediate is always closed (rent → fee_payer). The
+        // output intermediate is closed only when it was created
+        // (deliver-transform mode), unless NATIVE_OUTPUT already closed it
+        // via closeAccount in the sweep.
         let close_input_ata = ctx
             .accounts
             .intermediate_input_token_account
@@ -1227,13 +1459,13 @@ impl<'info> ExecuteComposable<'info> {
             signer_seeds,
         )?;
 
-        if close_input_ata.key() != ctx.accounts.intermediate_output_token_account.key()
+        if needs_output_ata
+            && close_input_ata.key() != ctx.accounts.intermediate_output_token_account.key()
             && !native_output
         {
             // NATIVE_OUTPUT mode already closed the output intermediate in
-            // the sweep (closeAccount). Skipping here avoids a double-close
-            // (which would fail at `close_token_account`'s ATA-lamports==0
-            // guard anyway, since the account no longer exists).
+            // the sweep (closeAccount). Skipping here avoids a double-close.
+            // Act mode never created an output intermediate.
             let close_output_ata = ctx
                 .accounts
                 .intermediate_output_token_account

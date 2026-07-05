@@ -102,3 +102,22 @@ reason to crank a subscription, not just a composable policy.
   Consolidation applies only when `signer == gateway.signer` (the
   gateway's own scheduler); everyone else gets the cut to their own
   account.
+
+---
+
+## Scope note (2026-07-05, bean tributary-cqr4 — Composable v2.2)
+
+**Composable fee path moved to input-side** (ADR-0026). The unified fee
+_math_ (decomposition into protocol / scheduler / referral / gateway-residual
+carve-outs) is unchanged. What changed:
+
+- **Composable** policies now assess the fee on the **gross pull** in
+  `input_mint`, BEFORE the forward runs. NET-on-pull is hardcoded
+  (`is_net_mode = true`); the `FEATURE_NET_AMOUNT` flag is ignored for
+  composable. Fee accounts (`gateway_fee_account`,
+  `protocol_fee_account`, `scheduler_ata`) are `input_mint`-denominated.
+- **PaymentPolicy** is unchanged: it still honors `FEATURE_NET_AMOUNT`,
+  fees assessed on the payment amount, fee accounts in the payment mint.
+
+The `is_net_mode` parameter on `calculate_fees` is therefore still needed
+(PaymentPolicy reads the flag; composable passes `true` unconditionally).

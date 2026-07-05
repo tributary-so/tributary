@@ -132,4 +132,10 @@ pub enum TributaryError {
     InlineValidationNotImplemented,
     #[msg("One-time policy has expired")]
     PolicyExpired,
+    #[msg("Act-mode (sentinel output_mint) requires the SystemProgram as the output_mint account")]
+    InvalidOutputMintAccount,
+    #[msg("Act-mode settlement (no output delivery) requires forward to be enabled")]
+    ActModeRequiresForward,
+    #[msg("Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user")]
+    InputResidueSweepFailed,
 }

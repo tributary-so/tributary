@@ -104,6 +104,47 @@ impl ForwardConfig {
     pub fn is_native_output(&self) -> bool {
         self.forward_flags & FORWARD_FLAG_NATIVE_OUTPUT != 0
     }
+
+    /// True when forward is enabled. (Convenience alias for the sentinel
+    /// check on `instruction_constraint.program_id`.)
+    pub fn forward_enabled(&self) -> bool {
+        !self.instruction_constraint.is_disabled()
+    }
+
+    /// **Act mode** (ADR-0026): forward runs but produces no fungible output
+    /// token the recipient takes delivery of. The motivating case is a
+    /// Velocity/collateral deposit that consumes input but settles into a
+    /// non-token balance sheet. Sentinel = `output_mint == Pubkey::default()`
+    /// AND forward enabled. In act mode the program skips the
+    /// intermediate-output ATA, the deliver sweep, and the `output_amount > 0`
+    /// guard; the owner's `post_validation` is the only settlement floor.
+    pub fn is_act_mode(&self) -> bool {
+        self.forward_enabled() && self.output_mint == Pubkey::default()
+    }
+
+    /// **Deliver, transform** (ADR-0026): forward runs and produces an
+    /// output token (`output_mint` set, != input_mint) that is swept to the
+    /// recipient. The `output_amount > 0` guard is KEPT in this mode.
+    pub fn is_deliver_transform(&self) -> bool {
+        self.forward_enabled()
+            && self.output_mint != Pubkey::default()
+            && self.output_mint != self.input_mint
+    }
+
+    /// **Deliver, no transform** (ADR-0026): forward disabled, single
+    /// intermediate (input == output mint), fees skimmed from it then swept
+    /// to recipient. The classic same-mint topup.
+    pub fn is_deliver_no_transform(&self) -> bool {
+        !self.forward_enabled() && self.output_mint == self.input_mint
+    }
+
+    /// True when this config requires the intermediate-output ATA to exist.
+    /// Only deliver-transform mode produces a distinct output token balance
+    /// that needs sweeping. Act mode produces no fungible output; deliver-
+    /// no-transform reuses the input intermediate.
+    pub fn needs_output_ata(&self) -> bool {
+        self.is_deliver_transform()
+    }
 }
 
 /// Unified validation routing for both pre- and post-forward phases.
@@ -190,6 +231,7 @@ impl ComposablePolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ALLOWED_FORWARD_PROGRAMS;
 
     #[test]
     fn validate_rejects_length_above_eight_array_bound() {
@@ -301,6 +343,72 @@ mod tests {
     #[test]
     fn validation_spec_size() {
         assert_eq!(ValidationSpec::SIZE, 33);
+    }
+
+    // ── Settlement-shape helpers (ADR-0026) ────────────────────────────
+
+    fn fc(input: Pubkey, output: Pubkey, forward: bool) -> ForwardConfig {
+        let target = if forward {
+            ALLOWED_FORWARD_PROGRAMS[0]
+        } else {
+            Pubkey::default()
+        };
+        let mut ic = InstructionConstraint::default();
+        ic.program_id = target;
+        if forward {
+            ic.num_data_checks = 1;
+            ic.data_checks[0] = ByteRangeCheck {
+                offset: 0,
+                length: 1,
+                expected: [0u8; 8],
+            };
+            ic.num_pinned_accounts = 1;
+            ic.pinned_accounts[0] = Pubkey::new_unique();
+        }
+        ForwardConfig {
+            instruction_constraint: ic,
+            input_mint: input,
+            output_mint: output,
+            forward_flags: 0,
+        }
+    }
+
+    #[test]
+    fn deliver_no_transform_shape() {
+        let m = Pubkey::new_unique();
+        let c = fc(m, m, false);
+        assert!(c.is_deliver_no_transform());
+        assert!(!c.is_act_mode());
+        assert!(!c.is_deliver_transform());
+        assert!(!c.needs_output_ata());
+    }
+
+    #[test]
+    fn deliver_transform_shape() {
+        let i = Pubkey::new_unique();
+        let o = Pubkey::new_unique();
+        let c = fc(i, o, true);
+        assert!(c.is_deliver_transform());
+        assert!(!c.is_act_mode());
+        assert!(!c.is_deliver_no_transform());
+        assert!(c.needs_output_ata());
+    }
+
+    #[test]
+    fn act_mode_shape() {
+        let i = Pubkey::new_unique();
+        let c = fc(i, Pubkey::default(), true);
+        assert!(c.is_act_mode());
+        assert!(!c.is_deliver_transform());
+        assert!(!c.is_deliver_no_transform());
+        assert!(!c.needs_output_ata());
+    }
+
+    #[test]
+    fn forward_enabled_helper() {
+        let i = Pubkey::new_unique();
+        assert!(!fc(i, i, false).forward_enabled());
+        assert!(fc(i, Pubkey::default(), true).forward_enabled());
     }
 
     #[test]
