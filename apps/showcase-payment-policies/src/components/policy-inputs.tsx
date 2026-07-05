@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { RefreshCw, Target, Zap, Check, X, Loader2, Clock, ArrowUpCircle } from 'lucide-react'
+import { RefreshCw, Target, Zap, Check, X, Loader2, ArrowUpCircle } from 'lucide-react'
 import { Select, SelectItem, Input, DatePicker } from '@heroui/react'
 import { Button } from '@heroui/react'
 import { PublicKey, TransactionInstruction } from '@solana/web3.js'
@@ -19,6 +19,7 @@ import { issuePolicyToken } from '@tributary-so/sdk-react'
 import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
 import { API_BASE_URL } from '@/constants'
+import { buildPolicySuccessRedirect } from '@/lib/redirect'
 import { today, getLocalTimeZone, fromDate } from '@internationalized/date'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -436,13 +437,12 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
           apiBaseUrl: API_BASE_URL,
           trackingId: formData.memo || undefined,
         })
-        if (formData.successUrl) {
-          const url = new URL(formData.successUrl)
-          url.searchParams.set('token', token)
-          window.location.href = url.toString()
+        const redirect = buildPolicySuccessRedirect(formData.successUrl, token)
+        if (redirect.kind === 'external') {
+          window.location.href = redirect.href
           return
         }
-        navigate(`/success?token=${encodeURIComponent(token)}`)
+        navigate(redirect.path)
         return
       } catch (jwtError) {
         console.warn('Failed to issue JWT after policy create:', jwtError)
