@@ -489,6 +489,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0024] | Optional PayAsYouGo expiration (per-variant `expiry_date`)                              |
 | [0025] | JWT payload generalized to `policies: PolicyClaim[]` (all 5 variants)                   |
 | [0026] | Composable input-side fees + act/deliver settlement shapes                              |
+| [0027] | Gateway merchant layer — off-chain derived analytics                                    |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -515,6 +516,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0024]: apps/docs/adr/0024-payasyougo-optional-expiration.md
 [0025]: apps/docs/adr/0025-jwt-payload-generalized-policyclaim-union.md
 [0026]: apps/docs/adr/0026-composable-input-side-fees-act-deliver-shapes.md
+[0027]: apps/docs/adr/0027-gateway-merchant-layer-off-chain-derived-analytics.md
 
 ## SDK
 

@@ -1,11 +1,11 @@
 ---
 # tributary-yjo0
 title: 'Documentation: ADR-0023 + merchant-layer docs page'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T09:12:27Z
-updated_at: 2026-07-03T09:12:27Z
+updated_at: 2026-07-05T08:39:22Z
 parent: tributary-mohi
 ---
 
@@ -35,3 +35,10 @@ A short page under the existing docs site structure: what the merchant layer sho
 ## Notes
 
 - ADR is authority on rationale; code is authority on state. If implementation reveals one of these decisions was wrong, update the ADR — do not silently diverge.
+
+## Summary of Changes
+
+- apps/docs/adr/0026-gateway-merchant-layer-off-chain-derived-analytics.md — new ADR
+- apps/docs/docs/operate/gateway-merchant-layer.md — what/how docs page
+- apps/docs/mkdocs.yml — added to nav under Operate
+- AGENTS.md ADR map — appended row for 0026

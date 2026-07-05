@@ -1,11 +1,11 @@
 ---
 # tributary-nepb
 title: 'API: gateway-authority auth (wallet-sign challenge → JWT + middleware)'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:10:51Z
-updated_at: 2026-07-03T09:10:51Z
+updated_at: 2026-07-05T08:36:27Z
 parent: tributary-6egw
 ---
 
@@ -43,3 +43,17 @@ Add gateway-authority authentication to `apps/api` so merchant endpoints can exp
 
 - Nonce store: in-memory Map is fine for v1 (single instance). Document the ceiling; swap to Redis when scaling. (ponytail: defer)
 - The signature payload must be a UTF-8 message the wallet UIs display clearly (e.g. `"Tributary gateway auth <nonce>"`) — coordinate the exact message format with the apps/app auth helper (feature 3).
+
+## Implementation notes
+
+- Nonces: in-memory Map (single-instance ceiling; swap for redis when API scales horizontally)
+- JWT: reuses JWKS signing key + existing `verifyToken`; gateway claim discriminates
+- On-chain authority check via raw account slice (discriminator 8 + authority 32) — no anchor dep needed
+- Ed25519 verify uses Node built-in crypto (no tweetnacl dep)
+
+## Summary of Changes
+
+- apps/api/src/services/gateway-auth.ts — challenge/nonce store + verify + JWT issue
+- apps/api/src/middleware/gateway-auth.ts — requireGatewayAuth middleware (gateway claim match)
+- Ed25519 verify via Node built-in crypto (no tweetnacl dep)
+- Reuses JWKS signing key + verifyToken path (single audience)

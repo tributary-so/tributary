@@ -1,11 +1,11 @@
 ---
 # tributary-6egw
 title: 'Implementation: gateway merchant layer'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-03T09:10:01Z
-updated_at: 2026-07-03T09:10:01Z
+updated_at: 2026-07-05T08:40:48Z
 parent: tributary-mohi
 ---
 

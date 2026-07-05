@@ -1,11 +1,11 @@
 ---
 # tributary-fyn1
 title: 'App: merchant UI sections (revenue, policies, subscribers) + CSV download'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:11:48Z
-updated_at: 2026-07-03T09:11:48Z
+updated_at: 2026-07-05T08:39:12Z
 parent: tributary-6egw
 blocked_by:
     - tributary-6869
@@ -67,3 +67,12 @@ Add three read-only sections to `apps/app/src/components/gateway/gateway-manage-
 
 - API base URL: read from an env/var already used by the app (search for existing API calls); do not hardcode. If none exists yet, add a single `VITE_TRIBUTARY_API_URL` (or the app's established prefix) and document.
 - Stylistic conventions: match existing sections (`border border-border bg-muted/30 p-4 sm:p-6`, HeroUI components where already used, lucide icons). No new UI dependency.
+
+## Summary of Changes
+
+- apps/app/src/components/gateway/merchant/api.ts — fetch client + JWT store + useMerchantAuth hook
+- apps/app/src/components/gateway/sections/revenue-section.tsx — MRR + sparkline + sign-in CTA
+- apps/app/src/components/gateway/sections/policies-section.tsx — table + CSV download
+- apps/app/src/components/gateway/sections/subscribers-section.tsx — table + CSV download
+- apps/app/src/components/gateway/gateway-manage-page.tsx — mounts the 3 sections below the existing 4
+- apps/app/src/components/gateway/constants.ts — MERCHANT_API_BASE

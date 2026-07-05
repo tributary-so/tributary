@@ -6,10 +6,15 @@ import { IdentitySection } from './sections/identity-section'
 import { FeesSection } from './sections/fees-section'
 import { ReferralSection } from './sections/referral-section'
 import { KeysSection } from './sections/keys-section'
+import { RevenueSection } from './sections/revenue-section'
+import { PoliciesSection } from './sections/policies-section'
+import { SubscribersSection } from './sections/subscribers-section'
+import { useMerchantAuth } from './merchant/api'
 
 export default function GatewayManagePage() {
   const wallet = useWallet()
-  const { gateway, authority, isAuthority, loading, refresh } = useGatewayAuthority()
+  const { gateway, gatewayPda, authority, isAuthority, loading, refresh } = useGatewayAuthority()
+  const merchantAuth = useMerchantAuth(gatewayPda?.toString() ?? null)
 
   if (!wallet.connected) {
     return (
@@ -31,7 +36,7 @@ export default function GatewayManagePage() {
     )
   }
 
-  if (!isAuthority || !gateway || !authority) {
+  if (!isAuthority || !gateway || !authority || !gatewayPda) {
     return (
       <div className="py-16 flex flex-col items-center gap-3 text-center">
         <ShieldAlert className="w-10 h-10 text-muted-foreground" />
@@ -62,6 +67,15 @@ export default function GatewayManagePage() {
       <FeesSection account={gateway} authority={authority} onMutated={refresh} />
       <ReferralSection account={gateway} authority={authority} onMutated={refresh} />
       <KeysSection account={gateway} authority={authority} onMutated={refresh} />
+
+      <div className="pt-6 border-t border-border">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">Merchant</h2>
+        <div className="space-y-4">
+          <RevenueSection gateway={gatewayPda.toString()} auth={merchantAuth} />
+          <PoliciesSection gateway={gatewayPda.toString()} auth={merchantAuth} />
+          <SubscribersSection gateway={gatewayPda.toString()} auth={merchantAuth} />
+        </div>
+      </div>
     </div>
   )
 }
