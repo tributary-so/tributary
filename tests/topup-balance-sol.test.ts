@@ -114,11 +114,11 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
   let preValidationPDA: PublicKey;
   let postValidationPDA: PublicKey;
 
-  // Input side (USDC)
+  // Input side (USDC) — fee accounts are input-side post-ADR-0026 (skimmed
+  // from the gross pull in input_mint BEFORE the forward runs).
   let coldWalletUsdcAta: PublicKey;
-  // Output side (WSOL) — fee accounts stay WSOL (taken BEFORE the close).
-  let feeRecipientWsolAta: PublicKey;
-  let adminWsolAta: PublicKey;
+  let feeRecipientUsdcAta: PublicKey;
+  let adminUsdcAta: PublicKey;
 
   let composablePolicyId: number;
 
@@ -215,15 +215,16 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       USDC_MINT,
       coldWallet.publicKey
     );
-    feeRecipientWsolAta = getAssociatedTokenAddressSync(
-      NATIVE_MINT,
+    feeRecipientUsdcAta = getAssociatedTokenAddressSync(
+      USDC_MINT,
       feeRecipient.publicKey
     );
-    adminWsolAta = getAssociatedTokenAddressSync(NATIVE_MINT, admin.publicKey);
+    adminUsdcAta = getAssociatedTokenAddressSync(USDC_MINT, admin.publicKey);
 
-    // Create ATAs (input USDC for coldWallet; output WSOL fee accounts).
-    // hotWallet needs no ATA — NATIVE_OUTPUT sweeps SOL into its system
-    // wallet, and the Lighthouse guard reads lamports off that wallet.
+    // Create ATAs: input USDC for coldWallet + fee accounts. hotWallet needs
+    // no ATA — NATIVE_OUTPUT sweeps SOL into its system wallet, and the
+    // Lighthouse guard reads lamports off that wallet. Fee accounts are
+    // input-side (ADR-0026).
     const ataTx = new Transaction();
     ataTx.add(
       createAssociatedTokenAccountInstruction(
@@ -236,17 +237,17 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     ataTx.add(
       createAssociatedTokenAccountInstruction(
         admin.publicKey,
-        feeRecipientWsolAta,
+        feeRecipientUsdcAta,
         feeRecipient.publicKey,
-        NATIVE_MINT
+        USDC_MINT
       )
     );
     ataTx.add(
       createAssociatedTokenAccountInstruction(
         admin.publicKey,
-        adminWsolAta,
+        adminUsdcAta,
         admin.publicKey,
-        NATIVE_MINT
+        USDC_MINT
       )
     );
     try {
@@ -267,15 +268,16 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       delegatedAmount: 1_000_000_000,
     });
 
-    // feeRecipient / admin WSOL ATAs: empty (must exist for fee sweep)
+    // feeRecipient / admin USDC ATAs: empty (must exist for input-side fee
+    // skim — ADR-0026).
     await surfpool.setTokenAccount({
       owner: feeRecipient.publicKey,
-      mint: NATIVE_MINT,
+      mint: USDC_MINT,
       amount: 0,
     });
     await surfpool.setTokenAccount({
       owner: admin.publicKey,
-      mint: NATIVE_MINT,
+      mint: USDC_MINT,
       amount: 0,
     });
 
@@ -493,8 +495,9 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
 
     // Two intermediates (input USDC, output WSOL), both owned by the
     // ComposablePolicy PDA. The swap draws USDC from input, sends WSOL to
-    // output; fees sweep WSOL to fee ATAs; the WSOL intermediate is then
-    // closed into hotWallet.publicKey, shipping its value as native SOL.
+    // output; input-side fees are skimmed from intermediate_input BEFORE
+    // the forward (ADR-0026); the WSOL intermediate is then closed into
+    // hotWallet.publicKey, shipping its value as native SOL.
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       composablePolicyPDA,
@@ -549,8 +552,8 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
         intermediateInputTokenAccount,
         intermediateOutputTokenAccount,
         recipientTokenAccount: hotWallet.publicKey,
-        gatewayFeeAccount: feeRecipientWsolAta,
-        protocolFeeAccount: adminWsolAta,
+        gatewayFeeAccount: feeRecipientUsdcAta,
+        protocolFeeAccount: adminUsdcAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -583,18 +586,19 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
     // Protocol fee is a carve-out of the gateway fee (ADR-0017). With
     // gatewayFeeBps = 0, no total fee is generated → protocol receives
     // nothing despite protocolShareBps > 0. Account is a fresh ATA (0).
+    // Fees are input-side (ADR-0026) → assert on the USDC ATA.
     const config = await program.account.programConfig.fetch(configPDA);
     expect(config.protocolShareBps).toBeGreaterThan(0);
-    const adminWsolAfter = await connection.getTokenAccountBalance(
-      adminWsolAta
+    const adminUsdcAfter = await connection.getTokenAccountBalance(
+      adminUsdcAta
     );
-    expect(Number(adminWsolAfter.value.amount)).toBe(0);
+    expect(Number(adminUsdcAfter.value.amount)).toBe(0);
 
-    // Gateway fee = 0 bps → feeRecipient WSOL unchanged.
-    const feeRecipientWsolAfter = await connection.getTokenAccountBalance(
-      feeRecipientWsolAta
+    // Gateway fee = 0 bps → feeRecipient USDC unchanged.
+    const feeRecipientUsdcAfter = await connection.getTokenAccountBalance(
+      feeRecipientUsdcAta
     );
-    expect(Number(feeRecipientWsolAfter.value.amount)).toBe(0);
+    expect(Number(feeRecipientUsdcAfter.value.amount)).toBe(0);
 
     // ── Verify the WSOL intermediate was closed by the sweep ──────────
     // closeAccount zeroes the account; the rent went to the recipient
@@ -674,8 +678,8 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
           intermediateInputTokenAccount,
           intermediateOutputTokenAccount,
           recipientTokenAccount: hotWallet.publicKey,
-          gatewayFeeAccount: feeRecipientWsolAta,
-          protocolFeeAccount: adminWsolAta,
+          gatewayFeeAccount: feeRecipientUsdcAta,
+          protocolFeeAccount: adminUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
