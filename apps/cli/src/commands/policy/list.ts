@@ -1,7 +1,8 @@
-import {Flags} from '@oclif/core'
+import { Flags } from '@oclif/core'
+import { decodeMemo } from '@tributary-so/sdk'
 
-import {BaseCommand} from '../../lib/base-command.js'
-import {parsePublicKey} from '../../lib/utils.js'
+import { BaseCommand } from '../../lib/base-command.js'
+import { parsePublicKey } from '../../lib/utils.js'
 
 export default class PolicyList extends BaseCommand {
   static description = 'List payment policies for a user payment account'
@@ -19,7 +20,7 @@ export default class PolicyList extends BaseCommand {
   }
 
   public async run(): Promise<void> {
-    const {flags} = await this.parse(PolicyList)
+    const { flags } = await this.parse(PolicyList)
     const userPayment = parsePublicKey(flags['user-payment'])
     if (!userPayment) this.error('Invalid user payment public key')
 
@@ -27,26 +28,83 @@ export default class PolicyList extends BaseCommand {
     const userPaymentAccount = await sdk.getUserPayment(userPayment)
     const policies = await sdk.getPaymentPoliciesByUserPayment(userPayment)
 
-    this.output({
+    const truncatedPolicies = policies.map(({ account, publicKey }) => {
+      let policyType;
+      if ("subscription" in account.policyType) {
+        policyType = {
+          subscription: {
+            ...account.policyType.subscription,
+            padding: undefined,
+          },
+        };
+      }
+
+      if ("payAsYouGo" in account.policyType) {
+        policyType = {
+          payAsYouGo: {
+            ...account.policyType.payAsYouGo,
+            padding: undefined,
+          },
+        };
+      }
+
+      if ("milestone" in account.policyType) {
+        policyType = {
+          milestone: {
+            ...account.policyType.milestone,
+            padding: undefined,
+          },
+        };
+      }
+
+      if ("oneTime" in account.policyType) {
+        policyType = {
+          oneTime: {
+            ...account.policyType.oneTime,
+            padding: undefined,
+          },
+        };
+      }
+
+      if ("upTo" in account.policyType) {
+        policyType = {
+          upTo: {
+            ...account.policyType.upTo,
+            padding: undefined,
+          },
+        };
+      }
+
+      return {
+        ...account,
+        bump: undefined,
+        createdAt: account.createdAt.toNumber(),
+        memo: decodeMemo(account.memo),
+        padding: undefined,
+        policyId: account.policyId,
+        policyType,
+        publicKey,
+        totalPaid: account.totalPaid.toNumber(),
+        updatedAt: account.updatedAt.toNumber(),
+      };
+    });
+
+    this.log(JSON.stringify({
       command: 'policy list',
-      filter: {userPayment: userPayment.toString()},
-      policies: policies.map((p) => ({
-        policyId: p.account.policyId,
-        publicKey: p.publicKey.toString(),
-        status: Object.keys(p.account.status)[0],
-      })),
+      filter: { userPayment: userPayment.toString() },
+      policies: truncatedPolicies,
       policiesCount: policies.length,
       success: true,
       timestamp: new Date().toISOString(),
       userPayment: userPaymentAccount
         ? {
-            activePoliciesCount: userPaymentAccount.activePoliciesCount,
-            createdPoliciesCount: userPaymentAccount.createdPoliciesCount,
-            isActive: userPaymentAccount.isActive,
-            owner: userPaymentAccount.owner.toString(),
-            tokenMint: userPaymentAccount.tokenMint.toString(),
-          }
+          activePoliciesCount: userPaymentAccount.activePoliciesCount,
+          createdPoliciesCount: userPaymentAccount.createdPoliciesCount,
+          isActive: userPaymentAccount.isActive,
+          owner: userPaymentAccount.owner.toString(),
+          tokenMint: userPaymentAccount.tokenMint.toString(),
+        }
         : null,
-    })
+    }, null, 2))
   }
 }
