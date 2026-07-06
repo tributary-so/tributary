@@ -478,6 +478,49 @@
       ]
     },
     {
+      "name": "change_program_authority",
+      "discriminator": [
+        40,
+        11,
+        11,
+        166,
+        198,
+        227,
+        232,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "new_admin"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "create_composable_policy",
       "discriminator": [
         91,
@@ -2640,6 +2683,19 @@
       ]
     },
     {
+      "name": "ProgramAuthorityChanged",
+      "discriminator": [
+        18,
+        125,
+        102,
+        45,
+        221,
+        104,
+        208,
+        114
+      ]
+    },
+    {
       "name": "ProgramConfigCreated",
       "discriminator": [
         96,
@@ -4285,6 +4341,25 @@
                 }
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramAuthorityChanged",
+      "docs": [
+        "An event that is thrown when the protocol admin is rotated"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_admin",
+            "type": "pubkey"
           }
         ]
       }

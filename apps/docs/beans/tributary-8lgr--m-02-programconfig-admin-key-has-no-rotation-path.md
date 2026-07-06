@@ -1,14 +1,14 @@
 ---
 # tributary-8lgr
 title: 'M-02: ProgramConfig admin key has no rotation path'
-status: todo
+status: completed
 type: bug
 priority: high
 tags:
     - security
     - audit
 created_at: 2026-07-06T10:11:00Z
-updated_at: 2026-07-06T10:11:00Z
+updated_at: 2026-07-06T10:40:30Z
 ---
 
 ## Security Audit Finding (M-02)
@@ -32,7 +32,17 @@ Add `change_program_authority` instruction, gated on current authority signer. C
 
 ## Acceptance Criteria
 
-- [ ] `change_program_authority` instruction added, gated on current authority
-- [ ] Test covering authority rotation works
-- [ ] Test covering unauthorized rotation is rejected
-- [ ] ADR added if decision is locked in
+- [x] `change_program_authority` instruction added, gated on current authority
+- [x] Test covering authority rotation works
+- [x] Test covering unauthorized rotation is rejected
+- [x] ADR added if decision is locked in
+
+## Summary of Changes
+
+- Added `change_program_authority` instruction (programs/tributary/src/instructions/change_program_authority.rs) — current admin signs, new admin recorded as a non-default Pubkey, `config.admin == admin.key()` constraint.
+- Added `ProgramAuthorityChanged` event (programs/tributary/src/state/events.rs).
+- Wired into instructions/mod.rs and lib.rs; IDL regenerated via `anchor build`.
+- SDK method `changeProgramAuthority(newAdmin)` added to packages/sdk/src/sdk.ts.
+- Tests added in tests/tributary.test.ts under "Program authority rotation (M-02)": (1) admin can rotate, state updated, fee_recipient untouched, rotate-back works; (2) impostor signer rejected, state unchanged.
+- ADR-0029 added (apps/docs/adr/0029-program-authority-rotation.md) explaining single-step rotation, no timelock/multisig at program level, fee_recipient not auto-rotated.
+- AGENTS.md updated: new instruction under "Admin:", ADR-0029 in the map + link index.

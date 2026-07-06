@@ -31,6 +31,13 @@ pub struct ProgramConfigCreated {
     pub protocol_share_bps: u16,
 }
 
+/// An event that is thrown when the protocol admin is rotated
+#[event]
+pub struct ProgramAuthorityChanged {
+    pub old_admin: Pubkey,
+    pub new_admin: Pubkey,
+}
+
 /// An event that is thrown when a user payment account is created
 #[event]
 pub struct UserPaymentCreated {

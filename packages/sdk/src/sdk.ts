@@ -2343,6 +2343,31 @@ export class Tributary {
   }
 
   /**
+   * Rotates the protocol admin (ADR-0028). The current admin must sign.
+   * `fee_recipient` is left untouched; the new admin can rotate it via the
+   * existing admin-gated paths afterwards.
+   * @param newAdmin - Public key of the new protocol admin
+   * @returns Transaction instruction to change the program authority
+   */
+  async changeProgramAuthority(
+    newAdmin: PublicKey,
+  ): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      admin,
+      newAdmin,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .changeProgramAuthority()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Changes the signer authorized to execute payments for a gateway.
    * Only the gateway authority can change the signer.
    * @param gatewayAuthority - Public key of the current gateway authority

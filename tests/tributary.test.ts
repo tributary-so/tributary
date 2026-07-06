@@ -969,6 +969,64 @@ describe("Tributary", () => {
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
 
+  describe("Program authority rotation (M-02)", () => {
+    test("Current admin can rotate authority to a new key", async () => {
+      // Sanity: admin is still the authority before we rotate.
+      const configBefore = await sdk.getProgramConfig(configPDA);
+      expect(configBefore!.admin).toEqual(admin.publicKey);
+
+      const newAdmin = Keypair.generate();
+
+      await sdk.updateWallet(new anchor.Wallet(admin));
+      const rotateIx = await sdk.changeProgramAuthority(newAdmin.publicKey);
+      const tx = new Transaction().add(rotateIx);
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const configAfter = await sdk.getProgramConfig(configPDA);
+      expect(configAfter!.admin).toEqual(newAdmin.publicKey);
+      // fee_recipient must be untouched by the rotation.
+      expect(configAfter!.feeRecipient).toEqual(configBefore!.feeRecipient);
+
+      // Rotate back so the rest of the suite (which assumes `admin` is the
+      // protocol admin) keeps working.
+      await sdk.updateWallet(new anchor.Wallet(newAdmin));
+      const rotateBackIx = await sdk.changeProgramAuthority(admin.publicKey);
+      const revertTx = new Transaction().add(rotateBackIx);
+      await sendAndConfirmTransaction(connection, revertTx, [newAdmin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const configRestored = await sdk.getProgramConfig(configPDA);
+      expect(configRestored!.admin).toEqual(admin.publicKey);
+    });
+
+    test("Unauthorized key cannot rotate authority", async () => {
+      const impostor = Keypair.generate();
+      await fund(impostor.publicKey, 1);
+
+      const configBefore = await sdk.getProgramConfig(configPDA);
+      expect(configBefore!.admin).toEqual(admin.publicKey);
+
+      const target = Keypair.generate();
+
+      await sdk.updateWallet(new anchor.Wallet(impostor));
+      const rotateIx = await sdk.changeProgramAuthority(target.publicKey);
+      const tx = new Transaction().add(rotateIx);
+
+      await expect(
+        sendAndConfirmTransaction(connection, tx, [impostor], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // State must be unchanged.
+      const configAfter = await sdk.getProgramConfig(configPDA);
+      expect(configAfter!.admin).toEqual(admin.publicKey);
+    });
+  });
+
   describe("Milestone payment policies", () => {
     test("Create milestone payment policy with time-based release", async () => {
       // Switch back to user wallet for creating policies
