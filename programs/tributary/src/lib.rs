@@ -31,6 +31,10 @@ pub mod tributary {
         Initialize::handle_initialize(ctx)
     }
 
+    pub fn change_program_authority(ctx: Context<ChangeProgramAuthority>) -> Result<()> {
+        ChangeProgramAuthority::handler_change_program_authority(ctx)
+    }
+
     pub fn create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
         CreateUserPayment::handler_create_user_payment(ctx)
     }

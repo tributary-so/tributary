@@ -484,6 +484,49 @@ export type Tributary = {
       ]
     },
     {
+      "name": "changeProgramAuthority",
+      "discriminator": [
+        40,
+        11,
+        11,
+        166,
+        198,
+        227,
+        232,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "newAdmin"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "createComposablePolicy",
       "discriminator": [
         91,
@@ -2646,6 +2689,19 @@ export type Tributary = {
       ]
     },
     {
+      "name": "programAuthorityChanged",
+      "discriminator": [
+        18,
+        125,
+        102,
+        45,
+        221,
+        104,
+        208,
+        114
+      ]
+    },
+    {
       "name": "programConfigCreated",
       "discriminator": [
         96,
@@ -4291,6 +4347,25 @@ export type Tributary = {
                 }
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "programAuthorityChanged",
+      "docs": [
+        "An event that is thrown when the protocol admin is rotated"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "newAdmin",
+            "type": "pubkey"
           }
         ]
       }

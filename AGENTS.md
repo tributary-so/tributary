@@ -78,6 +78,9 @@ and fee-distribution logic.
 `create_composable_policy`, `execute_composable`, `delete_composable_policy`,
 `change_composable_status`
 
+**Admin:**
+`change_program_authority`
+
 ### PDAs
 
 | PDA              | Seeds                                            | Notes                                                                              |
@@ -490,6 +493,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0025] | JWT payload generalized to `policies: PolicyClaim[]` (all 5 variants)                   |
 | [0026] | Composable input-side fees + act/deliver settlement shapes                              |
 | [0027] | Gateway merchant layer — off-chain derived analytics                                    |
+| [0029] | Program authority rotation (`change_program_authority`) — admin key recovery path       |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -517,6 +521,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0025]: apps/docs/adr/0025-jwt-payload-generalized-policyclaim-union.md
 [0026]: apps/docs/adr/0026-composable-input-side-fees-act-deliver-shapes.md
 [0027]: apps/docs/adr/0027-gateway-merchant-layer-off-chain-derived-analytics.md
+[0029]: apps/docs/adr/0029-program-authority-rotation.md
 
 ## SDK
 
