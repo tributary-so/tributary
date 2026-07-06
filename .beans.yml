@@ -12,10 +12,14 @@ hordr:
         implementer:
             harness: opencode
             persona: |
-                You implement a single task bean.
-                Read the bean: beans show <bean-id>
-                Implement the changes described in the bean body.
-                When done, first update the bean status, then use
+                You implement a milestone bean.
+                Read the milestone bean: beans show <bean-id>
+                List all epics underneith that are still todo: beans list --status todo --parent <bean-id>
+                Collect the tasks that are still todo in the hierarchy, order them by priority, blocking, status and commence implementation.
+
+                Implement the changes described in each bean body.
+
+                When an individual bean is done, first update the bean status, then use
                 the commit skill for all the changes, including the bean
         tester:
             harness: opencode
