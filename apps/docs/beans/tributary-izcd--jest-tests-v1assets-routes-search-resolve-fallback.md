@@ -1,11 +1,11 @@
 ---
 # tributary-izcd
 title: 'Jest tests: /v1/assets routes (search + resolve + fallback)'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T10:13:55Z
-updated_at: 2026-07-03T10:14:11Z
+updated_at: 2026-07-06T08:41:27Z
 parent: tributary-d3r3
 blocked_by:
     - tributary-re15
@@ -25,3 +25,7 @@ Acceptance:
 - [ ] `assets.resolve.test.ts` — happy path, unknown mint, upstream error → MINT_OVERRIDES fallback
 - [ ] Rate limit test
 - [ ] All existing tests still pass (`npm run test`)
+
+## Summary of Changes
+
+Landed in commit 6851695. apps/api/src/__tests__/assets.route.test.ts — 12 supertest cases pinning the /v1/assets/* contract: 200 happy search/resolve, default limit, 400 missing/invalid q, 400 missing/invalid base58 mint, empty-state stance on upstream error, 404 unknown mint without fallback, NaN limit fallback, 404 on unsupported methods. jest.mock bypasses ipRateLimit.

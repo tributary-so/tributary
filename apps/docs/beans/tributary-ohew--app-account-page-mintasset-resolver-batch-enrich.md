@@ -1,11 +1,11 @@
 ---
 # tributary-ohew
 title: 'app: account-page mint→asset resolver (batch enrich)'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-07-03T10:13:32Z
-updated_at: 2026-07-03T10:13:38Z
+updated_at: 2026-07-06T08:41:27Z
 parent: tributary-q1ew
 ---
 
@@ -27,3 +27,10 @@ Acceptance:
 - [ ] API failure leaves atom untouched (existing fallback: mint.slice(0,4)+'...')
 - [ ] No render thrash (one batch resolve, one atom update)
 - [ ] Add VITE_API_BASE_URL to .env.example
+
+## Summary of Changes
+
+Landed in commit efce9d0:
+- apps/app/src/components/account/account-page.tsx: useResolveMints over unique mints derived from userPayments, effect writes resolved metadata to tokenMetadataAtom (idempotent — preserves richer existing entries)
+- apps/app/src/lib/token-store.ts: slimmed, imports INITIAL_TOKENS from package
+- apps/app/src/lib/api.ts (NEW): API_BASE_URL const (VITE_API_BASE_URL with api.tributary.so fallback)

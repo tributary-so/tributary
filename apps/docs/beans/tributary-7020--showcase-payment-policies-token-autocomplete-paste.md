@@ -1,11 +1,11 @@
 ---
 # tributary-7020
 title: 'showcase-payment-policies: token Autocomplete + paste-mint toggle'
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-07-03T10:13:32Z
-updated_at: 2026-07-03T10:13:38Z
+updated_at: 2026-07-06T08:41:27Z
 parent: tributary-q1ew
 ---
 
@@ -34,3 +34,10 @@ Acceptance:
 - [ ] Paste-mint toggle validates + resolves + falls back gracefully
 - [ ] Default tokenMint is network-aware
 - [ ] No console errors on mainnet or devnet
+
+## Summary of Changes
+
+Landed in commit efce9d0:
+- apps/showcase-payment-policies/src/components/token-autocomplete.tsx (NEW): HeroUI Autocomplete, 250ms debounce, 1-char min query, 20 results, paste-mint toggle, network-gated (mainnet=async+seed, devnet=seed only), monogram fallback, selected-state logo
+- apps/showcase-payment-policies/src/components/policy-inputs.tsx: replaced <Select> with <TokenAutocomplete>, network-aware default mint via defaultMintForNetwork()
+- apps/showcase-payment-policies/src/lib/token-store.ts: slimmed, imports INITIAL_TOKENS from package
