@@ -20,6 +20,8 @@ pub struct DeletePaymentGateway<'info> {
     #[account(
         seeds = [CONFIG_SEED],
         bump = config.bump,
+        // IMPORTANT: only the admin can delete a gateway
+        // NOTE: Deleting a gateway with active policies will cause policies to become stale!
         constraint = config.admin == admin.key(),
         constraint = !config.emergency_pause @ TributaryError::ProgramPaused
     )]

@@ -32,6 +32,8 @@ pub fn validate_milestone_policy(
     }
 
     // Validate timestamps are in the future (basic check, mainnet only).
+    // We disable this check on localnet so we can run our testsuite. There is no way to advance the
+    // slots on our setup yet.
     #[cfg(feature = "mainnet")]
     {
         // only on mainnet, simplifies testing
