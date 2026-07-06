@@ -1,11 +1,11 @@
 ---
 # tributary-peb4
 title: 'Documentation: ADR-0024 + rest-api.md update for /v1/assets/*'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T10:14:32Z
-updated_at: 2026-07-03T10:14:52Z
+updated_at: 2026-07-06T08:06:38Z
 parent: tributary-fxyo
 blocked_by:
     - tributary-re15
@@ -23,3 +23,9 @@ Acceptance:
 - [ ] ADR names the decision, rejected alternatives, rationale
 - [ ] rest-api.md includes /v1/assets/search and /v1/assets/resolve
 - [ ] ADR references the milestone bean
+
+## Summary of Changes
+
+Docs landed in commit efce9d0:
+- apps/docs/adr/0028-tokens-xyz-asset-catalog-proxy.md (NEW) — used 0028 not 0024, since 0024 was already taken by PayAsYouGo optional expiration
+- apps/docs/docs/api/rest-api.md — documented GET /v1/assets/search + GET /v1/assets/resolve with full request/response examples and the failure-stance notes

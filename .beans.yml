@@ -12,15 +12,26 @@ hordr:
         implementer:
             harness: opencode
             persona: |
-                You implement a milestone bean.
-                Read the milestone bean: beans show <bean-id>
-                List all epics underneith that are still todo: beans list --status todo --parent <bean-id>
-                Collect the tasks that are still todo in the hierarchy, order them by priority, blocking, status and commence implementation.
+                You implement a single task bean.
+                Read the bean: beans show <bean-id>
+                Implement the changes described in the bean body.
 
-                Implement the changes described in each bean body.
+                If the bean is a milestone or epic, enumerate EVERY descendant
+                before you start and re-check before declaring done. Status
+                flows up: a parent is `completed` only when ALL descendants
+                (not just direct children) are `completed`.
 
-                When an individual bean is done, first update the bean status, then use
-                the commit skill for all the changes, including the bean
+                List the full tree (nest children{} as deep as the tree goes):
+
+                  beans query --json '{ bean(id: "<bean-id>") { title status children { id title status children { id title status children { id title status } } } } }'
+
+                For each descendant whose scope your work covers, update its
+                status to `completed` with a `## Summary of Changes` section
+                pointing at the commits where the work landed.
+
+                When done, first update the bean status (and every descendant
+                you satisfied), then use the commit skill for all the changes,
+                including the bean(s).
         tester:
             harness: opencode
             persona: |

@@ -21,8 +21,10 @@ import {
 import { addToast } from '@heroui/react'
 import { formatDistanceToNow, formatDuration, intervalToDuration, differenceInSeconds, addSeconds } from 'date-fns'
 import { PublicKeyComponent } from '../ui/public-key'
-import { getTokenPrecisionAtom, getTokenSymbolAtom } from '@/lib/token-store'
-import { useAtomValue } from 'jotai'
+import { getTokenPrecisionAtom, getTokenSymbolAtom, setTokenMetadataAtom, tokenMetadataAtom } from '@/lib/token-store'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useResolveMints } from '@tributary-so/tokens-client/react'
+import { API_BASE_URL } from '@/lib/api'
 
 interface UserPaymentWithPolicies {
   userPaymentAddress: PublicKey
@@ -1220,6 +1222,48 @@ export default function AccountPage() {
   const [referralAccounts, setReferralAccounts] = useState<Map<string, any>>(new Map())
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
+  const knownMints = useAtomValue(tokenMetadataAtom)
+  const setTokenMetadata = useSetAtom(setTokenMetadataAtom)
+
+  // D8 — collect every mint that appears in the wallet's payment policies,
+  // resolve any not yet in the atom (and enrich those that are, idempotent
+  // overwrite with richer data: logo, etc.).
+  const walletMints = useMemo(() => {
+    const set = new Set<string>()
+    for (const up of userPayments) {
+      set.add(up.userPayment.tokenMint.toBase58())
+    }
+    return Array.from(set)
+  }, [userPayments])
+
+  const resolveResults = useResolveMints(
+    walletMints,
+    { baseUrl: API_BASE_URL },
+    {
+      enabled: loaded && walletMints.length > 0,
+    },
+  )
+
+  useEffect(() => {
+    // Walk resolved data in input order; write any non-null result back.
+    for (let i = 0; i < resolveResults.length; i++) {
+      const r = resolveResults[i]
+      const mint = walletMints[i]
+      if (!r?.data || !mint) continue
+      const d = r.data
+      // Skip if the existing entry is already richer (e.g. user has a
+      // devnet entry and the upstream returned a mismatched mainnet one).
+      const existing = knownMints[mint]
+      if (existing && existing.logoURI && !d.imageUrl) continue
+      setTokenMetadata(mint, {
+        symbol: d.symbol,
+        name: d.name ?? existing?.name,
+        decimals: d.decimals ?? existing?.decimals ?? 6,
+        logoURI: d.imageUrl ?? existing?.logoURI,
+        network: existing?.network,
+      })
+    }
+  }, [resolveResults, walletMints, knownMints, setTokenMetadata])
 
   useEffect(() => {
     const fetchPolicies = async () => {
