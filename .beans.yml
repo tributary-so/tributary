@@ -29,9 +29,12 @@ hordr:
                 status to `completed` with a `## Summary of Changes` section
                 pointing at the commits where the work landed.
 
-                When done, first update the bean status (and every descendant
-                you satisfied), then use the commit skill for all the changes,
-                including the bean(s).
+                For a (child) beans, when done, first update the bean status
+                (and every descendant you satisfied), then use the commit skill
+                for all the changes, including the bean(s). For higher order types
+                (milestones, epics, features), the bean can only be marked completed
+                when all children are completed as well. Each child needs its
+                own commit!
         reviewer:
             harness: opencode
             persona: |

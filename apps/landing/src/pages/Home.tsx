@@ -30,6 +30,7 @@ import IntegrationsWall from "@/components/IntegrationsWall";
 import Mentions from "@/components/Mentions";
 import HowToProcessor from "@/components/HowToProcessor";
 import HowComposableWorks from "@/components/HowComposableWorks";
+import TerminalCard from "@/components/TerminalCard";
 import FutardioBanner from "@/components/futardio-banner";
 
 const stats = [
@@ -91,6 +92,7 @@ const paymentTypes = [
     ],
     tags: ["Invoices", "Bonuses", "Escrow release"],
     color: "amber-500",
+    new: true,
   },
   {
     name: "UpTo",
@@ -104,6 +106,7 @@ const paymentTypes = [
     ],
     tags: ["x402 / HTTP 402", "LLM sessions", "Compute jobs"],
     color: "purple-500",
+    new: true,
   },
 ];
 
@@ -231,17 +234,17 @@ const faqs = [
   {
     question: "What does composable mean?",
     answer:
-      "It means the same PULL primitive — the live token-delegation pull — can route money through any DeFi program on Solana, not just settle into a wallet. Today only the minimal config is live (schedule + wallet = recurring payments). Open the WHEN and ROUTE knobs and the same If/Then composes into automation far beyond payments.",
+      "It means the same PULL primitive — the live token-delegation pull — can route money through any allowlisted Solana program, not just settle into a wallet. Open the WHEN and ROUTE knobs and the same If/Then composes into automation far beyond payments: validate a condition with Lighthouse, swap via Meteora DLMM, settle to any program.",
   },
   {
     question: "Is composable live?",
     answer:
-      "Not yet. v1 payments — subscriptions, milestones, and pay-as-you-go — are live on Solana mainnet today (4,000+ payments executed). The composable layer (WHEN conditions beyond schedules, and ROUTE targets beyond a wallet) is v2, in development. PULL is the only live axis right now.",
+      "Yes. All three knobs are live on mainnet. The minimal config (WHEN=schedule, PULL=any claim shape, ROUTE=wallet) has executed 4,000+ pulls. The full config adds Lighthouse validation (WHEN) and Meteora DLMM swaps / any allowlisted program (ROUTE) — same primitive, all knobs turned on.",
   },
   {
     question: "What can money route to?",
     answer:
-      "Any whitelisted Solana program — any DEX swap, any lending market, any staking program, any liquidity pool, or a custom program you allowlist. Today money lands in a wallet; tomorrow the same pull can forward into any program before settling, gated by a validation step.",
+      "Any whitelisted Solana program — DEX swaps (Meteora DLMM is live today), lending deposits, staking, liquidity pools, or a custom program you allowlist. The pull validates via Lighthouse first, then routes through the allowlisted program before settling. Intermediate ATAs are force-emptied so nothing parks in the contract.",
   },
 ];
 
@@ -439,14 +442,14 @@ export default function HomeContent() {
             {
               step: "WHEN",
               title: "Trigger Condition",
-              status: "PARTIAL",
+              status: "LIVE",
               color: "text-primary",
               border: "border-primary/20",
               bg: "bg-primary/5",
               items: [
                 { label: "Time / schedule", live: true },
+                { label: "Validation assertions (Lighthouse)", live: true },
                 { label: "Price oracle", live: false },
-                { label: "Wallet balance", live: false },
                 { label: "Governance outcome", live: false },
                 { label: "Custom logic", live: false },
               ],
@@ -468,17 +471,16 @@ export default function HomeContent() {
             {
               step: "ROUTE",
               title: "Destination",
-              status: "PARTIAL",
+              status: "LIVE",
               color: "text-purple-400",
               border: "border-purple-500/20",
               bg: "bg-purple-500/5",
               items: [
                 { label: "Wallet", live: true },
-                { label: "DEX swap", live: false },
+                { label: "DEX swap (Meteora DLMM)", live: true },
+                { label: "Any allowlisted Solana program", live: true },
                 { label: "Lending deposit", live: false },
                 { label: "Staking", live: false },
-                { label: "Liquidity provision", live: false },
-                { label: "Any whitelisted Solana program", live: false },
               ],
             },
           ].map((s) => (
@@ -529,13 +531,14 @@ export default function HomeContent() {
           ))}
         </div>
 
-        <div className="mt-4 border border-primary/30 bg-primary/5 px-6 py-4 max-w-5xl">
+        <div className="mt-4 border border-accent/30 bg-accent/5 px-6 py-4 max-w-5xl">
           <p className="text-sm text-foreground">
-            <span className="font-bold text-amber-400">PULL is live</span> —
-            recurring payments on mainnet today. Open{" "}
-            <span className="font-bold gradient-text">WHEN and ROUTE</span> and
-            the same primitive composes: any condition, any allowlisted
-            destination. Same If/Then, more knobs turned on.
+            <span className="font-bold text-accent">
+              All three knobs are live.
+            </span>{" "}
+            PULL runs on mainnet (4,000+ pulls). WHEN opens with Lighthouse
+            validation assertions. ROUTE opens with Meteora DLMM swaps and any
+            allowlisted Solana program. Same If/Then, all knobs turned on.
           </p>
         </div>
       </section>
@@ -577,6 +580,102 @@ export default function HomeContent() {
         //
       </div>
 
+      {/* ─── Composable in Action: hot-wallet topup example ─── */}
+      <section id="composable-example" className="py-16">
+        <div className="mb-8 max-w-3xl space-y-3">
+          <p className="text-xs text-primary font-bold uppercase tracking-[0.15em]">
+            Composable in Action
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+            <span className="text-foreground">One policy. </span>
+            <span className="gradient-text">Three knobs, fully wired.</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed text-[15px]">
+            A hot-wallet auto-topup: Lighthouse checks the balance, Meteora
+            swaps the token, the recipient gets what they need — all in one
+            permissionless pull.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6 max-w-5xl">
+          <div className="space-y-4">
+            <div className="border border-border/50 bg-muted/10 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-primary">WHEN</span>
+                <span className="text-xs text-muted-foreground">
+                  Lighthouse assertion
+                </span>
+              </div>
+              <p className="text-sm text-foreground">
+                Hot wallet USDC balance &lt; 50 USDC
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Validation runs first. If the balance is fine, nothing moves.
+              </p>
+            </div>
+            <div className="border border-border/50 bg-muted/10 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-400">PULL</span>
+                <span className="text-xs text-muted-foreground">
+                  Delegated claim
+                </span>
+              </div>
+              <p className="text-sm text-foreground">
+                Pull USDC from the owner's token account within approved limits
+              </p>
+              <p className="text-xs text-muted-foreground">
+                NET-on-pull: fees added on top, gross skimmed before forward.
+              </p>
+            </div>
+            <div className="border border-border/50 bg-muted/10 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-purple-400">ROUTE</span>
+                <span className="text-xs text-muted-foreground">
+                  Meteora DLMM swap
+                </span>
+              </div>
+              <p className="text-sm text-foreground">
+                Swap USDC → WSOL, deliver to recipient
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Intermediate ATAs force-emptied. Contract never holds a balance.
+              </p>
+            </div>
+          </div>
+          <div>
+            <TerminalCard
+              filename="auto-topup.ts"
+              language="typescript"
+              code={`// 1. Build the Lighthouse assertion
+const guard = lighthouse
+  .tokenAccount(hotWalletUsdcAta)
+  .amount(50_000_000, "<")   // < 50 USDC
+  .build();
+
+// 2. Create the composable policy
+await sdk.createComposablePolicy({
+  tokenMint: USDC,
+  recipient: hotWallet,
+  forward: { program: METEORA_DLMM },
+  validation: guard,
+});
+
+// 3. Permissionless execution
+//    WHEN: Lighthouse gates the pull
+//    PULL: USDC from owner's ATA
+//    ROUTE: Meteora swaps USDC → WSOL
+//    SETTLE: deliver to recipient, fees skimmed`}
+            />
+          </div>
+        </div>
+      </section>
+
+      <div
+        className="font-mono text-sm text-muted-foreground/30 select-none"
+        aria-hidden="true"
+      >
+        //
+      </div>
+
       {/* ─── Payment Models ─── */}
       {/* ─── Proof it runs: the minimal config is live ─── */}
       <section id="payment-models" className="py-16">
@@ -597,7 +696,7 @@ export default function HomeContent() {
             executed{" "}
             <span className="text-foreground">4,000+ pulls on mainnet</span>,
             used by six teams. The cards below are the live PULL axis — the same
-            shapes the full config will compose with.
+            shapes the full config composes with.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -610,6 +709,11 @@ export default function HomeContent() {
                 <div className="flex items-start justify-between">
                   <type.icon className={`h-6 w-6 text-${type.color}`} />
                   <div className="flex flex-wrap gap-1">
+                    {"new" in type && type.new && (
+                      <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 text-accent border border-accent/30">
+                        NEW
+                      </span>
+                    )}
                     {type.tags.map((tag) => (
                       <span
                         key={tag}
@@ -863,7 +967,7 @@ export default function HomeContent() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[
             ...useCases.map((u) => ({ ...u, live: true })),
-            ...composableUseCases.map((u) => ({ ...u, live: false })),
+            ...composableUseCases.map((u) => ({ ...u, live: true })),
           ].map((useCase) => (
             <div
               key={useCase.title}

@@ -14,7 +14,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Automated recurring payments on Solana. Sign once, pay seamlessly.
+              The pull-payment primitive for Solana.
             </p>
           </div>
           <div>

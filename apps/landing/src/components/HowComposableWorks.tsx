@@ -58,7 +58,7 @@ const tx = await tributary.executePayment({
     id: "composable",
     label: "Full config",
     policy: "ComposablePolicy",
-    badge: "NEXT",
+    badge: "● LIVE",
     caption:
       "Same PULL primitive, different ROUTE. Validation runs before any token moves. The forward CPI is allowlisted and instruction-discriminator-locked; intermediate ATAs are force-emptied so nothing ever parks in the contract.",
     phases: [
