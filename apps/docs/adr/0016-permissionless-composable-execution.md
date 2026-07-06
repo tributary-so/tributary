@@ -70,7 +70,7 @@ permissionless execution). Trusted-caller execution is unchanged — a
 gateway's own scheduler may still run a no-floor policy.
 
 **Allowlist-growth vetting rule.** A program may be added to
-`ALLOWED_FORWARD_PROGRAMS` if its forward is securable by **either** of two
+`ALLOWED_FORWARD_PROGRAMS` if its forward is securable by **any** of three
 independent safety nets:
 
 - **(Fungible-output path — default.)** The output is fully verifiable via the
@@ -80,20 +80,32 @@ independent safety nets:
   output accounts, or whose "output" is not a clean balance delta, cannot be
   characterised this way.
 - **(Route-pinned path — additive.)** The forward's account set is fully pinned
-  at creation via the `ForwardAccountsPda` table (see below), so a third-party
-  scheduler cannot substitute accounts. This admits a cold relayer without a
-  `min_output_amount` floor **for fungible-output programs only** — the owner
-  has locked the exact route and accepted its price; the residual risk is
-  owner-accepted DEX state drift, not a relayer exploit.
+  at creation via the `InstructionConstraint.pinned_accounts` table (see
+  below), so a third-party scheduler cannot substitute accounts. This admits a
+  cold relayer without a `min_output_amount` floor **for fungible-output
+  programs only** — the owner has locked the exact route and accepted its
+  price; the residual risk is owner-accepted DEX state drift, not a relayer
+  exploit.
+- **(Act-mode path — additive, ADR-0026.)** The forward settles in **act
+  mode** (`output_mint == Pubkey::default()` per ADR-0026): no output ATA, no
+  deliver sweep, no `>0` output guard. Tributary's invariant is "no more than
+  `face` leaves `intermediate_input`, any residue returns to the user"
+  (ADR-0026's `sweep_input_residual_to_user` + the balance bound on the
+  intermediate ATA, which the ComposablePolicy PDA owns per ADR-0008). The
+  owner's `post_validation` (`ValidationSpec::ProgramCall { .. }`) is the
+  sole assertion that the forward did what the owner intended. **Act-mode
+  admission requires `post_validation` configured** — a create-time reject
+  bakes the requirement in directly, so for act mode `has_route_pin` alone
+  does not satisfy the cold-relayer gate.
 
-The cold-relayer gate is the OR of these: `min_output_amount = Some(>0)` **OR**
-`forward_accounts_pda` configured. Both are sound for fungible outputs. **Non-
-fungible-output programs** (settlement not a clean balance delta — e.g. a
-Velocity subaccount deposit) are **not** admitted by either path alone: route
-pinning is _necessary but not sufficient_ for them, because the settle phase
-and forward ix-data are not yet constrained for partial-consumption forwards.
-Allowlisting such a program is a separate decision (see "Non-fungible-output
-forwards" below) and must not be attempted under this rule as stated.
+The cold-relayer gate (as amended by the v2.1 Amendment below) is the OR of
+`has_post_validation` and `has_route_pin`. Both fungible paths are sound; act
+mode additionally **requires** `post_validation` (rejected at create
+otherwise — the owner's post-forward assertion is the only floor on act-mode
+delivery, ADR-0026). Programs whose settlement safety is a composite over
+multiple on-chain fields (the "Drift class" — see "Non-fungible-output
+forwards" below) remain unsecurable by any of the three paths and must not be
+allowlisted.
 
 **Forward-account lookup table (dual safety net).** The
 forward program's account set (pool, route, oracles, event queues) is
@@ -110,33 +122,70 @@ serves two roles depending on the forward's output class:
   positional lookup table; owners who don't, rely on `min_output_amount`
   alone. With a pinned route, a cold relayer is admitted even without a floor
   — the owner locked the exact pool and accepted its price.
-- **Non-fungible outputs (e.g. Velocity subaccount deposits) — necessary-but-
-  not-sufficient prerequisite.** Route pinning fixes the account topology but
-  does not, by itself, make such forwards settleable or fully safe (see
-  "Non-fungible-output forwards" below). It is one of three prerequisites, not
-  a complete safety argument.
+- **Non-fungible outputs (act-mode forwards) — `post_validation` is the
+  floor.** Route pinning fixes the account topology; ADR-0026's act mode +
+  residue→user sweep fix the settlement. The owner's `post_validation`
+  assertion is the remaining floor on delivery quality (see
+  "Non-fungible-output forwards" below). For programs whose safety state is
+  not a single Lighthouse-readable field (the Drift class), no floor exists —
+  those remain unadmitted.
 
-**Non-fungible-output forwards (future; not realised by this ADR's current
-code).** A forward whose settlement is not a clean `intermediate_output`
-balance delta — e.g. a deposit that credits an external program's internal
-subaccount — breaks two assumptions that route pinning does not fix, so it is
-**not admitted** by the allowlist rule above as stated:
+**Non-fungible-output forwards (act mode, realised by ADR-0026).** A forward
+whose settlement is not a clean `intermediate_output` balance delta — e.g. a
+deposit that credits an external program's internal subaccount — is admitted
+via the **act-mode path** above. Two assumptions that route pinning alone does
+not fix were resolved by ADR-0026 and the 2026-07-06 grilling (bean
+tributary-2p5g):
 
-1. **Settle phase.** `process_output_and_sweep` sweeps only
-   `intermediate_output` -> recipient. A partial-consumption forward (deposits
-   a configured amount, leaves residue in `intermediate_input`) strands that
-   residue. The settle phase must additionally sweep `intermediate_input`
-   residue -> **user** (owner token account), so unspent input returns to the
-   user. (Returning residue to the user also neutralises the "scheduler
-   deposits less than pulled" attack: the user simply receives the change back
-   and is never at a loss.)
-2. **Forward ix-data.** `ByteRangeCheck` pins the discriminator; the deposit
-   amount and other fields remain caller-supplied. Non-fungible forwards need
-   additional ix-data constraints to be fully safe under a cold relayer.
+1. **Settle phase — RESOLVED by ADR-0026.** `sweep_input_residual_to_user`
+   (`execute_composable.rs:534`) sweeps `intermediate_input` residue -> **user**
+   (owner token account) in addition to the deliver sweep. A
+   partial-consumption forward (deposits a configured amount, leaves residue)
+   returns the unspent input to the user. This neutralises the "scheduler
+   deposits less than pulled" attack: the user receives the change back and is
+   never at a loss. Fees are skimmed input-side on the gross pull (Phase 1b,
+   `execute_composable.rs:1198`) before the forward runs; the residue is
+   returned principal, non-refundable-as-fees-go.
+2. **Forward ix-data amount pinning — DROPPED (toothless post-0026).**
+   `ByteRangeCheck` pins the discriminator; the deposit amount in the forward
+   ix data is caller-supplied and intentionally **not** pinned by Tributary.
+   NET-on-pull hardcoding means `intermediate_input` holds exactly `face`
+   post-skim; the intermediate ATA is owned by the ComposablePolicy PDA
+   (ADR-0008), so SPL token balance semantics bound the forward CPI to at most
+   `face`; any under-consumption is swept -> user. The amount-confusion attack
+   is fully neutralised by the (balance bound + residue→user + NET-on-pull)
+   triad. Amount-byte pinning is a forward-program-specific, client-side
+   concern — not Tributary's invariant. Tributary enforces the balance bound;
+   the client builds a correct ix for the target program.
 
-Until both are implemented, non-fungible-output programs must not be added to
-`ALLOWED_FORWARD_PROGRAMS`. This is tracked as deferred work (bean
-tributary-l9qw is the route-pinning prerequisite).
+**What act mode is for.** Act mode serves forwards whose settlement is a
+verifiable state change in a single on-chain account field readable by
+Lighthouse: stake deposits (`stakeAccount`), token burns / deflationary
+mechanisms (`mintAccount` supply field), NFT mint to target (`accountInfo`
+existence), LP position creation (`accountInfo` on a new position account),
+single-field collateral deposits where the balance is a clean u64 in a known
+struct slot.
+
+**Lighthouse limitations (the Q4 boundary).**
+
+- **Brittle byte-offset assertions.** Lighthouse reads at a fixed byte offset;
+  a forward-program upgrade can shift the struct layout. This is
+  safe-by-failure: a shifted offset reads garbage -> the assertion fails -> the
+  deposit is vetoed -> the owner reconfigures. There is no principal-loss
+  path; only a liveness regression until the owner updates the assertion.
+- **The Drift class — excluded.** Programs whose safety state is off-chain-
+  derived from multiple on-chain fields (collateral, deposits, PnL, oracle
+  prices, etc.) have no single account field a Lighthouse assertion can assert
+  against. "Subaccount data changed" is too weak to be a meaningful floor.
+  Drift / Velocity perp-subaccount leverage is the motivating anti-example:
+  evaluated and **rejected** on these grounds. Such programs are not servable
+  by act mode and must not be allowlisted.
+- **Principal safety vs. quality-of-service.** Tributary's invariant
+  (residue→user + balance bound) holds regardless of `post_validation`; the
+  owner's assertion in act mode is **quality-of-service**, not principal
+  safety. The floor is the owner's assurance the forward did the intended
+  work; a missing or wrong assertion can grief delivery quality but cannot
+  lose principal.
 
 The table is an **address-lookup-table-format array** (`[Pubkey; N]`)
 stored in a Tributary-owned PDA — **not a literal on-chain Address
@@ -272,5 +321,49 @@ ProgramCall { program_id } | Inline { reserved }`. `pre_validation`
    be flipped via `update_gateway_feature_flags` (preserved across writes
    alongside `FEATURE_CUSTOM_PROTOCOL_FEE`).
 
-The OR-gate is **sound for fungible outputs only**; non-fungible
-(Velocity) is explicitly excluded until deferred epic tributary-2p5g.
+The OR-gate is **sound for fungible outputs and for act-mode forwards with
+`post_validation` configured** (ADR-0026). Programs in the Drift class
+(off-chain-derived composite state) remain excluded — see "Non-fungible-output
+forwards" above.
+
+---
+
+## Amendment (2026-07-06, bean tributary-2p5g — act-mode admission rule)
+
+ADR-0026 shipped the act-mode settlement mechanism (residue→user sweep,
+input-side fee skim, NET-on-pull hardcoding, the three settlement shapes).
+This amendment records the allowlist-rule consequence and the scope decisions
+from the 2026-07-06 grilling. No code changes — the mechanism shipped under
+ADR-0026; this is the admission-rule + boundary-documentation follow-up.
+
+**Decisions:**
+
+- **Q1 — rescope.** The settle-phase residue→user sweep and the gross-pull /
+  NET-on-pull fee model are DONE by ADR-0026 (code-confirmed:
+  `sweep_input_residual_to_user` at `execute_composable.rs:534`, `is_act` at
+  line 779, Phase 1b skim at line 1198). The original "non-fungible blocked"
+  framing is stale.
+- **Q2 — ix-data amount pinning dropped.** The amount field in the forward ix
+  data is toothless post-0026: NET-on-pull + balance bound + residue→user
+  neutralise amount confusion without pinning ix bytes. Amount-byte pinning is
+  a forward-program-specific, client-side concern — not Tributary's invariant.
+- **Q3 — act-mode admission path added** (the third bullet in the allowlist
+  rule above). Act mode requires `post_validation` configured; the create-time
+  reject bakes this in, so `has_route_pin` alone is insufficient for act mode
+  and the cold-relayer OR-gate ambiguity is resolved.
+- **Q4 — Lighthouse-only validation; Drift rejected.** `ALLOWED_VALIDATION_PROGRAMS`
+  stays Lighthouse-only (attack-surface discipline). Drift perp-subaccount
+  leverage is off-chain-derived from multiple on-chain fields — no single
+  Lighthouse-readable floor exists. The motivating example is the
+  anti-example. Velocity is NOT added to `ALLOWED_FORWARD_PROGRAMS`.
+- **Q5 — convergence.** Documentation-only deliverable; no code changes. The
+  bean was demoted epic → feature (single ADR amendment, no child tree).
+
+**What act mode is for (post-grilling):** NOT Drift. Act mode serves forwards
+whose settlement is a verifiable state change in a single on-chain account
+field readable by Lighthouse — stake deposits, token burns, NFT mints, LP
+position creation, single-field collateral deposits. The Drift class
+(composite / off-chain-derived state) is explicitly excluded and documented in
+the body above.
+
+(bean tributary-2p5g)

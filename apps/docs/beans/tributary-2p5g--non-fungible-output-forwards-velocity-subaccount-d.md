@@ -1,11 +1,11 @@
 ---
 # tributary-2p5g
 title: 'ADR-0016 amendment: act-mode admission rule + Lighthouse post_validation limitations'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-02T08:19:01Z
-updated_at: 2026-07-06T08:32:14Z
+updated_at: 2026-07-06T10:25:37Z
 ---
 
 Deferred per grilling Q1 decision 3 ("no, not yet"). Captured here so the
@@ -143,18 +143,18 @@ closed).
 
 ### Scope (the actual deliverables)
 
-- [ ] Amend ADR-0016 (direct edit — composable program is pre-launch, no
+- [x] Amend ADR-0016 (direct edit — composable program is pre-launch, no
       supersession per ADR conventions). Add the act-mode admission path from
       Q3. Strike the stale "until settle + ix-data implemented" blocker at
       lines 137-139. State the rule and the Q3 side-effect on the cold-relayer
       gate.
-- [ ] Document the Q4 Lighthouse limitations in the ADR body: brittle byte-
+- [x] Document the Q4 Lighthouse limitations in the ADR body: brittle byte-
       offset (safe-by-failure), the Drift-class exclusion (off-chain-derived
       state), and the principal-safety vs QoS separation.
-- [ ] Note in bean body (done here): Velocity was the motivating example,
+- [x] Note in bean body (done here): Velocity was the motivating example,
       evaluated, and rejected on Q4 grounds. Do NOT add Velocity to
       `ALLOWED_FORWARD_PROGRAMS`.
-- [ ] Do NOT add any new allowlist entry in this bean. Speculative — wait for
+- [x] Do NOT add any new allowlist entry in this bean. Speculative — wait for
       a concrete use case that fits the amended rule (stake deposits, token
       burns, NFT mints, LP positions are candidate classes).
 
@@ -187,3 +187,30 @@ change in a single on-chain account field readable by Lighthouse:
 Programs excluded: those whose safety state is a composite / off-chain
 derivation over multiple on-chain fields (the Drift leverage class). Document
 this boundary explicitly in the ADR.
+
+## Summary of Changes
+
+Documentation-only deliverable. No code changes — ADR-0026 shipped the act-mode
+mechanism; this bean is the admission-rule + boundary follow-up.
+
+- **Amended ADR-0016** (apps/docs/adr/0016-permissionless-composable-execution.md):
+  - Added the **act-mode admission path** (third bullet in the allowlist-growth
+    vetting rule): act mode settles with `output_mint == Pubkey::default()`,
+    requires `post_validation` configured, create-time reject enforces it.
+  - **Struck the stale blocker** ("until settle + ix-data implemented") and
+    replaced the Non-fungible-output-forwards section with the post-0026 state:
+    settle phase RESOLVED by ADR-0026, ix-data amount pinning DROPPED (Q2 —
+    toothless post-0026).
+  - Updated the cold-relayer gate language: act mode requires `post_validation`;
+    `has_route_pin` alone is insufficient for act mode.
+  - Documented the **Q4 Lighthouse limitations**: brittle byte-offset
+    (safe-by-failure), the Drift-class exclusion (off-chain-derived composite
+    state — no single-field floor), and the principal-safety vs QoS separation.
+  - Added a new `## Amendment (2026-07-06, bean tributary-2p5g)` section
+    recording the Q1–Q5 grilling decisions.
+  - Updated the lookup-table non-fungible bullet and the v2.1-amendment closing
+    note to reflect act-mode admission.
+- **No allowlist change.** Velocity/Drift NOT added to
+  `ALLOWED_FORWARD_PROGRAMS` (Q4 — off-chain-derived state). No new
+  `ALLOWED_VALIDATION_PROGRAMS` entry (Lighthouse-only, attack-surface
+  discipline).
