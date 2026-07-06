@@ -1,11 +1,11 @@
 ---
 # tributary-cgy2
 title: Replace openapi.yaml in docs with URL to api.tributary.so once new api is deployed
-status: draft
+status: todo
 type: task
 priority: normal
 created_at: 2026-06-30T08:58:15Z
-updated_at: 2026-06-30T08:59:12Z
+updated_at: 2026-07-06T13:58:09Z
 ---
 
 We need the openapi.yaml file to build the docs.
