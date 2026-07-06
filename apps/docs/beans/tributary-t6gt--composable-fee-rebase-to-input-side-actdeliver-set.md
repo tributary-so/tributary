@@ -1,11 +1,11 @@
 ---
 # tributary-t6gt
 title: Composable fee rebase to input-side + act/deliver settlement shapes
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-05T07:46:18Z
-updated_at: 2026-07-05T07:46:18Z
+updated_at: 2026-07-06T08:30:27Z
 ---
 
 Rebase composable fees from output-side to input-side (gross pull), hardcode NET-on-pull, introduce act/deliver settlement shape distinction. Motivated by Velocity-style forwards that consume input but produce no output token.
