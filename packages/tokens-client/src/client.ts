@@ -17,7 +17,7 @@ export interface TokensClient {
   search(query: string, opts?: SearchOptions): Promise<AssetSearchResponse>;
   resolveMint(
     mint: string,
-    opts?: ResolveOptions,
+    opts?: ResolveOptions
   ): Promise<ResolveResult | null>;
   resolveRef(ref: string, opts?: ResolveOptions): Promise<ResolveResult | null>;
 }
@@ -42,14 +42,14 @@ interface ApiEnvelope<T> {
  * per ADR-0028 D3 (search → empty results, resolve → null).
  */
 export function createTokensClient(
-  opts: CreateTokensClientOptions,
+  opts: CreateTokensClientOptions
 ): TokensClient {
   const base = opts.baseUrl.replace(/\/+$/, "");
   const fetchImpl = opts.fetch ?? fetch;
 
   async function get<T>(
     pathAndQuery: string,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<T | null> {
     const res = await fetchImpl(`${base}${pathAndQuery}`, {
       headers: { accept: "application/json" },
@@ -64,11 +64,12 @@ export function createTokensClient(
   return {
     async search(query, sopts) {
       const q = query.trim();
+      if (!q) return { query: q, results: [] };
       const limit = Math.max(1, Math.min(50, sopts?.limit ?? 20));
       const params = new URLSearchParams({ q, limit: String(limit) });
       const data = await get<AssetSearchResponse>(
         `/v1/assets/search?${params.toString()}`,
-        sopts?.signal,
+        sopts?.signal
       );
       return data ?? { query: q, results: [] };
     },
@@ -77,7 +78,7 @@ export function createTokensClient(
       const params = new URLSearchParams({ mint });
       return get<ResolveResult>(
         `/v1/assets/resolve?${params.toString()}`,
-        ropts?.signal,
+        ropts?.signal
       );
     },
 

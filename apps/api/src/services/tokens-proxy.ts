@@ -19,14 +19,20 @@ import {
 } from "@tributary-so/tokens-client";
 import { cacheGet, cacheSet } from "./redis";
 
-const UPSTREAM_BASE =
-  process.env.TOKENS_XYZ_BASE_URL ?? "https://api.tokens.xyz/v1";
-const UPSTREAM_KEY = process.env.TOKENS_XYZ_API_KEY ?? "";
+const UPSTREAM_BASE_DEFAULT = "https://api.tokens.xyz/v1";
 
 const SEARCH_TTL = 60;
 const RESOLVE_TTL = 600;
 
 const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+/** Read env at call time so tests (and runtime config reloads) can flip it. */
+function upstreamBase(): string {
+  return process.env.TOKENS_XYZ_BASE_URL ?? UPSTREAM_BASE_DEFAULT;
+}
+function upstreamKey(): string {
+  return process.env.TOKENS_XYZ_API_KEY ?? "";
+}
 
 function isValidMint(s: unknown): s is string {
   if (typeof s !== "string" || !BASE58_RE.test(s)) return false;
@@ -101,17 +107,18 @@ function projectAsset(asset: UpstreamAsset): AssetSearchResult | null {
 }
 
 async function upstreamFetch<T>(pathAndQuery: string): Promise<T | null> {
-  if (!UPSTREAM_KEY) {
+  const key = upstreamKey();
+  if (!key) {
     console.warn(
       "[tokens-proxy] TOKENS_XYZ_API_KEY is unset — upstream calls disabled"
     );
     return null;
   }
-  const url = `${UPSTREAM_BASE}${pathAndQuery}`;
+  const url = `${upstreamBase()}${pathAndQuery}`;
   try {
     const res = await fetch(url, {
       headers: {
-        "x-api-key": UPSTREAM_KEY,
+        "x-api-key": key,
         accept: "application/json",
       },
       // Don't let upstream hang the request indefinitely.

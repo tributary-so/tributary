@@ -14,21 +14,24 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./react": {
       "types": "./dist/react.d.ts",
-      "import": "./dist/react.js"
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
     },
     "./devnetFallback": {
       "types": "./dist/devnetFallback.d.ts",
-      "import": "./dist/devnetFallback.js"
+      "import": "./dist/devnetFallback.js",
+      "default": "./dist/devnetFallback.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "lint": "exit 0",
-    "test": "npx tsx src/devnetFallback.test.ts",
+    "test": "npx tsx src/devnetFallback.test.ts && npx tsx src/client.test.ts",
     "clean": "rm -rf ./dist",
     "prepack": "pnpm run build",
     "release": "semantic-release -e semantic-release-monorepo"
