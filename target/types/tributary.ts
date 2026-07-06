@@ -3647,7 +3647,13 @@ export type Tributary = {
           {
             "name": "padding1",
             "docs": [
-              "No-longer-used, take care of tumbstone"
+              "DO NOT REMOVE — tombstone slot.",
+              "",
+              "Formerly held a v1 field; the slot is kept here so the byte offsets",
+              "of every field declared below it stay stable across upgrades.",
+              "Removing this field would shift all subsequent offsets and break",
+              "deserialization of every live PaymentGateway account. See ST-1",
+              "(review 2026-07-06)."
             ],
             "type": "u64"
           },
