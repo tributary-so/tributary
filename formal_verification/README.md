@@ -3,22 +3,26 @@
 This directory and the hand-rolled harnesses in `programs/tributary/tests/`
 together form a **layered** verification of Tributary's pull-payment logic.
 
-> **Status (2026-07-02, updated for v2.1 — bean tributary-zvku):**
+> **Status (2026-07-06, updated for v2.2 / ADR-0026 — bean tributary-t6gt):**
 >
-> | Layer                     | Status                                                               |
-> | ------------------------- | -------------------------------------------------------------------- |
-> | Spec validation           | ✅ clean (`qedgen check`, 9 properties, 6 handlers)                  |
-> | Layer 1 (spec-model Kani) | ✅ regenerated (spec-hash `8be6c4356e7458ef`); `min_output` removed  |
-> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                          |
-> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                            |
-> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)          |
-> | Lean                      | ⚠️ recursion solved (4.30.0 pin); Spec.lean blocked on codegen Bug A |
+> | Layer                     | Status                                                                |
+> | ------------------------- | --------------------------------------------------------------------- |
+> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers)                  |
+> | Layer 1 (spec-model Kani) | ✅ regenerated (v2.2); execute_composable now models face/gross split |
+> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                           |
+> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                             |
+> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)           |
+> | Lean                      | ⚠️ recursion solved (4.30.0 pin); Spec.lean blocked on codegen Bug A  |
 >
-> **v2.1 change:** `execute_composable` handler dropped its `min_output`
-> parameter (removed from the on-chain code; `post_validation` generalizes
-> it). The formal model was never affected — `min_output` was a pass-through
-> with no role in any property. Spec.lean + kani.rs regenerated from the
-> updated qedspec.
+> **v2.2 change (ADR-0026):** composable fee path rebased to input-side
+> gross pull. `execute_composable` now takes `face` (what the forward
+> consumes), pulls GROSS = face + fee, and binds PayAsYouGo caps + delegate
+> on gross. Three new properties added:
+> `composable_fee_basis_is_face`, `composable_gross_pull_matches_face_plus_fee`,
+> `composable_period_accumulates_gross`. Residual routing, settlement-shape
+> dispatch, and the mode-conditional `>0` output guard are documented as
+> account-wiring invariants (not state predicates) — integration-tested in
+> tests/composable-fee-rebase.test.ts.
 
 ---
 

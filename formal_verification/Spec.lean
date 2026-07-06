@@ -67,18 +67,18 @@ def execute_payment_otherwiseTransition (s : State) (signer : Pubkey) (chunk : N
     some s
   else none
 
-def execute_composable_case_0Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount then
-    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+def execute_composable_case_0Transition (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat) : Option State :=
+  if emergency_pause = 0 ∧ policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount then
+    some { s with current_period_start := current_time, current_period_total := s.face + (bps_mul (face) (gateway_fee_bps)), pulled_amount := s.face + (bps_mul (face) (gateway_fee_bps)), payment_amount := face, total_fee := (bps_mul (face) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount, total_from_user := s.face + (bps_mul (face) (gateway_fee_bps)) }
   else none
 
-def execute_composable_case_1Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount ∧ s.current_period_total + chunk ≤ 18446744073709551615 then
-    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+def execute_composable_case_1Transition (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat) : Option State :=
+  if emergency_pause = 0 ∧ policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount ∧ s.current_period_total + face + (bps_mul (face) (gateway_fee_bps)) ≤ 18446744073709551615 then
+    some { s with current_period_total := s.current_period_total + s.face + (bps_mul (face) (gateway_fee_bps)), pulled_amount := s.face + (bps_mul (face) (gateway_fee_bps)), payment_amount := face, total_fee := (bps_mul (face) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount, total_from_user := s.face + (bps_mul (face) (gateway_fee_bps)) }
   else none
 
-def execute_composable_otherwiseTransition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount ∧ 0 = 1 then
+def execute_composable_otherwiseTransition (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat) : Option State :=
+  if emergency_pause = 0 ∧ policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount ∧ 0 = 1 then
     some s
   else none
 
@@ -103,9 +103,9 @@ inductive Operation where
   | execute_payment_case_0 (chunk : Nat) (current_time : Nat)
   | execute_payment_case_1 (chunk : Nat) (current_time : Nat)
   | execute_payment_otherwise (chunk : Nat) (current_time : Nat)
-  | execute_composable_case_0 (chunk : Nat) (current_time : Nat)
-  | execute_composable_case_1 (chunk : Nat) (current_time : Nat)
-  | execute_composable_otherwise (chunk : Nat) (current_time : Nat)
+  | execute_composable_case_0 (face : Nat) (current_time : Nat)
+  | execute_composable_case_1 (face : Nat) (current_time : Nat)
+  | execute_composable_otherwise (face : Nat) (current_time : Nat)
   | transfer (amount : Nat)
   | release_milestone (current_time : Nat) (due_timestamp : Nat)
   deriving Repr, DecidableEq, BEq
@@ -115,9 +115,9 @@ def applyOp (s : State) (signer : Pubkey) : Operation → Option State
   | .execute_payment_case_0 chunk current_time => execute_payment_case_0Transition s signer chunk current_time
   | .execute_payment_case_1 chunk current_time => execute_payment_case_1Transition s signer chunk current_time
   | .execute_payment_otherwise chunk current_time => execute_payment_otherwiseTransition s signer chunk current_time
-  | .execute_composable_case_0 chunk current_time => execute_composable_case_0Transition s signer chunk current_time
-  | .execute_composable_case_1 chunk current_time => execute_composable_case_1Transition s signer chunk current_time
-  | .execute_composable_otherwise chunk current_time => execute_composable_otherwiseTransition s signer chunk current_time
+  | .execute_composable_case_0 face current_time => execute_composable_case_0Transition s signer face current_time
+  | .execute_composable_case_1 face current_time => execute_composable_case_1Transition s signer face current_time
+  | .execute_composable_otherwise face current_time => execute_composable_otherwiseTransition s signer face current_time
   | .transfer amount => transferTransition s signer amount
   | .release_milestone current_time due_timestamp => release_milestoneTransition s signer current_time due_timestamp
 
@@ -144,22 +144,22 @@ theorem period_bounded_preserved_by_execute_payment_otherwise (s s' : State) (si
   · cases h; exact h_inv
   · contradiction
 
-theorem period_bounded_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : period_bounded s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem period_bounded_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : period_bounded s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     period_bounded s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold period_bounded at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem period_bounded_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : period_bounded s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem period_bounded_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : period_bounded s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     period_bounded s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold period_bounded at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem period_bounded_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : period_bounded s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem period_bounded_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : period_bounded s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     period_bounded s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -191,9 +191,9 @@ theorem period_bounded_inductive (s s' : State) (signer : Pubkey) (op : Operatio
   | execute_payment_case_0 chunk current_time => exact period_bounded_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact period_bounded_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact period_bounded_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact period_bounded_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact period_bounded_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact period_bounded_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact period_bounded_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact period_bounded_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact period_bounded_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount => exact period_bounded_preserved_by_transfer s s' signer amount h_inv h
   | release_milestone current_time due_timestamp => exact period_bounded_preserved_by_release_milestone s s' signer current_time due_timestamp h_inv h
 
@@ -220,22 +220,22 @@ theorem period_cap_fixed_preserved_by_execute_payment_otherwise (s s' : State) (
   · cases h; exact h_inv
   · contradiction
 
-theorem period_cap_fixed_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : period_cap_fixed s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem period_cap_fixed_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : period_cap_fixed s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     period_cap_fixed s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · cases h; exact h_inv
   · contradiction
 
-theorem period_cap_fixed_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : period_cap_fixed s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem period_cap_fixed_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : period_cap_fixed s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     period_cap_fixed s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · cases h; exact h_inv
   · contradiction
 
-theorem period_cap_fixed_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : period_cap_fixed s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem period_cap_fixed_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : period_cap_fixed s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     period_cap_fixed s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -267,9 +267,9 @@ theorem period_cap_fixed_inductive (s s' : State) (signer : Pubkey) (op : Operat
   | execute_payment_case_0 chunk current_time => exact period_cap_fixed_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact period_cap_fixed_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact period_cap_fixed_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact period_cap_fixed_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact period_cap_fixed_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact period_cap_fixed_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact period_cap_fixed_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact period_cap_fixed_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact period_cap_fixed_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount => exact period_cap_fixed_preserved_by_transfer s s' signer amount h_inv h
   | release_milestone current_time due_timestamp => exact period_cap_fixed_preserved_by_release_milestone s s' signer current_time due_timestamp h_inv h
 
@@ -296,22 +296,22 @@ theorem fee_conservation_preserved_by_execute_payment_otherwise (s s' : State) (
   · cases h; exact h_inv
   · contradiction
 
-theorem fee_conservation_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : fee_conservation s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem fee_conservation_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : fee_conservation s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     fee_conservation s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold fee_conservation at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem fee_conservation_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : fee_conservation s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem fee_conservation_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : fee_conservation s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     fee_conservation s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold fee_conservation at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem fee_conservation_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : fee_conservation s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem fee_conservation_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : fee_conservation s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     fee_conservation s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -343,9 +343,9 @@ theorem fee_conservation_inductive (s s' : State) (signer : Pubkey) (op : Operat
   | execute_payment_case_0 chunk current_time => exact fee_conservation_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact fee_conservation_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact fee_conservation_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact fee_conservation_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact fee_conservation_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact fee_conservation_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact fee_conservation_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact fee_conservation_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact fee_conservation_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount => exact fee_conservation_preserved_by_transfer s s' signer amount h_inv h
   | release_milestone current_time due_timestamp => exact fee_conservation_preserved_by_release_milestone s s' signer current_time due_timestamp h_inv h
 
@@ -372,22 +372,22 @@ theorem fee_is_bps_decomposition_preserved_by_execute_payment_otherwise (s s' : 
   · cases h; exact h_inv
   · contradiction
 
-theorem fee_is_bps_decomposition_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : fee_is_bps_decomposition s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem fee_is_bps_decomposition_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : fee_is_bps_decomposition s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     fee_is_bps_decomposition s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold fee_is_bps_decomposition at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem fee_is_bps_decomposition_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : fee_is_bps_decomposition s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem fee_is_bps_decomposition_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : fee_is_bps_decomposition s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     fee_is_bps_decomposition s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold fee_is_bps_decomposition at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem fee_is_bps_decomposition_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : fee_is_bps_decomposition s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem fee_is_bps_decomposition_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : fee_is_bps_decomposition s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     fee_is_bps_decomposition s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -412,9 +412,9 @@ theorem fee_is_bps_decomposition_inductive (s s' : State) (signer : Pubkey) (op 
   | execute_payment_case_0 chunk current_time => exact fee_is_bps_decomposition_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact fee_is_bps_decomposition_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact fee_is_bps_decomposition_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact fee_is_bps_decomposition_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact fee_is_bps_decomposition_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact fee_is_bps_decomposition_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact fee_is_bps_decomposition_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact fee_is_bps_decomposition_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact fee_is_bps_decomposition_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount =>
     simp [applyOp, transferTransition] at h
     obtain ⟨_, h_eq⟩ := h
@@ -444,22 +444,22 @@ theorem recipient_net_of_fee_preserved_by_execute_payment_otherwise (s s' : Stat
   · cases h; exact h_inv
   · contradiction
 
-theorem recipient_net_of_fee_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : recipient_net_of_fee s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem recipient_net_of_fee_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : recipient_net_of_fee s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     recipient_net_of_fee s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold recipient_net_of_fee at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem recipient_net_of_fee_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : recipient_net_of_fee s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem recipient_net_of_fee_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : recipient_net_of_fee s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     recipient_net_of_fee s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold recipient_net_of_fee at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem recipient_net_of_fee_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : recipient_net_of_fee s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem recipient_net_of_fee_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : recipient_net_of_fee s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     recipient_net_of_fee s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -484,9 +484,9 @@ theorem recipient_net_of_fee_inductive (s s' : State) (signer : Pubkey) (op : Op
   | execute_payment_case_0 chunk current_time => exact recipient_net_of_fee_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact recipient_net_of_fee_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact recipient_net_of_fee_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact recipient_net_of_fee_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact recipient_net_of_fee_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact recipient_net_of_fee_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact recipient_net_of_fee_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact recipient_net_of_fee_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact recipient_net_of_fee_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount =>
     simp [applyOp, transferTransition] at h
     obtain ⟨_, h_eq⟩ := h
@@ -516,22 +516,22 @@ theorem pull_bounded_preserved_by_execute_payment_otherwise (s s' : State) (sign
   · cases h; exact h_inv
   · contradiction
 
-theorem pull_bounded_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : pull_bounded s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem pull_bounded_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : pull_bounded s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     pull_bounded s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold pull_bounded at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem pull_bounded_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : pull_bounded s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem pull_bounded_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : pull_bounded s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     pull_bounded s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold pull_bounded at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem pull_bounded_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : pull_bounded s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem pull_bounded_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : pull_bounded s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     pull_bounded s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -549,9 +549,9 @@ theorem pull_bounded_inductive (s s' : State) (signer : Pubkey) (op : Operation)
   | execute_payment_case_0 chunk current_time => exact pull_bounded_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact pull_bounded_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact pull_bounded_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact pull_bounded_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact pull_bounded_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact pull_bounded_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact pull_bounded_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact pull_bounded_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact pull_bounded_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount =>
     simp [applyOp] at h
     unfold transferTransition at h; split at h
@@ -586,22 +586,22 @@ theorem residual_nonnegative_preserved_by_execute_payment_otherwise (s s' : Stat
   · cases h; exact h_inv
   · contradiction
 
-theorem residual_nonnegative_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : residual_nonnegative s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem residual_nonnegative_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : residual_nonnegative s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     residual_nonnegative s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold residual_nonnegative at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem residual_nonnegative_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : residual_nonnegative s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem residual_nonnegative_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : residual_nonnegative s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     residual_nonnegative s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold residual_nonnegative at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem residual_nonnegative_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : residual_nonnegative s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem residual_nonnegative_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : residual_nonnegative s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     residual_nonnegative s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -626,9 +626,9 @@ theorem residual_nonnegative_inductive (s s' : State) (signer : Pubkey) (op : Op
   | execute_payment_case_0 chunk current_time => exact residual_nonnegative_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact residual_nonnegative_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact residual_nonnegative_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact residual_nonnegative_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact residual_nonnegative_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact residual_nonnegative_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact residual_nonnegative_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact residual_nonnegative_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact residual_nonnegative_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount =>
     simp [applyOp, transferTransition] at h
     obtain ⟨_, h_eq⟩ := h
@@ -658,22 +658,22 @@ theorem referral_pool_bounded_preserved_by_execute_payment_otherwise (s s' : Sta
   · cases h; exact h_inv
   · contradiction
 
-theorem referral_pool_bounded_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : referral_pool_bounded s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem referral_pool_bounded_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : referral_pool_bounded s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     referral_pool_bounded s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold referral_pool_bounded at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem referral_pool_bounded_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : referral_pool_bounded s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem referral_pool_bounded_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : referral_pool_bounded s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     referral_pool_bounded s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold referral_pool_bounded at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem referral_pool_bounded_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : referral_pool_bounded s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem referral_pool_bounded_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : referral_pool_bounded s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     referral_pool_bounded s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -698,9 +698,9 @@ theorem referral_pool_bounded_inductive (s s' : State) (signer : Pubkey) (op : O
   | execute_payment_case_0 chunk current_time => exact referral_pool_bounded_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact referral_pool_bounded_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact referral_pool_bounded_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact referral_pool_bounded_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact referral_pool_bounded_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact referral_pool_bounded_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact referral_pool_bounded_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact referral_pool_bounded_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact referral_pool_bounded_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount =>
     simp [applyOp, transferTransition] at h
     obtain ⟨_, h_eq⟩ := h
@@ -730,22 +730,22 @@ theorem sweep_nonnegative_preserved_by_execute_payment_otherwise (s s' : State) 
   · cases h; exact h_inv
   · contradiction
 
-theorem sweep_nonnegative_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : sweep_nonnegative s) (h : execute_composable_case_0Transition s signer chunk current_time = some s') :
+theorem sweep_nonnegative_preserved_by_execute_composable_case_0 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : sweep_nonnegative s) (h : execute_composable_case_0Transition s signer face current_time = some s') :
     sweep_nonnegative s' := by
   unfold execute_composable_case_0Transition at h; split at h
   · next hg => cases h; unfold sweep_nonnegative at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem sweep_nonnegative_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : sweep_nonnegative s) (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+theorem sweep_nonnegative_preserved_by_execute_composable_case_1 (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : sweep_nonnegative s) (h : execute_composable_case_1Transition s signer face current_time = some s') :
     sweep_nonnegative s' := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg => cases h; unfold sweep_nonnegative at h_inv ⊢; dsimp; omega
   · contradiction
 
-theorem sweep_nonnegative_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h_inv : sweep_nonnegative s) (h : execute_composable_otherwiseTransition s signer chunk current_time = some s') :
+theorem sweep_nonnegative_preserved_by_execute_composable_otherwise (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h_inv : sweep_nonnegative s) (h : execute_composable_otherwiseTransition s signer face current_time = some s') :
     sweep_nonnegative s' := by
   unfold execute_composable_otherwiseTransition at h; split at h
   · cases h; exact h_inv
@@ -770,14 +770,20 @@ theorem sweep_nonnegative_inductive (s s' : State) (signer : Pubkey) (op : Opera
   | execute_payment_case_0 chunk current_time => exact sweep_nonnegative_preserved_by_execute_payment_case_0 s s' signer chunk current_time h_inv h
   | execute_payment_case_1 chunk current_time => exact sweep_nonnegative_preserved_by_execute_payment_case_1 s s' signer chunk current_time h_inv h
   | execute_payment_otherwise chunk current_time => exact sweep_nonnegative_preserved_by_execute_payment_otherwise s s' signer chunk current_time h_inv h
-  | execute_composable_case_0 chunk current_time => exact sweep_nonnegative_preserved_by_execute_composable_case_0 s s' signer chunk current_time h_inv h
-  | execute_composable_case_1 chunk current_time => exact sweep_nonnegative_preserved_by_execute_composable_case_1 s s' signer chunk current_time h_inv h
-  | execute_composable_otherwise chunk current_time => exact sweep_nonnegative_preserved_by_execute_composable_otherwise s s' signer chunk current_time h_inv h
+  | execute_composable_case_0 face current_time => exact sweep_nonnegative_preserved_by_execute_composable_case_0 s s' signer face current_time h_inv h
+  | execute_composable_case_1 face current_time => exact sweep_nonnegative_preserved_by_execute_composable_case_1 s s' signer face current_time h_inv h
+  | execute_composable_otherwise face current_time => exact sweep_nonnegative_preserved_by_execute_composable_otherwise s s' signer face current_time h_inv h
   | transfer amount =>
     simp [applyOp, transferTransition] at h
     obtain ⟨_, h_eq⟩ := h
     subst h_eq; exact h_inv
   | release_milestone current_time due_timestamp => exact sweep_nonnegative_preserved_by_release_milestone s s' signer current_time due_timestamp h_inv h
+
+def composable_fee_basis_is_face (s : State) : Prop := s.total_fee = (bps_mul (s.payment_amount) (s.gateway_fee_bps))
+
+def composable_gross_pull_matches_face_plus_fee (s : State) : Prop := s.total_from_user = s.payment_amount + s.total_fee
+
+def composable_period_accumulates_gross (s : State) : Prop := s.current_period_total ≤ s.max_amount_per_period
 
 -- ============================================================================
 -- Abort conditions — operations must reject under specified conditions
@@ -873,68 +879,68 @@ theorem execute_payment_otherwise_aborts_if_InsufficientDelegatedAmount (s : Sta
   unfold execute_payment_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.2.2.2)]
 
-theorem execute_composable_case_0_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_composable_case_0Transition s signer chunk current_time = none := by
+theorem execute_composable_case_0_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(emergency_pause = 0)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.1)]
 
-theorem execute_composable_case_0_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_composable_case_0Transition s signer chunk current_time = none := by
+theorem execute_composable_case_0_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(policy_status = 0)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.2.1)]
 
-theorem execute_composable_case_0_aborts_if_InvalidAmount_0 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk > 0)) : execute_composable_case_0Transition s signer chunk current_time = none := by
+theorem execute_composable_case_0_aborts_if_InvalidAmount_0 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(face > 0)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.2.2.1)]
 
-theorem execute_composable_case_0_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk ≤ max_chunk_amount)) : execute_composable_case_0Transition s signer chunk current_time = none := by
+theorem execute_composable_case_0_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬((face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.2.2.2)]
 
-theorem execute_composable_case_1_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_composable_case_1Transition s signer chunk current_time = none := by
+theorem execute_composable_case_1_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(emergency_pause = 0)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.1)]
 
-theorem execute_composable_case_1_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_composable_case_1Transition s signer chunk current_time = none := by
+theorem execute_composable_case_1_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(policy_status = 0)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.2.1)]
 
-theorem execute_composable_case_1_aborts_if_InvalidAmount_0 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk > 0)) : execute_composable_case_1Transition s signer chunk current_time = none := by
+theorem execute_composable_case_1_aborts_if_InvalidAmount_0 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(face > 0)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.2.2.1)]
 
-theorem execute_composable_case_1_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk ≤ max_chunk_amount)) : execute_composable_case_1Transition s signer chunk current_time = none := by
+theorem execute_composable_case_1_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬((face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
-theorem execute_composable_otherwise_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_composable_otherwiseTransition s signer chunk current_time = none := by
+theorem execute_composable_otherwise_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(emergency_pause = 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.1)]
 
-theorem execute_composable_otherwise_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_composable_otherwiseTransition s signer chunk current_time = none := by
+theorem execute_composable_otherwise_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(policy_status = 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.1)]
 
-theorem execute_composable_otherwise_aborts_if_InvalidAmount_0 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk > 0)) : execute_composable_otherwiseTransition s signer chunk current_time = none := by
+theorem execute_composable_otherwise_aborts_if_InvalidAmount_0 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(face > 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.2.1)]
 
-theorem execute_composable_otherwise_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk ≤ max_chunk_amount)) : execute_composable_otherwiseTransition s signer chunk current_time = none := by
+theorem execute_composable_otherwise_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬((face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
-theorem execute_composable_otherwise_aborts_if_InsufficientDelegatedAmount (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(0 = 1)) : execute_composable_otherwiseTransition s signer chunk current_time = none := by
+theorem execute_composable_otherwise_aborts_if_InsufficientDelegatedAmount (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
+    (h : ¬(0 = 1)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.2.2.2)]
 
@@ -1007,7 +1013,7 @@ theorem execute_payment_case_1_overflow_safe (s s' : State) (signer : Pubkey) (c
     simp only [valid_u64, Valid.valid_u64, Valid.U64_MAX]; omega
   · contradiction
 
-theorem execute_composable_case_1_overflow_safe (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
+theorem execute_composable_case_1_overflow_safe (s s' : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
     (h_valid : valid_u8 s.policy_status ∧ valid_u8 s.emergency_pause ∧ valid_u64 s.max_amount_per_period ∧ valid_u64 s.max_chunk_amount ∧ valid_u64 s.period_length_seconds ∧ valid_u64 s.current_period_start ∧ valid_u64 s.current_period_total ∧ valid_u64 s.pulled_amount ∧ valid_u64 s.payment_amount ∧ valid_u16 s.gateway_fee_bps ∧ valid_u16 s.protocol_share_bps ∧ valid_u16 s.scheduler_share_bps ∧ valid_u16 s.referral_allocation_bps ∧ valid_u8 s.is_referral_enabled ∧ valid_u8 s.is_net_mode ∧ valid_u64 s.total_fee ∧ valid_u64 s.protocol_cut ∧ valid_u64 s.scheduler_cut ∧ valid_u64 s.referral_pool ∧ valid_u64 s.gateway_residual ∧ valid_u64 s.recipient_amount ∧ valid_u64 s.total_from_user ∧ valid_u8 s.release_due_date ∧ valid_u8 s.release_requires_gateway ∧ valid_u8 s.release_requires_owner ∧ valid_u8 s.release_requires_recipient ∧ valid_u8 s.caller_is_gateway ∧ valid_u8 s.caller_is_owner ∧ valid_u8 s.caller_is_recipient)
     (h_inv_period_bounded : period_bounded s)
     (h_inv_period_cap_fixed : period_cap_fixed s)
@@ -1018,7 +1024,7 @@ theorem execute_composable_case_1_overflow_safe (s s' : State) (signer : Pubkey)
     (h_inv_residual_nonnegative : residual_nonnegative s)
     (h_inv_referral_pool_bounded : referral_pool_bounded s)
     (h_inv_sweep_nonnegative : sweep_nonnegative s)
-    (h : execute_composable_case_1Transition s signer chunk current_time = some s') :
+    (h : execute_composable_case_1Transition s signer face current_time = some s') :
     valid_u8 s'.policy_status ∧ valid_u8 s'.emergency_pause ∧ valid_u64 s'.max_amount_per_period ∧ valid_u64 s'.max_chunk_amount ∧ valid_u64 s'.period_length_seconds ∧ valid_u64 s'.current_period_start ∧ valid_u64 s'.current_period_total ∧ valid_u64 s'.pulled_amount ∧ valid_u64 s'.payment_amount ∧ valid_u16 s'.gateway_fee_bps ∧ valid_u16 s'.protocol_share_bps ∧ valid_u16 s'.scheduler_share_bps ∧ valid_u16 s'.referral_allocation_bps ∧ valid_u8 s'.is_referral_enabled ∧ valid_u8 s'.is_net_mode ∧ valid_u64 s'.total_fee ∧ valid_u64 s'.protocol_cut ∧ valid_u64 s'.scheduler_cut ∧ valid_u64 s'.referral_pool ∧ valid_u64 s'.gateway_residual ∧ valid_u64 s'.recipient_amount ∧ valid_u64 s'.total_from_user ∧ valid_u8 s'.release_due_date ∧ valid_u8 s'.release_requires_gateway ∧ valid_u8 s'.release_requires_owner ∧ valid_u8 s'.release_requires_recipient ∧ valid_u8 s'.caller_is_gateway ∧ valid_u8 s'.caller_is_owner ∧ valid_u8 s'.caller_is_recipient := by
   unfold execute_composable_case_1Transition at h; split at h
   · next hg =>

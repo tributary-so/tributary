@@ -71,7 +71,7 @@ impl<'info> TransferTokens<'info> {
         spec = "../../tributary.qedspec",
         handler = "transfer",
         hash = "85195375ee7ac9aa",
-        spec_hash = "f538239f9190a8bd"
+        spec_hash = "15eae839576aa237"
     )]
     pub fn handler(
         ctx: Context<'_, '_, 'info, 'info, TransferTokens<'info>>,
