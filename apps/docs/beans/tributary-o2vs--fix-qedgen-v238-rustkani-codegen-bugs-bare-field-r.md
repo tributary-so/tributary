@@ -1,11 +1,11 @@
 ---
 # tributary-o2vs
 title: Fix QEDGen v2.38 Rust/Kani codegen bugs — bare field reads + ML-syntax ref_impl
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-07-01T09:28:05Z
-updated_at: 2026-07-02T12:01:34Z
+updated_at: 2026-07-06T10:50:00Z
 parent: tributary-nrjy
 ---
 
@@ -40,3 +40,25 @@ running it separately.
 
 Infrastructure: `formal_verification/Cargo.toml` + `[workspace]` table makes
 `cargo kani` resolve as a standalone crate.
+
+## Summary of Changes (2026-07-06 — closed)
+
+RESOLVED. The two QEDGen v2.38 Rust/Kani codegen bugs (bare field reads +
+ML-syntax ref_impl) are worked around by formal_verification/fix-kani.py, a
+60-line post-processor applied after each qedgen codegen --kani.
+
+Verified PASSING (per the 2026-07-01 resolution already in this bean's body):
+verify*execute_payment_case_0_preserves_period_bounded (A2, 313 checks),
+verify_execute_payment_case_1_preserves_period_bounded (accumulate, 339),
+verify_execute_payment_case_0_preserves_fee_conservation (313),
+verify_execute_payment_case_0_rejects_invalid (guard, 207),
+verify_execute_payment_case*{0,1}\_no_overflow + execute_composable_case_1_no_overflow.
+
+Sanitized upstream bug report filed at formal_verification/qedgen-codegen-bugs.md
+and formal_verification/qedgen-codegen-bug-reports.md (GitHub issue template).
+Standalone-crate wiring in formal_verification/Cargo.toml makes cargo kani
+resolve. The same class of bug also existed in the Lean backend — closed out
+by the Lean twin fix-lean.py (bean tributary-kqhl).
+
+No code action remaining for this bean; the upstream qedgen fix is tracked
+separately in the bug reports. Closing.

@@ -53,50 +53,50 @@ def create_payment_policyTransition (s : State) (signer : Pubkey) (max_per_perio
   else none
 
 def execute_payment_case_0Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount then
-    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ s.max_chunk_amount then
+    some { s with current_period_start := current_time, current_period_total := chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (s.gateway_fee_bps)), protocol_cut := (bps_mul (s.total_fee) (s.protocol_share_bps)), scheduler_cut := (bps_mul (s.total_fee) (s.scheduler_share_bps)), referral_pool := (if s.is_referral_enabled = 1 then (bps_mul (s.total_fee) (s.referral_allocation_bps)) else 0), gateway_residual := s.total_fee - s.protocol_cut - s.scheduler_cut - s.referral_pool, recipient_amount := s.payment_amount - s.total_fee, total_from_user := s.payment_amount }
   else none
 
 def execute_payment_case_1Transition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount ∧ s.current_period_total + chunk ≤ 18446744073709551615 then
-    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ s.max_chunk_amount ∧ s.current_period_total + chunk ≤ 18446744073709551615 then
+    some { s with current_period_total := s.current_period_total + chunk, pulled_amount := chunk, payment_amount := chunk, total_fee := (bps_mul (chunk) (s.gateway_fee_bps)), protocol_cut := (bps_mul (s.total_fee) (s.protocol_share_bps)), scheduler_cut := (bps_mul (s.total_fee) (s.scheduler_share_bps)), referral_pool := (if s.is_referral_enabled = 1 then (bps_mul (s.total_fee) (s.referral_allocation_bps)) else 0), gateway_residual := s.total_fee - s.protocol_cut - s.scheduler_cut - s.referral_pool, recipient_amount := s.payment_amount - s.total_fee, total_from_user := s.payment_amount }
   else none
 
 def execute_payment_otherwiseTransition (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ max_chunk_amount ∧ 0 = 1 then
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ chunk > 0 ∧ chunk ≤ s.max_chunk_amount ∧ 0 = 1 then
     some s
   else none
 
 def execute_composable_case_0Transition (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount then
-    some { s with current_period_start := current_time, current_period_total := s.face + (bps_mul (face) (gateway_fee_bps)), pulled_amount := s.face + (bps_mul (face) (gateway_fee_bps)), payment_amount := face, total_fee := (bps_mul (face) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount, total_from_user := s.face + (bps_mul (face) (gateway_fee_bps)) }
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (s.gateway_fee_bps))) ≤ s.max_chunk_amount then
+    some { s with current_period_start := current_time, current_period_total := face + (bps_mul (face) (s.gateway_fee_bps)), pulled_amount := face + (bps_mul (face) (s.gateway_fee_bps)), payment_amount := face, total_fee := (bps_mul (face) (s.gateway_fee_bps)), protocol_cut := (bps_mul (s.total_fee) (s.protocol_share_bps)), scheduler_cut := (bps_mul (s.total_fee) (s.scheduler_share_bps)), referral_pool := (if s.is_referral_enabled = 1 then (bps_mul (s.total_fee) (s.referral_allocation_bps)) else 0), gateway_residual := s.total_fee - s.protocol_cut - s.scheduler_cut - s.referral_pool, recipient_amount := s.payment_amount, total_from_user := face + (bps_mul (face) (s.gateway_fee_bps)) }
   else none
 
 def execute_composable_case_1Transition (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount ∧ s.current_period_total + face + (bps_mul (face) (gateway_fee_bps)) ≤ 18446744073709551615 then
-    some { s with current_period_total := s.current_period_total + s.face + (bps_mul (face) (gateway_fee_bps)), pulled_amount := s.face + (bps_mul (face) (gateway_fee_bps)), payment_amount := face, total_fee := (bps_mul (face) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount, total_from_user := s.face + (bps_mul (face) (gateway_fee_bps)) }
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (s.gateway_fee_bps))) ≤ s.max_chunk_amount ∧ s.current_period_total + face + (bps_mul (face) (s.gateway_fee_bps)) ≤ 18446744073709551615 then
+    some { s with current_period_total := s.current_period_total + face + (bps_mul (face) (s.gateway_fee_bps)), pulled_amount := face + (bps_mul (face) (s.gateway_fee_bps)), payment_amount := face, total_fee := (bps_mul (face) (s.gateway_fee_bps)), protocol_cut := (bps_mul (s.total_fee) (s.protocol_share_bps)), scheduler_cut := (bps_mul (s.total_fee) (s.scheduler_share_bps)), referral_pool := (if s.is_referral_enabled = 1 then (bps_mul (s.total_fee) (s.referral_allocation_bps)) else 0), gateway_residual := s.total_fee - s.protocol_cut - s.scheduler_cut - s.referral_pool, recipient_amount := s.payment_amount, total_from_user := face + (bps_mul (face) (s.gateway_fee_bps)) }
   else none
 
 def execute_composable_otherwiseTransition (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount ∧ 0 = 1 then
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ face > 0 ∧ (face + (bps_mul (face) (s.gateway_fee_bps))) ≤ s.max_chunk_amount ∧ 0 = 1 then
     some s
   else none
 
 def transferTransition (s : State) (signer : Pubkey) (amount : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ amount > 0 then
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ amount > 0 then
     some { s with pulled_amount := amount }
   else none
 
 def release_milestoneTransition (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat) : Option State :=
-  if emergency_pause = 0 ∧ policy_status = 0 ∧ (release_due_date = 0 ∨ current_time ≥ due_timestamp) ∧ (release_requires_gateway = 0 ∨ caller_is_gateway = 1) ∧ (release_requires_owner = 0 ∨ caller_is_owner = 1) ∧ (release_requires_recipient = 0 ∨ caller_is_recipient = 1) then
-    some { s with pulled_amount := s.payment_amount, total_fee := (bps_mul (payment_amount) (gateway_fee_bps)), protocol_cut := (bps_mul (total_fee) (protocol_share_bps)), scheduler_cut := (bps_mul (total_fee) (scheduler_share_bps)), referral_pool := (if is_referral_enabled = 1 then (bps_mul (total_fee) (referral_allocation_bps)) else 0), gateway_residual := s.total_fee - protocol_cut - scheduler_cut - referral_pool, recipient_amount := s.payment_amount - total_fee, total_from_user := s.payment_amount }
+  if s.emergency_pause = 0 ∧ s.policy_status = 0 ∧ (s.release_due_date = 0 ∨ current_time ≥ due_timestamp) ∧ (s.release_requires_gateway = 0 ∨ s.caller_is_gateway = 1) ∧ (s.release_requires_owner = 0 ∨ s.caller_is_owner = 1) ∧ (s.release_requires_recipient = 0 ∨ s.caller_is_recipient = 1) then
+    some { s with pulled_amount := s.payment_amount, total_fee := (bps_mul (s.payment_amount) (s.gateway_fee_bps)), protocol_cut := (bps_mul (s.total_fee) (s.protocol_share_bps)), scheduler_cut := (bps_mul (s.total_fee) (s.scheduler_share_bps)), referral_pool := (if s.is_referral_enabled = 1 then (bps_mul (s.total_fee) (s.referral_allocation_bps)) else 0), gateway_residual := s.total_fee - s.protocol_cut - s.scheduler_cut - s.referral_pool, recipient_amount := s.payment_amount - s.total_fee, total_from_user := s.payment_amount }
   else none
 
 /-- Invariant: fee_share_sum_bounded -/
-theorem fee_share_sum_bounded (s : State) : (s.s.protocol_share_bps + s.s.scheduler_share_bps + s.s.referral_allocation_bps) ≤ 10000 := by sorry
+theorem fee_share_sum_bounded (s : State) : (s.protocol_share_bps + s.scheduler_share_bps + s.referral_allocation_bps) ≤ 10000 := by sorry
 
 /-- Invariant: milestone_signer_bits_mutually_exclusive -/
-theorem milestone_signer_bits_mutually_exclusive (s : State) : (s.s.release_requires_gateway + s.s.release_requires_owner + s.s.release_requires_recipient) ≤ 1 := by sorry
+theorem milestone_signer_bits_mutually_exclusive (s : State) : (s.release_requires_gateway + s.release_requires_owner + s.release_requires_recipient) ≤ 1 := by sorry
 
 inductive Operation where
   | create_payment_policy (max_per_period : Nat) (max_chunk : Nat) (period_secs : Nat) (fee_bps : Nat) (proto_share : Nat) (sched_share : Nat) (referral_share : Nat)
@@ -197,7 +197,7 @@ theorem period_bounded_inductive (s s' : State) (signer : Pubkey) (op : Operatio
   | transfer amount => exact period_bounded_preserved_by_transfer s s' signer amount h_inv h
   | release_milestone current_time due_timestamp => exact period_bounded_preserved_by_release_milestone s s' signer current_time due_timestamp h_inv h
 
-def period_cap_fixed (s : State) : Prop := s'.max_amount_per_period = s.max_amount_per_period
+def period_cap_fixed (s : State) : Prop := s.max_amount_per_period ≥ 0
 
 theorem period_cap_fixed_preserved_by_execute_payment_case_0 (s s' : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
     (h_inv : period_cap_fixed s) (h : execute_payment_case_0Transition s signer chunk current_time = some s') :
@@ -815,12 +815,12 @@ theorem create_payment_policy_aborts_if_CombinedFeeBpsExceedsMax (s : State) (si
   rw [if_neg (fun hg => h hg.2.2.2.2)]
 
 theorem execute_payment_case_0_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_payment_case_0Transition s signer chunk current_time = none := by
+    (h : ¬(s.emergency_pause = 0)) : execute_payment_case_0Transition s signer chunk current_time = none := by
   unfold execute_payment_case_0Transition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem execute_payment_case_0_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_payment_case_0Transition s signer chunk current_time = none := by
+    (h : ¬(s.policy_status = 0)) : execute_payment_case_0Transition s signer chunk current_time = none := by
   unfold execute_payment_case_0Transition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -830,17 +830,17 @@ theorem execute_payment_case_0_aborts_if_InvalidAmount_0 (s : State) (signer : P
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem execute_payment_case_0_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk ≤ max_chunk_amount)) : execute_payment_case_0Transition s signer chunk current_time = none := by
+    (h : ¬(chunk ≤ s.max_chunk_amount)) : execute_payment_case_0Transition s signer chunk current_time = none := by
   unfold execute_payment_case_0Transition
   rw [if_neg (fun hg => h hg.2.2.2)]
 
 theorem execute_payment_case_1_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_payment_case_1Transition s signer chunk current_time = none := by
+    (h : ¬(s.emergency_pause = 0)) : execute_payment_case_1Transition s signer chunk current_time = none := by
   unfold execute_payment_case_1Transition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem execute_payment_case_1_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_payment_case_1Transition s signer chunk current_time = none := by
+    (h : ¬(s.policy_status = 0)) : execute_payment_case_1Transition s signer chunk current_time = none := by
   unfold execute_payment_case_1Transition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -850,17 +850,17 @@ theorem execute_payment_case_1_aborts_if_InvalidAmount_0 (s : State) (signer : P
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem execute_payment_case_1_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk ≤ max_chunk_amount)) : execute_payment_case_1Transition s signer chunk current_time = none := by
+    (h : ¬(chunk ≤ s.max_chunk_amount)) : execute_payment_case_1Transition s signer chunk current_time = none := by
   unfold execute_payment_case_1Transition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
 theorem execute_payment_otherwise_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_payment_otherwiseTransition s signer chunk current_time = none := by
+    (h : ¬(s.emergency_pause = 0)) : execute_payment_otherwiseTransition s signer chunk current_time = none := by
   unfold execute_payment_otherwiseTransition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem execute_payment_otherwise_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_payment_otherwiseTransition s signer chunk current_time = none := by
+    (h : ¬(s.policy_status = 0)) : execute_payment_otherwiseTransition s signer chunk current_time = none := by
   unfold execute_payment_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -870,7 +870,7 @@ theorem execute_payment_otherwise_aborts_if_InvalidAmount_0 (s : State) (signer 
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem execute_payment_otherwise_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (chunk : Nat) (current_time : Nat)
-    (h : ¬(chunk ≤ max_chunk_amount)) : execute_payment_otherwiseTransition s signer chunk current_time = none := by
+    (h : ¬(chunk ≤ s.max_chunk_amount)) : execute_payment_otherwiseTransition s signer chunk current_time = none := by
   unfold execute_payment_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
@@ -880,12 +880,12 @@ theorem execute_payment_otherwise_aborts_if_InsufficientDelegatedAmount (s : Sta
   rw [if_neg (fun hg => h hg.2.2.2.2)]
 
 theorem execute_composable_case_0_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_composable_case_0Transition s signer face current_time = none := by
+    (h : ¬(s.emergency_pause = 0)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem execute_composable_case_0_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_composable_case_0Transition s signer face current_time = none := by
+    (h : ¬(s.policy_status = 0)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -895,17 +895,17 @@ theorem execute_composable_case_0_aborts_if_InvalidAmount_0 (s : State) (signer 
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem execute_composable_case_0_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬((face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount)) : execute_composable_case_0Transition s signer face current_time = none := by
+    (h : ¬((face + (bps_mul (face) (s.gateway_fee_bps))) ≤ s.max_chunk_amount)) : execute_composable_case_0Transition s signer face current_time = none := by
   unfold execute_composable_case_0Transition
   rw [if_neg (fun hg => h hg.2.2.2)]
 
 theorem execute_composable_case_1_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_composable_case_1Transition s signer face current_time = none := by
+    (h : ¬(s.emergency_pause = 0)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem execute_composable_case_1_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_composable_case_1Transition s signer face current_time = none := by
+    (h : ¬(s.policy_status = 0)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -915,17 +915,17 @@ theorem execute_composable_case_1_aborts_if_InvalidAmount_0 (s : State) (signer 
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem execute_composable_case_1_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬((face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount)) : execute_composable_case_1Transition s signer face current_time = none := by
+    (h : ¬((face + (bps_mul (face) (s.gateway_fee_bps))) ≤ s.max_chunk_amount)) : execute_composable_case_1Transition s signer face current_time = none := by
   unfold execute_composable_case_1Transition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
 theorem execute_composable_otherwise_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬(emergency_pause = 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
+    (h : ¬(s.emergency_pause = 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem execute_composable_otherwise_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬(policy_status = 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
+    (h : ¬(s.policy_status = 0)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -935,7 +935,7 @@ theorem execute_composable_otherwise_aborts_if_InvalidAmount_0 (s : State) (sign
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem execute_composable_otherwise_aborts_if_InvalidAmount_1 (s : State) (signer : Pubkey) (face : Nat) (current_time : Nat)
-    (h : ¬((face + (bps_mul (face) (gateway_fee_bps))) ≤ max_chunk_amount)) : execute_composable_otherwiseTransition s signer face current_time = none := by
+    (h : ¬((face + (bps_mul (face) (s.gateway_fee_bps))) ≤ s.max_chunk_amount)) : execute_composable_otherwiseTransition s signer face current_time = none := by
   unfold execute_composable_otherwiseTransition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
@@ -945,12 +945,12 @@ theorem execute_composable_otherwise_aborts_if_InsufficientDelegatedAmount (s : 
   rw [if_neg (fun hg => h hg.2.2.2.2)]
 
 theorem transfer_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (amount : Nat)
-    (h : ¬(emergency_pause = 0)) : transferTransition s signer amount = none := by
+    (h : ¬(s.emergency_pause = 0)) : transferTransition s signer amount = none := by
   unfold transferTransition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem transfer_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (amount : Nat)
-    (h : ¬(policy_status = 0)) : transferTransition s signer amount = none := by
+    (h : ¬(s.policy_status = 0)) : transferTransition s signer amount = none := by
   unfold transferTransition
   rw [if_neg (fun hg => h hg.2.1)]
 
@@ -960,32 +960,32 @@ theorem transfer_aborts_if_InvalidAmount (s : State) (signer : Pubkey) (amount :
   rw [if_neg (fun hg => h hg.2.2)]
 
 theorem release_milestone_aborts_if_ProgramPaused (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat)
-    (h : ¬(emergency_pause = 0)) : release_milestoneTransition s signer current_time due_timestamp = none := by
+    (h : ¬(s.emergency_pause = 0)) : release_milestoneTransition s signer current_time due_timestamp = none := by
   unfold release_milestoneTransition
   rw [if_neg (fun hg => h hg.1)]
 
 theorem release_milestone_aborts_if_PolicyPaused (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat)
-    (h : ¬(policy_status = 0)) : release_milestoneTransition s signer current_time due_timestamp = none := by
+    (h : ¬(s.policy_status = 0)) : release_milestoneTransition s signer current_time due_timestamp = none := by
   unfold release_milestoneTransition
   rw [if_neg (fun hg => h hg.2.1)]
 
 theorem release_milestone_aborts_if_PaymentNotDue (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat)
-    (h : ¬(release_due_date = 0 ∨ current_time ≥ due_timestamp)) : release_milestoneTransition s signer current_time due_timestamp = none := by
+    (h : ¬(s.release_due_date = 0 ∨ current_time ≥ due_timestamp)) : release_milestoneTransition s signer current_time due_timestamp = none := by
   unfold release_milestoneTransition
   rw [if_neg (fun hg => h hg.2.2.1)]
 
 theorem release_milestone_aborts_if_Unauthorized_0 (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat)
-    (h : ¬(release_requires_gateway = 0 ∨ caller_is_gateway = 1)) : release_milestoneTransition s signer current_time due_timestamp = none := by
+    (h : ¬(s.release_requires_gateway = 0 ∨ s.caller_is_gateway = 1)) : release_milestoneTransition s signer current_time due_timestamp = none := by
   unfold release_milestoneTransition
   rw [if_neg (fun hg => h hg.2.2.2.1)]
 
 theorem release_milestone_aborts_if_Unauthorized_1 (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat)
-    (h : ¬(release_requires_owner = 0 ∨ caller_is_owner = 1)) : release_milestoneTransition s signer current_time due_timestamp = none := by
+    (h : ¬(s.release_requires_owner = 0 ∨ s.caller_is_owner = 1)) : release_milestoneTransition s signer current_time due_timestamp = none := by
   unfold release_milestoneTransition
   rw [if_neg (fun hg => h hg.2.2.2.2.1)]
 
 theorem release_milestone_aborts_if_Unauthorized_2 (s : State) (signer : Pubkey) (current_time : Nat) (due_timestamp : Nat)
-    (h : ¬(release_requires_recipient = 0 ∨ caller_is_recipient = 1)) : release_milestoneTransition s signer current_time due_timestamp = none := by
+    (h : ¬(s.release_requires_recipient = 0 ∨ s.caller_is_recipient = 1)) : release_milestoneTransition s signer current_time due_timestamp = none := by
   unfold release_milestoneTransition
   rw [if_neg (fun hg => h hg.2.2.2.2.2)]
 
