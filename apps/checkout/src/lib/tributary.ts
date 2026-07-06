@@ -257,7 +257,7 @@ export async function createSubscription(
   };
 }
 
-export interface CreateOneTimePaymentParams {
+export interface CreateDirectPaymentParams {
   wallet: WalletContextState;
   recipientWallet: PublicKey;
   amount: number;
@@ -266,7 +266,10 @@ export interface CreateOneTimePaymentParams {
   tokenMint?: string;
 }
 
-export async function issueOneTimeToken(
+/** @deprecated Alias of {@link CreateDirectPaymentParams}. Use the new name. */
+export type CreateOneTimePaymentParams = CreateDirectPaymentParams;
+
+export async function issueDirectPaymentToken(
   walletPublicKey: PublicKey,
   transactionSignature: string,
   tokenMint?: string,
@@ -515,8 +518,16 @@ export async function createUpToPolicy(
   );
 }
 
-export async function createOneTimePayment(
-  params: CreateOneTimePaymentParams
+/**
+ * @deprecated Alias of {@link issueDirectPaymentToken}. Kept for one release
+ * to avoid breaking 3rd-party forks. The hosted-checkout "one-time" flow uses
+ * the standalone `transfer` instruction (ADR-0004) — distinct from the
+ * OneTime PolicyType (ADR-0019).
+ */
+export const issueOneTimeToken = issueDirectPaymentToken;
+
+export async function createDirectPayment(
+  params: CreateDirectPaymentParams
 ): Promise<TransactionSignature> {
   const { wallet, recipientWallet, amount, tokenMint: tokenMintStr } = params;
   const tributary = getTributary(wallet);
@@ -568,3 +579,11 @@ export async function createOneTimePayment(
 
   return txid;
 }
+
+/**
+ * @deprecated Alias of {@link createDirectPayment}. Kept for one release
+ * to avoid breaking 3rd-party forks. The hosted-checkout "one-time" flow uses
+ * the standalone `transfer` instruction (ADR-0004) — distinct from the
+ * OneTime PolicyType (ADR-0019).
+ */
+export const createOneTimePayment = createDirectPayment;

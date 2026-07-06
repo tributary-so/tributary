@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { RefreshCw, Target, Zap, Check, X, Loader2 } from 'lucide-react'
+import { RefreshCw, Target, Zap, Check, X, Loader2, ArrowUpCircle } from 'lucide-react'
 import { Select, SelectItem, Input, DatePicker } from '@heroui/react'
 import { Button } from '@heroui/react'
 import { PublicKey, TransactionInstruction } from '@solana/web3.js'
@@ -15,8 +15,11 @@ import {
   decodeMemo,
   getPaymentFrequency,
 } from '@tributary-so/sdk'
+import { issuePolicyToken } from '@tributary-so/sdk-react'
 import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
+import { API_BASE_URL } from '@/constants'
+import { buildPolicySuccessRedirect } from '@/lib/redirect'
 import { today, getLocalTimeZone, fromDate } from '@internationalized/date'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,13 +45,16 @@ function getNetworkFromRpcEndpoint(rpcEndpoint: string): Network {
 }
 
 export interface PaymentPolicyFormData {
-  policyType: 'subscription' | 'milestone' | 'payasyougo'
+  policyType: 'subscription' | 'milestone' | 'payasyougo' | 'onetime' | 'upto'
   tokenMint: string
   recipient: string
   gateway: string
   memo: string
   approvalAmount: string
   referralCode: string
+  // Optional post-create redirect (JWT issued + ?token= appended)
+  successUrl: string
+  cancelUrl: string
 
   amount: string
   frequency: PaymentFrequencyString
@@ -63,6 +69,12 @@ export interface PaymentPolicyFormData {
   maxAmountPerPeriod: string
   maxChunkAmount: string
   periodLengthSeconds: string
+  // OneTime (ADR-0019)
+  oneTimeDueDate: Date | null
+  oneTimeExpiryDate: Date | null
+  // UpTo (ADR-0020)
+  upToValidAfter: Date | null
+  upToDeadline: Date | null
 }
 
 export interface PaymentPolicyFormProps {
@@ -86,6 +98,16 @@ const POLICY_TYPE_STYLES = {
     Icon: Zap,
     border: 'border-l-payasyougo-600',
     bg: 'bg-payasyougo-50',
+  },
+  onetime: {
+    Icon: Check,
+    border: 'border-l-onetime-600',
+    bg: 'bg-onetime-50',
+  },
+  upto: {
+    Icon: ArrowUpCircle,
+    border: 'border-l-upto-600',
+    bg: 'bg-upto-50',
   },
 } as const
 
@@ -350,6 +372,53 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
           )
           break
         }
+        case 'onetime': {
+          const amountRaw = parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
+          if (amountRaw <= 0) throw new Error('Amount must be greater than 0')
+          const dueDate =
+            formData.oneTimeDueDate != null ? new anchor.BN(Math.floor(formData.oneTimeDueDate.getTime() / 1000)) : null
+          const expiryDate =
+            formData.oneTimeExpiryDate != null
+              ? new anchor.BN(Math.floor(formData.oneTimeExpiryDate.getTime() / 1000))
+              : null
+          instructions = await sdk.createOneTimePayment(
+            tokenMint,
+            recipient,
+            gateway,
+            new anchor.BN(amountRaw),
+            memo,
+            dueDate,
+            expiryDate,
+            approvalAmount,
+            formData.referralCode || undefined,
+          )
+          break
+        }
+        case 'upto': {
+          const maxAmountRaw = parseFloat(formData.amount) * Math.pow(10, getTokenPrecision(formData.tokenMint))
+          if (maxAmountRaw <= 0) throw new Error('Max amount must be greater than 0')
+          if (!formData.upToDeadline) throw new Error('Deadline is required for Up-to policies')
+          const nowSec = Math.floor(Date.now() / 1000)
+          const deadlineSec = Math.floor(formData.upToDeadline.getTime() / 1000)
+          if (deadlineSec <= nowSec) throw new Error('Deadline must be in the future')
+          const validAfter =
+            formData.upToValidAfter != null ? new anchor.BN(Math.floor(formData.upToValidAfter.getTime() / 1000)) : null
+          if (validAfter && validAfter.gte(new anchor.BN(deadlineSec))) {
+            throw new Error('Deadline must be after valid-after')
+          }
+          instructions = await sdk.createUpToAuthorization(
+            tokenMint,
+            recipient,
+            gateway,
+            new anchor.BN(maxAmountRaw),
+            new anchor.BN(deadlineSec),
+            memo,
+            validAfter,
+            approvalAmount,
+            formData.referralCode || undefined,
+          )
+          break
+        }
         default:
           throw new Error('Invalid policy type selected')
       }
@@ -357,7 +426,33 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
       const txid = await createAndSendTransaction(instructions, wallet, connection)
       console.log(txid)
       addToast({ title: 'Success', description: 'Payment policy created successfully!', color: 'success' })
-      setTimeout(() => navigate('/'), 3000)
+
+      // Issue JWT and redirect (mirrors apps/checkout/src/components/checkout-form.tsx:82-94).
+      // Best-effort: a JWT failure does NOT roll back the on-chain create.
+      try {
+        const { token } = await issuePolicyToken({
+          walletPublicKey: wallet.publicKey,
+          recipient,
+          tokenMint,
+          apiBaseUrl: API_BASE_URL,
+          trackingId: formData.memo || undefined,
+        })
+        const redirect = buildPolicySuccessRedirect(formData.successUrl, token)
+        if (redirect.kind === 'external') {
+          window.location.href = redirect.href
+          return
+        }
+        navigate(redirect.path)
+        return
+      } catch (jwtError) {
+        console.warn('Failed to issue JWT after policy create:', jwtError)
+        if (formData.successUrl) {
+          // External success URL — caller expects a token; surface the error.
+          throw jwtError
+        }
+        // No external URL — fall back to home after a short delay.
+        setTimeout(() => navigate('/'), 3000)
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       addToast({ title: 'Error', description: 'Failed to create payment policy: ' + errorMessage, color: 'danger' })
@@ -383,6 +478,10 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
         {formData.policyType === 'subscription' && 'Recurring payments at fixed intervals'}
         {formData.policyType === 'milestone' && 'Stage-based payments with due dates'}
         {formData.policyType === 'payasyougo' && 'Usage-based payments with spending limits'}
+        {formData.policyType === 'onetime' &&
+          'Single-shot policy with full gateway lifecycle (ADR-0019). Distinct from direct transfer.'}
+        {formData.policyType === 'upto' &&
+          'Single-use variable-amount authorization, caller-settled (x402 upto, ADR-0020).'}
       </p>
 
       <div className="max-w-3xl">
@@ -398,7 +497,7 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
               id="policyType"
               selectedKeys={formData.policyType ? [formData.policyType] : []}
               onSelectionChange={(keys) => {
-                const selectedKey = Array.from(keys)[0] as 'subscription' | 'milestone' | 'payasyougo'
+                const selectedKey = Array.from(keys)[0] as PaymentPolicyFormData['policyType']
                 onFormDataChange({ ...formData, policyType: selectedKey })
               }}
               placeholder="Select policy type"
@@ -407,6 +506,8 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
               <SelectItem key="subscription">Subscription</SelectItem>
               <SelectItem key="milestone">Milestone</SelectItem>
               <SelectItem key="payasyougo">Pay-as-you-go</SelectItem>
+              <SelectItem key="onetime">One-time policy</SelectItem>
+              <SelectItem key="upto">Up-to authorization</SelectItem>
             </Select>
           </div>
 
@@ -813,6 +914,216 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
           </div>
         )}
 
+        {formData.policyType === 'onetime' && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <label
+                htmlFor="amount"
+                className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+              >
+                Amount
+              </label>
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleInputChange}
+                placeholder="e.g., 10"
+                required
+                step="0.00000001"
+                min="0.00000001"
+                className="w-full"
+                endContent={
+                  formData.tokenMint &&
+                  getTokenSymbol(formData.tokenMint) && (
+                    <div className="pointer-events-none flex items-center">
+                      <span className="text-muted-foreground text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                    </div>
+                  )
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="oneTimeDueDate"
+                  className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+                >
+                  Due Date (optional)
+                </label>
+                <DatePicker
+                  label="Due Date"
+                  granularity="minute"
+                  value={
+                    formData.oneTimeDueDate
+                      ? (dateToDateValue(formData.oneTimeDueDate) as unknown as DateValue)
+                      : undefined
+                  }
+                  onChange={(value) =>
+                    onFormDataChange({
+                      ...formData,
+                      oneTimeDueDate: value ? dateValueToDate(value) : null,
+                    })
+                  }
+                  minValue={today(getLocalTimeZone()) as unknown as DateValue}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Blank = immediate execution.</p>
+              </div>
+              <div>
+                <label
+                  htmlFor="oneTimeExpiryDate"
+                  className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+                >
+                  Expiry Date (optional)
+                </label>
+                <DatePicker
+                  label="Expiry Date"
+                  granularity="minute"
+                  value={
+                    formData.oneTimeExpiryDate
+                      ? (dateToDateValue(formData.oneTimeExpiryDate) as unknown as DateValue)
+                      : undefined
+                  }
+                  onChange={(value) =>
+                    onFormDataChange({
+                      ...formData,
+                      oneTimeExpiryDate: value ? dateValueToDate(value) : null,
+                    })
+                  }
+                  minValue={today(getLocalTimeZone()) as unknown as DateValue}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Blank = never expires.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {formData.policyType === 'upto' && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <label
+                htmlFor="amount"
+                className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+              >
+                Max Amount (ceiling)
+              </label>
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleInputChange}
+                placeholder="e.g., 50"
+                required
+                step="0.00000001"
+                min="0.00000001"
+                className="w-full"
+                endContent={
+                  formData.tokenMint &&
+                  getTokenSymbol(formData.tokenMint) && (
+                    <div className="pointer-events-none flex items-center">
+                      <span className="text-muted-foreground text-small">{getTokenSymbol(formData.tokenMint)}</span>
+                    </div>
+                  )
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Resource server settles the actual used amount, bounded by this ceiling.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="upToValidAfter"
+                  className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+                >
+                  Valid After (optional)
+                </label>
+                <DatePicker
+                  label="Valid After"
+                  granularity="minute"
+                  value={
+                    formData.upToValidAfter
+                      ? (dateToDateValue(formData.upToValidAfter) as unknown as DateValue)
+                      : undefined
+                  }
+                  onChange={(value) =>
+                    onFormDataChange({
+                      ...formData,
+                      upToValidAfter: value ? dateValueToDate(value) : null,
+                    })
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">Blank = immediate.</p>
+              </div>
+              <div>
+                <label
+                  htmlFor="upToDeadline"
+                  className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+                >
+                  Deadline (required)
+                </label>
+                <DatePicker
+                  label="Deadline"
+                  granularity="minute"
+                  value={
+                    formData.upToDeadline ? (dateToDateValue(formData.upToDeadline) as unknown as DateValue) : undefined
+                  }
+                  onChange={(value) =>
+                    onFormDataChange({
+                      ...formData,
+                      upToDeadline: value ? dateValueToDate(value) : null,
+                    })
+                  }
+                  minValue={today(getLocalTimeZone()) as unknown as DateValue}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Hard expiry. Must be in the future.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="successUrl"
+              className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+            >
+              Success URL (optional)
+            </label>
+            <Input
+              id="successUrl"
+              name="successUrl"
+              type="url"
+              value={formData.successUrl}
+              onChange={handleInputChange}
+              placeholder="https://yourapp.com/success"
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              After create + JWT issue, redirect here with ?token= set.
+            </p>
+          </div>
+          <div>
+            <label
+              htmlFor="cancelUrl"
+              className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
+            >
+              Cancel URL (optional)
+            </label>
+            <Input
+              id="cancelUrl"
+              name="cancelUrl"
+              type="url"
+              value={formData.cancelUrl}
+              onChange={handleInputChange}
+              placeholder="https://yourapp.com/cancel"
+              className="w-full"
+            />
+          </div>
+        </div>
+
         <div className="mt-4">
           <label
             htmlFor="referralCode"
@@ -880,7 +1191,9 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
             (formData.policyType === 'subscription' && !formData.amount) ||
             (formData.policyType === 'milestone' && hasMilestoneErrors()) ||
             (formData.policyType === 'payasyougo' &&
-              (!formData.maxAmountPerPeriod || !formData.maxChunkAmount || !formData.periodLengthSeconds))
+              (!formData.maxAmountPerPeriod || !formData.maxChunkAmount || !formData.periodLengthSeconds)) ||
+            (formData.policyType === 'onetime' && !formData.amount) ||
+            (formData.policyType === 'upto' && (!formData.amount || !formData.upToDeadline))
           }
           className="w-full mt-6 text-sm uppercase text-primary-foreground bg-primary hover:bg-primary/90"
           color="primary"

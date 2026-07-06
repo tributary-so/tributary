@@ -8,6 +8,7 @@ Hosted checkout page for Tributary recurring payments. Create shareable checkout
 - **Subscription Support**: Recurring payments with flexible scheduling (weekly, monthly, yearly)
 - **One-Time Payments**: Simple pay-per-use checkout flows (direct SPL transfer)
 - **Policy Variants**: Milestone, pay-as-you-go, one-time policy, and UpTo authorization forms under `/policy/`
+- **Direct Payments**: Simple pay-per-use checkout flows (immediate SPL transfer, no policy)
 - **Non-Custodial**: Funds stay in user wallets with secure delegation-based automation
 - **Multi-Token Support**: Configurable token mint (defaults to USDC on Solana)
 - **Custom Redirects**: Success and cancel URLs for post-payment flows
@@ -378,6 +379,20 @@ import { getTokenSymbol } from "@tributary-so/sdk";
 
 ## Payment Types Supported
 
+### Direct payment vs OneTime policy
+
+Tributary distinguishes two patterns that both move tokens once:
+
+| Pattern                       | Mechanism                                    | Creates policy? | Pausable / deletable? | Use when                                                             |
+| ----------------------------- | -------------------------------------------- | --------------- | --------------------- | -------------------------------------------------------------------- |
+| **Direct payment** (this app) | Standalone `transfer` instruction (ADR-0004) | No              | No                    | Hosted checkout: pay once, immediate                                 |
+| **OneTime policy** (ADR-0019) | `PaymentPolicy` with `PolicyType::OneTime`   | Yes             | Yes                   | Scheduled single-shot pull, full gateway lifecycle, composable hooks |
+
+This app's `/pay/{blob}` route implements the **direct payment** path — funds
+transfer immediately via SPL `transfer`, no policy is created, no gateway fees
+apply. For policy-based single-shot flows use the `OneTime PolicyType` via
+the SDK (`createOneTimePayment`) or the `apps/showcase-payment-policies` app.
+
 ### 1. Subscriptions
 
 Recurring payments with automatic execution:
@@ -406,7 +421,9 @@ Recurring payments with automatic execution:
 
 ### 2. One-Time Payments
 
-Single, non-recurring payments:
+Single, non-recurring payments (hosted-checkout "direct payment" path —
+distinct from the **OneTime PolicyType** ADR-0019; see
+[Direct payment vs OneTime policy](#direct-payment-vs-onetime-policy) below):
 
 - **Amount**: Fixed payment amount
 - **Tracking ID**: Optional identifier for your records

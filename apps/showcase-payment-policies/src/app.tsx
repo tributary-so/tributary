@@ -5,6 +5,7 @@ import { AppHeader } from '@/components/app-header'
 import { AppFooter } from '@/components/app-footer'
 
 const CreatePolicy = lazy(() => import('@/components/create-policy'))
+const Success = lazy(() => import('@/pages/Success'))
 
 function LoadingFallback() {
   return (
@@ -23,6 +24,7 @@ export function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route index element={<CreatePolicy />} />
+              <Route path="/success" element={<Success />} />
             </Routes>
           </Suspense>
         </main>

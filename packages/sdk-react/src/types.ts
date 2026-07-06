@@ -94,3 +94,60 @@ export interface UseCreateSubscriptionReturn {
   loading: boolean;
   error: string | null;
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// OneTime (ADR-0019) — single-shot fixed-amount policy
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface CreateOneTimeParams {
+  amount: BN;
+  token: PublicKey;
+  recipient: PublicKey;
+  gateway: PublicKey;
+  memo?: string;
+  /** Earliest execution timestamp (seconds). Omit / null / <=0 = immediate. */
+  dueDate?: BN | null;
+  /** Hard expiry (seconds). Omit / null = never expires. */
+  expiryDate?: BN | null;
+  approvalAmount?: BN;
+}
+
+export interface CreateOneTimeResult {
+  txId: string;
+  instructions: any[];
+}
+
+export interface UseCreateOneTimeReturn {
+  createOneTime: (params: CreateOneTimeParams) => Promise<CreateOneTimeResult>;
+  loading: boolean;
+  error: string | null;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// UpTo (ADR-0020) — single-use variable-amount authorization
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface CreateUpToParams {
+  /** Ceiling on the settlement amount (smallest token units). */
+  maxAmount: BN;
+  token: PublicKey;
+  recipient: PublicKey;
+  gateway: PublicKey;
+  /** Mandatory hard expiry (seconds). MUST be > 0 and > validAfter. */
+  deadline: BN;
+  /** Earliest settlement (seconds). Omit / null / <=0 = immediate. */
+  validAfter?: BN | null;
+  memo?: string;
+  approvalAmount?: BN;
+}
+
+export interface CreateUpToResult {
+  txId: string;
+  instructions: any[];
+}
+
+export interface UseCreateUpToReturn {
+  createUpTo: (params: CreateUpToParams) => Promise<CreateUpToResult>;
+  loading: boolean;
+  error: string | null;
+}

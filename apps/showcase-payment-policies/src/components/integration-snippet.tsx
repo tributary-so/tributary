@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { SubscriptionButton, PaymentInterval, MilestoneButton, PayAsYouGoButton } from '@tributary-so/sdk-react'
+import {
+  SubscriptionButton,
+  PaymentInterval,
+  MilestoneButton,
+  PayAsYouGoButton,
+  OneTimeButton,
+  UpToButton,
+} from '@tributary-so/sdk-react'
 import { Copy, Check, Trash2 } from '@/icons'
 import type { PaymentPolicyFormData } from './policy-inputs'
 import { getTokenPrecisionAtom } from '@/lib/token-store'
@@ -285,6 +292,55 @@ import { BN } from '@coral-xyz/anchor'
   onError={handleError}
 />`
 
+      case 'onetime': {
+        const amount =
+          parseFloat(validated.formData.amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
+        const dueSec = validated.formData.oneTimeDueDate
+          ? Math.floor(validated.formData.oneTimeDueDate.getTime() / 1000)
+          : null
+        const expSec = validated.formData.oneTimeExpiryDate
+          ? Math.floor(validated.formData.oneTimeExpiryDate.getTime() / 1000)
+          : null
+        return `import { OneTimeButton } from '@tributary-so/sdk-react'
+import { PublicKey } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
+
+<OneTimeButton
+  amount={new BN(${amount})}
+  token={new PublicKey('${validated.tokenMint}')}
+  recipient={new PublicKey('${validated.recipient}')}
+  gateway={new PublicKey('${validated.gateway}')}${dueSec ? `\n  dueDate={new BN(${dueSec})}` : ''}${
+          expSec ? `\n  expiryDate={new BN(${expSec})}` : ''
+        }
+  memo="${validated.memo}"
+  label="Create One-time policy"
+  className="bg-onetime-600 hover:bg-onetime-700 text-white"
+  onSuccess={handleSuccess}
+  onError={handleError}
+/>`
+      }
+
+      case 'upto': {
+        const maxAmount =
+          parseFloat(validated.formData.amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
+        const deadlineSec = validated.formData.upToDeadline
+          ? Math.floor(validated.formData.upToDeadline.getTime() / 1000)
+          : Math.floor(Date.now() / 1000) + 3600
+        const validAfterSec = validated.formData.upToValidAfter
+          ? Math.floor(validated.formData.upToValidAfter.getTime() / 1000)
+          : null
+        return `import { UpToButton } from '@tributary-so/sdk-react'
+import { PublicKey } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
+
+<UpToButton
+  maxAmount={new BN(${maxAmount})}
+  deadline={new BN(${deadlineSec})}${validAfterSec ? `\n  validAfter={new BN(${validAfterSec})}` : ''}
+  token={new PublicKey('${validated.tokenMint}')}
+  recipient={new PublicKey('${validated.recipient}')}
+  gateway={new PublicKey('${validated.gateway}')}`
+      }
+
       default:
         return '// Invalid policy type'
     }
@@ -401,6 +457,47 @@ import { BN } from '@coral-xyz/anchor'
                 size="md"
               />
             )}
+            {connected && validated.formData.policyType === 'onetime' && (
+              <OneTimeButton
+                amount={
+                  new BN(
+                    parseFloat(validated.formData.amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint)),
+                  )
+                }
+                token={new PublicKey(validated.tokenMint)}
+                recipient={new PublicKey(validated.recipient)}
+                gateway={new PublicKey(validated.gateway)}
+                memo={validated.memo}
+                label="➤ Create One-time policy"
+                className="bg-onetime-600 hover:bg-onetime-700 text-white"
+                radius="md"
+                size="md"
+              />
+            )}
+            {connected &&
+              validated.formData.policyType === 'upto' &&
+              (() => {
+                const maxAmount = new BN(
+                  parseFloat(validated.formData.amount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint)),
+                )
+                const deadlineSec = validated.formData.upToDeadline
+                  ? Math.floor(validated.formData.upToDeadline.getTime() / 1000)
+                  : Math.floor(Date.now() / 1000) + 3600
+                return (
+                  <UpToButton
+                    maxAmount={maxAmount}
+                    deadline={new BN(deadlineSec)}
+                    token={new PublicKey(validated.tokenMint)}
+                    recipient={new PublicKey(validated.recipient)}
+                    gateway={new PublicKey(validated.gateway)}
+                    memo={validated.memo}
+                    label="➤ Create Up-to authorization"
+                    className="bg-upto-600 hover:bg-upto-700 text-white"
+                    radius="md"
+                    size="md"
+                  />
+                )
+              })()}
             {!connected && validated.formData.policyType === 'subscription' && (
               <>
                 <WalletMultiButton />

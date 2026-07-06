@@ -209,6 +209,13 @@ export interface TributaryCheckoutSession {
   url?: string;
   payment_method_types: string[];
   line_items: LineItem[];
+  /**
+   * Checkout mode. `payment` = direct SPL `transfer` (ADR-0004 — moves tokens
+   * immediately, creates NO policy). `subscription` = recurring PaymentPolicy.
+   * Distinct from the OneTime PolicyType (ADR-0019) which installs a
+   * single-shot policy; that variant lives under the `policy` checkout path,
+   * not this enum.
+   */
   mode: "payment" | "subscription";
   success_url?: string;
   cancel_url?: string;
