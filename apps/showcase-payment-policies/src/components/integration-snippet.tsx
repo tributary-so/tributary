@@ -197,6 +197,7 @@ export default function IntegrationCode({ formData, onLineItemsActive }: Integra
 
   const generateCheckoutUrl = (): string => {
     const amount = computedAmount || parseFloat(validated.formData.amount || '0')
+    if (amount <= 0) return "";
 
     return checkoutManager.encodeSubscriptionUrl({
       mode: 'subscription',
@@ -665,8 +666,8 @@ import { BN } from '@coral-xyz/anchor'
                 onClick={() => checkoutValidation.valid && copyCode(checkoutUrl, 'url')}
                 disabled={!checkoutValidation.valid}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase  transition-all ${checkoutValidation.valid
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
                   }`}
               >
                 {copiedCode === 'url' ? (
@@ -695,8 +696,8 @@ import { BN } from '@coral-xyz/anchor'
               target={checkoutValidation.valid ? '_blank' : undefined}
               rel={checkoutValidation.valid ? 'noopener noreferrer' : undefined}
               className={`inline-flex items-center gap-2 mt-3 px-4 py-2.5 text-xs font-medium uppercase  transition-all ${checkoutValidation.valid
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg cursor-pointer'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg cursor-pointer'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
                 }`}
             >
               ↗ Open Checkout Page
