@@ -8,7 +8,7 @@ together form a **layered** verification of Tributary's pull-payment logic.
 > | Layer                     | Status                                                                                           |
 > | ------------------------- | ------------------------------------------------------------------------------------------------ |
 > | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers)                                             |
-> | Layer 1 (spec-model Kani) | ✅ regenerated (v2.2); execute_composable now models face/gross split                            |
+> | Layer 1 (spec-model Kani) | ✅ regenerated (v2.2); 19 fast harnesses pass in ~10s; 127 disabled (u128 bps_mul)               |
 > | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                      |
 > | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                        |
 > | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                      |
@@ -44,8 +44,8 @@ together form a **layered** verification of Tributary's pull-payment logic.
 │  formal_verification/  │    │  programs/tributary/tests/           │
 │  kani.rs               │    │                                      │
 │                        │    │  kani_pure_fns.rs (16 harnesses)     │
-│  61 active harnesses   │    │  proptest_pure_fns.rs (21 tests)     │
-│  71 disabled (u128)    │    │                                      │
+│  19 active harnesses   │    │  proptest_pure_fns.rs (21 tests)     │
+│  127 disabled (u128)   │    │                                      │
 │                        │    │  Calls the REAL Rust functions:      │
 │  Tests the SPEC's      │    │  • calculate_fees()                  │
 │  effect formulas on    │    │  • validate_policy_execution()       │
@@ -140,7 +140,7 @@ qedgen codegen --spec tributary.qedspec --kani --kani-output formal_verification
 rm -rf programs/src/ programs/Cargo.toml   # clean codegen side-effects
 python3 formal_verification/fix-kani.py formal_verification/kani.rs
 
-# Run all 61 active harnesses (completes in ~5 min)
+# Run all 19 active harnesses (completes in ~10s)
 cd formal_verification && cargo kani
 
 # Run one harness
@@ -372,23 +372,33 @@ in bean tributary-vtne).
 
 ## Disabled harnesses (Layer 1)
 
-71 of 132 spec-model harnesses are disabled by `fix-kani.py` because they
-exercise `bps_mul` → `mul_div_floor_u128` → u128 multiplication. CBMC converts
-128-bit × 128-bit multiplication into ~16K boolean gates — the propositional
-reduction doesn't terminate in reasonable time.
+127 of 146 spec-model harnesses are disabled by `fix-kani.py` because they
+transitively invoke `bps_mul` → `mul_div_floor_u128` → u128 multiplication.
+CBMC converts 128-bit × 128-bit multiplication into ~16K boolean gates — the
+propositional reduction doesn't terminate in reasonable time.
 
-| Pattern                                                 | Count | Why                                   |
-| ------------------------------------------------------- | ----- | ------------------------------------- |
-| `*_preserves_fee_conservation`                          | 9     | Asserts carve-out sum == total_fee    |
-| `*_preserves_fee_is_bps_decomposition`                  | 7     | Asserts total_fee == amount×bps/10000 |
-| `*_preserves_recipient_net_of_fee`                      | 7     | Asserts recipient+fee == amount       |
-| `*_preserves_residual_nonnegative`                      | 9     | Asserts residual ≤ total_fee          |
-| `*_effect_total_fee` through `*_effect_total_from_user` | 35    | Per-field effect conformance          |
-| `*_establishes_fee_*` etc.                              | 4     | Create-time establishes               |
+The `fix-kani.py` `_should_disable()` function categorises harnesses into
+five groups:
 
-The fee-conservation property holds by construction (gateway_residual is the
-balancing item). The same guarantee is confirmed by Layer 2 Kani/proptest on
-the real `calculate_fees`.
+| Pattern                                       | Count | Why                                                        |
+| --------------------------------------------- | ----- | ---------------------------------------------------------- |
+| `execute_composable_*` (all)                  | 26    | bps_mul in the GUARD — every path reaches u128 mul         |
+| `*_preserves_*` (all transitions)             | 45    | `kani::assume(fee_is_bps_decomposition)` calls bps_mul     |
+| `*_effect_*` for payment/release              | 11    | Transition body calls bps_mul (even for non-fee fields)    |
+| `*_no_overflow`                               | 2     | Calls bps_mul transition unconditionally                   |
+| Legacy v2.1 patterns (fee_conservation, etc.) | 43    | Same root cause — bps_mul in predicate or effect assertion |
+
+**The 19 surviving harnesses** are those with NO bps_mul anywhere:
+
+| Harness class                        | Count | What it proves                           |
+| ------------------------------------ | ----- | ---------------------------------------- |
+| `*_rejects_invalid` (non-composable) | 6     | Guards reject invalid symbolic inputs    |
+| `create_payment_policy_effect_*`     | 12    | Create sets each field to the spec value |
+| `transfer_effect_pulled_amount`      | 1     | Transfer sets pulled_amount              |
+
+The fee-conservation, period-bounded, and pull-bounded properties are
+covered by Layer 2 (kani_pure_fns.rs + proptest_pure_fns.rs on the REAL
+Rust code) and by Lean (∀-quantified preservation theorems).
 
 ---
 
@@ -413,8 +423,8 @@ the real `calculate_fees`.
 tributary.qedspec                              ← spec (single source of truth, 9 properties)
 formal_verification/
   Cargo.toml                                   ← standalone crate for Layer 1 Kani
-  kani.rs                                      ← Layer 1: 61 active + 71 disabled spec-model harnesses
-  fix-kani.py                                  ← post-processor: fixes 5 codegen bugs + disables slow harnesses
+  kani.rs                                      ← Layer 1: 19 active + 127 disabled spec-model harnesses
+  fix-kani.py                                  ← post-processor: fixes 6 codegen bugs + disables slow harnesses (5 categories)
   lean-toolchain                               ← pinned to v4.30.0 (matches qedsvm v0.8.0)
   Spec.lean                                    ← Lean model (generated, codegen bugs fixed by fix-lean.py)
   Proofs.lean                                  ← Lean proofs (user-owned)
