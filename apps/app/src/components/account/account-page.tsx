@@ -17,6 +17,7 @@ import {
   Zap,
   Inbox,
   Send,
+  ArrowUp,
 } from '../../icons'
 import { addToast } from '@heroui/react'
 import { formatDistanceToNow, formatDuration, intervalToDuration, differenceInSeconds, addSeconds } from 'date-fns'
@@ -32,13 +33,14 @@ interface UserPaymentWithPolicies {
   policies: Array<{ publicKey: PublicKey; account: PaymentPolicy }>
 }
 
-type PolicyTypeKey = 'subscription' | 'milestone' | 'payAsYouGo' | 'oneTime'
+type PolicyTypeKey = 'subscription' | 'milestone' | 'payAsYouGo' | 'oneTime' | 'upTo'
 type StatusKey = 'active' | 'paused' | 'cancelled' | 'completed'
 
 function getPolicyTypeKey(policy: PaymentPolicy): PolicyTypeKey {
   if ('subscription' in policy.policyType) return 'subscription'
   if ('milestone' in policy.policyType) return 'milestone'
   if ('oneTime' in policy.policyType) return 'oneTime'
+  if ('upTo' in policy.policyType) return 'upTo'
   return 'payAsYouGo'
 }
 
@@ -93,6 +95,14 @@ const POLICY_TYPE_CONFIG: Record<
     bgColor: 'bg-oneTime-50',
     borderColor: 'border-oneTime-200',
     description: 'Single payment',
+  },
+  upTo: {
+    Icon: ArrowUp,
+    label: 'Up to',
+    color: 'text-upTo-700',
+    bgColor: 'bg-upTo-50',
+    borderColor: 'border-upTo-200',
+    description: 'Variable-amount single settlement',
   },
 }
 
@@ -509,6 +519,12 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
       // Immediate (due_date <= 0) policies just show "Due now" — not red.
       if (oneTime && oneTime.dueDate && oneTime.dueDate.toNumber() > 0) {
         return new Date(oneTime.dueDate.toNumber() * 1000) < new Date()
+      }
+    }
+    if ('upTo' in policy.account.policyType) {
+      const upTo = policy.account.policyType.upTo
+      if (upTo && upTo.deadline && upTo.deadline.toNumber() > 0) {
+        return new Date(upTo.deadline.toNumber() * 1000) < new Date()
       }
     }
     return false
@@ -1146,6 +1162,147 @@ function OneTimeDetailPanel(props: DetailPanelProps) {
   )
 }
 
+function UpToDetailPanel(props: DetailPanelProps) {
+  const {
+    policy,
+    userPayment,
+    formatAmount,
+    getNextPaymentDue,
+    isPaymentDue,
+    onExecute,
+    onToggle,
+    onDelete,
+    executingPayments,
+    togglingPolicies,
+    deletingPolicies,
+    referralAccounts,
+  } = props
+  const upTo = policy.account.policyType.upTo!
+  const tokenMint = userPayment.userPayment.tokenMint
+  const status = getStatusKey(policy.account)
+  const isCompleted = status === 'completed'
+
+  const validAfter = upTo.validAfter.toNumber() > 0 ? new Date(upTo.validAfter.toNumber() * 1000) : null
+  const deadline = upTo.deadline.toNumber() > 0 ? new Date(upTo.deadline.toNumber() * 1000) : null
+  const now = new Date()
+  const isExpired = !isCompleted && deadline !== null && deadline < now
+  const isOverdue = !isCompleted && deadline !== null && deadline < now
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <ArrowUp className="w-7 h-7 text-upTo-600" />
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">Up to Payment</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Variable-amount single settlement</p>
+            </div>
+          </div>
+          <StatusBadge status={status} isOverdue={isOverdue || isExpired} />
+        </div>
+
+        <div className="flex gap-2 self-start">
+          <ActionButton
+            onClick={onExecute}
+            loading={executingPayments.has(policy.publicKey.toString())}
+            disabled={!isPaymentDue || isCompleted}
+            variant="primary"
+            title={
+              isCompleted
+                ? 'Already settled'
+                : isExpired
+                ? 'Policy expired'
+                : isPaymentDue
+                ? 'Execute settlement'
+                : 'Not yet valid'
+            }
+          >
+            <Play className="h-4 w-4" />
+          </ActionButton>
+          <ActionButton
+            onClick={onToggle}
+            loading={togglingPolicies.has(policy.publicKey.toString())}
+            disabled={isCompleted}
+            variant="warning"
+            title={
+              isCompleted
+                ? 'Completed policies cannot be paused'
+                : status === 'active'
+                ? 'Pause policy'
+                : 'Resume policy'
+            }
+          >
+            {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </ActionButton>
+          <ActionButton
+            onClick={onDelete}
+            loading={deletingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="danger"
+            title="Delete policy"
+          >
+            <Trash2 className="h-4 w-4" />
+          </ActionButton>
+        </div>
+      </div>
+
+      <div className="bg-linear-to-br from-upTo-50 to-upTo-100/50 p-4 sm:p-5 border border-upTo-100">
+        <div className="text-xs sm:text-sm text-upTo-600 font-medium mb-1">Maximum Amount</div>
+        <div className="text-2xl sm:text-3xl font-bold text-upTo-900 mb-1 sm:mb-2 truncate">
+          {formatAmount(upTo.maxAmount.toString(), tokenMint)}
+        </div>
+        <div className="text-xs sm:text-sm text-upTo-600">
+          {isCompleted ? 'Settled' : getNextPaymentDue(policy.account)}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Valid After
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
+            {validAfter ? validAfter.toLocaleString() : 'Immediate'}
+          </div>
+        </div>
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Deadline
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
+            {deadline ? deadline.toLocaleString() : 'N/A'}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label="Total Paid" value={formatAmount(policy.account.totalPaid.toString(), tokenMint)} />
+        <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
+        <StatCard label="Status" value={isCompleted ? 'Done' : isExpired ? 'Expired' : 'Pending'} />
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
+          <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
+          <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
+          <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
+          {(() => {
+            const referralAccount = referralAccounts.get(policy.account.gateway.toString())
+            return referralAccount ? (
+              <DetailRow label="Referral Code" value={decodeMemo(referralAccount.referralCode)} copyable />
+            ) : null
+          })()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LoadingState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
@@ -1170,8 +1327,8 @@ function EmptyState() {
       <div className="text-center max-w-md">
         <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2">No Payment Policies Yet</h2>
         <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-          You haven't set up any payment policies yet. Create a subscription, milestone, pay-as-you-go, or one-time
-          policy to get started.
+          You haven't set up any payment policies yet. Create a subscription, milestone, pay-as-you-go, one-time, or
+          up-to policy to get started.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
@@ -1185,6 +1342,9 @@ function EmptyState() {
           </div>
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <Send className="w-4 h-4" /> One-time
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <ArrowUp className="w-4 h-4" /> Up-to
           </div>
         </div>
       </div>
@@ -1416,6 +1576,16 @@ export default function AccountPage() {
       }
       return 'Due now'
     }
+    if ('upTo' in policy.policyType) {
+      const upTo = policy.policyType.upTo
+      if (policy.status?.completed) return 'Completed'
+      if (upTo?.deadline && upTo.deadline.toNumber() > 0) {
+        const deadline = new Date(upTo.deadline.toNumber() * 1000)
+        if (deadline < new Date()) return 'Expired'
+        return formatDistanceToNow(deadline, { addSuffix: true })
+      }
+      return 'No deadline'
+    }
     return 'N/A'
   }
 
@@ -1443,6 +1613,16 @@ export default function AccountPage() {
       if (!dueOk) return false
       // If expiry is set and past, the policy can no longer fire.
       if (oneTime.expiryDate && new Date(oneTime.expiryDate.toNumber() * 1000) < new Date()) return false
+      return true
+    }
+    if ('upTo' in policy.policyType) {
+      const upTo = policy.policyType.upTo
+      if (!upTo) return false
+      // valid_after <= 0 means immediate.
+      const afterOk = upTo.validAfter.toNumber() <= 0 || new Date(upTo.validAfter.toNumber() * 1000) <= new Date()
+      if (!afterOk) return false
+      // If deadline is set and past, the policy can no longer fire.
+      if (upTo.deadline.toNumber() > 0 && new Date(upTo.deadline.toNumber() * 1000) < new Date()) return false
       return true
     }
     return false
@@ -1695,6 +1875,29 @@ export default function AccountPage() {
             )}
             {'oneTime' in selectedPolicy.account.policyType && (
               <OneTimeDetailPanel
+                policy={selectedPolicy}
+                userPayment={currentUserPayment}
+                formatAmount={formatAmount}
+                getInterval={getInterval}
+                getNextPaymentDue={getNextPaymentDue}
+                isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                onExecute={() =>
+                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                }
+                onToggle={() =>
+                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                }
+                onDelete={() =>
+                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                }
+                executingPayments={executingPayments}
+                togglingPolicies={togglingPolicies}
+                deletingPolicies={deletingPolicies}
+                referralAccounts={referralAccounts}
+              />
+            )}
+            {'upTo' in selectedPolicy.account.policyType && (
+              <UpToDetailPanel
                 policy={selectedPolicy}
                 userPayment={currentUserPayment}
                 formatAmount={formatAmount}

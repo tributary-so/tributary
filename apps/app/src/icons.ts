@@ -18,4 +18,5 @@ export {
   Zap,
   Inbox,
   Send,
+  ArrowUp,
 } from 'lucide-react'
