@@ -24,6 +24,11 @@ const mockPublicKey = jest.fn().mockImplementation((key) => ({
 
 jest.mock("@tributary-so/sdk", () => ({
   Tributary: jest.fn().mockImplementation(() => mockTributary),
+  // Stub for `encodeMemo(id, len)` — returns a fixed-length buffer so
+  // tracking.ts can call bs58.encode() on it without exploding. Tests
+  // that need to assert the encoded shape can override this per-test.
+  encodeMemo: jest.fn(() => Buffer.alloc(64, 0xab)),
+  PaymentPolicy: {},
 }));
 
 jest.mock("@solana/web3.js", () => ({

@@ -25,6 +25,7 @@ import {
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
+import { ADMIN_KEYPAIR } from "./helpers/composable";
 import {
   METEORA_DLMM_PUBKEY,
   METEORA_DLMM_SOL_USDC_POOL,
@@ -60,12 +61,6 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 );
-const ADMIN_KEYPAIR = [
-  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
-  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
-  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
-  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
-];
 
 // Topup chunk pulled from coldWallet (USDC, 6 decimals) → swapped to WSOL.
 const SWAP_INPUT_AMOUNT = 50_000_000; // 50 USDC
@@ -332,7 +327,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
   });
 
   test("create gateway", async () => {
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
 
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
@@ -357,7 +352,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
   });
 
   test("create coldWallet payment for USDC mint", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const createUserPaymentIx = await sdk.createUserPayment(USDC_MINT);
     await sendAndConfirmTransaction(
@@ -375,7 +370,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
   });
 
   test("Create composable swap policy — DLMM forward USDC→WSOL + Lighthouse", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
     composablePolicyId = (userPayment!.createdComposableCount ?? 0) + 1;
@@ -508,7 +503,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
   });
 
   test("Execute swap topup — succeeds (coldWallet USDC → hotWallet WSOL)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const hotWsolBefore = await connection.getTokenAccountBalance(
       hotWalletWsolAta
@@ -640,7 +635,7 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
   });
 
   test("Execute swap topup again — fails (PayAsYouGo period cap exhausted)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,

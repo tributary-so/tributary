@@ -267,20 +267,18 @@ impl<'info> CreateComposablePolicy<'info> {
 }
 
 /// Resolve a ValidationSpec against the caller-supplied program account.
-/// Returns the program_id to store (Pubkey::default() for Disabled).
 /// Rejects Inline at create (not yet implemented).
 fn validate_spec_and_program(
     spec: ValidationSpec,
     passed_program: Pubkey,
     system_program: Pubkey,
-) -> Result<Pubkey> {
+) -> Result<()> {
     match spec {
         ValidationSpec::Disabled => {
             require!(
                 passed_program == system_program,
                 TributaryError::InvalidValidationProgram
             );
-            Ok(Pubkey::default())
         }
         ValidationSpec::ProgramCall { program_id } => {
             require!(
@@ -291,12 +289,12 @@ fn validate_spec_and_program(
                 ALLOWED_VALIDATION_PROGRAMS.contains(&program_id),
                 TributaryError::InvalidValidationProgram
             );
-            Ok(program_id)
         }
         ValidationSpec::Inline { .. } => {
-            err!(TributaryError::InlineValidationNotImplemented)
+            return err!(TributaryError::InlineValidationNotImplemented)
         }
     }
+    Ok(())
 }
 
 /// Validate the ValidationInit data for a given spec.
@@ -329,6 +327,28 @@ fn validate_init(spec: &ValidationSpec, init: &ValidationInit) -> Result<()> {
 }
 
 /// Create + serialise a ValidationPda at the given seed.
+///
+/// # SAFETY — manual init, layout-sync critical
+///
+/// This function writes the ValidationPda account by hand (`invoke_signed`
+/// `create_account` + raw `try_to_vec` copy) rather than via Anchor's
+/// `init` constraint. The bytes written here MUST stay byte-for-byte
+/// compatible with `ValidationPda` as declared in
+/// `state/validation_pda.rs` and with `AccountDeserialize::try_deserialize`
+/// at execute time. The struct layout is:
+///
+///   `[8-byte disc][bump: u8][num_pinned_accounts: u8]
+///    [pinned_accounts: [Pubkey; MAX_PINNED_ACCOUNTS]][data_len: u16]
+///    [data: [u8; MAX_VALIDATION_DATA_SIZE]]`
+///
+/// `ValidationPda::SIZE` (used for the rent calculation below) is the
+/// single source of truth for the account byte length — any field added,
+/// removed, or resized in the struct MUST update `SIZE` in lockstep, or
+/// this init will under/over-allocate and future reads will panic or
+/// deserialise garbage. The `borsh_round_trip_preserves_fields` test in
+/// `state/validation_pda.rs` guards the declaration order; the
+/// `size_covers_full_layout` test guards the size arithmetic. See ST-2
+/// (review 2026-07-06).
 fn init_validation_pda<'info>(
     pda_account: &UncheckedAccount<'info>,
     fee_payer: &AccountInfo<'info>,

@@ -77,6 +77,14 @@ pub fn calculate_fees(
     })
 }
 
+/// `amount × bps / 10000`, truncating toward zero (integer division).
+///
+/// Truncation direction: the `checked_div(10000)` drops any remainder, so
+/// the result is always ≤ the exact value. For a 1 USDC payment at 100 bps
+/// (1%), the dust is < 10000 lamports of the token's base unit; at SPL-USDC
+/// (6 decimals) that is < 0.01 USDC cent. The bound scales linearly with
+/// `bps` and `amount`; worst-case dust per call is `< 10000` base units
+/// (~40K lamports at the SOL base unit when applied to a 1 SOL amount).
 fn bps_mul(amount: u64, bps: u16) -> Result<u64> {
     amount
         .checked_mul(bps as u64)
@@ -133,5 +141,25 @@ mod tests {
     fn overflow_detection() {
         let result = calculate_fees(u64::MAX, 100, 0, 0, 0, false, false);
         assert!(result.is_err());
+    }
+
+    /// C-1 (review 2026-07-06): bps_mul truncates toward zero (integer
+    /// division drops the remainder). The result is always ≤ exact value.
+    /// Dust per call is bounded by `bps` base units of the token (the
+    /// discarded remainder is `< 10000` after the `/10000`).
+    #[test]
+    fn bps_mul_truncates_toward_zero() {
+        // 9999 base units × 100 bps = 99990 → / 10000 = 9 (dust = 9990).
+        // The exact value is 99.99; truncation yields 9 base units of fee.
+        let fb = calculate_fees(9999, 100, 0, 0, 0, false, false).unwrap();
+        assert_eq!(fb.total_fee, 99); // floor(9999 * 100 / 10000)
+                                      // Dust bound: total_fee × 10000 / bps ≤ amount, with < 10000 base
+                                      // units of remainder lost per call. Confirm direction:
+        let reconstructed = fb.total_fee * 10000 / 100;
+        assert!(
+            reconstructed <= 9999,
+            "truncation must keep result ≤ exact value"
+        );
+        assert!(9999 - reconstructed < 10000); // dust < 10000 base units
     }
 }

@@ -256,7 +256,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   // 1. Create gateway with NON-ZERO fee bps — exercises gross pull math.
   // ───────────────────────────────────────────────────────────────────────
   test("create gateway with 100 bps fee", async () => {
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
 
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
@@ -280,7 +280,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   });
 
   test("create coldWallet user payment", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
     const ix = await sdk.createUserPayment(USDC_MINT);
     await sendAndConfirmTransaction(
       connection,
@@ -298,7 +298,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   // 2. Create-time hard reject: forward disabled AND output_mint != input.
   // ───────────────────────────────────────────────────────────────────────
   test("create composable policy REJECTS forward_disabled + mismatched output_mint", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
     const policyId = (userPayment!.createdComposableCount ?? 0) + 1;
@@ -398,7 +398,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   const GROSS_PULL = FACE_AMOUNT + (FACE_AMOUNT * GATEWAY_FEE_BPS) / 10000;
 
   test("create deliver-no-transform composable policy (non-zero bps)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
     composablePolicyId = (userPayment!.createdComposableCount ?? 0) + 1;
@@ -503,7 +503,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   //    to face) the delegate check.
   // ───────────────────────────────────────────────────────────────────────
   test("execute fails: cap binds on GROSS (face+fee > cap) and delegate < gross", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     // Fund coldWallet: balance > gross (so balance isn't the binding
     // constraint). Delegate set to face only — gross is face+fee.
@@ -571,7 +571,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   //    Isolates the cap failure from the delegate failure.
   // ───────────────────────────────────────────────────────────────────────
   test("execute fails: cap binds on GROSS even when delegate covers gross", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     // Delegate now covers gross — isolates the cap check.
     await surfpool.setTokenAccount({
@@ -637,7 +637,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   //    output_mint accounts), and recipient receives face.
   // ───────────────────────────────────────────────────────────────────────
   test("execute succeeds: delegate + cap cover gross; fee skim in input_mint", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     // Bump the cap to GROSS_PULL via fresh policy. (PayAsYouGo period
     // counter is per-policy; cheaper to mint a new policy than time-travel.)
@@ -832,7 +832,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   //    is required → TokenMintMismatch on the gateway_fee_account constraint.
   // ───────────────────────────────────────────────────────────────────────
   test("execute fails: gateway fee account in wrong mint (output-side ATA)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     // Restore delegate / balance for the original policy.
     await surfpool.setTokenAccount({
@@ -922,7 +922,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
   //    Accepted consequence per ADR-0026 §Caps and delegate.
   // ───────────────────────────────────────────────────────────────────────
   test("fee-bps hike fails next execute at delegate (gross grew)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     // Hike the gateway fee bps. Delegate was sized for GATEWAY_FEE_BPS.
     const hikeIx = await sdk.changeGatewayFeeBps(
@@ -936,7 +936,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
       { commitment: "processed" }
     );
 
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,

@@ -145,7 +145,7 @@ export interface X402Options {
 function buildPaymentRequiredHeader(
   options: X402Options,
   resource: string,
-  subscriptionId: string
+  subscriptionId: string,
 ): string {
   const parts: string[] = [
     `scheme="${options.scheme}"`,
@@ -164,7 +164,7 @@ function buildPaymentRequiredHeader(
   if (options.scheme === "deferred") {
     parts.push(`paymentFrequency="${options.paymentFrequency || "monthly"}"`);
     parts.push(
-      `autoRenew=${options.autoRenew !== undefined ? options.autoRenew : true}`
+      `autoRenew=${options.autoRenew !== undefined ? options.autoRenew : true}`,
     );
     if (options.maxRenewals !== undefined && options.maxRenewals !== null) {
       parts.push(`maxRenewals=${options.maxRenewals}`);
@@ -215,7 +215,7 @@ function buildPaymentResponseHeader(
   scheme: string,
   network: string,
   id: string,
-  timestamp: number
+  timestamp: number,
 ): string {
   return `scheme="${scheme}", network="${network}", id="${id}", timestamp=${timestamp}`;
 }
@@ -229,15 +229,15 @@ async function verifySubscriptionCreation(
   expectedAmount: number,
   expectedTokenMint: PublicKey,
   expectedGateway: PublicKey,
-  expectedRecipient: PublicKey
+  expectedRecipient: PublicKey,
 ): Promise<{ success: boolean; error?: string; policyAddress?: PublicKey }> {
   try {
     const userPaymentPda = sdk.getUserPaymentPda(
       userPublicKey,
-      expectedTokenMint
+      expectedTokenMint,
     );
     const userPaymentPolicies = await sdk.getPaymentPoliciesByUser(
-      userPaymentPda.address
+      userPaymentPda.address,
     );
 
     if (userPaymentPolicies.length === 0) {
@@ -247,8 +247,8 @@ async function verifySubscriptionCreation(
     const latestPolicy = userPaymentPolicies.sort(
       (
         a: { publicKey: PublicKey; account: PaymentPolicy },
-        b: { publicKey: PublicKey; account: PaymentPolicy }
-      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
+        b: { publicKey: PublicKey; account: PaymentPolicy },
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber(),
     )[0];
 
     const policy = latestPolicy.account;
@@ -309,15 +309,15 @@ async function verifyPayAsYouGoPayment(
   userPublicKey: PublicKey,
   expectedTokenMint: PublicKey,
   expectedGateway: PublicKey,
-  expectedRecipient: PublicKey
+  expectedRecipient: PublicKey,
 ): Promise<{ success: boolean; error?: string; policyAddress?: PublicKey }> {
   try {
     const userPaymentPda = sdk.getUserPaymentPda(
       userPublicKey,
-      expectedTokenMint
+      expectedTokenMint,
     );
     const userPaymentPolicies = await sdk.getPaymentPoliciesByUser(
-      userPaymentPda.address
+      userPaymentPda.address,
     );
 
     // Find the most recent active pay-as-you-go policy
@@ -328,7 +328,7 @@ async function verifyPayAsYouGoPayment(
           "payAsYouGo" in policyType &&
           Object.keys(p.account.status)[0] === "active"
         );
-      }
+      },
     );
 
     if (paygPolicies.length === 0) {
@@ -341,8 +341,8 @@ async function verifyPayAsYouGoPayment(
     const latestPolicy = paygPolicies.sort(
       (
         a: { publicKey: PublicKey; account: PaymentPolicy },
-        b: { publicKey: PublicKey; account: PaymentPolicy }
-      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
+        b: { publicKey: PublicKey; account: PaymentPolicy },
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber(),
     )[0];
 
     const policy = latestPolicy.account;
@@ -400,7 +400,7 @@ export function createX402Middleware(options: X402Options) {
 
         // Verify policy exists and is valid based on scheme type
         const policy = await options.sdk.getPaymentPolicy(
-          new PublicKey(decoded.policyAddress)
+          new PublicKey(decoded.policyAddress),
         );
 
         if (policy) {
@@ -443,8 +443,8 @@ export function createX402Middleware(options: X402Options) {
                         }`,
                         `payg_${Date.now()}_${Math.random()
                           .toString(36)
-                          .slice(2)}`
-                      )
+                          .slice(2)}`,
+                      ),
                     )
                     .json({ error: "Pay-as-you-go period exhausted" });
                 }
@@ -479,8 +479,8 @@ export function createX402Middleware(options: X402Options) {
                         }`,
                         `upto_${Date.now()}_${Math.random()
                           .toString(36)
-                          .slice(2)}`
-                      )
+                          .slice(2)}`,
+                      ),
                     )
                     .json({ error: "upto authorization expired" });
                 }
@@ -503,8 +503,8 @@ export function createX402Middleware(options: X402Options) {
             buildPaymentRequiredHeader(
               options,
               `${req.protocol}://${req.get("host")}${req.originalUrl}`,
-              `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`
-            )
+              `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            ),
           )
           .json({ error: "Invalid or inactive subscription" });
       } catch (e) {
@@ -542,14 +542,10 @@ export function createX402Middleware(options: X402Options) {
           throw new Error(`Only ${options.network} network is supported`);
         }
 
-        console.log(`Received ${paymentData.scheme} payment from client`);
-        console.log(`  Network: ${paymentData.network}`);
-        console.log(`  ID: ${paymentData.id}`);
-
         // Deserialize the transaction
         const txBuffer = Buffer.from(
           paymentData.payload.serializedTransaction,
-          "base64"
+          "base64",
         );
         const tx = Transaction.from(txBuffer);
 
@@ -566,7 +562,7 @@ export function createX402Middleware(options: X402Options) {
             options.amount,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else if (options.scheme === "x402://payg") {
           preVerification = await verifyPayAsYouGoPayment(
@@ -574,7 +570,7 @@ export function createX402Middleware(options: X402Options) {
             userPublicKey,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else if (options.scheme === "x402://upto") {
           preVerification = await verifyUpToAuthorization(
@@ -584,7 +580,7 @@ export function createX402Middleware(options: X402Options) {
             options.maxAmount ?? options.amount,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else {
           preVerification = { success: false };
@@ -600,7 +596,7 @@ export function createX402Middleware(options: X402Options) {
             // exp in seconds since epoch — jwt library convention.
             jwtOptions.expiresIn = Math.max(
               1,
-              options.deadline - Math.floor(Date.now() / 1000)
+              options.deadline - Math.floor(Date.now() / 1000),
             );
           } else {
             jwtOptions.expiresIn = "1y";
@@ -621,7 +617,7 @@ export function createX402Middleware(options: X402Options) {
               deadline: options.deadline,
             },
             options.jwtSecret,
-            jwtOptions
+            jwtOptions,
           );
 
           const timestamp = Date.now();
@@ -631,8 +627,8 @@ export function createX402Middleware(options: X402Options) {
               options.scheme,
               options.network,
               paymentData.id,
-              timestamp
-            )
+              timestamp,
+            ),
           );
 
           return res.json({
@@ -665,7 +661,7 @@ export function createX402Middleware(options: X402Options) {
           {
             skipPreflight: false,
             preflightCommitment: "confirmed",
-          }
+          },
         );
 
         console.log(`Transaction submitted: ${signature}`);
@@ -673,7 +669,7 @@ export function createX402Middleware(options: X402Options) {
         // Wait for confirmation
         const confirmation = await options.connection.confirmTransaction(
           signature,
-          "confirmed"
+          "confirmed",
         );
         if (confirmation.value.err) {
           return res.status(402).json({
@@ -696,7 +692,7 @@ export function createX402Middleware(options: X402Options) {
             options.amount,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else if (options.scheme === "x402://payg") {
           verification = await verifyPayAsYouGoPayment(
@@ -704,7 +700,7 @@ export function createX402Middleware(options: X402Options) {
             userPublicKey,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else if (options.scheme === "x402://upto") {
           verification = await verifyUpToAuthorization(
@@ -714,7 +710,7 @@ export function createX402Middleware(options: X402Options) {
             options.maxAmount ?? options.amount,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else {
           verification = { success: false, error: "Unsupported scheme" };
@@ -735,7 +731,7 @@ export function createX402Middleware(options: X402Options) {
         if (options.scheme === "x402://upto" && options.deadline) {
           postJwtOptions.expiresIn = Math.max(
             1,
-            options.deadline - Math.floor(Date.now() / 1000)
+            options.deadline - Math.floor(Date.now() / 1000),
           );
         } else {
           postJwtOptions.expiresIn = "1y";
@@ -756,7 +752,7 @@ export function createX402Middleware(options: X402Options) {
             deadline: options.deadline,
           },
           options.jwtSecret,
-          postJwtOptions
+          postJwtOptions,
         );
 
         const timestamp = Date.now();
@@ -766,8 +762,8 @@ export function createX402Middleware(options: X402Options) {
             options.scheme,
             options.network,
             paymentData.id,
-            timestamp
-          )
+            timestamp,
+          ),
         );
 
         return res.json({
@@ -798,15 +794,15 @@ export function createX402Middleware(options: X402Options) {
       options.scheme === "x402://payg"
         ? "payg"
         : options.scheme === "x402://upto"
-        ? "upto"
-        : "sub";
+          ? "upto"
+          : "sub";
     const paymentId = `${schemePrefix}_${Date.now()}_${randomString}`;
     const resource = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
 
     // Set the Payment-Required header (x402 v2 standard)
     res.set(
       "payment-required",
-      buildPaymentRequiredHeader(options, resource, paymentId)
+      buildPaymentRequiredHeader(options, resource, paymentId),
     );
 
     return res.status(402).json({

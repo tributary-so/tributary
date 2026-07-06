@@ -183,7 +183,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
     await creditTokenAccount(feeRecipient.publicKey, 0);
 
     // Seed program config (0 bps gateway fee keeps the math trivial).
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
     const desired = await sdk.getProgramConfig(configPDA);
     desired.admin = admin.publicKey;
     desired.feeRecipient = admin.publicKey;
@@ -210,7 +210,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
     await send([gatewayIx], [admin]);
 
     // Create user payment + approve delegate.
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
     await send([await sdk.createUserPayment(USDC_MINT)], [user]);
     // Approve the UserPayment PDA as delegate for the full user balance.
     await creditTokenAccount(user.publicKey, 1_000_000_000, {
@@ -219,7 +219,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
     });
 
     // Register the gateway execution signer so execute_payment is permissioned.
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
   });
 
   // ── helpers ──
@@ -242,7 +242,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
   // ── tests ──
 
   test("null expiry — backward-compatible default, executes normally", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
     const ixs = await sdk.createPayAsYouGo(
       USDC_MINT,
       recipient.publicKey,
@@ -263,7 +263,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
     expect(policy!.policyType.payAsYouGo.expiryDate).toBeNull();
 
     // Execution succeeds.
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
     const execIxs = await sdk.executePayment(pda, new anchor.BN(100_000));
     await send(execIxs, [gatewayAuthority]);
 
@@ -272,7 +272,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
   });
 
   test("past expiry — execute rejected with PolicyExpired", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
     const past = new anchor.BN(Math.floor(Date.now() / 1000) - 1); // 1s ago
 
     const ixs = await sdk.createPayAsYouGo(
@@ -294,7 +294,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
     expect(policy!.policyType.payAsYouGo.expiryDate).not.toBeNull();
 
     // Execution is rejected — the gate fires before the transfer CPI.
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
     await expect(async () => {
       const execIxs = await sdk.executePayment(pda, new anchor.BN(100_000));
       await send(execIxs, [gatewayAuthority]);
@@ -302,7 +302,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
   });
 
   test("future expiry — executes while within the window", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
     const future = new anchor.BN(Math.floor(Date.now() / 1000) + 31_536_000); // ~1y
 
     const ixs = await sdk.createPayAsYouGo(
@@ -324,7 +324,7 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
     expect(policy!.policyType.payAsYouGo.expiryDate).not.toBeNull();
 
     // Execution succeeds — we are well within the window.
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
     const execIxs = await sdk.executePayment(pda, new anchor.BN(100_000));
     await send(execIxs, [gatewayAuthority]);
 

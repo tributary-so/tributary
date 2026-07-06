@@ -1,12 +1,28 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
 
-const DEFAULT_BASE_URL = "https://api.tributary.so";
-const DEFAULT_ISSUER = "https://api.tributary.so";
-const DEFAULT_AUDIENCE = "tributary-checkout";
+/**
+ * Default Tributary API base URL. Used as a fallback when neither
+ * `config.baseUrl` nor the `TRIBUTARY_BASE_URL` env var is set.
+ *
+ * Exported (P-2, review 2026-07-06) so downstream consumers can reference
+ * the same default when constructing a `TributaryVerificationConfig` or
+ * surfacing it in their own UI. The verifier itself is fully configurable
+ * via {@link TributaryVerificationConfig} or these env vars:
+ *
+ *   - `TRIBUTARY_BASE_URL`  — API base
+ *   - `TRIBUTARY_ISSUER`    — JWT issuer claim
+ *   - `TRIBUTARY_AUDIENCE`  — JWT audience claim
+ */
+export const DEFAULT_BASE_URL = "https://api.tributary.so";
+export const DEFAULT_ISSUER = "https://api.tributary.so";
+export const DEFAULT_AUDIENCE = "tributary-checkout";
 
 export interface TributaryVerificationConfig {
+  /** API base URL. Defaults to {@link DEFAULT_BASE_URL} or `TRIBUTARY_BASE_URL`. */
   baseUrl?: string;
+  /** JWT issuer claim. Defaults to {@link DEFAULT_ISSUER} or `TRIBUTARY_ISSUER`. */
   issuer?: string;
+  /** JWT audience claim. Defaults to {@link DEFAULT_AUDIENCE} or `TRIBUTARY_AUDIENCE`. */
   audience?: string;
 }
 

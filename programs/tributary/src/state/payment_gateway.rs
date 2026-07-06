@@ -15,7 +15,13 @@ pub struct PaymentGateway {
     pub gateway_fee_bps: u16,
     /// Whether this gateway is active and can process payments
     pub is_active: bool,
-    /// No-longer-used, take care of tumbstone
+    /// DO NOT REMOVE — tombstone slot.
+    ///
+    /// Formerly held a v1 field; the slot is kept here so the byte offsets
+    /// of every field declared below it stay stable across upgrades.
+    /// Removing this field would shift all subsequent offsets and break
+    /// deserialization of every live PaymentGateway account. See ST-1
+    /// (review 2026-07-06).
     pub padding1: u64,
     /// Unix timestamp when gateway was created
     pub created_at: i64,
