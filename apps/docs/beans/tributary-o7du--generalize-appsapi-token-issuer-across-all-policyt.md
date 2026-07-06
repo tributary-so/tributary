@@ -1,11 +1,11 @@
 ---
 # tributary-o7du
 title: Generalize apps/api token-issuer across all PolicyType variants
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-03T09:19:46Z
-updated_at: 2026-07-03T09:22:50Z
+updated_at: 2026-07-06T10:21:50Z
 parent: tributary-ml90
 blocked_by:
     - tributary-5pd3
@@ -125,3 +125,14 @@ in \`buildPolicyClaims\` if desired.
 - \`programs/tributary/src/state/payment_policy.rs\` — on-chain field shapes
 - \`packages/payments/src/core/verification.ts\` — PolicyClaim definition (from payments refactor)
 - Milestone tributary-pzp2 — design decisions, status/exp table
+
+## Summary of Changes
+
+Generalized in commit `b4e15cc` (✨ feat(api): generalize JWT payload to discriminated PolicyClaim[] (all 5 variants)):
+
+- Dropped subscription-only filter in `token-issuer.ts`; replaced `buildSubscriptionClaims` with `buildPolicyClaims` mapping every variant (subscription/milestone/payAsYouGo/oneTime/upTo) into the discriminated `PolicyClaim` union.
+- Per-variant status vocabularies: subscription→paid/overdue/completed, milestone→active/completed, payAsYouGo→active/exhausted, oneTime→pending/completed/expired, upTo→pending/settled/expired.
+- Per-variant exp sources: nextPaymentDue / last milestoneTimestamp / periodResetsAt / expiryDate / hard deadline. `JWT_DEFAULT_LIFETIME_SECONDS` (1h) covers the no-time-field case, capped by `JWT_MAX_TTL_DAYS`.
+- Extended `getSubscriptionDetails` padding-strip for OneTime + UpTo (previously silently dropped).
+- Updated OpenAPI description, auth middleware `JwtPayload` type, showcase-payments `PaymentDetails` component to render the discriminated union.
+- 14 unit tests added covering all 5 variants (`apps/api/src/__tests__/token-issuer.test.ts`).

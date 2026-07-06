@@ -1,11 +1,11 @@
 ---
 # tributary-9zbg
 title: 'Documentation: new ADR for generalized JWT + AGENTS.md update'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-03T09:22:10Z
-updated_at: 2026-07-03T09:22:50Z
+updated_at: 2026-07-06T10:22:01Z
 parent: tributary-pzp2
 blocked_by:
     - tributary-o7du
@@ -92,3 +92,11 @@ Add a \"JWT claim\" entry under the relevant section, distinguishing
 - \`AGENTS.md\` — SDK usage section
 - \`CONTEXT.md\` — glossary
 - Milestone tributary-pzp2 — design decisions to encode
+
+## Summary of Changes
+
+Landed in commits `b4e15cc` and merge `f3a2aa2`:
+
+- **New ADR** `apps/docs/adr/0025-jwt-payload-generalized-policyclaim-union.md` — documents the decision to break `TributaryJWTPayload` from `subscriptions: SubscriptionClaim[]` into `policies: PolicyClaim[]` (discriminated union covering all 5 PaymentPolicy variants). Captures rejected alternatives (separate per-variant endpoints, paymentCount-gated claims) and rationale (authorization + payment proof travel together; merchant decides what to require). Originally numbered 0024 in commit message, renumbered to 0025 to resolve collision with PayAsYouGo-expiration ADR that landed earlier same day.
+- **AGENTS.md** — ADR-0025 wired into the ADR map (v2 ComposablePolicy era section) with link in the table.
+- ADR map index entries cross-reference ADR-0019 (OneTime policy) and ADR-0020 (UpTo) for the variant-specific context.
