@@ -25,6 +25,7 @@ import {
   getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
+import { ADMIN_KEYPAIR } from "./helpers/composable";
 import {
   METEORA_DLMM_PUBKEY,
   METEORA_DLMM_SOL_USDC_POOL,
@@ -60,12 +61,6 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 );
-const ADMIN_KEYPAIR = [
-  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
-  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
-  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
-  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
-];
 
 // Topup chunk pulled from coldWallet (USDC, 6 decimals) → swapped to WSOL,
 // then unwrapped to native SOL via NATIVE_OUTPUT forward flag.

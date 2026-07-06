@@ -21,13 +21,14 @@ import { Buffer } from "buffer";
 import { getOnChainNow } from "./helpers/onChainNow";
 import { METEORA_DLMM_PUBKEY, LIGHTHOUSE_PUBKEY } from "./constants";
 import { SurfpoolHelper, USDC_MINT, USDT_MINT } from "./surfpool-helpers";
-
-const ADMIN_KEYPAIR = [
-  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
-  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
-  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
-  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
-];
+import {
+  ADMIN_KEYPAIR,
+  DISABLED_SPEC,
+  DISABLED_INIT,
+  programCallSpec,
+  validationInit,
+  defaultByteRangeChecks,
+} from "./helpers/composable";
 
 function getComposablePolicyPda(
   userPayment: PublicKey,
@@ -57,15 +58,6 @@ function getValidationPda(
   );
 }
 
-function defaultByteRangeChecks(): any[] {
-  return [
-    { offset: 0, length: 8, expected: new Array(8).fill(0) },
-    { offset: 0, length: 0, expected: new Array(8).fill(0) },
-    { offset: 0, length: 0, expected: new Array(8).fill(0) },
-    { offset: 0, length: 0, expected: new Array(8).fill(0) },
-  ];
-}
-
 function defaultForwardConfig(
   inputMint: PublicKey,
   outputMint: PublicKey
@@ -86,28 +78,6 @@ function defaultForwardConfig(
         PublicKey.default,
       ],
     },
-  };
-}
-
-const DISABLED_SPEC = { disabled: {} } as any;
-const DISABLED_INIT = {
-  numPinnedAccounts: 0,
-  pinnedAccounts: [PublicKey.default, PublicKey.default],
-  validationData: Buffer.alloc(0),
-} as any;
-
-function programCallSpec(programId: PublicKey): any {
-  return { programCall: { programId } };
-}
-
-function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
-  return {
-    numPinnedAccounts: pinnedAccounts.length,
-    pinnedAccounts: [
-      pinnedAccounts[0] ?? PublicKey.default,
-      pinnedAccounts[1] ?? PublicKey.default,
-    ],
-    validationData: data,
   };
 }
 
@@ -2093,6 +2063,150 @@ describe("Composable Policies", () => {
           { commitment: "processed" as Commitment }
         )
       ).rejects.toThrow(/InvalidAmount/);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // G-1 (review 2026-07-06) — negative-path coverage gaps.
+  //
+  // These two scenarios were not covered by the existing positive-path and
+  // create-time-negative suites. They are marked `.skip` because they need
+  // a running Surfpool instance to verify the exact error name and CPI
+  // plumbing; the scaffolding captures the assertion shape so the next dev
+  // who runs against Surfpool can flip `.skip` → .test after confirming.
+  // ══════════════════════════════════════════════════════════════════════
+  describe.skip("G-1 negative-path coverage (needs Surfpool verification)", () => {
+    test("Execute composable — insufficient user balance fails", async () => {
+      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+
+      const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
+      const composablePolicyId =
+        (userPaymentBefore!.createdComposableCount ?? 0) + 1;
+      const [composablePolicyPDA] = getComposablePolicyPda(
+        userPaymentPDA,
+        composablePolicyId,
+        program.programId
+      );
+
+      const [preValidationPdaAddress] = getValidationPda(
+        composablePolicyPDA,
+        program.programId,
+        "pre"
+      );
+      const [postValidationPdaAddress] = getValidationPda(
+        composablePolicyPDA,
+        program.programId,
+        "post"
+      );
+
+      const pastTime = (await getOnChainNow(connection)) - 3600;
+      // Amount larger than the user's funded token balance.
+      const policyType = defaultSubscriptionPolicy(1_000_000_000_000, pastTime);
+      const memo = new Array(32).fill(0);
+      const forwardConfig = defaultForwardConfig(tokenMint, secondMint);
+
+      const createIx = await program.methods
+        .createComposablePolicy(
+          policyType,
+          memo,
+          forwardConfig,
+          DISABLED_SPEC,
+          DISABLED_INIT,
+          DISABLED_SPEC,
+          DISABLED_INIT
+        )
+        .accountsStrict({
+          feePayer: user.publicKey,
+          recipient: user.publicKey,
+          user: user.publicKey,
+          composablePolicy: composablePolicyPDA,
+          userPayment: userPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          preValidationPda: preValidationPdaAddress,
+          postValidationPda: postValidationPdaAddress,
+          preValidationProgram: PublicKey.default,
+          postValidationProgram: PublicKey.default,
+          inputMint: tokenMint,
+          outputMint: secondMint,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(createIx),
+        [user],
+        { commitment: "processed" as Commitment }
+      );
+
+      const ix = await program.methods
+        .executeComposable(Buffer.from(new Array(32).fill(0)), null)
+        .accountsStrict({
+          feePayer: gatewayAuthority.publicKey,
+          paymentsDelegate,
+          composablePolicy: composablePolicyPDA,
+          userPayment: userPaymentPDA,
+          gateway: gatewayPDA,
+          config: configPDA,
+          userTokenAccount,
+          preValidationProgram: PublicKey.default,
+          postValidationProgram: PublicKey.default,
+          preValidationPda: preValidationPdaAddress,
+          postValidationPda: postValidationPdaAddress,
+          mint: tokenMint,
+          outputMint: secondMint,
+          intermediateInputTokenAccount: getAssociatedTokenAddressSync(
+            tokenMint,
+            composablePolicyPDA,
+            true
+          ),
+          intermediateOutputTokenAccount: getAssociatedTokenAddressSync(
+            secondMint,
+            composablePolicyPDA,
+            true
+          ),
+          recipientTokenAccount: userSecondMintTokenAccount,
+          gatewayFeeAccount: getAssociatedTokenAddressSync(
+            tokenMint,
+            feeRecipient.publicKey
+          ),
+          protocolFeeAccount: getAssociatedTokenAddressSync(
+            tokenMint,
+            admin.publicKey
+          ),
+          tokenProgram: new PublicKey(
+            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          ),
+          associatedTokenProgram: new PublicKey(
+            "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          ),
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      await expect(
+        sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(ix),
+          [gatewayAuthority],
+          { commitment: "processed" as Commitment }
+        )
+      ).rejects.toThrow(/InsufficientBalance/);
+    });
+
+    test("Execute composable — pre-validation assertion failure rejects execution", async () => {
+      // Set up a composable policy whose pre-validation Lighthouse assertion
+      // is guaranteed to fail (e.g. assert user token balance > u64::MAX).
+      // Execute must reject with the validation-program's error code, not
+      // settle the payment. Scaffolding only — pin the exact error name
+      // when run against Surfpool.
+      //
+      // TODO(G-1): replace this skip with a real run once Surfpool is up;
+      //   build the Lighthouse assertion via the SDK facade
+      //   (lighthouse.tokenAccount(...).amount(MAX_U64, ">").build()) and
+      //   assert the execute tx reverts.
+      expect(true).toBe(true);
     });
   });
 });

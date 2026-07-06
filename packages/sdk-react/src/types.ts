@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
 export enum PaymentInterval {
@@ -34,7 +34,7 @@ export interface CreateSubscriptionParams {
 
 export interface CreateSubscriptionResult {
   txId: string;
-  instructions: any[];
+  instructions: TransactionInstruction[];
   token?: string;
 }
 
@@ -52,12 +52,12 @@ export interface CreateMilestoneParams {
 
 export interface CreateMilestoneResult {
   txId: string;
-  instructions: any[];
+  instructions: TransactionInstruction[];
 }
 
 export interface UseCreateMilestoneReturn {
   createMilestone: (
-    params: CreateMilestoneParams
+    params: CreateMilestoneParams,
   ) => Promise<CreateMilestoneResult>;
   loading: boolean;
   error: string | null;
@@ -76,12 +76,12 @@ export interface CreatePayAsYouGoParams {
 
 export interface CreatePayAsYouGoResult {
   txId: string;
-  instructions: any[];
+  instructions: TransactionInstruction[];
 }
 
 export interface UseCreatePayAsYouGoReturn {
   createPayAsYouGo: (
-    params: CreatePayAsYouGoParams
+    params: CreatePayAsYouGoParams,
   ) => Promise<CreatePayAsYouGoResult>;
   loading: boolean;
   error: string | null;
@@ -89,7 +89,7 @@ export interface UseCreatePayAsYouGoReturn {
 
 export interface UseCreateSubscriptionReturn {
   createSubscription: (
-    params: CreateSubscriptionParams
+    params: CreateSubscriptionParams,
   ) => Promise<CreateSubscriptionResult>;
   loading: boolean;
   error: string | null;
@@ -114,7 +114,7 @@ export interface CreateOneTimeParams {
 
 export interface CreateOneTimeResult {
   txId: string;
-  instructions: any[];
+  instructions: TransactionInstruction[];
 }
 
 export interface UseCreateOneTimeReturn {
@@ -143,7 +143,7 @@ export interface CreateUpToParams {
 
 export interface CreateUpToResult {
   txId: string;
-  instructions: any[];
+  instructions: TransactionInstruction[];
 }
 
 export interface UseCreateUpToReturn {

@@ -121,8 +121,29 @@ export class Tributary {
    * Useful for changing the signer without creating a new SDK instance.
    * @param wallet - New wallet to use for signing transactions
    */
-  async updateWallet(wallet: any) {
-    this.provider = new anchor.AnchorProvider(this.connection, wallet, {
+  async updateWallet(wallet: Keypair | IWallet) {
+    // Mirror constructor's Keypair→IWallet adapter. Previously typed `any`,
+    // which silently let a raw Keypair reach AnchorProvider (expects a
+    // Wallet interface). See T-2 (review 2026-07-06).
+    const thisWallet =
+      wallet instanceof Keypair
+        ? {
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                }),
+              );
+            },
+          }
+        : wallet;
+    this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
       preflightCommitment: "confirmed",
     });
     this.program = new anchor.Program(IDL as TributaryIdl, this.provider);

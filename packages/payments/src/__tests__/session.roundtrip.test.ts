@@ -191,4 +191,162 @@ describe("session encoding — randomized round-trip (property)", () => {
     );
     expect(decoded.cluster).toBe("mainnet");
   });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Cluster field coverage (G-3, review 2026-07-06). The default-mainnet
+  // case above only covers subscription + the omitted case. These tests
+  // pin the behaviour for explicit values, all variants, and the
+  // invalid-cluster fallback path.
+  // ────────────────────────────────────────────────────────────────────────
+  describe("Cluster field", () => {
+    const CLUSTERS: Array<"mainnet" | "devnet" | "testnet"> = [
+      "mainnet",
+      "devnet",
+      "testnet",
+    ];
+
+    for (const cluster of CLUSTERS) {
+      it(`survives round-trip on subscription when cluster=${cluster}`, () => {
+        const r = rng(11 + cluster.length);
+        const cfg = { ...randomSubscription(r), cluster };
+        const decoded: any = manager.decodeUrl(
+          manager.encodeUrl(cfg).split("/").pop() as string
+        );
+        expect(decoded.cluster).toBe(cluster);
+      });
+
+      it(`survives round-trip on payment when cluster=${cluster}`, () => {
+        const cfg: CheckoutParams = {
+          mode: "payment",
+          tokenMint: PK,
+          recipient: PK,
+          amount: 250,
+          cluster,
+        };
+        const decoded: any = manager.decodeUrl(
+          manager.encodeUrl(cfg).split("/").pop() as string
+        );
+        expect(decoded.cluster).toBe(cluster);
+      });
+
+      it(`survives round-trip on milestone when cluster=${cluster}`, () => {
+        const cfg: CheckoutParams = {
+          mode: "milestone",
+          tokenMint: PK,
+          recipient: PK,
+          gateway: PK,
+          milestoneAmounts: [100, 200],
+          milestoneTimestamps: [1, 2],
+          releaseCondition: 0b0001,
+          totalMilestones: 2,
+          cluster,
+        };
+        const decoded: any = manager.decodeUrl(
+          manager.encodeUrl(cfg).split("/").pop() as string
+        );
+        expect(decoded.cluster).toBe(cluster);
+      });
+
+      it(`survives round-trip on payAsYouGo when cluster=${cluster}`, () => {
+        const cfg: CheckoutParams = {
+          mode: "payAsYouGo",
+          tokenMint: PK,
+          recipient: PK,
+          gateway: PK,
+          maxAmountPerPeriod: 1000,
+          maxChunkAmount: 100,
+          periodLengthSeconds: 86400,
+          cluster,
+        };
+        const decoded: any = manager.decodeUrl(
+          manager.encodeUrl(cfg).split("/").pop() as string
+        );
+        expect(decoded.cluster).toBe(cluster);
+      });
+
+      it(`survives round-trip on oneTime when cluster=${cluster}`, () => {
+        const cfg: CheckoutParams = {
+          mode: "oneTime",
+          tokenMint: PK,
+          recipient: PK,
+          gateway: PK,
+          amount: 500,
+          cluster,
+        };
+        const decoded: any = manager.decodeUrl(
+          manager.encodeUrl(cfg).split("/").pop() as string
+        );
+        expect(decoded.cluster).toBe(cluster);
+      });
+
+      it(`survives round-trip on upTo when cluster=${cluster}`, () => {
+        const cfg: CheckoutParams = {
+          mode: "upTo",
+          tokenMint: PK,
+          recipient: PK,
+          gateway: PK,
+          maxAmount: 1000,
+          deadline: 2000,
+          cluster,
+        };
+        const decoded: any = manager.decodeUrl(
+          manager.encodeUrl(cfg).split("/").pop() as string
+        );
+        expect(decoded.cluster).toBe(cluster);
+      });
+    }
+
+    it("falls back to mainnet when encoded cluster is invalid", () => {
+      // Hand-craft a blob with c="localnet" (not in ALLOWED_CLUSTERS).
+      // Decode should resolve to DEFAULT_CLUSTER ("mainnet") rather than throw.
+      const cfg: CheckoutParams = {
+        mode: "payment",
+        tokenMint: PK,
+        recipient: PK,
+        amount: 250,
+        cluster: "mainnet",
+      };
+      const blob = manager.encodeUrl(cfg).split("/").pop() as string;
+      // Decode the base64url payload, swap c, re-encode.
+      const raw = JSON.parse(
+        Buffer.from(
+          blob.replace(/-/g, "+").replace(/_/g, "/"),
+          "base64"
+        ).toString("utf-8")
+      );
+      raw.c = "localnet";
+      const tampered = Buffer.from(JSON.stringify(raw), "utf-8")
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      const decoded: any = manager.decodeUrl(tampered);
+      expect(decoded.cluster).toBe("mainnet");
+    });
+
+    it("falls back to mainnet when cluster field absent (legacy link)", () => {
+      const cfg: CheckoutParams = {
+        mode: "payment",
+        tokenMint: PK,
+        recipient: PK,
+        amount: 250,
+        cluster: "mainnet",
+      };
+      const blob = manager.encodeUrl(cfg).split("/").pop() as string;
+      const raw = JSON.parse(
+        Buffer.from(
+          blob.replace(/-/g, "+").replace(/_/g, "/"),
+          "base64"
+        ).toString("utf-8")
+      );
+      delete raw.c;
+      const tampered = Buffer.from(JSON.stringify(raw), "utf-8")
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      const decoded: any = manager.decodeUrl(tampered);
+      expect(decoded.cluster).toBe("mainnet");
+    });
+  });
 });

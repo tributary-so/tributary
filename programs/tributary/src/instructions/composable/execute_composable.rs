@@ -19,9 +19,21 @@ use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, Transf
 /// so a future regression in create-time validation (or a directly-
 /// serialized malformed account) cannot trigger an indexed panic.
 /// See reports/H-04-num-data-checks-unbounded-oob.md.
+///
+/// `MAX_BYTE_RANGE_CHECKS` is the fixed capacity of `InstructionConstraint`'s
+/// `data_checks` array (see `state/composable_policy.rs`); the explicit guard
+/// here mirrors that constant so a future code path passing a different slice
+/// fails loudly instead of panicking on an out-of-bounds index.
 pub fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: u8) -> Result<()> {
     let n = num_checks as usize;
-    require!(n <= checks.len(), TributaryError::ByteRangeCheckFailed);
+    // Reference MAX_BYTE_RANGE_CHECKS explicitly: the slice is always the
+    // fixed-size array from InstructionConstraint, but asserting the bound
+    // against the named constant makes the structural invariant visible
+    // at the call site rather than implicit in the slice length.
+    require!(
+        n <= MAX_BYTE_RANGE_CHECKS && n <= checks.len(),
+        TributaryError::ByteRangeCheckFailed
+    );
     for i in 0..n {
         require!(
             checks[i].validate(data),
@@ -381,8 +393,12 @@ fn skim_input_fees<'info>(
     let protocol_cut = fee_breakdown.protocol_cut;
     let scheduler_cut = fee_breakdown.scheduler_cut;
 
+    // Always verify gross pull fits in u64; the OR short-circuit in the
+    // previous form (`total_fee <= face_amount || checked_add.is_some()`)
+    // skipped the check whenever the fee was small, leaving face+fee overflow
+    // uncaught. See S-2 (review 2026-07-06).
     require!(
-        total_fee <= face_amount || face_amount.checked_add(total_fee).is_some(),
+        face_amount.checked_add(total_fee).is_some(),
         TributaryError::ArithmeticOverflow
     );
 
@@ -994,10 +1010,6 @@ impl<'info> ExecuteComposable<'info> {
         require!(
             ctx.accounts.user_token_account.delegated_amount >= gross_pull,
             TributaryError::InsufficientDelegatedAmount
-        );
-        require!(
-            ctx.accounts.user_token_account.amount >= gross_pull,
-            TributaryError::InsufficientBalance
         );
         require!(
             ctx.accounts.user_token_account.amount >= gross_pull,
@@ -1650,6 +1662,48 @@ mod tests {
         assert!(
             res.is_err(),
             "num_checks = 255 must be rejected, got {:?}",
+            res
+        );
+    }
+
+    /// S-3 (review 2026-07-06): the bound check now references
+    /// `MAX_BYTE_RANGE_CHECKS` explicitly in addition to the slice length.
+    /// A `num_checks` value above the constant must be rejected even if
+    /// the slice happens to be longer (defense-in-depth against a future
+    /// code path that passes a different slice).
+    #[test]
+    fn validate_byte_ranges_rejects_num_checks_above_max_constant() {
+        let checks: [ByteRangeCheck; 4] = [
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+            ByteRangeCheck {
+                offset: 0,
+                length: 0,
+                expected: [0u8; 8],
+            },
+        ];
+        let data = [0u8; 8];
+
+        // MAX_BYTE_RANGE_CHECKS itself is the boundary — accepted.
+        assert!(validate_byte_ranges(&data, &checks, MAX_BYTE_RANGE_CHECKS as u8).is_ok());
+        // One above must be rejected.
+        let res = validate_byte_ranges(&data, &checks, (MAX_BYTE_RANGE_CHECKS as u8) + 1);
+        assert!(
+            res.is_err(),
+            "num_checks > MAX_BYTE_RANGE_CHECKS must be rejected, got {:?}",
             res
         );
     }

@@ -27,6 +27,7 @@ import assert from "assert";
 import { Buffer } from "buffer";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { LIGHTHOUSE_PUBKEY } from "./constants";
+import { ADMIN_KEYPAIR } from "./helpers/composable";
 
 // ── Composable v2.1 helpers (mirrors tests/composable.test.ts) ───────────
 const DISABLED_SPEC = { disabled: {} } as any;
@@ -64,12 +65,6 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 );
-const ADMIN_KEYPAIR = [
-  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
-  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
-  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
-  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
-];
 
 // ── Lighthouse assertion ─────────────────────────────────────────────────
 // Built via the SDK facade (packages/sdk/src/lighthouse.ts), which wraps the

@@ -37,15 +37,15 @@ export async function verifyUpToAuthorization(
   expectedMaxAmount: number,
   expectedTokenMint: PublicKey,
   expectedGateway: PublicKey,
-  expectedRecipient: PublicKey
+  expectedRecipient: PublicKey,
 ): Promise<{ success: boolean; error?: string; policyAddress?: PublicKey }> {
   try {
     const userPaymentPda = sdk.getUserPaymentPda(
       userPublicKey,
-      expectedTokenMint
+      expectedTokenMint,
     );
     const userPaymentPolicies = await sdk.getPaymentPoliciesByUser(
-      userPaymentPda.address
+      userPaymentPda.address,
     );
 
     // Find the most recent active UpTo policy
@@ -55,7 +55,7 @@ export async function verifyUpToAuthorization(
         return (
           "upTo" in policyType && Object.keys(p.account.status)[0] === "active"
         );
-      }
+      },
     );
 
     if (uptoPolicies.length === 0) {
@@ -68,8 +68,8 @@ export async function verifyUpToAuthorization(
     const latestPolicy = uptoPolicies.sort(
       (
         a: { publicKey: PublicKey; account: PaymentPolicy },
-        b: { publicKey: PublicKey; account: PaymentPolicy }
-      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
+        b: { publicKey: PublicKey; account: PaymentPolicy },
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber(),
     )[0];
 
     const policy = latestPolicy.account;
@@ -89,11 +89,28 @@ export async function verifyUpToAuthorization(
 
     // Ceiling check — reads maxAmount from the on-chain policy (immutable
     // post-create). The facilitator MUST NOT trust the settle-time amount.
-    const policyMax = policy.policyType.upTo?.maxAmount.toNumber() ?? 0;
-    if (policyMax !== expectedMaxAmount) {
+    //
+    // BN comparison (X-4, review 2026-07-06): the previous form did
+    // `policy.policyType.upTo?.maxAmount.toNumber() ?? 0`, which silently
+    // truncates amounts > 2^53 and lets a mismatched ceiling pass. Compare
+    // the BN directly against a BN-built-from-the-expected number; reject
+    // any expected value outside Number.isSafeInteger range so the caller
+    // is forced to migrate to a BN-bearing API for large token amounts.
+    const policyMaxBn = policy.policyType.upTo?.maxAmount;
+    if (!policyMaxBn) {
+      return { success: false, error: "Policy is missing upTo.maxAmount" };
+    }
+    if (!Number.isSafeInteger(expectedMaxAmount)) {
       return {
         success: false,
-        error: `Policy max ${policyMax} does not match expected ${expectedMaxAmount}`,
+        error: `expectedMaxAmount ${expectedMaxAmount} exceeds safe integer range; use a BN-backed caller`,
+      };
+    }
+    const expectedBn = new BN(expectedMaxAmount);
+    if (!policyMaxBn.eq(expectedBn)) {
+      return {
+        success: false,
+        error: `Policy max ${policyMaxBn.toString()} does not match expected ${expectedBn.toString()}`,
       };
     }
 
@@ -119,7 +136,7 @@ export async function verifyUpToAuthorization(
 export async function settleUpTo(
   sdk: Tributary,
   policyPda: PublicKey,
-  actualAmount: number | BN
+  actualAmount: number | BN,
 ): Promise<ReturnType<Tributary["executePayment"]>> {
   const amountBn =
     actualAmount instanceof BN ? actualAmount : new BN(actualAmount);

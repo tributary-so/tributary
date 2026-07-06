@@ -1,0 +1,9 @@
+{
+  "_comment": "TEST ONLY. Do not use outside the test suite. This admin keypair funds local Surfpool integration runs; it has no on-chain authority on any public cluster.",
+  "adminSecretKey": [
+    238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
+    50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86,
+    67, 104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55,
+    200, 136, 167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145
+  ]
+}
