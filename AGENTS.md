@@ -9,6 +9,7 @@
 - `cd packages/sdk && pnpm run build` - Build SDK package
 - `cd packages/sdk && pnpm run manager` - Run SDK manager CLI
 - `make prep` - Setup Solana toolchain (v1.18.20, Anchor 0.31.0)
+- `make build` - build every component of the repo
 
 ## Code Style
 

@@ -32,18 +32,12 @@ hordr:
                 When done, first update the bean status (and every descendant
                 you satisfied), then use the commit skill for all the changes,
                 including the bean(s).
-        tester:
-            harness: opencode
-            persona: |
-                You test a single task bean's implementation.
-                Read the bean: beans show <bean-id>
-                Run the tests and verify the acceptance criteria.
-                When done, run: hordr advance <bean-id>
-                If tests fail and you cannot fix them, do NOT run hordr advance — just stop.
         reviewer:
             harness: opencode
             persona: |
-                You review a single task bean's implementation.
+                You review a single task bean's implementation by comparing the
+                worktree with `develop`.
+
                 Read the bean: beans show <bean-id>
                 Review the git diff for correctness, style, and completeness.
         open_pr:
@@ -56,7 +50,6 @@ hordr:
             worktree: true
             steps:
                 - agent: implementer
-                - agent: tester
                 - agent: reviewer
                 - agent: open_pr
     routing:
