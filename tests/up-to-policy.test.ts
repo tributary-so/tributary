@@ -179,7 +179,7 @@ describe("UpTo payment policy", () => {
     await creditTokenAccount(admin.publicKey, 0);
 
     // Seed program config.
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
     const desired = await sdk.getProgramConfig(configPDA);
     desired.admin = admin.publicKey;
     desired.feeRecipient = admin.publicKey;
@@ -209,7 +209,7 @@ describe("UpTo payment policy", () => {
   // Direct PaymentPolicy UpTo flow.
   describe("direct PaymentPolicy UpTo", () => {
     test("create UserPayment", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const ix = await sdk.createUserPayment(USDC_MINT);
       await send([ix], [user]);
       const up = await sdk.getUserPayment(userPaymentPDA);
@@ -218,7 +218,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("create UpTo policy (immediate, long deadline)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const maxAmount = new anchor.BN(100_000_000); // 100 USDC ceiling
       const deadline = new anchor.BN(
         Math.floor(Date.now() / 1000) + 31_536_000
@@ -261,7 +261,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("settle(actual < max) — transitions to Completed", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       const pda = getPaymentPolicyPda(
         userPaymentPDA,
         1,
@@ -290,7 +290,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("re-settle fails (status = Completed)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       const pda = getPaymentPolicyPda(
         userPaymentPDA,
         1,
@@ -304,7 +304,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("settle(max) ok", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const max = new anchor.BN(10_000_000); // 10 USDC
       const deadline = new anchor.BN(
         Math.floor(Date.now() / 1000) + 31_536_000
@@ -334,7 +334,7 @@ describe("UpTo payment policy", () => {
         2,
         program.programId
       ).address;
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       const ixs = await sdk.settleUpTo(pda, max);
       await send(ixs, [gatewayAuthority]);
 
@@ -344,7 +344,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("settle(actual > max) fails", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const max = new anchor.BN(10_000_000); // 10 USDC
       const deadline = new anchor.BN(
         Math.floor(Date.now() / 1000) + 31_536_000
@@ -373,7 +373,7 @@ describe("UpTo payment policy", () => {
         3,
         program.programId
       ).address;
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       await expect(async () => {
         const ixs = await sdk.settleUpTo(
           pda,
@@ -388,7 +388,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("settle(0) ok — no usage, no charge", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const max = new anchor.BN(10_000_000);
       const deadline = new anchor.BN(
         Math.floor(Date.now() / 1000) + 31_536_000
@@ -423,7 +423,7 @@ describe("UpTo payment policy", () => {
           .amount
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       const ixs = await sdk.settleUpTo(pda, new anchor.BN(0));
       await send(ixs, [gatewayAuthority]);
 
@@ -442,7 +442,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("settle before valid_after fails (PaymentNotDue)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const far = new anchor.BN(Math.floor(Date.now() / 1000) + 31_536_000); // +1y
       const deadline = new anchor.BN(
         Math.floor(Date.now() / 1000) + 63_072_000
@@ -471,7 +471,7 @@ describe("UpTo payment policy", () => {
         5,
         program.programId
       ).address;
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       await expect(async () => {
         const ixs = await sdk.settleUpTo(pda, new anchor.BN(1_000_000));
         await send(ixs, [gatewayAuthority]);
@@ -479,7 +479,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("settle at/after deadline fails (PolicyExpired)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       // Deadline 1s in the past — settled immediately will be > deadline.
       const past = new anchor.BN(Math.floor(Date.now() / 1000) - 1);
       const memo = new Array(64).fill(0);
@@ -506,7 +506,7 @@ describe("UpTo payment policy", () => {
         6,
         program.programId
       ).address;
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       await expect(async () => {
         const ixs = await sdk.settleUpTo(pda, new anchor.BN(1_000_000));
         await send(ixs, [gatewayAuthority]);
@@ -514,7 +514,7 @@ describe("UpTo payment policy", () => {
     });
 
     test("recipient-triggerable settle", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const max = new anchor.BN(10_000_000);
       const deadline = new anchor.BN(
         Math.floor(Date.now() / 1000) + 31_536_000
@@ -545,7 +545,7 @@ describe("UpTo payment policy", () => {
       ).address;
 
       // Recipient signs the settle tx — the program allows it for UpTo.
-      await sdk.updateWallet(new anchor.Wallet(recipient));
+      await sdk.updateWallet(recipient);
       const ixs = await sdk.settleUpTo(
         pda,
         new anchor.BN(5_000_000) // 5 USDC, < 10 max

@@ -273,7 +273,7 @@ describe("Composable Topup Balance Flow", () => {
   });
 
   test("create gateway", async () => {
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
 
     gatewayPDA = getGatewayPda(
       gatewayAuthority.publicKey,
@@ -304,7 +304,7 @@ describe("Composable Topup Balance Flow", () => {
   });
 
   test("create coldWallet payment for USDC mint", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     userPaymentPDA = getUserPaymentPda(
       coldWallet.publicKey,
@@ -329,7 +329,7 @@ describe("Composable Topup Balance Flow", () => {
   });
 
   test("Create composable topup policy — pay-as-you-go policy + Lighthouse validation", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     const userPayment = await sdk.getUserPayment(userPaymentPDA);
     composablePolicyId = (userPayment!.createdComposableCount ?? 0) + 1;
@@ -489,7 +489,7 @@ describe("Composable Topup Balance Flow", () => {
   });
 
   test("Execute topup — succeeds (hotWallet below threshold)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     // Pre-execution balance check
     const hotBalanceBefore = await connection.getTokenAccountBalance(
@@ -613,7 +613,7 @@ describe("Composable Topup Balance Flow", () => {
   //  3. Execute topup again — fails (hotWallet balance now > 50 threshold)
   // ══════════════════════════════════════════════════════════════════════
   test("Execute topup again — fails (hotWallet above threshold)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(coldWallet));
+    await sdk.updateWallet(coldWallet);
 
     // hotWallet should now have ~90 USDC (> 50 USDC threshold)
     const hotBalance = await connection.getTokenAccountBalance(

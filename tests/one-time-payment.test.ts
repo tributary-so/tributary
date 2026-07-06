@@ -224,7 +224,7 @@ describe("OneTime payment policy", () => {
     await creditTokenAccount(admin.publicKey, 0);
 
     // Seed program config with admin (same pattern as tributary.test.ts).
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
     const desired = await sdk.getProgramConfig(configPDA);
     desired.admin = admin.publicKey;
     desired.feeRecipient = admin.publicKey;
@@ -254,7 +254,7 @@ describe("OneTime payment policy", () => {
   // Direct PaymentPolicy OneTime flow.
   describe("direct PaymentPolicy OneTime", () => {
     test("create UserPayment", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const ix = await sdk.createUserPayment(USDC_MINT);
       await send([ix], [user]);
       const up = await sdk.getUserPayment(userPaymentPDA);
@@ -263,7 +263,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("create immediate OneTime policy (dueDate=null)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const amount = new anchor.BN(50_000_000); // 50 USDC
       const memo = new Array(64).fill(0);
       Buffer.from("one-time immediate").copy(Buffer.from(memo));
@@ -302,7 +302,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("execute OneTime — transitions to Completed", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       const pda = getPaymentPolicyPda(
         userPaymentPDA,
         1,
@@ -330,7 +330,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("re-execute fails (status = Completed)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       const pda = getPaymentPolicyPda(
         userPaymentPDA,
         1,
@@ -344,7 +344,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("delete OneTime policy after completion", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const ix = await sdk.deletePaymentPolicy(USDC_MINT, 1);
       await send([ix], [user]);
 
@@ -358,7 +358,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("due-date gating — future-due policy rejects execute", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       // Re-approve after the prior execute consumed the delegate amount.
       await creditTokenAccount(user.publicKey, 1_000_000_000, {
@@ -387,7 +387,7 @@ describe("OneTime payment policy", () => {
         program.programId
       ).address;
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       await expect(async () => {
         const ixs = await sdk.executePayment(pda);
         await send(ixs, [gatewayAuthority]);
@@ -395,7 +395,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("expiry gating — already-expired policy rejects execute", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const past = new anchor.BN(Math.floor(Date.now() / 1000) - 1); // expired 1s ago
       const memo = new Array(64).fill(0);
       Buffer.from("expired").copy(Buffer.from(memo));
@@ -417,7 +417,7 @@ describe("OneTime payment policy", () => {
         program.programId
       ).address;
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
       await expect(async () => {
         const ixs = await sdk.executePayment(pda);
         await send(ixs, [gatewayAuthority]);
@@ -440,7 +440,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("create composable OneTime with Lighthouse guard", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const userPayment = await sdk.getUserPayment(userPaymentPDA);
       composablePolicyId = (userPayment!.createdComposableCount ?? 0) + 1;
@@ -544,7 +544,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("execute composable OneTime — fires once, transitions to Completed", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
         USDC_MINT,
@@ -610,7 +610,7 @@ describe("OneTime payment policy", () => {
     });
 
     test("re-execute composable OneTime fails (Completed)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
         USDC_MINT,

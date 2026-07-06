@@ -108,7 +108,7 @@ describe("Surfpool - Mainnet Integration", () => {
     });
 
     test("create gateway", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
 
       gatewayPDA = getGatewayPda(
         gatewayAuthority.publicKey,
@@ -139,7 +139,7 @@ describe("Surfpool - Mainnet Integration", () => {
     });
 
     test("create user payment for USDC mint", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       userPaymentPDA = getUserPaymentPda(
         user.publicKey,

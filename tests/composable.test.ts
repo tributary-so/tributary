@@ -234,7 +234,7 @@ describe("Composable Policies", () => {
   beforeAll(async () => {
     try {
       // Init program
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
       const initIx = await sdk.initialize(
         provider.wallet.publicKey,
         admin.publicKey
@@ -250,7 +250,7 @@ describe("Composable Policies", () => {
     }
 
     // Create user payment
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
     const createUserIx = await sdk.createUserPayment(tokenMint);
     await sendAndConfirmTransaction(
       connection,
@@ -260,7 +260,7 @@ describe("Composable Policies", () => {
     );
 
     // Create gateway
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
     const gatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       250, // 2.5% fee
@@ -281,7 +281,7 @@ describe("Composable Policies", () => {
   //  Create composable policy — subscription policy, no validation
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — subscription policy, no validation", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composableCountBefore =
@@ -380,7 +380,7 @@ describe("Composable Policies", () => {
   //  Create composable policy — with validation config
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — with validation config", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -484,7 +484,7 @@ describe("Composable Policies", () => {
   //  Create composable policy — fails with non-whitelisted forward program
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with non-whitelisted forward program", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -553,7 +553,7 @@ describe("Composable Policies", () => {
   //  Create composable policy — fails with non-whitelisted validation program
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with non-whitelisted validation program", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -621,7 +621,7 @@ describe("Composable Policies", () => {
   //  Create composable policy — fails with zero data checks
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails with zero data checks", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -693,7 +693,7 @@ describe("Composable Policies", () => {
   //      execute_composable call, bricking the policy.
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails when numDataChecks exceeds MAX_BYTE_RANGE_CHECKS", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -768,7 +768,7 @@ describe("Composable Policies", () => {
   //      ByteRangeCheckFailed instead of bricking the policy.
   // ══════════════════════════════════════════════════════════════════════
   test("Create composable policy — fails when ByteRangeCheck.length > 8", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -844,7 +844,7 @@ describe("Composable Policies", () => {
   //  Change composable status — Active to Paused
   // ══════════════════════════════════════════════════════════════════════
   test("Change composable status — Active to Paused", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -954,7 +954,7 @@ describe("Composable Policies", () => {
     expect(policy.status).toEqual({ paused: {} });
 
     // Resume — owner (user) signs
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const resumeIx = await program.methods
       .changeComposableStatus(composablePolicyId, { active: {} })
@@ -982,7 +982,7 @@ describe("Composable Policies", () => {
   //  Delete composable policy
   // ══════════════════════════════════════════════════════════════════════
   test("Delete composable policy", async () => {
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -1101,7 +1101,7 @@ describe("Composable Policies", () => {
   //  Execute composable — byte range check fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — byte range check fails", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -1205,7 +1205,7 @@ describe("Composable Policies", () => {
     );
     await ensureTokenAccount(user.publicKey, secondMint);
 
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     const wrongInstructionData = Buffer.from(new Array(33).fill(0));
 
@@ -1277,7 +1277,7 @@ describe("Composable Policies", () => {
   //  Subscription composable. Only PayAsYouGo accepts a caller chunk.
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — Subscription rejects forwardAmount (C-1)", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -1428,7 +1428,7 @@ describe("Composable Policies", () => {
   //  Execute composable — paused policy fails
   // ══════════════════════════════════════════════════════════════════════
   test("Execute composable — paused policy fails", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -1492,7 +1492,7 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const pauseIx = await program.methods
       .changeComposableStatus(composablePolicyId, { paused: {} })
@@ -1512,7 +1512,7 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     const ix = await program.methods
       .executeComposable(Buffer.from(new Array(32).fill(0)), null)
@@ -1578,7 +1578,7 @@ describe("Composable Policies", () => {
   });
 
   test("Delete composable policy with validation — closes ValidationPDA", async () => {
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
     const composablePolicyId =
@@ -1657,7 +1657,7 @@ describe("Composable Policies", () => {
     expect(valPdaBefore).not.toBeNull();
 
     // Pause
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const pauseIx = await program.methods
       .changeComposableStatus(composablePolicyId, { paused: {} })
@@ -1751,7 +1751,7 @@ describe("Composable Policies", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(b2User));
+      await sdk.updateWallet(b2User);
       const createUserIx = await sdk.createUserPayment(tokenMint);
       await sendAndConfirmTransaction(
         connection,
@@ -1825,7 +1825,7 @@ describe("Composable Policies", () => {
     });
 
     test("delete_user_payment fails when active_composable_count > 0", async () => {
-      await sdk.updateWallet(new anchor.Wallet(b2User));
+      await sdk.updateWallet(b2User);
 
       const ix = await program.methods
         .deleteUserPayment()
@@ -1855,7 +1855,7 @@ describe("Composable Policies", () => {
 
     test("delete_user_payment succeeds once composable policy is removed", async () => {
       // Clean up the composable policy first.
-      await sdk.updateWallet(new anchor.Wallet(b2User));
+      await sdk.updateWallet(b2User);
 
       const pauseIx = await program.methods
         .changeComposableStatus(b2PolicyId, { paused: {} })
@@ -1924,7 +1924,7 @@ describe("Composable Policies", () => {
   // ══════════════════════════════════════════════════════════════════════
   describe("B3 regression", () => {
     test("create_composable_policy stores explicit recipient != fee_payer", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       // Dedicated recipient keypair — distinct from fee_payer (user)
       const b3Recipient = Keypair.generate();
@@ -2001,7 +2001,7 @@ describe("Composable Policies", () => {
     });
 
     test("create_composable_policy rejects recipient = PublicKey.default", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
       const composablePolicyId =
@@ -2077,7 +2077,7 @@ describe("Composable Policies", () => {
   // ══════════════════════════════════════════════════════════════════════
   describe.skip("G-1 negative-path coverage (needs Surfpool verification)", () => {
     test("Execute composable — insufficient user balance fails", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const userPaymentBefore = await sdk.getUserPayment(userPaymentPDA);
       const composablePolicyId =
