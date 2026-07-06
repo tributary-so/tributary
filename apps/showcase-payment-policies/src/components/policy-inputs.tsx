@@ -19,7 +19,6 @@ import { issuePolicyToken } from '@tributary-so/sdk-react'
 import { useAtomValue } from 'jotai'
 import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
 import { API_BASE_URL } from '@/constants'
-import { buildPolicySuccessRedirect } from '@/lib/redirect'
 import { today, getLocalTimeZone, fromDate } from '@internationalized/date'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,9 +51,6 @@ export interface PaymentPolicyFormData {
   memo: string
   approvalAmount: string
   referralCode: string
-  // Optional post-create redirect (JWT issued + ?token= appended)
-  successUrl: string
-  cancelUrl: string
 
   amount: string
   frequency: PaymentFrequencyString
@@ -427,8 +423,9 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
       console.log(txid)
       addToast({ title: 'Success', description: 'Payment policy created successfully!', color: 'success' })
 
-      // Issue JWT and redirect (mirrors apps/checkout/src/components/checkout-form.tsx:82-94).
-      // Best-effort: a JWT failure does NOT roll back the on-chain create.
+      // Issue JWT and redirect to the in-app success page (mirrors
+      // apps/checkout/src/components/checkout-form.tsx:82-94). Best-effort:
+      // a JWT failure does NOT roll back the on-chain create.
       try {
         const { token } = await issuePolicyToken({
           walletPublicKey: wallet.publicKey,
@@ -437,20 +434,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
           apiBaseUrl: API_BASE_URL,
           trackingId: formData.memo || undefined,
         })
-        const redirect = buildPolicySuccessRedirect(formData.successUrl, token)
-        if (redirect.kind === 'external') {
-          window.location.href = redirect.href
-          return
-        }
-        navigate(redirect.path)
+        navigate(`/success?token=${encodeURIComponent(token)}`)
         return
       } catch (jwtError) {
         console.warn('Failed to issue JWT after policy create:', jwtError)
-        if (formData.successUrl) {
-          // External success URL — caller expects a token; surface the error.
-          throw jwtError
-        }
-        // No external URL — fall back to home after a short delay.
+        // Fall back to home after a short delay.
         setTimeout(() => navigate('/'), 3000)
       }
     } catch (err) {
@@ -1083,46 +1071,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
             </div>
           </div>
         )}
-
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor="successUrl"
-              className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
-            >
-              Success URL (optional)
-            </label>
-            <Input
-              id="successUrl"
-              name="successUrl"
-              type="url"
-              value={formData.successUrl}
-              onChange={handleInputChange}
-              placeholder="https://yourapp.com/success"
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              After create + JWT issue, redirect here with ?token= set.
-            </p>
-          </div>
-          <div>
-            <label
-              htmlFor="cancelUrl"
-              className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
-            >
-              Cancel URL (optional)
-            </label>
-            <Input
-              id="cancelUrl"
-              name="cancelUrl"
-              type="url"
-              value={formData.cancelUrl}
-              onChange={handleInputChange}
-              placeholder="https://yourapp.com/cancel"
-              className="w-full"
-            />
-          </div>
-        </div>
 
         <div className="mt-4">
           <label

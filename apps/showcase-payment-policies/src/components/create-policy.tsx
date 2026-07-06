@@ -8,7 +8,7 @@ export default function PaymentPolicyFeature() {
     tokenMint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
     recipient: '',
     gateway: '',
-    amount: '',
+    amount: '1',
     intervalSeconds: '2592000',
     memo: '',
     frequency: 'monthly',
@@ -16,8 +16,6 @@ export default function PaymentPolicyFeature() {
     maxRenewals: '',
     approvalAmount: '',
     referralCode: '',
-    successUrl: '',
-    cancelUrl: '',
     milestoneAmounts: ['', '', '', ''],
     milestoneDates: Array.from({ length: 4 }, (_, i) => {
       const date = new Date()

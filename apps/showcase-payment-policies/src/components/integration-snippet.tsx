@@ -231,9 +231,8 @@ import { BN } from '@coral-xyz/anchor'
   recipient={new PublicKey('${validated.recipient}')}
   gateway={new PublicKey('${validated.gateway}')}
   maxRenewals={${validated.formData.maxRenewals || 12}}
-  interval={PaymentInterval.${capitalizeFirst(validated.formData.frequency)}${
-          validated.formData.frequency == 'custom' ? `custom_interval={${validated.intervalSeconds}}\r\n  ` : ''
-        }memo="${validated.memo}"
+  interval={PaymentInterval.${capitalizeFirst(validated.formData.frequency)}${validated.formData.frequency == 'custom' ? `custom_interval={${validated.intervalSeconds}}\r\n  ` : ''
+          }memo="${validated.memo}"
   label="Subscribe for $${parseFloat(validated.formData.amount) || 10}/${validated.formData.frequency}"
   executeImmediately={true}
   className="bg-subscription-600 hover:bg-subscription-700 text-white"
@@ -275,12 +274,10 @@ import { PublicKey } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 
 <PayAsYouGoButton
-  maxAmountPerPeriod={new BN(${
-    parseFloat(validated.formData.maxAmountPerPeriod || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
-  })}
-  maxChunkAmount={new BN(${
-    parseFloat(validated.formData.maxChunkAmount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
-  })}
+  maxAmountPerPeriod={new BN(${parseFloat(validated.formData.maxAmountPerPeriod || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
+          })}
+  maxChunkAmount={new BN(${parseFloat(validated.formData.maxChunkAmount || '0') * Math.pow(10, getTokenPrecision(validated.tokenMint))
+          })}
   periodLengthSeconds={new BN(${validated.formData.periodLengthSeconds || '2592000'})}
   token={new PublicKey('${validated.tokenMint}')}
   recipient={new PublicKey('${validated.recipient}')}
@@ -309,9 +306,8 @@ import { BN } from '@coral-xyz/anchor'
   amount={new BN(${amount})}
   token={new PublicKey('${validated.tokenMint}')}
   recipient={new PublicKey('${validated.recipient}')}
-  gateway={new PublicKey('${validated.gateway}')}${dueSec ? `\n  dueDate={new BN(${dueSec})}` : ''}${
-          expSec ? `\n  expiryDate={new BN(${expSec})}` : ''
-        }
+  gateway={new PublicKey('${validated.gateway}')}${dueSec ? `\n  dueDate={new BN(${dueSec})}` : ''}${expSec ? `\n  expiryDate={new BN(${expSec})}` : ''
+          }
   memo="${validated.memo}"
   label="Create One-time policy"
   className="bg-onetime-600 hover:bg-onetime-700 text-white"
@@ -338,7 +334,13 @@ import { BN } from '@coral-xyz/anchor'
   deadline={new BN(${deadlineSec})}${validAfterSec ? `\n  validAfter={new BN(${validAfterSec})}` : ''}
   token={new PublicKey('${validated.tokenMint}')}
   recipient={new PublicKey('${validated.recipient}')}
-  gateway={new PublicKey('${validated.gateway}')}`
+  gateway={new PublicKey('${validated.gateway}')}
+  memo="${validated.memo}"
+  label="Create One-time policy"
+  className="bg-onetime-600 hover:bg-onetime-700 text-white"
+  onSuccess={handleSuccess}
+  onError={handleError}
+/>`
       }
 
       default:
@@ -359,17 +361,15 @@ import { BN } from '@coral-xyz/anchor'
       <div className="flex gap-2 mb-2">
         <button
           onClick={() => setActiveTab('button')}
-          className={`flex-1 px-4 py-2.5 text-xs font-medium uppercase tracking-wide transition-all ${
-            activeTab === 'button' ? TAB_STYLES.button.active : TAB_STYLES.button.inactive
-          }`}
+          className={`flex-1 px-4 py-2.5 text-xs font-medium uppercase tracking-wide transition-all ${activeTab === 'button' ? TAB_STYLES.button.active : TAB_STYLES.button.inactive
+            }`}
         >
           Button Code
         </button>
         <button
           onClick={() => setActiveTab('checkout')}
-          className={`flex-1 px-4 py-2.5 text-xs font-medium uppercase tracking-wide transition-all ${
-            activeTab === 'checkout' ? TAB_STYLES.checkout.active : TAB_STYLES.checkout.inactive
-          }`}
+          className={`flex-1 px-4 py-2.5 text-xs font-medium uppercase tracking-wide transition-all ${activeTab === 'checkout' ? TAB_STYLES.checkout.active : TAB_STYLES.checkout.inactive
+            }`}
         >
           Checkout Link
         </button>
@@ -391,9 +391,8 @@ import { BN } from '@coral-xyz/anchor'
                   interval={interval}
                   custom_interval={customInterval}
                   memo={validated.memo}
-                  label={`➤ Subscribe for ${parseFloat(validated.formData.amount) || 10}/${
-                    validated.formData.frequency
-                  }`}
+                  label={`➤ Subscribe for ${parseFloat(validated.formData.amount) || 10}/${validated.formData.frequency
+                    }`}
                   executeImmediately={true}
                   className="bg-primary-600 hover:bg-primary-700 text-white"
                   radius="md"
@@ -437,13 +436,13 @@ import { BN } from '@coral-xyz/anchor'
                 maxAmountPerPeriod={
                   new BN(
                     parseFloat(validated.formData.maxAmountPerPeriod || '0') *
-                      Math.pow(10, getTokenPrecision(validated.tokenMint)),
+                    Math.pow(10, getTokenPrecision(validated.tokenMint)),
                   )
                 }
                 maxChunkAmount={
                   new BN(
                     parseFloat(validated.formData.maxChunkAmount || '0') *
-                      Math.pow(10, getTokenPrecision(validated.tokenMint)),
+                    Math.pow(10, getTokenPrecision(validated.tokenMint)),
                   )
                 }
                 periodLengthSeconds={new BN(parseInt(validated.formData.periodLengthSeconds || '2592000'))}
@@ -511,9 +510,8 @@ import { BN } from '@coral-xyz/anchor'
               <span className={LABEL_STYLES}>React Code</span>
               <button
                 onClick={() => copyCode(jsCode, 'js')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase border border-border  transition-colors hover:bg-muted/50 ${
-                  copiedCode === 'js' ? 'text-status-active-600' : 'text-muted-foreground'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase border border-border  transition-colors hover:bg-muted/50 ${copiedCode === 'js' ? 'text-status-active-600' : 'text-muted-foreground'
+                  }`}
               >
                 {copiedCode === 'js' ? (
                   <>
@@ -616,9 +614,8 @@ import { BN } from '@coral-xyz/anchor'
                         value={item.description}
                         onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                         placeholder="Product/Service name"
-                        className={`col-span-6 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${
-                          !item.description.trim() ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
-                        }`}
+                        className={`col-span-6 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${!item.description.trim() ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
+                          }`}
                       />
                       <input
                         type="number"
@@ -627,9 +624,8 @@ import { BN } from '@coral-xyz/anchor'
                         value={item.unitPrice || ''}
                         onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                         placeholder="1.00"
-                        className={`col-span-3 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${
-                          item.unitPrice <= 0 ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
-                        }`}
+                        className={`col-span-3 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${item.unitPrice <= 0 ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
+                          }`}
                       />
                       <input
                         type="number"
@@ -637,9 +633,8 @@ import { BN } from '@coral-xyz/anchor'
                         value={item.quantity}
                         onChange={(e) => updateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
                         placeholder="1"
-                        className={`col-span-2 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${
-                          item.quantity < 1 ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
-                        }`}
+                        className={`col-span-2 px-2 py-1.5 border  text-xs focus:outline-hidden focus:ring-2 focus:ring-ring ${item.quantity < 1 ? 'border-overdue-300 bg-overdue-50' : 'border-border bg-background'
+                          }`}
                       />
                       <button onClick={() => removeLineItem(index)} className={BUTTON_STYLES.icon}>
                         <Trash2 className="w-4 h-4" />
@@ -669,11 +664,10 @@ import { BN } from '@coral-xyz/anchor'
               <button
                 onClick={() => checkoutValidation.valid && copyCode(checkoutUrl, 'url')}
                 disabled={!checkoutValidation.valid}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase  transition-all ${
-                  checkoutValidation.valid
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase  transition-all ${checkoutValidation.valid
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                     : 'bg-muted text-muted-foreground cursor-not-allowed'
-                }`}
+                  }`}
               >
                 {copiedCode === 'url' ? (
                   <>
@@ -700,11 +694,10 @@ import { BN } from '@coral-xyz/anchor'
               href={checkoutValidation.valid ? checkoutUrl : '#'}
               target={checkoutValidation.valid ? '_blank' : undefined}
               rel={checkoutValidation.valid ? 'noopener noreferrer' : undefined}
-              className={`inline-flex items-center gap-2 mt-3 px-4 py-2.5 text-xs font-medium uppercase  transition-all ${
-                checkoutValidation.valid
+              className={`inline-flex items-center gap-2 mt-3 px-4 py-2.5 text-xs font-medium uppercase  transition-all ${checkoutValidation.valid
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg cursor-pointer'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
-              }`}
+                }`}
             >
               ↗ Open Checkout Page
             </a>
