@@ -280,6 +280,78 @@ describe("Tributary", () => {
     expect(userPayment!.bump).toBe(userPaymentBump);
   });
 
+  test("M-05: create_user_payment rejects non-signing owner (griefing defense)", async () => {
+    // Regression for the M-05 / H-02 griefing vector: owner MUST sign.
+    // Pre-fix anyone could create a UserPayment PDA for any owner, locking
+    // the victim out of her own account (InitSpace on her later attempt).
+    // Post-fix the Signer constraint on `owner` rejects unsigned creation.
+    const victim = Keypair.generate();
+    const attacker = Keypair.generate();
+    await batchFund([
+      [victim.publicKey, 2],
+      [attacker.publicKey, 2],
+    ]);
+    await surfpool.setTokenAccount({
+      owner: victim.publicKey,
+      mint: tokenMint,
+      amount: 0,
+    });
+    const victimAta = getAssociatedTokenAddressSync(
+      tokenMint,
+      victim.publicKey
+    );
+    const [victimUserPaymentPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_payment"),
+        victim.publicKey.toBuffer(),
+        tokenMint.toBuffer(),
+      ],
+      program.programId
+    );
+
+    // Build a legitimate ix as the attacker, then patch the account metas to
+    // name the victim as owner WITHOUT her signature.
+    await sdk.updateWallet(new anchor.Wallet(attacker));
+    const legitIx = await sdk.createUserPayment(tokenMint);
+    // IDL order: [0]=owner, [1]=user_payment, [2]=token_account, ...
+    const griefedKeys = legitIx.keys.map((k, i) => {
+      if (i === 0)
+        return { pubkey: victim.publicKey, isWritable: false, isSigner: false };
+      if (i === 1)
+        return {
+          pubkey: victimUserPaymentPda,
+          isWritable: true,
+          isSigner: false,
+        };
+      if (i === 2)
+        return { pubkey: victimAta, isWritable: false, isSigner: false };
+      return k;
+    });
+    const griefedIx = new TransactionInstruction({
+      programId: legitIx.programId,
+      data: legitIx.data,
+      keys: griefedKeys,
+    });
+
+    // Attacker signs only as fee_payer; victim does NOT sign. The Signer
+    // constraint on `owner` must reject the transaction.
+    await expect(
+      sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(griefedIx),
+        [attacker],
+        { commitment: "processed" as Commitment }
+      )
+    ).rejects.toThrow();
+
+    // The PDA must not exist — the failed attack created nothing, so the
+    // victim can still onboard normally later.
+    const victimAccountInfo = await connection.getAccountInfo(
+      victimUserPaymentPda
+    );
+    expect(victimAccountInfo).toBeNull();
+  });
+
   test("Create payment gateway", async () => {
     const gatewayFeeBps = 250; // 2.5% fee
 
