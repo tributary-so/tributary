@@ -1,11 +1,11 @@
 ---
 # tributary-brp6
 title: 'Program contract: composable fee rebase to input-side'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-05T07:47:52Z
-updated_at: 2026-07-05T07:47:52Z
+updated_at: 2026-07-06T07:15:37Z
 parent: tributary-wsq4
 ---
 
@@ -24,3 +24,16 @@ Acceptance criteria:
 - [ ] Lint + anchor test green.
 
 Parent epic: tributary-wsq4. Blocked-by: nothing (this is the source of truth for SDK + tests).
+
+## Summary of Changes
+
+Implemented in commit 9bc9e8a (merged to develop via be75651). Verified 2026-07-06:
+- execute_composable.rs: fee-skim phase inserted between PULL and FORWARD (gross pull = face + fee, skimmed from intermediate_input before forward). refs execute_composable.rs:339, 966, 1195.
+- process_output_and_sweep refactored: sweeps intermediate_output -> recipient AND intermediate_input residual -> user (asset separation, execute_composable.rs:530).
+- Accounts constraints flipped output_mint -> input_mint for gateway_fee_account / protocol_fee_account / scheduler_ata.
+- create_composable_policy: rejects forward_disabled && output_mint != input_mint; accepts output_mint == Pubkey::default() (act-mode sentinel).
+- Mode-conditional require!(output_amount > 0): enforced in deliver mode, skipped in act mode (is_act_mode, execute_composable.rs:779). SystemProgram accepted as output_mint account in act mode; output-ATA creation + deliver sweep skipped.
+- PayAsYouGo max_chunk_amount / max_amount_per_period / period accumulator all bind on GROSS (execute_composable.rs:963, 983, 1392).
+- Delegate check: delegated_amount >= gross_pull (execute_composable.rs:995).
+- ComposableExecuted event carries gross_pulled + fee fields (execute_composable.rs:1435-1438).
+- cargo check green (2026-07-06).

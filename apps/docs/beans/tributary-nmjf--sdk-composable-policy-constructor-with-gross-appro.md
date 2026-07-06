@@ -1,11 +1,11 @@
 ---
 # tributary-nmjf
 title: 'SDK: composable policy constructor with gross-approval + fee-aware helpers'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-05T07:47:52Z
-updated_at: 2026-07-05T07:48:08Z
+updated_at: 2026-07-06T07:15:47Z
 parent: tributary-wsq4
 blocked_by:
     - tributary-brp6
@@ -23,3 +23,13 @@ Acceptance criteria:
 - [ ] pnpm run build + lint green.
 
 Parent epic: tributary-wsq4. Blocked-by: program-contract feature (need final on-chain semantics before SDK matches).
+
+## Summary of Changes
+
+Implemented in commit 9bc9e8a (merged to develop). Verified 2026-07-06:
+- createComposablePolicy: outputMint optional (None/omitted => Pubkey::default() sentinel = act mode; Some(mint) => deliver mode).
+- requiredDelegatedAmount(face, gatewayFeeBps) helper exported from @tributary-so/sdk (sdk.ts:2863) — computes gross pull = face + (face * bps / 10000).
+- Composable-policy constructor issues the full ix bundle including approve-delegate at gross amount.
+- executeComposable signature unchanged (forward_amount = face); JSDoc documents NET-on-pull + gross caps + fee non-refundable on residual.
+- Earn-currency shift (fees now input_mint) documented.
+- SDK code present; local build needs pnpm install (node_modules missing in worktree), commit 9bc9e8a confirmed tsc + tsup clean.

@@ -70,5 +70,14 @@ open QEDGen.Solana
 --   theorem residual_nonnegative_preserved_by_execute_payment_case_1
 --   theorem residual_nonnegative_preserved_by_execute_payment_otherwise
 --   theorem residual_nonnegative_preserved_by_release_milestone
+--
+-- ── Composable v2.2 (ADR-0026) properties ────────────────────────────
+-- Three new preservation obligations introduced by the input-side gross
+-- pull rebase. Each is a linear identity over the execute_composable
+-- effect — closeable by `unfold` + `omega` once the Lean backend is
+-- unblocked (see README §Lean — Bug A on bare field reads).
+--   theorem composable_fee_basis_is_face_preserved_by_execute_composable
+--   theorem composable_gross_pull_matches_face_plus_fee_preserved_by_execute_composable
+--   theorem composable_period_accumulates_gross_preserved_by_execute_composable
 
 end Tributary
