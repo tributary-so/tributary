@@ -96,6 +96,15 @@ const options: swaggerJsdoc.Options = {
       },
       { name: "JWKS", description: "JWT key set publishing" },
       { name: "Admin", description: "Administrative key rotation" },
+      {
+        name: "Gateway",
+        description: "Gateway merchant layer (auth + analytics)",
+      },
+      {
+        name: "Assets",
+        description:
+          "Tokenized-asset catalog proxy (tokens.xyz). Type-ahead search + mint resolver.",
+      },
     ],
   },
   apis: ["./src/routes/*.ts"],

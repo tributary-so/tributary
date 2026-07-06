@@ -17,8 +17,10 @@ import {
 } from '@tributary-so/sdk'
 import { issuePolicyToken } from '@tributary-so/sdk-react'
 import { useAtomValue } from 'jotai'
-import { availableTokensAtom, getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
+import { getTokenPrecisionAtom, getTokenSymbolAtom, type Network } from '@/lib/token-store'
+import { TokenAutocomplete } from '@/components/token-autocomplete'
 import { API_BASE_URL } from '@/constants'
+import { defaultMintForNetwork } from '@tributary-so/tokens-client'
 import { today, getLocalTimeZone, fromDate } from '@internationalized/date'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +118,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
   const [gateways, setGateways] = useState<Array<{ publicKey: PublicKey; account: PaymentGateway }>>([])
   const [gatewaysLoading, setGatewaysLoading] = useState(false)
   const [gatewaysLoaded, setGatewaysLoaded] = useState(false)
-  const availableTokens = useAtomValue(availableTokensAtom)
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const [isRecipientValid, setIsRecipientValid] = useState(true)
@@ -124,11 +125,6 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
   const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null)
 
   const currentNetwork = useMemo(() => getNetworkFromRpcEndpoint(connection.rpcEndpoint), [connection.rpcEndpoint])
-
-  const filteredTokens = useMemo(
-    () => availableTokens.filter((token) => !token.network || token.network === currentNetwork),
-    [availableTokens, currentNetwork],
-  )
 
   useEffect(() => {
     const fetchGateways = async () => {
@@ -153,10 +149,11 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
     if (sdk && !gatewaysLoaded) {
       fetchGateways()
       if (!formData.tokenMint) {
-        onFormDataChange({ ...formData, tokenMint: filteredTokens[0]?.address })
+        // Network-aware default: devnet USDC on devnet, mainnet USDC on mainnet.
+        onFormDataChange({ ...formData, tokenMint: defaultMintForNetwork(currentNetwork) })
       }
     }
-  }, [sdk, gatewaysLoaded, formData, onFormDataChange, filteredTokens])
+  }, [sdk, gatewaysLoaded, formData, onFormDataChange, currentNetwork])
 
   useEffect(() => {
     setIsRecipientValid(validateRecipientAddress(formData.recipient))
@@ -531,31 +528,13 @@ export default function PaymentPolicyForm({ formData, onFormDataChange, lineItem
         </div>
 
         <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label
-              htmlFor="tokenMint"
-              className="block text-xs font-medium text-foreground uppercase tracking-wide mb-1"
-            >
-              Token
-            </label>
-            <Select
-              id="tokenMint"
-              placeholder="Select token"
-              selectedKeys={formData.tokenMint ? [formData.tokenMint] : []}
-              onSelectionChange={(keys) => {
-                const selectedKey = Array.from(keys)[0] as string
-                onFormDataChange({ ...formData, tokenMint: selectedKey })
-              }}
-              required
-              className="w-full"
-            >
-              {filteredTokens.map((token) => (
-                <SelectItem key={token.address} description={token.name ?? 'No token name'}>
-                  {token.symbol}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
+          <TokenAutocomplete
+            value={formData.tokenMint}
+            onSelect={(mint) => onFormDataChange({ ...formData, tokenMint: mint })}
+            network={currentNetwork}
+            apiBaseUrl={API_BASE_URL}
+            className="w-full"
+          />
           <div>
             <label
               htmlFor="recipient"

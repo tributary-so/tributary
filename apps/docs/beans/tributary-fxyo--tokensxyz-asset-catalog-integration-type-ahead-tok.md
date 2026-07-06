@@ -1,11 +1,11 @@
 ---
 # tributary-fxyo
 title: tokens.xyz asset catalog integration (type-ahead token search + mint resolver)
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-03T10:11:00Z
-updated_at: 2026-07-03T10:11:00Z
+updated_at: 2026-07-06T08:02:17Z
 ---
 
 ## Context
@@ -178,3 +178,62 @@ On upstream failure: serve from `MINT_OVERRIDES` (same map shared with `packages
 - `TOKENS_XYZ_API_KEY` — server-side only, in `apps/api/.env`
 - `TOKENS_XYZ_BASE_URL` — default `https://api.tokens.xyz/v1`
 - `VITE_API_BASE_URL` — already convention (`apps/checkout/src/constants.ts:22`); both apps adopt it
+
+## Summary of Changes
+
+### Phase 1 — packages/tokens-client/ (NEW shared workspace package)
+
+- `package.json`, `tsconfig.json`, src layout. ESM-only, tsc-built.
+- `src/types.ts` — AssetSearchResult, AssetVariant, ResolveResult, AssetCategory, response envelopes.
+- `src/devnetFallback.ts` — MINT_OVERRIDES map (USDC, SOL, USDT, mSOL, devnet USDC). Single source of truth — re-exported as INITIAL_TOKENS for app seed.
+- `src/client.ts` — createTokensClient({ baseUrl, fetch }) → { search, resolveMint, resolveRef }. Pure fetch.
+- `src/react.ts` — useAssetSearch (debounced 250ms), useResolveMint, useResolveMints (parallel via useQueries). Separate /react subpath export so the Node api consumer doesn't pull react-query.
+- `src/index.ts` — re-exports types + client + devnetFallback.
+- `src/devnetFallback.test.ts` — ponytail self-check (validates every mint is base58, lookupOverride round-trips, defaultMintForNetwork is correct).
+
+### Phase 2 — apps/api (proxy)
+
+- `src/routes/assets.ts` (NEW) — GET /search + GET /resolve handlers, ipRateLimit(120/min) at router level, JSDoc @openapi annotations.
+- `src/services/tokens-proxy.ts` (NEW) — upstream fetch + base58 mint validation + Redis cache (search TTL 60s, resolve TTL 10min) + MINT_OVERRIDES fallback on resolve failure. AbortSignal.timeout(4s) on upstream.
+- `src/services/redis.ts` (NEW) — lazy singleton client + cacheGet/cacheSet JSON helpers. No-ops when REDIS_URL unset (local dev).
+- `src/middleware/rateLimit.ts` — added ipRateLimit() wrapper (default IP-keyed behavior of existing rateLimit).
+- `src/routes/index.ts` — mount assetsRouter at /v1/assets.
+- `src/openapi.ts` — register Assets + Gateway tags.
+- `.env.example` — TOKENS_XYZ_API_KEY, TOKENS_XYZ_BASE_URL.
+- `package.json` — depends on @tributary-so/tokens-client.
+
+### Phase 3 — apps/showcase-payment-policies (Autocomplete UX)
+
+- `src/lib/token-store.ts` — slimmed; imports INITIAL_TOKENS + types from @tributary-so/tokens-client.
+- `src/components/token-autocomplete.tsx` (NEW) — HeroUI Autocomplete with paste-mint toggle. Network-gated (mainnet=async search + seed, devnet=seed only). Selected state shows logo + symbol + name; monogram fallback. Debounced 250ms. Per D5 writes both formData.tokenMint AND tokenMetadataAtom.
+- `src/components/policy-inputs.tsx` — replaced <Select> (was lines 538-557) with <TokenAutocomplete>. Removed dead filteredTokens/availableTokensAtom. Network-aware default mint via defaultMintForNetwork().
+- `src/constants.ts` — unchanged (already exposes API_BASE_URL).
+- `package.json` — depends on @tributary-so/tokens-client.
+
+### Phase 4 — apps/app (account-page resolver)
+
+- `src/lib/token-store.ts` — slimmed (same shape as showcase).
+- `src/lib/api.ts` (NEW) — API_BASE_URL const (VITE_API_BASE_URL with api.tributary.so fallback).
+- `src/components/account/account-page.tsx` — added useResolveMints() over unique mints derived from userPayments, effect writes resolved metadata back to tokenMetadataAtom (idempotent — doesn't clobber richer existing entries).
+- `package.json` — depends on @tributary-so/tokens-client.
+
+### Phase 5 — docs
+
+- `apps/docs/adr/0028-tokens-xyz-asset-catalog-proxy.md` (NEW) — locked-in decision (0024 in the bean body was already taken by PayAsYouGo expiration; this uses 0028, the next free slot).
+- `apps/docs/docs/api/rest-api.md` — documented GET /v1/assets/search + GET /v1/assets/resolve with full request/response examples.
+
+### Verification
+
+- packages/tokens-client: tsc build clean; `pnpm run test` self-check passes.
+- apps/api: tsc build clean.
+- apps/showcase-payment-policies: tsc -b clean.
+- apps/app: tsc -b clean.
+- Pre-existing lint errors (3x `any` in account-page.tsx, 1x in payment-details.tsx, 3x react-refresh warnings) are on untouched lines — none introduced.
+
+### Ponytail notes
+
+- ipRateLimit is a one-line alias — existing rateLimit already keys on IP by default. Adding a separate factory would be slop.
+- Redis client no-ops without REDIS_URL. Local dev (no redis) just hits empty cache; production gets dedup. No new required infra for dev.
+- resolveRef routes through search (no separate upstream endpoint yet) — ponytail: noted inline.
+- Paste-mint fallback uses decimals=6 generic stub — ponytail: noted inline.
+- ADR is numbered 0028, not 0024 as the bean body said — 0024 was already taken when this landed.

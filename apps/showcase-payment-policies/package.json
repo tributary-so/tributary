@@ -39,6 +39,7 @@
     "@tributary-so/payments": "workspace:*",
     "@tributary-so/sdk": "workspace:*",
     "@tributary-so/sdk-react": "workspace:*",
+    "@tributary-so/tokens-client": "workspace:*",
     "@types/react-syntax-highlighter": "^15.5.13",
     "buffer": "^6.0.3",
     "framer-motion": "^12.38.0",

@@ -1,51 +1,18 @@
+/**
+ * App-local token store (jotai atoms).
+ *
+ * Token catalog data now flows in from `@tributary-so/tokens-client`
+ * (ADR-0028): the seed list + MINT_OVERRIDES live there, and the
+ * account-page resolve hook populates this atom dynamically.
+ */
+
 import { atom } from 'jotai'
+import { INITIAL_TOKENS, type TokenMetadata, type TokenMetadataMap } from '@tributary-so/tokens-client'
 
-export type Network = 'mainnet' | 'devnet' | 'testnet' | 'localnet'
+export type { Network, TokenMetadata, TokenMetadataMap } from '@tributary-so/tokens-client'
 
-export interface TokenMetadata {
-  symbol: string
-  name?: string
-  decimals?: number
-  logoURI?: string
-  network?: Network
-}
-
-export type TokenMetadataMap = Record<string, TokenMetadata>
-
-const INITIAL_TOKENS: TokenMetadataMap = {
-  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    decimals: 6,
-    network: 'mainnet' as Network,
-  },
-  So11111111111111111111111111111111111111112: {
-    symbol: 'SOL',
-    name: 'Solana',
-    decimals: 9,
-    network: 'mainnet' as Network,
-  },
-  Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: {
-    symbol: 'USDT',
-    name: 'Tether USD',
-    decimals: 6,
-    network: 'mainnet' as Network,
-  },
-  mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So: {
-    symbol: 'mSOL',
-    name: 'Marinade staked SOL',
-    decimals: 9,
-    network: 'mainnet' as Network,
-  },
-  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU': {
-    symbol: 'USDC (devnet)',
-    name: 'USD Coin on Devnet',
-    decimals: 6,
-    network: 'devnet' as Network,
-  },
-}
-
-export const tokenMetadataAtom = atom<TokenMetadataMap>(INITIAL_TOKENS)
+/** Seed with the well-known mints; enriched at runtime by resolve hooks. */
+export const tokenMetadataAtom = atom<TokenMetadataMap>({ ...INITIAL_TOKENS })
 
 export const getTokenSymbolAtom = atom((get) => (tokenMint: string): string => {
   const metadata = get(tokenMetadataAtom)[tokenMint]
