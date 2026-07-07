@@ -1,3 +1,4 @@
+TODAY := $(shell date +%Y-%m-%d)
 DEPLOY_KEY_PATH := ~/.config/solana/ADmSd9uYBRbLGa9rN1NtFv5LXtwLPdtVwGT5xhAYY4xZ.json
 PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.json
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
@@ -80,3 +81,16 @@ build:
 	pnpm run -r --filter "./packages/*" build
 	pnpm run -r --filter "./apps/*" build
 	make -C apps/docs build
+
+bump:
+	echo "$(TODAY): $(MESSAGE)" >> apps/scheduler/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/app/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/docs/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/checkout/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/lando/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/api/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/cli/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/payments/README.md

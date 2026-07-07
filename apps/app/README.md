@@ -387,3 +387,4 @@ cd ../sdk-react && pnpm run build
 ## License
 
 MIT License
+2026-07-07: v2 release

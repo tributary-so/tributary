@@ -682,3 +682,4 @@ MIT License - see parent repository [LICENSE](../../LICENSE) file.
 - **Main Repository**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
 - **SDK Documentation**: See `sdk/` package in parent repo
 - **Smart Contract**: See `programs/tributary/` in parent repo
+2026-07-07: v2 release

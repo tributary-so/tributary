@@ -808,3 +808,4 @@ MIT
 ## Bump
 
 2026-06-11: fee subsidize
+2026-07-07: v2 release
