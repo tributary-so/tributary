@@ -29,6 +29,10 @@ jobs:
         working-directory: ./packages/sdk
         run: pnpm run build
 
+      - name: Build tokens-client
+        working-directory: ./packages/tokens-client
+        run: pnpm run build
+
       - name: Build SDK-payments
         working-directory: ./packages/payments
         run: pnpm run build

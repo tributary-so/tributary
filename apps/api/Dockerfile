@@ -11,6 +11,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 WORKDIR /app/packages/sdk
 RUN pnpm run build
 
+WORKDIR /app/packages/tokens-client
+RUN pnpm run build
+
 WORKDIR /app/packages/payments
 RUN pnpm run build
 
@@ -21,6 +24,7 @@ FROM base AS build
 COPY . /app
 COPY --from=deps /app/packages/sdk /app/packages/sdk
 COPY --from=deps /app/packages/payments /app/packages/payments
+COPY --from=deps /app/packages/tokens-client /app/packages/tokens-client
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/apps/api/node_modules /app/apps/api/node_modules
 
