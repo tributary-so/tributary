@@ -1,3 +1,13 @@
+# [@tributary-so/sdk-v2.0.0-beta.1](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-v1.15.0-beta.1...@tributary-so/sdk-v2.0.0-beta.1) (2026-07-07)
+
+
+* 💥 boom: release v2 ([80bf346](https://github.com/tributary-so/tributary/commit/80bf34600d5f05ba93a957258da0eee053b37f3e))
+
+
+### BREAKING CHANGES
+
+* This commit is to force the next major version.
+
 # [@tributary-so/sdk-v1.15.0-beta.1](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-v1.14.0...@tributary-so/sdk-v1.15.0-beta.1) (2026-07-07)
 
 

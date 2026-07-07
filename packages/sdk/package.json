@@ -6,7 +6,7 @@
   },
   "license": "MIT",
   "private": false,
-  "version": "1.15.0-beta.1",
+  "version": "2.0.0-beta.1",
   "type": "module",
   "scripts": {
     "lint": "exit 0",
