@@ -11,7 +11,6 @@ import eventsRouter from "./events";
 import onetimeRouter from "./onetime";
 import webhooksRouter from "./webhooks";
 import tokensRouter from "./tokens";
-import jwksRouter from "./jwks";
 import adminRouter from "./admin";
 import gatewayRouter from "./gateway";
 import assetsRouter from "./assets";

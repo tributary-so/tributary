@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { asyncHandler, ApiError } from "../middleware";
 import { rotateKey } from "../services/jwks";
-import { rateLimit } from "../middleware/rateLimit";
 
 const router: Router = Router();
 

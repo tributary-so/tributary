@@ -8,9 +8,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "npx tsx src/index.ts",
+    "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "jest --testPathIgnorePatterns=xxx --testPathPattern=e2e",
+    "test:integration": "jest --testPathIgnorePatterns=xxx --testPathPattern=integration",
     "db:test": "npx tsx src/test-db.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
@@ -37,6 +40,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "@jest/globals": "^30.2.0",
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
@@ -49,11 +53,14 @@
     "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.9",
     "esbuild": "^0.27.3",
+    "eslint": "^10.0.0",
+    "globals": "^16.4.0",
     "jest": "^29.7.0",
     "socket.io-client": "^4.8.3",
     "supertest": "^6.3.4",
     "ts-jest": "^29.1.2",
     "tsx": "^4.7.4",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.44.0"
   }
 }

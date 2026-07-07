@@ -75,9 +75,6 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
 
   let gatewayPDA: PublicKey;
   let userPaymentPDA: PublicKey;
-  let userTokenAccount: PublicKey;
-  let recipientTokenAccount: PublicKey;
-  let feeRecipientTokenAccount: PublicKey;
 
   async function fund(account: PublicKey, sol: number): Promise<void> {
     await surfpool.setAccount({
@@ -129,16 +126,6 @@ describe("PayAsYouGo expiration (ADR-0024)", () => {
       USDC_MINT,
       program.programId
     ).address;
-
-    userTokenAccount = getAssociatedTokenAddressSync(USDC_MINT, user.publicKey);
-    recipientTokenAccount = getAssociatedTokenAddressSync(
-      USDC_MINT,
-      recipient.publicKey
-    );
-    feeRecipientTokenAccount = getAssociatedTokenAddressSync(
-      USDC_MINT,
-      feeRecipient.publicKey
-    );
 
     // Fund SOL.
     await Promise.all([

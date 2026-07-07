@@ -29,6 +29,7 @@ export class WebSocketService {
     this.setupRedisAdapter(redisUrl);
     this.setupEventHandlers();
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- module-scoped singleton capture, not a local alias
     wsServiceInstance = this;
   }
 

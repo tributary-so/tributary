@@ -4,7 +4,6 @@ import express, { Application } from "express";
 import onetimeRouter from "../routes/onetime";
 import * as onetimeService from "../services/onetime";
 import { errorHandler } from "../middleware/errorHandler";
-import { mockPaymentEvents } from "./fixtures/payment-events";
 
 jest.mock("../services/onetime");
 
@@ -259,7 +258,7 @@ describe("OneTime Payment API Routes", () => {
       const mockGetOneTimePaymentDetails =
         onetimeService.getOneTimePaymentDetails as jest.MockedFunction<any>;
 
-      const response = await request(app).get("/v1/onetime/").expect(404);
+      await request(app).get("/v1/onetime/").expect(404);
 
       expect(mockGetOneTimePaymentDetails).not.toHaveBeenCalled();
     });

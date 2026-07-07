@@ -22,7 +22,7 @@ const JWT_ISSUER = process.env.JWT_ISSUER || "https://api.tributary.so";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "tributary-checkout";
 const JWT_GATEWAY_TTL_SECONDS = parseInt(
   process.env.JWT_GATEWAY_TTL_SECONDS || "900", // 15min
-  10,
+  10
 );
 const NONCE_TTL_MS = 60_000;
 const SOLANA_RPC =
@@ -80,7 +80,7 @@ export function consumeChallenge(gateway: string): string | null {
  * the gateway pubkey could sign and pass.
  */
 export async function verifyGatewayAuthority(
-  req: VerifyRequest,
+  req: VerifyRequest
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const nonce = consumeChallenge(req.gateway);
   if (!nonce) {
@@ -92,7 +92,7 @@ export async function verifyGatewayAuthority(
   let verified: boolean;
   try {
     verified = await verifyEd25519(req.signer, msgBytes, req.signature);
-  } catch (err) {
+  } catch {
     return { ok: false, reason: "Signature verification failed" };
   }
   if (!verified) {
@@ -104,7 +104,7 @@ export async function verifyGatewayAuthority(
     const connection = new Connection(SOLANA_RPC, "confirmed");
     const accountInfo = await connection.getAccountInfo(
       new PublicKey(req.gateway),
-      "confirmed",
+      "confirmed"
     );
     if (!accountInfo) {
       return { ok: false, reason: "Gateway account not found" };
@@ -118,7 +118,7 @@ export async function verifyGatewayAuthority(
       return { ok: false, reason: "Gateway account malformed" };
     }
     const authorityOnChain = new PublicKey(
-      accountInfo.data.subarray(8, 8 + 32),
+      accountInfo.data.subarray(8, 8 + 32)
     );
     if (authorityOnChain.toString() !== req.signer) {
       return { ok: false, reason: "Signer is not the gateway authority" };
@@ -133,7 +133,7 @@ export async function verifyGatewayAuthority(
 async function verifyEd25519(
   signer: string,
   msg: Buffer,
-  signature: Uint8Array,
+  signature: Uint8Array
 ): Promise<boolean> {
   // ponytail: Node's built-in crypto.verify supports ed25519 since v12 — no
   // extra dep. A raw 32-byte ed25519 pubkey must be wrapped in SPKI (RFC
@@ -160,7 +160,7 @@ async function verifyEd25519(
 
 export async function issueGatewayToken(
   gateway: string,
-  signer: string,
+  signer: string
 ): Promise<VerifyResponse> {
   const signingKey = await getCurrentSigningKey();
   if (!signingKey) {

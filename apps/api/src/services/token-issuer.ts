@@ -10,11 +10,7 @@ import { events } from "../db/schema";
 import { OneTimePaymentClaim } from "../types";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { decodeMemo } from "@tributary-so/sdk";
-import {
-  type PolicyClaim,
-  type PolicyVariant,
-  type PaymentRecord,
-} from "@tributary-so/payments";
+import { type PolicyClaim, type PaymentRecord } from "@tributary-so/payments";
 
 const JWT_ISSUER = process.env.JWT_ISSUER || "https://api.tributary.so";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "tributary-checkout";
@@ -497,7 +493,7 @@ export async function issueToken(
     txPolicyAddress = oneTimePayment.policyAddress ?? null;
   }
 
-  let allPolicies = await getSubscriptionDetails(options);
+  const allPolicies = await getSubscriptionDetails(options);
   let policies: PolicyClaim[] = [];
 
   if (request.transactionSignature) {
@@ -512,7 +508,7 @@ export async function issueToken(
   let lastPayments: PaymentRecord[] = [];
 
   if (request.transactionSignature || request.trackingId) {
-    let dbPayments = await getLastPayments(options);
+    const dbPayments = await getLastPayments(options);
 
     if (dbPayments.length === 0 && oneTimePayment) {
       lastPayments = [

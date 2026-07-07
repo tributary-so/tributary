@@ -14,11 +14,9 @@ jest.mock("../services/gateway-auth");
 
 import * as merchant from "../db/merchant";
 import * as gatewayAuth from "../services/gateway-auth";
-import * as queries from "../db/queries";
 
 const mockedMerchant = merchant as jest.Mocked<typeof merchant>;
 const mockedGatewayAuth = gatewayAuth as jest.Mocked<typeof gatewayAuth>;
-const mockedQueries = queries as jest.Mocked<typeof queries>;
 
 function createApp(): Application {
   const app = express();

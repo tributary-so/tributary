@@ -51,7 +51,7 @@ app.use(
 );
 
 // Root endpoint
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.json({
     name: "Tributary API",
     version: "1.0.0",

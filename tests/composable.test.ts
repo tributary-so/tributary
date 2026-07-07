@@ -119,7 +119,6 @@ describe("Composable Policies", () => {
   let userPaymentPDA: PublicKey;
   let paymentsDelegate: PublicKey;
   let userSecondMintTokenAccount: PublicKey; // token account for gateway signer (= recipient in composable) — OUTPUT mint
-  let gatewaySignerInputTokenAccount: PublicKey; // token account for gateway signer — INPUT mint (still used for some setups)
 
   // Surfpool cheatcode handle — set in beforeAll.
   let surfpool: SurfpoolHelper;
@@ -215,10 +214,7 @@ describe("Composable Policies", () => {
 
     // Also create an INPUT-mint account for the gateway signer (used by some
     // older assertions / funding paths; harmless to keep around).
-    gatewaySignerInputTokenAccount = await ensureTokenAccount(
-      gatewayAuthority.publicKey,
-      tokenMint
-    );
+    await ensureTokenAccount(gatewayAuthority.publicKey, tokenMint);
 
     // Fee recipient token accounts — both INPUT and OUTPUT mint, since the
     // composable fee path is input-side post-ADR-0026 (fees skimmed from
@@ -1047,7 +1043,7 @@ describe("Composable Policies", () => {
       { commitment: "processed" as Commitment }
     );
 
-    let policy = await program.account.composablePolicy.fetch(
+    const policy = await program.account.composablePolicy.fetch(
       composablePolicyPDA
     );
     expect(policy.status).toEqual({ active: {} });
@@ -1728,7 +1724,6 @@ describe("Composable Policies", () => {
   describe("B2 regression — delete_user_payment vs active_composable_count", () => {
     let b2User: Keypair;
     let b2UserPaymentPDA: PublicKey;
-    let b2UserTokenAccount: PublicKey;
     let b2ComposablePolicyPDA: PublicKey;
     let b2PolicyId: number;
 
@@ -1736,11 +1731,7 @@ describe("Composable Policies", () => {
       b2User = Keypair.generate();
       await fund(b2User.publicKey, 10);
 
-      b2UserTokenAccount = await ensureTokenAccount(
-        b2User.publicKey,
-        tokenMint,
-        10_000_000
-      );
+      await ensureTokenAccount(b2User.publicKey, tokenMint, 10_000_000);
 
       [b2UserPaymentPDA] = PublicKey.findProgramAddressSync(
         [

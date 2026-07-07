@@ -13,7 +13,6 @@ const mockUpdate = jest.fn();
 const mockFrom = jest.fn();
 const mockWhere = jest.fn();
 const mockLimit = jest.fn();
-const mockSet = jest.fn();
 
 jest.mock("../db", () => ({
   getDb: jest.fn(() => ({

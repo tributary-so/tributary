@@ -2,13 +2,20 @@
 
 ## Build/Test Commands
 
-- `pnpm run lint` - Lint all workspaces
-- `pnpm run lint:fix` - Auto-fix linting issues
-- `anchor test` - Run all Solana program tests
-- `cd tests && npx jest` - Run TypeScript tests
+> The root `package.json` has no `scripts` block by design — the Makefile
+> orchestrates builds, and lint/test fan out via pnpm's recursive filter.
+> Don't add root scripts; they'd duplicate the Makefile.
+
+- `pnpm -r run lint` - Lint every workspace that declares a `lint` script
+- `pnpm --filter <pkg> run lint:fix` - Auto-fix lint issues in one package (not all packages define `lint:fix`)
+- `make build` - build every component of the repo (programs + packages + apps + docs)
+- `make prep` - Setup Solana toolchain (v1.18.20, Anchor 0.31.0)
+- `anchor test` - Run all Solana program tests (Rust + the `tests/` jest suite against a local validator)
+- `cd tests && npx jest` - Run only the `tests/` TypeScript integration suite (requires Surfpool: `make run_surfpool`)
+- `make test_surfpool` - Full suite (Rust + every jest suite) against a running Surfpool instance
+- `pnpm --filter @tributary-so/api test` - API unit tests (e2e + integration excluded; use `test:e2e` / `test:integration` to opt in)
 - `cd packages/sdk && pnpm run build` - Build SDK package
 - `cd packages/sdk && pnpm run manager` - Run SDK manager CLI
-- `make prep` - Setup Solana toolchain (v1.18.20, Anchor 0.31.0)
 - `make build` - build every component of the repo
 
 ## Code Style
@@ -17,7 +24,7 @@
 - Import statements: Solana imports first, then Anchor, then local modules
 - Use camelCase for variables/functions, PascalCase for types/classes
 - Error handling: Use Anchor's `Result<()>` in Rust, proper try/catch in TypeScript
-- Format with Prettier (configured), use `pnpm run lint:fix` before commits
+- Format with Prettier (configured), use `pnpm --filter <pkg> run lint:fix` before commits (where defined)
 - File naming: snake_case for Rust, camelCase for TypeScript
 - Use `PublicKey` for Solana addresses, `anchor.BN` for big numbers
 - Prefer `accountsStrict()` over `accounts()` for type safety

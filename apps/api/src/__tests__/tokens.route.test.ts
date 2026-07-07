@@ -18,8 +18,8 @@ jest.mock("../services/jwks", () => ({
 }));
 
 jest.mock("../middleware/rateLimit", () => ({
-  rateLimit: () => (req: any, res: any, next: any) => next(),
-  walletRateLimit: () => (req: any, res: any, next: any) => next(),
+  rateLimit: () => (_req: any, _res: any, next: any) => next(),
+  walletRateLimit: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.mock("../db", () => ({
@@ -220,7 +220,7 @@ describe("POST /v1/tokens/issue", () => {
       new Error("Failed to read on-chain state")
     );
 
-    const response = await request(app)
+    await request(app)
       .post("/v1/tokens/issue")
       .send({ walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR" })
       .expect(500);

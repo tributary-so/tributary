@@ -62,21 +62,6 @@ const DISABLED_INIT = {
   validationData: Buffer.alloc(0),
 } as any;
 
-function programCallSpec(programId: PublicKey): any {
-  return { programCall: { programId } };
-}
-
-function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
-  return {
-    numPinnedAccounts: pinnedAccounts.length,
-    pinnedAccounts: [
-      pinnedAccounts[0] ?? PublicKey.default,
-      pinnedAccounts[1] ?? PublicKey.default,
-    ],
-    validationData: data,
-  };
-}
-
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
@@ -93,7 +78,6 @@ const ADMIN_KEYPAIR = [
 // TributaryError offsets (base 6000) — see programs/tributary/src/error.rs.
 // Anchor custom codes start at 6000 = 0x1770; surfpool surfaces them as
 // either 0x<offset+6000 in hex> or "custom program error: <decimal>".
-const ERR_INSUFFICIENT_DELEGATED = /0x1775|custom program error.*6005/;
 // Caps bind on gross: max_chunk_amount AND period cap AND delegate all bind
 // on (face + fee). max_chunk overflow surfaces as InvalidAmount (6001),
 // period overflow as InsufficientDelegatedAmount (6005), delegate shortfall

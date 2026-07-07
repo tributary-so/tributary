@@ -236,7 +236,7 @@ router.get("/count", async (req, res, next) => {
  *               type: array
  *               items: { type: string }
  */
-router.get("/names", async (req, res, next) => {
+router.get("/names", async (_req, res, next) => {
   try {
     const names = await getUniqueEventNames();
     res.json(names);
@@ -262,7 +262,7 @@ router.get("/names", async (req, res, next) => {
  *               type: array
  *               items: { type: string }
  */
-router.get("/names/tributary", async (req, res, next) => {
+router.get("/names/tributary", async (_req, res, next) => {
   try {
     const names = await getTributaryEventNames();
     res.json(names);

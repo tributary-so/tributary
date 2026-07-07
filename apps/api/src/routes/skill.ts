@@ -28,7 +28,7 @@ export class MarkdownTemplateEngine {
       try {
         const value = this.evaluateExpression(expression.trim(), data);
         return value !== undefined ? String(value) : match;
-      } catch (error) {
+      } catch {
         console.warn(`Template variable "${expression}" not found`);
         return match;
       }

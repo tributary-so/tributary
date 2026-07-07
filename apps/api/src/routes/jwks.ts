@@ -35,7 +35,7 @@ const router: Router = Router();
  */
 router.get(
   "/",
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     const jwks = await getJwks();
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.json(jwks);

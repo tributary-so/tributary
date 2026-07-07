@@ -19,9 +19,9 @@ jest.mock("../services/tokens-proxy", () => ({
 
 // Bypass IP rate limit so test runs aren't throttled.
 jest.mock("../middleware/rateLimit", () => ({
-  rateLimit: () => (req: any, res: any, next: any) => next(),
-  walletRateLimit: () => (req: any, res: any, next: any) => next(),
-  ipRateLimit: () => (req: any, res: any, next: any) => next(),
+  rateLimit: () => (_req: any, _res: any, next: any) => next(),
+  walletRateLimit: () => (_req: any, _res: any, next: any) => next(),
+  ipRateLimit: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 import assetsRouter from "../routes/assets";

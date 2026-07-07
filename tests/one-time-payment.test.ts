@@ -12,12 +12,7 @@ import {
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import { Tributary } from "../target/types/tributary";
-import {
-  Tributary as TributarySDK,
-  lighthouse,
-  parseValidationPda,
-  IWallet,
-} from "../packages/sdk/src";
+import { Tributary as TributarySDK, lighthouse } from "../packages/sdk/src";
 import {
   getConfigPda,
   getGatewayPda,

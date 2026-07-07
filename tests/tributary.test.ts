@@ -214,7 +214,7 @@ describe("Tributary", () => {
     );
 
     // Create recipient, fee recipient, and admin token accounts in one tx
-    const [recipientATA, feeRecipientATA, adminATA] = await batchCreateATAs([
+    const [recipientATA] = await batchCreateATAs([
       recipient.publicKey,
       feeRecipient.publicKey,
       admin.publicKey,
@@ -2167,7 +2167,7 @@ describe("Tributary", () => {
       expect(chainL3[1]).toBeNull();
       expect(chainL3[2]).toBeNull();
 
-      let l3Referral = await sdk.getReferralAccount(
+      const l3Referral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("REF003")).address
       );
       expect(l3Referral).not.toBeNull();
@@ -2190,7 +2190,7 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      let l2Referral = await sdk.getReferralAccount(
+      const l2Referral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("REF002")).address
       );
       expect(l2Referral).not.toBeNull();
@@ -2234,7 +2234,7 @@ describe("Tributary", () => {
       );
       expect(chainL1[2]).toBeNull();
 
-      let l1Referral = await sdk.getReferralAccount(
+      const l1Referral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("REF001")).address
       );
       expect(l1Referral).not.toBeNull();
@@ -2256,7 +2256,7 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      let payerReferral = await sdk.getReferralAccount(
+      const payerReferral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("PAYER1")).address
       );
       expect(payerReferral).not.toBeNull();
@@ -2627,7 +2627,7 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      let payerReferral = await sdk.getReferralAccount(
+      const payerReferral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("PAYER3")).address
       );
       expect(payerReferral).not.toBeNull();
@@ -2926,11 +2926,10 @@ describe("Tributary", () => {
           [customFeeFeeRecipient.publicKey, 5],
         ]);
 
-        const [customFeeFeeRecipientATA, customFeeUserATA] =
-          await batchCreateATAs([
-            customFeeFeeRecipient.publicKey,
-            customFeeUser.publicKey,
-          ]);
+        const [, customFeeUserATA] = await batchCreateATAs([
+          customFeeFeeRecipient.publicKey,
+          customFeeUser.publicKey,
+        ]);
         customFeeUserTokenAccount = customFeeUserATA;
 
         await batchMintTo([
@@ -4255,9 +4254,6 @@ describe("Tributary", () => {
     });
 
     test("Migration: existing policy still works after switching to UserPayment PDA delegate", async () => {
-      const policy1 = await sdk.getPaymentPolicy(migratePolicy1PDA);
-      const paymentCountBefore = policy1!.paymentCount;
-
       const startTime3 = Math.floor(Date.now() / 1000) - 7200;
       const memo3 = new Uint8Array(64).fill(0);
       Buffer.from("migration test").copy(memo3);

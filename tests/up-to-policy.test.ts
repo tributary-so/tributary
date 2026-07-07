@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   PublicKey,
   Keypair,
-  SystemProgram,
   Transaction,
   sendAndConfirmTransaction,
   Commitment,
@@ -18,12 +17,10 @@ import {
   getGatewayPda,
   getUserPaymentPda,
   getPaymentPolicyPda,
-  getPaymentsDelegatePda,
 } from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import { sendAndConfirmWithRetry } from "./helpers/sendWithRetry";
 import { ADMIN_KEYPAIR } from "./helpers/composable";
-import assert from "assert";
 import { Buffer } from "buffer";
 
 const TOKEN_PROGRAM_ID = new PublicKey(
@@ -65,10 +62,7 @@ describe("UpTo payment policy", () => {
 
   let gatewayPDA: PublicKey;
   let userPaymentPDA: PublicKey;
-  let userTokenAccount: PublicKey;
   let recipientTokenAccount: PublicKey;
-  let feeRecipientTokenAccount: PublicKey;
-  let adminTokenAccount: PublicKey;
 
   async function fund(account: PublicKey, sol: number): Promise<void> {
     await surfpool.setAccount({
@@ -121,18 +115,9 @@ describe("UpTo payment policy", () => {
       program.programId
     ).address;
 
-    userTokenAccount = getAssociatedTokenAddressSync(USDC_MINT, user.publicKey);
     recipientTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       recipient.publicKey
-    );
-    feeRecipientTokenAccount = getAssociatedTokenAddressSync(
-      USDC_MINT,
-      feeRecipient.publicKey
-    );
-    adminTokenAccount = getAssociatedTokenAddressSync(
-      USDC_MINT,
-      admin.publicKey
     );
 
     // Fund SOL.

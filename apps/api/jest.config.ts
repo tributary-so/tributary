@@ -5,6 +5,12 @@ const config: Config = {
   testEnvironment: "node",
   roots: ["<rootDir>/src"],
   testMatch: ["**/__tests__/**/*.test.ts", "**/*.test.ts"],
+  // Heavy suites need a live API/DB/Surfpool — keep them out of the default
+  // `pnpm test` run. Use `pnpm test:e2e` / `pnpm test:integration` instead.
+  testPathIgnorePatterns: [
+    "\\.e2e\\.test\\.ts$",
+    "\\.integration\\.test\\.ts$",
+  ],
   transform: {
     "^.+\\.(ts|js)$": [
       "ts-jest",

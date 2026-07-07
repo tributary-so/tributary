@@ -46,7 +46,7 @@ const router: Router = Router();
  *                   description: Unix epoch milliseconds.
  *                   example: 1719300000000
  */
-router.get("/", (req, res) => {
+router.get("/", (_req, res) => {
   const response: ApiResponse<HealthResponse> = {
     success: true,
     data: {
