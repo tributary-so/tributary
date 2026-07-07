@@ -82,7 +82,11 @@
   "release": {
     "extends": "semantic-release-monorepo",
     "branches": [
-      "main"
+      "main",
+      {
+        "name": "beta",
+        "prerelease": true
+      }
     ],
     "plugins": [
       [
