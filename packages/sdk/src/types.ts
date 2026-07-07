@@ -1,11 +1,15 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { type Tributary } from "../../../target/types/tributary.js";
 import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
 
 export type IWallet = {
   publicKey: PublicKey;
-  signTransaction<T>(tx: T): Promise<T>;
-  signAllTransactions<T>(txs: T[]): Promise<T[]>;
+  signTransaction<T extends Transaction | VersionedTransaction>(
+    tx: T
+  ): Promise<T>;
+  signAllTransactions<T extends Transaction | VersionedTransaction>(
+    txs: T[]
+  ): Promise<T[]>;
 };
 
 /**
@@ -204,7 +208,7 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
   const pinnedAccounts: PublicKey[] = [];
   for (let i = 0; i < numPinnedAccounts; i++) {
     pinnedAccounts.push(
-      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32)),
+      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32))
     );
   }
   const dataLen = data.readUInt16LE(VALIDATION_PDA_LAYOUT.HEADER - 2);
@@ -215,7 +219,7 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
     dataLen,
     data: data.subarray(
       VALIDATION_PDA_LAYOUT.HEADER,
-      VALIDATION_PDA_LAYOUT.HEADER + dataLen,
+      VALIDATION_PDA_LAYOUT.HEADER + dataLen
     ),
   };
 }

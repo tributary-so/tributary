@@ -20,8 +20,10 @@ jest.mock("bn.js", () => ({
   __esModule: true,
   default: jest.fn().mockImplementation((n: number) => ({
     toNumber: () => n,
+    toString: () => String(n),
     sub: jest.fn().mockReturnValue({ toNumber: () => 0 }),
     lt: jest.fn().mockReturnValue(false),
+    eq: (other: any) => n === other.toNumber(),
   })),
 }));
 
@@ -31,7 +33,11 @@ import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 
 // BN-like helper for mock account data (mirrors what the real SDK returns).
-const bn = (n: number) => ({ toNumber: () => n });
+const bn = (n: number) => ({
+  toNumber: () => n,
+  toString: () => String(n),
+  eq: (other: any) => n === other.toNumber(),
+});
 
 // Real base58 strings — `PublicKey` is the real constructor.
 const USER_PK = "8EVBvLDVhJUw1nkAUp73mPowviVFK9Wza5ba1GRANEw1";

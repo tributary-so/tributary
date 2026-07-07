@@ -1041,64 +1041,6 @@ describe("Tributary", () => {
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
   });
 
-  describe("Program authority rotation (M-02)", () => {
-    test("Current admin can rotate authority to a new key", async () => {
-      // Sanity: admin is still the authority before we rotate.
-      const configBefore = await sdk.getProgramConfig(configPDA);
-      expect(configBefore!.admin).toEqual(admin.publicKey);
-
-      const newAdmin = Keypair.generate();
-
-      await sdk.updateWallet(admin);
-      const rotateIx = await sdk.changeProgramAuthority(newAdmin.publicKey);
-      const tx = new Transaction().add(rotateIx);
-      await sendAndConfirmTransaction(connection, tx, [admin], {
-        commitment: "processed" as Commitment,
-      });
-
-      const configAfter = await sdk.getProgramConfig(configPDA);
-      expect(configAfter!.admin).toEqual(newAdmin.publicKey);
-      // fee_recipient must be untouched by the rotation.
-      expect(configAfter!.feeRecipient).toEqual(configBefore!.feeRecipient);
-
-      // Rotate back so the rest of the suite (which assumes `admin` is the
-      // protocol admin) keeps working.
-      await sdk.updateWallet(newAdmin);
-      const rotateBackIx = await sdk.changeProgramAuthority(admin.publicKey);
-      const revertTx = new Transaction().add(rotateBackIx);
-      await sendAndConfirmTransaction(connection, revertTx, [newAdmin], {
-        commitment: "processed" as Commitment,
-      });
-
-      const configRestored = await sdk.getProgramConfig(configPDA);
-      expect(configRestored!.admin).toEqual(admin.publicKey);
-    });
-
-    test("Unauthorized key cannot rotate authority", async () => {
-      const impostor = Keypair.generate();
-      await fund(impostor.publicKey, 1);
-
-      const configBefore = await sdk.getProgramConfig(configPDA);
-      expect(configBefore!.admin).toEqual(admin.publicKey);
-
-      const target = Keypair.generate();
-
-      await sdk.updateWallet(impostor);
-      const rotateIx = await sdk.changeProgramAuthority(target.publicKey);
-      const tx = new Transaction().add(rotateIx);
-
-      await expect(
-        sendAndConfirmTransaction(connection, tx, [impostor], {
-          commitment: "processed" as Commitment,
-        })
-      ).rejects.toThrow();
-
-      // State must be unchanged.
-      const configAfter = await sdk.getProgramConfig(configPDA);
-      expect(configAfter!.admin).toEqual(admin.publicKey);
-    });
-  });
-
   describe("Milestone payment policies", () => {
     test("Create milestone payment policy with time-based release", async () => {
       // Switch back to user wallet for creating policies
@@ -2446,18 +2388,18 @@ describe("Tributary", () => {
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-          l1Reward -
-          Math.floor((l1Reward * 100) / 10000)
+        l1Reward -
+        Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-          l2Reward -
-          Math.floor((l2Reward * 100) / 10000)
+        l2Reward -
+        Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-          l3Reward -
-          Math.floor((l3Reward * 100) / 10000)
+        l3Reward -
+        Math.floor((l3Reward * 100) / 10000)
       );
     });
 
@@ -3548,7 +3490,7 @@ describe("Tributary", () => {
       );
       expect(
         gateway!.featureFlags &
-          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+        (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
       ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 
@@ -3702,8 +3644,8 @@ describe("Tributary", () => {
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
         parseInt(initialUserBalance.value.amount) -
-          transferAmount.toNumber() +
-          referralPool
+        transferAmount.toNumber() +
+        referralPool
       );
     });
 
@@ -4002,8 +3944,8 @@ describe("Tributary", () => {
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
         parseInt(initialUserBalance.value.amount) -
-          totalGross +
-          totalReferralDust
+        totalGross +
+        totalReferralDust
       );
     });
   });
@@ -4419,6 +4361,65 @@ describe("Tributary", () => {
       tokenAcc = await getAccount(connection, migrateUserTokenAccount);
       expect(tokenAcc.delegate).toEqual(migrateUserPaymentPDA);
       expect(Number(tokenAcc.delegatedAmount)).toBe(10_000_000);
+    });
+  });
+
+  describe("Program authority rotation (M-02)", () => {
+    test("Current admin can rotate authority to a new key", async () => {
+      // Sanity: admin is still the authority before we rotate.
+      const configBefore = await sdk.getProgramConfig(configPDA);
+      expect(configBefore!.admin).toEqual(admin.publicKey);
+
+      const newAdmin = Keypair.generate();
+      await fund(newAdmin.publicKey, 1);
+
+      await sdk.updateWallet(admin);
+      const rotateIx = await sdk.changeProgramAuthority(newAdmin.publicKey);
+      const tx = new Transaction().add(rotateIx);
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const configAfter = await sdk.getProgramConfig(configPDA);
+      expect(configAfter!.admin).toEqual(newAdmin.publicKey);
+      // fee_recipient must be untouched by the rotation.
+      expect(configAfter!.feeRecipient).toEqual(configBefore!.feeRecipient);
+
+      // Rotate back so the rest of the suite (which assumes `admin` is the
+      // protocol admin) keeps working.
+      await sdk.updateWallet(newAdmin);
+      const rotateBackIx = await sdk.changeProgramAuthority(admin.publicKey);
+      const revertTx = new Transaction().add(rotateBackIx);
+      await sendAndConfirmTransaction(connection, revertTx, [newAdmin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const configRestored = await sdk.getProgramConfig(configPDA);
+      expect(configRestored!.admin).toEqual(admin.publicKey);
+    });
+
+    test("Unauthorized key cannot rotate authority", async () => {
+      const impostor = Keypair.generate();
+      await fund(impostor.publicKey, 1);
+
+      const configBefore = await sdk.getProgramConfig(configPDA);
+      expect(configBefore!.admin).toEqual(admin.publicKey);
+
+      const target = Keypair.generate();
+
+      await sdk.updateWallet(impostor);
+      const rotateIx = await sdk.changeProgramAuthority(target.publicKey);
+      const tx = new Transaction().add(rotateIx);
+
+      await expect(
+        sendAndConfirmTransaction(connection, tx, [impostor], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // State must be unchanged.
+      const configAfter = await sdk.getProgramConfig(configPDA);
+      expect(configAfter!.admin).toEqual(admin.publicKey);
     });
   });
 });
