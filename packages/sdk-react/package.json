@@ -5,7 +5,7 @@
     "type": "git"
   },
   "license": "MIT",
-  "version": "1.6.0",
+  "version": "1.6.7",
   "type": "module",
   "description": "React hooks and utilities for Tributary recurring payments",
   "scripts": {
@@ -25,8 +25,8 @@
     "@heroui/react": "^2.8.7",
     "@heroui/system": "^2.4.25",
     "@heroui/theme": "^2.4.25",
-    "@tributary-so/sdk": "workspace:*",
     "@tributary-so/payments": "workspace:*",
+    "@tributary-so/sdk": "workspace:*",
     "lucide-react": "^0.544.0"
   },
   "devDependencies": {
