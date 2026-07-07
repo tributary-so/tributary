@@ -3,7 +3,13 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import * as anchor from '@coral-xyz/anchor'
 import { useSDK, createAndSendTransaction } from '@/lib/client'
-import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
+import {
+  decodeMemo,
+  type PaymentPolicy,
+  type ComposablePolicy,
+  type UserPayment,
+  type PaymentGateway,
+} from '@tributary-so/sdk'
 import {
   Play,
   Pause,
@@ -31,7 +37,12 @@ interface UserPaymentWithPolicies {
   userPaymentAddress: PublicKey
   userPayment: UserPayment
   policies: Array<{ publicKey: PublicKey; account: PaymentPolicy }>
+  composablePolicies: Array<{ publicKey: PublicKey; account: ComposablePolicy }>
 }
+
+type SelectedPolicy =
+  | { kind: 'regular'; publicKey: PublicKey; account: PaymentPolicy }
+  | { kind: 'composable'; publicKey: PublicKey; account: ComposablePolicy }
 
 type PolicyTypeKey = 'subscription' | 'milestone' | 'payAsYouGo' | 'oneTime' | 'upTo'
 type StatusKey = 'active' | 'paused' | 'cancelled' | 'completed'
@@ -577,6 +588,71 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
 
       {isSelected && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 text-subscription-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
+          →
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface ComposablePolicyCardProps {
+  policy: { publicKey: PublicKey; account: ComposablePolicy }
+  isSelected: boolean
+  onClick: () => void
+}
+
+function ComposablePolicyCard({ policy, isSelected, onClick }: ComposablePolicyCardProps) {
+  const statusKey = getStatusKey(policy.account as unknown as PaymentPolicy)
+  const memo = decodeMemo(policy.account.memo || [])
+  const forwardProgram = policy.account.forwardConfig?.instructionConstraint?.programId
+  const hasForward = forwardProgram && forwardProgram.toString() !== PublicKey.default.toString()
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
+        hover:bg-muted/30 group active:bg-muted/50
+        ${
+          isSelected
+            ? 'bg-linear-to-r from-violet-50 to-background border-l-4 border-l-violet-600'
+            : 'border-l-4 border-l-transparent'
+        }
+      `}
+    >
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
+              <Zap className="w-3 h-3" />
+              Composable
+            </span>
+            <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+              ID: {policy.account.policyId}
+            </div>
+          </div>
+        </div>
+        <StatusBadge status={statusKey} isOverdue={false} />
+      </div>
+
+      <div className="text-xs sm:text-sm font-medium text-foreground mb-1 truncate">{memo || 'Untitled Policy'}</div>
+
+      <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mb-2 min-w-0">
+        <span className="shrink-0">To:</span>
+        <span className="truncate">
+          <PublicKeyComponent publicKey={policy.account.recipient} />
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] sm:text-xs gap-2">
+        <span className="text-muted-foreground shrink-0">
+          {policy.account.paymentCount} payment{policy.account.paymentCount !== 1 ? 's' : ''}
+        </span>
+        <span className="font-medium truncate text-violet-600">{hasForward ? 'Forward' : 'Direct'}</span>
+      </div>
+
+      {isSelected && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
           →
         </div>
       )}
@@ -1303,6 +1379,133 @@ function UpToDetailPanel(props: DetailPanelProps) {
   )
 }
 
+function ComposableDetailPanel({
+  policy,
+  userPayment,
+  formatAmount,
+}: {
+  policy: { publicKey: PublicKey; account: ComposablePolicy }
+  userPayment: UserPaymentWithPolicies
+  formatAmount: (rawAmount: string | null, tokenMint: PublicKey) => string
+}) {
+  const statusKey = getStatusKey(policy.account as unknown as PaymentPolicy)
+  const memo = decodeMemo(policy.account.memo || [])
+  const tokenMint = userPayment.userPayment.tokenMint
+  const fc = policy.account.forwardConfig
+  const forwardProgram = fc?.instructionConstraint?.programId
+  const hasForward = forwardProgram && forwardProgram.toString() !== PublicKey.default.toString()
+  const inputMint = fc?.inputMint
+  const outputMint = fc?.outputMint
+  const isActMode = hasForward && outputMint && outputMint.toString() === PublicKey.default.toString()
+  const preValidationEnabled =
+    policy.account.preValidation &&
+    typeof policy.account.preValidation === 'object' &&
+    'programCall' in (policy.account.preValidation as Record<string, unknown>)
+  const postValidationEnabled =
+    policy.account.postValidation &&
+    typeof policy.account.postValidation === 'object' &&
+    'programCall' in (policy.account.postValidation as Record<string, unknown>)
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <Zap className="w-7 h-7 text-violet-600" />
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">Composable Policy</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Programmable pull payment (read-only)</p>
+            </div>
+          </div>
+          <StatusBadge status={statusKey} isOverdue={false} />
+        </div>
+      </div>
+
+      {memo && (
+        <div className="bg-violet-50 p-3 sm:p-4 border border-violet-100">
+          <div className="text-[10px] sm:text-xs text-violet-600 font-medium mb-1">Memo</div>
+          <div className="text-sm sm:text-base text-foreground truncate">{memo}</div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
+        <StatCard
+          label="Total Input"
+          value={formatAmount(policy.account.totalInput.toString(), inputMint || tokenMint)}
+        />
+        <StatCard
+          label="Total Output"
+          value={isActMode ? 'N/A' : formatAmount(policy.account.totalOutput.toString(), outputMint || tokenMint)}
+        />
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Forward Configuration
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow
+            label="Forward Program"
+            value={hasForward ? forwardProgram!.toString() : 'Disabled'}
+            copyable={hasForward}
+          />
+          {inputMint && <DetailRow label="Input Mint" value={inputMint.toString()} copyable />}
+          {hasForward && !isActMode && outputMint && (
+            <DetailRow label="Output Mint" value={outputMint.toString()} copyable />
+          )}
+          {isActMode && <DetailRow label="Output Mint" value="Act mode (no output)" />}
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Validation Hooks
+        </h3>
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+          <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+              Pre-validation
+            </div>
+            <div
+              className={`text-xs sm:text-sm font-medium ${
+                preValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
+              }`}
+            >
+              {preValidationEnabled ? 'Enabled' : 'Disabled'}
+            </div>
+          </div>
+          <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+              Post-validation
+            </div>
+            <div
+              className={`text-xs sm:text-sm font-medium ${
+                postValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
+              }`}
+            >
+              {postValidationEnabled ? 'Enabled' : 'Disabled'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
+          <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
+          <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
+          <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
+          <DetailRow label="Rent Payer" value={policy.account.rentPayer.toString()} copyable />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LoadingState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
@@ -1375,7 +1578,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [userPayments, setUserPayments] = useState<UserPaymentWithPolicies[]>([])
-  const [selectedPolicy, setSelectedPolicy] = useState<{ publicKey: PublicKey; account: PaymentPolicy } | null>(null)
+  const [selectedPolicy, setSelectedPolicy] = useState<SelectedPolicy | null>(null)
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
   const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
   const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
@@ -1436,6 +1639,7 @@ export default function AccountPage() {
 
         for (const userPayment of allUserPayments) {
           const policies = await sdk.getPaymentPoliciesByUser(userPayment.publicKey)
+          const composables = await sdk.getComposablePoliciesByUserPayment(userPayment.publicKey)
           for (const policy of policies) {
             const userPaymentAddress = policy.account.userPayment.toString()
             if (!userPaymentMap.has(userPaymentAddress)) {
@@ -1448,12 +1652,34 @@ export default function AccountPage() {
                   userPaymentAddress: policy.account.userPayment,
                   userPayment: fetchedUserPayment,
                   policies: [],
+                  composablePolicies: [],
                 })
               }
             }
             const entry = userPaymentMap.get(userPaymentAddress)
             if (entry) {
               entry.policies.push(policy)
+            }
+          }
+          for (const composable of composables) {
+            const userPaymentAddress = composable.account.userPayment.toString()
+            if (!userPaymentMap.has(userPaymentAddress)) {
+              const fetchedUserPayment = await sdk.getUserPayment(composable.account.userPayment)
+              if (fetchedUserPayment) {
+                if (fetchedUserPayment.owner.toString() !== wallet.publicKey.toString()) {
+                  continue
+                }
+                userPaymentMap.set(userPaymentAddress, {
+                  userPaymentAddress: composable.account.userPayment,
+                  userPayment: fetchedUserPayment,
+                  policies: [],
+                  composablePolicies: [],
+                })
+              }
+            }
+            const entry = userPaymentMap.get(userPaymentAddress)
+            if (entry) {
+              entry.composablePolicies.push(composable)
             }
           }
         }
@@ -1482,8 +1708,13 @@ export default function AccountPage() {
         setReferralAccounts(referralMap)
 
         const allPolicies = Array.from(userPaymentMap.values()).flatMap((up) => up.policies)
-        if (allPolicies.length > 0 && !selectedPolicy) {
-          setSelectedPolicy(allPolicies[0])
+        const allComposables = Array.from(userPaymentMap.values()).flatMap((up) => up.composablePolicies)
+        if (!selectedPolicy) {
+          if (allPolicies.length > 0) {
+            setSelectedPolicy({ kind: 'regular', ...allPolicies[0] })
+          } else if (allComposables.length > 0) {
+            setSelectedPolicy({ kind: 'composable', ...allComposables[0] })
+          }
         }
 
         setLoaded(true)
@@ -1735,10 +1966,14 @@ export default function AccountPage() {
   }
 
   const currentUserPayment = selectedPolicy
-    ? userPayments.find((up) => up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()))
+    ? userPayments.find((up) =>
+        selectedPolicy.kind === 'regular'
+          ? up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString())
+          : up.composablePolicies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()),
+      )
     : null
 
-  const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length, 0)
+  const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length + up.composablePolicies.length, 0)
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[500px] w-full lg:min-w-[600px] lg:max-w-[1100px] bg-background">
@@ -1767,14 +2002,15 @@ export default function AccountPage() {
         </div>
 
         <div className="flex-1 max-h-full lg:max-h-none">
-          {userPayments.map(({ policies, userPayment, userPaymentAddress }) => (
+          {userPayments.map(({ policies, composablePolicies, userPayment, userPaymentAddress }) => (
             <div key={userPaymentAddress.toString()}>
               <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-muted/80 backdrop-blur-xs border-b border-border">
                 <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {getTokenSymbol(userPayment.tokenMint.toString())}
                 </span>
                 <span className="ml-2 text-[10px] sm:text-xs text-muted-foreground">
-                  ({policies.length} {policies.length === 1 ? 'policy' : 'policies'})
+                  ({policies.length + composablePolicies.length}{' '}
+                  {policies.length + composablePolicies.length === 1 ? 'policy' : 'policies'})
                 </span>
               </div>
 
@@ -1783,10 +2019,29 @@ export default function AccountPage() {
                   key={policy.publicKey.toString()}
                   policy={policy}
                   userPayment={userPayment}
-                  isSelected={selectedPolicy?.publicKey.toString() === policy.publicKey.toString()}
-                  onClick={() => setSelectedPolicy(policy)}
+                  isSelected={
+                    selectedPolicy?.kind === 'regular' &&
+                    selectedPolicy.publicKey.toString() === policy.publicKey.toString()
+                  }
+                  onClick={() =>
+                    setSelectedPolicy({ kind: 'regular', publicKey: policy.publicKey, account: policy.account })
+                  }
                   formatAmount={formatAmount}
                   getNextPaymentDue={getNextPaymentDue}
+                />
+              ))}
+
+              {composablePolicies.map((policy) => (
+                <ComposablePolicyCard
+                  key={policy.publicKey.toString()}
+                  policy={policy}
+                  isSelected={
+                    selectedPolicy?.kind === 'composable' &&
+                    selectedPolicy.publicKey.toString() === policy.publicKey.toString()
+                  }
+                  onClick={() =>
+                    setSelectedPolicy({ kind: 'composable', publicKey: policy.publicKey, account: policy.account })
+                  }
                 />
               ))}
             </div>
@@ -1804,120 +2059,190 @@ export default function AccountPage() {
               <span>←</span>
               <span>Back to policies</span>
             </button>
-            {'subscription' in selectedPolicy.account.policyType && (
-              <SubscriptionDetailPanel
+            {selectedPolicy.kind === 'composable' ? (
+              <ComposableDetailPanel
                 policy={selectedPolicy}
                 userPayment={currentUserPayment}
                 formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
               />
-            )}
-            {'milestone' in selectedPolicy.account.policyType && (
-              <MilestoneDetailPanel
-                policy={selectedPolicy}
-                userPayment={currentUserPayment}
-                formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
-              />
-            )}
-            {'payAsYouGo' in selectedPolicy.account.policyType && (
-              <PayAsYouGoDetailPanel
-                policy={selectedPolicy}
-                userPayment={currentUserPayment}
-                formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
-              />
-            )}
-            {'oneTime' in selectedPolicy.account.policyType && (
-              <OneTimeDetailPanel
-                policy={selectedPolicy}
-                userPayment={currentUserPayment}
-                formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
-              />
-            )}
-            {'upTo' in selectedPolicy.account.policyType && (
-              <UpToDetailPanel
-                policy={selectedPolicy}
-                userPayment={currentUserPayment}
-                formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
-              />
+            ) : (
+              <>
+                {'subscription' in selectedPolicy.account.policyType && (
+                  <SubscriptionDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'milestone' in selectedPolicy.account.policyType && (
+                  <MilestoneDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'payAsYouGo' in selectedPolicy.account.policyType && (
+                  <PayAsYouGoDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'oneTime' in selectedPolicy.account.policyType && (
+                  <OneTimeDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'upTo' in selectedPolicy.account.policyType && (
+                  <UpToDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+              </>
             )}
           </>
         ) : (

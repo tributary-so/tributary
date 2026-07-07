@@ -182,6 +182,53 @@ const ix = await sdk.executeComposable(
 );
 ```
 
+## Read methods
+
+The SDK exposes four read-only helpers for querying `ComposablePolicy`
+accounts. They mirror the `PaymentPolicy` read pattern but use the
+`composablePolicy` account type with adjusted memcmp offsets.
+
+```typescript
+// Fetch a single composable policy by its address (null if not found)
+const policy: ComposablePolicy | null = await sdk.getComposablePolicy(
+  policyAddress
+);
+
+// All composable policies for a given UserPayment PDA
+const policies = await sdk.getComposablePoliciesByUserPayment(userPaymentPda);
+
+// All composable policies for a given gateway
+const policies = await sdk.getComposablePoliciesByGateway(gatewayPda);
+
+// All composable policies on-chain (unfiltered)
+const all = await sdk.getAllComposablePolicies();
+```
+
+### memcmp offsets
+
+`ComposablePolicy` has a different field order from `PaymentPolicy` — the
+`bump: u8` sits right after the discriminator, shifting every subsequent
+field by 1 byte:
+
+| Field          | Offset | Size |
+| -------------- | ------ | ---- |
+| `user_payment` | 9      | 32   |
+| `gateway`      | 41     | 32   |
+
+Recipient filtering is not supported via memcmp — `recipient` sits deep in
+the struct after variable-size enums (`ValidationSpec`, `ForwardConfig`).
+
+### Field differences from `PaymentPolicy`
+
+| `PaymentPolicy` | `ComposablePolicy` | Notes                                |
+| --------------- | ------------------ | ------------------------------------ |
+| `total_paid`    | `total_input`      | Gross tokens pulled from the user    |
+| —               | `total_output`     | Tokens delivered to recipient        |
+| —               | `rent_payer`       | Account that paid rent               |
+| —               | `forward_config`   | Forward hook config (program, mints) |
+| —               | `pre_validation`   | Pre-forward validation spec          |
+| —               | `post_validation`  | Post-forward validation spec         |
+
 ## Type reference
 
 ### `ForwardConfig`

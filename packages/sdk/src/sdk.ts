@@ -104,7 +104,7 @@ export class Tributary {
                 txs.map((tx) => {
                   (tx as any).sign(wallet);
                   return tx;
-                }),
+                })
               );
             },
           }
@@ -138,7 +138,7 @@ export class Tributary {
                 txs.map((tx) => {
                   (tx as any).sign(wallet);
                   return tx;
-                }),
+                })
               );
             },
           }
@@ -157,15 +157,16 @@ export class Tributary {
    */
   async initialize(
     authority: PublicKey,
-    admin: PublicKey,
+    admin: PublicKey
   ): Promise<TransactionInstruction> {
     const { address: configPda } = getConfigPda(this.programId);
     const [programDataAddress] = PublicKey.findProgramAddressSync(
       [this.programId.toBytes()],
-      new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
+      new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
     );
-    const accountInfo =
-      await this.connection.getAccountInfo(programDataAddress);
+    const accountInfo = await this.connection.getAccountInfo(
+      programDataAddress
+    );
     if (!accountInfo) throw new Error("Program data account not found");
     if (
       new PublicKey(accountInfo.data.slice(13, 45)).toString() !=
@@ -194,12 +195,12 @@ export class Tributary {
    */
   async createUserPayment(
     tokenMint: PublicKey,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const { address: configPda } = getConfigPda(this.programId);
     const accounts = {
@@ -230,13 +231,13 @@ export class Tributary {
     gateway: PublicKey,
     referralCode: string,
     referrer?: PublicKey,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
 
     if (!this.validateReferralCode(referralCode)) {
       throw new Error(
-        `Referral code must be length 6 and alphanumeric (${referralCode} is not!)`,
+        `Referral code must be length 6 and alphanumeric (${referralCode} is not!)`
       );
     }
 
@@ -246,7 +247,7 @@ export class Tributary {
     const referralCodeBuffer = Buffer.from(codeBytes);
     const { address: referralAccountPda } = this.getReferralPda(
       gateway,
-      referralCodeBuffer,
+      referralCodeBuffer
     );
     const { address: configPda } = getConfigPda(this.programId);
 
@@ -264,14 +265,14 @@ export class Tributary {
     if (referrer) {
       const referrerAccount = await this.getReferralAccountByOwner(
         gateway,
-        referrer,
+        referrer
       );
       if (!referrerAccount) {
         throw new Error("Referrer not found");
       }
       const referrerReferralPda = this.getReferralPda(
         gateway,
-        Buffer.from(referrerAccount.referralCode),
+        Buffer.from(referrerAccount.referralCode)
       );
       remainingAccounts.push({
         pubkey: referrerReferralPda.address,
@@ -300,7 +301,7 @@ export class Tributary {
     gatewayAuthority: PublicKey,
     featureFlags: number,
     referralAllocationBps: number,
-    referralTiersBps: [number, number, number],
+    referralTiersBps: [number, number, number]
   ): Promise<TransactionInstruction> {
     const authority = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -377,7 +378,7 @@ export class Tributary {
    */
   async getReferralAccountByCode(
     gateway: PublicKey,
-    code: string,
+    code: string
   ): Promise<ReferralAccount | null> {
     if (!this.validateReferralCode(code)) {
       return null;
@@ -385,10 +386,10 @@ export class Tributary {
     const codeBuffer = Buffer.from(code, "utf8");
     const { address: referralAccountPda } = this.getReferralPda(
       gateway,
-      codeBuffer,
+      codeBuffer
     );
     return await this.program.account.referralAccount.fetchNullable(
-      referralAccountPda,
+      referralAccountPda
     );
   }
 
@@ -412,7 +413,7 @@ export class Tributary {
     gatewayFeeRecipient: PublicKey,
     name: string,
     url: string,
-    initialFeatureFlags: number = 0,
+    initialFeatureFlags: number = 0
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const gateway = this.getGatewayPda(authority).address;
@@ -445,7 +446,7 @@ export class Tributary {
         schedulerShareBps,
         nameBytes,
         urlBytes,
-        initialFeatureFlags,
+        initialFeatureFlags
       )
       .accountsStrict(accounts)
       .instruction();
@@ -476,7 +477,7 @@ export class Tributary {
     paymentFrequency: PaymentFrequency,
     memo: number[],
     startTime?: BN | null,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -539,7 +540,7 @@ export class Tributary {
     periodLengthSeconds: BN,
     memo: number[],
     expiryDate?: BN | null,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -615,7 +616,7 @@ export class Tributary {
     milestoneTimestamps: BN[],
     releaseCondition: number,
     memo: number[],
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -634,12 +635,12 @@ export class Tributary {
     }
     if (milestoneAmounts.length !== milestoneTimestamps.length) {
       throw new Error(
-        "Milestone amounts and timestamps arrays must have the same length",
+        "Milestone amounts and timestamps arrays must have the same length"
       );
     }
     if (releaseCondition < 0 || releaseCondition > 15) {
       throw new Error(
-        "Release condition must be 0-15 (bitmap: bit0=due date, bits1-3=signer)",
+        "Release condition must be 0-15 (bitmap: bit0=due date, bits1-3=signer)"
       );
     }
     // Check that signer bits are mutually exclusive (bits 1-3)
@@ -648,14 +649,14 @@ export class Tributary {
     const validSignerBits = [0, 1, 2, 4];
     if (!validSignerBits.includes(signerBits)) {
       throw new Error(
-        "Signer bits must be mutually exclusive (at most one of gateway/owner/recipient)",
+        "Signer bits must be mutually exclusive (at most one of gateway/owner/recipient)"
       );
     }
 
     // Calculate total escrow amount
     const escrowAmount = milestoneAmounts.reduce(
       (sum, amount) => sum.add(amount),
-      new BN(0),
+      new BN(0)
     );
 
     // Pad arrays to fixed size
@@ -725,7 +726,7 @@ export class Tributary {
     dueDate: BN | null,
     expiryDate: BN | null,
     memo: number[],
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -798,7 +799,7 @@ export class Tributary {
     approvalAmount?: BN,
     executeImmediately?: boolean,
     referralCode?: string,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -815,7 +816,7 @@ export class Tributary {
         user,
         tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -833,12 +834,12 @@ export class Tributary {
     if (referralCode) {
       if (!this.validateReferralCode(referralCode)) {
         throw new Error(
-          "Referral code must be exactly 6 alphanumeric characters",
+          "Referral code must be exactly 6 alphanumeric characters"
         );
       }
       const referralAccount = await this.getReferralAccountByCode(
         gateway,
-        referralCode,
+        referralCode
       );
       if (!referralAccount) {
         throw new Error("Referral Code unknown");
@@ -846,7 +847,7 @@ export class Tributary {
       const createReferralIx = await this.createReferralAccount(
         gateway,
         generateSecureRandomString(6),
-        referralAccount.owner,
+        referralAccount.owner
       );
       instructions.push(createReferralIx);
     }
@@ -896,12 +897,13 @@ export class Tributary {
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
     } else {
-      const existingApproval =
-        await this.getTotalApprovalForExistingPolicies(userPaymentPda);
+      const existingApproval = await this.getTotalApprovalForExistingPolicies(
+        userPaymentPda
+      );
       const newApproval = this.calculateSubscriptionApprovalAmount(
         amount,
         paymentFrequency,
-        maxRenewals,
+        maxRenewals
       );
       finalApprovalAmount = existingApproval.add(newApproval);
     }
@@ -912,8 +914,9 @@ export class Tributary {
     const delegate = userPaymentDelegate;
     let needsApproval = false;
 
-    const tokenAccountInfo =
-      await this.connection.getParsedAccountInfo(ownerTokenAccount);
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
 
     if (tokenAccountInfo.value?.data) {
       const parsedData = tokenAccountInfo.value.data as any;
@@ -946,7 +949,7 @@ export class Tributary {
         ownerTokenAccount,
         delegate,
         user,
-        finalApprovalAmount,
+        finalApprovalAmount
       );
       instructions.push(revokeIx);
       instructions.push(approveIx);
@@ -959,7 +962,7 @@ export class Tributary {
         recipient,
         tokenMint,
         gateway,
-        user,
+        user
       );
       instructions.push(...executePaymentIxs);
     }
@@ -992,7 +995,7 @@ export class Tributary {
     approvalAmount?: BN,
     executeImmediately?: boolean,
     referralCode?: string,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -1002,7 +1005,7 @@ export class Tributary {
     // Validate release condition bitmap
     if (releaseCondition < 0 || releaseCondition > 15) {
       throw new Error(
-        "Release condition must be 0-15 (bitmap: bit0=due date, bits1-3=signer)",
+        "Release condition must be 0-15 (bitmap: bit0=due date, bits1-3=signer)"
       );
     }
     // Check that signer bits are mutually exclusive (bits 1-3)
@@ -1011,7 +1014,7 @@ export class Tributary {
     const validSignerBits = [0, 1, 2, 4];
     if (!validSignerBits.includes(signerBits)) {
       throw new Error(
-        "Signer bits must be mutually exclusive (at most one of gateway/owner/recipient)",
+        "Signer bits must be mutually exclusive (at most one of gateway/owner/recipient)"
       );
     }
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
@@ -1024,7 +1027,7 @@ export class Tributary {
         user,
         tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1042,12 +1045,12 @@ export class Tributary {
     if (referralCode) {
       if (!this.validateReferralCode(referralCode)) {
         throw new Error(
-          "Referral code must be exactly 6 alphanumeric characters",
+          "Referral code must be exactly 6 alphanumeric characters"
         );
       }
       const referralAccount = await this.getReferralAccountByCode(
         gateway,
-        referralCode,
+        referralCode
       );
       if (!referralAccount) {
         throw new Error("Referral Code unknown");
@@ -1055,7 +1058,7 @@ export class Tributary {
       const createReferralIx = await this.createReferralAccount(
         gateway,
         generateSecureRandomString(6),
-        referralAccount.owner,
+        referralAccount.owner
       );
       instructions.push(createReferralIx);
     }
@@ -1063,7 +1066,7 @@ export class Tributary {
     // Build policy type
     const escrowAmount = milestoneAmounts.reduce(
       (sum, amount) => sum.add(amount),
-      new BN(0),
+      new BN(0)
     );
     const paddedAmounts = [
       ...milestoneAmounts,
@@ -1118,8 +1121,9 @@ export class Tributary {
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
     } else {
-      const existingApproval =
-        await this.getTotalApprovalForExistingPolicies(userPaymentPda);
+      const existingApproval = await this.getTotalApprovalForExistingPolicies(
+        userPaymentPda
+      );
       const newApproval =
         this.calculateMilestoneApprovalAmount(milestoneAmounts);
       finalApprovalAmount = existingApproval.add(newApproval);
@@ -1130,8 +1134,9 @@ export class Tributary {
     const delegate = userPaymentDelegate;
     let needsApproval = false;
 
-    const tokenAccountInfo =
-      await this.connection.getParsedAccountInfo(ownerTokenAccount);
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
 
     if (tokenAccountInfo.value?.data) {
       const parsedData = tokenAccountInfo.value.data as any;
@@ -1164,7 +1169,7 @@ export class Tributary {
         ownerTokenAccount,
         delegate,
         user,
-        finalApprovalAmount,
+        finalApprovalAmount
       );
       instructions.push(revokeIx);
       instructions.push(approveIx);
@@ -1177,7 +1182,7 @@ export class Tributary {
         recipient,
         tokenMint,
         gateway,
-        user,
+        user
       );
       instructions.push(...executePaymentIxs);
     }
@@ -1211,7 +1216,7 @@ export class Tributary {
     approvalAmount?: BN,
     referralCode?: string,
     expiryDate?: BN | null,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -1228,7 +1233,7 @@ export class Tributary {
         user,
         tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1246,12 +1251,12 @@ export class Tributary {
     if (referralCode) {
       if (!this.validateReferralCode(referralCode)) {
         throw new Error(
-          "Referral code must be exactly 6 alphanumeric characters",
+          "Referral code must be exactly 6 alphanumeric characters"
         );
       }
       const referralAccount = await this.getReferralAccountByCode(
         gateway,
-        referralCode,
+        referralCode
       );
       if (!referralAccount) {
         throw new Error("Referral Code unknown");
@@ -1259,7 +1264,7 @@ export class Tributary {
       const createReferralIx = await this.createReferralAccount(
         gateway,
         generateSecureRandomString(6),
-        referralAccount.owner,
+        referralAccount.owner
       );
       instructions.push(createReferralIx);
     }
@@ -1310,11 +1315,12 @@ export class Tributary {
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
     } else {
-      const existingApproval =
-        await this.getTotalApprovalForExistingPolicies(userPaymentPda);
+      const existingApproval = await this.getTotalApprovalForExistingPolicies(
+        userPaymentPda
+      );
       const newApproval = this.calculatePayAsYouGoApprovalAmount(
         maxAmountPerPeriod,
-        periodLengthSeconds,
+        periodLengthSeconds
       );
       finalApprovalAmount = existingApproval.add(newApproval);
     }
@@ -1324,8 +1330,9 @@ export class Tributary {
     const delegate = userPaymentDelegate;
     let needsApproval = false;
 
-    const tokenAccountInfo =
-      await this.connection.getParsedAccountInfo(ownerTokenAccount);
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
 
     if (tokenAccountInfo.value?.data) {
       const parsedData = tokenAccountInfo.value.data as any;
@@ -1358,7 +1365,7 @@ export class Tributary {
         ownerTokenAccount,
         delegate,
         user,
-        finalApprovalAmount,
+        finalApprovalAmount
       );
       instructions.push(revokeIx);
       instructions.push(approveIx);
@@ -1396,7 +1403,7 @@ export class Tributary {
     expiryDate?: BN | null,
     approvalAmount?: BN,
     referralCode?: string,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -1413,7 +1420,7 @@ export class Tributary {
         user,
         tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1431,12 +1438,12 @@ export class Tributary {
     if (referralCode) {
       if (!this.validateReferralCode(referralCode)) {
         throw new Error(
-          "Referral code must be exactly 6 alphanumeric characters",
+          "Referral code must be exactly 6 alphanumeric characters"
         );
       }
       const referralAccount = await this.getReferralAccountByCode(
         gateway,
-        referralCode,
+        referralCode
       );
       if (!referralAccount) {
         throw new Error("Referral Code unknown");
@@ -1444,7 +1451,7 @@ export class Tributary {
       const createReferralIx = await this.createReferralAccount(
         gateway,
         generateSecureRandomString(6),
-        referralAccount.owner,
+        referralAccount.owner
       );
       instructions.push(createReferralIx);
     }
@@ -1497,8 +1504,9 @@ export class Tributary {
     const delegate = userPaymentPda;
     let needsApproval = false;
 
-    const tokenAccountInfo =
-      await this.connection.getParsedAccountInfo(ownerTokenAccount);
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
 
     if (tokenAccountInfo.value?.data) {
       const parsedData = tokenAccountInfo.value.data as any;
@@ -1531,7 +1539,7 @@ export class Tributary {
         ownerTokenAccount,
         delegate,
         user,
-        finalApprovalAmount,
+        finalApprovalAmount
       );
       instructions.push(revokeIx);
       instructions.push(approveIx);
@@ -1565,7 +1573,7 @@ export class Tributary {
     validAfter: BN | null,
     deadline: BN,
     memo: number[],
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -1641,7 +1649,7 @@ export class Tributary {
     validAfter?: BN | null,
     approvalAmount?: BN,
     referralCode?: string,
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -1658,7 +1666,7 @@ export class Tributary {
         user,
         tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1675,12 +1683,12 @@ export class Tributary {
     if (referralCode) {
       if (!this.validateReferralCode(referralCode)) {
         throw new Error(
-          "Referral code must be exactly 6 alphanumeric characters",
+          "Referral code must be exactly 6 alphanumeric characters"
         );
       }
       const referralAccount = await this.getReferralAccountByCode(
         gateway,
-        referralCode,
+        referralCode
       );
       if (!referralAccount) {
         throw new Error("Referral Code unknown");
@@ -1688,7 +1696,7 @@ export class Tributary {
       const createReferralIx = await this.createReferralAccount(
         gateway,
         generateSecureRandomString(6),
-        referralAccount.owner,
+        referralAccount.owner
       );
       instructions.push(createReferralIx);
     }
@@ -1736,8 +1744,9 @@ export class Tributary {
     const delegate = userPaymentPda;
     let needsApproval = false;
 
-    const tokenAccountInfo =
-      await this.connection.getParsedAccountInfo(ownerTokenAccount);
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
 
     if (tokenAccountInfo.value?.data) {
       const parsedData = tokenAccountInfo.value.data as any;
@@ -1770,7 +1779,7 @@ export class Tributary {
         ownerTokenAccount,
         delegate,
         user,
-        finalApprovalAmount,
+        finalApprovalAmount
       );
       instructions.push(revokeIx);
       instructions.push(approveIx);
@@ -1799,7 +1808,7 @@ export class Tributary {
     recipient?: PublicKey,
     tokenMint?: PublicKey,
     gateway?: PublicKey,
-    user?: PublicKey,
+    user?: PublicKey
   ): Promise<TransactionInstruction[]> {
     return this.executePayment(
       paymentPolicyPda,
@@ -1807,7 +1816,7 @@ export class Tributary {
       recipient,
       tokenMint,
       gateway,
-      user,
+      user
     );
   }
 
@@ -1828,7 +1837,7 @@ export class Tributary {
     recipient?: PublicKey,
     tokenMint?: PublicKey,
     gateway?: PublicKey,
-    user?: PublicKey,
+    user?: PublicKey
   ): Promise<TransactionInstruction[]> {
     const instructions: TransactionInstruction[] = [];
     const authority = this.provider.publicKey;
@@ -1847,8 +1856,9 @@ export class Tributary {
       _gateway = paymentPolicy.gateway;
       _recipient = paymentPolicy.recipient;
 
-      userPayment =
-        await this.program.account.userPayment.fetchNullable(userPaymentPda);
+      userPayment = await this.program.account.userPayment.fetchNullable(
+        userPaymentPda
+      );
 
       if (userPayment) {
         _tokenMint = userPayment.tokenMint;
@@ -1863,25 +1873,25 @@ export class Tributary {
 
     if (!_tokenMint) {
       throw new Error(
-        "Either provide tokenMint or have a valid paymentPolicy account!",
+        "Either provide tokenMint or have a valid paymentPolicy account!"
       );
     }
 
     if (!_recipient) {
       throw new Error(
-        "Either provide recipient or have a valid paymentPolicy account!",
+        "Either provide recipient or have a valid paymentPolicy account!"
       );
     }
 
     if (!_gateway) {
       throw new Error(
-        "Either provide gateway or have a valid paymentPolicy account!",
+        "Either provide gateway or have a valid paymentPolicy account!"
       );
     }
 
     if (!_user) {
       throw new Error(
-        "Either provide user or have a valid paymentPolicy account!",
+        "Either provide user or have a valid paymentPolicy account!"
       );
     }
 
@@ -1891,17 +1901,17 @@ export class Tributary {
 
     const { address: userPaymentPda } = this.getUserPaymentPda(
       _user,
-      _tokenMint,
+      _tokenMint
     );
     const tokenAccount = getAssociatedTokenAddressSync(_tokenMint, _user);
 
     // Payment Recipient ATA
     const recipientTokenAccount = getAssociatedTokenAddressSync(
       _tokenMint,
-      _recipient,
+      _recipient
     );
     const recipientAccountInfo = await this.connection.getAccountInfo(
-      recipientTokenAccount,
+      recipientTokenAccount
     );
     if (!recipientAccountInfo) {
       const createAtaIx = createAssociatedTokenAccountInstruction(
@@ -1910,7 +1920,7 @@ export class Tributary {
         _recipient,
         _tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1918,10 +1928,11 @@ export class Tributary {
     // Gateway Fee account ATA
     const gatewayFeeAccount = getAssociatedTokenAddressSync(
       _tokenMint,
-      gatewayAccount!.feeRecipient,
+      gatewayAccount!.feeRecipient
     );
-    const gatewayFeeAccountInfo =
-      await this.connection.getAccountInfo(gatewayFeeAccount);
+    const gatewayFeeAccountInfo = await this.connection.getAccountInfo(
+      gatewayFeeAccount
+    );
     if (!gatewayFeeAccountInfo) {
       const createAtaIx = createAssociatedTokenAccountInstruction(
         authority,
@@ -1929,7 +1940,7 @@ export class Tributary {
         gatewayAccount!.feeRecipient,
         _tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1937,10 +1948,11 @@ export class Tributary {
     // Protocol Fee account ATA
     const protocolFeeAccount = getAssociatedTokenAddressSync(
       _tokenMint,
-      config!.feeRecipient,
+      config!.feeRecipient
     );
-    const protocolFeeAccountInfo =
-      await this.connection.getAccountInfo(protocolFeeAccount);
+    const protocolFeeAccountInfo = await this.connection.getAccountInfo(
+      protocolFeeAccount
+    );
     if (!protocolFeeAccountInfo) {
       const createAtaIx = createAssociatedTokenAccountInstruction(
         authority,
@@ -1948,7 +1960,7 @@ export class Tributary {
         config!.feeRecipient,
         _tokenMint,
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       instructions.push(createAtaIx);
     }
@@ -1989,7 +2001,7 @@ export class Tributary {
         const remainingAccounts = await this.buildReferralRemainingAccounts(
           _user,
           _gateway!,
-          _tokenMint,
+          _tokenMint
         );
 
         if (remainingAccounts && remainingAccounts.length > 1) {
@@ -2058,7 +2070,7 @@ export class Tributary {
   private calculateSubscriptionApprovalAmount(
     amount: BN,
     frequency: PaymentFrequency,
-    maxRenewals: number | null,
+    maxRenewals: number | null
   ): BN {
     const paymentsPerYear = computePaymentsPerYear(frequency);
     const effectiveRenewals =
@@ -2084,7 +2096,7 @@ export class Tributary {
    */
   private calculatePayAsYouGoApprovalAmount(
     maxAmountPerPeriod: BN,
-    periodLengthSeconds: BN,
+    periodLengthSeconds: BN
   ): BN {
     if (periodLengthSeconds.lten(0)) throw Error("Invalid Interval");
     const secondsPerYear = new BN(365 * 24 * 60 * 60);
@@ -2098,10 +2110,11 @@ export class Tributary {
    * @returns Total approval amount for all existing policies
    */
   private async getTotalApprovalForExistingPolicies(
-    userPaymentPda: PublicKey,
+    userPaymentPda: PublicKey
   ): Promise<BN> {
-    const existingPolicies =
-      await this.getPaymentPoliciesByUserPayment(userPaymentPda);
+    const existingPolicies = await this.getPaymentPoliciesByUserPayment(
+      userPaymentPda
+    );
     let totalApprovalAmount = new BN(0);
 
     for (const { account: policy } of existingPolicies) {
@@ -2110,20 +2123,20 @@ export class Tributary {
         const policyApproval = this.calculateSubscriptionApprovalAmount(
           sub.amount,
           sub.paymentFrequency,
-          sub.maxRenewals,
+          sub.maxRenewals
         );
         totalApprovalAmount = totalApprovalAmount.add(policyApproval);
       } else if ("milestone" in policy.policyType) {
         const milestone = policy.policyType.milestone!;
         const policyApproval = this.calculateMilestoneApprovalAmount(
-          milestone.milestoneAmounts.filter((amount) => !amount.isZero()),
+          milestone.milestoneAmounts.filter((amount) => !amount.isZero())
         );
         totalApprovalAmount = totalApprovalAmount.add(policyApproval);
       } else if ("payAsYouGo" in policy.policyType) {
         const payg = policy.policyType.payAsYouGo!;
         const policyApproval = this.calculatePayAsYouGoApprovalAmount(
           payg.maxAmountPerPeriod,
-          payg.periodLengthSeconds,
+          payg.periodLengthSeconds
         );
         totalApprovalAmount = totalApprovalAmount.add(policyApproval);
       }
@@ -2144,7 +2157,7 @@ export class Tributary {
     ownerTokenAccount: PublicKey,
     delegate: PublicKey,
     owner: PublicKey,
-    amount: BN,
+    amount: BN
   ): TransactionInstruction {
     return createApproveInstruction(
       ownerTokenAccount,
@@ -2152,19 +2165,19 @@ export class Tributary {
       owner,
       BigInt(amount.toString()),
       [],
-      TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID
     );
   }
 
   private getRevokeInstruction(
     ownerTokenAccount: PublicKey,
-    owner: PublicKey,
+    owner: PublicKey
   ): TransactionInstruction {
     return createRevokeInstruction(
       ownerTokenAccount,
       owner,
       [],
-      TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID
     );
   }
 
@@ -2178,20 +2191,21 @@ export class Tributary {
    */
   async migrateDelegate(
     tokenMint: PublicKey,
-    approvalAmount: BN,
+    approvalAmount: BN
   ): Promise<TransactionInstruction[]> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, owner);
     const { address: legacyDelegate } = this.getPaymentsDelegatePda();
 
     const instructions: TransactionInstruction[] = [];
 
-    const tokenAccountInfo =
-      await this.connection.getParsedAccountInfo(ownerTokenAccount);
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
 
     if (tokenAccountInfo.value?.data) {
       const parsedData = tokenAccountInfo.value.data as any;
@@ -2207,8 +2221,8 @@ export class Tributary {
         ownerTokenAccount,
         userPaymentPda,
         owner,
-        approvalAmount,
-      ),
+        approvalAmount
+      )
     );
 
     return instructions;
@@ -2242,16 +2256,16 @@ export class Tributary {
   async changePaymentPolicyStatus(
     tokenMint: PublicKey,
     policyId: number,
-    newStatus: PolicyStatus,
+    newStatus: PolicyStatus
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const { address: paymentPolicyPda } = this.getPaymentPolicyPda(
       userPaymentPda,
-      policyId,
+      policyId
     );
     const { address: configPda } = getConfigPda(this.programId);
 
@@ -2278,16 +2292,16 @@ export class Tributary {
    */
   async deletePaymentPolicy(
     tokenMint: PublicKey,
-    policyId: number,
+    policyId: number
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const { address: paymentPolicyPda } = this.getPaymentPolicyPda(
       userPaymentPda,
-      policyId,
+      policyId
     );
     const { address: configPda } = getConfigPda(this.programId);
 
@@ -2313,7 +2327,7 @@ export class Tributary {
    * @returns Transaction instruction to delete the payment gateway
    */
   async deletePaymentGateway(
-    gatewayAuthority: PublicKey,
+    gatewayAuthority: PublicKey
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -2340,12 +2354,12 @@ export class Tributary {
    * @returns Transaction instruction to delete the user payment account
    */
   async deleteUserPayment(
-    tokenMint: PublicKey,
+    tokenMint: PublicKey
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const { address: configPda } = getConfigPda(this.programId);
 
@@ -2371,7 +2385,7 @@ export class Tributary {
    * @returns Transaction instruction to change the program authority
    */
   async changeProgramAuthority(
-    newAdmin: PublicKey,
+    newAdmin: PublicKey
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
@@ -2397,7 +2411,7 @@ export class Tributary {
    */
   async changeGatewaySigner(
     gatewayAuthority: PublicKey,
-    newSigner: PublicKey,
+    newSigner: PublicKey
   ): Promise<TransactionInstruction> {
     const authority = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -2425,7 +2439,7 @@ export class Tributary {
    */
   async changeGatewayFeeRecipient(
     gatewayAuthority: PublicKey,
-    newFeeRecipient: PublicKey,
+    newFeeRecipient: PublicKey
   ): Promise<TransactionInstruction> {
     const authority = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -2453,7 +2467,7 @@ export class Tributary {
    */
   async changeGatewayFeeBps(
     gatewayAuthority: PublicKey,
-    newFeeBps: number,
+    newFeeBps: number
   ): Promise<TransactionInstruction> {
     const authority = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -2488,7 +2502,7 @@ export class Tributary {
   async updateGatewayProtocolFee(
     gatewayAuthority: PublicKey,
     useCustomProtocolFee: boolean,
-    customProtocolShareBps: number,
+    customProtocolShareBps: number
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -2527,7 +2541,7 @@ export class Tributary {
    */
   async updateGatewaySchedulerShare(
     gatewayAuthority: PublicKey,
-    schedulerShareBps: number,
+    schedulerShareBps: number
   ): Promise<TransactionInstruction> {
     const authority = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
@@ -2559,14 +2573,14 @@ export class Tributary {
    */
   async updateGatewayFeatureFlags(
     gatewayAuthority: PublicKey,
-    featureFlags: number,
+    featureFlags: number
   ): Promise<TransactionInstruction> {
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
 
     const validMask = GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT;
     if ((featureFlags & ~validMask) !== 0 && featureFlags !== 0) {
       throw new Error(
-        "Invalid feature flags — only REFERRAL and NET_AMOUNT bits can be set via this method",
+        "Invalid feature flags — only REFERRAL and NET_AMOUNT bits can be set via this method"
       );
     }
 
@@ -2589,7 +2603,7 @@ export class Tributary {
    */
   async enableGatewayFeature(
     gatewayAuthority: PublicKey,
-    flag: number,
+    flag: number
   ): Promise<TransactionInstruction> {
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
     const gateway = await this.getPaymentGateway(gatewayPda);
@@ -2606,7 +2620,7 @@ export class Tributary {
    */
   async disableGatewayFeature(
     gatewayAuthority: PublicKey,
-    flag: number,
+    flag: number
   ): Promise<TransactionInstruction> {
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
     const gateway = await this.getPaymentGateway(gatewayPda);
@@ -2673,16 +2687,16 @@ export class Tributary {
     postValidation: ValidationSpec = { disabled: {} },
     postPinnedAccounts: PublicKey[] = [],
     postValidationData: Buffer = Buffer.alloc(0),
-    feePayer?: PublicKey,
+    feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     if (prePinnedAccounts.length > MAX_PINNED_ACCOUNTS) {
       throw new Error(
-        `prePinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${prePinnedAccounts.length})`,
+        `prePinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${prePinnedAccounts.length})`
       );
     }
     if (postPinnedAccounts.length > MAX_PINNED_ACCOUNTS) {
       throw new Error(
-        `postPinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${postPinnedAccounts.length})`,
+        `postPinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${postPinnedAccounts.length})`
       );
     }
 
@@ -2696,17 +2710,17 @@ export class Tributary {
 
     const composablePolicyPda = this.getComposablePolicyPda(
       userPaymentPda,
-      policyId,
+      policyId
     );
     const memoBytes = encodeMemo(memo, 32);
 
     const { address: preValidationPdaAddress } = getPreValidationPda(
       composablePolicyPda.address,
-      this.programId,
+      this.programId
     );
     const { address: postValidationPdaAddress } = getPostValidationPda(
       composablePolicyPda.address,
-      this.programId,
+      this.programId
     );
 
     const preProgram = specProgramOrDefault(preValidation);
@@ -2743,7 +2757,7 @@ export class Tributary {
         preValidation,
         makeValidationInit(prePinnedAccounts, preValidationData),
         postValidation,
-        makeValidationInit(postPinnedAccounts, postValidationData),
+        makeValidationInit(postPinnedAccounts, postValidationData)
       )
       .accountsStrict(accounts)
       .instruction();
@@ -2763,7 +2777,7 @@ export class Tributary {
     composablePolicy: PublicKey,
     instructionData: Buffer,
     forwardAmount?: BN | null,
-    remainingAccounts?: AccountMeta[],
+    remainingAccounts?: AccountMeta[]
   ): Promise<TransactionInstruction> {
     const policy: ComposablePolicy =
       await this.program.account.composablePolicy.fetch(composablePolicy);
@@ -2786,7 +2800,7 @@ export class Tributary {
     const isDeliverTransform =
       !isActMode &&
       !policy.forwardConfig.instructionConstraint.programId.equals(
-        PublicKey.default,
+        PublicKey.default
       ) &&
       !policy.forwardConfig.outputMint.equals(inputMint);
 
@@ -2794,7 +2808,7 @@ export class Tributary {
     // the UserPayment PDA — see COMPOSABLE.md §PDA Seed Summary.
     const userTokenAccount = getAssociatedTokenAddressSync(
       inputMint,
-      userPayment.owner,
+      userPayment.owner
     );
 
     // Recipient token account. In act mode this account is unused for
@@ -2804,11 +2818,11 @@ export class Tributary {
     const deliverMint = isActMode
       ? inputMint
       : isDeliverTransform
-        ? policy.forwardConfig.outputMint
-        : inputMint;
+      ? policy.forwardConfig.outputMint
+      : inputMint;
     const recipientTokenAccount = getAssociatedTokenAddressSync(
       deliverMint,
-      policy.recipient,
+      policy.recipient
     );
 
     // Intermediate ATAs are owned by the ComposablePolicy PDA — NOT the
@@ -2821,7 +2835,7 @@ export class Tributary {
       inputMint,
       composablePolicy, // owner = ComposablePolicy PDA
       true, // allowOwnerOffCurve — ComposablePolicy is a PDA
-      TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID
     );
     // Output intermediate only exists in deliver-transform mode. In act
     // mode and deliver-no-transform we derive a placeholder (program skips
@@ -2830,27 +2844,27 @@ export class Tributary {
       isDeliverTransform ? policy.forwardConfig.outputMint : inputMint,
       composablePolicy, // owner = ComposablePolicy PDA
       true,
-      TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID
     );
 
     // Fee accounts are INPUT-side post-ADR-0026: fees are skimmed from the
     // gross pull in input_mint before the forward runs.
     const gatewayFeeAccount = getAssociatedTokenAddressSync(
       inputMint,
-      gateway.feeRecipient,
+      gateway.feeRecipient
     );
     const protocolFeeAccount = getAssociatedTokenAddressSync(
       inputMint,
-      config.feeRecipient,
+      config.feeRecipient
     );
 
     const { address: preValidationPdaAddress } = getPreValidationPda(
       composablePolicy,
-      this.programId,
+      this.programId
     );
     const { address: postValidationPdaAddress } = getPostValidationPda(
       composablePolicy,
-      this.programId,
+      this.programId
     );
 
     const accounts = {
@@ -2909,7 +2923,7 @@ export class Tributary {
   requiredDelegatedAmount(
     face: BN,
     gateway: PaymentGateway,
-    protocolShareBps?: number,
+    protocolShareBps?: number
   ): BN {
     const feeBps = gateway.gatewayFeeBps ?? 0;
     // NET-on-pull: total_fee = face × bps / 10000, gross = face + total_fee.
@@ -2932,22 +2946,23 @@ export class Tributary {
   async changeComposablePolicyStatus(
     tokenMint: PublicKey,
     policyId: number,
-    newStatus: PolicyStatus,
+    newStatus: PolicyStatus
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const { address: composablePolicyPda } = this.getComposablePolicyPda(
       userPaymentPda,
-      policyId,
+      policyId
     );
     const { address: configPda } = getConfigPda(this.programId);
 
     // Fetch the policy to find its gateway
-    const policy =
-      await this.program.account.composablePolicy.fetch(composablePolicyPda);
+    const policy = await this.program.account.composablePolicy.fetch(
+      composablePolicyPda
+    );
 
     const accounts = {
       owner: owner,
@@ -2972,16 +2987,16 @@ export class Tributary {
    */
   async deleteComposablePolicy(
     tokenMint: PublicKey,
-    policyId: number,
+    policyId: number
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
       owner,
-      tokenMint,
+      tokenMint
     );
     const { address: composablePolicyPda } = this.getComposablePolicyPda(
       userPaymentPda,
-      policyId,
+      policyId
     );
     const { address: configPda } = getConfigPda(this.programId);
 
@@ -3001,7 +3016,7 @@ export class Tributary {
     if (isProgramCall(policy.preValidation)) {
       const { address } = getPreValidationPda(
         composablePolicyPda,
-        this.programId,
+        this.programId
       );
       remainingAccounts.push({
         pubkey: address,
@@ -3012,7 +3027,7 @@ export class Tributary {
     if (isProgramCall(policy.postValidation)) {
       const { address } = getPostValidationPda(
         composablePolicyPda,
-        this.programId,
+        this.programId
       );
       remainingAccounts.push({
         pubkey: address,
@@ -3070,7 +3085,7 @@ export class Tributary {
    * @returns Array of user payment accounts owned by the specified user
    */
   async getAllUserPaymentsByOwner(
-    owner: PublicKey,
+    owner: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: UserPayment }>> {
     return await this.program.account.userPayment.all([
       {
@@ -3089,7 +3104,7 @@ export class Tributary {
    * @deprecated Use getPaymentPoliciesByUserPayment instead!
    */
   async getPaymentPoliciesByUser(
-    user: PublicKey,
+    user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.getPaymentPoliciesByUserPayment(user);
   }
@@ -3100,7 +3115,7 @@ export class Tributary {
    * @returns Array of payment policies where the user is the recipient
    */
   async getPaymentPoliciesByRecipient(
-    user: PublicKey,
+    user: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
@@ -3118,7 +3133,7 @@ export class Tributary {
    * @returns Array of payment policies executed by the gateway
    */
   async getPaymentPoliciesByGateway(
-    gateway: PublicKey,
+    gateway: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
@@ -3136,7 +3151,7 @@ export class Tributary {
    * @returns Array of payment policies for the user payment account
    */
   async getPaymentPoliciesByUserPayment(
-    userPayment: PublicKey,
+    userPayment: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all([
       {
@@ -3156,11 +3171,11 @@ export class Tributary {
   async getPaymentPoliciesByGatewayOwnerAndMint(
     walletPublicKey: PublicKey,
     tokenMint: PublicKey,
-    gateway: PublicKey,
+    gateway: PublicKey
   ): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     const userPayment = this.getUserPaymentPda(
       walletPublicKey,
-      tokenMint,
+      tokenMint
     ).address;
     return await this.program.account.paymentPolicy.all([
       {
@@ -3184,10 +3199,10 @@ export class Tributary {
    * @returns The user payment account data or null if not found
    */
   async getUserPayment(
-    userPaymentAddress: PublicKey,
+    userPaymentAddress: PublicKey
   ): Promise<UserPayment | null> {
     return await this.program.account.userPayment.fetchNullable(
-      userPaymentAddress,
+      userPaymentAddress
     );
   }
 
@@ -3197,10 +3212,10 @@ export class Tributary {
    * @returns The program configuration data or null if not found
    */
   async getProgramConfig(
-    configAddress: PublicKey,
+    configAddress: PublicKey
   ): Promise<ProgramConfig | null> {
     return await this.program.account.programConfig.fetchNullable(
-      configAddress,
+      configAddress
     );
   }
 
@@ -3210,10 +3225,10 @@ export class Tributary {
    * @returns The payment gateway account data or null if not found
    */
   async getPaymentGateway(
-    gatewayAddress: PublicKey,
+    gatewayAddress: PublicKey
   ): Promise<PaymentGateway | null> {
     return await this.program.account.paymentGateway.fetchNullable(
-      gatewayAddress,
+      gatewayAddress
     );
   }
 
@@ -3223,11 +3238,70 @@ export class Tributary {
    * @returns The payment policy account data or null if not found
    */
   async getPaymentPolicy(
-    policyAddress: PublicKey,
+    policyAddress: PublicKey
   ): Promise<PaymentPolicy | null> {
     return await this.program.account.paymentPolicy.fetchNullable(
-      policyAddress,
+      policyAddress
     );
+  }
+
+  /**
+   * Fetches a specific composable policy account by its address.
+   * @param policyAddress - Public key of the composable policy account
+   * @returns The composable policy account data or null if not found
+   */
+  async getComposablePolicy(
+    policyAddress: PublicKey
+  ): Promise<ComposablePolicy | null> {
+    return await this.program.account.composablePolicy.fetchNullable(
+      policyAddress
+    );
+  }
+
+  /**
+   * Retrieves all composable policies belonging to the specified user payment account.
+   * @param userPayment - Public key of the user payment PDA
+   * @returns Array of composable policies for the user payment account
+   */
+  async getComposablePoliciesByUserPayment(
+    userPayment: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
+    return await this.program.account.composablePolicy.all([
+      {
+        memcmp: {
+          offset: 9, // Skip discriminator (8) + bump (1)
+          bytes: userPayment.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Retrieves all composable policies executed by the specified gateway.
+   * @param gateway - Public key of the payment gateway
+   * @returns Array of composable policies executed by the gateway
+   */
+  async getComposablePoliciesByGateway(
+    gateway: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
+    return await this.program.account.composablePolicy.all([
+      {
+        memcmp: {
+          offset: 41, // Skip discriminator (8) + bump (1) + user_payment (32)
+          bytes: gateway.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Retrieves all composable policies.
+   * @returns Array of all composable policies
+   */
+  async getAllComposablePolicies(): Promise<
+    Array<{ publicKey: PublicKey; account: ComposablePolicy }>
+  > {
+    return await this.program.account.composablePolicy.all();
   }
 
   /**
@@ -3239,7 +3313,7 @@ export class Tributary {
    */
   async getReferralAccountByOwner(
     gateway: PublicKey,
-    owner: PublicKey,
+    owner: PublicKey
   ): Promise<ReferralAccount | null> {
     const found = await this.getReferralAccountAddressByOwner(gateway, owner);
     return found ? found.account : null;
@@ -3253,7 +3327,7 @@ export class Tributary {
    */
   async getReferralAccountAddressByOwner(
     gateway: PublicKey,
-    owner: PublicKey,
+    owner: PublicKey
   ): Promise<{ publicKey: PublicKey; account: ReferralAccount } | null> {
     const allReferrals = await this.program.account.referralAccount.all([
       {
@@ -3278,10 +3352,10 @@ export class Tributary {
    * @returns The referral account data or null if not found
    */
   async getReferralAccount(
-    referralAccountAddress: PublicKey,
+    referralAccountAddress: PublicKey
   ): Promise<ReferralAccount | null> {
     return await this.program.account.referralAccount.fetchNullable(
-      referralAccountAddress,
+      referralAccountAddress
     );
   }
 
@@ -3302,14 +3376,14 @@ export class Tributary {
    */
   async getReferralChain(
     user: PublicKey,
-    gateway: PublicKey,
+    gateway: PublicKey
   ): Promise<(PublicKey | null)[]> {
     const chain: (PublicKey | null)[] = [];
 
     // Get the user's referral account for this gateway
     const userReferral = await this.getReferralAccountAddressByOwner(
       gateway,
-      user,
+      user
     );
 
     if (!userReferral) {
@@ -3325,7 +3399,7 @@ export class Tributary {
 
       // Get L1's referral account to find L2
       const l1Referral = await this.getReferralAccount(
-        userReferral.account.referrer,
+        userReferral.account.referrer
       );
 
       if (
@@ -3379,7 +3453,7 @@ export class Tributary {
   async buildReferralRemainingAccounts(
     user: PublicKey,
     gateway: PublicKey,
-    tokenMint: PublicKey,
+    tokenMint: PublicKey
   ): Promise<
     | {
         pubkey: PublicKey;
@@ -3390,7 +3464,7 @@ export class Tributary {
   > {
     const userReferral = await this.getReferralAccountAddressByOwner(
       gateway,
-      user,
+      user
     );
     if (!userReferral) {
       return null;
@@ -3453,7 +3527,7 @@ export class Tributary {
     signature: TransactionSignature,
     commitment: "processed" | "confirmed" | "finalized" = "confirmed",
     interval: number = 150, // ms
-    timeout: number = 60000, // 60 seconds
+    timeout: number = 60000 // 60 seconds
   ): Promise<SignatureStatus> {
     const start = Date.now();
 
@@ -3506,7 +3580,7 @@ export class Tributary {
     gateway: PublicKey,
     amount: BN,
     memo: string | number[],
-    referralCode?: string,
+    referralCode?: string
   ): Promise<TransactionInstruction[]> {
     const instructions: TransactionInstruction[] = [];
     const authority = this.provider.publicKey;
@@ -3535,18 +3609,19 @@ export class Tributary {
           recipient,
           tokenMint,
           TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-        ),
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
       );
     }
 
     // Gateway fee account ATA
     const gatewayFeeAccount = getAssociatedTokenAddressSync(
       tokenMint,
-      gatewayAccount.feeRecipient,
+      gatewayAccount.feeRecipient
     );
-    const gatewayFeeInfo =
-      await this.connection.getAccountInfo(gatewayFeeAccount);
+    const gatewayFeeInfo = await this.connection.getAccountInfo(
+      gatewayFeeAccount
+    );
     if (!gatewayFeeInfo) {
       instructions.push(
         createAssociatedTokenAccountInstruction(
@@ -3555,18 +3630,19 @@ export class Tributary {
           gatewayAccount.feeRecipient,
           tokenMint,
           TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-        ),
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
       );
     }
 
     // Protocol fee account ATA
     const protocolFeeAccount = getAssociatedTokenAddressSync(
       tokenMint,
-      config.feeRecipient,
+      config.feeRecipient
     );
-    const protocolFeeInfo =
-      await this.connection.getAccountInfo(protocolFeeAccount);
+    const protocolFeeInfo = await this.connection.getAccountInfo(
+      protocolFeeAccount
+    );
     if (!protocolFeeInfo) {
       instructions.push(
         createAssociatedTokenAccountInstruction(
@@ -3575,8 +3651,8 @@ export class Tributary {
           config.feeRecipient,
           tokenMint,
           TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-        ),
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
       );
     }
 
@@ -3616,7 +3692,7 @@ export class Tributary {
         const remainingAccounts = await this.buildReferralRemainingAccounts(
           authority,
           gateway,
-          tokenMint,
+          tokenMint
         );
 
         if (remainingAccounts && remainingAccounts.length > 1) {
@@ -3649,7 +3725,7 @@ function specProgramOrDefault(spec: ValidationSpec): PublicKey {
 
 function makeValidationInit(
   pinnedAccounts: PublicKey[],
-  data: Buffer,
+  data: Buffer
 ): {
   numPinnedAccounts: number;
   pinnedAccounts: [PublicKey, PublicKey];
