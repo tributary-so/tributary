@@ -6,7 +6,7 @@
   },
   "license": "MIT",
   "private": false,
-  "version": "1.11.1",
+  "version": "1.1.0-beta.1",
   "type": "module",
   "scripts": {
     "lint": "exit 0",
@@ -34,10 +34,10 @@
     "@types/node": "^22.10.6",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
-    "eslint": "^10.0.0",
     "esbuild-fix-imports-plugin": "^1.0.23",
-    "typedoc": "^0.28.14",
+    "eslint": "^10.0.0",
     "tsup": "^8.0.0",
+    "typedoc": "^0.28.14",
     "typescript": "^5.7.3"
   },
   "engines": {
