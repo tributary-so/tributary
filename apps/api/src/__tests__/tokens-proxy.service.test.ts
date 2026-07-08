@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Unit tests for the tokens-proxy service — the layer that owns the
  * upstream fetch, Redis cache, and MINT_OVERRIDES fallback stance.
@@ -17,16 +16,16 @@ import {
 } from "@jest/globals";
 
 jest.mock("../services/redis", () => ({
-  getRedisClient: jest.fn().mockResolvedValue(null),
-  cacheGet: jest.fn().mockResolvedValue(null),
-  cacheSet: jest.fn().mockResolvedValue(undefined),
+  getRedisClient: jest.fn(async () => null),
+  cacheGet: jest.fn(async () => null),
+  cacheSet: jest.fn(async () => undefined),
 }));
 
 import { searchAssets, resolveAsset } from "../services/tokens-proxy";
 import * as redis from "../services/redis";
 
-const cacheGet = redis.cacheGet as jest.Mock;
-const cacheSet = redis.cacheSet as jest.Mock;
+const cacheGet = redis.cacheGet as jest.MockedFunction<typeof redis.cacheGet>;
+const cacheSet = redis.cacheSet as jest.MockedFunction<typeof redis.cacheSet>;
 
 const ORIGINAL_KEY = process.env.TOKENS_XYZ_API_KEY;
 const ORIGINAL_BASE = process.env.TOKENS_XYZ_BASE_URL;

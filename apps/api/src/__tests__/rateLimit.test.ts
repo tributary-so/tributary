@@ -1,16 +1,15 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
 jest.useFakeTimers();
 
 import { rateLimit, walletRateLimit } from "../middleware/rateLimit";
 
-function mockReq(overrides = {}) {
+function mockReq(overrides = {}): any {
   return { ip: "1.2.3.4", body: {}, headers: {}, ...overrides };
 }
 
-function mockRes() {
-  const res = { statusCode: 200, body: null };
+function mockRes(): any {
+  const res: any = { statusCode: 200, body: null };
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockImplementation((data) => {
     res.body = data;
@@ -70,7 +69,10 @@ describe("rateLimit", () => {
   });
 
   it("should use custom keyFn when provided", () => {
-    const customKey = jest.fn().mockReturnValue("custom-key");
+    const customKey = jest.fn() as unknown as jest.MockedFunction<
+      (req: any) => string
+    >;
+    customKey.mockReturnValue("custom-key");
     const middleware = rateLimit({
       windowMs: 60000,
       maxRequests: 1,

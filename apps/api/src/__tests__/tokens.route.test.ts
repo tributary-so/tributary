@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
@@ -30,7 +29,9 @@ import tokensRouter from "../routes/tokens";
 import { errorHandler } from "../middleware/errorHandler";
 import * as tokenIssuer from "../services/token-issuer";
 
-const mockIssueToken = tokenIssuer.issueToken as jest.Mock;
+const mockIssueToken = tokenIssuer.issueToken as jest.MockedFunction<
+  typeof tokenIssuer.issueToken
+>;
 
 function createApp(): Application {
   const app = express();
