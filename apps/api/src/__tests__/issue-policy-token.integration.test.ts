@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration test: sdk-react `issuePolicyToken` ↔ API `/v1/tokens/issue`.
  *
@@ -46,7 +45,7 @@ const originalFetch = globalThis.fetch;
 
 function mockFetch(responses: Array<{ status: number; body?: any }>) {
   let i = 0;
-  const fetchMock = jest.fn(async () => {
+  const fetchMock = jest.fn(async (_input: any, _init: any) => {
     const r = responses[Math.min(i, responses.length - 1)];
     i++;
     return {

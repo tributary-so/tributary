@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
@@ -31,7 +30,7 @@ function createApp(): Application {
   return app;
 }
 
-const mockEvent = {
+const mockEvent: any = {
   id: 1,
   signature: "5Kq3...mock_signature",
   slot: 123456789,
@@ -231,7 +230,7 @@ describe("Events API Routes", () => {
     it("should return tributary event names", async () => {
       mockedQueries.getTributaryEventNames.mockResolvedValueOnce([
         "tributary_PaymentRecord",
-      ]);
+      ] as any);
 
       const response = await request(app)
         .get("/v1/events/names/tributary")
@@ -708,7 +707,7 @@ describe("Events API Routes", () => {
         .expect(200);
 
       expect(mockedQueries.getTypedEvents).toHaveBeenCalledWith(
-        "tributary_PaymentRecord",
+        "tributary_PaymentRecord" as any,
         { limit: 50, offset: 10 }
       );
     });

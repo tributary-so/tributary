@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration tests for the /v1/assets proxy routes.
  *
@@ -28,8 +27,12 @@ import assetsRouter from "../routes/assets";
 import { errorHandler } from "../middleware/errorHandler";
 import * as tokensProxy from "../services/tokens-proxy";
 
-const searchAssets = tokensProxy.searchAssets as jest.Mock;
-const resolveAsset = tokensProxy.resolveAsset as jest.Mock;
+const searchAssets = tokensProxy.searchAssets as jest.MockedFunction<
+  typeof tokensProxy.searchAssets
+>;
+const resolveAsset = tokensProxy.resolveAsset as jest.MockedFunction<
+  typeof tokensProxy.resolveAsset
+>;
 
 function createApp(): Application {
   const app = express();

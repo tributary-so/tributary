@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
@@ -36,7 +35,9 @@ const BEARER_PREFIX = "Bearer ";
 // We do this by intercepting the jose import — easier: mock the auth module.
 
 jest.mock("../middleware/auth", () => {
-  const actual = jest.requireActual("../middleware/auth");
+  const actual = jest.requireActual(
+    "../middleware/auth"
+  ) as typeof import("../middleware/auth");
   return {
     ...actual,
     verifyToken: jest.fn(),

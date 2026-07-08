@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, jest } from "@jest/globals";
 
 // Ponytail: mock the ESM-only `jose` and the workspace ESM packages so the
 // pure helper functions (buildPolicyClaims, computePolicyExpiration) can be
@@ -65,7 +64,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           nextPaymentDue: future,
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(paid.variant).toBe("subscription");
     expect(paid.status).toBe("paid");
     expect(paid.amount).toBe("1000000");
@@ -82,7 +81,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           nextPaymentDue: past,
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(overdue.status).toBe("overdue");
 
     const completed = buildPolicyClaims([
@@ -98,7 +97,7 @@ describe("buildPolicyClaims — variant coverage", () => {
         },
         { totalPaid: 3 }
       ),
-    ])[0];
+    ])[0] as any;
     expect(completed.status).toBe("completed");
     expect(completed.maxRenewals).toBe(3);
     expect(completed.totalPayments).toBe(3);
@@ -118,7 +117,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           escrowAmount: bn(300),
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(claim.variant).toBe("milestone");
     expect(claim.currentMilestone).toBe(1);
     expect(claim.totalMilestones).toBe(2);
@@ -142,7 +141,7 @@ describe("buildPolicyClaims — variant coverage", () => {
         },
         { totalPaid: 300 }
       ),
-    ])[0];
+    ])[0] as any;
     expect(done.status).toBe("completed");
     expect(done.escrowRemaining).toBe("0");
   });
@@ -159,7 +158,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           currentPeriodTotal: bn(400_000),
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(claim.variant).toBe("payAsYouGo");
     expect(claim.capRemainingThisPeriod).toBe("600000");
     expect(claim.periodResetsAt).toBe(periodStart + 3600);
@@ -175,7 +174,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           currentPeriodTotal: bn(1_000_000),
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(exhausted.status).toBe("exhausted");
   });
 
@@ -188,7 +187,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           expiryDate: { some: bn(Math.floor(Date.now() / 1000) + 86400) },
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(claim.variant).toBe("oneTime");
     expect(claim.dueDate).toBeNull();
     expect(claim.status).toBe("pending");
@@ -204,7 +203,7 @@ describe("buildPolicyClaims — variant coverage", () => {
         },
         { status: { completed: {} } }
       ),
-    ])[0];
+    ])[0] as any;
     expect(completed.status).toBe("completed");
     expect(completed.expiryDate).toBeNull();
 
@@ -216,7 +215,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           expiryDate: { some: bn(Math.floor(Date.now() / 1000) - 100) },
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(expired.status).toBe("expired");
   });
 
@@ -230,7 +229,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           deadline: bn(future),
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(claim.variant).toBe("upTo");
     expect(claim.validAfter).toBeNull();
     expect(claim.deadline).toBe(future);
@@ -247,7 +246,7 @@ describe("buildPolicyClaims — variant coverage", () => {
         },
         { status: { completed: {} } }
       ),
-    ])[0];
+    ])[0] as any;
     expect(settled.status).toBe("settled");
 
     const expired = buildPolicyClaims([
@@ -258,7 +257,7 @@ describe("buildPolicyClaims — variant coverage", () => {
           deadline: bn(Math.floor(Date.now() / 1000) - 100),
         },
       }),
-    ])[0];
+    ])[0] as any;
     expect(expired.status).toBe("expired");
   });
 
