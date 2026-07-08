@@ -54,7 +54,7 @@ export function PayPage() {
         const sessionManager = new CheckoutSessionManager();
         const decoded = sessionManager.decodeSubscriptionUrl(encodedData);
         setSessionData(decoded);
-      } catch (err) {
+      } catch (_err) {
         setError("Invalid session data");
       }
     } else {
