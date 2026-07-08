@@ -86,11 +86,11 @@ router.get(
       recipient,
     } = req.query;
 
-    // Validate that at least one lookup option is provided
-    if (walletPublicKey && !tokenMint) {
+    // walletPublicKey and tokenMint must be provided together
+    if (!!walletPublicKey !== !!tokenMint) {
       throw new ApiError(
         400,
-        "If you provide walletPublicKey you also have to provide tokenMint!"
+        "If you provide walletPublicKey or tokenMint, you must provide both"
       );
     }
 
