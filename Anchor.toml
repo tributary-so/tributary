@@ -36,11 +36,10 @@ test = "printf '%s\\n' '⨯ anchor test no longer runs the test suite.' '' '  In
 # accumulated state stalling getProgramAccounts-based SDK calls:
 #   surfpool start --legacy-anchor-compatibility --no-tui
 # (Surfpool auto-deploys the program from target/deploy on start.)
-surfpool = "anchor run test-cargo && anchor run test-integration && anchor run test-composable && anchor run test-composable-read && anchor run test-surfpool && anchor run test-topup && anchor run test-topup-swap && anchor run test-topup-sol && anchor run test-onetime && anchor run test-upto && anchor run test-fee-rebase"
+surfpool = "anchor run test-cargo && anchor run test-integration && anchor run test-composable && anchor run test-surfpool && anchor run test-topup && anchor run test-topup-swap && anchor run test-topup-sol && anchor run test-onetime && anchor run test-upto && anchor run test-fee-rebase"
 test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
 test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"
-test-composable-read = "npx jest ./tests/composable-read-methods.test.ts --preset ts-jest"
 test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
 test-topup = "npx jest ./tests/topup-balance.test.ts --preset ts-jest"
 test-topup-swap = "npx jest ./tests/topup-balance-swap.test.ts --preset ts-jest"

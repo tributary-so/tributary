@@ -9,6 +9,7 @@ import {
   type ComposablePolicy,
   type UserPayment,
   type PaymentGateway,
+  type ReferralAccount,
 } from '@tributary-so/sdk'
 import {
   Play,
@@ -276,16 +277,14 @@ function MilestoneTracker({
           return (
             <div
               key={i}
-              className={`flex items-center gap-3 p-2 ${
-                isCurrent ? 'bg-milestone-50 border border-milestone-200' : 'bg-muted/30'
-              }`}
+              className={`flex items-center gap-3 p-2 ${isCurrent ? 'bg-milestone-50 border border-milestone-200' : 'bg-muted/30'
+                }`}
             >
               <div
                 className={`w-7 h-7 flex items-center justify-center text-xs font-bold shrink-0
-                  ${
-                    isCompleted
-                      ? 'bg-milestone-500 text-white'
-                      : isCurrent
+                  ${isCompleted
+                    ? 'bg-milestone-500 text-white'
+                    : isCurrent
                       ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
                       : 'bg-muted text-muted-foreground'
                   }
@@ -295,9 +294,8 @@ function MilestoneTracker({
               </div>
               <div className="flex-1 min-w-0">
                 <div
-                  className={`text-xs font-medium truncate ${
-                    isCompleted ? 'text-muted-foreground' : isCurrent ? 'text-milestone-700' : 'text-muted-foreground'
-                  }`}
+                  className={`text-xs font-medium truncate ${isCompleted ? 'text-muted-foreground' : isCurrent ? 'text-milestone-700' : 'text-muted-foreground'
+                    }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : 'No amount'}
                 </div>
@@ -334,10 +332,9 @@ function MilestoneTracker({
               <div className="flex flex-col items-center">
                 <div
                   className={`w-6 h-6 flex items-center justify-center text-xs font-bold transition-all
-                    ${
-                      isCompleted
-                        ? 'bg-milestone-500 text-white'
-                        : isCurrent
+                    ${isCompleted
+                      ? 'bg-milestone-500 text-white'
+                      : isCurrent
                         ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
                         : 'bg-muted text-muted-foreground'
                     }
@@ -347,13 +344,12 @@ function MilestoneTracker({
                 </div>
 
                 <span
-                  className={`mt-1 text-xs ${
-                    isCompleted
+                  className={`mt-1 text-xs ${isCompleted
                       ? 'text-muted-foreground'
                       : isCurrent
-                      ? 'text-milestone-700 font-medium'
-                      : 'text-muted-foreground'
-                  }`}
+                        ? 'text-milestone-700 font-medium'
+                        : 'text-muted-foreground'
+                    }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : '-'}
                 </span>
@@ -549,10 +545,9 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
       className={`
         relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
         hover:bg-muted/30 group active:bg-muted/50
-        ${
-          isSelected
-            ? 'bg-linear-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
-            : 'border-l-4 border-l-transparent'
+        ${isSelected
+          ? 'bg-linear-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
+          : 'border-l-4 border-l-transparent'
         }
       `}
     >
@@ -613,10 +608,9 @@ function ComposablePolicyCard({ policy, isSelected, onClick }: ComposablePolicyC
       className={`
         relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
         hover:bg-muted/30 group active:bg-muted/50
-        ${
-          isSelected
-            ? 'bg-linear-to-r from-violet-50 to-background border-l-4 border-l-violet-600'
-            : 'border-l-4 border-l-transparent'
+        ${isSelected
+          ? 'bg-linear-to-r from-violet-50 to-background border-l-4 border-l-violet-600'
+          : 'border-l-4 border-l-transparent'
         }
       `}
     >
@@ -673,7 +667,7 @@ interface DetailPanelProps {
   executingPayments: Set<string>
   togglingPolicies: Set<string>
   deletingPolicies: Set<string>
-  referralAccounts: Map<string, any>
+  referralAccounts: Map<string, ReferralAccount>
 }
 
 function SubscriptionDetailPanel(props: DetailPanelProps) {
@@ -1147,10 +1141,10 @@ function OneTimeDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Already executed'
                 : isExpired
-                ? 'Policy expired'
-                : isPaymentDue
-                ? 'Execute payment'
-                : 'Not due yet'
+                  ? 'Policy expired'
+                  : isPaymentDue
+                    ? 'Execute payment'
+                    : 'Not due yet'
             }
           >
             <Play className="h-4 w-4" />
@@ -1164,8 +1158,8 @@ function OneTimeDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Completed policies cannot be paused'
                 : status === 'active'
-                ? 'Pause policy'
-                : 'Resume policy'
+                  ? 'Pause policy'
+                  : 'Resume policy'
             }
           >
             {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
@@ -1288,10 +1282,10 @@ function UpToDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Already settled'
                 : isExpired
-                ? 'Policy expired'
-                : isPaymentDue
-                ? 'Execute settlement'
-                : 'Not yet valid'
+                  ? 'Policy expired'
+                  : isPaymentDue
+                    ? 'Execute settlement'
+                    : 'Not yet valid'
             }
           >
             <Play className="h-4 w-4" />
@@ -1305,8 +1299,8 @@ function UpToDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Completed policies cannot be paused'
                 : status === 'active'
-                ? 'Pause policy'
-                : 'Resume policy'
+                  ? 'Pause policy'
+                  : 'Resume policy'
             }
           >
             {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
@@ -1468,9 +1462,8 @@ function ComposableDetailPanel({
               Pre-validation
             </div>
             <div
-              className={`text-xs sm:text-sm font-medium ${
-                preValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
-              }`}
+              className={`text-xs sm:text-sm font-medium ${preValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
+                }`}
             >
               {preValidationEnabled ? 'Enabled' : 'Disabled'}
             </div>
@@ -1480,9 +1473,8 @@ function ComposableDetailPanel({
               Post-validation
             </div>
             <div
-              className={`text-xs sm:text-sm font-medium ${
-                postValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
-              }`}
+              className={`text-xs sm:text-sm font-medium ${postValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
+                }`}
             >
               {postValidationEnabled ? 'Enabled' : 'Disabled'}
             </div>
@@ -1582,7 +1574,7 @@ export default function AccountPage() {
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
   const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
   const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
-  const [referralAccounts, setReferralAccounts] = useState<Map<string, any>>(new Map())
+  const [referralAccounts, setReferralAccounts] = useState<Map<string, ReferralAccoun>>(new Map())
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const knownMints = useAtomValue(tokenMetadataAtom)
@@ -1694,7 +1686,7 @@ export default function AccountPage() {
           }
         }
 
-        const referralMap = new Map<string, any>()
+        const referralMap = new Map<string, ReferralAccoun>()
         for (const gatewayKey of uniqueGateways) {
           try {
             const referralAccount = await sdk.getReferralAccountByOwner(new PublicKey(gatewayKey), wallet.publicKey)
@@ -1967,10 +1959,10 @@ export default function AccountPage() {
 
   const currentUserPayment = selectedPolicy
     ? userPayments.find((up) =>
-        selectedPolicy.kind === 'regular'
-          ? up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString())
-          : up.composablePolicies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()),
-      )
+      selectedPolicy.kind === 'regular'
+        ? up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString())
+        : up.composablePolicies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()),
+    )
     : null
 
   const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length + up.composablePolicies.length, 0)

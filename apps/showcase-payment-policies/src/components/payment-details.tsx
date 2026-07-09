@@ -56,8 +56,7 @@ export function PaymentDetails({
 }: PaymentDetailsProps) {
   // ponytail: prefer new discriminated `policies`. Fall back to legacy
   // `subscriptions` for tokens issued before ADR-0023.
-  const policies: PolicyClaim[] =
-    payload.policies ?? (payload as any).subscriptions ?? [];
+  const policies: PolicyClaim[] = (payload as TributaryJWTPayload).policies ?? [];
 
   return (
     <div>

@@ -80,3 +80,15 @@ build:
 	pnpm run -r --filter "./packages/*" build
 	pnpm run -r --filter "./apps/*" build
 	make -C apps/docs build
+
+lint:
+	pnpm run -r --filter "./programs/*" lint
+	pnpm run -r --filter "./packages/*" lint
+	pnpm run -r --filter "./apps/*" lint
+
+test:
+	killall -9 surfpool || true
+	surfpool start --legacy-anchor-compatibility --daemon
+	sleep 3
+	anchor run surfpool
+	killall -9 surfpool
