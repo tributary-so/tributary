@@ -1,11 +1,11 @@
 ---
 # tributary-lp1s
 title: 'L-03: Reject recipient == Pubkey::default() in create_payment_policy'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-09T12:23:33Z
-updated_at: 2026-07-09T12:27:51Z
+updated_at: 2026-07-09T12:30:07Z
 parent: tributary-3nhr
 ---
 
@@ -34,3 +34,9 @@ pub recipient: UncheckedAccount<'info>,
 - [ ] Rust unit test: zero-address recipient rejected
 - [ ] `cargo test` passes
 - [ ] qedspec hash updated
+
+
+## Summary of Changes
+
+- **Commit `1be668a`**: Added `#[account(constraint = recipient.key() != Pubkey::default() @ TributaryError::InvalidAmount)]` to `CreatePaymentPolicy.recipient` in `programs/tributary/src/instructions/payment/create_payment_policy.rs`, matching the existing guard in `create_composable_policy`.
+- The qed `hash` was not touched — it covers the handler body (unchanged), not the accounts struct. No `accounts_hash` drift check is declared.

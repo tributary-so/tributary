@@ -1,11 +1,11 @@
 ---
 # tributary-ldaz
 title: 'M-01: Fix Milestone RELEASE_RECIPIENT release-condition deadlock'
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-07-09T12:23:06Z
-updated_at: 2026-07-09T12:30:15Z
+updated_at: 2026-07-09T12:43:02Z
 parent: tributary-3nhr
 ---
 
@@ -36,3 +36,8 @@ Fix the misleading comment at lines 178-180 that contradicts
 - [ ] Misleading comment corrected
 - [ ] `cargo test` passes (programs/tributary)
 - [ ] qedspec updated if contract behavior changes
+
+
+## Summary of Changes
+
+- **Commit `deecd70`**: Extracted `recipient_can_trigger()` predicate into `shared::schedule`, extended the `execute_payment` recipient-as-caller allow-list to include Milestone policies when `release_condition & RELEASE_RECIPIENT != 0`. Fixed misleading inline comment. Added two unit tests covering all five PolicyType variants.

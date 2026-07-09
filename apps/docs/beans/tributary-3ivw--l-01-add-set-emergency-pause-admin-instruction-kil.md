@@ -1,11 +1,11 @@
 ---
 # tributary-3ivw
 title: 'L-01: Add set_emergency_pause admin instruction (kill-switch setter)'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-09T12:23:19Z
-updated_at: 2026-07-09T12:43:17Z
+updated_at: 2026-07-09T13:03:26Z
 parent: tributary-3nhr
 ---
 
@@ -33,3 +33,8 @@ New file `instructions/set_emergency_pause.rs`, wired in `lib.rs`.
 - [ ] Rust unit test: flipping to true blocks execute, false resumes
 - [ ] `cargo test` passes
 - [ ] qedspec updated
+
+
+## Summary of Changes
+
+- **Commit `bb8909a`**: Added `set_emergency_pause(paused: bool)` instruction — admin-gated (`config.admin == admin.key()`), mirrors `ChangeProgramAuthority` pattern. New file `instructions/set_emergency_pause.rs`, wired in `lib.rs` + `instructions/mod.rs`. Added `EmergencyPauseChanged` event. SDK `setEmergencyPause()` method added; IDL + types regenerated via `anchor build`. AGENTS.md instruction list updated.
