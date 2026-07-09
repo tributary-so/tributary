@@ -86,9 +86,8 @@ lint:
 	pnpm run -r --filter "./packages/*" lint
 	pnpm run -r --filter "./apps/*" lint
 
+surfpool:
+	killall -9 surfpool || surfpool start --legacy-anchor-compatibility
+
 test:
-	killall -9 surfpool || true
-	surfpool start --legacy-anchor-compatibility --daemon
-	sleep 3
 	anchor run surfpool
-	killall -9 surfpool
