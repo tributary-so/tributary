@@ -34,11 +34,8 @@ pub fn validate_byte_ranges(data: &[u8], checks: &[ByteRangeCheck], num_checks: 
         n <= MAX_BYTE_RANGE_CHECKS && n <= checks.len(),
         TributaryError::ByteRangeCheckFailed
     );
-    for i in 0..n {
-        require!(
-            checks[i].validate(data),
-            TributaryError::ByteRangeCheckFailed
-        );
+    for check in checks.iter().take(n) {
+        require!(check.validate(data), TributaryError::ByteRangeCheckFailed);
     }
     Ok(())
 }
@@ -197,9 +194,9 @@ fn build_forward_account_metas(
     accounts
         .iter()
         .map(|a| anchor_lang::solana_program::instruction::AccountMeta {
-            pubkey: *(*a).key,
-            is_signer: *(*a).key == intermediate_owner_pda,
-            is_writable: (*a).is_writable,
+            pubkey: *a.key,
+            is_signer: *a.key == intermediate_owner_pda,
+            is_writable: a.is_writable,
         })
         .collect()
 }
@@ -261,16 +258,14 @@ fn run_validation_cpi<'info>(
         remaining.len() >= num_pinned,
         TributaryError::ValidationPdaMismatch
     );
-    for i in 0..num_pinned {
+    for (i, rem) in remaining.iter().enumerate().take(num_pinned) {
         require!(
-            remaining[i].key() == validation_pda.pinned_accounts[i],
+            rem.key() == validation_pda.pinned_accounts[i],
             TributaryError::ValidationPdaMismatch
         );
     }
 
-    let val_accounts: Vec<AccountInfo<'info>> =
-        remaining[..num_pinned].iter().map(|a| a.clone()).collect();
-
+    let val_accounts: Vec<AccountInfo<'info>> = remaining[..num_pinned].to_vec();
     let instruction = anchor_lang::solana_program::instruction::Instruction {
         program_id: validation_program.key(),
         accounts: build_validation_account_metas(&val_accounts),
@@ -313,10 +308,7 @@ fn run_forward_cpi<'info>(
         TributaryError::MissingForwardAccounts
     );
 
-    let all_forward_infos: Vec<AccountInfo<'info>> = remaining[forward_accounts_start..]
-        .iter()
-        .map(|a| a.clone())
-        .collect();
+    let all_forward_infos: Vec<AccountInfo<'info>> = remaining[forward_accounts_start..].to_vec();
 
     // The forward instruction's accounts are forwarded VERBATIM from the
     // caller-supplied remaining_accounts. We do NOT filter executable
@@ -362,6 +354,10 @@ fn run_forward_cpi<'info>(
 /// event. `gateway_fee` is `gateway_residual + scheduler_cut` (the gateway's
 /// take, possibly routed partly to the scheduler ATA on the permissionless
 /// path).
+//
+// ponytail: 13 params, single call site — a params struct would just move the
+// args into a construction at the one caller and add a definition. Keep flat.
+#[allow(clippy::too_many_arguments)]
 fn skim_input_fees<'info>(
     intermediate_input: &AccountInfo<'info>,
     input_mint: &AccountInfo<'info>,
@@ -503,6 +499,10 @@ fn skim_input_fees<'info>(
 /// mode). Enforces the `output_amount > 0` guard — Tributary asserts the
 /// output EXISTS; the output AMOUNT floor is the owner's job via
 /// `post_validation`. Returns the swept amount.
+//
+// ponytail: 8 params, single call site — distinct SPL accounts + decimals +
+// native flag, all needed for the one transfer. Keep flat.
+#[allow(clippy::too_many_arguments)]
 fn sweep_output_to_recipient<'info>(
     intermediate_output: &AccountInfo<'info>,
     output_mint: &AccountInfo<'info>,
@@ -1115,10 +1115,8 @@ impl<'info> ExecuteComposable<'info> {
         };
 
         let post_start = remaining_after_sched.len().saturating_sub(post_num_pinned);
-        let post_val_accounts: Vec<AccountInfo<'info>> = remaining_after_sched[post_start..]
-            .iter()
-            .cloned()
-            .collect();
+        let post_val_accounts: Vec<AccountInfo<'info>> =
+            remaining_after_sched[post_start..].to_vec();
         let remaining_mid: &[AccountInfo<'info>] = &remaining_after_sched[..post_start];
 
         // ── Cache account infos used by multiple steps ─────────────────

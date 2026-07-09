@@ -58,7 +58,7 @@ export function GatewaySelect({
           </span>
           <SkeletonReveal
             loaded={!gateways.isLoading}
-            skeleton={<div className="t-skel-bar w-full h-10" />}
+            skeleton={<div className="t-skel-bar w-full" />}
           >
             {list.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">

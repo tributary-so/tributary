@@ -139,6 +139,10 @@ router.post(
       throw new ApiError(400, "Invalid transactionSignature format");
     }
 
+    if (!walletPublicKey && !recipient) {
+      throw new ApiError(400, "walletPublicKey or recipient is required");
+    }
+
     try {
       const result = await issueToken({
         walletPublicKey,

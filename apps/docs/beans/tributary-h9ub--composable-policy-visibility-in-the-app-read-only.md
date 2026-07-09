@@ -1,11 +1,11 @@
 ---
 # tributary-h9ub
 title: Composable policy visibility in the app (read-only)
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-06T16:32:09Z
-updated_at: 2026-07-06T16:42:25Z
+updated_at: 2026-07-07T12:48:08Z
 ---
 
 Bring ComposablePolicy into apps/app. Currently account-page.tsx only fetches/displays PaymentPolicy. Add SDK read methods + read-only listing + detail panel.
@@ -137,3 +137,26 @@ No action buttons. Sections:
 4. Validation: pre/post labels
 5. Stats: payment_count, total_input, total_output (NOT total_paid)
 6. Details: policy address, recipient, gateway, token mint, rent_payer
+
+
+
+## Summary of Changes
+
+Milestone complete. All leaves resolved:
+
+**Implementation (t2mh):**
+- SDK: 4 read methods with correct memcmp offsets (9/41)
+- App: composable policies visible alongside regular policies, read-only detail panel
+
+**Testing (3dc0):**
+- Integration tests: 9/9 pass against Surfpool
+- Unit tests: deferred (SDK has no jest infrastructure)
+
+**Documentation (nxkz):**
+- Read methods section added to composable SDK docs page
+
+Files changed:
+- packages/sdk/src/sdk.ts — 4 new read methods
+- apps/app/src/components/account/account-page.tsx — ComposablePolicyCard, ComposableDetailPanel, discriminated union
+- apps/docs/docs/integration-guide/programmable-pull-payments/sdk.md — read methods section
+- tests/composable-read-methods.test.ts — 9 integration tests

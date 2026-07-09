@@ -94,3 +94,15 @@ bump:
 	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/README.md
 	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/README.md
 	echo "$(TODAY): $(MESSAGE)" >> packages/payments/README.md
+
+lint:
+	pnpm run -r --filter "./programs/*" lint
+	pnpm run -r --filter "./packages/*" lint
+	pnpm run -r --filter "./apps/*" lint
+	cargo clippy
+
+surfpool:
+	killall -9 surfpool || surfpool start --legacy-anchor-compatibility
+
+test:
+	anchor run surfpool

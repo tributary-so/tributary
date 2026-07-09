@@ -105,6 +105,8 @@ pub struct CreateComposablePolicy<'info> {
 }
 
 impl<'info> CreateComposablePolicy<'info> {
+    // ponytail: arg list is the on-chain program interface (locked by the IDL).
+    #[allow(clippy::too_many_arguments)]
     pub fn handler(
         ctx: Context<CreateComposablePolicy>,
         policy_type: PolicyType,
@@ -400,7 +402,7 @@ fn init_validation_pda<'info>(
         },
     };
     let mut account_data = pda_info.try_borrow_mut_data()?;
-    account_data[..8].copy_from_slice(&ValidationPda::DISCRIMINATOR);
+    account_data[..8].copy_from_slice(ValidationPda::DISCRIMINATOR);
     let fields = typed.try_to_vec()?;
     account_data[8..8 + fields.len()].copy_from_slice(&fields);
     Ok(())

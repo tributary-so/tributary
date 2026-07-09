@@ -35,6 +35,10 @@ pub mod tributary {
         ChangeProgramAuthority::handler_change_program_authority(ctx)
     }
 
+    pub fn set_emergency_pause(ctx: Context<SetEmergencyPause>, paused: bool) -> Result<()> {
+        SetEmergencyPause::handler_set_emergency_pause(ctx, paused)
+    }
+
     pub fn create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
         CreateUserPayment::handler_create_user_payment(ctx)
     }
@@ -150,6 +154,8 @@ pub mod tributary {
         TransferTokens::handler(ctx, amount, memo)
     }
 
+    // ponytail: arg list is the on-chain program interface (locked by the IDL).
+    #[allow(clippy::too_many_arguments)]
     pub fn create_composable_policy(
         ctx: Context<CreateComposablePolicy>,
         policy_type: PolicyType,

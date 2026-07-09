@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
@@ -24,7 +23,7 @@ jest.mock("@tributary-so/payments", () => ({
 }));
 
 jest.mock("../services/solana", () => ({
-  getMintDecimals: jest.fn().mockResolvedValue(6),
+  getMintDecimals: jest.fn(async () => 6),
   convertAmountToInteger: jest.fn().mockReturnValue(10500000),
 }));
 
@@ -79,7 +78,7 @@ describe("Skill API Routes", () => {
 
     it("should handle solana service errors gracefully", async () => {
       const { getMintDecimals } = require("../services/solana") as any;
-      (getMintDecimals as jest.Mock).mockRejectedValueOnce(
+      (getMintDecimals as jest.MockedFunction<any>).mockRejectedValueOnce(
         new Error("RPC error")
       );
 

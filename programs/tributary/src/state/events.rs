@@ -38,6 +38,14 @@ pub struct ProgramAuthorityChanged {
     pub new_admin: Pubkey,
 }
 
+/// An event that is thrown when the emergency pause flag is toggled
+#[event]
+pub struct EmergencyPauseChanged {
+    pub admin: Pubkey,
+    pub was_paused: bool,
+    pub is_paused: bool,
+}
+
 /// An event that is thrown when a user payment account is created
 #[event]
 pub struct UserPaymentCreated {

@@ -22,7 +22,7 @@ impl ByteRangeCheck {
         }
         let start = self.offset as usize;
         let end = start + self.length as usize;
-        &instruction_data[start..end] == &self.expected[..self.length as usize]
+        instruction_data[start..end] == self.expected[..self.length as usize]
     }
 }
 
@@ -156,11 +156,16 @@ impl ForwardConfig {
 ///   tributary-okhd).
 ///
 /// See bean tributary-q82g (REWRITTEN SCOPE) + ADR-0016 amended.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Default)]
 pub enum ValidationSpec {
+    #[default]
     Disabled,
-    ProgramCall { program_id: Pubkey },
-    Inline { reserved: u8 },
+    ProgramCall {
+        program_id: Pubkey,
+    },
+    Inline {
+        reserved: u8,
+    },
 }
 
 impl ValidationSpec {
@@ -175,12 +180,6 @@ impl ValidationSpec {
             ValidationSpec::ProgramCall { program_id } => *program_id,
             _ => Pubkey::default(),
         }
-    }
-}
-
-impl Default for ValidationSpec {
-    fn default() -> Self {
-        ValidationSpec::Disabled
     }
 }
 
@@ -229,6 +228,9 @@ impl ComposablePolicy {
 }
 
 #[cfg(test)]
+// ponytail: tests set 2-3 fields on Default then mutate array slots — the
+// struct-literal form is more awkward than the reassign pattern here.
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use crate::constants::ALLOWED_FORWARD_PROGRAMS;

@@ -2073,6 +2073,51 @@ export type Tributary = {
       "args": []
     },
     {
+      "name": "setEmergencyPause",
+      "discriminator": [
+        216,
+        204,
+        65,
+        234,
+        19,
+        243,
+        233,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "transfer",
       "discriminator": [
         163,
@@ -2569,6 +2614,19 @@ export type Tributary = {
         190,
         81,
         96
+      ]
+    },
+    {
+      "name": "emergencyPauseChanged",
+      "discriminator": [
+        40,
+        185,
+        90,
+        71,
+        82,
+        142,
+        105,
+        91
       ]
     },
     {
@@ -3408,6 +3466,29 @@ export type Tributary = {
                 "name": "policyStatus"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "emergencyPauseChanged",
+      "docs": [
+        "An event that is thrown when the emergency pause flag is toggled"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "wasPaused",
+            "type": "bool"
+          },
+          {
+            "name": "isPaused",
+            "type": "bool"
           }
         ]
       }

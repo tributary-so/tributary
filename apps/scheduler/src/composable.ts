@@ -431,14 +431,14 @@ class ComposableScheduler {
         ...built.forwardAccounts,
       ];
 
-      const ix = await this.sdk.executeComposable(
+      const ixs = await this.sdk.executeComposable(
         policy.publicKey,
         built.ixData,
         built.forwardAmount,
         remainingAccounts
       );
 
-      const transaction = new Transaction().add(ix);
+      const transaction = new Transaction().add(...ixs);
       transaction.feePayer = gateway.publicKey;
       const { blockhash } = await this.sdk.connection.getLatestBlockhash(
         "confirmed"

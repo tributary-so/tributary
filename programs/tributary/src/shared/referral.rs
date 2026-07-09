@@ -151,7 +151,11 @@ pub fn process_referral_rewards<'a, 'info>(
         return Ok(0);
     }
 
-    let (payer_loader, chain_loaders, token_accounts) = parse_and_validate_referral_accounts(
+    // ponytail: payer_loader is unused here — AccountLoader doesn't hold a
+    // runtime borrow (borrows are transient via load()), so holding it buys
+    // nothing. Marked unused; the payer's data was already consumed inside
+    // parse_and_validate_referral_accounts to anchor the chain.
+    let (_payer_loader, chain_loaders, token_accounts) = parse_and_validate_referral_accounts(
         remaining_accounts,
         expected_mint,
         gateway_key,
@@ -219,12 +223,6 @@ pub fn process_referral_rewards<'a, 'info>(
         chain_loaders.len()
     );
 
-    // Suppress unused-binding warning for `payer_loader` — its data is consumed
-    // inside `parse_and_validate_referral_accounts` to anchor the chain, but
-    // we hold the loader here so the underlying account stays loaded for the
-    // duration of this call.
-    drop(payer_loader);
-
     Ok(referral_pool)
 }
 
@@ -247,6 +245,9 @@ pub fn process_referral_rewards<'a, 'info>(
 ///
 /// Returns the payer loader, the chain loaders ordered `[L1, L2, L3]`, and
 /// the matching token accounts in chain order.
+// ponytail: single caller destructures immediately — a named struct for one
+// consumer would be a premature abstraction. Revisit if a second caller appears.
+#[allow(clippy::type_complexity)]
 #[inline(never)]
 pub fn parse_and_validate_referral_accounts<'info>(
     remaining_accounts: &'info [AccountInfo<'info>],
@@ -295,7 +296,7 @@ pub fn parse_and_validate_referral_accounts<'info>(
     );
     let chain_len = remaining_after_payer / 2;
     require!(
-        chain_len >= 1 && chain_len <= MAX_REFERRAL_CHAIN_DEPTH,
+        (1..=MAX_REFERRAL_CHAIN_DEPTH).contains(&chain_len),
         TributaryError::MaxReferralDepthExceeded
     );
 
@@ -312,8 +313,7 @@ pub fn parse_and_validate_referral_accounts<'info>(
 
     let mut topology: Vec<(Pubkey, Pubkey)> = Vec::with_capacity(chain_len);
 
-    for i in 1..=chain_len {
-        let info = &remaining_accounts[i];
+    for info in remaining_accounts.iter().take(chain_len + 1).skip(1) {
         if info.data_len() != ReferralAccount::SIZE {
             return Err(TributaryError::ReferralAccountSizeMismatch.into());
         }
@@ -327,7 +327,7 @@ pub fn parse_and_validate_referral_accounts<'info>(
             let data = loader.load()?;
             (loader.key(), data.referrer, data.owner)
         };
-        if seen_keys.iter().any(|k| *k == key) {
+        if seen_keys.contains(&key) {
             return Err(TributaryError::DuplicateReferralAccount.into());
         }
         seen_keys.push(key);
@@ -345,7 +345,7 @@ pub fn parse_and_validate_referral_accounts<'info>(
     let token_start = chain_len.saturating_add(1);
     for (idx, expected_owner) in chain_owners.iter().enumerate() {
         let ata_info = &remaining_accounts[token_start + idx];
-        let token_acc = Account::<LegacyTokenAccount>::try_from(ata_info.as_ref())
+        let token_acc = Account::<LegacyTokenAccount>::try_from(ata_info)
             .map_err(|_| TributaryError::ReferrerATAInvalid)?;
 
         require!(
@@ -423,7 +423,7 @@ fn transfer_referral_reward<'a, 'info>(
     let cpi_ctx = match authority_mode {
         AuthorityMode::Direct => CpiContext::new(token_program.clone(), cpi_accounts),
         AuthorityMode::PdaSigner(seeds) => {
-            CpiContext::new_with_signer(token_program.clone(), cpi_accounts, *seeds)
+            CpiContext::new_with_signer(token_program.clone(), cpi_accounts, seeds)
         }
     };
     token_interface::transfer_checked(cpi_ctx, reward, mint_decimals)?;

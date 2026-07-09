@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * E2E-ish: redirect-URL construction for the policy-create flow (tributary-rkgs).
  *

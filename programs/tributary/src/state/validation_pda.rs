@@ -73,6 +73,9 @@ impl Default for ValidationPda {
 }
 
 #[cfg(test)]
+// ponytail: tests set a few fields on Default then mutate slices — reassign
+// reads cleaner than the struct-literal-with-..Default here.
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use anchor_lang::solana_program::{account_info::AccountInfo, pubkey::Pubkey};
@@ -176,7 +179,7 @@ mod tests {
         // mimic on-chain layout, then deserialise the way the program
         // would (AccountDeserialize::try_deserialize expects the disc).
         let mut full = Vec::with_capacity(8 + bytes.len());
-        full.extend_from_slice(&ValidationPda::DISCRIMINATOR);
+        full.extend_from_slice(ValidationPda::DISCRIMINATOR);
         full.extend_from_slice(&bytes);
         let mut slice: &[u8] = &full;
         let restored = ValidationPda::try_deserialize(&mut slice).unwrap();

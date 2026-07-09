@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
@@ -10,7 +9,7 @@ jest.mock("../services/jwks", () => ({
 import jwksRouter from "../routes/jwks";
 import { getJwks } from "../services/jwks";
 
-const mockGetJwks = getJwks as jest.Mock;
+const mockGetJwks = getJwks as jest.MockedFunction<typeof getJwks>;
 
 function createApp(): Application {
   const app = express();

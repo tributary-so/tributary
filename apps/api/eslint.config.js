@@ -29,12 +29,10 @@ export default tseslint.config(
   },
   {
     // Test files: relax rules that conflict with established jest patterns.
-    // Removing @ts-nocheck means typing each test file end-to-end — tracked
-    // separately. require() inside mock factories is the idiomatic way to
-    // grab the live module reference after jest.mock() hoisting.
+    // `require()` inside mock factories is the idiomatic way to grab the live
+    // module reference after jest.mock() hoisting.
     files: ["src/**/*.test.ts", "src/**/__tests__/**/*.ts"],
     rules: {
-      "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-require-imports": "off",
     },
   }

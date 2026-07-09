@@ -11,7 +11,10 @@ export function createMockRequest(
   };
 }
 
-export function createMockResponse() {
+export function createMockResponse(): {
+  json: jest.Mock;
+  status: jest.Mock;
+} {
   const json = jest.fn();
   const status = jest.fn().mockReturnValue({ json });
 

@@ -1,11 +1,11 @@
 ---
 # tributary-ztg6
 title: SDK — composable policy read methods
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-06T16:33:04Z
-updated_at: 2026-07-06T16:40:57Z
+updated_at: 2026-07-07T12:15:27Z
 parent: tributary-t2mh
 ---
 
@@ -23,3 +23,8 @@ Methods to implement:
 - ~~getComposablePoliciesByRecipient~~ → DEFERRED (recipient is deep, offset may be variable)
 
 Do NOT copy PaymentPolicy offsets — bump:u8 shifts everything by 1.
+
+
+
+## Summary of Changes
+4 SDK read methods added (bq8r): getComposablePolicy, getComposablePoliciesByUserPayment, getComposablePoliciesByGateway, getAllComposablePolicies. memcmp offsets 9 (user_payment) and 41 (gateway). Build + typecheck clean.

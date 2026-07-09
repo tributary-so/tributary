@@ -87,7 +87,7 @@ and fee-distribution logic.
 `change_composable_status`
 
 **Admin:**
-`change_program_authority`
+`change_program_authority`, `set_emergency_pause`
 
 ### PDAs
 
@@ -554,72 +554,18 @@ Composable / topup tests live in `tests/topup-balance.test.ts` and
 
 ## Beans
 
-**IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
+**IMPORTANT**: before you do anything else, run the
+
+- `beans prime`
+- `hordr prime`
+
+commands and heed the output.
 When making a commit, include the relevant bean IDs in the commit message.
-
-### Milestone structure (mandatory)
-
-Every body of work large enough to warrant a release ships as a **milestone**
-bean with a fixed type hierarchy. The bean `type` MUST match its level:
-
-```
-milestone            ← one per release / main topic
-├─ epic              ← thematic container, NEVER worked on directly
-│  ├─ feature        ← user-facing capability or distinct deliverable
-│  │  └─ task        ← concrete, grabbable unit of work
-│  └─ ...
-└─ ...
-```
-
-Levels map 1:1 to bean types: `milestone` → `epic` → `feature` → `task`.
-Never skip a level (no `task` directly under a `milestone`). The one
-exception: a standalone `feature: documentation` may sit directly under the
-milestone when docs is a single deliverable (no testing/implementation
-sub-structure needed). Epics and the milestone are containers only — they
-hold children, they are not executed. Wire parents with `--parent`.
-
-**Epic vs feature — the quick test:** epic groups features by theme
-(implementation, testing). Feature produces one concrete artifact (the
-program diff, the SDK update, the test suite). If it ships a diff to one
-layer of the repo, it's a feature; if it groups diffs across layers, it's
-an epic. When in doubt: a feature should be closeable with a single PR; an
-epic closes when all its child features close.
-
-### Canonical milestone template
-
-When the agent creates a milestone, it evaluates which of the following apply
-to the change at hand and instantiates **only** the relevant ones. Scope
-drives selection — not every milestone touches every layer. If a layer in the
-program structure is untouched, omit it.
-
-```
-milestone: <main topic>
-├─ epic: implementation
-│  ├─ feature: changes to program contract      ← programs/tributary/ (Rust/Anchor)
-│  ├─ feature: sdk compatibility                ← packages/sdk, sdk-react, sdk-x402, payments
-│  └─ feature: update of apps                   ← only the apps/ entries actually touched
-│     ├─ task: update apps/landing
-│     ├─ task: update apps/app
-│     ├─ task: update apps/checkout
-│     ├─ task: update apps/showcase-*           ← showcase-payment-policies, -payments, -topup-sol
-│     ├─ task: update apps/scheduler
-│     ├─ task: update apps/cli
-│     └─ task: ....
-├─ epic: testing
-│  ├─ feature: integration tests using surfpool ← tests/
-│  ├─ feature: formal verification updates      ← formal_verification/ + tributary.qedspec
-│  ├─ feature: update github ci/cd pipeline     ← .github/workflows
-│  └─ ....
-└─ feature: documentation                       ← README.md, apps/docs, apps/docs/adr/ (new ADR if a decision locks in)
-```
 
 ### Rules for the agent producing the milestone
 
 - **Read the change first.** Trace what the feature actually touches
   (program? SDK only? an app? docs?) before creating any bean.
-- **Pick levels by type.** `milestone` for the release, `epic` for each
-  theme (implementation / testing / …), `feature` per deliverable, `task`
-  per grabbable unit. Epics with no children = wrong; create the children.
 - **Omit what doesn't apply.** A pure-SDK change needs no program-contract
   feature. A doc-only milestone has no implementation epic. Don't pad.
 - **One feature per `apps/` deliverable group**; one task per touched
@@ -628,9 +574,6 @@ milestone: <main topic>
   the milestone). Code is authority on state; ADR is authority on rationale.
 - **Program changes ⇒ Update of tributary.qedspec**; update the spec and
   recreate the entire formal_verification directory accordingly!
-- **Link with `--parent` and `--blocked-by`** so the tree reflects real
-  dependencies (e.g. SDK feature blocked-by program-contract feature; apps
-  blocked-by SDK feature; tests blocked-by implementation epic).
 - **Status flows up.** A milestone is `completed` only when all its leaf
   tasks are `completed`. Epics close when all their features close.
 

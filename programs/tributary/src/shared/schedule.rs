@@ -260,6 +260,25 @@ impl<'a> MilestoneSigners<'a> {
     }
 }
 
+/// Can the recipient legitimately be the caller (fee_payer) for this policy
+/// type?
+///
+/// PayAsYouGo / UpTo: yes (provider claims chunks / resource server settles).
+/// Milestone with RELEASE_RECIPIENT (bit 3): yes — validate_policy_execution
+/// gates on `caller == recipient` for that bit, so the recipient MUST be the
+/// caller. Everything else (Subscription, OneTime, other Milestone release
+/// conditions): no — the gateway signer or owner must trigger.
+pub fn recipient_can_trigger(policy_type: &PolicyType) -> bool {
+    matches!(
+        policy_type,
+        PolicyType::PayAsYouGo { .. } | PolicyType::UpTo { .. }
+    ) || matches!(
+        policy_type,
+        PolicyType::Milestone { release_condition, .. }
+            if *release_condition & RELEASE_RECIPIENT != 0
+    )
+}
+
 /// Validate that a policy may execute at `current_time` and return the
 /// base amount to transfer.
 ///
@@ -739,6 +758,57 @@ mod tests {
             validate_policy_execution(&pt, FEB_29_2024, None, &ok).unwrap(),
             100
         );
+    }
+
+    // ── M-01 regression: recipient_can_trigger predicate ──
+
+    #[test]
+    fn recipient_can_trigger_allows_payg_upto_and_recipient_milestone() {
+        // PayAsYouGo and UpTo: recipient may trigger
+        assert!(recipient_can_trigger(&PolicyType::PayAsYouGo {
+            max_amount_per_period: 1000,
+            max_chunk_amount: 100,
+            period_length_seconds: 3600,
+            current_period_start: 0,
+            current_period_total: 0,
+            expiry_date: None,
+            padding: [0u8; 79],
+        }));
+        assert!(recipient_can_trigger(&PolicyType::UpTo {
+            max_amount: 1000,
+            valid_after: 0,
+            deadline: 999_999_999,
+            padding: [0u8; 104],
+        }));
+
+        // Milestone with RELEASE_RECIPIENT (bit 3): recipient MUST trigger
+        assert!(recipient_can_trigger(&milestone(100, JAN_31_2024, 0b1000)));
+        assert!(recipient_can_trigger(&milestone(100, JAN_31_2024, 0b1001)));
+    }
+
+    #[test]
+    fn recipient_can_trigger_rejects_subscription_onetime_other_milestones() {
+        // Subscription: recipient cannot trigger
+        assert!(!recipient_can_trigger(&subscription(
+            100,
+            PaymentFrequency::Monthly,
+            JAN_31_2024,
+            Some(12),
+            true,
+        )));
+
+        // OneTime: recipient cannot trigger
+        assert!(!recipient_can_trigger(&PolicyType::OneTime {
+            amount: 100,
+            due_date: 0,
+            expiry_date: None,
+            padding: [0u8; 103],
+        }));
+
+        // Milestone with other release conditions (gateway / owner / due-only)
+        assert!(!recipient_can_trigger(&milestone(100, JAN_31_2024, 0b0010)));
+        assert!(!recipient_can_trigger(&milestone(100, JAN_31_2024, 0b0100)));
+        assert!(!recipient_can_trigger(&milestone(100, JAN_31_2024, 0b0000)));
     }
 
     #[test]

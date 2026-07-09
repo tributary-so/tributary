@@ -70,7 +70,7 @@ export default class ComposableExecute extends BaseCommand {
       }
     }
 
-    const signature = await this.send(
+    const signature = await this.sendAll(
       await sdk.executeComposable(policy, instructionData, forwardAmount, remainingAccounts),
     )
 
