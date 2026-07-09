@@ -2067,6 +2067,51 @@
       "args": []
     },
     {
+      "name": "set_emergency_pause",
+      "discriminator": [
+        216,
+        204,
+        65,
+        234,
+        19,
+        243,
+        233,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "transfer",
       "discriminator": [
         163,
@@ -2563,6 +2608,19 @@
         190,
         81,
         96
+      ]
+    },
+    {
+      "name": "EmergencyPauseChanged",
+      "discriminator": [
+        40,
+        185,
+        90,
+        71,
+        82,
+        142,
+        105,
+        91
       ]
     },
     {
@@ -3402,6 +3460,29 @@
                 "name": "PolicyStatus"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EmergencyPauseChanged",
+      "docs": [
+        "An event that is thrown when the emergency pause flag is toggled"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "was_paused",
+            "type": "bool"
+          },
+          {
+            "name": "is_paused",
+            "type": "bool"
           }
         ]
       }

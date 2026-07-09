@@ -87,7 +87,7 @@ and fee-distribution logic.
 `change_composable_status`
 
 **Admin:**
-`change_program_authority`
+`change_program_authority`, `set_emergency_pause`
 
 ### PDAs
 

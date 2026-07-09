@@ -4,7 +4,9 @@ use crate::{
     shared::delegation::{resolve_delegate, token_account_has_any_delegate},
     shared::mint::validate_mint_compatible,
     shared::referral::{process_referral_rewards, AuthorityMode},
-    shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners},
+    shared::schedule::{
+        advance_policy, recipient_can_trigger, validate_policy_execution, MilestoneSigners,
+    },
     state::*,
 };
 use anchor_lang::prelude::*;
@@ -169,20 +171,15 @@ impl<'info> ExecutePayment<'info> {
         )?;
         let payment_amount = schedule_amount;
 
-        // Only PayAsYouGo and UpTo allow the recipient to trigger execution.
-        // PayAsYouGo: provider claims chunks as usage accrues.
-        // UpTo: resource server (often the recipient) settles the actual
-        // amount after measuring usage. Subscription / Milestone / OneTime
-        // require the gateway signer or the owner — the recipient cannot
-        // pull on their own authority.
-        // (Milestone release_condition::RELEASE_RECIPIENT authorizes the
-        // recipient to release escrow, but the caller must still be the
-        // gateway signer or owner — see validate_policy_execution above.)
+        // PayAsYouGo and UpTo allow the recipient to trigger execution
+        // (provider claims chunks / resource server settles usage).
+        // Milestone with RELEASE_RECIPIENT (bit 3) also allows the recipient
+        // to release escrow — validate_policy_execution gates on caller ==
+        // recipient for that bit, so the recipient MUST be the caller.
+        // Subscription / OneTime / other Milestone release conditions require
+        // the gateway signer or owner.
         if fee_payer_key == payment_policy.recipient
-            && !matches!(
-                &payment_policy.policy_type,
-                PolicyType::PayAsYouGo { .. } | PolicyType::UpTo { .. }
-            )
+            && !recipient_can_trigger(&payment_policy.policy_type)
         {
             return Err(TributaryError::Unauthorized.into());
         }

@@ -2403,6 +2403,28 @@ export class Tributary {
   }
 
   /**
+   * Toggles the emergency pause kill-switch (AUDIT-2026-07-09 L-01).
+   * When paused, all execute_payment / execute_composable / transfer calls
+   * fail. Only the protocol admin can call this.
+   * @param paused - true to pause, false to resume
+   * @returns Transaction instruction to set the emergency pause flag
+   */
+  async setEmergencyPause(paused: boolean): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      admin,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .setEmergencyPause(paused)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Changes the signer authorized to execute payments for a gateway.
    * Only the gateway authority can change the signer.
    * @param gatewayAuthority - Public key of the current gateway authority
