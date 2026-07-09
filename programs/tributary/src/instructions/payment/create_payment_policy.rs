@@ -22,6 +22,9 @@ pub struct CreatePaymentPolicy<'info> {
 
     /// CHECK: This is the recipient account that will receive payments. It is an authority, the
     /// corresponding tokenAccount/ata will be derived during execution.
+    #[account(
+        constraint = recipient.key() != Pubkey::default() @ TributaryError::InvalidAmount,
+    )]
     pub recipient: UncheckedAccount<'info>,
 
     pub token_mint: Account<'info, Mint>,
