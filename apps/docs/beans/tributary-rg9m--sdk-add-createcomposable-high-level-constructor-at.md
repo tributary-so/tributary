@@ -1,11 +1,11 @@
 ---
 # tributary-rg9m
 title: 'SDK: add createComposable() high-level constructor + ATA ensures in executeComposable()'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-09T12:40:42Z
-updated_at: 2026-07-09T12:40:42Z
+updated_at: 2026-07-09T13:05:54Z
 ---
 
 Outcome of the createComposable() design grill (2026-07-09). All forks resolved with Fabian. IMPLEMENT ONLY — this bean captures the locked plan.
@@ -41,13 +41,34 @@ Prepend ATA ensures before the existing ix build:
 
 ## Acceptance (TDD)
 
-- [ ] Tests first: createComposable emits [owner-ATA?, userPayment?, policy, revoke?, approve?] in order; idempotent (existing accounts -> empty ensure prefixes); uses createdComposableCount for policyId.
-- [ ] Tests: executeComposable prepends create-ATA ix for missing recipient/gatewayFee/protocolFee ATAs; emits nothing when they exist; never emits intermediate-ATA creates.
-- [ ] calculatePolicyApprovalAmount dispatcher unit-tested for all 5 variants (face-only, matches existing calculate* values).
-- [ ] createComposable + executeComposable build + lint green (pnpm --filter @tributary-so/sdk build && lint).
-- [ ] ponytail: comments mark the interim fee-sizing at calculatePolicyApprovalAmount + cross-ref tributary-ydth.
+- [x] Tests first: createComposable emits [owner-ATA?, userPayment?, policy, revoke?, approve?] in order; idempotent (existing accounts -> empty ensure prefixes); uses createdComposableCount for policyId.
+- [x] Tests: executeComposable prepends create-ATA ix for missing recipient/gatewayFee/protocolFee ATAs; emits nothing when they exist; never emits intermediate-ATA creates.
+- [x] calculatePolicyApprovalAmount dispatcher unit-tested for all 5 variants (face-only, matches existing calculate* values).
+- [x] createComposable + executeComposable build + lint green (pnpm --filter @tributary-so/sdk build && lint).
+- [x] ponytail: comments mark the interim fee-sizing at calculatePolicyApprovalAmount + cross-ref tributary-ydth.
 
 ## Relationships
 
 - Related to tributary-nmjf (marked completed but its claim 'constructor issues full ix bundle incl approve at gross' is NOT in code — only low-level getCreateComposablePolicyInstruction exists). THIS bean delivers what nmjf's summary described.
 - Blocks / unblocks: tributary-ydth (fee-inclusive sizing) depends on this landing.
+
+## Summary of Changes
+
+Implemented (TDD: tests first, then GREEN):
+
+**packages/sdk/src/sdk.ts**
+- NEW private `ensureAta(owner, mint, payer)` — returns `[createATA]` if missing, `[]` if exists (mirrors executePayment inline blocks).
+- NEW private `ensureUserPayment(user, mint, feePayer)` — returns `{ ix, pda, account }` (mirrors createSubscription inline block).
+- NEW private `calculatePolicyApprovalAmount(policyType)` — face-only dispatcher over all 5 PolicyType variants. `// ponytail: face-only sizing, fee headroom deferred to tributary-ydth`.
+- NEW public `createComposable(...)` — full ix bundle: owner ATA ensure → userPayment ensure → policy ix (delegates to getCreateComposablePolicyInstruction) → delegate revoke/approve (UserPayment PDA). Uses createdComposableCount for policyId. approvalAmount? overrides the face-only default.
+- MODIFIED `executeComposable(...)` — now `Promise<TransactionInstruction[]>` (was single ix). Prepends ensureAta for recipient/deliverMint, gateway.feeRecipient/inputMint, config.feeRecipient/inputMint (all input-side per ADR-0026). Intermediate ATAs left to the program (owned + created on-chain).
+
+**apps/scheduler/src/composable.ts** — `const ix` → `const ixs`; `new Transaction().add(ix)` → `add(...ixs)` (return-type change consequence).
+
+**apps/cli/src/commands/composable/execute.ts** — `this.send(...)` → `this.sendAll(...)` (array return).
+
+**tests/sdk-composable-constructor.test.ts** (NEW) — 12 pure unit tests (no Surfpool): calculatePolicyApprovalAmount x5 variants; createComposable order/idempotency/policyId/approvalAmount-override; executeComposable ATA-prepend/idempotent/no-intermediate-create.
+
+Verification: `pnpm --filter @tributary-so/sdk run build` ✓, lint ✓, scheduler + cli tsc --noEmit ✓, `jest sdk-composable-constructor` 12/12 ✓.
+
+Unblocks: tributary-ydth (fee-inclusive NET-on-pull approval sizing).
