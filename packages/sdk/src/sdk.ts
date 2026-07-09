@@ -12,7 +12,6 @@ import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   createApproveInstruction,
-  createRevokeInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -94,20 +93,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-            publicKey: wallet.publicKey,
-            signTransaction: <T>(tx: T) => {
-              (tx as any).sign(wallet);
-              return Promise.resolve(tx);
-            },
-            signAllTransactions: <T>(txs: T[]) => {
-              return Promise.resolve(
-                txs.map((tx) => {
-                  (tx as any).sign(wallet);
-                  return tx;
-                })
-              );
-            },
-          }
+          publicKey: wallet.publicKey,
+          signTransaction: <T>(tx: T) => {
+            (tx as any).sign(wallet);
+            return Promise.resolve(tx);
+          },
+          signAllTransactions: <T>(txs: T[]) => {
+            return Promise.resolve(
+              txs.map((tx) => {
+                (tx as any).sign(wallet);
+                return tx;
+              })
+            );
+          },
+        }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
@@ -128,20 +127,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-            publicKey: wallet.publicKey,
-            signTransaction: <T>(tx: T) => {
-              (tx as any).sign(wallet);
-              return Promise.resolve(tx);
-            },
-            signAllTransactions: <T>(txs: T[]) => {
-              return Promise.resolve(
-                txs.map((tx) => {
-                  (tx as any).sign(wallet);
-                  return tx;
-                })
-              );
-            },
-          }
+          publicKey: wallet.publicKey,
+          signTransaction: <T>(tx: T) => {
+            (tx as any).sign(wallet);
+            return Promise.resolve(tx);
+          },
+          signAllTransactions: <T>(txs: T[]) => {
+            return Promise.resolve(
+              txs.map((tx) => {
+                (tx as any).sign(wallet);
+                return tx;
+              })
+            );
+          },
+        }
         : wallet;
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
       preflightCommitment: "confirmed",
@@ -944,14 +943,12 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1164,14 +1161,12 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1360,14 +1355,12 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1534,14 +1527,12 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1774,14 +1765,12 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -2169,25 +2158,13 @@ export class Tributary {
     );
   }
 
-  private getRevokeInstruction(
-    ownerTokenAccount: PublicKey,
-    owner: PublicKey
-  ): TransactionInstruction {
-    return createRevokeInstruction(
-      ownerTokenAccount,
-      owner,
-      [],
-      TOKEN_PROGRAM_ID
-    );
-  }
-
   /**
    * Migrates token delegation from the legacy global payments_delegate PDA
-   * to the per-user UserPayment PDA. Revokes the old delegate, then approves
-   * the new one with the specified amount.
+   * to the per-user UserPayment PDA. Approves the new one with the specified
+   * amount.
    * @param tokenMint - Public key of the token mint
    * @param approvalAmount - Amount to approve for the new delegate
-   * @returns Array of [revoke, approve] transaction instructions
+   * @returns Array of [approve] transaction instructions
    */
   async migrateDelegate(
     tokenMint: PublicKey,
@@ -2199,22 +2176,7 @@ export class Tributary {
       tokenMint
     );
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, owner);
-    const { address: legacyDelegate } = this.getPaymentsDelegatePda();
-
     const instructions: TransactionInstruction[] = [];
-
-    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
-      ownerTokenAccount
-    );
-
-    if (tokenAccountInfo.value?.data) {
-      const parsedData = tokenAccountInfo.value.data as any;
-      const currentDelegate = parsedData.parsed?.info?.delegate;
-
-      if (currentDelegate === legacyDelegate.toString()) {
-        instructions.push(this.getRevokeInstruction(ownerTokenAccount, owner));
-      }
-    }
 
     instructions.push(
       this.getApprovalInstruction(
@@ -2885,7 +2847,7 @@ export class Tributary {
   /**
    * Creates a composable payment policy with full setup: owner input-mint ATA
    * ensure, UserPayment ensure, the policy instruction, and delegate
-   * revoke/approve wiring. Mirrors `createSubscription()` for the composable
+   * approve wiring. Mirrors `createSubscription()` for the composable
    * family, with two carve-outs — composable has no referrals, and execute
    * cannot be auto-called at create time (it needs caller-supplied forward
    * instructionData + remainingAccounts).
@@ -2906,7 +2868,7 @@ export class Tributary {
    * @param postValidationData - Post-validation assertion data
    * @param feePayer - Optional fee payer (defaults to provider wallet)
    * @param approvalAmount - Optional explicit approval (defaults to face-only sizing)
-   * @returns Ordered transaction instructions: `[ownerATA?, userPayment?, policy, revoke?, approve?]`
+   * @returns Ordered transaction instructions: `[ownerATA?, userPayment?, policy, approve?]`
    */
   async createComposable(
     tokenMint: PublicKey,
@@ -2958,7 +2920,7 @@ export class Tributary {
     const finalApprovalAmount: BN =
       approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
 
-    // 5. Delegate revoke/approve — delegate is the UserPayment PDA. Mirrors
+    // 5. Delegate approve — delegate is the UserPayment PDA. Mirrors
     //    createOneTimePayment's needs-approval check.
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
     const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
@@ -2994,7 +2956,6 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      instructions.push(this.getRevokeInstruction(ownerTokenAccount, user));
       instructions.push(
         this.getApprovalInstruction(
           ownerTokenAccount,
@@ -3056,8 +3017,8 @@ export class Tributary {
     const deliverMint = isActMode
       ? inputMint
       : isDeliverTransform
-      ? policy.forwardConfig.outputMint
-      : inputMint;
+        ? policy.forwardConfig.outputMint
+        : inputMint;
     instructions.push(
       ...(await this.ensureAta(policy.recipient, deliverMint, authority))
     );
@@ -3725,10 +3686,10 @@ export class Tributary {
     tokenMint: PublicKey
   ): Promise<
     | {
-        pubkey: PublicKey;
-        isWritable: boolean;
-        isSigner: boolean;
-      }[]
+      pubkey: PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[]
     | null
   > {
     const userReferral = await this.getReferralAccountAddressByOwner(
@@ -3745,9 +3706,9 @@ export class Tributary {
       isWritable: boolean;
       isSigner: boolean;
     }[] = [
-      // payer_referral — read-only on-chain (we never pay the payer).
-      { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
-    ];
+        // payer_referral — read-only on-chain (we never pay the payer).
+        { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
+      ];
 
     // If the payer has no referrer, nothing else to add.
     if (
