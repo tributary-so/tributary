@@ -1,11 +1,11 @@
 ---
 # tributary-o8kn
 title: '#13: Add require on close_token_account result in execute_composable'
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-07-07T11:49:56Z
-updated_at: 2026-07-07T11:50:05Z
+updated_at: 2026-07-08T19:00:53Z
 parent: tributary-daxr
 ---
 

@@ -1,11 +1,11 @@
 ---
 # tributary-dmez
 title: '#10: Require distinct gateway roles (authority / signer / fee_recipient)'
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-07-07T11:49:01Z
-updated_at: 2026-07-07T11:49:20Z
+updated_at: 2026-07-08T18:59:47Z
 parent: tributary-daxr
 ---
 

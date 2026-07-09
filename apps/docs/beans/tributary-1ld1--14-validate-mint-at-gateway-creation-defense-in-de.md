@@ -1,11 +1,11 @@
 ---
 # tributary-1ld1
 title: '#14: Validate mint at gateway creation (defense-in-depth)'
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-07-07T11:50:19Z
-updated_at: 2026-07-07T11:50:28Z
+updated_at: 2026-07-08T19:01:29Z
 parent: tributary-daxr
 ---
 
