@@ -1,11 +1,11 @@
 ---
 # tributary-2ukj
 title: '#11: Document bps_mul truncation behavior (docs only)'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-07T11:49:31Z
-updated_at: 2026-07-07T11:49:39Z
+updated_at: 2026-07-09T18:02:23Z
 parent: tributary-daxr
 ---
 
