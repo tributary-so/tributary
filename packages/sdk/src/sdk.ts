@@ -2763,22 +2763,249 @@ export class Tributary {
       .instruction();
   }
 
+  // ─── Composable high-level ergonomics (bean tributary-rg9m) ──────────
+
   /**
-   * Gets a transaction instruction to execute a composable payment.
-   * Executes the composable policy by running the provided instruction data
-   * and optionally forwarding tokens.
+   * Ensures an Associated Token Account exists for `owner`/`mint`; returns a
+   * create-ATA instruction if it is missing, or an empty array if present.
+   * DRY primitive mirroring the inline blocks in `executePayment`.
+   *
+   * @param owner - Token account owner
+   * @param mint - Token mint
+   * @param payer - Fee payer for the create-ATA instruction
+   * @returns `[createATA ix]` or `[]`
+   */
+  private async ensureAta(
+    owner: PublicKey,
+    mint: PublicKey,
+    payer: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    const ata = getAssociatedTokenAddressSync(mint, owner);
+    const info = await this.connection.getAccountInfo(ata);
+    if (info) return [];
+    return [
+      createAssociatedTokenAccountInstruction(
+        payer,
+        ata,
+        owner,
+        mint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      ),
+    ];
+  }
+
+  /**
+   * Ensures a UserPayment account exists for `user`/`mint`. Returns the
+   * create ix (if needed), the PDA, and the fetched account (or null).
+   * DRY primitive mirroring the inline block in `createSubscription`.
+   */
+  private async ensureUserPayment(
+    user: PublicKey,
+    mint: PublicKey,
+    feePayer: PublicKey
+  ): Promise<{
+    ix: TransactionInstruction[];
+    pda: PublicKey;
+    account: UserPayment | null;
+  }> {
+    const { address: pda } = this.getUserPaymentPda(user, mint);
+    const account: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(pda);
+    if (account) return { ix: [], pda, account };
+    return { ix: [await this.createUserPayment(mint, feePayer)], pda, account };
+  }
+
+  /**
+   * Face-only approval dispatcher over all 5 PolicyType variants. Maps each
+   * variant to the existing `calculate*ApprovalAmount` helper (or its face
+   * field for oneTime/upTo).
+   *
+   * INTERIM: no fee headroom. Composable fees are NET-on-pull (ADR-0026):
+   * the delegate must cover `face + fee`, but sizing the fee precisely needs
+   * gateway + protocol bps lookups. That lands in bean tributary-ydth
+   * (blocked by this one). Until then this returns the FACE amount only —
+   * callers may override via `approvalAmount` when they know the gross.
+   *
+   * @param policyType - The policy configuration (any of the 5 variants)
+   * @returns Face approval amount (BN), 0 for an empty/unknown variant
+   */
+  // ponytail: face-only sizing, fee headroom deferred to tributary-ydth
+  private calculatePolicyApprovalAmount(policyType: PolicyType): BN {
+    if ("subscription" in policyType && policyType.subscription) {
+      const s = policyType.subscription;
+      return this.calculateSubscriptionApprovalAmount(
+        s.amount,
+        s.paymentFrequency,
+        s.maxRenewals
+      );
+    }
+    if ("milestone" in policyType && policyType.milestone) {
+      return this.calculateMilestoneApprovalAmount(
+        policyType.milestone.milestoneAmounts.filter((a) => !a.isZero())
+      );
+    }
+    if ("payAsYouGo" in policyType && policyType.payAsYouGo) {
+      return this.calculatePayAsYouGoApprovalAmount(
+        policyType.payAsYouGo.maxAmountPerPeriod,
+        policyType.payAsYouGo.periodLengthSeconds
+      );
+    }
+    if ("oneTime" in policyType && policyType.oneTime) {
+      return policyType.oneTime.amount;
+    }
+    if ("upTo" in policyType && policyType.upTo) {
+      return policyType.upTo.maxAmount;
+    }
+    return new BN(0);
+  }
+
+  /**
+   * Creates a composable payment policy with full setup: owner input-mint ATA
+   * ensure, UserPayment ensure, the policy instruction, and delegate
+   * revoke/approve wiring. Mirrors `createSubscription()` for the composable
+   * family, with two carve-outs — composable has no referrals, and execute
+   * cannot be auto-called at create time (it needs caller-supplied forward
+   * instructionData + remainingAccounts).
+   *
+   * Use `getCreateComposablePolicyInstruction()` for just the policy ix.
+   *
+   * @param tokenMint - Public key of the input token
+   * @param recipient - Public key receiving the payment
+   * @param gateway - Public key of the payment gateway
+   * @param policyType - Policy configuration (subscription/milestone/payAsYouGo/oneTime/upTo)
+   * @param memo - Memo string (max 32 bytes)
+   * @param forwardConfig - Token forwarding configuration (output_mint sentinel = act mode)
+   * @param preValidation - Pre-validation spec (disabled by default)
+   * @param prePinnedAccounts - Owner-pinned Lighthouse targets for pre-validation
+   * @param preValidationData - Pre-validation assertion data
+   * @param postValidation - Post-validation spec (disabled by default)
+   * @param postPinnedAccounts - Owner-pinned Lighthouse targets for post-validation
+   * @param postValidationData - Post-validation assertion data
+   * @param feePayer - Optional fee payer (defaults to provider wallet)
+   * @param approvalAmount - Optional explicit approval (defaults to face-only sizing)
+   * @returns Ordered transaction instructions: `[ownerATA?, userPayment?, policy, revoke?, approve?]`
+   */
+  async createComposable(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    policyType: PolicyType,
+    memo: string,
+    forwardConfig: ForwardConfig,
+    preValidation: ValidationSpec = { disabled: {} },
+    prePinnedAccounts: PublicKey[] = [],
+    preValidationData: Buffer = Buffer.alloc(0),
+    postValidation: ValidationSpec = { disabled: {} },
+    postPinnedAccounts: PublicKey[] = [],
+    postValidationData: Buffer = Buffer.alloc(0),
+    feePayer?: PublicKey,
+    approvalAmount?: BN
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const payer = feePayer ?? user;
+    const instructions: TransactionInstruction[] = [];
+
+    // 1. Owner input-mint ATA ensure
+    instructions.push(...(await this.ensureAta(user, tokenMint, payer)));
+
+    // 2. UserPayment ensure (fetch once, reuse for policyId)
+    const up = await this.ensureUserPayment(user, tokenMint, payer);
+    instructions.push(...up.ix);
+
+    // 3. Policy ix — delegates to the low-level builder (which fetches
+    //    userPayment again; idempotent and matches the locked design).
+    const policyIx = await this.getCreateComposablePolicyInstruction(
+      tokenMint,
+      recipient,
+      gateway,
+      policyType,
+      memo,
+      forwardConfig,
+      preValidation,
+      prePinnedAccounts,
+      preValidationData,
+      postValidation,
+      postPinnedAccounts,
+      postValidationData,
+      payer
+    );
+    instructions.push(policyIx);
+
+    // 4. Default approval (INTERIM face-only — see calculatePolicyApprovalAmount)
+    const finalApprovalAmount: BN =
+      approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
+
+    // 5. Delegate revoke/approve — delegate is the UserPayment PDA. Mirrors
+    //    createOneTimePayment's needs-approval check.
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const delegate = up.pda;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+    let needsApproval = false;
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
+        needsApproval = true;
+      } else if (
+        currentDelegate === delegate.toString() &&
+        new BN(currentDelegatedAmount).lt(finalApprovalAmount)
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      instructions.push(this.getRevokeInstruction(ownerTokenAccount, user));
+      instructions.push(
+        this.getApprovalInstruction(
+          ownerTokenAccount,
+          delegate,
+          user,
+          finalApprovalAmount
+        )
+      );
+    }
+
+    return instructions;
+  }
+
+  /**
+   * Builds the full instruction bundle to execute a composable payment,
+   * prepending create-ATA ensures for the recipient and the two fee
+   * recipients (all input-side per ADR-0026). Mirrors `executePayment()`.
+   *
+   * The two intermediate ATAs are owned + created on-chain by the program
+   * (create_ata guards on zero lamports) — they are NEVER ensured here.
+   *
    * @param composablePolicy - Public key of the composable policy account
-   * @param instructionData - Buffer containing the instruction data to execute
-   * @param forwardAmount - Optional amount of tokens to forward (null if no forward)
-   * @param remainingAccounts - Additional accounts required by the instruction
-   * @returns Transaction instruction to execute the composable payment
+   * @param instructionData - Buffer containing the forward instruction data
+   * @param forwardAmount - Optional amount to forward (null if no forward)
+   * @param remainingAccounts - Additional accounts for validation/forward
+   * @returns Ordered instructions: `[recipientATA?, gatewayFeeATA?, protocolFeeATA?, execute]`
    */
   async executeComposable(
     composablePolicy: PublicKey,
     instructionData: Buffer,
     forwardAmount?: BN | null,
     remainingAccounts?: AccountMeta[]
-  ): Promise<TransactionInstruction> {
+  ): Promise<TransactionInstruction[]> {
     const policy: ComposablePolicy =
       await this.program.account.composablePolicy.fetch(composablePolicy);
     const userPayment: UserPayment =
@@ -2789,20 +3016,46 @@ export class Tributary {
     const config: ProgramConfig =
       await this.program.account.programConfig.fetch(configPda);
 
+    const authority = this.provider.publicKey as PublicKey;
     const inputMint = policy.forwardConfig.inputMint;
-    // Act mode (ADR-0026): sentinel output_mint → no output token. The
-    // output_mint account slot is SystemProgram; no output ATA is created.
+
+    // ── ATA ensures (input-side) ────────────────────────────────────────
+    const instructions: TransactionInstruction[] = [];
+
+    // Recipient ATA. deliverMint already derived below; reuse the same logic
+    // so the ensure matches the account the execute ix references.
     const isActMode = policy.forwardConfig.outputMint.equals(PublicKey.default);
-    const outputMint = isActMode
-      ? SystemProgram.programId
-      : policy.forwardConfig.outputMint;
-    // Deliver-transform = forward enabled + distinct output_mint.
     const isDeliverTransform =
       !isActMode &&
       !policy.forwardConfig.instructionConstraint.programId.equals(
         PublicKey.default
       ) &&
       !policy.forwardConfig.outputMint.equals(inputMint);
+    const deliverMint = isActMode
+      ? inputMint
+      : isDeliverTransform
+      ? policy.forwardConfig.outputMint
+      : inputMint;
+    instructions.push(
+      ...(await this.ensureAta(policy.recipient, deliverMint, authority))
+    );
+
+    // Gateway fee recipient ATA (input-side, ADR-0026)
+    instructions.push(
+      ...(await this.ensureAta(gateway.feeRecipient, inputMint, authority))
+    );
+
+    // Protocol fee recipient ATA (input-side, ADR-0026)
+    instructions.push(
+      ...(await this.ensureAta(config.feeRecipient, inputMint, authority))
+    );
+
+    // ── Execute ix (unchanged derivation) ──────────────────────────────
+    // Act mode (ADR-0026): sentinel output_mint → no output token. The
+    // output_mint account slot is SystemProgram; no output ATA is created.
+    const outputMint = isActMode
+      ? SystemProgram.programId
+      : policy.forwardConfig.outputMint;
 
     // User's source token account (input mint). Delegation MUST point at
     // the UserPayment PDA — see COMPOSABLE.md §PDA Seed Summary.
@@ -2811,15 +3064,6 @@ export class Tributary {
       userPayment.owner
     );
 
-    // Recipient token account. In act mode this account is unused for
-    // delivery (no output token) — we pass the input-mint ATA to fill the
-    // slot. Deliver-transform passes the output-mint ATA; deliver-no-
-    // transform passes the input-mint ATA.
-    const deliverMint = isActMode
-      ? inputMint
-      : isDeliverTransform
-      ? policy.forwardConfig.outputMint
-      : inputMint;
     const recipientTokenAccount = getAssociatedTokenAddressSync(
       deliverMint,
       policy.recipient
@@ -2894,11 +3138,14 @@ export class Tributary {
     // ValidationPda was pulled out of `remaining_accounts` in ADR-0016:
     // the slice is now `[...lighthouseTargetAccounts, ...forwardAccounts,
     // (scheduler_ata?)]` — no leading ValidationPda entry.
-    return await this.program.methods
+    const executeIx = await this.program.methods
       .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
       .accountsStrict(accounts)
       .remainingAccounts(remainingAccounts ?? [])
       .instruction();
+    instructions.push(executeIx);
+
+    return instructions;
   }
 
   /**
