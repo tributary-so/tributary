@@ -23,6 +23,7 @@ import {
   Building2,
   Zap,
   Gauge,
+  Terminal,
 } from "lucide-react";
 import { useEffect } from "react";
 import TwitterWall from "@/components/TwitterWall";
@@ -309,6 +310,22 @@ export default function HomeContent() {
             >
               See it running <ArrowRight className="h-3 w-3" />
             </a>
+          </div>
+
+          {/* Skill install — give your AI agent the Tributary skill */}
+          <div className="mt-4 w-full max-w-xl mx-auto lg:mx-0">
+            <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground font-mono">
+              <Terminal className="h-3 w-3 text-accent" />
+              <span>
+                Give your AI agent the{" "}
+                <span className="text-foreground">Tributary skill</span>
+              </span>
+            </div>
+            <TerminalCard
+              filename="bash"
+              language="bash"
+              code={`$ npx skills@latest tributary-so/tributary`}
+            />
           </div>
         </div>
       </section>
