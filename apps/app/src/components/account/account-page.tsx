@@ -345,10 +345,10 @@ function MilestoneTracker({
 
                 <span
                   className={`mt-1 text-xs ${isCompleted
-                      ? 'text-muted-foreground'
-                      : isCurrent
-                        ? 'text-milestone-700 font-medium'
-                        : 'text-muted-foreground'
+                    ? 'text-muted-foreground'
+                    : isCurrent
+                      ? 'text-milestone-700 font-medium'
+                      : 'text-muted-foreground'
                     }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : '-'}
@@ -1574,7 +1574,7 @@ export default function AccountPage() {
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
   const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
   const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
-  const [referralAccounts, setReferralAccounts] = useState<Map<string, ReferralAccoun>>(new Map())
+  const [referralAccounts, setReferralAccounts] = useState<Map<string, ReferralAccount>>(new Map())
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
   const knownMints = useAtomValue(tokenMetadataAtom)
@@ -1686,7 +1686,7 @@ export default function AccountPage() {
           }
         }
 
-        const referralMap = new Map<string, ReferralAccoun>()
+        const referralMap = new Map<string, ReferralAccount>()
         for (const gatewayKey of uniqueGateways) {
           try {
             const referralAccount = await sdk.getReferralAccountByOwner(new PublicKey(gatewayKey), wallet.publicKey)
