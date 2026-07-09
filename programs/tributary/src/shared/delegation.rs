@@ -13,7 +13,7 @@ pub struct DelegateResolution<'info> {
 /// delegate as the active delegate on a user token account.
 pub fn token_account_has_any_delegate(delegate: &COption<Pubkey>, keys: &[&Pubkey]) -> bool {
     match delegate {
-        COption::Some(d) => keys.iter().any(|k| d == *k),
+        COption::Some(d) => keys.contains(&d),
         COption::None => false,
     }
 }

@@ -150,6 +150,8 @@ pub mod tributary {
         TransferTokens::handler(ctx, amount, memo)
     }
 
+    // ponytail: arg list is the on-chain program interface (locked by the IDL).
+    #[allow(clippy::too_many_arguments)]
     pub fn create_composable_policy(
         ctx: Context<CreateComposablePolicy>,
         policy_type: PolicyType,

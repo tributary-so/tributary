@@ -1,3 +1,6 @@
+// The `kani` cfg is set only by Kani's cargo wrapper (`cargo kani`), not by
+// rustc/clippy — allow the unknown-cfg lint so normal clippy runs stay clean.
+#![allow(unexpected_cfgs)]
 #![cfg(kani)]
 // Hand-rolled Kani harnesses testing the REAL Tributary pure functions.
 // No spec model — these call shared/fees.rs and shared/schedule.rs directly.

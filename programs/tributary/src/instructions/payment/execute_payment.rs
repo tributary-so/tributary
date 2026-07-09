@@ -137,7 +137,7 @@ impl<'info> ExecutePayment<'info> {
         let expected_mint = accounts.user_token_account.mint;
 
         let user_payment_info = user_payment.to_account_info();
-        let delegate = accounts.user_token_account.delegate.clone();
+        let delegate = accounts.user_token_account.delegate;
 
         let pull_resolution = resolve_delegate(
             user_payment,
@@ -178,13 +178,13 @@ impl<'info> ExecutePayment<'info> {
         // (Milestone release_condition::RELEASE_RECIPIENT authorizes the
         // recipient to release escrow, but the caller must still be the
         // gateway signer or owner — see validate_policy_execution above.)
-        if fee_payer_key == payment_policy.recipient {
-            if !matches!(
+        if fee_payer_key == payment_policy.recipient
+            && !matches!(
                 &payment_policy.policy_type,
                 PolicyType::PayAsYouGo { .. } | PolicyType::UpTo { .. }
-            ) {
-                return Err(TributaryError::Unauthorized.into());
-            }
+            )
+        {
+            return Err(TributaryError::Unauthorized.into());
         }
 
         // Calculate fees (single shared helper for both net/gross modes).
