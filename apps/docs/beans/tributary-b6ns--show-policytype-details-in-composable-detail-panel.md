@@ -1,11 +1,11 @@
 ---
 # tributary-b6ns
 title: Show PolicyType details in composable detail panel (parity with regular policies)
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-10T10:12:15Z
-updated_at: 2026-07-10T10:12:15Z
+updated_at: 2026-07-10T13:53:34Z
 parent: tributary-qpy3
 ---
 
@@ -25,4 +25,8 @@ ComposablePolicy carries the same PolicyType enum as PaymentPolicy (subscription
 - [ ] Badge/label in the header indicating the policyType variant (e.g. 'Composable · Pay-as-you-go')
 - [ ] Reuse the same display/formatting helpers (formatAmount, getInterval, getNextPaymentDue) already passed to regular panels
 - [ ] Extract the type-specific field rendering into a shared component or inline block — avoid duplicating all 5 detail panels, but show the equivalent info
-- [ ] Lint + typecheck pass
+- [x] Lint + typecheck pass (0 errors; 7 pre-existing missing-dep errors unchanged)
+
+## Summary of Changes
+
+Added ComposablePolicyTypeSection component rendering variant-specific fields for all 5 PolicyType variants (subscription/milestone/payAsYouGo/oneTime/upTo) using StatCards. Added policyType variant label in the ComposableDetailPanel header (e.g. 'Composable Policy · Pay-as-you-go'). ComposableDetailPanel now accepts getInterval + programId props.
