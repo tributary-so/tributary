@@ -174,7 +174,7 @@ const ixs = await sdk.createSubscription(
   true, // auto-renew
   12, // max renewals
   getPaymentFrequency("monthly"),
-  encodeMemo("Pro plan")
+  encodeMemo("Pro plan"),
 );
 
 // Permissionless execution (called by gateway signer)
@@ -261,9 +261,14 @@ struct InstructionConstraint {
     num_data_checks: u8,
     data_checks: [ByteRangeCheck; 4], // pin forward instruction selector
     num_pinned_accounts: u8,
-    pinned_accounts: [Pubkey; 4],     // positional, default() = wildcard slot
+    pinned_accounts: [PinnedAccount; 4], // indexed: { index: u8, pubkey: Pubkey }
 }
 ```
+
+`PinnedAccount` pins a specific position (`index`) in the forward-account
+slice to a concrete `pubkey`. All active pins must be concrete (no
+default-pubkey wildcards). No duplicate indices. The execute check:
+`remaining_mid[fwd_base + pin.index].key() == pin.pubkey`.
 
 - `program_id` must be in `ALLOWED_FORWARD_PROGRAMS` (currently: Meteora DLMM
   `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`). `Pubkey::default()` disables
@@ -361,7 +366,7 @@ const ix = await sdk.getCreateComposablePolicyInstruction(
   forwardConfig, // targetProgram = PublicKey.default for no-swap topup
   LIGHTHOUSE_PROGRAM_ID, // validation program (SystemProgram = none)
   guard.numAccounts, // numValidationAccounts
-  guard.data // validation data buffer
+  guard.data, // validation data buffer
 );
 
 // 3. Execute (permissionless — caller supplies forward instruction data + remaining accounts)
@@ -369,7 +374,7 @@ const execIx = await sdk.executeComposable(
   composablePolicyPda,
   instructionData, // forward program ix data (empty if forward disabled)
   forwardAmount ?? null,
-  remainingAccounts // [ValidationPda, ...lighthouseTargetAccounts, ...forwardAccounts]
+  remainingAccounts, // [ValidationPda, ...lighthouseTargetAccounts, ...forwardAccounts]
 );
 ```
 
