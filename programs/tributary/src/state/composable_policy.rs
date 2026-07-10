@@ -139,7 +139,7 @@ impl ForwardConfig {
     pub const SIZE: usize = InstructionConstraint::SIZE + // instruction_constraint
         32 + // input_mint
         32 + // output_mint
-        1; // forward_flags = 267 bytes
+        1; // forward_flags = 271 bytes
 
     /// True when the forward leg's WSOL output must be unwrapped to native
     /// SOL via a Tributary-controlled `closeAccount` sweep. Opt-in via bit 0
