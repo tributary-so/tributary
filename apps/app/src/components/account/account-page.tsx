@@ -277,16 +277,18 @@ function MilestoneTracker({
           return (
             <div
               key={i}
-              className={`flex items-center gap-3 p-2 ${isCurrent ? 'bg-milestone-50 border border-milestone-200' : 'bg-muted/30'
-                }`}
+              className={`flex items-center gap-3 p-2 ${
+                isCurrent ? 'bg-milestone-50 border border-milestone-200' : 'bg-muted/30'
+              }`}
             >
               <div
                 className={`w-7 h-7 flex items-center justify-center text-xs font-bold shrink-0
-                  ${isCompleted
-                    ? 'bg-milestone-500 text-white'
-                    : isCurrent
-                      ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
-                      : 'bg-muted text-muted-foreground'
+                  ${
+                    isCompleted
+                      ? 'bg-milestone-500 text-white'
+                      : isCurrent
+                        ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
+                        : 'bg-muted text-muted-foreground'
                   }
                   ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
               >
@@ -294,8 +296,9 @@ function MilestoneTracker({
               </div>
               <div className="flex-1 min-w-0">
                 <div
-                  className={`text-xs font-medium truncate ${isCompleted ? 'text-muted-foreground' : isCurrent ? 'text-milestone-700' : 'text-muted-foreground'
-                    }`}
+                  className={`text-xs font-medium truncate ${
+                    isCompleted ? 'text-muted-foreground' : isCurrent ? 'text-milestone-700' : 'text-muted-foreground'
+                  }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : 'No amount'}
                 </div>
@@ -332,11 +335,12 @@ function MilestoneTracker({
               <div className="flex flex-col items-center">
                 <div
                   className={`w-6 h-6 flex items-center justify-center text-xs font-bold transition-all
-                    ${isCompleted
-                      ? 'bg-milestone-500 text-white'
-                      : isCurrent
-                        ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
-                        : 'bg-muted text-muted-foreground'
+                    ${
+                      isCompleted
+                        ? 'bg-milestone-500 text-white'
+                        : isCurrent
+                          ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
+                          : 'bg-muted text-muted-foreground'
                     }
                     ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
                 >
@@ -344,12 +348,13 @@ function MilestoneTracker({
                 </div>
 
                 <span
-                  className={`mt-1 text-xs ${isCompleted
-                    ? 'text-muted-foreground'
-                    : isCurrent
-                      ? 'text-milestone-700 font-medium'
-                      : 'text-muted-foreground'
-                    }`}
+                  className={`mt-1 text-xs ${
+                    isCompleted
+                      ? 'text-muted-foreground'
+                      : isCurrent
+                        ? 'text-milestone-700 font-medium'
+                        : 'text-muted-foreground'
+                  }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : '-'}
                 </span>
@@ -545,9 +550,10 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
       className={`
         relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
         hover:bg-muted/30 group active:bg-muted/50
-        ${isSelected
-          ? 'bg-linear-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
-          : 'border-l-4 border-l-transparent'
+        ${
+          isSelected
+            ? 'bg-linear-to-r from-subscription-50 to-background border-l-4 border-l-subscription-600'
+            : 'border-l-4 border-l-transparent'
         }
       `}
     >
@@ -608,9 +614,10 @@ function ComposablePolicyCard({ policy, isSelected, onClick }: ComposablePolicyC
       className={`
         relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
         hover:bg-muted/30 group active:bg-muted/50
-        ${isSelected
-          ? 'bg-linear-to-r from-violet-50 to-background border-l-4 border-l-violet-600'
-          : 'border-l-4 border-l-transparent'
+        ${
+          isSelected
+            ? 'bg-linear-to-r from-violet-50 to-background border-l-4 border-l-violet-600'
+            : 'border-l-4 border-l-transparent'
         }
       `}
     >
@@ -1377,10 +1384,18 @@ function ComposableDetailPanel({
   policy,
   userPayment,
   formatAmount,
+  onToggle,
+  onDelete,
+  togglingPolicies,
+  deletingPolicies,
 }: {
   policy: { publicKey: PublicKey; account: ComposablePolicy }
   userPayment: UserPaymentWithPolicies
   formatAmount: (rawAmount: string | null, tokenMint: PublicKey) => string
+  onToggle: () => void
+  onDelete: () => void
+  togglingPolicies: Set<string>
+  deletingPolicies: Set<string>
 }) {
   const statusKey = getStatusKey(policy.account as unknown as PaymentPolicy)
   const memo = decodeMemo(policy.account.memo || [])
@@ -1408,10 +1423,31 @@ function ComposableDetailPanel({
             <Zap className="w-7 h-7 text-violet-600" />
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-foreground">Composable Policy</h2>
-              <p className="text-xs sm:text-sm text-muted-foreground">Programmable pull payment (read-only)</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Programmable pull payment</p>
             </div>
           </div>
           <StatusBadge status={statusKey} isOverdue={false} />
+        </div>
+
+        <div className="flex gap-2 self-start">
+          <ActionButton
+            onClick={onToggle}
+            loading={togglingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="warning"
+            title={statusKey === 'active' ? 'Pause composable policy' : 'Resume composable policy'}
+          >
+            {statusKey === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </ActionButton>
+          <ActionButton
+            onClick={onDelete}
+            loading={deletingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="danger"
+            title="Delete composable policy"
+          >
+            <Trash2 className="h-4 w-4" />
+          </ActionButton>
         </div>
       </div>
 
@@ -1462,8 +1498,9 @@ function ComposableDetailPanel({
               Pre-validation
             </div>
             <div
-              className={`text-xs sm:text-sm font-medium ${preValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
-                }`}
+              className={`text-xs sm:text-sm font-medium ${
+                preValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
+              }`}
             >
               {preValidationEnabled ? 'Enabled' : 'Disabled'}
             </div>
@@ -1473,8 +1510,9 @@ function ComposableDetailPanel({
               Post-validation
             </div>
             <div
-              className={`text-xs sm:text-sm font-medium ${postValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
-                }`}
+              className={`text-xs sm:text-sm font-medium ${
+                postValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
+              }`}
             >
               {postValidationEnabled ? 'Enabled' : 'Disabled'}
             </div>
@@ -1945,6 +1983,75 @@ export default function AccountPage() {
     }
   }
 
+  const handleToggleComposableStatus = async (
+    policyPublicKey: PublicKey,
+    policy: ComposablePolicy,
+    userPayment: UserPayment,
+  ) => {
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ description: 'Wallet not connected', color: 'danger' })
+    if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
+      return addToast({ title: 'Only the policy owner can change status', color: 'danger' })
+    }
+    try {
+      setTogglingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
+      const currentStatus = policy.status as Record<string, unknown>
+      const isCurrentlyActive = currentStatus.active
+      const newStatus = isCurrentlyActive ? { paused: {} } : { active: {} }
+      const toggleIx = await sdk.changeComposablePolicyStatus(userPayment.tokenMint, policy.policyId, newStatus)
+      await createAndSendTransaction([toggleIx], wallet, connection)
+      addToast({ title: `Composable policy ${isCurrentlyActive ? 'paused' : 'resumed'}!`, color: 'success' })
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error:', err)
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to toggle status',
+        color: 'danger',
+      })
+    } finally {
+      setTogglingPolicies((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
+  const handleDeleteComposablePolicy = async (
+    policyPublicKey: PublicKey,
+    policy: ComposablePolicy,
+    userPayment: UserPayment,
+  ) => {
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ description: 'Wallet not connected', color: 'danger' })
+    if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
+      return addToast({ title: 'Only the policy owner can delete', color: 'danger' })
+    }
+    if (!confirm('Delete this composable policy? This cannot be undone.')) return
+    try {
+      setDeletingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
+      const deleteIx = await sdk.deleteComposablePolicy(userPayment.tokenMint, policy.policyId)
+      await createAndSendTransaction([deleteIx], wallet, connection)
+      addToast({ title: 'Composable policy deleted!', color: 'success' })
+      setSelectedPolicy(null)
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error:', err)
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete',
+        color: 'danger',
+      })
+    } finally {
+      setDeletingPolicies((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
   if (!wallet.connected) {
     return <WalletNotConnected />
   }
@@ -1959,10 +2066,10 @@ export default function AccountPage() {
 
   const currentUserPayment = selectedPolicy
     ? userPayments.find((up) =>
-      selectedPolicy.kind === 'regular'
-        ? up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString())
-        : up.composablePolicies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()),
-    )
+        selectedPolicy.kind === 'regular'
+          ? up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString())
+          : up.composablePolicies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()),
+      )
     : null
 
   const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length + up.composablePolicies.length, 0)
@@ -2056,6 +2163,22 @@ export default function AccountPage() {
                 policy={selectedPolicy}
                 userPayment={currentUserPayment}
                 formatAmount={formatAmount}
+                onToggle={() =>
+                  handleToggleComposableStatus(
+                    selectedPolicy.publicKey,
+                    selectedPolicy.account,
+                    currentUserPayment.userPayment,
+                  )
+                }
+                onDelete={() =>
+                  handleDeleteComposablePolicy(
+                    selectedPolicy.publicKey,
+                    selectedPolicy.account,
+                    currentUserPayment.userPayment,
+                  )
+                }
+                togglingPolicies={togglingPolicies}
+                deletingPolicies={deletingPolicies}
               />
             ) : (
               <>
