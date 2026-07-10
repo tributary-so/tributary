@@ -6,7 +6,7 @@ import {readFileSync} from 'node:fs'
 import {BaseCommand} from '../../lib/base-command.js'
 import {parsePublicKey} from '../../lib/utils.js'
 
-export default class ComposableExecute extends BaseCommand {
+export default class ComposablePolicyExecute extends BaseCommand {
   static args = {policy: Args.string({description: 'Composable policy public key', required: true})}
   static description = 'Execute a composable policy (single relayer fire; the scheduler loop is off-chain per ADR-0014)'
   static examples = [
@@ -32,7 +32,7 @@ export default class ComposableExecute extends BaseCommand {
   }
 
   public async run(): Promise<void> {
-    const {args, flags} = await this.parse(ComposableExecute)
+    const {args, flags} = await this.parse(ComposablePolicyExecute)
     const policy = parsePublicKey(args.policy)
     if (!policy) this.error('Invalid composable policy public key')
 
@@ -75,7 +75,7 @@ export default class ComposableExecute extends BaseCommand {
     )
 
     this.output({
-      command: 'composable execute',
+      command: 'composable-policy execute',
       policy: policy.toString(),
       success: true,
       timestamp: new Date().toISOString(),

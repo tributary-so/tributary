@@ -3,7 +3,7 @@ import {Flags} from '@oclif/core'
 import {BaseCommand} from '../../lib/base-command.js'
 import {parsePublicKey} from '../../lib/utils.js'
 
-export default class PaymentExecute extends BaseCommand {
+export default class PaymentPolicyExecute extends BaseCommand {
   static description = 'Execute a recurring payment'
   static examples = [
     '<%= config.bin %> <%= command.id %> --policy <POLICY_PUBKEY>',
@@ -26,7 +26,7 @@ export default class PaymentExecute extends BaseCommand {
   }
 
   public async run(): Promise<void> {
-    const {flags} = await this.parse(PaymentExecute)
+    const {flags} = await this.parse(PaymentPolicyExecute)
 
     const policyPubkey = parsePublicKey(flags.policy ?? '') || parsePublicKey(flags['user-payment'] ?? '')
     if (!policyPubkey) this.error('Either --policy or --user-payment must be provided')
@@ -35,7 +35,7 @@ export default class PaymentExecute extends BaseCommand {
     const signature = await this.sendAll(await sdk.executePayment(policyPubkey))
 
     this.output({
-      command: 'payment execute',
+      command: 'payment-policy execute',
       policy: policyPubkey.toString(),
       success: true,
       timestamp: new Date().toISOString(),
