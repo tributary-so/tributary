@@ -755,3 +755,105 @@ export const lighthouse = {
 };
 
 export type Lighthouse = typeof lighthouse;
+
+// ─── Decode ──────────────────────────────────────────────────────────────
+
+const INT_OP_LABELS: Record<number, string> = {
+  [IntegerOperator.Equal]: "==",
+  [IntegerOperator.NotEqual]: "!=",
+  [IntegerOperator.GreaterThan]: ">",
+  [IntegerOperator.LessThan]: "<",
+  [IntegerOperator.GreaterThanOrEqual]: ">=",
+  [IntegerOperator.LessThanOrEqual]: "<=",
+  [IntegerOperator.Contains]: "contains",
+  [IntegerOperator.DoesNotContain]: "!contains",
+};
+
+const EQ_OP_LABELS: Record<number, string> = {
+  [EquatableOperator.Equal]: "==",
+  [EquatableOperator.NotEqual]: "!=",
+};
+
+function bigintToNumber(v: unknown): unknown {
+  if (typeof v === "bigint") return Number(v);
+  if (v && typeof v === "object" && "toNumber" in (v as any)) {
+    return Number((v as any).toString());
+  }
+  return v;
+}
+
+function simplifyAssertion(raw: unknown): unknown {
+  const a = raw as Record<string, unknown>;
+  if (!a || typeof a !== "object") return raw;
+  const kind = a.__kind ?? a.constructor?.name;
+  const out: Record<string, unknown> = {};
+  if (kind) out.kind = String(kind);
+
+  for (const [k, v] of Object.entries(a)) {
+    if (k === "__kind") continue;
+    let sv = bigintToNumber(v);
+    if (sv && typeof sv === "object" && "__kind" in (sv as object)) {
+      sv = simplifyAssertion(sv);
+    }
+    if (k === "operator") {
+      const num = typeof v === "number" ? v : Number(v);
+      out[k] = INT_OP_LABELS[num] ?? EQ_OP_LABELS[num] ?? num;
+    } else {
+      out[k] = sv;
+    }
+  }
+  return out;
+}
+
+/** Serializer-name + fn pairs to try in order when decoding. */
+const DECODERS: Array<
+  [
+    string,
+    () => {
+      deserialize: (bytes: Uint8Array, offset?: number) => [unknown, number];
+    }
+  ]
+> = [
+  ["tokenAccount", getAssertTokenAccountInstructionDataSerializer],
+  ["tokenAccountMulti", getAssertTokenAccountMultiInstructionDataSerializer],
+  ["mintAccount", getAssertMintAccountInstructionDataSerializer],
+  ["mintAccountMulti", getAssertMintAccountMultiInstructionDataSerializer],
+  ["accountInfo", getAssertAccountInfoInstructionDataSerializer],
+  ["accountInfoMulti", getAssertAccountInfoMultiInstructionDataSerializer],
+  ["accountData", getAssertAccountDataInstructionDataSerializer],
+  ["accountDataMulti", getAssertAccountDataMultiInstructionDataSerializer],
+  ["accountDelta", getAssertAccountDeltaInstructionDataSerializer],
+  ["sysvarClock", getAssertSysvarClockInstructionDataSerializer],
+  ["stakeAccount", getAssertStakeAccountInstructionDataSerializer],
+  ["stakeAccountMulti", getAssertStakeAccountMultiInstructionDataSerializer],
+  ["merkleTree", getAssertMerkleTreeAccountInstructionDataSerializer],
+];
+
+/**
+ * Decode a serialized Lighthouse assertion data buffer into a readable
+ * structure. Tries each known instruction-data deserializer; the first one
+ * that succeeds identifies the assertion family.
+ *
+ * Returns `null` if no deserializer matches (corrupt or unknown format).
+ */
+export function decodeAssertionData(
+  data: Buffer
+): { kind: string; logLevel: number; assertions: unknown[] } | null {
+  for (const [kind, getFn] of DECODERS) {
+    try {
+      const [decoded] = getFn().deserialize(new Uint8Array(data));
+      const d = decoded as Record<string, unknown>;
+      const isMulti = "assertions" in d;
+      const raw = isMulti ? (d.assertions as unknown[]) : [d.assertion];
+      return {
+        kind,
+        logLevel:
+          typeof d.logLevel === "number" ? d.logLevel : Number(d.logLevel),
+        assertions: raw.map(simplifyAssertion),
+      };
+    } catch {
+      // try next decoder
+    }
+  }
+  return null;
+}
