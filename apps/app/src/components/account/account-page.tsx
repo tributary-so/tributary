@@ -5,6 +5,10 @@ import * as anchor from '@coral-xyz/anchor'
 import { useSDK, createAndSendTransaction } from '@/lib/client'
 import {
   decodeMemo,
+  getPreValidationPda,
+  getPostValidationPda,
+  parseValidationPda,
+  decodeAssertionData,
   type PaymentPolicy,
   type ComposablePolicy,
   type UserPayment,
@@ -287,8 +291,8 @@ function MilestoneTracker({
                     isCompleted
                       ? 'bg-milestone-500 text-white'
                       : isCurrent
-                        ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
-                        : 'bg-muted text-muted-foreground'
+                      ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
+                      : 'bg-muted text-muted-foreground'
                   }
                   ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
               >
@@ -339,8 +343,8 @@ function MilestoneTracker({
                       isCompleted
                         ? 'bg-milestone-500 text-white'
                         : isCurrent
-                          ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
-                          : 'bg-muted text-muted-foreground'
+                        ? 'bg-milestone-100 text-milestone-700 ring-2 ring-milestone-500'
+                        : 'bg-muted text-muted-foreground'
                     }
                     ${isDue && !isCompleted ? 'ring-2 ring-overdue-400' : ''}`}
                 >
@@ -352,8 +356,8 @@ function MilestoneTracker({
                     isCompleted
                       ? 'text-muted-foreground'
                       : isCurrent
-                        ? 'text-milestone-700 font-medium'
-                        : 'text-muted-foreground'
+                      ? 'text-milestone-700 font-medium'
+                      : 'text-muted-foreground'
                   }`}
                 >
                   {amount && !amount.isZero() ? formatAmount(amount.toString()) : '-'}
@@ -1148,10 +1152,10 @@ function OneTimeDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Already executed'
                 : isExpired
-                  ? 'Policy expired'
-                  : isPaymentDue
-                    ? 'Execute payment'
-                    : 'Not due yet'
+                ? 'Policy expired'
+                : isPaymentDue
+                ? 'Execute payment'
+                : 'Not due yet'
             }
           >
             <Play className="h-4 w-4" />
@@ -1165,8 +1169,8 @@ function OneTimeDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Completed policies cannot be paused'
                 : status === 'active'
-                  ? 'Pause policy'
-                  : 'Resume policy'
+                ? 'Pause policy'
+                : 'Resume policy'
             }
           >
             {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
@@ -1289,10 +1293,10 @@ function UpToDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Already settled'
                 : isExpired
-                  ? 'Policy expired'
-                  : isPaymentDue
-                    ? 'Execute settlement'
-                    : 'Not yet valid'
+                ? 'Policy expired'
+                : isPaymentDue
+                ? 'Execute settlement'
+                : 'Not yet valid'
             }
           >
             <Play className="h-4 w-4" />
@@ -1306,8 +1310,8 @@ function UpToDetailPanel(props: DetailPanelProps) {
               isCompleted
                 ? 'Completed policies cannot be paused'
                 : status === 'active'
-                  ? 'Pause policy'
-                  : 'Resume policy'
+                ? 'Pause policy'
+                : 'Resume policy'
             }
           >
             {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
@@ -1380,6 +1384,152 @@ function UpToDetailPanel(props: DetailPanelProps) {
   )
 }
 
+function ComposablePolicyTypeSection({
+  policyType,
+  formatAmount,
+  tokenMint,
+  getInterval,
+}: {
+  policyType: PaymentPolicy['policyType']
+  formatAmount: (rawAmount: string | null, tokenMint: PublicKey) => string
+  tokenMint: PublicKey
+  getInterval: (policy: PaymentPolicy) => string
+}) {
+  const pt = policyType as Record<string, unknown>
+
+  const renderFields = () => {
+    if (pt.subscription) {
+      const sub = pt.subscription as Record<string, unknown>
+      const freqKey = Object.keys((sub.paymentFrequency as Record<string, unknown>) ?? {})[0]
+      return (
+        <>
+          <StatCard label="Amount" value={formatAmount((sub.amount as anchor.BN).toString(), tokenMint)} />
+          <StatCard label="Frequency" value={freqKey ?? 'N/A'} />
+          <StatCard label="Auto-Renew" value={sub.autoRenew ? 'Yes' : 'No'} />
+        </>
+      )
+    }
+    if (pt.milestone) {
+      const ms = pt.milestone as Record<string, unknown>
+      const amounts = ms.milestoneAmounts as anchor.BN[]
+      const total = amounts?.reduce((sum, a) => sum.add(a), new anchor.BN(0))
+      return (
+        <>
+          <StatCard label="Milestones" value={`${ms.currentMilestone}/${ms.totalMilestones}`} />
+          <StatCard label="Total Amount" value={formatAmount(total?.toString() ?? '0', tokenMint)} />
+          <StatCard label="Escrow" value={formatAmount((ms.escrowAmount as anchor.BN)?.toString() ?? '0', tokenMint)} />
+        </>
+      )
+    }
+    if (pt.payAsYouGo) {
+      const payg = pt.payAsYouGo as Record<string, unknown>
+      return (
+        <>
+          <StatCard
+            label="Max per TX"
+            value={formatAmount((payg.maxChunkAmount as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Max per Period"
+            value={formatAmount((payg.maxAmountPerPeriod as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Period Total"
+            value={formatAmount((payg.currentPeriodTotal as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+        </>
+      )
+    }
+    if (pt.oneTime) {
+      const ot = pt.oneTime as Record<string, unknown>
+      const dueDate = (ot.dueDate as anchor.BN)?.toNumber()
+      const expiry = ot.expiryDate as anchor.BN | undefined
+      return (
+        <>
+          <StatCard label="Amount" value={formatAmount((ot.amount as anchor.BN)?.toString() ?? '0', tokenMint)} />
+          <StatCard
+            label="Due Date"
+            value={dueDate && dueDate > 0 ? new Date(dueDate * 1000).toLocaleDateString() : 'Immediate'}
+          />
+          <StatCard
+            label="Expires"
+            value={expiry && expiry.toNumber() > 0 ? new Date(expiry.toNumber() * 1000).toLocaleDateString() : 'Never'}
+          />
+        </>
+      )
+    }
+    if (pt.upTo) {
+      const ut = pt.upTo as Record<string, unknown>
+      const validAfter = (ut.validAfter as anchor.BN)?.toNumber()
+      const deadline = (ut.deadline as anchor.BN)?.toNumber()
+      return (
+        <>
+          <StatCard
+            label="Max Amount"
+            value={formatAmount((ut.maxAmount as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Valid After"
+            value={validAfter && validAfter > 0 ? new Date(validAfter * 1000).toLocaleDateString() : 'Immediate'}
+          />
+          <StatCard
+            label="Deadline"
+            value={deadline && deadline > 0 ? new Date(deadline * 1000).toLocaleDateString() : 'N/A'}
+          />
+        </>
+      )
+    }
+    return null
+  }
+
+  const fields = renderFields()
+  if (!fields) return null
+
+  const policyProxy = { policyType } as unknown as PaymentPolicy
+
+  return (
+    <div className="border-t border-border pt-3 sm:pt-4">
+      <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+        Payment Schedule
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">{fields}</div>
+      {Boolean(pt.subscription) && (
+        <div className="text-xs sm:text-sm text-muted-foreground mt-2">every {getInterval(policyProxy)}</div>
+      )}
+    </div>
+  )
+}
+
+function AssertionInfo({
+  decoded,
+}: {
+  decoded: { kind: string; logLevel: number; assertions: unknown[] } | null | undefined
+}) {
+  if (decoded === undefined) {
+    return <span className="text-xs text-muted-foreground">Loading…</span>
+  }
+  if (decoded === null) {
+    return <span className="text-xs text-muted-foreground">Unable to decode</span>
+  }
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-medium text-status-active-700">{decoded.kind}</div>
+      {decoded.assertions.map((assertion, i) => {
+        const a = assertion as Record<string, unknown>
+        const aKind = String(a.kind ?? '?')
+        const op = String(a.operator ?? '?')
+        const valueKeys = Object.keys(a).filter((k) => k !== 'kind' && k !== 'operator')
+        const val = valueKeys.map((k) => String(a[k])).join(', ')
+        return (
+          <div key={i} className="text-[11px] text-muted-foreground font-mono">
+            {aKind} {op} {val}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function ComposableDetailPanel({
   policy,
   userPayment,
@@ -1388,6 +1538,8 @@ function ComposableDetailPanel({
   onDelete,
   togglingPolicies,
   deletingPolicies,
+  getInterval,
+  programId,
 }: {
   policy: { publicKey: PublicKey; account: ComposablePolicy }
   userPayment: UserPaymentWithPolicies
@@ -1396,8 +1548,12 @@ function ComposableDetailPanel({
   onDelete: () => void
   togglingPolicies: Set<string>
   deletingPolicies: Set<string>
+  getInterval: (policy: PaymentPolicy) => string
+  programId: PublicKey
 }) {
+  const { connection } = useConnection()
   const statusKey = getStatusKey(policy.account as unknown as PaymentPolicy)
+  const policyTypeKey = getPolicyTypeKey(policy.account as unknown as PaymentPolicy)
   const memo = decodeMemo(policy.account.memo || [])
   const tokenMint = userPayment.userPayment.tokenMint
   const fc = policy.account.forwardConfig
@@ -1415,6 +1571,53 @@ function ComposableDetailPanel({
     typeof policy.account.postValidation === 'object' &&
     'programCall' in (policy.account.postValidation as Record<string, unknown>)
 
+  const [preDecoded, setPreDecoded] = useState<
+    { kind: string; logLevel: number; assertions: unknown[] } | null | undefined
+  >(undefined)
+  const [postDecoded, setPostDecoded] = useState<
+    { kind: string; logLevel: number; assertions: unknown[] } | null | undefined
+  >(undefined)
+
+  useEffect(() => {
+    if (!preValidationEnabled && !postValidationEnabled) return
+    let cancelled = false
+    const fetchAssertions = async () => {
+      try {
+        if (preValidationEnabled) {
+          const { address } = getPreValidationPda(policy.publicKey, programId)
+          const acct = await connection.getAccountInfo(address)
+          if (cancelled) return
+          if (acct) {
+            const parsed = parseValidationPda(acct.data)
+            setPreDecoded(decodeAssertionData(parsed.data))
+          } else {
+            setPreDecoded(null)
+          }
+        }
+        if (postValidationEnabled) {
+          const { address } = getPostValidationPda(policy.publicKey, programId)
+          const acct = await connection.getAccountInfo(address)
+          if (cancelled) return
+          if (acct) {
+            const parsed = parseValidationPda(acct.data)
+            setPostDecoded(decodeAssertionData(parsed.data))
+          } else {
+            setPostDecoded(null)
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setPreDecoded(null)
+          setPostDecoded(null)
+        }
+      }
+    }
+    fetchAssertions()
+    return () => {
+      cancelled = true
+    }
+  }, [policy.publicKey, connection, programId, preValidationEnabled, postValidationEnabled])
+
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -1422,7 +1625,12 @@ function ComposableDetailPanel({
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
             <Zap className="w-7 h-7 text-violet-600" />
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-foreground">Composable Policy</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                Composable Policy
+                <span className="ml-2 text-xs sm:text-sm font-normal text-muted-foreground">
+                  · {POLICY_TYPE_CONFIG[policyTypeKey].label}
+                </span>
+              </h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Programmable pull payment</p>
             </div>
           </div>
@@ -1470,6 +1678,13 @@ function ComposableDetailPanel({
         />
       </div>
 
+      <ComposablePolicyTypeSection
+        policyType={policy.account.policyType}
+        formatAmount={formatAmount}
+        tokenMint={tokenMint}
+        getInterval={getInterval}
+      />
+
       <div className="border-t border-border pt-3 sm:pt-4">
         <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
           Forward Configuration
@@ -1497,25 +1712,21 @@ function ComposableDetailPanel({
             <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
               Pre-validation
             </div>
-            <div
-              className={`text-xs sm:text-sm font-medium ${
-                preValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
-              }`}
-            >
-              {preValidationEnabled ? 'Enabled' : 'Disabled'}
-            </div>
+            {preValidationEnabled ? (
+              <AssertionInfo decoded={preDecoded} />
+            ) : (
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Disabled</span>
+            )}
           </div>
           <div className="bg-muted/30 p-3 sm:p-4 border border-border">
             <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
               Post-validation
             </div>
-            <div
-              className={`text-xs sm:text-sm font-medium ${
-                postValidationEnabled ? 'text-status-active-700' : 'text-muted-foreground'
-              }`}
-            >
-              {postValidationEnabled ? 'Enabled' : 'Disabled'}
-            </div>
+            {postValidationEnabled ? (
+              <AssertionInfo decoded={postDecoded} />
+            ) : (
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Disabled</span>
+            )}
           </div>
         </div>
       </div>
@@ -2179,6 +2390,8 @@ export default function AccountPage() {
                 }
                 togglingPolicies={togglingPolicies}
                 deletingPolicies={deletingPolicies}
+                getInterval={getInterval}
+                programId={sdk?.programId ?? new PublicKey('TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ')}
               />
             ) : (
               <>
