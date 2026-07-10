@@ -288,7 +288,7 @@ use tributary::constants::{ALLOWED_FORWARD_PROGRAMS, NATIVE_MINT};
 use tributary::instructions::composable::create_composable_policy::validate_forward_config;
 use tributary::instructions::composable::execute_composable::validate_byte_ranges;
 use tributary::state::{
-    ByteRangeCheck, ForwardConfig, InstructionConstraint, MAX_BYTE_RANGE_CHECKS,
+    ByteRangeCheck, ForwardConfig, InstructionConstraint, PinnedAccount, MAX_BYTE_RANGE_CHECKS,
     MAX_PINNED_FORWARD_ACCOUNTS,
 };
 
@@ -361,7 +361,7 @@ proptest! {
                 num_data_checks: num_checks,
                 data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 0,
-                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+                pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             },
             input_mint: Pubkey::new_from_array(mint_a),
             output_mint: Pubkey::new_from_array(mint_b),
@@ -382,7 +382,7 @@ proptest! {
                 num_data_checks: 0,
                 data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 0,
-                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+                pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             },
             input_mint: pubkey,
             output_mint: pubkey,
@@ -404,7 +404,12 @@ proptest! {
                 num_data_checks: 1,
                 data_checks: [ByteRangeCheck { offset: 0, length: 0, expected: [0u8; 8] }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 1,
-                pinned_accounts: [Pubkey::new_unique(), Pubkey::default(), Pubkey::default(), Pubkey::default()],
+                pinned_accounts: [
+                    PinnedAccount { index: 0, pubkey: Pubkey::new_unique() },
+                    PinnedAccount::default(),
+                    PinnedAccount::default(),
+                    PinnedAccount::default(),
+                ],
             },
             input_mint: mint,
             output_mint: mint,
@@ -448,5 +453,139 @@ proptest! {
                 "sum of tier rewards must not exceed pool (floor division)"
             );
         }
+    }
+}
+
+// ============================================================================
+// InstructionConstraint — indexed pin model (PinnedAccount)
+// ============================================================================
+
+/// Generate up to 4 PinnedAccount entries with small indices (0..4 range
+/// increases duplicate probability for meaningful coverage).
+fn prop_pin_set(
+    num: u8,
+    idx0: u8,
+    idx1: u8,
+    idx2: u8,
+    idx3: u8,
+) -> ([PinnedAccount; MAX_PINNED_FORWARD_ACCOUNTS], Vec<u8>) {
+    let indices = [idx0 % 4, idx1 % 4, idx2 % 4, idx3 % 4];
+    let pins = [
+        PinnedAccount {
+            index: indices[0],
+            pubkey: Pubkey::new_unique(),
+        },
+        PinnedAccount {
+            index: indices[1],
+            pubkey: Pubkey::new_unique(),
+        },
+        PinnedAccount {
+            index: indices[2],
+            pubkey: Pubkey::new_unique(),
+        },
+        PinnedAccount {
+            index: indices[3],
+            pubkey: Pubkey::new_unique(),
+        },
+    ];
+    let active: Vec<u8> = indices[..num as usize].to_vec();
+    (pins, active)
+}
+
+proptest! {
+    /// Duplicate-index detection: when two active pins share the same index,
+    /// validate_forward_config must reject. When all indices are distinct
+    /// (and the rest of the config is valid), it must accept.
+    #[test]
+    fn prop_duplicate_index_rejected(
+        num_pins in 1u8..=4u8,
+        idx0 in 0u8..4,
+        idx1 in 0u8..4,
+        idx2 in 0u8..4,
+        idx3 in 0u8..4,
+    ) {
+        let (pins, active) = prop_pin_set(num_pins, idx0, idx1, idx2, idx3);
+
+        // Detect duplicates manually
+        let has_dup = (0..active.len()).any(|i| {
+            (i + 1..active.len()).any(|j| active[i] == active[j])
+        });
+
+        let mut ic = InstructionConstraint::default();
+        ic.program_id = ALLOWED_FORWARD_PROGRAMS[0];
+        ic.num_data_checks = 1;
+        ic.data_checks[0] = ByteRangeCheck { offset: 0, length: 1, expected: [0u8; 8] };
+        ic.num_pinned_accounts = num_pins;
+        ic.pinned_accounts = pins;
+
+        let config = ForwardConfig {
+            instruction_constraint: ic,
+            input_mint: Pubkey::new_unique(),
+            output_mint: Pubkey::new_unique(),
+            forward_flags: 0,
+        };
+
+        let result = validate_forward_config(&config);
+        if has_dup {
+            prop_assert!(result.is_err(), "duplicate indices must be rejected at create");
+        } else {
+            prop_assert!(result.is_ok(), "distinct indices + valid config must be accepted");
+        }
+    }
+
+    /// Indexed pin check: pins_match() returns true iff every active pin's
+    /// pubkey is at the correct position (forward_start + pin.index) in the
+    /// remaining_keys slice. Generates random pins, builds a matching key
+    /// array, verifies true; then corrupts one position and verifies false.
+    #[test]
+    fn prop_pins_match_correct_position(
+        num_pins in 1u8..=4u8,
+        idx0 in any::<u8>(),
+        idx1 in any::<u8>(),
+        idx2 in any::<u8>(),
+        idx3 in any::<u8>(),
+        forward_start in 0usize..4,
+    ) {
+        // Avoid duplicate indices (those are rejected at create and make
+        // pins_match ambiguous).
+        let indices = [idx0, idx1, idx2, idx3];
+        prop_assume!((0..num_pins as usize)
+            .all(|i| (0..num_pins as usize)
+                .all(|j| i == j || indices[i] != indices[j])));
+
+        let pk0 = Pubkey::new_unique();
+        let pk1 = Pubkey::new_unique();
+        let pk2 = Pubkey::new_unique();
+        let pk3 = Pubkey::new_unique();
+        let pubkeys = [pk0, pk1, pk2, pk3];
+
+        let mut ic = InstructionConstraint::default();
+        ic.num_pinned_accounts = num_pins;
+        for i in 0..num_pins as usize {
+            ic.pinned_accounts[i] = PinnedAccount {
+                index: indices[i],
+                pubkey: pubkeys[i],
+            };
+        }
+
+        // Build a keys vec large enough to hold all indexed positions.
+        let max_idx = indices[..num_pins as usize].iter().copied().max().unwrap_or(0);
+        let keys_len = forward_start + max_idx as usize + 1;
+        let mut keys: Vec<Pubkey> = (0..keys_len).map(|_| Pubkey::new_unique()).collect();
+
+        // Place correct pubkeys at pin positions.
+        for i in 0..num_pins as usize {
+            keys[forward_start + indices[i] as usize] = pubkeys[i];
+        }
+
+        // All correct → must match.
+        prop_assert!(ic.pins_match(&keys, forward_start),
+            "pins_match must be true when all pubkeys are at correct positions");
+
+        // Corrupt one position → must not match.
+        let corrupt_at = forward_start + indices[0] as usize;
+        keys[corrupt_at] = Pubkey::new_unique(); // different from pk0
+        prop_assert!(!ic.pins_match(&keys, forward_start),
+            "pins_match must be false when a pubkey is at the wrong position");
     }
 }

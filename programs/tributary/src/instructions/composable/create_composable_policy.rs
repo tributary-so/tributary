@@ -452,6 +452,10 @@ pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
             ic.has_effective_pins(),
             TributaryError::DegenerateForwardPins
         );
+        require!(
+            !ic.has_duplicate_indices(),
+            TributaryError::DuplicatePinIndex
+        );
         // Act-mode output-mint sentinel is allowed; any other output_mint
         // value triggers deliver-transform semantics (validated at execute
         // by the >0 guard + output ATA creation).
@@ -488,7 +492,7 @@ mod tests {
                     expected: [0u8; 8],
                 }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 0,
-                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+                pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             },
             input_mint: mint,
             output_mint: mint,
@@ -509,10 +513,13 @@ mod tests {
                 }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 1,
                 pinned_accounts: [
-                    Pubkey::new_unique(),
-                    Pubkey::default(),
-                    Pubkey::default(),
-                    Pubkey::default(),
+                    PinnedAccount {
+                        index: 0,
+                        pubkey: Pubkey::new_unique(),
+                    },
+                    PinnedAccount::default(),
+                    PinnedAccount::default(),
+                    PinnedAccount::default(),
                 ],
             },
             input_mint: mint,
@@ -597,7 +604,7 @@ mod tests {
                     expected: [0u8; 8],
                 }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 0, // zero pins
-                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+                pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             },
             input_mint: mint,
             output_mint: Pubkey::new_unique(),

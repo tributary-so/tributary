@@ -1251,24 +1251,23 @@ impl<'info> ExecuteComposable<'info> {
         };
 
         // ── Phase 3: FORWARD CPI (if enabled) ──────────────────────────
-        // Pin-check: for each non-wildcard pinned slot, the corresponding
-        // remaining_account must match.
+        // Indexed pin-check: each active pin constrains
+        // remaining_accounts[forward_start + pin.index] == pin.pubkey.
         if target_program != Pubkey::default() {
             let n_pins = (instruction_constraint.num_pinned_accounts as usize)
                 .min(MAX_PINNED_FORWARD_ACCOUNTS);
             let fwd_base = forward_accounts_start;
             for i in 0..n_pins {
-                let pin = instruction_constraint.pinned_accounts[i];
-                if pin != Pubkey::default() {
-                    require!(
-                        fwd_base + i < remaining_mid.len(),
-                        TributaryError::MissingForwardAccounts
-                    );
-                    require!(
-                        remaining_mid[fwd_base + i].key() == pin,
-                        TributaryError::ByteRangeCheckFailed
-                    );
-                }
+                let pin = &instruction_constraint.pinned_accounts[i];
+                let idx = fwd_base + pin.index as usize;
+                require!(
+                    idx < remaining_mid.len(),
+                    TributaryError::MissingForwardAccounts
+                );
+                require!(
+                    remaining_mid[idx].key() == pin.pubkey,
+                    TributaryError::ByteRangeCheckFailed
+                );
             }
             run_forward_cpi(
                 remaining_mid,
