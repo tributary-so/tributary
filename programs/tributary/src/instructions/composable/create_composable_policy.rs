@@ -6,10 +6,17 @@ use anchor_spl::token_interface::Mint;
 
 /// Caller-supplied init data for one validation phase (pre or post).
 /// Only meaningful when the corresponding `ValidationSpec` is `ProgramCall`.
+///
+/// `pinned_accounts` uses the indexed [`PinnedAccount`] model (same as
+/// [`InstructionConstraint`]). At create time the active pins are validated
+/// (distinct indices, non-default pubkeys, index < MAX_PINNED_ACCOUNTS) and
+/// then **packed** into the positional `[Pubkey; MAX_PINNED_ACCOUNTS]` array
+/// that [`ValidationPda`] stores on-chain. The on-chain PDA layout is
+/// unchanged — only the args struct carries indices.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ValidationInit {
     pub num_pinned_accounts: u8,
-    pub pinned_accounts: [Pubkey; MAX_PINNED_ACCOUNTS],
+    pub pinned_accounts: [PinnedAccount; MAX_PINNED_FORWARD_ACCOUNTS],
     pub validation_data: Vec<u8>,
 }
 
@@ -17,7 +24,7 @@ impl Default for ValidationInit {
     fn default() -> Self {
         Self {
             num_pinned_accounts: 0,
-            pinned_accounts: [Pubkey::default(); MAX_PINNED_ACCOUNTS],
+            pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             validation_data: Vec::new(),
         }
     }
@@ -322,6 +329,31 @@ fn validate_init(spec: &ValidationSpec, init: &ValidationInit) -> Result<()> {
                 init.num_pinned_accounts as usize <= MAX_PINNED_ACCOUNTS,
                 TributaryError::InvalidValidationProgram
             );
+            // Indexed-pin validation (bean tributary-zihv): the caller
+            // supplies PinnedAccount entries that are packed into the
+            // positional ValidationPda array. Validate the active prefix.
+            let n = init.num_pinned_accounts as usize;
+            for i in 0..n {
+                let pin = &init.pinned_accounts[i];
+                require!(
+                    pin.pubkey != Pubkey::default(),
+                    TributaryError::DefaultPinPubkey
+                );
+                require!(
+                    (pin.index as usize) < MAX_PINNED_ACCOUNTS,
+                    TributaryError::InvalidValidationProgram
+                );
+            }
+            // No duplicate indices — two pins with the same index would
+            // both try to constrain the same remaining_account slot.
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    require!(
+                        init.pinned_accounts[i].index != init.pinned_accounts[j].index,
+                        TributaryError::DuplicatePinIndex
+                    );
+                }
+            }
             Ok(())
         }
         ValidationSpec::Inline { .. } => err!(TributaryError::InlineValidationNotImplemented),
@@ -342,6 +374,12 @@ fn validate_init(spec: &ValidationSpec, init: &ValidationInit) -> Result<()> {
 ///   `[8-byte disc][bump: u8][num_pinned_accounts: u8]
 ///    [pinned_accounts: [Pubkey; MAX_PINNED_ACCOUNTS]][data_len: u16]
 ///    [data: [u8; MAX_VALIDATION_DATA_SIZE]]`
+///
+/// The caller supplies pins as `[PinnedAccount; MAX_PINNED_FORWARD_ACCOUNTS]`
+/// (indexed: index + pubkey). The handler packs the active pins into the
+/// positional `[Pubkey; MAX_PINNED_ACCOUNTS]` array stored in the PDA — the
+/// **on-chain byte layout of ValidationPda is unchanged**; only the args
+/// struct carries indices. See bean tributary-zihv.
 ///
 /// `ValidationPda::SIZE` (used for the rent calculation below) is the
 /// single source of truth for the account byte length — any field added,
@@ -393,7 +431,18 @@ fn init_validation_pda<'info>(
     let typed = ValidationPda {
         bump: pda_key.1,
         num_pinned_accounts: init.num_pinned_accounts,
-        pinned_accounts: init.pinned_accounts,
+        pinned_accounts: {
+            // Pack indexed PinnedAccount entries into the positional
+            // [Pubkey; MAX_PINNED_ACCOUNTS] array the PDA stores. Indices
+            // are already validated (< MAX_PINNED_ACCOUNTS, distinct) by
+            // validate_init above.
+            let mut packed = [Pubkey::default(); MAX_PINNED_ACCOUNTS];
+            for i in 0..init.num_pinned_accounts as usize {
+                let pin = &init.pinned_accounts[i];
+                packed[pin.index as usize] = pin.pubkey;
+            }
+            packed
+        },
         data_len: init.validation_data.len() as u16,
         data: {
             let mut buf = [0u8; MAX_VALIDATION_DATA_SIZE];
@@ -452,6 +501,10 @@ pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
             ic.has_effective_pins(),
             TributaryError::DegenerateForwardPins
         );
+        require!(
+            !ic.has_duplicate_indices(),
+            TributaryError::DuplicatePinIndex
+        );
         // Act-mode output-mint sentinel is allowed; any other output_mint
         // value triggers deliver-transform semantics (validated at execute
         // by the >0 guard + output ATA creation).
@@ -488,7 +541,7 @@ mod tests {
                     expected: [0u8; 8],
                 }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 0,
-                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+                pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             },
             input_mint: mint,
             output_mint: mint,
@@ -509,10 +562,13 @@ mod tests {
                 }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 1,
                 pinned_accounts: [
-                    Pubkey::new_unique(),
-                    Pubkey::default(),
-                    Pubkey::default(),
-                    Pubkey::default(),
+                    PinnedAccount {
+                        index: 0,
+                        pubkey: Pubkey::new_unique(),
+                    },
+                    PinnedAccount::default(),
+                    PinnedAccount::default(),
+                    PinnedAccount::default(),
                 ],
             },
             input_mint: mint,
@@ -597,7 +653,7 @@ mod tests {
                     expected: [0u8; 8],
                 }; MAX_BYTE_RANGE_CHECKS],
                 num_pinned_accounts: 0, // zero pins
-                pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+                pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
             },
             input_mint: mint,
             output_mint: Pubkey::new_unique(),
@@ -639,5 +695,73 @@ mod tests {
         let mut cfg = disabled_config(mint, 0);
         cfg.output_mint = Pubkey::default(); // sentinel != mint
         assert!(validate_forward_config(&cfg).is_err());
+    }
+
+    // ── validate_init indexed-pin validation (bean tributary-zihv) ───────
+
+    fn program_call() -> ValidationSpec {
+        ValidationSpec::ProgramCall {
+            program_id: ALLOWED_VALIDATION_PROGRAMS[0],
+        }
+    }
+
+    fn valid_init_1pin() -> ValidationInit {
+        let mut init = ValidationInit::default();
+        init.num_pinned_accounts = 1;
+        init.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: Pubkey::new_unique(),
+        };
+        init.validation_data = vec![1u8, 2, 3];
+        init
+    }
+
+    #[test]
+    fn validate_init_accepts_valid_single_pin() {
+        assert!(validate_init(&program_call(), &valid_init_1pin()).is_ok());
+    }
+
+    #[test]
+    fn validate_init_accepts_valid_two_pins_distinct_indices() {
+        let mut init = valid_init_1pin();
+        init.num_pinned_accounts = 2;
+        init.pinned_accounts[1] = PinnedAccount {
+            index: 1,
+            pubkey: Pubkey::new_unique(),
+        };
+        assert!(validate_init(&program_call(), &init).is_ok());
+    }
+
+    #[test]
+    fn validate_init_rejects_duplicate_index() {
+        let mut init = valid_init_1pin();
+        init.num_pinned_accounts = 2;
+        init.pinned_accounts[1] = PinnedAccount {
+            index: 0, // same as first pin
+            pubkey: Pubkey::new_unique(),
+        };
+        assert!(validate_init(&program_call(), &init).is_err());
+    }
+
+    #[test]
+    fn validate_init_rejects_default_pubkey_in_active_set() {
+        let mut init = valid_init_1pin();
+        // Active pin with default pubkey.
+        init.pinned_accounts[0].pubkey = Pubkey::default();
+        assert!(validate_init(&program_call(), &init).is_err());
+    }
+
+    #[test]
+    fn validate_init_rejects_index_out_of_bounds() {
+        let mut init = valid_init_1pin();
+        init.pinned_accounts[0].index = MAX_PINNED_ACCOUNTS as u8; // 2 → OOB
+        assert!(validate_init(&program_call(), &init).is_err());
+    }
+
+    #[test]
+    fn validate_init_disabled_spec_ignores_pins() {
+        // Disabled spec: pins are irrelevant, empty data required.
+        let init = ValidationInit::default();
+        assert!(validate_init(&ValidationSpec::Disabled, &init).is_ok());
     }
 }

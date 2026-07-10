@@ -12,6 +12,15 @@ pub struct ByteRangeCheck {
     pub expected: [u8; 8],
 }
 
+/// Indexed forward-account pin: constrains `remaining_accounts[forward_start
+/// + index]` to equal `pubkey`. Replaces the old positional `[Pubkey; 4]`
+/// model — pins are no longer tied 1:1 to array position.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Default)]
+pub struct PinnedAccount {
+    pub index: u8,
+    pub pubkey: Pubkey,
+}
+
 impl ByteRangeCheck {
     pub fn validate(&self, instruction_data: &[u8]) -> bool {
         if self.length > 8 {
@@ -41,9 +50,11 @@ pub struct InstructionConstraint {
     pub num_data_checks: u8,
     pub data_checks: [ByteRangeCheck; MAX_BYTE_RANGE_CHECKS],
     pub num_pinned_accounts: u8,
-    /// Positional pin on `remaining_accounts[forward_start+i]`.
-    /// `Pubkey::default()` entry = wildcard slot (no constraint).
-    pub pinned_accounts: [Pubkey; MAX_PINNED_FORWARD_ACCOUNTS],
+    /// Indexed pins: `pinned_accounts[i]` constrains the account at
+    /// `remaining_accounts[forward_start + pinned_accounts[i].index]` to
+    /// equal `pinned_accounts[i].pubkey`. Only the first `num_pinned_accounts`
+    /// entries are active.
+    pub pinned_accounts: [PinnedAccount; MAX_PINNED_FORWARD_ACCOUNTS],
 }
 
 impl InstructionConstraint {
@@ -51,20 +62,52 @@ impl InstructionConstraint {
         1 + // num_data_checks
         (1 + 1 + 8) * MAX_BYTE_RANGE_CHECKS + // data_checks
         1 + // num_pinned_accounts
-        32 * MAX_PINNED_FORWARD_ACCOUNTS; // pinned_accounts = 202 bytes
+        (1 + 32) * MAX_PINNED_FORWARD_ACCOUNTS; // pinned_accounts = 206 bytes
 
     pub fn is_disabled(&self) -> bool {
         self.program_id == Pubkey::default()
     }
 
-    /// True when at least one pinned slot is a concrete (non-default) pubkey.
-    /// Used by the cold-relayer OR-gate (ADR-0016 amended): a non-sentinel
-    /// InstructionConstraint with zero effective pins does NOT qualify as a
-    /// safety net. Defence-in-depth alongside the create-time degenerate-pin
-    /// guard.
+    /// True when at least one pin is declared. With the indexed-pin model
+    /// every declared pin is a real constraint (no wildcard concept), so
+    /// the count alone suffices. Used by the cold-relayer OR-gate
+    /// (ADR-0016 amended).
     pub fn has_effective_pins(&self) -> bool {
+        self.num_pinned_accounts > 0
+    }
+
+    /// Returns true if any two active pins share the same `index` —
+    /// such duplicates are nonsensical (two different pubkeys can never
+    /// both match the same remaining_account position) and are rejected
+    /// at create time.
+    pub fn has_duplicate_indices(&self) -> bool {
         let n = (self.num_pinned_accounts as usize).min(MAX_PINNED_FORWARD_ACCOUNTS);
-        (0..n).any(|i| self.pinned_accounts[i] != Pubkey::default())
+        for i in 0..n {
+            for j in (i + 1)..n {
+                if self.pinned_accounts[i].index == self.pinned_accounts[j].index {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Check that every active pin matches the corresponding position in
+    /// `remaining_keys` (offset by `forward_start`). Pure — used by both
+    /// execute_composable (runtime) and proptests.
+    pub fn pins_match(&self, remaining_keys: &[Pubkey], forward_start: usize) -> bool {
+        let n = (self.num_pinned_accounts as usize).min(MAX_PINNED_FORWARD_ACCOUNTS);
+        for i in 0..n {
+            let pin = &self.pinned_accounts[i];
+            let idx = forward_start + pin.index as usize;
+            if idx >= remaining_keys.len() {
+                return false;
+            }
+            if remaining_keys[idx] != pin.pubkey {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -79,7 +122,7 @@ impl Default for InstructionConstraint {
                 expected: [0u8; 8],
             }; MAX_BYTE_RANGE_CHECKS],
             num_pinned_accounts: 0,
-            pinned_accounts: [Pubkey::default(); MAX_PINNED_FORWARD_ACCOUNTS],
+            pinned_accounts: [PinnedAccount::default(); MAX_PINNED_FORWARD_ACCOUNTS],
         }
     }
 }
@@ -96,7 +139,7 @@ impl ForwardConfig {
     pub const SIZE: usize = InstructionConstraint::SIZE + // instruction_constraint
         32 + // input_mint
         32 + // output_mint
-        1; // forward_flags = 267 bytes
+        1; // forward_flags = 271 bytes
 
     /// True when the forward leg's WSOL output must be unwrapped to native
     /// SOL via a Tributary-controlled `closeAccount` sweep. Opt-in via bit 0
@@ -263,49 +306,120 @@ mod tests {
     }
 
     #[test]
-    fn has_effective_pins_true_with_concrete_pin() {
+    fn has_effective_pins_true_with_indexed_pin() {
         let mut ic = InstructionConstraint::default();
         ic.program_id = Pubkey::new_unique();
         ic.num_pinned_accounts = 1;
-        ic.pinned_accounts[0] = Pubkey::new_unique();
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: Pubkey::new_unique(),
+        };
         assert!(ic.has_effective_pins());
-    }
-
-    #[test]
-    fn has_effective_pins_false_all_wildcard() {
-        let mut ic = InstructionConstraint::default();
-        ic.program_id = Pubkey::new_unique();
-        ic.num_pinned_accounts = 4;
-        // all default → all wildcard
-        assert!(!ic.has_effective_pins());
     }
 
     #[test]
     fn has_effective_pins_false_zero_count() {
         let mut ic = InstructionConstraint::default();
         ic.program_id = Pubkey::new_unique();
-        ic.pinned_accounts[0] = Pubkey::new_unique();
-        ic.num_pinned_accounts = 0; // even with a concrete pin at [0]
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: Pubkey::new_unique(),
+        };
+        ic.num_pinned_accounts = 0;
         assert!(!ic.has_effective_pins());
     }
 
     #[test]
-    fn has_effective_pins_partial_wildcard_ok() {
+    fn has_effective_pins_true_multiple_pins() {
         let mut ic = InstructionConstraint::default();
         ic.program_id = Pubkey::new_unique();
         ic.num_pinned_accounts = 2;
-        ic.pinned_accounts[1] = Pubkey::new_unique(); // [0] = wildcard
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: Pubkey::new_unique(),
+        };
+        ic.pinned_accounts[1] = PinnedAccount {
+            index: 1,
+            pubkey: Pubkey::new_unique(),
+        };
         assert!(ic.has_effective_pins());
     }
 
+    // ── PinnedAccount ──────────────────────────────────────────────────
+
     #[test]
-    fn has_effective_pins_ignores_slots_past_count() {
+    fn pinned_account_borsh_round_trip() {
+        let pa = PinnedAccount {
+            index: 3,
+            pubkey: Pubkey::new_unique(),
+        };
+        let bytes = pa.try_to_vec().unwrap();
+        let restored: PinnedAccount = PinnedAccount::try_from_slice(&bytes).unwrap();
+        assert_eq!(restored, pa);
+    }
+
+    #[test]
+    fn has_duplicate_indices_detects_pair() {
         let mut ic = InstructionConstraint::default();
-        ic.program_id = Pubkey::new_unique();
+        ic.num_pinned_accounts = 2;
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 1,
+            pubkey: Pubkey::new_unique(),
+        };
+        ic.pinned_accounts[1] = PinnedAccount {
+            index: 1,
+            pubkey: Pubkey::new_unique(),
+        };
+        assert!(ic.has_duplicate_indices());
+    }
+
+    #[test]
+    fn has_duplicate_indices_false_distinct() {
+        let mut ic = InstructionConstraint::default();
+        ic.num_pinned_accounts = 3;
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: Pubkey::new_unique(),
+        };
+        ic.pinned_accounts[1] = PinnedAccount {
+            index: 2,
+            pubkey: Pubkey::new_unique(),
+        };
+        ic.pinned_accounts[2] = PinnedAccount {
+            index: 5,
+            pubkey: Pubkey::new_unique(),
+        };
+        assert!(!ic.has_duplicate_indices());
+    }
+
+    #[test]
+    fn pins_match_correct_position() {
+        let mut ic = InstructionConstraint::default();
+        ic.num_pinned_accounts = 2;
+        let pk0 = Pubkey::new_unique();
+        let pk1 = Pubkey::new_unique();
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: pk0,
+        };
+        ic.pinned_accounts[1] = PinnedAccount {
+            index: 3,
+            pubkey: pk1,
+        };
+        let keys = vec![pk0, Pubkey::new_unique(), Pubkey::new_unique(), pk1];
+        assert!(ic.pins_match(&keys, 0));
+    }
+
+    #[test]
+    fn pins_match_rejects_wrong_position() {
+        let mut ic = InstructionConstraint::default();
         ic.num_pinned_accounts = 1;
-        ic.pinned_accounts[0] = Pubkey::default();
-        ic.pinned_accounts[1] = Pubkey::new_unique(); // past count
-        assert!(!ic.has_effective_pins());
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 2,
+            pubkey: Pubkey::new_unique(),
+        };
+        let keys = vec![Pubkey::new_unique(), Pubkey::new_unique()];
+        assert!(!ic.pins_match(&keys, 0)); // index 2 OOB
     }
 
     // ── ValidationSpec ─────────────────────────────────────────────────
@@ -334,12 +448,12 @@ mod tests {
 
     #[test]
     fn instruction_constraint_size() {
-        assert_eq!(InstructionConstraint::SIZE, 202);
+        assert_eq!(InstructionConstraint::SIZE, 206);
     }
 
     #[test]
     fn forward_config_size() {
-        assert_eq!(ForwardConfig::SIZE, 267);
+        assert_eq!(ForwardConfig::SIZE, 271);
     }
 
     #[test]
@@ -365,7 +479,10 @@ mod tests {
                 expected: [0u8; 8],
             };
             ic.num_pinned_accounts = 1;
-            ic.pinned_accounts[0] = Pubkey::new_unique();
+            ic.pinned_accounts[0] = PinnedAccount {
+                index: 0,
+                pubkey: Pubkey::new_unique(),
+            };
         }
         ForwardConfig {
             instruction_constraint: ic,
@@ -448,8 +565,14 @@ mod tests {
             expected: [1, 2, 3, 4, 0, 0, 0, 0],
         };
         ic.num_pinned_accounts = 3;
-        ic.pinned_accounts[0] = Pubkey::new_unique();
-        ic.pinned_accounts[1] = Pubkey::new_unique();
+        ic.pinned_accounts[0] = PinnedAccount {
+            index: 0,
+            pubkey: Pubkey::new_unique(),
+        };
+        ic.pinned_accounts[1] = PinnedAccount {
+            index: 1,
+            pubkey: Pubkey::new_unique(),
+        };
 
         let bytes = ic.try_to_vec().unwrap();
         let restored: InstructionConstraint =
