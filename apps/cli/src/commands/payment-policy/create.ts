@@ -7,7 +7,7 @@ import {parsePublicKey} from '../../lib/utils.js'
 
 type Variant = 'milestone' | 'pay-as-you-go' | 'subscription'
 
-export default class PolicyCreate extends BaseCommand {
+export default class PaymentPolicyCreate extends BaseCommand {
   static description = 'Create a payment policy (subscription / milestone / pay-as-you-go)'
   static examples = [
     '<%= config.bin %> <%= command.id %> --variant subscription -m <MINT> -r <RECIPIENT> -g <GATEWAY> -a 1000000',
@@ -21,7 +21,9 @@ export default class PolicyCreate extends BaseCommand {
     // milestone
     amounts: Flags.string({description: '[milestone] Comma-separated milestone amounts (up to 4)'}),
     'auto-renew': Flags.boolean({allowNo: true, default: true, description: '[subscription] Auto-renew'}),
-    'expiry': Flags.string({description: '[pay-as-you-go] Optional overall expiry (unix seconds); execution rejected after this time'}),
+    expiry: Flags.string({
+      description: '[pay-as-you-go] Optional overall expiry (unix seconds); execution rejected after this time',
+    }),
     frequency: Flags.string({
       char: 'f',
       default: 'monthly',
@@ -51,7 +53,7 @@ export default class PolicyCreate extends BaseCommand {
   }
 
   public async run(): Promise<void> {
-    const {flags} = await this.parse(PolicyCreate)
+    const {flags} = await this.parse(PaymentPolicyCreate)
     const tokenMint = parsePublicKey(flags['token-mint'])
     if (!tokenMint) this.error('Invalid token mint address')
     const recipient = parsePublicKey(flags.recipient)
@@ -127,7 +129,7 @@ export default class PolicyCreate extends BaseCommand {
 
     this.output({
       ...summary,
-      command: 'policy create',
+      command: 'payment-policy create',
       gateway: gateway.toString(),
       recipient: recipient.toString(),
       success: true,

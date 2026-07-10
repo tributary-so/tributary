@@ -105,7 +105,7 @@ function disabledForward(inputMint: PublicKey, outputMint: PublicKey): ForwardCo
   }
 }
 
-export default class ComposableCreate extends BaseCommand {
+export default class ComposablePolicyCreate extends BaseCommand {
   static description = 'Create a composable pull-payment policy (validation + optional forward hooks; ADR-0007/0009)'
   static examples = [
     '<%= config.bin %> <%= command.id %> --variant pay-as-you-go -m <MINT> -r <RECIPIENT> -g <GATEWAY> --max-per-period 100000000 --max-chunk 50000000 --period-seconds 2592000',
@@ -115,7 +115,9 @@ export default class ComposableCreate extends BaseCommand {
     ...BaseCommand.baseFlags,
     // subscription
     amount: Flags.string({char: 'a', description: '[subscription] Amount in smallest token unit'}),
-    expiry: Flags.string({description: '[pay-as-you-go] Optional overall expiry (unix seconds); execution rejected after this time'}),
+    expiry: Flags.string({
+      description: '[pay-as-you-go] Optional overall expiry (unix seconds); execution rejected after this time',
+    }),
     // forward
     forward: Flags.string({
       description: 'Forward program public key (enables the swap hook). Omit to disable (same-mint topup sentinel).',
@@ -161,7 +163,7 @@ export default class ComposableCreate extends BaseCommand {
   }
 
   public async run(): Promise<void> {
-    const {flags} = await this.parse(ComposableCreate)
+    const {flags} = await this.parse(ComposablePolicyCreate)
     const tokenMint = parsePublicKey(flags['token-mint'])
     if (!tokenMint) this.error('Invalid token mint')
     const recipient = parsePublicKey(flags.recipient)
@@ -266,7 +268,7 @@ export default class ComposableCreate extends BaseCommand {
     const signature = await this.send(instruction)
 
     this.output({
-      command: 'composable create',
+      command: 'composable-policy create',
       forward: Boolean(flags.forward),
       recipient: recipient.toString(),
       success: true,
