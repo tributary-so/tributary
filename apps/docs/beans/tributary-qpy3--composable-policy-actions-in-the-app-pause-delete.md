@@ -1,11 +1,11 @@
 ---
 # tributary-qpy3
 title: Composable policy actions in the app — pause + delete parity
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-10T10:11:50Z
-updated_at: 2026-07-10T10:47:58Z
+updated_at: 2026-07-10T13:55:20Z
 ---
 
 Follow-up to tributary-h9ub (read-only composable visibility). The ComposableDetailPanel in apps/app/src/components/account/account-page.tsx is currently read-only — no action buttons. Add pause/resume (toggle status) and delete buttons, mirroring the regular PaymentPolicy panels (Subscription/Milestone/PayAsYouGo/OneTime/UpTo).
