@@ -14,6 +14,7 @@ open QEDGen.Solana
 def bps_mul (amount : Nat) (bps : Nat) : Nat := (((amount) * (bps)) / (10000))
 
 abbrev BPS_DENOMINATOR : Nat := 10000
+abbrev MAX_PINNED_FORWARD_ACCOUNTS : Nat := 4
 
 structure State where
   policy_status : Nat

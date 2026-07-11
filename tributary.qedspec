@@ -94,8 +94,35 @@ type Error
   | InsufficientDelegatedAmount
   | PolicyPaused
   | CombinedFeeBpsExceedsMax
+  | DuplicatePinIndex
+  | PinDefaultPubkey
+  | MissingForwardAccounts
+  | ByteRangeCheckFailed
 
 const BPS_DENOMINATOR = 10000
+const MAX_PINNED_FORWARD_ACCOUNTS = 4
+
+// ── Forward-CPI constraint types (ADR-0016 amended, bean tributary-je1p) ──
+// Indexed forward-account pin: constrains
+// remaining_accounts[forward_start + index] == pubkey. Replaces the old
+// positional [Pubkey; 4] model — pins are no longer tied 1:1 to array
+// position. Mirrors programs/tributary/src/state/composable_policy.rs.
+type PinnedAccount = {
+  index   : U8,
+  pubkey  : Pubkey,
+}
+
+// Unified forward-program constraint: pins the instruction selector
+// (ByteRangeCheck[]) AND the indexed forward-accounts (pinned_accounts[]).
+// program_id == Pubkey::default() is the "forward disabled" sentinel.
+// Only the first num_pinned_accounts entries of pinned_accounts are active;
+// the rest are zero-padded (PinnedAccount { index: 0, pubkey: default }).
+type InstructionConstraint = {
+  program_id           : Pubkey,
+  num_data_checks      : U8,
+  num_pinned_accounts  : U8,
+  pinned_accounts      : Map[MAX_PINNED_FORWARD_ACCOUNTS] PinnedAccount,
+}
 
 // bps_mul(amount, bps) = amount * bps / 10000  (floor; matches shared::fees::bps_mul)
 ref_impl bps_mul (amount : U64) (bps : U16) : U64 =
@@ -269,6 +296,30 @@ handler execute_composable (face : U64) (current_time : U64) : State -> State {
     // Any accepted face whose gross pull would breach the per-period cap
     // is rejected (caps bind on gross — ADR-0026).
     | _ => abort InsufficientDelegatedAmount
+
+  // ── Phase 3 pin-check guarantee (bean tributary-qpi6) ──────────────
+  // ENSURES (documentation — flat State model can't carry InstructionConstraint
+  // fields, so this is kept as a named documentation invariant matching the
+  // pattern for all forward-CPI account-wiring guarantees; see bean note).
+  //
+  // For each active pin (i < constraint.num_pinned_accounts), if the resolved
+  // index fwd_base + pin.index is in bounds of the remaining_mid account slice,
+  // then the account at that position MUST equal pin.pubkey. This is the
+  // on-chain pin-check loop in execute_composable.rs:1256-1271 (Phase 3).
+  //
+  //   pin_check_guarantee :
+  //     forall i, i < constraint.num_pinned_accounts
+  //       implies fwd_base + constraint.pinned_accounts[i].index < remaining_mid.len()
+  //       implies remaining_mid[fwd_base + constraint.pinned_accounts[i].index].key()
+  //            == constraint.pinned_accounts[i].pubkey
+  //
+  // fwd_base (forward_accounts_start) is the offset into remaining_accounts
+  // where forward-program accounts begin. The guarantee holds AFTER a
+  // successful transition — the loop runs during Phase 3 and aborts
+  // (MissingForwardAccounts / ByteRangeCheckFailed) on violation, so any
+  // non-aborting transition satisfies it trivially. Enforced on-chain +
+  // integration-tested; the flat State model deliberately excludes forward-CPI
+  // account wiring (see spec header §OUT OF SCOPE).
 }
 
 // ── transfer (standalone, ADR-0004) ─────────────────────────────────
@@ -442,6 +493,45 @@ invariant fee_share_sum_bounded :
 // the code uses an else-if chain (first-set-wins), so at most one bit fires.
 invariant milestone_signer_bits_mutually_exclusive :
   (state.release_requires_gateway + state.release_requires_owner + state.release_requires_recipient) <= 1
+
+// ── Forward-CPI pin invariants (bean tributary-qpi6) ──────────────────
+// These are CONSTRAINT-LEVEL invariants over an InstructionConstraint value,
+// not over the flat State. They are enforced at create_composable_policy
+// time (programs/tributary/src/instructions/composable/create_composable_policy.rs)
+// and relied upon by execute_composable Phase 3. The quantifier form uses
+// Fin[MAX_PINNED_FORWARD_ACCOUNTS] for bounded enumeration.
+//
+// no_duplicate_indices: no two active pins share the same forward-account
+// index. Duplicates are nonsensical (two different pubkeys can never both
+// match the same remaining_account position) and rejected at create.
+// no_duplicate_indices: no two active pins share the same forward-account
+// index. Duplicates are nonsensical (two different pubkeys can never both
+// match the same remaining_account position) and rejected at create.
+//
+// The qedgen DSL cannot express a quantified invariant over a non-State type
+// (InstructionConstraint is a standalone type, not embedded in the flat State).
+// Documented here as the canonical obligation; the proof obligation lives in
+// the hand-rolled Kani/proptest layer (programs/tributary/tests/) against the
+// real Rust validators: InstructionConstraint::has_duplicate_indices().
+//
+//   invariant no_duplicate_indices :
+//     forall i j : Fin[MAX_PINNED_FORWARD_ACCOUNTS],
+//       i < num_pinned_accounts and j < num_pinned_accounts and i != j
+//       implies pinned_accounts[i].index != pinned_accounts[j].index
+
+// all_pins_concrete: every active pin has a non-default (non-sentinel)
+// pubkey. Pubkey::default() is reserved for the "forward disabled" sentinel
+// on InstructionConstraint.program_id — a pin pubkey of default() would
+// constrain an account to the zero address, which is never intended.
+//
+// Same DSL limitation as no_duplicate_indices — documented as the canonical
+// obligation; enforced at create_composable_policy and verified against the
+// real Rust code in the hand-rolled proof layer.
+//
+//   invariant all_pins_concrete :
+//     forall i : Fin[MAX_PINNED_FORWARD_ACCOUNTS],
+//       i < num_pinned_accounts
+//       implies pinned_accounts[i].pubkey != Pubkey::default()
 
 // Documentation-only invariants (kept as comments, not `invariant` blocks,
 // to avoid vacuous `theorem : True := trivial` codegen). These are real
