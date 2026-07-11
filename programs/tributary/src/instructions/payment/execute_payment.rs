@@ -34,7 +34,7 @@ pub struct ExecutePayment<'info> {
 
     #[account(
         mut,
-        seeds = [PAYMENT_POLICY_SEED, payment_policy.user_payment.as_ref(), payment_policy.policy_id.to_le_bytes().as_ref()],
+        seeds = [PAYMENT_POLICY_SEED, user_payment.key().as_ref(), payment_policy.policy_id.to_le_bytes().as_ref()],
         bump = payment_policy.bump,
         constraint = payment_policy.status == PolicyStatus::Active @ crate::error::TributaryError::PolicyPaused,
     )]

@@ -1895,8 +1895,7 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "payment_policy.user_payment",
-                "account": "paymentPolicy"
+                "path": "userPayment"
               },
               {
                 "kind": "account",

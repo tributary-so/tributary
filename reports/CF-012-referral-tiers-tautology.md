@@ -1,0 +1,35 @@
+# CF-012: `validate_referral_tiers` Always Fires — `is_empty` Tautology on `[u16; 3]`
+
+> **Severity:** 🔵 3 (LOW)  
+> **Category:** Logic  
+> **File:** `programs/tributary/src/instructions/gateway/update_gateway_referral_settings.rs:72–74`  
+> **Commit:** `4506a59b1cb33f70a5a83e899af14995361606e6`
+
+---
+
+## Description
+
+```rust
+if !gateway.referral_tiers_bps.is_empty() {
+    gateway.validate_referral_tiers()?;
+}
+```
+
+`referral_tiers_bps` is `[u16; 3]` — a fixed-size array. `[u16; 3].is_empty()` is **always false** (compile-time length is 3). Therefore `validate_referral_tiers()` is **always called**.
+
+At gateway creation, tiers are zero-initialized `[0, 0, 0]`. `validate_referral_tiers()` requires `sum == 10000`. So `[0, 0, 0]` always fails.
+
+## Impact
+
+A gateway authority cannot update `referral_allocation_bps` alone without also providing valid tiers summing to 10000. A gateway that has never configured referral tiers (still `[0, 0, 0]`) cannot update any referral setting without first setting valid tiers — even if the update is to disable referral.
+
+## Patch
+
+```diff
+-if !gateway.referral_tiers_bps.is_empty() {
++if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
+     gateway.validate_referral_tiers()?;
+ }
+```
+
+Only validate tiers when referral is actually active and has a non-zero allocation.
