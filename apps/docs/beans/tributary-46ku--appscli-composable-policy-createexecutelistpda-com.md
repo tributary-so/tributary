@@ -1,11 +1,11 @@
 ---
 # tributary-46ku
 title: 'apps/cli: composable-policy create/execute/list/pda commands'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-10T10:19:42Z
-updated_at: 2026-07-10T20:08:17Z
+updated_at: 2026-07-11T16:08:29Z
 parent: tributary-u3gi
 blocked_by:
     - tributary-fln0
@@ -67,3 +67,14 @@ Reads `ValidationPda.pinnedAccounts` — positional, **DO NOT CHANGE**.
 - [ ] `cd apps/cli && pnpm run build` passes
 - [ ] `cd apps/cli && pnpm run lint` passes
 - [ ] `pnpm run manager -- composable-policy create --help` still works
+
+## Summary of Changes
+
+Updated `apps/cli/src/commands/composable-policy/create.ts` to use the indexed `PinnedAccount { index, pubkey }` shape for forward InstructionConstraint.pinnedAccounts:
+
+- **disabledForward()**: changed 4 positional `PublicKey.default` entries to `{ index: 0, pubkey: PublicKey.default }`.
+- **Forward-enabled branch**: changed the dummy pin from `PublicKey.unique()` to `{ index: 0, pubkey: PublicKey.unique() }`.
+
+ValidationPda pinnedAccounts (positional, Lighthouse targets) left untouched per bean spec. Execute, list, and validation-pda commands needed no changes.
+
+Verification: build, lint, and `--help` all pass.
