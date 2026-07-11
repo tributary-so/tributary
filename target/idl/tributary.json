@@ -1889,8 +1889,7 @@
               },
               {
                 "kind": "account",
-                "path": "payment_policy.user_payment",
-                "account": "PaymentPolicy"
+                "path": "user_payment"
               },
               {
                 "kind": "account",
