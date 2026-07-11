@@ -1,11 +1,11 @@
 ---
 # tributary-ukeg
 title: Amend ADR-0021 + update AGENTS.md + SKILL-composables for indexed pins
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-10T10:21:58Z
-updated_at: 2026-07-10T20:09:35Z
+updated_at: 2026-07-10T20:31:31Z
 parent: tributary-btqv
 ---
 
@@ -100,3 +100,12 @@ All active pins must have concrete pubkeys. No duplicate indices.
 - [ ] `make build` passes (docs build with mkdocs)
 - [ ] No broken internal links
 - [ ] Code blocks are valid Rust syntax
+
+## Summary of Changes
+
+- **ADR-0021** (): Appended 'Amendment (2026-07-10): Indexed Pinned Accounts' section documenting the positional→indexed migration, PinnedAccount struct, and design decisions.
+- **AGENTS.md**: Updated InstructionConstraint code block ( → ), removed obsolete positional comment, added PinnedAccount explanation paragraph.
+- **SKILL-composables.md**: Updated InstructionConstraint interface + added PinnedAccount interface, updated slot-derivation section to use indexed mapping, added note that ValidationPda stays positional while InstructionConstraint is indexed.
+- Docs build passes (make: Entering directory '/home/xeroc/.herdr/worktrees/tributary/lanes-tributary-wl4s-tributary-btqv/apps/docs'
+mkdocs build
+make: Leaving directory '/home/xeroc/.herdr/worktrees/tributary/lanes-tributary-wl4s-tributary-btqv/apps/docs').

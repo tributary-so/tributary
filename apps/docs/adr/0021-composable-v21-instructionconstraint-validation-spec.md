@@ -60,3 +60,30 @@ for a non-trusted scheduler. The degenerate-pin guard rejects an
 InstructionConstraint with zero effective pins when forward is enabled.
 
 (bean tributary-zvku)
+
+## Amendment (2026-07-10): Indexed Pinned Accounts
+
+The original positional `pinned_accounts: [Pubkey; 4]` mapped slot `i`
+to `remaining_accounts[fwd_base + i]`. This constrained only a contiguous
+prefix of the forward-account slice. Forward programs (DLMM, Drift) dictate
+fixed account grammars that Tributary cannot reshape — if the account that
+must be pinned sits at a non-contiguous or high index, positional pins
+cannot express it. An attacker substituting a different pubkey at that
+position is an unconstrained drain vector.
+
+Replaced with indexed pins:
+
+```rust
+struct PinnedAccount {
+    index: u8,      // position within the forward-account slice
+    pubkey: Pubkey, // must match remaining_mid[fwd_base + index]
+}
+```
+
+Design decisions:
+
+- All active pins must have concrete pubkeys (no default-pubkey wildcards).
+- No duplicate indices among active pins (create-time validation).
+- `has_effective_pins()` simplifies to `num_pinned_accounts > 0`.
+- ValidationPda.pinned_accounts stays positional — the owner controls
+  Lighthouse assertion ordering, so positions 0 and 1 are always sufficient.
