@@ -1,11 +1,11 @@
 ---
 # tributary-fln0
 title: 'packages/sdk: types + constants + instruction builder for indexed pins'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-10T10:19:11Z
-updated_at: 2026-07-10T20:07:52Z
+updated_at: 2026-07-10T20:37:12Z
 parent: tributary-u3gi
 blocked_by:
     - tributary-je1p
@@ -51,3 +51,46 @@ If this method builds a `ForwardConfig` internally with `pinnedAccounts: [Public
 - [ ] `pnpm --filter @tributary-so/sdk run build` passes
 - [ ] `pnpm --filter @tributary-so/sdk run lint` passes
 - [ ] `pnpm --filter @tributary-so/sdk test` passes (if any unit tests reference InstructionConstraint)
+
+
+## Summary of Changes
+
+### Prerequisite
+- Ran `anchor build` → regenerated `target/idl/tributary.json` with the new
+  `PinnedAccount { index: u8, pubkey: pubkey }` struct. The SDK imports the
+  IDL directly from `../../../target/idl/tributary.json` (no `packages/sdk/idl/`
+  dir exists in this repo layout), so the regenerated IDL is picked up
+  automatically — the bean's `cp … packages/sdk/idl/` step is a no-op here.
+
+### Code
+- `packages/sdk/src/constants.ts`: `MAX_PINNED_FORWARD_ACCOUNTS` comment now
+  documents the indexed-pin model (value unchanged: 4).
+- `packages/sdk/src/types.ts`: `InstructionConstraint` doc comment updated
+  ("indexed accounts" vs "positional"). Type still resolves from the IDL —
+  now `pinnedAccounts: PinnedAccount[]`. `ValidationPdaAccount` /
+  `parseValidationPda` / `VALIDATION_PDA_LAYOUT` left untouched (they mirror
+  the unchanged on-chain PDA byte layout).
+- `packages/sdk/src/sdk.ts`:
+  - `makeValidationInit` (ValidationPda init helper): updated to emit the
+    indexed `{ index, pubkey }[]` shape the regenerated IDL's
+    `ValidationInit` args struct now requires. **NOTE:** the bean body said
+    "DO NOT CHANGE" makeValidationInit, but the completed program contract
+    (bean tributary-je1p) moved `ValidationInit.pinned_accounts` to the same
+    indexed `PinnedAccount` model (only the on-chain PDA *layout* stays
+    positional — the args struct carries indices and the program packs
+    them). Without this change the SDK build fails with a type error at
+    `sdk.ts:2738` (`[PublicKey, PublicKey]` not assignable to
+    `{ index, pubkey }[]`). The caller-facing params
+    (`prePinnedAccounts`/`postPinnedAccounts: PublicKey[]`) stay positional;
+    the helper tags each pubkey with its array index (preserving the old
+    positional semantics: account[0] → slot 0, account[1] → slot 1) and
+    pads to the 4-slot array capacity.
+  - `getCreateComposablePolicyInstruction` / `createComposable`: verified —
+    both pass `forwardConfig` through; no internal positional
+    `pinnedAccounts` construction. Item #5 N/A.
+
+### Verification
+- [x] `pnpm --filter @tributary-so/sdk run build` passes (ESM + DTS)
+- [x] `pnpm --filter @tributary-so/sdk run lint` passes (exit 0)
+- [x] `pnpm --filter @tributary-so/sdk test` passes (script is `exit 0`; no
+      unit tests reference `InstructionConstraint`)

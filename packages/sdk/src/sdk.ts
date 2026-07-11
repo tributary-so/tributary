@@ -42,7 +42,7 @@ import type {
   ValidationSpec,
   PolicyStatus,
 } from "./types.js";
-import { GATEWAY_FEATURES } from "./constants";
+import { GATEWAY_FEATURES, MAX_PINNED_FORWARD_ACCOUNTS } from "./constants";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -93,20 +93,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-          publicKey: wallet.publicKey,
-          signTransaction: <T>(tx: T) => {
-            (tx as any).sign(wallet);
-            return Promise.resolve(tx);
-          },
-          signAllTransactions: <T>(txs: T[]) => {
-            return Promise.resolve(
-              txs.map((tx) => {
-                (tx as any).sign(wallet);
-                return tx;
-              })
-            );
-          },
-        }
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                })
+              );
+            },
+          }
         : wallet;
 
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
@@ -127,20 +127,20 @@ export class Tributary {
     const thisWallet =
       wallet instanceof Keypair
         ? {
-          publicKey: wallet.publicKey,
-          signTransaction: <T>(tx: T) => {
-            (tx as any).sign(wallet);
-            return Promise.resolve(tx);
-          },
-          signAllTransactions: <T>(txs: T[]) => {
-            return Promise.resolve(
-              txs.map((tx) => {
-                (tx as any).sign(wallet);
-                return tx;
-              })
-            );
-          },
-        }
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                })
+              );
+            },
+          }
         : wallet;
     this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
       preflightCommitment: "confirmed",
@@ -3017,8 +3017,8 @@ export class Tributary {
     const deliverMint = isActMode
       ? inputMint
       : isDeliverTransform
-        ? policy.forwardConfig.outputMint
-        : inputMint;
+      ? policy.forwardConfig.outputMint
+      : inputMint;
     instructions.push(
       ...(await this.ensureAta(policy.recipient, deliverMint, authority))
     );
@@ -3686,10 +3686,10 @@ export class Tributary {
     tokenMint: PublicKey
   ): Promise<
     | {
-      pubkey: PublicKey;
-      isWritable: boolean;
-      isSigner: boolean;
-    }[]
+        pubkey: PublicKey;
+        isWritable: boolean;
+        isSigner: boolean;
+      }[]
     | null
   > {
     const userReferral = await this.getReferralAccountAddressByOwner(
@@ -3706,9 +3706,9 @@ export class Tributary {
       isWritable: boolean;
       isSigner: boolean;
     }[] = [
-        // payer_referral — read-only on-chain (we never pay the payer).
-        { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
-      ];
+      // payer_referral — read-only on-chain (we never pay the payer).
+      { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
+    ];
 
     // If the payer has no referrer, nothing else to add.
     if (
@@ -3958,15 +3958,22 @@ function makeValidationInit(
   data: Buffer
 ): {
   numPinnedAccounts: number;
-  pinnedAccounts: [PublicKey, PublicKey];
+  pinnedAccounts: { index: number; pubkey: PublicKey }[];
   validationData: Buffer;
 } {
+  // Indexed-pin model (bean tributary-fln0): the caller supplies positional
+  // Lighthouse target pubkeys; we tag each with its array index so the
+  // on-chain handler packs them into the (unchanged) positional ValidationPda
+  // layout. Indices < MAX_PINNED_ACCOUNTS, distinct — preserved here.
+  const pins: { index: number; pubkey: PublicKey }[] = pinnedAccounts.map(
+    (pubkey, index) => ({ index, pubkey })
+  );
+  while (pins.length < MAX_PINNED_FORWARD_ACCOUNTS) {
+    pins.push({ index: 0, pubkey: PublicKey.default });
+  }
   return {
     numPinnedAccounts: pinnedAccounts.length,
-    pinnedAccounts: [
-      pinnedAccounts[0] ?? PublicKey.default,
-      pinnedAccounts[1] ?? PublicKey.default,
-    ],
+    pinnedAccounts: pins,
     validationData: data,
   };
 }

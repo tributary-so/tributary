@@ -5,10 +5,10 @@ import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
 export type IWallet = {
   publicKey: PublicKey;
   signTransaction<T extends Transaction | VersionedTransaction>(
-    tx: T
+    tx: T,
   ): Promise<T>;
   signAllTransactions<T extends Transaction | VersionedTransaction>(
-    txs: T[]
+    txs: T[],
   ): Promise<T[]>;
 };
 
@@ -134,7 +134,8 @@ export type ForwardConfig = IdlTypes<Tributary>["forwardConfig"];
 
 /**
  * Instruction constraint for composable policies.
- * Pins the forward program, its instruction selector, and positional accounts.
+ * Pins the forward program, its instruction selector, and indexed accounts
+ * (`PinnedAccount { index, pubkey }`).
  */
 export type InstructionConstraint =
   IdlTypes<Tributary>["instructionConstraint"];
@@ -208,7 +209,7 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
   const pinnedAccounts: PublicKey[] = [];
   for (let i = 0; i < numPinnedAccounts; i++) {
     pinnedAccounts.push(
-      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32))
+      new PublicKey(data.subarray(10 + i * 32, 10 + (i + 1) * 32)),
     );
   }
   const dataLen = data.readUInt16LE(VALIDATION_PDA_LAYOUT.HEADER - 2);
@@ -219,7 +220,7 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
     dataLen,
     data: data.subarray(
       VALIDATION_PDA_LAYOUT.HEADER,
-      VALIDATION_PDA_LAYOUT.HEADER + dataLen
+      VALIDATION_PDA_LAYOUT.HEADER + dataLen,
     ),
   };
 }

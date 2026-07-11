@@ -63,7 +63,9 @@ export const SEEDS = {
 } as const;
 
 /**
- * Capacity of the forward-account pin set on InstructionConstraint
- * (bean tributary-q82g). Covers a Meteora DLMM route.
+ * Capacity of the indexed forward-account pin set on InstructionConstraint
+ * (bean tributary-q82g). Covers a Meteora DLMM route. Pins are now indexed
+ * `PinnedAccount { index, pubkey }` rather than positional `[Pubkey; 4]`
+ * (bean tributary-fln0).
  */
-export const MAX_PINNED_FORWARD_ACCOUNTS = 4;
+export const MAX_PINNED_FORWARD_ACCOUNTS = 4; // indexed pins, not positional
