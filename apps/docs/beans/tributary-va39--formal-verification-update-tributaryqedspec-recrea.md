@@ -1,11 +1,11 @@
 ---
 # tributary-va39
 title: 'Formal verification: update tributary.qedspec + recreate formal_verification'
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-07-10T10:22:06Z
-updated_at: 2026-07-10T10:22:19Z
+updated_at: 2026-07-12T18:24:14Z
 parent: tributary-wl4s
 blocked_by:
     - tributary-d9rv
