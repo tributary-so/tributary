@@ -19,6 +19,21 @@
 // ============================================================================
 
 const BPS_DENOMINATOR: u16 = 10000;
+const MAX_PINNED_FORWARD_ACCOUNTS: u8 = 4;
+
+#[derive(Clone, Copy, kani::Arbitrary)]
+struct PinnedAccount {
+    index: u8,
+    pubkey: [u8; 32],
+}
+
+#[derive(Clone, Copy, kani::Arbitrary)]
+struct InstructionConstraint {
+    program_id: [u8; 32],
+    num_data_checks: u8,
+    num_pinned_accounts: u8,
+    pinned_accounts: [PinnedAccount; 4],
+}
 
 #[derive(Clone, Copy)]
 struct State {
@@ -1595,8 +1610,8 @@ fn verify_release_milestone_preserves_period_cap_fixed() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1652,8 +1667,8 @@ fn verify_execute_payment_case_0_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1710,8 +1725,8 @@ fn verify_execute_payment_case_1_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1767,8 +1782,8 @@ fn verify_execute_payment_otherwise_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1824,8 +1839,8 @@ fn verify_execute_composable_case_0_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1882,8 +1897,8 @@ fn verify_execute_composable_case_1_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1939,8 +1954,8 @@ fn verify_execute_composable_otherwise_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -1995,8 +2010,8 @@ fn verify_transfer_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2052,8 +2067,8 @@ fn verify_release_milestone_preserves_fee_conservation() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2109,8 +2124,8 @@ fn verify_execute_payment_case_0_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2167,8 +2182,8 @@ fn verify_execute_payment_case_1_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2224,8 +2239,8 @@ fn verify_execute_payment_otherwise_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2281,8 +2296,8 @@ fn verify_execute_composable_case_0_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2339,8 +2354,8 @@ fn verify_execute_composable_case_1_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2396,8 +2411,8 @@ fn verify_execute_composable_otherwise_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2453,8 +2468,8 @@ fn verify_release_milestone_preserves_fee_is_bps_decomposition() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2510,8 +2525,8 @@ fn verify_execute_payment_case_0_preserves_recipient_net_of_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2568,8 +2583,8 @@ fn verify_execute_payment_case_1_preserves_recipient_net_of_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2625,8 +2640,8 @@ fn verify_execute_payment_otherwise_preserves_recipient_net_of_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2682,8 +2697,8 @@ fn verify_execute_composable_case_0_preserves_recipient_net_of_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2740,8 +2755,8 @@ fn verify_execute_composable_case_1_preserves_recipient_net_of_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -2797,8 +2812,8 @@ fn verify_execute_composable_otherwise_preserves_recipient_net_of_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3198,8 +3213,8 @@ fn verify_execute_composable_otherwise_preserves_pull_bounded() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3255,8 +3270,8 @@ fn verify_execute_payment_case_0_preserves_residual_nonnegative() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3313,8 +3328,8 @@ fn verify_execute_payment_case_1_preserves_residual_nonnegative() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3370,8 +3385,8 @@ fn verify_execute_payment_otherwise_preserves_residual_nonnegative() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3427,8 +3442,8 @@ fn verify_execute_composable_case_0_preserves_residual_nonnegative() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3485,8 +3500,8 @@ fn verify_execute_composable_case_1_preserves_residual_nonnegative() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -3542,8 +3557,8 @@ fn verify_execute_composable_otherwise_preserves_residual_nonnegative() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5428,8 +5443,8 @@ fn verify_create_payment_policy_effect_payment_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5515,8 +5530,8 @@ fn verify_create_payment_policy_effect_total_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5602,8 +5617,8 @@ fn verify_create_payment_policy_effect_protocol_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5689,8 +5704,8 @@ fn verify_create_payment_policy_effect_scheduler_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5776,8 +5791,8 @@ fn verify_create_payment_policy_effect_referral_pool() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5863,8 +5878,8 @@ fn verify_create_payment_policy_effect_gateway_residual() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -5950,8 +5965,8 @@ fn verify_create_payment_policy_effect_recipient_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6397,8 +6412,8 @@ fn verify_execute_payment_case_0_effect_payment_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6487,8 +6502,8 @@ fn verify_execute_payment_case_0_effect_total_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6577,8 +6592,8 @@ fn verify_execute_payment_case_0_effect_protocol_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6667,8 +6682,8 @@ fn verify_execute_payment_case_0_effect_scheduler_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6757,8 +6772,8 @@ fn verify_execute_payment_case_0_effect_referral_pool() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6847,8 +6862,8 @@ fn verify_execute_payment_case_0_effect_gateway_residual() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -6937,8 +6952,8 @@ fn verify_execute_payment_case_0_effect_recipient_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7304,8 +7319,8 @@ fn verify_execute_payment_case_1_effect_payment_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7396,8 +7411,8 @@ fn verify_execute_payment_case_1_effect_total_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7488,8 +7503,8 @@ fn verify_execute_payment_case_1_effect_protocol_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7580,8 +7595,8 @@ fn verify_execute_payment_case_1_effect_scheduler_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7672,8 +7687,8 @@ fn verify_execute_payment_case_1_effect_referral_pool() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7764,8 +7779,8 @@ fn verify_execute_payment_case_1_effect_gateway_residual() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -7856,8 +7871,8 @@ fn verify_execute_payment_case_1_effect_recipient_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8308,8 +8323,8 @@ fn verify_execute_composable_case_0_effect_payment_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8398,8 +8413,8 @@ fn verify_execute_composable_case_0_effect_total_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8488,8 +8503,8 @@ fn verify_execute_composable_case_0_effect_protocol_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8578,8 +8593,8 @@ fn verify_execute_composable_case_0_effect_scheduler_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8668,8 +8683,8 @@ fn verify_execute_composable_case_0_effect_referral_pool() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8758,8 +8773,8 @@ fn verify_execute_composable_case_0_effect_gateway_residual() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -8848,8 +8863,8 @@ fn verify_execute_composable_case_0_effect_recipient_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9215,8 +9230,8 @@ fn verify_execute_composable_case_1_effect_payment_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9307,8 +9322,8 @@ fn verify_execute_composable_case_1_effect_total_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9399,8 +9414,8 @@ fn verify_execute_composable_case_1_effect_protocol_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9491,8 +9506,8 @@ fn verify_execute_composable_case_1_effect_scheduler_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9583,8 +9598,8 @@ fn verify_execute_composable_case_1_effect_referral_pool() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9675,8 +9690,8 @@ fn verify_execute_composable_case_1_effect_gateway_residual() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -9767,8 +9782,8 @@ fn verify_execute_composable_case_1_effect_recipient_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10049,8 +10064,8 @@ fn verify_release_milestone_effect_pulled_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10142,8 +10157,8 @@ fn verify_release_milestone_effect_total_fee() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10235,8 +10250,8 @@ fn verify_release_milestone_effect_protocol_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10328,8 +10343,8 @@ fn verify_release_milestone_effect_scheduler_cut() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10421,8 +10436,8 @@ fn verify_release_milestone_effect_referral_pool() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10514,8 +10529,8 @@ fn verify_release_milestone_effect_gateway_residual() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
@@ -10607,8 +10622,8 @@ fn verify_release_milestone_effect_recipient_amount() {
     }
 }
 
-// TODO: disabled — u128 bps_mul SAT encoding never terminates
-//       in CBMC propositional reduction. See fix-kani.py.
+// DISABLED — transitively invokes bps_mul (u128×u128),
+//           CBMC SAT encoding never terminates. See fix-kani.py.
 // #[kani::proof]
 // #[kani::unwind(2)]
 // #[kani::solver(cadical)]
