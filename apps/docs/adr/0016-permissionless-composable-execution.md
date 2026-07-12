@@ -231,7 +231,7 @@ pub struct ValidationPda {
     pub num_pinned_accounts: u8,        // arity ∈ {0,1,2}
     pub pinned_accounts: [Pubkey; 2],   // owner-declared Lighthouse targets
     pub data_len: u16,
-    pub data: [u8; MAX_VALIDATION_DATA_SIZE],  // 1024 — assertion bytes,
+    pub data: [u8; MAX_VALIDATION_DATA_SIZE],  // 512 — assertion bytes,
                                                 //   passed verbatim to Lighthouse
 }
 ```
@@ -290,9 +290,11 @@ knob **optionally**, without making it the default.
 1. **InstructionConstraint replaces `target_program` + `ByteRangeCheck[]` +
    the proposed `ForwardAccountsPda`.** All three collapse into one inline
    struct on `ForwardConfig`. The separate `ForwardAccountsPda` typed
-   account (scrapped) is replaced by `pinned_accounts: [Pubkey; 4]` inline
+   account (scrapped) is replaced by `pinned_accounts: [Pubkey; 2]` inline
    on `InstructionConstraint`. `Pubkey::default()` entry = wildcard slot.
-   M=4 covers a Meteora DLMM route (lbPair + reserveX + reserveY + 1 wildcard).
+   M=2 (reduced from 4, 2026-07-12, bean tributary-u8n4) — the canonical
+   Meteora DLMM swap pins only the lbPair (`tests/topup-balance-swap.test.ts`,
+   `numPinnedAccounts: 1`); capacity 2 covers it with headroom for a second pin.
 
 2. **Unified `ValidationSpec` (pre + post, same type).** `Disabled |
 ProgramCall { program_id } | Inline { reserved }`. `pre_validation`

@@ -1,11 +1,11 @@
 ---
 # tributary-0dzc
 title: Modify ADR-0021 + ADR-0009 + ADR-0016 in place for the two reductions
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-12T19:12:54Z
-updated_at: 2026-07-12T19:18:24Z
+updated_at: 2026-07-12T20:03:14Z
 parent: tributary-nz1u
 ---
 
@@ -50,3 +50,13 @@ Primary owner of the forward-pin layout.
 - [ ] ADR-0016: line 234 comment 1024 → 512; line 293 [Pubkey; 4] → [Pubkey; 2].
 - [ ] No NEW ADR file created.
 - [ ] Cross-link to milestone tributary-u8n4 for the diagnosis context.
+
+## Summary of Changes
+
+Modified the three existing ADRs in place (no new ADR 0030 — composable is greenfield, MODIFY-IN-PLACE per the verdict in scrapped blocker tributary-d1qw). Cross-links milestone tributary-u8n4 for the tx-size diagnosis.
+
+- **ADR-0021** (`0021-composable-v21-instructionconstraint-validation-spec.md`): both `[Pubkey; 4]` → `[Pubkey; 2]` (rejected-alts line 26 + indexed-pin amendment line 66); added `## Amendment (2026-07-12): Reduced forward-pin capacity 4→2` recording the tx-size rationale (1264B > 1232B cap, 64B saving), the D1 posture verdict (d1qw scrapped — composable not live, non-breaking), and DLMM feasibility (canonical swap pins 1 account per `topup-balance-swap.test.ts:446`).
+- **ADR-0009** (`0009-composable-hooks-sentinel-disabled-externally-stored.md`): `≤1024 bytes` → `≤512 bytes` (line 20); added `## Amendment (2026-07-12): Reduced assertion capacity 1024→512` with the rent rationale (588B vs 1100B), the non-obvious note that the constant does NOT drive tx size (Vec<u8>, account-read at execute), and the <200B-in-practice headroom observation.
+- **ADR-0016** (`0016-permissionless-composable-execution.md`): line 234 comment `// 1024` → `// 512`; line 293 `[Pubkey; 4]` → `[Pubkey; 2]`; updated the line-295 M=4 rationale (now M=2, cross-refs u8n4 + the canonical-swap pin count) to keep the paragraph internally consistent.
+
+No new ADR file created. No code touched (program/SDK/spec edits are sibling tasks tributary-jsna / tributary-uizu / tributary-osli / tributary-m2wy).

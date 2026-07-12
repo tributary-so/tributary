@@ -23,7 +23,7 @@ tributary-ssd9):
 ## Rejected alternatives
 
 - **Keep `ForwardAccountsPda` as a separate typed account.** Rejected: the
-  inline `pinned_accounts: [Pubkey; 4]` on `InstructionConstraint` achieves
+  inline `pinned_accounts: [Pubkey; 2]` on `InstructionConstraint` achieves
   the same topological guarantee (route pinning) without a separate PDA
   account, seed, and lifecycle.
 
@@ -63,7 +63,7 @@ InstructionConstraint with zero effective pins when forward is enabled.
 
 ## Amendment (2026-07-10): Indexed Pinned Accounts
 
-The original positional `pinned_accounts: [Pubkey; 4]` mapped slot `i`
+The original positional `pinned_accounts: [Pubkey; 2]` mapped slot `i`
 to `remaining_accounts[fwd_base + i]`. This constrained only a contiguous
 prefix of the forward-account slice. Forward programs (DLMM, Drift) dictate
 fixed account grammars that Tributary cannot reshape — if the account that
@@ -87,3 +87,13 @@ Design decisions:
 - `has_effective_pins()` simplifies to `num_pinned_accounts > 0`.
 - ValidationPda.pinned_accounts stays positional — the owner controls
   Lighthouse assertion ordering, so positions 0 and 1 are always sufficient.
+
+## Amendment (2026-07-12): Reduced forward-pin capacity 4→2
+
+Reduced `pinned_accounts: [Pubkey; 2]` (was `[Pubkey; 4]`) to cut
+`create_composable_policy` tx size (1264B > 1232B cap; the 64B forward-pin
+saving — see milestone tributary-u8n4). Composable is not yet live, so the
+mid-struct layout change is non-breaking (no ComposablePolicy accounts exist;
+migration-posture blocker tributary-d1qw scrapped). The canonical Meteora
+DLMM swap pins only the lbPair (`tests/topup-balance-swap.test.ts:446`,
+`numPinnedAccounts: 1`), so capacity 2 covers it with headroom.
