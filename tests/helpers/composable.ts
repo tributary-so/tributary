@@ -35,9 +35,18 @@ export function loadAdminKeypair(): Keypair {
 
 export const DISABLED_SPEC = { disabled: {} } as any;
 
+// ValidationInit args use the indexed PinnedAccount model (IDL: pinned_accounts
+// is [PinnedAccount; 4]). The on-chain ValidationPda *storage* layout stays
+// positional — the program packs these into it at create time. Mirror SDK
+// makeValidationInit().
 export const DISABLED_INIT = {
   numPinnedAccounts: 0,
-  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  pinnedAccounts: [
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+  ],
   validationData: Buffer.alloc(0),
 } as any;
 
@@ -46,13 +55,17 @@ export function programCallSpec(programId: PublicKey): any {
 }
 
 export function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
-  const padded = [PublicKey.default, PublicKey.default];
-  for (let i = 0; i < pinnedAccounts.length && i < 2; i++) {
-    padded[i] = pinnedAccounts[i];
+  // Indexed pins: caller supplies positional Lighthouse targets; tag each with
+  // its array index, pad the fixed [PinnedAccount; 4] arg array with sentinels.
+  const pins: { index: number; pubkey: PublicKey }[] = pinnedAccounts.map(
+    (pubkey, index) => ({ index, pubkey })
+  );
+  while (pins.length < 4) {
+    pins.push({ index: 0, pubkey: PublicKey.default });
   }
   return {
     numPinnedAccounts: pinnedAccounts.length,
-    pinnedAccounts: padded,
+    pinnedAccounts: pins,
     validationData: data,
   } as any;
 }
