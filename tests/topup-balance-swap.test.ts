@@ -36,7 +36,12 @@ import {
 const DISABLED_SPEC = { disabled: {} } as any;
 const DISABLED_INIT = {
   numPinnedAccounts: 0,
-  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  pinnedAccounts: [
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+  ],
   validationData: Buffer.alloc(0),
 } as any;
 
@@ -45,14 +50,17 @@ function programCallSpec(programId: PublicKey): any {
 }
 
 function validationInit(pinnedAccounts: PublicKey[], data: Buffer): any {
+  const pins: { index: number; pubkey: PublicKey }[] = pinnedAccounts.map(
+    (pubkey, index) => ({ index, pubkey })
+  );
+  while (pins.length < 4) {
+    pins.push({ index: 0, pubkey: PublicKey.default });
+  }
   return {
     numPinnedAccounts: pinnedAccounts.length,
-    pinnedAccounts: [
-      pinnedAccounts[0] ?? PublicKey.default,
-      pinnedAccounts[1] ?? PublicKey.default,
-    ],
+    pinnedAccounts: pins,
     validationData: data,
-  };
+  } as any;
 }
 
 const TOKEN_PROGRAM_ID = new PublicKey(
@@ -437,10 +445,10 @@ describe("Composable Topup-Swap Flow (USDC → WSOL via Meteora DLMM)", () => {
         ],
         numPinnedAccounts: 1,
         pinnedAccounts: [
-          swapIx.keys[0].pubkey,
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
+          { index: 0, pubkey: swapIx.keys[0].pubkey },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
         ],
       },
     };

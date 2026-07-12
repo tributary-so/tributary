@@ -58,7 +58,12 @@ import { LIGHTHOUSE_PUBKEY } from "./constants";
 const DISABLED_SPEC = { disabled: {} } as any;
 const DISABLED_INIT = {
   numPinnedAccounts: 0,
-  pinnedAccounts: [PublicKey.default, PublicKey.default],
+  pinnedAccounts: [
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+    { index: 0, pubkey: PublicKey.default },
+  ],
   validationData: Buffer.alloc(0),
 } as any;
 
@@ -309,10 +314,10 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
         ],
         numPinnedAccounts: 0,
         pinnedAccounts: [
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
         ],
       },
     };
@@ -430,10 +435,10 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
         ],
         numPinnedAccounts: 0,
         pinnedAccounts: [
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
         ],
       },
     };
@@ -669,10 +674,10 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
         ],
         numPinnedAccounts: 0,
         pinnedAccounts: [
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
         ],
       },
     };
