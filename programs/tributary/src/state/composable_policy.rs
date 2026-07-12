@@ -12,9 +12,9 @@ pub struct ByteRangeCheck {
     pub expected: [u8; 8],
 }
 
-/// Indexed forward-account pin: constrains `remaining_accounts[forward_start
-/// + index]` to equal `pubkey`. Replaces the old positional `[Pubkey; 4]`
-/// model — pins are no longer tied 1:1 to array position.
+// Indexed forward-account pin: constrains `remaining_accounts[forward_start
+// + index]` to equal `pubkey`. Replaces the old positional `[Pubkey; 4]`
+//  model — pins are no longer tied 1:1 to array position.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Default)]
 pub struct PinnedAccount {
     pub index: u8,
