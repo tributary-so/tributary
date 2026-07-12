@@ -179,10 +179,12 @@ export function useCreateTopupPolicy() {
             ],
             numPinnedAccounts: 1,
             pinnedAccounts: [
-              PublicKey.unique(),
-              PublicKey.default,
-              PublicKey.default,
-              PublicKey.default,
+              // ponytail: placeholder pin — replace with real Meteora DLMM
+              // pool pubkey from showcase config (follow-up).
+              { index: 0, pubkey: PublicKey.unique() },
+              { index: 0, pubkey: PublicKey.default },
+              { index: 0, pubkey: PublicKey.default },
+              { index: 0, pubkey: PublicKey.default },
             ],
           },
           inputMint: usdcMint,
