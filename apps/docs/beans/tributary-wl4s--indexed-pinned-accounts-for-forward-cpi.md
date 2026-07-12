@@ -1,11 +1,11 @@
 ---
 # tributary-wl4s
 title: Indexed Pinned Accounts for Forward CPI
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-10T10:16:58Z
-updated_at: 2026-07-10T10:16:58Z
+updated_at: 2026-07-12T18:29:25Z
 ---
 
 Refactor InstructionConstraint.pinned_accounts from positional [Pubkey; 4] to indexed [PinnedAccount; 4] where each pin specifies {index: u8, pubkey: Pubkey}. Security-driven: forward programs dictate fixed account grammars that Tributary cannot reshape, so positional pins (contiguous prefix only) leave critical accounts at non-contiguous positions unpinned — an account-substitution drain vector.
