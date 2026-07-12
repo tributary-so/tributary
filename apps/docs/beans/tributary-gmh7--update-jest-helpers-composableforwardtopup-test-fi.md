@@ -1,11 +1,11 @@
 ---
 # tributary-gmh7
 title: Update jest helpers + composable/forward/topup test files for indexed pins
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-10T10:21:18Z
-updated_at: 2026-07-10T20:09:09Z
+updated_at: 2026-07-12T14:21:11Z
 parent: tributary-gfi5
 blocked_by:
     - tributary-fln0
@@ -88,3 +88,78 @@ pinnedAccounts: [
 - [ ] `cd tests && npx jest -- --testPathPattern="one-time"` passes
 - [ ] `cd tests && npx jest -- --testPathPattern="sdk-composable"` passes
 - [ ] Full suite: `cd tests && npx jest` passes
+
+
+## Summary of Changes
+
+Converted all positional `pinnedAccounts: PublicKey[]` literals to the indexed
+`{ index, pubkey }[]` model across the composable/topup/one-time test surface
+(8 files). Two distinct field families were updated.
+
+### 1. `InstructionConstraint.pinnedAccounts` (inside `forwardConfig`) — per bean
+- `tests/composable.test.ts` — `defaultForwardConfig()` + line 1145 block
+- `tests/composable-fee-rebase.test.ts` — 3 forward-disabled configs
+- `tests/topup-balance.test.ts`, `topup-balance-swap.test.ts`,
+  `topup-balance-sol.test.ts` — forward config (swap tests pin `swapIx.keys[0]`)
+- `tests/sdk-composable-constructor.test.ts`, `tests/one-time-payment.test.ts`
+
+### 2. `ValidationInit` args helpers — DEVIATION from bean (IDL-mandated)
+The bean marked `DISABLED_INIT` + `validationInit()` as "DO NOT CHANGE
+(ValidationPda, positional)". That instruction is **stale**: the regenerated
+IDL (`target/idl/tributary.json:4990`) defines `ValidationInit.pinned_accounts`
+as `[PinnedAccount; 4]` — the same indexed model as `InstructionConstraint`
+(docs at IDL:4975 confirm "pinned_accounts uses the indexed PinnedAccount
+model (same as InstructionConstraint)"). The on-chain `ValidationPda` *storage*
+layout stays positional `[Pubkey; N]` — the program packs the indexed args into
+it at create time. Only the *args struct* changed.
+
+These helpers build the `ValidationInit` instruction arg (passed directly to
+`program.methods.createComposablePolicy(...)` at e.g. `composable.test.ts:423`),
+so they MUST emit the indexed shape or Anchor's borsh codec fails. The SDK's
+`makeValidationInit` (`packages/sdk/src/sdk.ts:3956`) was already converted to
+indexed by bean tributary-fln0 for the same reason. Mirrored that exact
+packing (tag each caller pubkey with its array index, pad the fixed 4-slot
+array with `{index:0, pubkey: default}`).
+
+Files changed for this family:
+- `tests/helpers/composable.ts` (`DISABLED_INIT` + `validationInit()`)
+- `tests/composable-fee-rebase.test.ts` (local `DISABLED_INIT`)
+- `tests/topup-balance.test.ts`, `topup-balance-swap.test.ts`,
+  `topup-balance-sol.test.ts`, `tests/one-time-payment.test.ts`
+  (local `DISABLED_INIT` + `validationInit()`)
+
+Unchanged (correctly): SDK `parseValidationPda` / `VALIDATION_PDA_LAYOUT`
+(positional, reads stored PDA) and the read-back assertion at
+`composable.test.ts:472` (`parsed.pinnedAccounts[0]` — reads the positional
+on-chain PDA, unaffected).
+
+### Verification
+- [x] grep completeness: zero bare-positional pin entries remain; every
+      `pinnedAccounts: [` array opens with `{ index: 0, pubkey: ... }`.
+- [x] SDK builds clean (`pnpm --filter @tributary-so/sdk run build`) with the
+      identical indexed `PinnedAccount` types the tests now use.
+- [x] IDL cross-check: both `InstructionConstraint.pinned_accounts` (IDL:3640)
+      and `ValidationInit.pinned_accounts` (IDL:4990) are `[PinnedAccount; 4]`.
+- [x] ts-jest COMPILE: `npx jest tests/composable.test.ts` transforms the
+      edited file with no TS/Syntax errors (runtime fails only on the harness
+      env var `ANCHOR_PROVIDER_URL`, not on the edits).
+- [ ] Runtime jest (composable / topup / one-time / sdk-composable / full):
+      BLOCKED — see below.
+
+### Runtime verification blocker (out of scope)
+`anchor build` fails in this worktree on TWO pre-existing qed spec-contract
+drift errors unrelated to the PinnedAccount refactor or this bean:
+- `programs/tributary/src/instructions/payment/create_payment_policy.rs:74`
+- `programs/tributary/src/instructions/payment/transfer.rs:76`
+Both trace to commit `1be668af` (recipient zero-address fix) which modified
+`create_payment_policy` after the qedspec was last regenerated (`fd9c7250`)
+without re-running `qedgen adapt`. The qed macro (`qedgen-macros` v2.38.0,
+`spec_bind.rs:703`) emits a hard `compile_error!` on spec-hash drift with no
+skip flag, so no `target/deploy/*.so` can be produced → Surfpool can't deploy
+the local program → jest can't exercise the new indexed interface. My git diff
+touches only `tests/*` (8 files); no `programs/` file is modified.
+
+Recommended follow-up bean: run `qedgen adapt` (program formal-verification
+maintenance) to clear the drift on those two payment handlers and regenerate
+`formal_verification/`. That unblocks `anchor build` and the full jest suite
+for this and sibling test beans.

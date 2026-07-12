@@ -72,10 +72,10 @@ function defaultForwardConfig(
       dataChecks: defaultByteRangeChecks(),
       numPinnedAccounts: 1,
       pinnedAccounts: [
-        PublicKey.unique(),
-        PublicKey.default,
-        PublicKey.default,
-        PublicKey.default,
+        { index: 0, pubkey: PublicKey.unique() },
+        { index: 0, pubkey: PublicKey.default },
+        { index: 0, pubkey: PublicKey.default },
+        { index: 0, pubkey: PublicKey.default },
       ],
     },
   };
@@ -1143,10 +1143,10 @@ describe("Composable Policies", () => {
         dataChecks: dataChecks,
         numPinnedAccounts: 1,
         pinnedAccounts: [
-          PublicKey.unique(),
-          PublicKey.default,
-          PublicKey.default,
-          PublicKey.default,
+          { index: 0, pubkey: PublicKey.unique() },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
+          { index: 0, pubkey: PublicKey.default },
         ],
       },
     };

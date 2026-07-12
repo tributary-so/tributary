@@ -59,10 +59,10 @@ function forwardConfigNoSwap(inputMint: PublicKey): any {
       ],
       numPinnedAccounts: 0,
       pinnedAccounts: [
-        PublicKey.default,
-        PublicKey.default,
-        PublicKey.default,
-        PublicKey.default,
+        { index: 0, pubkey: PublicKey.default },
+        { index: 0, pubkey: PublicKey.default },
+        { index: 0, pubkey: PublicKey.default },
+        { index: 0, pubkey: PublicKey.default },
       ],
     },
   };
