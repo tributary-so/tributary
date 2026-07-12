@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-pub const MAX_VALIDATION_DATA_SIZE: usize = 1024;
+pub const MAX_VALIDATION_DATA_SIZE: usize = 512;
 /// Capacity of the pinned-account set. Covers the highest Lighthouse
 /// assertion arity in use today (`accountDelta` = 2 accounts). Sysvar-clock
 /// assertions pin 0, single-target assertions (`tokenAccount`, `mintAccount`,
@@ -37,6 +37,7 @@ pub struct ValidationPda {
 impl ValidationPda {
     /// Fixed account size: 8 (Anchor disc) + 1 (bump) + 1 (num_pinned) +
     /// 64 (pinned_accounts) + 2 (data_len) + MAX_VALIDATION_DATA_SIZE.
+    /// = 8 + 1 + 1 + 64 + 2 + 512 = 588.
     pub const SIZE: usize = 8 + 1 + 1 + (32 * MAX_PINNED_ACCOUNTS) + 2 + MAX_VALIDATION_DATA_SIZE;
 
     /// Get the active assertion-data slice.
@@ -124,7 +125,7 @@ mod tests {
     fn size_covers_full_layout() {
         let expected = 8 + 1 + 1 + 64 + 2 + MAX_VALIDATION_DATA_SIZE;
         assert_eq!(ValidationPda::SIZE, expected);
-        assert_eq!(ValidationPda::SIZE, 1100);
+        assert_eq!(ValidationPda::SIZE, 588);
     }
 
     /// `pinned()` returns exactly `num_pinned_accounts` entries, not the

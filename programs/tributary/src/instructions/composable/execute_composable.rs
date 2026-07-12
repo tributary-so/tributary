@@ -222,7 +222,7 @@ fn build_forward_account_metas(
 /// declared at creation — a relayer cannot substitute a positional slot
 /// to trip the assertion against the wrong state.
 ///
-/// Stack note: `ValidationPda` carries a `[u8; 1024]` assertion buffer,
+/// Stack note: `ValidationPda` carries a `[u8; 512]` assertion buffer,
 /// which alone would blow the SBF 4 KiB frame if materialised in the
 /// `execute_composable` handler. Keeping the typed deserialise + pin-check
 /// + CPI in this callee gives the 1 KiB struct its own stack frame.
