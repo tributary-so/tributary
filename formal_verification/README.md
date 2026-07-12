@@ -3,16 +3,16 @@
 This directory and the hand-rolled harnesses in `programs/tributary/tests/`
 together form a **layered** verification of Tributary's pull-payment logic.
 
-> **Status (2026-07-06, updated for v2.2 / ADR-0026 — bean tributary-t6gt):**
+> **Status (2026-07-11, updated for indexed PinnedAccount — bean tributary-qpi6):**
 >
-> | Layer                     | Status                                                                                           |
-> | ------------------------- | ------------------------------------------------------------------------------------------------ |
-> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers)                                             |
-> | Layer 1 (spec-model Kani) | ✅ regenerated (v2.2); 19 fast harnesses pass in ~10s; 127 disabled (u128 bps_mul)               |
-> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                      |
-> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                        |
-> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                      |
-> | Lean                      | 🟡 bare-field codegen bug FIXED (`fix-lean.py`); 58 proof obligations now exposed (next blocker) |
+> | Layer                     | Status                                                                                       |
+> | ------------------------- | -------------------------------------------------------------------------------------------- |
+> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers, 2 forward-CPI types)                    |
+> | Layer 1 (spec-model Kani) | ✅ regenerated (indexed-pin); 19 fast harnesses pass in ~0.1s; 127 disabled (u128 bps_mul)   |
+> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                  |
+> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                    |
+> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                  |
+> | Lean                      | 🟡 bare-field codegen bug FIXED (`fix-lean.py`); 58 proof obligations exposed (pre-existing) |
 >
 > **v2.2 change (ADR-0026):** composable fee path rebased to input-side
 > gross pull. `execute_composable` now takes `face` (what the forward
@@ -23,6 +23,18 @@ together form a **layered** verification of Tributary's pull-payment logic.
 > dispatch, and the mode-conditional `>0` output guard are documented as
 > account-wiring invariants (not state predicates) — integration-tested in
 > tests/composable-fee-rebase.test.ts.
+>
+> **Indexed PinnedAccount (bean tributary-qpi6):** the qedspec now declares
+> `PinnedAccount` and `InstructionConstraint` types (mirroring
+> `programs/tributary/src/state/composable_policy.rs`). The
+> `no_duplicate_indices` and `all_pins_concrete` invariants, and the
+> `pin_check_guarantee` ensures clause for execute_composable Phase 3, are
+> documented in the spec as canonical obligations — the qedgen DSL cannot
+> express quantified invariants over non-State types in the flat model, so
+> these live as named documentation invariants (same pattern as all other
+> forward-CPI account-wiring guarantees). Proof discharge is in the
+> hand-rolled Layer 2 harnesses against the real Rust validators
+> (`InstructionConstraint::has_duplicate_indices`, `pins_match`).
 
 ---
 

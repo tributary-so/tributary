@@ -128,6 +128,10 @@ pub enum TributaryError {
     PermissionlessExecutionRequiresSafetyNet,
     #[msg("Forward enabled but InstructionConstraint has zero effective pins (degenerate)")]
     DegenerateForwardPins,
+    #[msg("Duplicate pin index in InstructionConstraint.pinned_accounts")]
+    DuplicatePinIndex,
+    #[msg("Pinned account in validation init has a default (zero) pubkey")]
+    DefaultPinPubkey,
     #[msg("Inline validation is not yet implemented")]
     InlineValidationNotImplemented,
     #[msg("One-time policy has expired")]

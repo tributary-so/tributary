@@ -67,17 +67,17 @@ const composablePolicyId = (userPayment.createdComposableCount ?? 0) + 1;
 const composablePolicyPDA = getComposablePolicyPda(
   userPaymentPDA,
   composablePolicyId,
-  programId
+  programId,
 ).address;
 
 const preValidationPDA = getPreValidationPda(
   composablePolicyPDA,
-  programId
+  programId,
 ).address;
 
 const postValidationPDA = getPostValidationPda(
   composablePolicyPDA,
-  programId
+  programId,
 ).address;
 
 // ── 2. Build ForwardConfig (forward disabled) ───────────────────────────
@@ -135,7 +135,7 @@ const ix = await sdk.getCreateComposablePolicyInstruction(
   guard.data, // preValidationData
   DISABLED_SPEC, // postValidation
   [], // postPinnedAccounts
-  Buffer.alloc(0) // postValidationData
+  Buffer.alloc(0), // postValidationData
 );
 
 // ── 5. Approve delegate ─────────────────────────────────────────────────
@@ -154,7 +154,7 @@ const instructionData = Buffer.alloc(0);
 const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
   USDC_MINT,
   composablePolicyPDA,
-  true // allowOwnerOffCurve (PDA)
+  true, // allowOwnerOffCurve (PDA)
 );
 // Same-mint topup: output intermediate == input intermediate.
 const intermediateOutputTokenAccount = intermediateInputTokenAccount;
@@ -193,9 +193,8 @@ const execIx = await program.methods
   .instruction();
 
 // ── 7. Assert settlement ────────────────────────────────────────────────
-const policy = await program.account.composablePolicy.fetch(
-  composablePolicyPDA
-);
+const policy =
+  await program.account.composablePolicy.fetch(composablePolicyPDA);
 expect(policy.totalInput.toNumber()).toBe(50_000_000);
 expect(policy.paymentCount).toBe(1);
 ```
@@ -243,13 +242,13 @@ const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
   USDC_MINT,
   composablePolicyPDA,
   true,
-  TOKEN_PROGRAM_ID
+  TOKEN_PROGRAM_ID,
 );
 const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
   NATIVE_MINT,
   composablePolicyPDA,
   true,
-  TOKEN_PROGRAM_ID
+  TOKEN_PROGRAM_ID,
 );
 
 // Forward accounts: DLMM swap instruction keys.
@@ -323,7 +322,12 @@ interface InstructionConstraint {
   numDataChecks: number; // 0–4, must be >0 when forward enabled
   dataChecks: ByteRangeCheck[4]; // fixed-size array, 4 slots
   numPinnedAccounts: number; // 0–4
-  pinnedAccounts: PublicKey[4]; // fixed-size array, 4 slots
+  pinnedAccounts: PinnedAccount[4]; // fixed-size array, 4 slots
+}
+
+interface PinnedAccount {
+  index: number; // position in the forward-account slice
+  pubkey: PublicKey; // must match remaining_accounts[fwd_base + index]
 }
 
 interface ByteRangeCheck {
@@ -402,6 +406,9 @@ The ValidationPda account stores:
 - `bump` (u8)
 - `num_pinned_accounts` (u8) — owner-declared target accounts
 - `pinned_accounts` ([Pubkey; 2]) — positional, replay-validated at execute
+  - **Note:** ValidationPda.pinned_accounts stays positional (the owner
+    controls Lighthouse assertion ordering, so positions 0 and 1 are always
+    sufficient). Only InstructionConstraint.pinned_accounts is indexed.
 - `data_len` (u16)
 - `data` (Vec<u8>) — serialized Lighthouse assertion (≤ 1024 bytes)
 
@@ -802,7 +809,7 @@ const ix = await sdk.getCreateComposablePolicyInstruction(
   forwardConfig,
   { programCall: { programId: LIGHTHOUSE_PUBKEY } },
   [guard.accounts[0].pubkey],
-  guard.data
+  guard.data,
 );
 ```
 
@@ -889,7 +896,10 @@ remaining_accounts = [
 
 ### Slot derivation at execute time
 
-For forward accounts, `pinned_accounts[i]` maps to `remaining_accounts[fwd_base + i]`, where:
+For forward accounts, `pinned_accounts[i].index` maps to
+`remaining_accounts[fwd_base + pinned_accounts[i].index]`. The owner can
+pin ANY position in the forward-account slice, not just a contiguous prefix.
+All active pins must have concrete pubkeys. No duplicate indices.
 
 ```
 fwd_base = numPreValidationTargets + numPostValidationTargets
@@ -898,7 +908,7 @@ fwd_base = numPreValidationTargets + numPostValidationTargets
 For example, with 1 pre-validation target and 0 post-validation targets:
 
 - `fwd_base = 1`
-- `pinned_accounts[0]` maps to `remaining_accounts[1]` (first forward account)
+- A pin with `index: 2` maps to `remaining_accounts[3]` (third forward account)
 
 ### Permissionless execution (ADR-0016)
 
@@ -920,7 +930,7 @@ Intermediate ATAs are owned by the **ComposablePolicy PDA**, not the UserPayment
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 const TOKEN_PROGRAM_ID = new PublicKey(
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
 );
 
 // Input intermediate — owned by ComposablePolicy PDA
@@ -928,7 +938,7 @@ const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
   inputMint, // e.g. USDC_MINT
   composablePolicyPDA, // owner = ComposablePolicy PDA
   true, // allowOwnerOffCurve (PDA, not a keypair)
-  TOKEN_PROGRAM_ID
+  TOKEN_PROGRAM_ID,
 );
 
 // Output intermediate — only exists in deliver-transform mode
@@ -936,7 +946,7 @@ const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
   outputMint, // e.g. NATIVE_MINT
   composablePolicyPDA, // owner = ComposablePolicy PDA
   true,
-  TOKEN_PROGRAM_ID
+  TOKEN_PROGRAM_ID,
 );
 ```
 

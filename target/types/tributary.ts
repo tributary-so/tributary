@@ -3124,26 +3124,36 @@ export type Tributary = {
     },
     {
       "code": 6062,
+      "name": "duplicatePinIndex",
+      "msg": "Duplicate pin index in InstructionConstraint.pinned_accounts"
+    },
+    {
+      "code": 6063,
+      "name": "defaultPinPubkey",
+      "msg": "Pinned account in validation init has a default (zero) pubkey"
+    },
+    {
+      "code": 6064,
       "name": "inlineValidationNotImplemented",
       "msg": "Inline validation is not yet implemented"
     },
     {
-      "code": 6063,
+      "code": 6065,
       "name": "policyExpired",
       "msg": "One-time policy has expired"
     },
     {
-      "code": 6064,
+      "code": 6066,
       "name": "invalidOutputMintAccount",
       "msg": "Act-mode (sentinel output_mint) requires the SystemProgram as the output_mint account"
     },
     {
-      "code": 6065,
+      "code": 6067,
       "name": "actModeRequiresForward",
       "msg": "Act-mode settlement (no output delivery) requires forward to be enabled"
     },
     {
-      "code": 6066,
+      "code": 6068,
       "name": "inputResidueSweepFailed",
       "msg": "Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user"
     }
@@ -3635,12 +3645,18 @@ export type Tributary = {
           {
             "name": "pinnedAccounts",
             "docs": [
-              "Positional pin on `remaining_accounts[forward_start+i]`.",
-              "`Pubkey::default()` entry = wildcard slot (no constraint)."
+              "Indexed pins: `pinned_accounts[i]` constrains the account at",
+              "`remaining_accounts[forward_start + pinned_accounts[i].index]` to",
+              "equal `pinned_accounts[i].pubkey`. Only the first `num_pinned_accounts`",
+              "entries are active."
             ],
             "type": {
               "array": [
-                "pubkey",
+                {
+                  "defined": {
+                    "name": "pinnedAccount"
+                  }
+                },
                 4
               ]
             }
@@ -4217,6 +4233,27 @@ export type Tributary = {
           },
           {
             "name": "tokenMint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pinnedAccount",
+      "docs": [
+        "Indexed forward-account pin: constrains `remaining_accounts[forward_start",
+        "+ index]` to equal `pubkey`. Replaces the old positional `[Pubkey; 4]`",
+        "model — pins are no longer tied 1:1 to array position."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "pubkey",
             "type": "pubkey"
           }
         ]
@@ -4939,7 +4976,14 @@ export type Tributary = {
       "name": "validationInit",
       "docs": [
         "Caller-supplied init data for one validation phase (pre or post).",
-        "Only meaningful when the corresponding `ValidationSpec` is `ProgramCall`."
+        "Only meaningful when the corresponding `ValidationSpec` is `ProgramCall`.",
+        "",
+        "`pinned_accounts` uses the indexed [`PinnedAccount`] model (same as",
+        "[`InstructionConstraint`]). At create time the active pins are validated",
+        "(distinct indices, non-default pubkeys, index < MAX_PINNED_ACCOUNTS) and",
+        "then **packed** into the positional `[Pubkey; MAX_PINNED_ACCOUNTS]` array",
+        "that [`ValidationPda`] stores on-chain. The on-chain PDA layout is",
+        "unchanged — only the args struct carries indices."
       ],
       "type": {
         "kind": "struct",
@@ -4952,8 +4996,12 @@ export type Tributary = {
             "name": "pinnedAccounts",
             "type": {
               "array": [
-                "pubkey",
-                2
+                {
+                  "defined": {
+                    "name": "pinnedAccount"
+                  }
+                },
+                4
               ]
             }
           },
