@@ -4240,11 +4240,6 @@ export type Tributary = {
     },
     {
       "name": "pinnedAccount",
-      "docs": [
-        "Indexed forward-account pin: constrains `remaining_accounts[forward_start",
-        "+ index]` to equal `pubkey`. Replaces the old positional `[Pubkey; 4]`",
-        "model — pins are no longer tied 1:1 to array position."
-      ],
       "type": {
         "kind": "struct",
         "fields": [
