@@ -567,8 +567,6 @@ mod tests {
                         pubkey: Pubkey::new_unique(),
                     },
                     PinnedAccount::default(),
-                    PinnedAccount::default(),
-                    PinnedAccount::default(),
                 ],
             },
             input_mint: mint,
