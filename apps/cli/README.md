@@ -1468,4 +1468,3 @@ EXAMPLES
 
 _See code: [src/commands/wallet/import.ts](https://github.com/tributary-so/tributary/blob/v1.8.0/src/commands/wallet/import.ts)_
 <!-- commandsstop -->
-2026-07-07: v2 release

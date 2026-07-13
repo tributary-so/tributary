@@ -838,4 +838,3 @@ trigger a release in CI. For this we require a change in this folder. Forcing
 that change with a period..
 
 2026-06-11: fee subsidize
-2026-07-07: v2 release

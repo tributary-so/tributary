@@ -1,6 +1,7 @@
-import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey, Transaction, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { type Tributary } from "../../../target/types/tributary.js";
 import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
+import BN from "bn.js";
 
 export type IWallet = {
   publicKey: PublicKey;
@@ -232,4 +233,47 @@ export function parseValidationPda(data: Buffer): ValidationPdaAccount {
  */
 export function parseValidationPdaData(data: Buffer): Buffer {
   return parseValidationPda(data).data;
+}
+
+// ── Setup metadata types (ADR 0006) ────────────────────────────
+
+export type SetupStepType =
+  | "createAta"
+  | "createUserPayment"
+  | "createReferral"
+  | "createPaymentPolicy"
+  | "createComposablePolicy"
+  | "approve"
+  | "executePayment";
+
+export interface ApproveStepData {
+  delegateAddress: PublicKey;
+  delegateLabel: "userPaymentPda";
+  ownerTokenAccount: PublicKey;
+  approvalAmount: BN;
+  existingPolicies: Array<{
+    publicKey: PublicKey;
+    account: PaymentPolicy | ComposablePolicy;
+  }>;
+  newPolicy: {
+    policyType: PolicyType;
+    approvalContribution: BN;
+  };
+}
+
+export type SetupStep = {
+  instruction: TransactionInstruction;
+} & (
+  | { type: "createAta"; data: { owner: PublicKey; mint: PublicKey; ata: PublicKey } }
+  | { type: "createUserPayment"; data: { owner: PublicKey; mint: PublicKey; pda: PublicKey } }
+  | { type: "createReferral"; data: { gateway: PublicKey; code: string } }
+  | { type: "createPaymentPolicy"; data: { policyType: PolicyType; recipient: PublicKey; gateway: PublicKey; policyPda: PublicKey } }
+  | { type: "createComposablePolicy"; data: { policyType: PolicyType; recipient: PublicKey; gateway: PublicKey; forwardConfig: ForwardConfig; policyPda: PublicKey } }
+  | { type: "approve"; data: ApproveStepData }
+  | { type: "executePayment"; data: { policyPda: PublicKey } }
+);
+
+export interface SetupResult {
+  instructions: TransactionInstruction[];
+  steps: SetupStep[];
 }
