@@ -3,7 +3,7 @@ use crate::constants::FORWARD_FLAG_NATIVE_OUTPUT;
 use anchor_lang::prelude::*;
 
 pub const MAX_BYTE_RANGE_CHECKS: usize = 4;
-pub const MAX_PINNED_FORWARD_ACCOUNTS: usize = 4;
+pub const MAX_PINNED_FORWARD_ACCOUNTS: usize = 2;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ByteRangeCheck {
@@ -62,7 +62,7 @@ impl InstructionConstraint {
         1 + // num_data_checks
         (1 + 1 + 8) * MAX_BYTE_RANGE_CHECKS + // data_checks
         1 + // num_pinned_accounts
-        (1 + 32) * MAX_PINNED_FORWARD_ACCOUNTS; // pinned_accounts = 206 bytes
+        (1 + 32) * MAX_PINNED_FORWARD_ACCOUNTS; // pinned_accounts = 140 bytes
 
     pub fn is_disabled(&self) -> bool {
         self.program_id == Pubkey::default()
@@ -139,7 +139,7 @@ impl ForwardConfig {
     pub const SIZE: usize = InstructionConstraint::SIZE + // instruction_constraint
         32 + // input_mint
         32 + // output_mint
-        1; // forward_flags = 271 bytes
+        1; // forward_flags = 205 bytes
 
     /// True when the forward leg's WSOL output must be unwrapped to native
     /// SOL via a Tributary-controlled `closeAccount` sweep. Opt-in via bit 0
@@ -376,17 +376,13 @@ mod tests {
     #[test]
     fn has_duplicate_indices_false_distinct() {
         let mut ic = InstructionConstraint::default();
-        ic.num_pinned_accounts = 3;
+        ic.num_pinned_accounts = 2;
         ic.pinned_accounts[0] = PinnedAccount {
             index: 0,
             pubkey: Pubkey::new_unique(),
         };
         ic.pinned_accounts[1] = PinnedAccount {
-            index: 2,
-            pubkey: Pubkey::new_unique(),
-        };
-        ic.pinned_accounts[2] = PinnedAccount {
-            index: 5,
+            index: 1,
             pubkey: Pubkey::new_unique(),
         };
         assert!(!ic.has_duplicate_indices());
@@ -448,12 +444,12 @@ mod tests {
 
     #[test]
     fn instruction_constraint_size() {
-        assert_eq!(InstructionConstraint::SIZE, 206);
+        assert_eq!(InstructionConstraint::SIZE, 140);
     }
 
     #[test]
     fn forward_config_size() {
-        assert_eq!(ForwardConfig::SIZE, 271);
+        assert_eq!(ForwardConfig::SIZE, 205);
     }
 
     #[test]
@@ -564,7 +560,7 @@ mod tests {
             length: 4,
             expected: [1, 2, 3, 4, 0, 0, 0, 0],
         };
-        ic.num_pinned_accounts = 3;
+        ic.num_pinned_accounts = 2;
         ic.pinned_accounts[0] = PinnedAccount {
             index: 0,
             pubkey: Pubkey::new_unique(),
