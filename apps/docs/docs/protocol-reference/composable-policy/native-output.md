@@ -66,10 +66,19 @@ recipient_token_account (recipient's system account, native SOL)
 
 Source: `process_output_and_sweep` in `execute_composable.rs`.
 
-Fees are still taken in **WSOL** via `transfer_checked` into the gateway and
-protocol fee accounts _before_ the `closeAccount` fires. The
-`sweep_amount` returned for accounting is the WSOL value unwrapped; the rent
-bonus shipped by `closeAccount` is excluded from `composable_policy.total_output`.
+!!! note "Fees are input-side (Phase 1b)"
+Despite the output-focused flow above, fees are **not** taken from the
+output path. Per ADR-0026, composable fees are input-side — skimmed from
+the gross pull (USDC/`input_mint`) in Phase 1b, **before** the forward
+swap or native-output unwrap runs. The protocol and gateway fee accounts
+hold `input_mint` tokens (USDC in this example), not WSOL. After skim,
+`intermediate_input` holds exactly `face`, which is what the forward
+consumes. The output side only delivers the post-swap principal to the
+recipient.
+
+The `sweep_amount` returned for accounting is the face amount that made it
+through the forward (fees already deducted upstream); the rent bonus shipped
+by `closeAccount` is excluded from `composable_policy.total_output`.
 
 ## Recipient validation
 

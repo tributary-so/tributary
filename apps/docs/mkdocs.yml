@@ -56,6 +56,11 @@ nav:
           - Overview: integration-guide/programmable-pull-payments/overview.md
           - SDK: integration-guide/programmable-pull-payments/sdk.md
           - Lighthouse Facade: integration-guide/programmable-pull-payments/lighthouse-facade.md
+          - Forward CPI Guide: integration-guide/programmable-pull-payments/forward-cpi-guide.md
+          - Quickstarts:
+              - AI Agent Budget: integration-guide/programmable-pull-payments/quickstarts/ai-agent-budget.md
+              - Auto-DCA: integration-guide/programmable-pull-payments/quickstarts/auto-dca.md
+              - Auto-Topup: integration-guide/programmable-pull-payments/quickstarts/auto-topup.md
           - Examples:
               - Auto Topup Guard: integration-guide/programmable-pull-payments/examples/auto-topup-guard.md
               - Swap and Deliver: integration-guide/programmable-pull-payments/examples/swap-and-deliver.md
@@ -78,12 +83,14 @@ nav:
           - Referral Program: protocol-reference/payment-policy/referral-program.md
       - Composable Policy:
           - Overview: protocol-reference/composable-policy/overview.md
+          - API Reference: protocol-reference/composable-policy/api-reference.md
           - Validation Hook: protocol-reference/composable-policy/validation-hook.md
           - Forward Hook: protocol-reference/composable-policy/forward-hook.md
           - Native Output: protocol-reference/composable-policy/native-output.md
           - Allowlists & Sentinels: protocol-reference/composable-policy/allowlists-and-sentinels.md
           - Security Model: protocol-reference/composable-policy/security-model.md
           - vs Payment Policy: protocol-reference/composable-policy/vs-payment-policy.md
+  - Migration: migration.md
   - Operate:
       - Providers: operate/providers.md
       - Gateway Merchant Layer: operate/gateway-merchant-layer.md

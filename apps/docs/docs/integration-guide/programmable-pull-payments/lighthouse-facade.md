@@ -39,7 +39,7 @@ The facade owns **only** the Lighthouse `target_account(s)`. The caller
 assembles Tributary's full `remaining_accounts`:
 
 ```typescript
-// executeComposable's remaining_accounts (caller-supplied, SDK prepends the ValidationPda):
+// Caller assembles remaining_accounts = validation targets + forward accounts:
 const remainingAccounts = [...guard.accounts, ...forwardAccounts];
 ```
 
@@ -147,7 +147,7 @@ const guard = lighthouse
   .amount(50_000_000, "<")
   .build();
 
-// 2. Create the policy — validation enabled, forward disabled
+// 2. Create the policy — pre-validation enabled via program-call, forward disabled
 const createIx = await sdk.getCreateComposablePolicyInstruction(
   USDC_MINT,
   recipient,
@@ -155,18 +155,18 @@ const createIx = await sdk.getCreateComposablePolicyInstruction(
   policyType,
   "Balance guard",
   forwardConfig,
-  LIGHTHOUSE_PROGRAM_ID,
-  guard.numAccounts,
-  guard.data,
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
+  guard.accounts, // prePinnedAccounts
+  guard.data // preValidationData
+  // postValidation defaults to disabled
 );
 
-// 3. Execute — remaining_accounts gets [...guard.accounts, ...forwardAccounts]
-//    (the SDK auto-prepends the ValidationPda)
-const execIx = await sdk.executeComposable(
+// 3. Execute — forward is disabled, so remaining_accounts is just guard.accounts
+const [execIx] = await sdk.executeComposable(
   composablePolicyPDA,
-  Buffer.alloc(0), // forward disabled → empty
+  Buffer.alloc(0),
   new BN(50_000_000),
-  guard.accounts,
+  guard.accounts
 );
 ```
 

@@ -11,12 +11,20 @@ repos:
           - javascript
           - ts
       - id: check-executables-have-shebangs
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: detect-private-key
 
-  # - repo: https://github.com/commitizen-tools/commitizen
-  #   rev: v4.9.1
-  #   hooks:
-  #     - id: commitizen
-  #       stages: [commit-msg]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
 
   - repo: https://github.com/ljnsn/cz-conventional-gitmoji
     rev: v0.7.0

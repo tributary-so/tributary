@@ -7,24 +7,31 @@ the user, swaps it through a Meteora DLMM pool into WSOL, and delivers WSOL
 
 This is a composable policy with:
 
-- **Forward enabled** — `targetProgram = METEORA_DLMM_PUBKEY`, with a
-  `ByteRangeCheck` pinning the swap instruction discriminator at offset 0.
+- **Forward enabled** — `programId = METEORA_DLMM_PUBKEY` on the
+  `instructionConstraint`, with a `ByteRangeCheck` pinning the swap
+  instruction discriminator at offset 0.
 - **Optional validation** — same pattern as the topup guard (e.g. only swap
   when the recipient's WSOL balance is below a threshold).
+- **Input-side fees** — protocol and gateway fees are skimmed from the
+  gross USDC pull in Phase 1b (ADR-0026), before the forward runs. The
+  swap and deliver phases move only the net principal.
 
 ```mermaid
 graph LR
-    Cold["coldWallet<br/>(user, USDC)"] -->|"pull USDC<br/>(UserPayment PDA signs)"| In["intermediate USDC ATA"]
-    Val["Lighthouse CPI<br/>(optional)"] -.->|"assertion holds → continue"| In
-    In -->|"Meteora DLMM swap<br/>(ComposablePolicy PDA signs)"| Out["intermediate WSOL ATA"]
-    Out -->|"sweep WSOL"| Hot["hotWallet<br/>(recipient, WSOL ATA)<br/>+ protocol fee + gateway fee"]
+    Cold["coldWallet<br/>(user, USDC)"] -->|"pull USDC (gross)<br/>(UserPayment PDA signs)"| In["intermediate USDC ATA"]
+    In -->|"skim fees<br/>(input-side)"| Fee["protocol fee + gateway fee<br/>(USDC)"]
+    PreVal["Lighthouse CPI<br/>(pre‑validation)"] -.->|"assertion → continue"| In
+    In -->|"swap via DLMM<br/>(ComposablePolicy PDA signs)"| Out["intermediate WSOL ATA"]
+    PostVal["Lighthouse CPI<br/>(post‑validation)"] -.->|"assertion → continue"| Out
+    Out -->|"sweep WSOL"| Hot["hotWallet<br/>(recipient, WSOL ATA)"]
 
     classDef user fill:#e8f5e8,stroke:#1b5e20
     classDef pda fill:#e3f2fd,stroke:#1565c0
     classDef val fill:#fff3e0,stroke:#e65100
     class Cold,Hot user
     class In,Out pda
-    class Val val
+    class PreVal,PostVal val
+    class Fee user
 ```
 
 ## Constants
@@ -45,7 +52,7 @@ const SWAP_INPUT_AMOUNT = 50_000_000; // 50 USDC
 !!! warning "Pool choice matters"
 The pool you pass to `pool.swap()` must have `USDC_MINT` as one leg and
 `NATIVE_MINT` as the other. Tributary does not validate the pool itself —
-only that the `targetProgram` is allowlisted and the instruction selector
+only that the forward program id is allowlisted and the instruction selector
 matches the pinned `ByteRangeCheck`.
 
 ## 1. Build the DLMM swap instruction
@@ -118,30 +125,32 @@ async function buildSwapIx(user: PublicKey): Promise<TransactionInstruction> {
 }
 
 // Build once just to extract the discriminator for the ByteRangeCheck.
-const discriminator = Array.from(
-  (await buildSwapIx(PublicKey.default)).data.slice(0, 8)
-);
+const discriminator = (await buildSwapIx(PublicKey.default)).data.slice(0, 8);
 ```
 
 ## 2. Create the composable policy
 
-Forward enabled: `targetProgram = METEORA_DLMM_PUBKEY`, at least one
-`ByteRangeCheck` pins the discriminator at offset 0.
+Forward enabled: `programId = METEORA_DLMM_PUBKEY` on the
+`instructionConstraint`, at least one `ByteRangeCheck` pins the
+discriminator at offset 0.
 
 ```typescript
 const forwardConfig = {
-  targetProgram: METEORA_DLMM_PUBKEY,
+  instructionConstraint: {
+    programId: METEORA_DLMM_PUBKEY,
+    numDataChecks: 1,
+    dataChecks: [
+      { offset: 0, length: 8, expected: Buffer.from(discriminator) },
+      { offset: 0, length: 0, expected: Buffer.alloc(8) },
+      { offset: 0, length: 0, expected: Buffer.alloc(8) },
+      { offset: 0, length: 0, expected: Buffer.alloc(8) },
+    ],
+    numPinnedAccounts: 0,
+    pinnedAccounts: [],
+  },
   inputMint: USDC_MINT,
   outputMint: NATIVE_MINT,
-  minOutputAmount: null, // we let pool.swapQuote handle slippage at the swap layer
   forwardFlags: 0, // WSOL ATA delivery — see native-sol-topup.md for the unwrap variant
-  numDataChecks: 1,
-  dataChecks: [
-    { offset: 0, length: 8, expected: discriminator }, // pin the swap selector
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-  ],
 };
 
 // Optional Lighthouse guard: only swap when recipient WSOL is below 1 WSOL.
@@ -157,9 +166,9 @@ const createIx = await sdk.getCreateComposablePolicyInstruction(
   policyType,
   "Topup WSOL swap",
   forwardConfig,
-  LIGHTHOUSE_PROGRAM_ID,
-  guard.numAccounts,
-  guard.data
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
+  guard.accounts, // prePinnedAccounts — owner-declared Lighthouse target accounts
+  guard.data // preValidationData
 );
 ```
 
@@ -175,9 +184,11 @@ The caller supplies:
 
 - `instructionData` = the raw DLMM swap ix data (the same bytes whose first 8
   must match the pinned `ByteRangeCheck`).
-- `forwardAmount` = the USDC pull size.
-- `remaining_accounts` = `[...guard.accounts, ...forwardAccounts]` — the SDK
-  auto-prepends the `ValidationPda`.
+- `forwardAmount` = the USDC pull size (required for PayAsYouGo; pass `null`
+  for subscription/onetime).
+- `remaining_accounts` = `[...guard.accounts, ...forwardAccounts]` — the
+  `ValidationPda` is in the `accountsStrict` map; the remaining accounts
+  slice is just the Lighthouse target accounts + forward accounts.
 
 ```typescript
 // Two distinct intermediates (input_mint != output_mint), both owned by the
@@ -197,50 +208,69 @@ const forwardAccounts = swapIx.keys.map((k) => ({
 }));
 
 const remainingAccounts = [
-  ...guard.accounts, // validation read-accounts (the SDK prepends ValidationPda)
+  ...guard.accounts, // Lighthouse target accounts (no leading ValidationPda)
   ...forwardAccounts, // DLMM swap accounts (includes the self-listed DLMM program)
 ];
 
-const execIx = await sdk.executeComposable(
+const [execIx] = await sdk.executeComposable(
   composablePolicyPDA,
   Buffer.from(swapIx.data),
   new anchor.BN(SWAP_INPUT_AMOUNT),
   remainingAccounts
 );
+// Returns [executeInstruction] — also ATA ensures for recipient + fee recipients
 ```
 
-## `min_output_amount` semantics
+## `minOutputAmount` (removed)
 
-`minOutputAmount` on the `ForwardConfig` is checked against the **NET
-(post-fee)** output — i.e. the amount that actually lands in the recipient's
-ATA after the protocol fee (default 100 bps) and gateway fee are deducted.
+`ForwardConfig.minOutputAmount` was removed in v2.1. The `ByteRangeCheck`
+pins the swap instruction selector, so swap-level slippage (`minOutAmount` on
+`pool.swapQuote`) is the caller's responsibility — it's encoded inside the
+forward instruction data that the CPI executes verbatim.
 
-```text
-swap_output_amount
-   ├── protocol_fee   = swap_output * effective_protocol_fee_bps / 10000  → ProgramConfig.fee_recipient
-   ├── gateway_fee    = swap_output * gateway_fee_bps / 10000             → PaymentGateway.fee_recipient
-   └── net (swept)                                              → recipient
-                              ↑
-                       min_output_amount compared against THIS
+For net-level guarantees (output after fees), use the **post-validation**
+hook: a Lighthouse assertion against the intermediate output ATA balance
+after the swap but before the sweep. This replaces the old inline
+`minOutputAmount` field.
+
+```typescript
+const netGuard = lighthouse
+  .tokenAccount(intermediateOutputAta)
+  .amount(desiredMinOut, ">=")
+  .build();
+
+const createIx = await sdk.getCreateComposablePolicyInstruction(
+  USDC_MINT,
+  hotWallet.publicKey,
+  gatewayPDA,
+  policyType,
+  "Topup WSOL swap",
+  forwardConfig,
+  preValidationSpec,
+  prePinnedAccounts,
+  preValidationData,
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // postValidation
+  netGuard.accounts, // postPinnedAccounts
+  netGuard.data // postValidationData
+);
 ```
 
-!!! info "Two slippage knobs" - **Swap-level** slippage: `minOutAmount` in `pool.swapQuote(...)` —
-protects against the DLMM price moving within the swap itself. - **Net-level** slippage: `ForwardConfig.minOutputAmount` — protects
-against the post-fee delivered amount being below an acceptable floor.
+!!! info "Slippage protection"
 
-    The DLMM `minOutAmount` is the primary defence. The Tributary
-    `minOutputAmount` is a backstop on the net amount; set it to `null` if the
-    swap-level slippage already covers your requirements.
+    The DLMM `minOutAmount` inside the swap ix is the primary
+    price-slippage defence. The post-validation hook is an optional backstop
+    on the delivered amount; leave it disabled if swap-level slippage already
+    covers your requirements.
 
 ## Failure modes
 
-| Condition                                                      | Outcome                                                                                  |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Swap selector doesn't match the pinned `ByteRangeCheck`        | `DiscriminatorCheckRequired` / `ByteRangeCheckFailed` → tx reverts.                      |
-| PayAsYouGo period cap exhausted                                | Rejected before the swap CPI runs.                                                       |
-| Lighthouse assertion fails (recipient already has enough WSOL) | Tx reverts before the swap.                                                              |
-| Insufficient delegate amount on `userTokenAccount`             | `InsufficientDelegatedAmount`.                                                           |
-| Pool moves adversarially between quote and execute             | `minOutAmount` in the swap ix (and `ForwardConfig.minOutputAmount` if set) protects you. |
+| Condition                                                      | Outcome                                                                      |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Swap selector doesn't match the pinned `ByteRangeCheck`        | `DiscriminatorCheckRequired` / `ByteRangeCheckFailed` → tx reverts.          |
+| PayAsYouGo period cap exhausted                                | Rejected before the swap CPI runs.                                           |
+| Lighthouse assertion fails (recipient already has enough WSOL) | Tx reverts before the swap.                                                  |
+| Insufficient delegate amount on `userTokenAccount`             | `InsufficientDelegatedAmount`.                                               |
+| Pool moves adversarially between quote and execute             | `minOutAmount` in the swap ix (or a post‑validation assertion) protects you. |
 
 ## Reference
 
