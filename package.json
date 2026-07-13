@@ -3,6 +3,11 @@
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@10.28.2",
+  "pnpm": {
+    "overrides": {
+      "@tanstack/react-query": "5.90.20"
+    }
+  },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@solana/spl-token": "^0.4.14",

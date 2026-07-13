@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@tanstack/react-query': 5.90.20
+
 importers:
 
   .:
@@ -248,8 +251,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       '@tanstack/react-query':
-        specifier: ^5.89.0
-        version: 5.90.2(react@19.2.3)
+        specifier: 5.90.20
+        version: 5.90.20(react@19.2.3)
       '@tributary-so/payments':
         specifier: workspace:*
         version: link:../../packages/payments
@@ -402,7 +405,7 @@ importers:
         specifier: ^4.1.13
         version: 4.1.14(vite@6.4.1(@types/node@26.0.1)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.47.0)(tsx@4.21.0)(yaml@2.8.4))
       '@tanstack/react-query':
-        specifier: ^5.90.20
+        specifier: 5.90.20
         version: 5.90.20(react@19.2.3)
       '@tributary-so/payments':
         specifier: workspace:*
@@ -827,7 +830,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       '@tanstack/react-query':
-        specifier: ^5.89.0
+        specifier: 5.90.20
         version: 5.90.20(react@19.2.3)
       '@tributary-so/payments':
         specifier: workspace:*
@@ -954,7 +957,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       '@tanstack/react-query':
-        specifier: ^5.89.0
+        specifier: 5.90.20
         version: 5.90.20(react@19.2.3)
       '@tributary-so/payments':
         specifier: workspace:*
@@ -1093,7 +1096,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       '@tanstack/react-query':
-        specifier: ^5.89.0
+        specifier: 5.90.20
         version: 5.90.20(react@19.2.3)
       '@tributary-so/sdk':
         specifier: workspace:*
@@ -1531,7 +1534,7 @@ importers:
   packages/tokens-client:
     devDependencies:
       '@tanstack/react-query':
-        specifier: ^5.89.0
+        specifier: 5.90.20
         version: 5.90.20(react@19.2.3)
       '@types/node':
         specifier: ^24.5.2
@@ -6727,16 +6730,8 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
-  '@tanstack/query-core@5.90.2':
-    resolution: {integrity: sha512-k/TcR3YalnzibscALLwxeiLUub6jN5EDLwKDiO7q5f4ICEoptJ+n9+7vcEFy5/x/i6Q+Lb/tXrsKCggf5uQJXQ==}
-
   '@tanstack/query-core@5.90.20':
     resolution: {integrity: sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==}
-
-  '@tanstack/react-query@5.90.2':
-    resolution: {integrity: sha512-CLABiR+h5PYfOWr/z+vWFt5VsOA2ekQeRQBFSKlcoW6Ndx/f8rfyVmq4LbgOM4GG2qtxAxjLYLOpCNTYm4uKzw==}
-    peerDependencies:
-      react: ^18 || ^19
 
   '@tanstack/react-query@5.90.20':
     resolution: {integrity: sha512-vXBxa+qeyveVO7OA0jX1z+DeyCA4JKnThKv411jd5SORpBKgkcVnYKCiBgECvADvniBX7tobwBmg01qq9JmMJw==}
@@ -26390,14 +26385,7 @@ snapshots:
       tailwindcss: 4.2.2
       vite: 7.1.7(@types/node@25.2.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.47.0)(tsx@4.21.0)(yaml@2.8.4)
 
-  '@tanstack/query-core@5.90.2': {}
-
   '@tanstack/query-core@5.90.20': {}
-
-  '@tanstack/react-query@5.90.2(react@19.2.3)':
-    dependencies:
-      '@tanstack/query-core': 5.90.2
-      react: 19.2.3
 
   '@tanstack/react-query@5.90.20(react@19.2.3)':
     dependencies:
