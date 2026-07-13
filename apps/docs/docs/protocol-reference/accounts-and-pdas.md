@@ -14,7 +14,7 @@ over hand-rolling `PublicKey.findProgramAddress`.
 | `UserPayment`      | `[b"user_payment", owner, mint]`                  | `UserPayment`      | Per user + mint. **Is** the modern delegate. Tracks two independent counters.                                                                              |
 | `PaymentPolicy`    | `[b"payment_policy", user_payment, policy_id]`    | `PaymentPolicy`    | Regular pull-payment policy. `policy_id` = `created_policies_count` at creation.                                                                           |
 | `ComposablePolicy` | `[b"composable_policy", user_payment, policy_id]` | `ComposablePolicy` | Programmable pull-payment policy. `policy_id` = `created_composable_count` at creation.                                                                    |
-| `ValidationPda`    | `[b"composable_validation", composable_policy]`   | `ValidationPda`    | Stores ≤1024 bytes of Lighthouse assertion data for a composable policy.                                                                                   |
+| `ValidationPda`    | `[b"composable_validation", composable_policy]`   | `ValidationPda`    | Stores ≤512 bytes of Lighthouse assertion data for a composable policy.                                                                                    |
 | `PaymentsDelegate` | `[b"payments"]`                                   | _(no struct)_      | **Legacy / deprecated.** Global delegate from v0. Still accepted by `execute_payment` for backward compatibility. New code must use the `UserPayment` PDA. |
 | `ReferralAccount`  | `[b"referral", gateway, referral_code]`           | `ReferralAccount`  | `referral_code` is a 6-byte alphanumeric code. `zero_copy` account.                                                                                        |
 
@@ -173,11 +173,11 @@ itself lives in a separate `ValidationPda`.
 
 ### `ValidationPda` (1034 bytes max)
 
-| Field            | Type         | Size | Notes                                                   |
-| ---------------- | ------------ | ---- | ------------------------------------------------------- |
-| `_discriminator` | `[u8; 8]`    | 8    |                                                         |
-| `data_len`       | `u16`        | 2    | Actual bytes used                                       |
-| `data`           | `[u8; 1024]` | 1024 | Lighthouse assertion bytes (`MAX_VALIDATION_DATA_SIZE`) |
+| Field            | Type        | Size | Notes                                                   |
+| ---------------- | ----------- | ---- | ------------------------------------------------------- |
+| `_discriminator` | `[u8; 8]`   | 8    |                                                         |
+| `data_len`       | `u16`       | 2    | Actual bytes used                                       |
+| `data`           | `[u8; 512]` | 512  | Lighthouse assertion bytes (`MAX_VALIDATION_DATA_SIZE`) |
 
 Space is rounded up to 8-byte alignment via `ValidationPda::space_for()` for
 rent efficiency. Use the smallest size that fits the assertion.

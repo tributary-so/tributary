@@ -26,7 +26,7 @@ graph TD
     UP["UserPayment PDA<br/>seeds: [user_payment, owner, mint]<br/>tracks counters + is the delegate"]
     PP["PaymentPolicy PDA<br/>seeds: [payment_policy, user_payment, policy_id]<br/>direct pull"]
     CP["ComposablePolicy PDA<br/>seeds: [composable_policy, user_payment, policy_id]<br/>programmable pull"]
-    VP["ValidationPda<br/>seeds: [composable_validation, composable_policy]<br/>≤1024 bytes Lighthouse assertion data"]
+    VP["ValidationPda<br/>seeds: [composable_validation, composable_policy]<br/>≤512 bytes Lighthouse assertion data"]
     GW["PaymentGateway PDA<br/>seeds: [gateway, authority]<br/>fees, signer, feature flags"]
     CFG["ProgramConfig PDA<br/>seeds: [config]<br/>singleton — admin, protocol fee, pause"]
     REF["ReferralAccount PDA<br/>seeds: [referral, gateway, code]<br/>up to 3-level chain"]

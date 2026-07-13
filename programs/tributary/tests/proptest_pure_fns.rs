@@ -407,8 +407,6 @@ proptest! {
                 pinned_accounts: [
                     PinnedAccount { index: 0, pubkey: Pubkey::new_unique() },
                     PinnedAccount::default(),
-                    PinnedAccount::default(),
-                    PinnedAccount::default(),
                 ],
             },
             input_mint: mint,
@@ -460,16 +458,15 @@ proptest! {
 // InstructionConstraint — indexed pin model (PinnedAccount)
 // ============================================================================
 
-/// Generate up to 4 PinnedAccount entries with small indices (0..4 range
+/// Generate up to MAX PinnedAccount entries with small indices (0..MAX range
 /// increases duplicate probability for meaningful coverage).
 fn prop_pin_set(
     num: u8,
     idx0: u8,
     idx1: u8,
-    idx2: u8,
-    idx3: u8,
 ) -> ([PinnedAccount; MAX_PINNED_FORWARD_ACCOUNTS], Vec<u8>) {
-    let indices = [idx0 % 4, idx1 % 4, idx2 % 4, idx3 % 4];
+    let max = MAX_PINNED_FORWARD_ACCOUNTS as u8;
+    let indices = [idx0 % max, idx1 % max];
     let pins = [
         PinnedAccount {
             index: indices[0],
@@ -477,14 +474,6 @@ fn prop_pin_set(
         },
         PinnedAccount {
             index: indices[1],
-            pubkey: Pubkey::new_unique(),
-        },
-        PinnedAccount {
-            index: indices[2],
-            pubkey: Pubkey::new_unique(),
-        },
-        PinnedAccount {
-            index: indices[3],
             pubkey: Pubkey::new_unique(),
         },
     ];
@@ -498,13 +487,11 @@ proptest! {
     /// (and the rest of the config is valid), it must accept.
     #[test]
     fn prop_duplicate_index_rejected(
-        num_pins in 1u8..=4u8,
-        idx0 in 0u8..4,
-        idx1 in 0u8..4,
-        idx2 in 0u8..4,
-        idx3 in 0u8..4,
+        num_pins in 1u8..=(MAX_PINNED_FORWARD_ACCOUNTS as u8),
+        idx0 in 0u8..(MAX_PINNED_FORWARD_ACCOUNTS as u8),
+        idx1 in 0u8..(MAX_PINNED_FORWARD_ACCOUNTS as u8),
     ) {
-        let (pins, active) = prop_pin_set(num_pins, idx0, idx1, idx2, idx3);
+        let (pins, active) = prop_pin_set(num_pins, idx0, idx1);
 
         // Detect duplicates manually
         let has_dup = (0..active.len()).any(|i| {
@@ -539,25 +526,21 @@ proptest! {
     /// array, verifies true; then corrupts one position and verifies false.
     #[test]
     fn prop_pins_match_correct_position(
-        num_pins in 1u8..=4u8,
+        num_pins in 1u8..=(MAX_PINNED_FORWARD_ACCOUNTS as u8),
         idx0 in any::<u8>(),
         idx1 in any::<u8>(),
-        idx2 in any::<u8>(),
-        idx3 in any::<u8>(),
         forward_start in 0usize..4,
     ) {
         // Avoid duplicate indices (those are rejected at create and make
         // pins_match ambiguous).
-        let indices = [idx0, idx1, idx2, idx3];
+        let indices = [idx0, idx1];
         prop_assume!((0..num_pins as usize)
             .all(|i| (0..num_pins as usize)
                 .all(|j| i == j || indices[i] != indices[j])));
 
         let pk0 = Pubkey::new_unique();
         let pk1 = Pubkey::new_unique();
-        let pk2 = Pubkey::new_unique();
-        let pk3 = Pubkey::new_unique();
-        let pubkeys = [pk0, pk1, pk2, pk3];
+        let pubkeys = [pk0, pk1];
 
         let mut ic = InstructionConstraint::default();
         ic.num_pinned_accounts = num_pins;

@@ -1,11 +1,11 @@
 ---
 # tributary-u8n4
 title: Reduce composable account/tx footprint — MAX_PINNED_FORWARD_ACCOUNTS 4→2 + MAX_VALIDATION_DATA_SIZE 1024→512
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-12T19:10:21Z
-updated_at: 2026-07-12T19:19:27Z
+updated_at: 2026-07-13T07:46:19Z
 ---
 
 ## Context
