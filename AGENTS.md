@@ -490,7 +490,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0009] | Composable hooks: sentinel-disabled, externally stored                                  |
 | [0010] | Composable settlement semantics (NET min_output, PayAsYouGo-only forward_amount)        |
 | [0011] | Referral chain hardened at execution: re-validated + payer-bound                        |
-| [0012] | Mint compatibility: Token-2022 extension blocklist                                      |
+| [0012] | Mint compatibility: legacy SPL Token only (Token-2022 rejected) _(amended by CF-009)_   |
 | [0013] | Lighthouse SDK vendored with an anti-corruption facade in `@tributary-so/sdk`           |
 | [0014] | Composable scheduler trigger model: per-policy state-poll                               |
 | [0015] | Position Tributary as one primitive — "If This Then Money" (positioning)                |
