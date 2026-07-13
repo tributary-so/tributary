@@ -98,7 +98,7 @@ and fee-distribution logic.
 | UserPayment      | `["user_payment", owner, mint]`                  | per user+mint; tracks both `created_policies_count` AND `created_composable_count` |
 | PaymentPolicy    | `["payment_policy", user_payment, policy_id]`    | regular pull-payment policy                                                        |
 | ComposablePolicy | `["composable_policy", user_payment, policy_id]` | programmable pull-payment policy                                                   |
-| ValidationPda    | `["composable_validation", composable_policy]`   | stores Lighthouse assertion data (≤1024 bytes)                                     |
+| ValidationPda    | `["composable_validation", composable_policy]`   | stores Lighthouse assertion data (≤512 bytes)                                      |
 | PaymentsDelegate | `["payments"]`                                   | legacy global delegate (deprecated — UserPayment PDA is the delegate now)          |
 | ReferralAccount  | `["referral", gateway, referral_code]`           | 6-char referral code tracking                                                      |
 
@@ -254,15 +254,15 @@ struct ForwardConfig {
     input_mint: Pubkey,           // == user_payment.token_mint
     output_mint: Pubkey,          // recipient delivery mint
     forward_flags: u8,
-}
+}  // ForwardConfig::SIZE = 205 bytes (ADR-0021 amended, ADR-0022 amended)
 
 struct InstructionConstraint {
     program_id: Pubkey,       // Pubkey::default() = disabled (sentinel)
     num_data_checks: u8,
     data_checks: [ByteRangeCheck; 4], // pin forward instruction selector
     num_pinned_accounts: u8,
-    pinned_accounts: [PinnedAccount; 4], // indexed: { index: u8, pubkey: Pubkey }
-}
+    pinned_accounts: [PinnedAccount; 2], // indexed: { index: u8, pubkey: Pubkey }
+}  // InstructionConstraint::SIZE = 140 bytes (ADR-0021 amended: 4→2 forward pins)
 ```
 
 `PinnedAccount` pins a specific position (`index`) in the forward-account
@@ -304,7 +304,7 @@ Two separate ValidationPda accounts:
 - `["composable_validation_post", composable_policy]`
 
 Each independently created only when the corresponding `ValidationSpec` is
-`ProgramCall`. The assertion **data** (≤1024 bytes) is stored in the
+`ProgramCall`. The assertion **data** (≤512 bytes) is stored in the
 ValidationPda account, not inline.
 
 - `validation_program` must be in `ALLOWED_VALIDATION_PROGRAMS` (currently:
