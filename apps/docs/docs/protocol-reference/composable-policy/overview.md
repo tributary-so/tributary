@@ -2,102 +2,138 @@
 
 A `ComposablePolicy` is a **programmable pull-payment policy** that reuses the
 same `PolicyType` schedule model as `PaymentPolicy` (see
-[vs-payment-policy.md](vs-payment-policy.md)) but inserts two **opt-in hooks**
+[vs-payment-policy.md](vs-payment-policy.md)) but inserts **three opt-in hooks**
 into the execution path:
 
-1. **Validation** — a read-only assertion CPI (Lighthouse) that can veto the
-   transaction if on-chain state does not satisfy a stored predicate.
+1. **Pre-validation** — a read-only assertion CPI (Lighthouse) that runs after
+   the pull but before the forward, vetoing the tx if on-chain state doesn't
+   satisfy a stored predicate.
 2. **Forward** — a token-transform CPI (Meteora DLMM) that swaps the pulled
    input token into an output token before settlement.
+3. **Post-validation** — a read-only assertion CPI (Lighthouse) that runs after
+   the forward but before settlement, acting as the owner's floor on output
+   (replacing the removed `min_output_amount`).
 
 A `ComposablePolicy` with both hooks disabled behaves like a `PaymentPolicy`
 but lives in its own PDA namespace and routes the pull through an
 intermediate ATA owned by the `ComposablePolicy` PDA.
 
-## The 3-Phase Execution Flow
+## The 7-Phase Execution Flow
 
 `execute_composable` is a single transaction handler
 (`programs/tributary/src/instructions/composable/execute_composable.rs`)
-that runs four logical phases — `PULL`, `VALIDATE` (optional), `FORWARD`
-(optional), and `SETTLE`. The intermediate ATAs are created lazily and
-closed at the end so rent returns to the fee payer.
+that runs seven phases — Byte-range checks, `PULL`, `SKIM` (input-side fees),
+`PRE-VALIDATE` (optional), `FORWARD` (optional), `POST-VALIDATE` (optional),
+and `SETTLE`. The intermediate ATAs are created lazily and closed at the end
+so rent returns to the fee payer. **NET-on-pull is hardcoded for composable**
+(ADR-0026): the gross pull = face + fee, fees are skimmed from the input
+mint _before_ the forward runs.
 
 ```
 execute_composable(policy, instruction_data, forward_amount)
   │
-  ├─── Phase 0: GUARD ──────────────────────────────────────────────────┐
+  ├─── Step 1: BYTE-RANGE CHECKS ───────────────────────────────────────┐
   │     • composable_policy.status == Active                            │
   │     • !config.emergency_pause                                       │
   │     • gateway.is_active && gateway == composable_policy.gateway     │
   │     • fee_payer ∈ {gateway.signer, user_payment.owner, recipient}   │
+  │       (or gateway.is_permissionless() — ADR-0016 cold-relayer gate) │
   │     • validate_mint_compatible(input_mint)  AND  (output_mint)      │
   │       (re-checked at execute time — Token-2022 extensions mutate)   │
   │     • validate_byte_ranges(instruction_data, data_checks)           │
-  │       (skipped when forward is disabled — no selector to pin)       │
+  │       (skipped when forward disabled — no selector to pin)          │
   │     • intermediate_input_ata  == ATA(ComposablePolicy PDA, mint)    │
   │     • intermediate_output_ata == ATA(ComposablePolicy PDA, out_mint)│
-  │     • validate_policy_execution(policy_type, now, forward_amount)   │
-  │       → returns schedule_amount (Subscription/Milestone/PayAsYouGo) │
-  │     • user_token_account.delegated_amount >= input_amount           │
+  │       (only in deliver-transform mode)                              │
+  │     • resolve face_amount from PolicyType schedule                  │
+  │       (PayAsYouGo: caller-supplied forward_amount as face)          │
+  │     • compute gross_pull = face + fee (NET-on-pull hardcoded)       │
+  │     • validate PayAsYouGo caps on GROSS (ADR-0026)                  │
+  │     • user_token_account.delegated_amount >= gross_pull             │
   │     • recipient_token_account matches output_mint+recipient         │
-  │       (or, in NATIVE_OUTPUT mode, key == composable_policy.recipient)│
+  │       (skipped in act mode; NATIVE_OUTPUT checks SOL key)           │
+  │     • Cold-relayer OR-gate: post_validation OR has_route_pin        │
   └──────────────────────────────────────────────────────────────────────┘
   │
-  ├─── Phase 1: PULL ───────────────────────────────────────────────────┐
-  │     Resolve pull delegate (UserPayment PDA v1 OR legacy             │
-  │     PaymentsDelegate PDA v0). Signer = resolved PDA.                │
-  │     transfer_checked:                                              │
-  │       user_token_account → intermediate_input_ata                   │
-  │     (ComposablePolicy PDA owns the intermediate — NOT the           │
-  │      UserPayment PDA; this is the security-critical decoupling.)    │
-  └──────────────────────────────────────────────────────────────────────┘
+  ├─── Phase 1: PULL (user → intermediate_input) ──────────────────────┐
+  │     Resolve pull delegate (UserPayment PDA v1 OR legacy            │
+  │     PaymentsDelegate PDA v0). Signer = resolved PDA.               │
+  │     transfer_checked: gross_pull                                   │
+  │       user_token_account → intermediate_input_ata                  │
+  │     (ComposablePolicy PDA owns the intermediate — NOT the          │
+  │      UserPayment PDA; this is the security-critical decoupling.)   │
+  └─────────────────────────────────────────────────────────────────────┘
   │
-  ├─── Phase 2: VALIDATE  (optional) ──────────────────────────────────┐
-  │     Only when validation_config.validation_program != Pubkey::default()│
-  │     remaining_accounts[0]   = ValidationPda (stores assertion data)  │
-  │     remaining_accounts[1..N] = Lighthouse read-accounts (≤ 10)       │
-  │     CPI into Lighthouse uses PLAIN `invoke` — NO signer seeds.       │
-  │     Read-only: the validation program cannot move funds.             │
-  │     Failure of the assertion aborts the transaction.                 │
-  └───────────────────────────────────────────────────────────────────────┘
+  ├─── Phase 1b: SKIM FEES (input-side, ADR-0026) ─────────────────────┐
+  │     Fees are split from intermediate_input BEFORE forward runs.    │
+  │     After skim, intermediate_input holds exactly `face`.           │
+  │     • calculate_fees(face, gateway_bps, protocol_share,            │
+  │       scheduler_share, referral_allocation, NET-on-pull=true)      │
+  │     • protocol_cut  → protocol_fee_account  (input_mint)           │
+  │     • gateway_cut   → gateway_fee_account   (input_mint)           │
+  │     • scheduler_cut → scheduler ATA (input_mint, permissionless)   │
+  │     • referral allocation handled via gateway residual carve-out   │
+  └─────────────────────────────────────────────────────────────────────┘
   │
-  ├─── Phase 3: FORWARD  (optional) ───────────────────────────────────┐
-  │     Only when forward_config.target_program != Pubkey::default().   │
-  │     remaining_accounts[N..] = forward program accounts (Meteora     │
-  │     DLMM pool + token program + event authority, …).                │
-  │     CPI into Meteora DLMM via `invoke_signed` with ComposablePolicy │
-  │     PDA seeds. ComposablePolicy is the ONLY signer forwarded; every │
-  │     other remaining_account is forced is_signer=false.              │
-  │     Swaps intermediate_input_ata → intermediate_output_ata.         │
-  └──────────────────────────────────────────────────────────────────────┘
+  ├─── Phase 2: PRE-VALIDATION (optional) ─────────────────────────────┐
+  │     Only when pre_validation == ProgramCall{program_id}.           │
+  │     CPI into Lighthouse via plain `invoke` — NO signer seeds.      │
+  │     pre_validation_pda (seed: composable_validation_pre)           │
+  │       contains assertion data + pinned target accounts.            │
+  │     remaining accounts pin-checked against pre_validation_pda.     │
+  │     Read-only: the validation program cannot move funds.           │
+  │     Failure of the assertion aborts the transaction.               │
+  └─────────────────────────────────────────────────────────────────────┘
   │
-  └─── Phase 4: SETTLE ────────────────────────────────────────────────┐
-        process_output_and_sweep(intermediate_output):                  │
-        1. read gross output_amount from intermediate_output_ata        │
-        2. fee_breakdown = shared::fees::calculate_fees(output_amount)  │
-           (single source of truth shared with execute_payment)         │
-        3. sweep_amount = output_amount − gateway_fee − protocol_fee    │
-        4. if min_output_amount.is_some():                              │
-              require!(sweep_amount >= min_output_amount)               │
-              (NET post-fee check — DeFi convention)                    │
-        5. transfer_checked(gateway_fee   → gateway_fee_account)        │
-           transfer_checked(protocol_fee → protocol_fee_account)        │
-           transfer_checked(sweep_amount → recipient_token_account)     │
-           — OR, when NATIVE_OUTPUT: closeAccount(WSOL → recipient SOL) │
-        6. require!(intermediate_input  balance == 0)                   │
-           require!(intermediate_output balance == 0)  (unless native)  │
-        7. advance_policy(policy_type, now, input_amount)               │
-           (shared calendar-month math — same as PaymentPolicy)         │
-        8. close both intermediate ATAs → rent to fee_payer             │
-        └─────────────────────────────────────────────────────────────┘
+  ├─── Phase 3: FORWARD (optional) ────────────────────────────────────┐
+  │     Only when instruction_constraint.program_id != Pubkey::default()│
+  │     Indexed pin-check: for each PinnedAccount{index, pubkey},      │
+  │       remaining_mid[forward_start + index] == pin.pubkey           │
+  │     CPI via `invoke_signed` with ComposablePolicy PDA seeds:       │
+  │       • ComposablePolicy PDA is the ONLY signer forwarded          │
+  │       • all other remaining_account → is_signer=false              │
+  │     Swaps intermediate_input (face) → intermediate_output.         │
+  └─────────────────────────────────────────────────────────────────────┘
+  │
+  ├─── Phase 4: POST-VALIDATION (optional) ────────────────────────────┐
+  │     Only when post_validation == ProgramCall{program_id}.          │
+  │     CPI into Lighthouse via plain `invoke` — NO signer seeds.      │
+  │     post_validation_pda (seed: composable_validation_post)         │
+  │       contains assertion data + pinned target accounts.            │
+  │     Owner's floor on output (deliver) or settlement (act).         │
+  └─────────────────────────────────────────────────────────────────────┘
+  │
+  └─── Phase 5: SETTLE (shape-dependent, ADR-0026) ────────────────────┐
+        Three shapes — fees already skimmed in Phase 1b, only          │
+        principal is moved here.                                       │
+                                                                       │
+        deliver-no-transform:                                          │
+          sweep intermediate_input (face) → recipient_token_account    │
+                                                                       │
+        deliver-transform:                                             │
+          sweep intermediate_output → recipient_token_account          │
+            (>0 guard KEPT — output exists, floor is owner's job)      │
+          return input residue (under-consumed face) → user            │
+                                                                       │
+        act mode:                                                      │
+          forward consumed input for non-token settlement              │
+          return input residue → user (no deliver sweep, no >0 guard)  │
+                                                                       │
+        1. verify both intermediates empty                             │
+        2. advance_policy(policy_type, now, advance_amount)            │
+           (shared calendar-month math — same as PaymentPolicy)        │
+        3. update total_input (gross), total_output (swept), count     │
+        4. close both intermediate ATAs → rent to fee_payer            │
+        └────────────────────────────────────────────────────────────┘
 ```
 
 ## PDA Layout
 
-| PDA                | Seeds                                               | Owner             | Purpose                                                                   |
-| ------------------ | --------------------------------------------------- | ----------------- | ------------------------------------------------------------------------- |
-| `ComposablePolicy` | `["composable_policy", user_payment, policy_id_le]` | Tributary program | The policy state + **owner of both intermediate ATAs**                    |
-| `ValidationPda`    | `["composable_validation", composable_policy]`      | Tributary program | Stores ≤512 bytes of Lighthouse assertion data (separate from the policy) |
+| PDA                 | Seeds                                               | Owner             | Purpose                                                     |
+| ------------------- | --------------------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| `ComposablePolicy`  | `["composable_policy", user_payment, policy_id_le]` | Tributary program | The policy state + **owner of both intermediate ATAs**      |
+| `PreValidationPda`  | `["composable_validation_pre", composable_policy]`  | Tributary program | Stores ≤512 bytes of pre-forward Lighthouse assertion data  |
+| `PostValidationPda` | `["composable_validation_post", composable_policy]` | Tributary program | Stores ≤512 bytes of post-forward Lighthouse assertion data |
 
 `policy_id_le` is the `u32` `composable_policy.policy_id` serialized as
 little-endian bytes. The `policy_id` is sourced from
@@ -149,20 +185,31 @@ pub struct ComposablePolicy {
     pub bump: u8,
     pub user_payment: Pubkey,
     pub gateway: Pubkey,
-    pub status: PolicyStatus,                 // Active | Paused | Completed
+    pub status: PolicyStatus,                   // Active | Paused | Completed
     pub rent_payer: Pubkey,
-    pub policy_type: PolicyType,              // same enum as PaymentPolicy (128 B)
-    pub forward_config: ForwardConfig,        // see forward-hook.md
-    pub validation_config: ValidationConfig,  // see validation-hook.md
-    pub memo: [u8; 64],
+    pub policy_type: PolicyType,                // same enum as PaymentPolicy (128 B)
+    pub forward_config: ForwardConfig,          // see forward-hook.md
+    pub pre_validation: ValidationSpec,         // pre-forward hook (Disabled | ProgramCall | Inline)
+    pub post_validation: ValidationSpec,        // post-forward hook
+    pub memo: [u8; 32],
     pub recipient: Pubkey,
-    pub total_input: u64,                     // lifetime input pulled
-    pub total_output: u64,                    // lifetime net swept to recipient
+    pub total_input: u64,                       // lifetime gross pulled from user
+    pub total_output: u64,                      // lifetime net swept to recipient
     pub payment_count: u32,
     pub policy_id: u32,
     pub created_at: i64,
     pub updated_at: i64,
-    pub padding: [u8; 32],
+    pub padding: [u8; 192],
+}
+```
+
+`ValidationSpec` enum:
+
+```rust
+pub enum ValidationSpec {
+    Disabled,
+    ProgramCall { program_id: Pubkey },   // CPI to Lighthouse (allowlisted)
+    Inline { reserved: u8 },              // reserved, errors at create
 }
 ```
 
@@ -170,12 +217,12 @@ Source: `programs/tributary/src/state/composable_policy.rs`.
 
 ## Instructions
 
-| Instruction                | Description                                                            |
-| -------------------------- | ---------------------------------------------------------------------- |
-| `create_composable_policy` | Create the `ComposablePolicy` (+ optional `ValidationPda`) account(s). |
-| `execute_composable`       | Run the 3-phase flow above. Permissionless — any gateway signer.       |
-| `change_composable_status` | Toggle `Active` ↔ `Paused`.                                           |
-| `delete_composable_policy` | Close the policy (+ `ValidationPda`); refund rent to `rent_payer`.     |
+| Instruction                | Description                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| `create_composable_policy` | Create the `ComposablePolicy` (+ optional `PreValidationPda` & `PostValidationPda`) account(s). |
+| `execute_composable`       | Run the execution flow above. Permissionless — any gateway signer.                              |
+| `change_composable_status` | Toggle `Active` ↔ `Paused`.                                                                     |
+| `delete_composable_policy` | Close the policy (+ both validation PDAs); refund rent to `rent_payer`.                         |
 
 ## Related pages
 

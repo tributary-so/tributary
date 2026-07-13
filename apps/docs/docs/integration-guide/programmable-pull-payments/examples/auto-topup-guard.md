@@ -73,8 +73,9 @@ const guard = lighthouse
 
 ## 2. Create the composable policy
 
-Forward disabled: `targetProgram = PublicKey.default()`. Because there's no
-swap step, `num_data_checks` must be `0` and `input_mint === output_mint`.
+Forward disabled: `instructionConstraint.programId = PublicKey.default()`.
+Because there's no swap step, `num_data_checks` must be `0` and `input_mint
+=== output_mint`.
 
 ```typescript
 const policyType = {
@@ -84,34 +85,38 @@ const policyType = {
     periodLengthSeconds: new anchor.BN(30 * 24 * 3600),
     currentPeriodStart: new anchor.BN(Math.floor(Date.now() / 1000)),
     currentPeriodTotal: new BN(0),
-    padding: new Array(88).fill(0),
+    expiryDate: null,
+    padding: new Array(79).fill(0),
   },
 };
 
 const forwardConfig = {
-  targetProgram: PublicKey.default(), // sentinel → forward disabled
+  instructionConstraint: {
+    programId: PublicKey.default(),
+    numDataChecks: 0,
+    dataChecks: [
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+    ],
+    numPinnedAccounts: 0,
+    pinnedAccounts: [],
+  },
   inputMint: USDC_MINT,
-  outputMint: USDC_MINT, // must equal inputMint when disabled
-  minOutputAmount: null,
+  outputMint: USDC_MINT,
   forwardFlags: 0,
-  numDataChecks: 0,
-  dataChecks: [
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-    { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-  ],
 };
 
 const createIx = await sdk.getCreateComposablePolicyInstruction(
   USDC_MINT,
-  hotWallet.publicKey, // recipient
+  hotWallet.publicKey,
   gatewayPDA,
   policyType,
   "Auto topup guard",
   forwardConfig,
-  LIGHTHOUSE_PROGRAM_ID, // validation program (SystemProgram = none)
-  guard.numAccounts, // 1
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } },
+  [hotWalletUsdcAta],
   guard.data
 );
 
@@ -133,26 +138,25 @@ is exhausted — exactly the PayAsYouGo semantics.
 
 The executor is any gateway signer (or the user / recipient). Forward disabled
 → `instructionData` is unused; pass an empty buffer. `remaining_accounts` =
-the Lighthouse read-accounts (`guard.accounts`). The SDK auto-prepends the
-`ValidationPda`.
+the Lighthouse read-accounts (`guard.accounts`). The ValidationPdas are
+resolved from the composable policy account — no need to pass them.
 
 ```typescript
-const composablePolicyPDA = getComposablePolicyPda(
+const { address: composablePolicyPDA } = sdk.getComposablePolicyPda(
   userPaymentPDA,
-  composablePolicyId,
-  programId
-).address;
+  composablePolicyId
+);
 
-const execIx = await sdk.executeComposable(
+const execIxs = await sdk.executeComposable(
   composablePolicyPDA,
-  Buffer.alloc(0), // forward disabled
+  Buffer.alloc(0),
   new anchor.BN(TOPUP_CHUNK),
-  guard.accounts // the SDK prepends the ValidationPda; you only pass the read-accounts
+  guard.accounts
 );
 
 await sendAndConfirmTransaction(
   connection,
-  new Transaction().add(execIx),
+  new Transaction().add(...execIxs),
   [coldWallet],
   { commitment: "processed" }
 );
@@ -162,14 +166,18 @@ await sendAndConfirmTransaction(
 
 1. **Pull** — `UserPayment` PDA signs a `transfer` from `coldWalletUsdcAta`
    into the `intermediate_input_ata` (owned by the `ComposablePolicy` PDA).
-2. **Validate** — Tributary CPIs Lighthouse with `guard.data` +
+   The pull is gross: `face + fees`.
+2. **Skim fees** — Protocol fee + gateway fee are routed from the
+   `intermediate_input_ata` to their respective fee accounts. After skimming,
+   the intermediate holds exactly the `face` amount.
+3. **Pre-validate** — Tributary CPIs Lighthouse with `guard.data` +
    `[hotWalletUsdcAta]` as read-accounts. Lighthouse asserts
-   `hotWalletUsdcAta.amount < 50 USDC`. If the hot wallet is already at or
-   above the threshold, the assertion fails and the **whole transaction
-   reverts** — no funds move.
-3. **Settle** — Because forward is disabled, the program sweeps the
-   intermediate USDC directly to `hotWalletUsdcAta` (minus the protocol fee +
-   gateway fee). `min_output_amount` is checked against the **net** amount.
+   `hotWalletUsdcAta.amount < 50 USDC`. If the hot wallet is at or above the
+   threshold, the assertion fails and the **whole transaction reverts** —
+   no funds move.
+4. **Settle (deliver-no-transform)** — Because forward is disabled, the
+   program sweeps the remaining USDC from the intermediate to
+   `hotWalletUsdcAta`.
 
 ## Failure modes
 

@@ -14,46 +14,78 @@ The only forward target currently allowlisted is **Meteora DLMM**
 Stored inline on the `ComposablePolicy` account:
 
 ```rust
-pub const MAX_BYTE_RANGE_CHECKS: usize = 4;
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ForwardConfig {
-    /// CPI target. `Pubkey::default()` is the "forward disabled" sentinel
-    /// (see allowlists-and-sentinels.md). Otherwise must be in
-    /// ALLOWED_FORWARD_PROGRAMS.
-    pub target_program: Pubkey,
+    /// Unified instruction constraint — pins the forward program, its
+    /// instruction selector, and indexed accounts. Absorbs the old
+    /// `target_program` + `data_checks` fields and the scrapped
+    /// `ForwardAccountsPda` design.
+    /// `instruction_constraint.program_id == Pubkey::default()` is the
+    /// "forward disabled" sentinel.
+    pub instruction_constraint: InstructionConstraint,
 
     /// == user_payment.token_mint. Validated at execute time against the
     /// user_token_account mint.
     pub input_mint: Pubkey,
 
     /// Recipient delivery mint. May equal input_mint only when forward is
-    /// disabled (same-mint topup path).
+    /// disabled (same-mint topup path). `Pubkey::default()` + forward
+    /// enabled = **act mode** (ADR-0026).
     pub output_mint: Pubkey,
-
-    /// Minimum acceptable **net** output the recipient must receive,
-    /// measured AFTER gateway and protocol fees have been deducted from
-    /// the forward program's gross output. Matches DeFi convention
-    /// (Uniswap/Jupiter `amountOutMin`). `None` or `Some(0)` disables.
-    pub min_output_amount: Option<u64>,
 
     /// Bit 0 = FORWARD_FLAG_NATIVE_OUTPUT (see native-output.md).
     pub forward_flags: u8,
-
-    /// Number of entries in `data_checks` that are active. Must be in
-    /// 1..=MAX_BYTE_RANGE_CHECKS when forward is enabled; must be 0 when
-    /// disabled. At least one check MUST pin offset 0 (the discriminator).
-    pub num_data_checks: u8,
-
-    pub data_checks: [ByteRangeCheck; MAX_BYTE_RANGE_CHECKS],
 }
 
 impl ForwardConfig {
-    pub const SIZE: usize = 32 + 32 + 32 + 9 + 1 + 1 + (1 + 1 + 8) * 4; // = 146
+    pub const SIZE: usize = InstructionConstraint::SIZE + // instruction_constraint
+        32 + // input_mint
+        32 + // output_mint
+        1;   // forward_flags = 205 bytes
 }
 ```
 
 Source: `programs/tributary/src/state/composable_policy.rs`.
+
+## InstructionConstraint — unified forward guard
+
+Replaces the v1.0 flat `target_program` + `ByteRangeCheck[]` model. Wraps
+the forward-program target, its instruction-selector byte-range checks,
+and its positional account pins into one struct. At create time
+`program_id == Pubkey::default()` ≡ forward disabled.
+
+```rust
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]
+pub struct InstructionConstraint {
+    /// CPI target. `Pubkey::default()` is the forward-disabled sentinel.
+    pub program_id: Pubkey,
+    pub num_data_checks: u8,
+    pub data_checks: [ByteRangeCheck; 4],
+    pub num_pinned_accounts: u8,
+    /// Indexed pins: `pinned_accounts[i]` constrains the account at
+    /// `remaining_accounts[forward_start + pinned_accounts[i].index]` to
+    /// equal `pinned_accounts[i].pubkey`.
+    pub pinned_accounts: [PinnedAccount; 2],
+}
+
+impl InstructionConstraint {
+    pub const SIZE: usize = 140; // = 32 + 1 + (1+1+8)*4 + 1 + (1+32)*2
+}
+```
+
+## PinnedAccount — indexed forward-account pin
+
+Replaces the old positional `[Pubkey; 4]` array. Each pin independently
+declares which `remaining_accounts` slot it constrains, so account
+insertions in the forward program's account list do not shift every pin.
+
+```rust
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Default)]
+pub struct PinnedAccount {
+    pub index: u8,
+    pub pubkey: Pubkey,
+}
+```
 
 ## ByteRangeCheck — pinning the forward instruction
 
@@ -74,73 +106,76 @@ pub struct ByteRangeCheck {
 
 impl ByteRangeCheck {
     pub fn validate(&self, instruction_data: &[u8]) -> bool {
-        // Defense-in-depth: `expected` is a fixed [u8; 8], so a length > 8
-        // would panic on the slice below. Reject rather than panic.
         if self.length > 8 { return false; }
         if self.offset as usize + self.length as usize > instruction_data.len() {
             return false;
         }
         let start = self.offset as usize;
         let end   = start + self.length as usize;
-        &instruction_data[start..end] == &self.expected[..self.length as usize]
+        instruction_data[start..end] == self.expected[..self.length as usize]
     }
 }
 ```
+
+!!! info "SDK representation"
+
+    In the Rust program `expected` is `[u8; 8]`. In the TypeScript SDK
+    (resolved from the Anchor IDL) the same field is typed as `Buffer`.
+    The first `length` bytes are compared; trailing bytes are ignored in
+    both representations.
 
 ### Create-time rules
 
 `validate_forward_config` and the create handler enforce:
 
-| Rule                                                                        | Error                             |
-| --------------------------------------------------------------------------- | --------------------------------- |
-| `target_program == Pubkey::default()` ⟹ `num_data_checks == 0`              | `InsufficientByteRangeChecks`     |
-| `target_program == Pubkey::default()` ⟹ `input_mint == output_mint`         | `ForwardDisabledRequiresSameMint` |
-| `target_program` in `ALLOWED_FORWARD_PROGRAMS`                              | `InvalidForwardProgram`           |
-| forward enabled ⟹ `1 <= num_data_checks <= MAX_BYTE_RANGE_CHECKS`           | `InsufficientByteRangeChecks`     |
-| for each active check: `offset + length <= 1024`                            | `ByteRangeCheckFailed`            |
-| for each active check: `length <= 8`                                        | `ByteRangeCheckFailed`            |
-| at least one check with `offset == 0 && length > 0`                         | `DiscriminatorCheckRequired`      |
-| `forward_flags & FORWARD_FLAG_NATIVE_OUTPUT` ⟹ `output_mint == NATIVE_MINT` | `NativeOutputRequiresWsol`        |
+| Rule                                                                              | Error                             |
+| --------------------------------------------------------------------------------- | --------------------------------- |
+| `instruction_constraint.program_id == Pubkey::default()` ⟹ `num_data_checks == 0` | `InsufficientByteRangeChecks`     |
+| forward disabled ⟹ `input_mint == output_mint`                                    | `ForwardDisabledRequiresSameMint` |
+| `instruction_constraint.program_id` in `ALLOWED_FORWARD_PROGRAMS`                 | `InvalidForwardProgram`           |
+| forward enabled ⟹ `1 <= instruction_constraint.num_data_checks <= 4`              | `InsufficientByteRangeChecks`     |
+| forward enabled ⟹ `instruction_constraint.num_pinned_accounts <= 2`               | `InsufficientPinnedAccounts`      |
+| no duplicate indices among active `pinned_accounts`                               | `DuplicatePinnedAccountIndex`     |
+| for each active check: `offset + length <= 1024`                                  | `ByteRangeCheckFailed`            |
+| for each active check: `length <= 8`                                              | `ByteRangeCheckFailed`            |
+| at least one check with `offset == 0 && length > 0`                               | `DiscriminatorCheckRequired`      |
+| `forward_flags & FORWARD_FLAG_NATIVE_OUTPUT` ⟹ `output_mint == NATIVE_MINT`       | `NativeOutputRequiresWsol`        |
 
 ### Execute-time re-validation
 
-Even though create-time validation rejects malformed checks, the handler
-re-runs `validate_byte_ranges` with `num_checks` sourced from on-chain state
-(H-04 defense-in-depth: a directly-serialized malformed account must not
-trigger an indexed panic). The loop re-checks
-`n <= checks.len()` before indexing.
+Even though create-time validation rejects malformed configs, the handler
+re-runs both checks with values sourced from on-chain state:
 
-## min_output_amount — net (post-fee) semantics
+1. **Byte-range check**: `validate_byte_ranges` re-checks
+   `n <= MAX_BYTE_RANGE_CHECKS` and `n <= checks.len()` before indexing
+   (H-04 defense-in-depth — a directly-serialised malformed account must
+   not trigger an indexed panic).
 
-`min_output_amount` is checked **after** fees are deducted from the forward
-program's gross output:
+2. **Pinned-account check**: the handler calls
+   `instruction_constraint.pins_match(remaining_accounts, forward_start)`
+   to verify that every active pin's
+   `remaining_accounts[forward_start + pin.index]` equals `pin.pubkey`.
 
-```rust
-let fee_breakdown = shared::fees::calculate_fees(
-    output_amount,                               // gross forward output
-    gateway.gateway_fee_bps,
-    gateway.custom_protocol_fee_bps,
-    config.protocol_fee_bps,
-    gateway.is_custom_protocol_fee_enabled(),
-    gateway.is_amount_net(),
-)?;
-let sweep_amount = output_amount - gateway_fee - protocol_fee;
+## Output floor — post-validation replaces `min_output_amount`
 
-if let Some(min_output) = min_output_amount {
-    if min_output > 0 {
-        require!(sweep_amount >= min_output, InsufficientOutputAmount);
-    }
-}
-```
+`min_output_amount` was removed from `ForwardConfig` in v2.1. The semantic
+replacement is **post-validation**: a `ValidationSpec::ProgramCall` CPI
+(Lighthouse) that runs **after** the forward step and before settlement.
+The owner writes a Lighthouse assertion that enforces the minimum output
+amount — for example `"recipient_token_account.amount >= 1_000_000"` after
+the forward CPI has deposited tokens there.
 
-This matches the DeFi convention (Uniswap / Jupiter `amountOutMin`): the
-caller reasons about the **net** number of output tokens that will land in
-the recipient's account. Set to `None` or `Some(0)` to disable the check
-entirely.
+This generalises the v1.0 `min_output_amount` concept: the assertion can
+check any on-chain state, not just a number-of-tokens threshold. See
+[validation-hook.md](validation-hook.md) for the full post-validation
+mechanics and assertion-building reference.
 
-Rationale: `reports/M5-min-output-amount-checked-before-fees.md` documented
-that an earlier implementation compared against the gross output, which let
-a high-fee gateway silently eat into the recipient's expected delivery.
+!!! note "Deliver-transform output-floor guard"
+
+    In deliver-transform mode the program still asserts
+    `output_amount > 0` — Tributary confirms the forward program **ran**.
+    The **amount** floor (`amount >= N`) is pure post-validation; the
+    `> 0` guard is an existence assertion, not a pricing assertion.
 
 ## Forward CPI mechanics
 
@@ -148,16 +183,23 @@ a high-fee gateway silently eat into the recipient's expected delivery.
 `remaining_accounts`:
 
 ```
-remaining_accounts layout (forward half, after validation accounts):
-┌──────────────────────────────────────────────────────────────────────┐
-│ Meteora DLMM pool accounts, token_program, event authority, etc.     │
-│ Forwarded verbatim — including executable accounts (H-04 comment in  │
-│ run_forward_cpi explains why executables are NOT stripped).          │
-└──────────────────────────────────────────────────────────────────────┘
+remaining_accounts layout:
+┌────────────────────────────────────────────────────────────────────────┐
+│ validation targets (pre)      — consumed by pre-validation CPI        │
+├────────────────────────────────────────────────────────────────────────┤
+│ forward-program accounts      — forwarded to Meteora DLMM etc.        │
+│ pinned_accounts check:                                                │
+│   remaining_mid[fwd_base + pin.index] == pin.pubkey for each pin      │
+│ (Base index fwd_base = after pre-validation targets.)                 │
+├────────────────────────────────────────────────────────────────────────┤
+│ validation targets (post)     — consumed by post-validation CPI       │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-The CPI is invoked with `invoke_signed` using only the ComposablePolicy PDA
-seeds:
+Forward accounts are forwarded verbatim — including executable accounts
+(see the H-04 comment in `run_forward_cpi` explaining why executables are
+NOT stripped). The CPI is invoked with `invoke_signed` using only the
+ComposablePolicy PDA seeds:
 
 ```rust
 let instruction = Instruction {
@@ -181,14 +223,14 @@ the transient intermediate balances.
 
 ## Disabling forward
 
-Set `target_program = Pubkey::default()` at create time. The handler detects
-this sentinel and:
+Set `instruction_constraint.program_id = Pubkey::default()` at create time
+(or pass `InstructionConstraint::default()`). The handler detects this
+sentinel and:
 
-- Skips the byte-range check (no selector to pin).
+- Skips the byte-range check and pinned-account check.
 - Skips `run_forward_cpi` entirely.
-- Reads the funded balance from `intermediate_input_ata` directly (for the
-  same-mint topup path, input and output intermediates collapse into one
-  account).
+- Uses the same-mint topup path: input and output intermediates collapse
+  into one account; the face balance is swept directly to the recipient.
 
 This is the "auto topup" pattern — pull USDC, deliver USDC, no swap. See
 [allowlists-and-sentinels.md](allowlists-and-sentinels.md).

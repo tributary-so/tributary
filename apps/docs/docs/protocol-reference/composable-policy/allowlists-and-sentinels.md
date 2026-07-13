@@ -32,57 +32,70 @@ via `ByteRangeCheck` discriminator checks — see
 
 ## Sentinel conventions
 
-| Hook       | Disabled when…                                                                                 | Constant            |
-| ---------- | ---------------------------------------------------------------------------------------------- | ------------------- |
-| Forward    | `forward_config.target_program == Pubkey::default()`                                           | `Pubkey::default()` |
-| Validation | `validation_config.validation_program == SystemProgram` (or `Pubkey::default()` via `Default`) | `SystemProgram`     |
+| Hook       | Disabled when…                                           | Sentinel            |
+| ---------- | -------------------------------------------------------- | ------------------- |
+| Forward    | `instruction_constraint.program_id == Pubkey::default()` | `Pubkey::default()` |
+| Validation | `ValidationSpec::Disabled`                               | enum variant        |
 
-The two hooks use **different** sentinel pubkeys. This is intentional: it
-mirrors the semantic distinction between "no CPI target at all" (forward,
-where the disabled path skips the entire Phase 3) and "no assertion program
-needed" (validation, where `SystemProgram` is a harmless no-op CPI target
-that the caller can still pass as a real account without special handling).
+The two hooks use **different** sentinel conventions. Forward uses a
+pubkey sentinel (`Pubkey::default()` on `instruction_constraint.program_id`)
+since program ID is the single gate. Validation uses an enum variant
+(`ValidationSpec::Disabled`) because the spec carries no pubkey — when
+disabled no assertion data is stored, no `ValidationPda` is allocated, and
+the caller passes `SystemProgram` as the program account.
 
 ### Forward-disabled invariants
 
-When `target_program == Pubkey::default()`:
+When `instruction_constraint.program_id == Pubkey::default()`:
 
-- `num_data_checks == 0` (no forward instruction selector to pin).
-- `input_mint == output_mint` (no conversion step — the "same-mint topup"
+- `ic.num_data_checks == 0` (no forward instruction selector to pin).
+- `output_mint == input_mint` (no conversion step — the "same-mint topup"
   pattern. The intermediate is funded by the pull and swept directly).
 - Execute handler skips both the byte-range check and `run_forward_cpi`.
 
 ### Validation-disabled invariants
 
-When `validation_program == SystemProgram`:
+When the spec is `ValidationSpec::Disabled`:
 
-- `validation_data.is_empty()` (no assertion to store).
-- No `ValidationPda` account is allocated.
-- Execute handler skips Phase 2 entirely and consumes zero
-  `remaining_accounts` for validation.
+- `validation_data.is_empty()` (no assertion to store — enforced by
+  `validate_init` at create time).
+- No `ValidationPda` account is allocated (neither pre nor post).
+- Execute handler skips Phase 2 (pre-validation) and Phase 4
+  (post-validation) entirely; it consumes zero `remaining_accounts`
+  for validation, and the caller passes `SystemProgram` as the
+  program account.
 
-## Create-time checks (`validate_forward_config`)
+## Create-time checks
 
-`create_composable_policy` extracts the forward-leg rules into a
-unit-testable helper:
+### Forward config (`validate_forward_config`)
+
+The forward-leg rules are extracted into a unit-testable helper. The current
+function reads `num_data_checks` and `program_id` through the nested
+`instruction_constraint`:
 
 ```rust
-pub(crate) fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
-    let forward_disabled = forward_config.target_program == Pubkey::default();
+pub fn validate_forward_config(forward_config: &ForwardConfig) -> Result<()> {
+    let ic = &forward_config.instruction_constraint;
+    let forward_disabled = ic.is_disabled();
+
     require!(
-        forward_disabled || ALLOWED_FORWARD_PROGRAMS.contains(&forward_config.target_program),
-        TributaryError::InvalidForwardProgram,
+        forward_disabled || ALLOWED_FORWARD_PROGRAMS.contains(&ic.program_id),
+        TributaryError::InvalidForwardProgram
     );
 
     if forward_disabled {
-        require!(forward_config.num_data_checks == 0,
+        require!(ic.num_data_checks == 0,
                  TributaryError::InsufficientByteRangeChecks);
-        require!(forward_config.input_mint == forward_config.output_mint,
+        require!(forward_config.output_mint == forward_config.input_mint,
                  TributaryError::ForwardDisabledRequiresSameMint);
     } else {
-        require!(forward_config.num_data_checks >= 1
-                 && forward_config.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
+        require!(ic.num_data_checks >= 1
+                 && ic.num_data_checks <= MAX_BYTE_RANGE_CHECKS as u8,
                  TributaryError::InsufficientByteRangeChecks);
+        require!(ic.has_effective_pins(),
+                 TributaryError::DegenerateForwardPins);
+        require!(!ic.has_duplicate_indices(),
+                 TributaryError::DuplicatePinIndex);
     }
 
     if forward_config.is_native_output() {
@@ -93,9 +106,43 @@ pub(crate) fn validate_forward_config(forward_config: &ForwardConfig) -> Result<
 }
 ```
 
-The validation-program allowlist check and the per-`ByteRangeCheck` sanity
-loop (including the discriminator-pin requirement) live in the handler body
-itself — see `create_composable_policy.rs`.
+The per-`ByteRangeCheck` sanity loop (including the discriminator-pin
+requirement for offset 0) lives in the handler body itself, iterating
+`forward_config.instruction_constraint.data_checks[i]` — see
+`create_composable_policy.rs`.
+
+### Validation specs (`validate_spec_and_program` + `validate_init`)
+
+Validation is now handled per-slot (pre and post) through the `ValidationSpec`
+enum. At create time the handler calls:
+
+```rust
+// Resolve each spec against the caller-supplied program account.
+validate_spec_and_program(pre_validation,
+    ctx.accounts.pre_validation_program.key(),
+    ctx.accounts.system_program.key())?;
+validate_spec_and_program(post_validation,
+    ctx.accounts.post_validation_program.key(),
+    ctx.accounts.system_program.key())?;
+
+// Then validate the init data for each (assertion bytes, pin set).
+validate_init(&pre_validation, &pre_init)?;
+validate_init(&post_validation, &post_init)?;
+```
+
+Where `validate_spec_and_program` dispatches on the enum:
+
+- `ValidationSpec::Disabled` → the passed program account must be
+  `SystemProgram` (no CPI target needed). No `ValidationPda` is allocated.
+- `ValidationSpec::ProgramCall { program_id }` → the passed program must
+  match `program_id`, which must be in `ALLOWED_VALIDATION_PROGRAMS`.
+- `ValidationSpec::Inline { .. }` → returns `InlineValidationNotImplemented`.
+
+And `validate_init` ensures:
+
+- When `Disabled`: `validation_data` must be empty (no assertion to store).
+- When `ProgramCall`: `validation_data` must be non-empty and ≤ 1024 bytes,
+  pins must be non-default, indices unique, within bounds.
 
 The handler also re-pins the named `input_mint` / `output_mint` accounts
 against the caller-supplied `forward_config` Pubkeys and runs the full
@@ -119,7 +166,7 @@ or privilege escalation.
 | `validate_mint_compatible(input_mint)` AND `(output_mint)` (Token-2022 extensions mutate) | L-02          |
 | `n <= checks.len()` before indexing `data_checks[i]`                                      | H-04          |
 | `ByteRangeCheck::validate` rejects `length > 8` rather than panicking                     | H-06          |
-| `validation_program == stored_validation_program`                                         | C-1           |
+| `pre_validation.program_id() == pre_program_info.key()` (+ same for post)                 | C-1           |
 | `forward_config.target_program` allowlist (transitively, via stored state)                | —             |
 
 ## Emergency pause
