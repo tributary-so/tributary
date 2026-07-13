@@ -31,6 +31,16 @@ pub fn validate_milestone_policy(
         require!(*amount > 0, TributaryError::InvalidAmount);
     }
 
+    // CF-015: escrow_amount is metadata used by off-chain indexers/auditors
+    // for total-liability accounting. It must cover the sum of the active
+    // milestone amounts so the recorded escrow never undercounts actual
+    // scheduled payouts (up to 4x for a full 4-milestone policy).
+    let sum: u64 = milestone_amounts[..total_milestones as usize]
+        .iter()
+        .try_fold(0u64, |acc, &v| acc.checked_add(v))
+        .ok_or(TributaryError::ArithmeticOverflow)?;
+    require!(escrow_amount >= sum, TributaryError::InvalidAmount);
+
     // Validate timestamps are in the future (basic check, mainnet only).
     // We disable this check on localnet so we can run our testsuite. There is no way to advance the
     // slots on our setup yet.
@@ -117,6 +127,14 @@ mod tests {
     fn rejects_multiple_signer_bits() {
         // bits 1 (gateway) + 2 (owner) = 0b0110 — mutually exclusive violation.
         let err = cfg([100, 200, 0, 0], 2, 0b0110, 300).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_escrow_below_milestone_sum() {
+        // CF-015: escrow_amount (1) < sum (1000+2000+3000+4000) — would
+        // undercount total-liability metadata by up to 4x.
+        let err = cfg([1000, 2000, 3000, 4000], 4, DUE_DATE, 1).unwrap_err();
         assert!(err == error!(TributaryError::InvalidAmount));
     }
 }
