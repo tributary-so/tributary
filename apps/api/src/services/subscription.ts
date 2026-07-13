@@ -3,16 +3,67 @@
  * Handles subscription status checking using the PaymentTracker
  */
 
+import { PublicKey } from "@solana/web3.js";
 import { PaymentTracker, PolicyLookupOptions } from "@tributary-so/payments";
 import { getConnection } from "./solana";
-import { decodeMemo } from "@tributary-so/sdk";
+import { decodeMemo, PaymentPolicy } from "@tributary-so/sdk";
+
+/**
+ * Padding-stripped policy variant payload.
+ *
+ * Typed via an index signature (`[field: string]: unknown`) on purpose: the
+ * runtime still carries nested `BN` numeric fields (e.g. `amount`,
+ * `nextPaymentDue`), and naming `BN` here would force a non-portable
+ * reference to `@types/bn.js` (which `@tributary-so/api` does not depend on
+ * directly) in the emitted `.d.ts`. Field-level precision lives in the SDK's
+ * `PolicyType`; callers that touch those fields already tolerate `BN`
+ * (see `buildSubscriptionClaims`).
+ */
+type StrippedPolicyVariant = { padding?: undefined; [field: string]: unknown };
+
+/**
+ * A {@link PaymentPolicy} normalized for JSON serialization:
+ * - `memo` u8[64] vector → decoded string
+ * - top-level BN timestamp/total fields → JS numbers
+ * - `padding` / `bump` redacted to `undefined`
+ * - `policyAccount` carries the original policy PDA
+ * - `policyType` has its per-variant `padding` stripped (loose-typed so the
+ *   `.d.ts` stays portable; see {@link StrippedPolicyVariant})
+ */
+export type SubscriptionDetails = Omit<
+  PaymentPolicy,
+  | "padding"
+  | "bump"
+  | "memo"
+  | "totalPaid"
+  | "createdAt"
+  | "updatedAt"
+  | "policyType"
+> & {
+  padding: undefined;
+  bump: undefined;
+  memo: string;
+  totalPaid: number;
+  createdAt: number;
+  updatedAt: number;
+  policyType:
+    | { subscription: StrippedPolicyVariant }
+    | { payAsYouGo: StrippedPolicyVariant }
+    | { milestone: StrippedPolicyVariant }
+    | { oneTime: StrippedPolicyVariant }
+    | { upTo: StrippedPolicyVariant }
+    | undefined;
+  policyAccount: PublicKey;
+};
 
 /**
  * Get full subscription details by tracking ID
  * @param options - Lookup options (user or gateway public key)
- * @returns Match payment policies
+ * @returns Matched payment policies with BN/padding artifacts normalized away
  */
-export async function getSubscriptionDetails(options: PolicyLookupOptions) {
+export async function getSubscriptionDetails(
+  options: PolicyLookupOptions,
+): Promise<SubscriptionDetails[]> {
   const connection = getConnection();
   const tracker = new PaymentTracker(connection);
   const policies = await tracker.getPaymentPoliciesForOptions(options);
@@ -40,6 +91,22 @@ export async function getSubscriptionDetails(options: PolicyLookupOptions) {
       policyType = {
         milestone: {
           ...account.policyType.milestone,
+          padding: undefined,
+        },
+      };
+    }
+    if ("oneTime" in account.policyType) {
+      policyType = {
+        oneTime: {
+          ...account.policyType.oneTime,
+          padding: undefined,
+        },
+      };
+    }
+    if ("upTo" in account.policyType) {
+      policyType = {
+        upTo: {
+          ...account.policyType.upTo,
           padding: undefined,
         },
       };

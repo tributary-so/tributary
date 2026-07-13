@@ -1,0 +1,330 @@
+# Composable Policy SDK Surface
+
+The TypeScript SDK exposes a low-level instruction builder and an executor for
+composable policies. Both live on the main `Tributary` class from
+`@tributary-so/sdk`.
+
+```bash
+pnpm install @tributary-so/sdk @solana/web3.js @solana/spl-token @coral-xyz/anchor
+```
+
+<!-- ponytail: method signatures match v2.2 SDK as of July 2026; dual-validation (pre+post), InstructionConstraint nested in ForwardConfig -->
+
+```typescript
+import {
+  Tributary,
+  lighthouse,
+  LIGHTHOUSE_PROGRAM_ID,
+} from "@tributary-so/sdk";
+import { BN } from "@coral-xyz/anchor";
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+
+const sdk = new Tributary(connection, wallet.payer);
+```
+
+## `getCreateComposablePolicyInstruction()`
+
+Creates a `ComposablePolicy` PDA and (optionally) a `ValidationPda` that
+stores the Lighthouse assertion data.
+
+```typescript
+async getCreateComposablePolicyInstruction(
+  tokenMint: PublicKey,
+  recipient: PublicKey,
+  gateway: PublicKey,
+  policyType: PolicyType,                       // { subscription | milestone | payAsYouGo }
+  memo: string,                                 // free-form, max 32 bytes (SDK encodes it)
+  forwardConfig: ForwardConfig,                 // instructionConstraint.programId = Pubkey.default() disables forward
+  preValidation: ValidationSpec = { disabled: {} },
+  prePinnedAccounts: PublicKey[] = [],
+  preValidationData: Buffer = Buffer.alloc(0),  // from lighthouse.<...>.build().data
+  postValidation: ValidationSpec = { disabled: {} },
+  postPinnedAccounts: PublicKey[] = [],
+  postValidationData: Buffer = Buffer.alloc(0),
+  feePayer?: PublicKey                          // defaults to provider wallet
+): Promise<TransactionInstruction>
+```
+
+!!! info "Counter separation"
+`ComposablePolicy` IDs come from
+`user_payment.created_composable_count` — **independent** from
+`PaymentPolicy` IDs (`created_policies_count`). A regular policy `#1` and
+a composable policy `#1` can coexist on the same `UserPayment`.
+
+### Minimal example — same-mint topup, validation enabled
+
+```typescript
+import {
+  Tributary,
+  lighthouse,
+  LIGHTHOUSE_PROGRAM_ID,
+} from "@tributary-so/sdk";
+import { PublicKey } from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
+
+const guard = lighthouse
+  .tokenAccount(hotWalletUsdcAta)
+  .amount(50_000_000, "<") // 50 USDC threshold
+  .build();
+
+const policyType = {
+  payAsYouGo: {
+    maxAmountPerPeriod: new BN(100_000_000), // 100 USDC / month
+    maxChunkAmount: new BN(50_000_000), // 50 USDC / call
+    periodLengthSeconds: new BN(30 * 24 * 3600),
+    currentPeriodStart: new BN(Math.floor(Date.now() / 1000)),
+    currentPeriodTotal: new BN(0),
+    padding: new Array(88).fill(0),
+  },
+};
+
+// Forward disabled: sentinel programId = PublicKey.default().
+// num_data_checks MUST be 0 (no forward instruction to byte-range validate).
+// dataChecks must still be a full [4]-array of zeroed entries (fixed-size).
+const forwardConfig = {
+  instructionConstraint: {
+    programId: PublicKey.default(),
+    numDataChecks: 0,
+    dataChecks: [
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+      { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
+    ],
+    numPinnedAccounts: 0,
+    pinnedAccounts: [
+      { index: 0, pubkey: PublicKey.default },
+      { index: 0, pubkey: PublicKey.default },
+    ],
+  },
+  inputMint: USDC_MINT,
+  outputMint: USDC_MINT, // must equal inputMint when forward disabled
+  forwardFlags: 0,
+};
+
+const ix = await sdk.getCreateComposablePolicyInstruction(
+  USDC_MINT,
+  hotWallet.publicKey, // recipient
+  gatewayPDA, // gateway
+  policyType,
+  "Auto topup guard",
+  forwardConfig,
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
+  [hotWalletUsdcAta], // prePinnedAccounts
+  guard.data // preValidationData
+  // postValidation defaults to { disabled: {} }
+  // postPinnedAccounts defaults to []
+  // postValidationData defaults to Buffer.alloc(0)
+);
+```
+
+## `executeComposable()`
+
+Permissionless — any gateway signer (or the user, or the recipient) can call
+it. The caller supplies the forward instruction data and the full
+`remaining_accounts` list.
+
+```typescript
+async executeComposable(
+  composablePolicy: PublicKey,
+  instructionData: Buffer,        // forward program ix data (empty Buffer if forward disabled)
+  forwardAmount?: BN | null,      // amount to pull through the forward step
+  remainingAccounts?: AccountMeta[]
+): Promise<TransactionInstruction[]>
+```
+
+### `remaining_accounts` layout
+
+```text
+remaining_accounts =
+  [ ...guard.accounts                       // Lighthouse read-accounts (pre + post validation targets)
+  , ...forwardAccounts                      // forward program accounts (empty if forward disabled)
+  ]
+```
+
+!!! info "ValidationPda is in `accountsStrict`, not `remaining_accounts`"
+The `preValidationPda` and `postValidationPda` are already declared in the
+`accountsStrict` map on the execute instruction. Pass only the Lighthouse
+read-accounts (from `guard.accounts`) and the forward program accounts.
+
+### Minimal example — validation only (no forward)
+
+```typescript
+import { Tributary } from "@tributary-so/sdk";
+import { Buffer } from "buffer";
+import { BN } from "@coral-xyz/anchor";
+
+// Forward disabled → instruction_data is unused by the program. Pass empty.
+const instructionData = Buffer.alloc(0);
+
+// remaining_accounts = guard.accounts (Lighthouse read-accounts; ValidationPda is in accountsStrict).
+const remainingAccounts = guard.accounts; // [{ pubkey: hotWalletUsdcAta, isSigner: false, isWritable: false }]
+
+const [ix] = await sdk.executeComposable(
+  composablePolicyPDA,
+  instructionData,
+  new BN(50_000_000), // forward amount (the pull size)
+  remainingAccounts
+);
+```
+
+### With forward enabled — caller supplies swap ix data + pool accounts
+
+```typescript
+// Build the Meteora DLMM swap ix (user = ComposablePolicy PDA, which owns both
+// intermediates). Keep ONLY the swap instruction.
+const swapIx = await buildSwapIx(composablePolicyPDA);
+const forwardAccounts = swapIx.keys.map((k) => ({
+  pubkey: k.pubkey,
+  isSigner: false,
+  isWritable: true, // see swap-and-deliver.md for the writability rationale
+}));
+
+const remainingAccounts = [
+  ...guard.accounts, // validation read-accounts (empty array if no validation)
+  ...forwardAccounts,
+];
+
+const [ix] = await sdk.executeComposable(
+  composablePolicyPDA,
+  Buffer.from(swapIx.data), // the forward program instruction data
+  new BN(SWAP_INPUT_AMOUNT),
+  remainingAccounts
+);
+```
+
+## Read methods
+
+The SDK exposes four read-only helpers for querying `ComposablePolicy`
+accounts. They mirror the `PaymentPolicy` read pattern but use the
+`composablePolicy` account type with adjusted memcmp offsets.
+
+```typescript
+// Fetch a single composable policy by its address (null if not found)
+const policy: ComposablePolicy | null = await sdk.getComposablePolicy(
+  policyAddress
+);
+
+// All composable policies for a given UserPayment PDA
+const policies = await sdk.getComposablePoliciesByUserPayment(userPaymentPda);
+
+// All composable policies for a given gateway
+const policies = await sdk.getComposablePoliciesByGateway(gatewayPda);
+
+// All composable policies on-chain (unfiltered)
+const all = await sdk.getAllComposablePolicies();
+```
+
+### memcmp offsets
+
+`ComposablePolicy` has a different field order from `PaymentPolicy` — the
+`bump: u8` sits right after the discriminator, shifting every subsequent
+field by 1 byte:
+
+| Field          | Offset | Size |
+| -------------- | ------ | ---- |
+| `user_payment` | 9      | 32   |
+| `gateway`      | 41     | 32   |
+
+Recipient filtering is not supported via memcmp — `recipient` sits deep in
+the struct after variable-size enums (`ValidationSpec`, `ForwardConfig`).
+
+### Field differences from `PaymentPolicy`
+
+| `PaymentPolicy` | `ComposablePolicy` | Notes                                |
+| --------------- | ------------------ | ------------------------------------ |
+| `total_paid`    | `total_input`      | Gross tokens pulled from the user    |
+| —               | `total_output`     | Tokens delivered to recipient        |
+| —               | `rent_payer`       | Account that paid rent               |
+| —               | `forward_config`   | Forward hook config (program, mints) |
+| —               | `pre_validation`   | Pre-forward validation spec          |
+| —               | `post_validation`  | Post-forward validation spec         |
+
+## Type reference
+
+### `ForwardConfig`
+
+```typescript
+type ForwardConfig = {
+  instructionConstraint: InstructionConstraint;
+  inputMint: PublicKey; // must == user_payment.token_mint
+  outputMint: PublicKey; // recipient delivery mint; Pubkey.default() = act mode
+  forwardFlags: number; // bit 0 = FORWARD_FLAG_NATIVE_OUTPUT
+};
+```
+
+### `InstructionConstraint`
+
+```typescript
+type InstructionConstraint = {
+  programId: PublicKey; // Pubkey.default() = forward disabled (sentinel)
+  numDataChecks: number; // 0 if forward disabled, else 1..4
+  dataChecks: ByteRangeCheck[]; // length 4 (fixed-size); pin selector at offset 0
+  numPinnedAccounts: number;
+  pinnedAccounts: PinnedAccount[]; // length 2 (fixed-size); indexed forward-account pins
+};
+```
+
+### `PinnedAccount`
+
+```typescript
+type PinnedAccount = {
+  index: number;
+  pubkey: PublicKey;
+};
+```
+
+### `ByteRangeCheck`
+
+```typescript
+type ByteRangeCheck = {
+  offset: number; // byte offset into the forward instruction data
+  length: number; // 0..=8 (expected is a [u8; 8])
+  expected: number[]; // length-8 array; only the first `length` bytes are checked
+};
+```
+
+### `ValidationSpec`
+
+```typescript
+type ValidationSpec =
+  | { disabled: {} }
+  | { programCall: { programId: PublicKey } }
+  | { inline: { reserved: number } };
+```
+
+Rules enforced on-chain (`validate_forward_config`):
+
+- `programId == Pubkey.default()` → `num_data_checks` MUST be `0`,
+  `pinned_accounts` MUST be empty, and `input_mint` MUST equal `output_mint`.
+- Otherwise `programId` MUST be in `ALLOWED_FORWARD_PROGRAMS`, and at
+  least one `ByteRangeCheck` MUST pin bytes at `offset: 0, length: > 0`
+  (discriminator coverage).
+- `FORWARD_FLAG_NATIVE_OUTPUT` (bit 0) → `output_mint` MUST be `NATIVE_MINT`.
+
+The assertion **data** (≤512 bytes) is NOT stored inline — it lives in
+separate `ValidationPda` accounts
+(`["composable_validation_pre", composable_policy]` and
+`["composable_validation_post", composable_policy]`)
+that the create handler initializes via `invoke_signed`.
+
+## Disabling the hooks
+
+| Hook       | Disabling recipe                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Forward    | `forwardConfig.instructionConstraint.programId = PublicKey.default()`, `numDataChecks = 0`, `inputMint === outputMint` |
+| Validation | `ValidationSpec = { disabled: {} }` (the default for both `preValidation` and `postValidation`)                        |
+
+!!! info "Why `Pubkey::default()` instead of the Token program?"
+The same-mint topup (no swap) used to be modelled by setting the forward
+target to the SPL Token program. That opened a drain vector: the forward
+`AccountMeta` list's `to` account is not validated, so a gateway could
+redirect the sweep. The sentinel pattern makes "no forward step"
+unambiguous and safe.
+
+## Related
+
+- [Overview](./overview.md) — concept and lifecycle.
+- [Lighthouse facade](./lighthouse-facade.md) — building the assertion buffer.
+- [Protocol Reference → Composable Policy](../../protocol-reference/composable-policy/overview.md)
+  for on-chain constraints, error codes, and the full account layout.

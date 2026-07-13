@@ -8,11 +8,159 @@ export type Tributary = {
   "address": "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ",
   "metadata": {
     "name": "tributary",
-    "version": "0.1.0",
+    "version": "2.0.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },
   "instructions": [
+    {
+      "name": "changeComposableStatus",
+      "discriminator": [
+        131,
+        68,
+        92,
+        37,
+        58,
+        83,
+        46,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "arg",
+                "path": "policyId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "policyId",
+          "type": "u32"
+        },
+        {
+          "name": "newStatus",
+          "type": {
+            "defined": {
+              "name": "policyStatus"
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "changeGatewayFeeBps",
       "discriminator": [
@@ -329,7 +477,250 @@ export type Tributary = {
           "name": "newStatus",
           "type": {
             "defined": {
-              "name": "paymentStatus"
+              "name": "policyStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "changeProgramAuthority",
+      "discriminator": [
+        40,
+        11,
+        11,
+        166,
+        198,
+        227,
+        232,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "newAdmin"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createComposablePolicy",
+      "discriminator": [
+        91,
+        126,
+        51,
+        215,
+        160,
+        248,
+        142,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "feePayer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "recipient"
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "userPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "preValidationPda",
+          "writable": true
+        },
+        {
+          "name": "postValidationPda",
+          "writable": true
+        },
+        {
+          "name": "preValidationProgram"
+        },
+        {
+          "name": "postValidationProgram"
+        },
+        {
+          "name": "inputMint"
+        },
+        {
+          "name": "outputMint",
+          "docs": [
+            "Output mint. In **deliver** modes (forward disabled, or forward",
+            "enabled with a concrete output_mint) this is the recipient's",
+            "delivery mint and MUST be a real SPL Mint. In **act mode**",
+            "(ADR-0026 — forward enabled, `output_mint == Pubkey::default()`)",
+            "the caller passes SystemProgram here; there is no output token to",
+            "deliver and no output ATA is created. Validated conditionally in",
+            "the handler."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "policyType",
+          "type": {
+            "defined": {
+              "name": "policyType"
+            }
+          }
+        },
+        {
+          "name": "memo",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "forwardConfig",
+          "type": {
+            "defined": {
+              "name": "forwardConfig"
+            }
+          }
+        },
+        {
+          "name": "preValidation",
+          "type": {
+            "defined": {
+              "name": "validationSpec"
+            }
+          }
+        },
+        {
+          "name": "preInit",
+          "type": {
+            "defined": {
+              "name": "validationInit"
+            }
+          }
+        },
+        {
+          "name": "postValidation",
+          "type": {
+            "defined": {
+              "name": "validationSpec"
+            }
+          }
+        },
+        {
+          "name": "postInit",
+          "type": {
+            "defined": {
+              "name": "validationInit"
             }
           }
         }
@@ -412,6 +803,10 @@ export type Tributary = {
           "type": "u16"
         },
         {
+          "name": "schedulerShareBps",
+          "type": "u16"
+        },
+        {
           "name": "name",
           "type": {
             "array": [
@@ -428,6 +823,10 @@ export type Tributary = {
               64
             ]
           }
+        },
+        {
+          "name": "initialFeatureFlags",
+          "type": "u8"
         }
       ]
     },
@@ -671,7 +1070,8 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "owner"
+          "name": "owner",
+          "signer": true
         },
         {
           "name": "userPayment",
@@ -741,6 +1141,126 @@ export type Tributary = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "deleteComposablePolicy",
+      "discriminator": [
+        215,
+        70,
+        252,
+        65,
+        78,
+        5,
+        226,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "userPayment",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "userPayment"
+              },
+              {
+                "kind": "arg",
+                "path": "policyId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rentPayer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "policyId",
+          "type": "u32"
+        }
+      ]
     },
     {
       "name": "deletePaymentGateway",
@@ -1013,6 +1533,306 @@ export type Tributary = {
       "args": []
     },
     {
+      "name": "executeComposable",
+      "discriminator": [
+        27,
+        168,
+        44,
+        123,
+        153,
+        39,
+        164,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "feePayer",
+          "docs": [
+            "Fee payer / caller. The trusted three (`gateway.signer` /",
+            "`user_payment.owner` / `composable_policy.recipient`) always pass.",
+            "Any other signer is admitted ONLY when the gateway has the",
+            "ADR-0016 permissionless bit set (cold relayer). The",
+            "caller-conditional gate (mandatory min_output_amount for cold",
+            "relayers) is enforced in the handler — Anchor constraints can't",
+            "express \"depends on the policy's forward_config\"."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "paymentsDelegate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "composablePolicy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  112,
+                  111,
+                  115,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "composable_policy.user_payment",
+                "account": "composablePolicy"
+              },
+              {
+                "kind": "account",
+                "path": "composable_policy.policy_id",
+                "account": "composablePolicy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "userPayment",
+          "docs": [
+            "UserPayment PDA — the delegate on the user's source token account.",
+            "It signs ONLY the initial pull (Step 3, user → intermediate). The",
+            "intermediate ATAs are owned by the ComposablePolicy PDA (see above),",
+            "which signs all other CPIs; this keeps user-source authority",
+            "decoupled from intermediate authority.",
+            "The user's source token account MUST delegate to this PDA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.owner",
+                "account": "userPayment"
+              },
+              {
+                "kind": "account",
+                "path": "user_payment.token_mint",
+                "account": "userPayment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gateway",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gateway.authority",
+                "account": "paymentGateway"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "preValidationProgram",
+          "docs": [
+            "Pass SystemProgram when pre_validation is Disabled."
+          ]
+        },
+        {
+          "name": "postValidationProgram",
+          "docs": [
+            "Pass SystemProgram when post_validation is Disabled."
+          ]
+        },
+        {
+          "name": "preValidationPda",
+          "docs": [
+            "Pre-validation PDA — typed-deserialised in the handler when",
+            "pre_validation is ProgramCall."
+          ]
+        },
+        {
+          "name": "postValidationPda",
+          "docs": [
+            "Post-validation PDA — typed-deserialised in the handler when",
+            "post_validation is ProgramCall."
+          ]
+        },
+        {
+          "name": "userTokenAccount",
+          "docs": [
+            "User's source token account. Must be owned by the user",
+            "(user_payment.owner) and have either the UserPayment PDA (v1)",
+            "or the global payments_delegate PDA (v0) set as delegate with",
+            "`delegated_amount >= input_amount`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "Input mint (== fc_input_mint == user_payment.token_mint)."
+          ]
+        },
+        {
+          "name": "outputMint",
+          "docs": [
+            "Output mint. Required for the deliver-transform `transfer_checked`",
+            "calls on the output leg (fees + sweep) and the intermediate-output",
+            "ATA. In **act mode** (ADR-0026 — `output_mint == Pubkey::default()`)",
+            "the caller passes SystemProgram here; the handler skips output-ATA",
+            "creation, the deliver sweep, and the `output_amount > 0` guard."
+          ],
+          "writable": true
+        },
+        {
+          "name": "intermediateInputTokenAccount",
+          "docs": [
+            "UserPayment PDA's intermediate input token account (input_mint ATA).",
+            "Created via CPI if non-existent; closed at end to reclaim rent for",
+            "the fee_payer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "intermediateOutputTokenAccount",
+          "docs": [
+            "UserPayment PDA's intermediate output token account (output_mint ATA).",
+            "Same account as the input when input_mint == output_mint."
+          ],
+          "writable": true
+        },
+        {
+          "name": "recipientTokenAccount",
+          "docs": [
+            "Recipient destination. In normal mode this is the recipient's",
+            "output-mint ATA (mint+owner validated in the handler). In",
+            "NATIVE_OUTPUT mode (forward_flags bit 0) it is the recipient's",
+            "**system wallet** — `closeAccount` ships the WSOL value there as",
+            "native SOL. Anchor constraints can't be conditional, so this is",
+            "an `UncheckedAccount` and the handler replicates the two original",
+            "checks (`mint == output_mint`, `owner == recipient`) in normal",
+            "mode. Do NOT weaken the normal-mode checks. See bean",
+            "tributary-hgp7 + reports/native-output-sweep.md."
+          ],
+          "writable": true
+        },
+        {
+          "name": "gatewayFeeAccount",
+          "docs": [
+            "Gateway fee account. Post-ADR-0026 the composable fee path is",
+            "**input-side**: fees are skimmed from the gross pull in `input_mint`",
+            "before the forward runs, so this account MUST be denominated in",
+            "`input_mint` (== `fc_input_mint`)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "protocolFeeAccount",
+          "docs": [
+            "Protocol fee account (input_mint). See `gateway_fee_account`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "instructionData",
+          "type": "bytes"
+        },
+        {
+          "name": "forwardAmount",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
       "name": "executePayment",
       "discriminator": [
         86,
@@ -1075,8 +1895,7 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "payment_policy.user_payment",
-                "account": "paymentPolicy"
+                "path": "userPayment"
               },
               {
                 "kind": "account",
@@ -1211,6 +2030,11 @@ export type Tributary = {
       ],
       "accounts": [
         {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "admin",
           "writable": true,
           "signer": true
@@ -1235,11 +2059,62 @@ export type Tributary = {
           }
         },
         {
+          "name": "programData",
+          "docs": [
+            "Enforces that only the upgrade authority can initialize the protocol."
+          ]
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
+    },
+    {
+      "name": "setEmergencyPause",
+      "discriminator": [
+        216,
+        204,
+        65,
+        234,
+        19,
+        243,
+        233,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "transfer",
@@ -1508,6 +2383,24 @@ export type Tributary = {
         {
           "name": "authority",
           "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1520,9 +2413,89 @@ export type Tributary = {
           }
         }
       ]
+    },
+    {
+      "name": "updateGatewaySchedulerShare",
+      "discriminator": [
+        6,
+        120,
+        72,
+        177,
+        214,
+        33,
+        11,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "gateway",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101,
+                  119,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "schedulerShareBps",
+          "type": "u16"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "composablePolicy",
+      "discriminator": [
+        221,
+        46,
+        214,
+        155,
+        83,
+        198,
+        252,
+        148
+      ]
+    },
     {
       "name": "paymentGateway",
       "discriminator": [
@@ -1590,6 +2563,71 @@ export type Tributary = {
     }
   ],
   "events": [
+    {
+      "name": "composableExecuted",
+      "discriminator": [
+        146,
+        55,
+        146,
+        151,
+        90,
+        224,
+        15,
+        186
+      ]
+    },
+    {
+      "name": "composablePolicyCreated",
+      "discriminator": [
+        226,
+        211,
+        183,
+        34,
+        49,
+        252,
+        234,
+        138
+      ]
+    },
+    {
+      "name": "composablePolicyDeleted",
+      "discriminator": [
+        169,
+        239,
+        45,
+        185,
+        214,
+        246,
+        249,
+        6
+      ]
+    },
+    {
+      "name": "composablePolicyStatusChanged",
+      "discriminator": [
+        60,
+        30,
+        170,
+        131,
+        32,
+        190,
+        81,
+        96
+      ]
+    },
+    {
+      "name": "emergencyPauseChanged",
+      "discriminator": [
+        40,
+        185,
+        90,
+        71,
+        82,
+        142,
+        105,
+        91
+      ]
+    },
     {
       "name": "gatewayFeeBpsChanged",
       "discriminator": [
@@ -1708,6 +2746,19 @@ export type Tributary = {
       ]
     },
     {
+      "name": "programAuthorityChanged",
+      "discriminator": [
+        18,
+        125,
+        102,
+        45,
+        221,
+        104,
+        208,
+        114
+      ]
+    },
+    {
       "name": "programConfigCreated",
       "discriminator": [
         96,
@@ -1778,191 +2829,707 @@ export type Tributary = {
     },
     {
       "code": 6003,
-      "name": "maxPoliciesReached",
-      "msg": "Maximum policies per user reached"
-    },
-    {
-      "code": 6004,
       "name": "unauthorized",
       "msg": "unauthorized"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "invalidPolicyStatusTransition",
       "msg": "Invalid policy status transition"
     },
     {
-      "code": 6006,
-      "name": "policyNotFound",
-      "msg": "Payment policy not found"
-    },
-    {
-      "code": 6007,
+      "code": 6005,
       "name": "insufficientDelegatedAmount",
       "msg": "Insufficient delegated amount"
     },
     {
-      "code": 6008,
+      "code": 6006,
       "name": "paymentNotDue",
       "msg": "Payment is not yet due"
     },
     {
-      "code": 6009,
+      "code": 6007,
       "name": "insufficientBalance",
       "msg": "Insufficient balance for payment"
     },
     {
-      "code": 6010,
+      "code": 6008,
       "name": "noDelegateSet",
       "msg": "No or incorrect delegate set in ata"
     },
     {
-      "code": 6011,
+      "code": 6009,
       "name": "policyPaused",
       "msg": "Payment policy is paused"
     },
     {
-      "code": 6012,
+      "code": 6010,
       "name": "invalidInterval",
       "msg": "Invalid Interval"
     },
     {
-      "code": 6013,
+      "code": 6011,
       "name": "invalidFeeBps",
       "msg": "Invalid fee basis points"
     },
     {
-      "code": 6014,
+      "code": 6012,
       "name": "invalidPaymentDueDate",
       "msg": "Invalid payment due date"
     },
     {
-      "code": 6015,
+      "code": 6013,
       "name": "arithmeticOverflow",
       "msg": "Arithmetic overflow"
     },
     {
-      "code": 6016,
-      "name": "referralFeatureNotEnabled",
-      "msg": "Referral program feature is not enabled"
-    },
-    {
-      "code": 6017,
+      "code": 6014,
       "name": "invalidReferralAllocation",
       "msg": "Invalid referral allocation - must be <= 2500 bps"
     },
     {
-      "code": 6018,
+      "code": 6015,
       "name": "invalidReferralTiers",
       "msg": "Invalid referral tiers - must sum to 10000 bps"
     },
     {
-      "code": 6019,
+      "code": 6016,
       "name": "couldNotDeserializeReferrer",
       "msg": "Could not deserialize referrer account"
     },
     {
-      "code": 6020,
+      "code": 6017,
       "name": "referrerMustBeWritable",
       "msg": "Referrer account must be writable"
     },
     {
-      "code": 6021,
+      "code": 6018,
       "name": "circularReferralChain",
       "msg": "Circular referral chain detected"
     },
     {
-      "code": 6022,
+      "code": 6019,
       "name": "maxReferralDepthExceeded",
       "msg": "Maximum referral chain depth exceeded"
     },
     {
-      "code": 6023,
+      "code": 6020,
       "name": "invalidReferralChainOrdering",
       "msg": "Invalid referral chain ordering in remaining_accounts"
     },
     {
-      "code": 6024,
+      "code": 6021,
       "name": "invalidReferralAccountDiscriminator",
       "msg": "Invalid referral account discriminator"
     },
     {
-      "code": 6025,
+      "code": 6022,
       "name": "referralAccountSizeMismatch",
       "msg": "Referral account size mismatch"
     },
     {
-      "code": 6026,
+      "code": 6023,
       "name": "invalidReferralCode",
       "msg": "Invalid referral code - must be alphanumeric"
     },
     {
-      "code": 6027,
+      "code": 6024,
       "name": "referrerAccountInvalid",
       "msg": "Referrer Account invalid"
     },
     {
-      "code": 6028,
+      "code": 6025,
       "name": "referrerAtaInvalid",
       "msg": "Referrer ATA invalid"
     },
     {
-      "code": 6029,
+      "code": 6026,
       "name": "referrerAtaMintInvalid",
       "msg": "Referrer ATA with invalid Mint"
     },
     {
-      "code": 6030,
+      "code": 6027,
       "name": "missingReferralAta",
       "msg": "Missing ATA for ReferralAccount - each ReferralAccount requires a matching token account"
     },
     {
-      "code": 6031,
+      "code": 6028,
       "name": "invalidTokenAccount",
       "msg": "Invalid token account - mint mismatch or deserialization failed"
     },
     {
-      "code": 6032,
+      "code": 6029,
       "name": "mismatchAtaReferralAccountNumbers",
       "msg": "Mismatch between number referrers and atas!"
     },
     {
-      "code": 6033,
-      "name": "referralAccountAlreadyExists",
-      "msg": "Referral account already exists for this code"
-    },
-    {
-      "code": 6034,
+      "code": 6030,
       "name": "tokenMintMismatch",
       "msg": "Token mint mismatch between accounts"
     },
     {
-      "code": 6035,
-      "name": "transferHookNotSupported",
-      "msg": "Token-2022 TransferHook mints are not currently supported"
+      "code": 6031,
+      "name": "unsupportedTokenExtension",
+      "msg": "Token-2022 Extension currently not supported"
     },
     {
-      "code": 6036,
+      "code": 6032,
       "name": "distinctPubKeysRequired",
       "msg": "Distinct Pubkeys required!"
     },
     {
-      "code": 6037,
+      "code": 6033,
       "name": "invalidFeatureFlags",
       "msg": "Invalid feature flags"
     },
     {
-      "code": 6038,
+      "code": 6034,
       "name": "hasActivePolicies",
       "msg": "Cannot delete user payment with active policies"
     },
     {
-      "code": 6039,
+      "code": 6035,
+      "name": "hasActiveComposables",
+      "msg": "Cannot delete user payment with active composable policies"
+    },
+    {
+      "code": 6036,
       "name": "invalidRentPayer",
       "msg": "Invalid rent payer"
+    },
+    {
+      "code": 6037,
+      "name": "invalidForwardProgram",
+      "msg": "Forward program not whitelisted"
+    },
+    {
+      "code": 6038,
+      "name": "invalidValidationProgram",
+      "msg": "Validation program not whitelisted"
+    },
+    {
+      "code": 6039,
+      "name": "byteRangeCheckFailed",
+      "msg": "Byte range check failed"
+    },
+    {
+      "code": 6040,
+      "name": "insufficientOutputAmount",
+      "msg": "Insufficient output amount after forward CPI"
+    },
+    {
+      "code": 6041,
+      "name": "insufficientByteRangeChecks",
+      "msg": "Must have at least one byte range check"
+    },
+    {
+      "code": 6042,
+      "name": "validationPdaMismatch",
+      "msg": "Validation PDA does not match derived address"
+    },
+    {
+      "code": 6043,
+      "name": "validationDataTooLarge",
+      "msg": "Validation data exceeds maximum size"
+    },
+    {
+      "code": 6044,
+      "name": "validationDataRequired",
+      "msg": "Validation program set but no data provided"
+    },
+    {
+      "code": 6045,
+      "name": "validationNotRequired",
+      "msg": "Validation not configured but data was provided"
+    },
+    {
+      "code": 6046,
+      "name": "combinedFeeBpsExceedsMax",
+      "msg": "Combined fee BPS must be less than 10000"
+    },
+    {
+      "code": 6047,
+      "name": "discriminatorCheckRequired",
+      "msg": "At least one ByteRangeCheck must start at offset 0 to pin the instruction selector"
+    },
+    {
+      "code": 6048,
+      "name": "unauthorizedInitializer",
+      "msg": "Only the upgrade authority can initialize the program"
+    },
+    {
+      "code": 6049,
+      "name": "intermediateAccountMismatch",
+      "msg": "Intermediate token account address does not match the derived ATA"
+    },
+    {
+      "code": 6050,
+      "name": "intermediateAccountAlreadyExists",
+      "msg": "Intermediate token account already exists — it must be freshly created each execution"
+    },
+    {
+      "code": 6051,
+      "name": "missingForwardAccounts",
+      "msg": "Forward CPI requires at least one remaining account"
+    },
+    {
+      "code": 6052,
+      "name": "forwardProducedNoOutput",
+      "msg": "Forward CPI produced no output (intermediate output balance is zero)"
+    },
+    {
+      "code": 6053,
+      "name": "forwardDisabledRequiresSameMint",
+      "msg": "Forward disabled (target_program = default) requires input_mint == output_mint"
+    },
+    {
+      "code": 6054,
+      "name": "payerReferralMismatch",
+      "msg": "Payer ReferralAccount does not match the paying wallet"
+    },
+    {
+      "code": 6055,
+      "name": "duplicateReferralAccount",
+      "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
+    },
+    {
+      "code": 6056,
+      "name": "invalidValidationPda",
+      "msg": "ValidationPDA is malformed — data_len out of bounds"
+    },
+    {
+      "code": 6057,
+      "name": "nativeOutputRequiresWsol",
+      "msg": "NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)"
+    },
+    {
+      "code": 6058,
+      "name": "missingSchedulerFeeAccount",
+      "msg": "Permissionless execution with scheduler_share_bps > 0 requires the scheduler fee account as the last remaining_account"
+    },
+    {
+      "code": 6059,
+      "name": "invalidSchedulerFeeAccount",
+      "msg": "Scheduler fee account must be owned by the fee_payer and match the source mint"
+    },
+    {
+      "code": 6060,
+      "name": "permissionlessExecutionRequiresSafetyNet",
+      "msg": "Permissionless execution requires post_validation = ProgramCall OR forward route pinned (ADR-0016 safety net)"
+    },
+    {
+      "code": 6061,
+      "name": "degenerateForwardPins",
+      "msg": "Forward enabled but InstructionConstraint has zero effective pins (degenerate)"
+    },
+    {
+      "code": 6062,
+      "name": "duplicatePinIndex",
+      "msg": "Duplicate pin index in InstructionConstraint.pinned_accounts"
+    },
+    {
+      "code": 6063,
+      "name": "defaultPinPubkey",
+      "msg": "Pinned account in validation init has a default (zero) pubkey"
+    },
+    {
+      "code": 6064,
+      "name": "inlineValidationNotImplemented",
+      "msg": "Inline validation is not yet implemented"
+    },
+    {
+      "code": 6065,
+      "name": "policyExpired",
+      "msg": "One-time policy has expired"
+    },
+    {
+      "code": 6066,
+      "name": "invalidOutputMintAccount",
+      "msg": "Act-mode (sentinel output_mint) requires the SystemProgram as the output_mint account"
+    },
+    {
+      "code": 6067,
+      "name": "actModeRequiresForward",
+      "msg": "Act-mode settlement (no output delivery) requires forward to be enabled"
+    },
+    {
+      "code": 6068,
+      "name": "inputResidueSweepFailed",
+      "msg": "Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user"
     }
   ],
   "types": [
+    {
+      "name": "byteRangeCheck",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offset",
+            "type": "u8"
+          },
+          {
+            "name": "length",
+            "type": "u8"
+          },
+          {
+            "name": "expected",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "composableExecuted",
+      "docs": [
+        "An event that is thrown when a composable policy is executed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "targetProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "inputAmount",
+            "type": "u64"
+          },
+          {
+            "name": "outputAmount",
+            "type": "u64"
+          },
+          {
+            "name": "gatewayFee",
+            "type": "u64"
+          },
+          {
+            "name": "protocolFee",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "recordId",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "policyStatus"
+              }
+            }
+          },
+          {
+            "name": "rentPayer",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyType",
+            "type": {
+              "defined": {
+                "name": "policyType"
+              }
+            }
+          },
+          {
+            "name": "forwardConfig",
+            "type": {
+              "defined": {
+                "name": "forwardConfig"
+              }
+            }
+          },
+          {
+            "name": "preValidation",
+            "type": {
+              "defined": {
+                "name": "validationSpec"
+              }
+            }
+          },
+          {
+            "name": "postValidation",
+            "type": {
+              "defined": {
+                "name": "validationSpec"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "totalInput",
+            "type": "u64"
+          },
+          {
+            "name": "totalOutput",
+            "type": "u64"
+          },
+          {
+            "name": "paymentCount",
+            "type": "u32"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "updatedAt",
+            "type": "i64"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                192
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicyCreated",
+      "docs": [
+        "An event that is thrown when a composable policy is created"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "gateway",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          },
+          {
+            "name": "policyType",
+            "type": {
+              "defined": {
+                "name": "policyType"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "forwardConfig",
+            "type": {
+              "defined": {
+                "name": "forwardConfig"
+              }
+            }
+          },
+          {
+            "name": "preValidation",
+            "type": {
+              "defined": {
+                "name": "validationSpec"
+              }
+            }
+          },
+          {
+            "name": "postValidation",
+            "type": {
+              "defined": {
+                "name": "validationSpec"
+              }
+            }
+          },
+          {
+            "name": "hasPreValidationPda",
+            "type": "bool"
+          },
+          {
+            "name": "hasPostValidationPda",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicyDeleted",
+      "docs": [
+        "An event that is thrown when a composable policy is deleted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "userPayment",
+            "type": "pubkey"
+          },
+          {
+            "name": "policyId",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "composablePolicyStatusChanged",
+      "docs": [
+        "An event that is thrown when a composable policy status is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "composablePolicy",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldStatus",
+            "type": {
+              "defined": {
+                "name": "policyStatus"
+              }
+            }
+          },
+          {
+            "name": "newStatus",
+            "type": {
+              "defined": {
+                "name": "policyStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "emergencyPauseChanged",
+      "docs": [
+        "An event that is thrown when the emergency pause flag is toggled"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "wasPaused",
+            "type": "bool"
+          },
+          {
+            "name": "isPaused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "forwardConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "instructionConstraint",
+            "type": {
+              "defined": {
+                "name": "instructionConstraint"
+              }
+            }
+          },
+          {
+            "name": "inputMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "outputMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "forwardFlags",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "gatewayFeeBpsChanged",
       "docs": [
@@ -2028,6 +3595,71 @@ export type Tributary = {
           {
             "name": "newSigner",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "instructionConstraint",
+      "docs": [
+        "Unified forward-program constraint: pins the instruction selector",
+        "(ByteRangeCheck[]) AND the positional forward-accounts (pinned_accounts[]).",
+        "",
+        "Absorbs the old `target_program` + `data_checks` fields and the scrapped",
+        "`ForwardAccountsPda` design into one inline struct. `program_id ==",
+        "Pubkey::default()` is the \"forward disabled\" sentinel.",
+        "",
+        "See ADR-0016 (amended) + bean tributary-q82g (REWRITTEN SCOPE)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programId",
+            "docs": [
+              "Was `target_program`. `Pubkey::default()` = forward disabled."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "numDataChecks",
+            "type": "u8"
+          },
+          {
+            "name": "dataChecks",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "byteRangeCheck"
+                  }
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "numPinnedAccounts",
+            "type": "u8"
+          },
+          {
+            "name": "pinnedAccounts",
+            "docs": [
+              "Indexed pins: `pinned_accounts[i]` constrains the account at",
+              "`remaining_accounts[forward_start + pinned_accounts[i].index]` to",
+              "equal `pinned_accounts[i].pubkey`. Only the first `num_pinned_accounts`",
+              "entries are active."
+            ],
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "pinnedAccount"
+                  }
+                },
+                2
+              ]
+            }
           }
         ]
       }
@@ -2111,7 +3743,13 @@ export type Tributary = {
           {
             "name": "padding1",
             "docs": [
-              "No-longer-used, take care of tumbstone"
+              "DO NOT REMOVE — tombstone slot.",
+              "",
+              "Formerly held a v1 field; the slot is kept here so the byte offsets",
+              "of every field declared below it stay stable across upgrades.",
+              "Removing this field would shift all subsequent offsets and break",
+              "deserialization of every live PaymentGateway account. See ST-1",
+              "(review 2026-07-06)."
             ],
             "type": "u64"
           },
@@ -2166,23 +3804,36 @@ export type Tributary = {
               "Gateway-scoped feature flags (bit-vector)",
               "Bit 0: Referral program enabled (1 = enabled, 0 = disabled)",
               "Bit 1: Net amount mode (1 = net, 0 = gross/default)",
-              "Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)"
+              "Bit 2: Custom protocol fee enabled (1 = enabled, 0 = disabled)",
+              "Bit 3: Permissionless composable execution enabled (ADR-0016 —",
+              "admits third-party schedulers for conforming composable",
+              "policies; trusted caller path unchanged)"
             ],
             "type": "u8"
           },
           {
             "name": "referralAllocationBps",
             "docs": [
-              "Gateway-scoped referral program allocation (in basis points)",
-              "0 = no referral program, 2500 = 25% of gateway fee can be used for referrals"
+              "What percentage of the **gateway fee** funds the referral pool.",
+              "Units: basis points of the gateway fee. Range: 0..=2500.",
+              "- 0    = referral program inactive (no pool is carved out)",
+              "- 1000 = 10% of the gateway fee becomes the referral pool",
+              "- 2500 = 25% of the gateway fee (hard cap)",
+              "The remaining `(10000 - referral_allocation_bps)` bps of the gateway fee",
+              "stays with the gateway fee recipient."
             ],
             "type": "u16"
           },
           {
             "name": "referralTiersBps",
             "docs": [
-              "Gateway-scoped referral tier distribution as [level1, level2, level3]",
-              "Values are in basis points (e.g., 6000 = 60%). Must sum to 10000 = 100%"
+              "How the referral pool is split across the 3 chain levels",
+              "`[level1 (direct referrer), level2, level3]`. Units: basis points of the",
+              "**referral pool** (NOT of the gateway fee). Must sum to 10000 (100%).",
+              "Example: with `referral_allocation_bps = 1000` and",
+              "`referral_tiers_bps = [5000, 3000, 2000]`, the actual cut of the gateway",
+              "fee is L1 = 5%, L2 = 3%, L3 = 2% (each tier_bps × allocation / 10000).",
+              "Misreading these as \"bps of gateway fee per level\" overpays by 10x."
             ],
             "type": {
               "array": [
@@ -2192,10 +3843,21 @@ export type Tributary = {
             }
           },
           {
-            "name": "customProtocolFeeBps",
+            "name": "customProtocolShareBps",
             "docs": [
-              "Custom protocol fee in basis points (bps). Only used if use_custom_protocol_fee flag is set.",
-              "When enabled, this overrides the default 100 bps protocol fee."
+              "Custom protocol share in basis points (bps). Only used if",
+              "FEATURE_CUSTOM_PROTOCOL_FEE is set. Overrides the global",
+              "`protocol_share_bps` from `ProgramConfig` for this gateway.",
+              "Units: share of the gateway fee (not bps-of-payment).",
+              "May be zero (subsidise a strategic partner)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "schedulerShareBps",
+            "docs": [
+              "Scheduler share in basis points (bps) of the gateway fee.",
+              "Per-gateway, gateway-authority-set. Pays the execute-tx signer."
             ],
             "type": "u16"
           },
@@ -2207,7 +3869,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                117
+                115
               ]
             }
           }
@@ -2328,11 +3990,13 @@ export type Tributary = {
           {
             "name": "status",
             "docs": [
-              "Current status of this payment policy"
+              "Current status of this payment policy (Active | Paused | Completed).",
+              "`Completed` is terminal and set only by the program when the policy is",
+              "exhausted; owners may only toggle Active<->Paused."
             ],
             "type": {
               "defined": {
-                "name": "paymentStatus"
+                "name": "policyStatus"
               }
             }
           },
@@ -2499,7 +4163,7 @@ export type Tributary = {
             "name": "oldStatus",
             "type": {
               "defined": {
-                "name": "paymentStatus"
+                "name": "policyStatus"
               }
             }
           },
@@ -2507,7 +4171,7 @@ export type Tributary = {
             "name": "newStatus",
             "type": {
               "defined": {
-                "name": "paymentStatus"
+                "name": "policyStatus"
               }
             }
           }
@@ -2549,6 +4213,14 @@ export type Tributary = {
           },
           {
             "name": "recordId",
+            "docs": [
+              "Post-increment payment counter. For the Nth execution of a policy,",
+              "`record_id == N` (starts at 1, not 0). The increment happens inside",
+              "`strategy.execute()` (`policies/traits.rs`) before `should_pause_policy`",
+              "runs, so `Subscription::max_renewals` ceilings are honored exactly.",
+              "Indexers that assumed 0-indexed records must add 1 to historical data",
+              "or use `payment_count - 1` for backward display."
+            ],
             "type": "u32"
           },
           {
@@ -2567,12 +4239,23 @@ export type Tributary = {
       }
     },
     {
-      "name": "paymentStatus",
-      "docs": [
-        "Status enum for payment policies indicating whether payments can be executed.",
-        "Active policies allow payment execution, while Paused policies prevent",
-        "automatic payment processing until reactivated."
-      ],
+      "name": "pinnedAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "pubkey",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "policyStatus",
       "type": {
         "kind": "enum",
         "variants": [
@@ -2581,6 +4264,9 @@ export type Tributary = {
           },
           {
             "name": "paused"
+          },
+          {
+            "name": "completed"
           }
         ]
       }
@@ -2710,15 +4396,94 @@ export type Tributary = {
                 "type": "u64"
               },
               {
+                "name": "expiryDate",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
                 "name": "padding",
                 "type": {
                   "array": [
                     "u8",
-                    88
+                    79
                   ]
                 }
               }
             ]
+          },
+          {
+            "name": "oneTime",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              },
+              {
+                "name": "dueDate",
+                "type": "i64"
+              },
+              {
+                "name": "expiryDate",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    103
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "upTo",
+            "fields": [
+              {
+                "name": "maxAmount",
+                "type": "u64"
+              },
+              {
+                "name": "validAfter",
+                "type": "i64"
+              },
+              {
+                "name": "deadline",
+                "type": "i64"
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    104
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "programAuthorityChanged",
+      "docs": [
+        "An event that is thrown when the protocol admin is rotated"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "newAdmin",
+            "type": "pubkey"
           }
         ]
       }
@@ -2747,9 +4512,10 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
-            "name": "protocolFeeBps",
+            "name": "protocolShareBps",
             "docs": [
-              "Protocol fee in basis points (bps). Max 10,000 (100%)"
+              "Protocol share of the gateway fee in basis points (bps). Max 10,000 (100%).",
+              "This is the global default; per-gateway override via FEATURE_CUSTOM_PROTOCOL_FEE."
             ],
             "type": "u16"
           },
@@ -2806,12 +4572,8 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
-            "name": "protocolFeeBps",
+            "name": "protocolShareBps",
             "type": "u16"
-          },
-          {
-            "name": "maxPoliciesPerUser",
-            "type": "u32"
           }
         ]
       }
@@ -2998,16 +4760,10 @@ export type Tributary = {
         "fields": [
           {
             "name": "useCustomProtocolFee",
-            "docs": [
-              "Optional: Enable or disable custom protocol fee feature (bit 2)"
-            ],
             "type": "bool"
           },
           {
-            "name": "customProtocolFeeBps",
-            "docs": [
-              "Optional custom protocol fee in basis points (bps). Only used if feature is enabled."
-            ],
+            "name": "customProtocolShareBps",
             "type": "u16"
           }
         ]
@@ -3034,7 +4790,8 @@ export type Tributary = {
           {
             "name": "referralAllocationBps",
             "docs": [
-              "Optional referral allocation in basis points (0-2500)"
+              "Optional referral allocation in basis points (0-2500).",
+              "Bps of the **gateway fee** that funds the referral pool."
             ],
             "type": {
               "option": "u16"
@@ -3043,7 +4800,9 @@ export type Tributary = {
           {
             "name": "referralTiersBps",
             "docs": [
-              "Optional referral tier distribution [level1, level2, level3] in bps (must sum to 10000)"
+              "Optional referral tier distribution `[level1, level2, level3]` in bps.",
+              "Bps of the **referral pool** (not the gateway fee); must sum to 10000.",
+              "Effective per-level share of the gateway fee = tier_bps × allocation / 10000."
             ],
             "type": {
               "option": {
@@ -3140,6 +4899,14 @@ export type Tributary = {
             "type": "pubkey"
           },
           {
+            "name": "activeComposableCount",
+            "type": "u32"
+          },
+          {
+            "name": "createdComposableCount",
+            "type": "u32"
+          },
+          {
             "name": "padding",
             "docs": [
               "Reserved space for future extensions"
@@ -3147,7 +4914,7 @@ export type Tributary = {
             "type": {
               "array": [
                 "u8",
-                220
+                212
               ]
             }
           }
@@ -3199,13 +4966,93 @@ export type Tributary = {
           }
         ]
       }
+    },
+    {
+      "name": "validationInit",
+      "docs": [
+        "Caller-supplied init data for one validation phase (pre or post).",
+        "Only meaningful when the corresponding `ValidationSpec` is `ProgramCall`.",
+        "",
+        "`pinned_accounts` uses the indexed [`PinnedAccount`] model (same as",
+        "[`InstructionConstraint`]). At create time the active pins are validated",
+        "(distinct indices, non-default pubkeys, index < MAX_PINNED_ACCOUNTS) and",
+        "then **packed** into the positional `[Pubkey; MAX_PINNED_ACCOUNTS]` array",
+        "that [`ValidationPda`] stores on-chain. The on-chain PDA layout is",
+        "unchanged — only the args struct carries indices."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numPinnedAccounts",
+            "type": "u8"
+          },
+          {
+            "name": "pinnedAccounts",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "pinnedAccount"
+                  }
+                },
+                2
+              ]
+            }
+          },
+          {
+            "name": "validationData",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "validationSpec",
+      "docs": [
+        "Unified validation routing for both pre- and post-forward phases.",
+        "",
+        "- `Disabled` — no CPI, no ValidationPda loaded.",
+        "- `ProgramCall { program_id }` — CPI to an allowlisted program (Lighthouse)",
+        "with assertion data from the corresponding ValidationPda.",
+        "- `Inline` — reserved for future use; errors at create (gated on",
+        "tributary-okhd).",
+        "",
+        "See bean tributary-q82g (REWRITTEN SCOPE) + ADR-0016 amended."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "disabled"
+          },
+          {
+            "name": "programCall",
+            "fields": [
+              {
+                "name": "programId",
+                "type": "pubkey"
+              }
+            ]
+          },
+          {
+            "name": "inline",
+            "fields": [
+              {
+                "name": "reserved",
+                "type": "u8"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "constants": [
     {
-      "name": "seed",
-      "type": "string",
-      "value": "\"anchor\""
+      "name": "configSeed",
+      "type": "bytes",
+      "value": "[99, 111, 110, 102, 105, 103]"
     }
   ]
 };

@@ -6,7 +6,7 @@
   },
   "license": "MIT",
   "private": false,
-  "version": "1.14.0",
+  "version": "2.0.0-beta.5",
   "type": "module",
   "scripts": {
     "lint": "exit 0",
@@ -26,7 +26,8 @@
     "@rollup/plugin-inject": "^5.0.5",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
-    "bn.js": "^5.2.2"
+    "bn.js": "^5.2.2",
+    "lighthouse-sdk-legacy": "workspace:*"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",
@@ -57,7 +58,11 @@
   "release": {
     "extends": "semantic-release-monorepo",
     "branches": [
-      "main"
+      "main",
+      {
+        "name": "beta",
+        "prerelease": true
+      }
     ],
     "plugins": [
       [

@@ -153,6 +153,11 @@ Client Creates Payment → Sends Payment Header → Middleware Verifies
 - `deferred` - Subscription payments (monthly, weekly, etc.)
 - `x402://payg` - Pay-as-you-go with usage limits
 - `x402://prepaid` - Prepaid credits
+- `x402://upto` - Single-use, time-bound variable-amount authorization. The
+  client authorizes a maximum pull (`maxAmount`) within `[validAfter,
+deadline]`; the resource server settles the actual amount after usage
+  (`0 <= actual <= max`). The authorization is consumed after one settlement.
+  See ADR-0020.
 
 **Headers Used:**
 

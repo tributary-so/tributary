@@ -1,6 +1,13 @@
 .anchor
 .DS_Store
-target
+
+formal_verification/target/
+target/**/*
+!target/idl/
+!target/idl/tributary.json
+!target/types/
+!target/types/tributary.ts
+
 **/*.rs.bk
 node_modules
 test-ledger
@@ -24,3 +31,10 @@ apps/cli/keypair.json
 coverage
 .surfpool
 apps/docs/site/
+
+!packages/lighthouse/dist
+
+# OpenAPI spec — generated dynamically by the API server
+apps/api/openapi.yaml
+apps/docs/docs/api/openapi.yaml
+.qed

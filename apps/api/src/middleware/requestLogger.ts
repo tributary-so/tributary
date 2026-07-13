@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from "express";
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace -- canonical Express.Request type augmentation
   namespace Express {
     interface Request {
       startTime?: number;
@@ -16,14 +17,20 @@ declare global {
 /**
  * Request logging middleware
  */
-export function requestLogger(req: Request, res: Response, next: NextFunction): void {
+export function requestLogger(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   const startTime = Date.now();
   req.startTime = startTime;
 
   const { method, path, ip } = req;
   const userAgent = req.get("user-agent") || "unknown";
 
-  console.log(`[${new Date().toISOString()}] ${method} ${path} - ${ip} - ${userAgent}`);
+  console.log(
+    `[${new Date().toISOString()}] ${method} ${path} - ${ip} - ${userAgent}`
+  );
 
   res.on("finish", () => {
     const duration = Date.now() - (req.startTime || startTime);

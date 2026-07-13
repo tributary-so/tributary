@@ -3,13 +3,20 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { Transaction } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 import type { PaymentPolicy } from "@tributary-so/sdk";
+import { verifyUpToAuthorization } from "./upto";
 import jwt from "jsonwebtoken";
 
 /**
  * x402 v2 Payment Scheme Types
- * Supports both subscription (deferred) and pay-as-you-go (x402://payg) schemes
+ * Supports both subscription (deferred), pay-as-you-go (x402://payg),
+ * prepaid (x402://prepaid), and single-use variable-amount authorization
+ * (x402://upto).
  */
-export type X402Scheme = "deferred" | "x402://payg" | "x402://prepaid";
+export type X402Scheme =
+  | "deferred"
+  | "x402://payg"
+  | "x402://prepaid"
+  | "x402://upto";
 
 /**
  * x402 v2 Payment Requirements (sent in Payment-Required header)
@@ -47,6 +54,12 @@ export interface X402PaymentRequirements {
   periodLengthSeconds?: number;
   /** For pay-as-you-go: maximum chunk amount per request */
   maxChunkAmount?: number;
+  /** For upto: ceiling on the settlement amount (max authorization) */
+  maxAmount?: number;
+  /** For upto: earliest settlement timestamp (<= 0 / omitted = immediate) */
+  validAfter?: number;
+  /** For upto: hard expiry timestamp (settlement rejected at/after) */
+  deadline?: number;
 }
 
 /**
@@ -111,6 +124,12 @@ export interface X402Options {
   periodLengthSeconds?: number;
   /** Max chunk amount for pay-as-you-go */
   maxChunkAmount?: number;
+  /** For upto: ceiling on the settlement amount (max authorization) */
+  maxAmount?: number;
+  /** For upto: earliest settlement timestamp (<= 0 / omitted = immediate) */
+  validAfter?: number;
+  /** For upto: hard expiry timestamp (settlement rejected at/after) */
+  deadline?: number;
   /** JWT secret for token generation */
   jwtSecret: string;
   /** Tributary SDK instance */
@@ -126,7 +145,7 @@ export interface X402Options {
 function buildPaymentRequiredHeader(
   options: X402Options,
   resource: string,
-  subscriptionId: string
+  subscriptionId: string,
 ): string {
   const parts: string[] = [
     `scheme="${options.scheme}"`,
@@ -145,7 +164,7 @@ function buildPaymentRequiredHeader(
   if (options.scheme === "deferred") {
     parts.push(`paymentFrequency="${options.paymentFrequency || "monthly"}"`);
     parts.push(
-      `autoRenew=${options.autoRenew !== undefined ? options.autoRenew : true}`
+      `autoRenew=${options.autoRenew !== undefined ? options.autoRenew : true}`,
     );
     if (options.maxRenewals !== undefined && options.maxRenewals !== null) {
       parts.push(`maxRenewals=${options.maxRenewals}`);
@@ -159,6 +178,16 @@ function buildPaymentRequiredHeader(
     }
     if (options.maxChunkAmount !== undefined) {
       parts.push(`maxChunkAmount=${options.maxChunkAmount}`);
+    }
+  } else if (options.scheme === "x402://upto") {
+    if (options.maxAmount !== undefined) {
+      parts.push(`maxAmount=${options.maxAmount}`);
+    }
+    if (options.validAfter !== undefined) {
+      parts.push(`validAfter=${options.validAfter}`);
+    }
+    if (options.deadline !== undefined) {
+      parts.push(`deadline=${options.deadline}`);
     }
   }
 
@@ -186,7 +215,7 @@ function buildPaymentResponseHeader(
   scheme: string,
   network: string,
   id: string,
-  timestamp: number
+  timestamp: number,
 ): string {
   return `scheme="${scheme}", network="${network}", id="${id}", timestamp=${timestamp}`;
 }
@@ -200,15 +229,15 @@ async function verifySubscriptionCreation(
   expectedAmount: number,
   expectedTokenMint: PublicKey,
   expectedGateway: PublicKey,
-  expectedRecipient: PublicKey
+  expectedRecipient: PublicKey,
 ): Promise<{ success: boolean; error?: string; policyAddress?: PublicKey }> {
   try {
     const userPaymentPda = sdk.getUserPaymentPda(
       userPublicKey,
-      expectedTokenMint
+      expectedTokenMint,
     );
     const userPaymentPolicies = await sdk.getPaymentPoliciesByUser(
-      userPaymentPda.address
+      userPaymentPda.address,
     );
 
     if (userPaymentPolicies.length === 0) {
@@ -218,8 +247,8 @@ async function verifySubscriptionCreation(
     const latestPolicy = userPaymentPolicies.sort(
       (
         a: { publicKey: PublicKey; account: PaymentPolicy },
-        b: { publicKey: PublicKey; account: PaymentPolicy }
-      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
+        b: { publicKey: PublicKey; account: PaymentPolicy },
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber(),
     )[0];
 
     const policy = latestPolicy.account;
@@ -280,15 +309,15 @@ async function verifyPayAsYouGoPayment(
   userPublicKey: PublicKey,
   expectedTokenMint: PublicKey,
   expectedGateway: PublicKey,
-  expectedRecipient: PublicKey
+  expectedRecipient: PublicKey,
 ): Promise<{ success: boolean; error?: string; policyAddress?: PublicKey }> {
   try {
     const userPaymentPda = sdk.getUserPaymentPda(
       userPublicKey,
-      expectedTokenMint
+      expectedTokenMint,
     );
     const userPaymentPolicies = await sdk.getPaymentPoliciesByUser(
-      userPaymentPda.address
+      userPaymentPda.address,
     );
 
     // Find the most recent active pay-as-you-go policy
@@ -299,7 +328,7 @@ async function verifyPayAsYouGoPayment(
           "payAsYouGo" in policyType &&
           Object.keys(p.account.status)[0] === "active"
         );
-      }
+      },
     );
 
     if (paygPolicies.length === 0) {
@@ -312,8 +341,8 @@ async function verifyPayAsYouGoPayment(
     const latestPolicy = paygPolicies.sort(
       (
         a: { publicKey: PublicKey; account: PaymentPolicy },
-        b: { publicKey: PublicKey; account: PaymentPolicy }
-      ) => b.account.createdAt.sub(a.account.createdAt).toNumber()
+        b: { publicKey: PublicKey; account: PaymentPolicy },
+      ) => b.account.createdAt.sub(a.account.createdAt).toNumber(),
     )[0];
 
     const policy = latestPolicy.account;
@@ -371,7 +400,7 @@ export function createX402Middleware(options: X402Options) {
 
         // Verify policy exists and is valid based on scheme type
         const policy = await options.sdk.getPaymentPolicy(
-          new PublicKey(decoded.policyAddress)
+          new PublicKey(decoded.policyAddress),
         );
 
         if (policy) {
@@ -414,10 +443,46 @@ export function createX402Middleware(options: X402Options) {
                         }`,
                         `payg_${Date.now()}_${Math.random()
                           .toString(36)
-                          .slice(2)}`
-                      )
+                          .slice(2)}`,
+                      ),
                     )
                     .json({ error: "Pay-as-you-go period exhausted" });
+                }
+              }
+            } else if (decoded.scheme === "x402://upto") {
+              // UpTo: single-use authorization. The JWT is the verify-phase
+              // credential; the resource is metered until settle. The auth
+              // is still valid as long as the policy is Active and the
+              // deadline hasn't passed.
+              const uptoData = policy.policyType.upTo;
+              if (uptoData) {
+                const now = Date.now() / 1000;
+                const deadline = uptoData.deadline.toNumber();
+                if (now < deadline) {
+                  (req as any).x402Policy = {
+                    policyAddress: decoded.policyAddress,
+                    scheme: decoded.scheme,
+                    maxAmount: uptoData.maxAmount.toNumber(),
+                    deadline,
+                  };
+                  return next();
+                } else {
+                  // Deadline passed — authorization expired, require new payment.
+                  return res
+                    .status(402)
+                    .set(
+                      "payment-required",
+                      buildPaymentRequiredHeader(
+                        options,
+                        `${req.protocol}://${req.get("host")}${
+                          req.originalUrl
+                        }`,
+                        `upto_${Date.now()}_${Math.random()
+                          .toString(36)
+                          .slice(2)}`,
+                      ),
+                    )
+                    .json({ error: "upto authorization expired" });
                 }
               }
             } else {
@@ -438,8 +503,8 @@ export function createX402Middleware(options: X402Options) {
             buildPaymentRequiredHeader(
               options,
               `${req.protocol}://${req.get("host")}${req.originalUrl}`,
-              `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`
-            )
+              `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            ),
           )
           .json({ error: "Invalid or inactive subscription" });
       } catch (e) {
@@ -477,14 +542,10 @@ export function createX402Middleware(options: X402Options) {
           throw new Error(`Only ${options.network} network is supported`);
         }
 
-        console.log(`Received ${paymentData.scheme} payment from client`);
-        console.log(`  Network: ${paymentData.network}`);
-        console.log(`  ID: ${paymentData.id}`);
-
         // Deserialize the transaction
         const txBuffer = Buffer.from(
           paymentData.payload.serializedTransaction,
-          "base64"
+          "base64",
         );
         const tx = Transaction.from(txBuffer);
 
@@ -501,7 +562,7 @@ export function createX402Middleware(options: X402Options) {
             options.amount,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else if (options.scheme === "x402://payg") {
           preVerification = await verifyPayAsYouGoPayment(
@@ -509,7 +570,17 @@ export function createX402Middleware(options: X402Options) {
             userPublicKey,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
+          );
+        } else if (options.scheme === "x402://upto") {
+          preVerification = await verifyUpToAuthorization(
+            options.sdk,
+            userPublicKey,
+            // At verify time, amount = max (the ceiling).
+            options.maxAmount ?? options.amount,
+            new PublicKey(options.tokenMint),
+            new PublicKey(options.gateway),
+            new PublicKey(options.recipient),
           );
         } else {
           preVerification = { success: false };
@@ -517,6 +588,19 @@ export function createX402Middleware(options: X402Options) {
 
         if (preVerification.success) {
           console.log("✓ Existing payment found, returning JWT early");
+
+          // JWT expiration: upto is short-lived (bounded by deadline);
+          // other schemes keep the long-lived 1y default.
+          const jwtOptions: jwt.SignOptions = {};
+          if (options.scheme === "x402://upto" && options.deadline) {
+            // exp in seconds since epoch — jwt library convention.
+            jwtOptions.expiresIn = Math.max(
+              1,
+              options.deadline - Math.floor(Date.now() / 1000),
+            );
+          } else {
+            jwtOptions.expiresIn = "1y";
+          }
 
           // Create JWT for existing subscription/policy
           const token = jwt.sign(
@@ -529,9 +613,11 @@ export function createX402Middleware(options: X402Options) {
               gateway: options.gateway,
               maxAmountPerPeriod: options.maxAmountPerPeriod,
               periodLengthSeconds: options.periodLengthSeconds,
+              maxAmount: options.maxAmount,
+              deadline: options.deadline,
             },
             options.jwtSecret,
-            { expiresIn: "1y" }
+            jwtOptions,
           );
 
           const timestamp = Date.now();
@@ -541,8 +627,8 @@ export function createX402Middleware(options: X402Options) {
               options.scheme,
               options.network,
               paymentData.id,
-              timestamp
-            )
+              timestamp,
+            ),
           );
 
           return res.json({
@@ -575,7 +661,7 @@ export function createX402Middleware(options: X402Options) {
           {
             skipPreflight: false,
             preflightCommitment: "confirmed",
-          }
+          },
         );
 
         console.log(`Transaction submitted: ${signature}`);
@@ -583,7 +669,7 @@ export function createX402Middleware(options: X402Options) {
         // Wait for confirmation
         const confirmation = await options.connection.confirmTransaction(
           signature,
-          "confirmed"
+          "confirmed",
         );
         if (confirmation.value.err) {
           return res.status(402).json({
@@ -606,7 +692,7 @@ export function createX402Middleware(options: X402Options) {
             options.amount,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
           );
         } else if (options.scheme === "x402://payg") {
           verification = await verifyPayAsYouGoPayment(
@@ -614,7 +700,17 @@ export function createX402Middleware(options: X402Options) {
             userPublicKey,
             new PublicKey(options.tokenMint),
             new PublicKey(options.gateway),
-            new PublicKey(options.recipient)
+            new PublicKey(options.recipient),
+          );
+        } else if (options.scheme === "x402://upto") {
+          verification = await verifyUpToAuthorization(
+            options.sdk,
+            userPublicKey,
+            // At verify time, amount = max (the ceiling).
+            options.maxAmount ?? options.amount,
+            new PublicKey(options.tokenMint),
+            new PublicKey(options.gateway),
+            new PublicKey(options.recipient),
           );
         } else {
           verification = { success: false, error: "Unsupported scheme" };
@@ -629,6 +725,18 @@ export function createX402Middleware(options: X402Options) {
 
         console.log("✓ Payment verified");
 
+        // JWT expiration: upto is short-lived (bounded by deadline); other
+        // schemes keep the long-lived 1y default.
+        const postJwtOptions: jwt.SignOptions = {};
+        if (options.scheme === "x402://upto" && options.deadline) {
+          postJwtOptions.expiresIn = Math.max(
+            1,
+            options.deadline - Math.floor(Date.now() / 1000),
+          );
+        } else {
+          postJwtOptions.expiresIn = "1y";
+        }
+
         // Create JWT
         const token = jwt.sign(
           {
@@ -640,9 +748,11 @@ export function createX402Middleware(options: X402Options) {
             gateway: options.gateway,
             maxAmountPerPeriod: options.maxAmountPerPeriod,
             periodLengthSeconds: options.periodLengthSeconds,
+            maxAmount: options.maxAmount,
+            deadline: options.deadline,
           },
           options.jwtSecret,
-          { expiresIn: "1y" }
+          postJwtOptions,
         );
 
         const timestamp = Date.now();
@@ -652,8 +762,8 @@ export function createX402Middleware(options: X402Options) {
             options.scheme,
             options.network,
             paymentData.id,
-            timestamp
-          )
+            timestamp,
+          ),
         );
 
         return res.json({
@@ -680,15 +790,19 @@ export function createX402Middleware(options: X402Options) {
     // console.log(`New ${options.scheme} payment quote requested`);
 
     const randomString = Math.random().toString(36).slice(2);
-    const paymentId = `${
-      options.scheme === "x402://payg" ? "payg" : "sub"
-    }_${Date.now()}_${randomString}`;
+    const schemePrefix =
+      options.scheme === "x402://payg"
+        ? "payg"
+        : options.scheme === "x402://upto"
+          ? "upto"
+          : "sub";
+    const paymentId = `${schemePrefix}_${Date.now()}_${randomString}`;
     const resource = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
 
     // Set the Payment-Required header (x402 v2 standard)
     res.set(
       "payment-required",
-      buildPaymentRequiredHeader(options, resource, paymentId)
+      buildPaymentRequiredHeader(options, resource, paymentId),
     );
 
     return res.status(402).json({
@@ -710,6 +824,9 @@ export function createX402Middleware(options: X402Options) {
           maxAmountPerPeriod: options.maxAmountPerPeriod,
           periodLengthSeconds: options.periodLengthSeconds,
           maxChunkAmount: options.maxChunkAmount,
+          maxAmount: options.maxAmount,
+          validAfter: options.validAfter,
+          deadline: options.deadline,
         },
       ],
     });

@@ -28,7 +28,7 @@ export class MarkdownTemplateEngine {
       try {
         const value = this.evaluateExpression(expression.trim(), data);
         return value !== undefined ? String(value) : match;
-      } catch (error) {
+      } catch {
         console.warn(`Template variable "${expression}" not found`);
         return match;
       }
@@ -62,8 +62,43 @@ export class MarkdownTemplateEngine {
 }
 
 /**
- * GET /api/v1/skill/:encoded
- * Generate skill markdown from encoded subscription data
+ * @openapi
+ * /v1/skill/{encoded}:
+ *   get:
+ *     summary: Generate Lando skill markdown
+ *     description: >
+ *       Decodes a base64-encoded checkout session, fetches mint decimals
+ *       on-chain, converts the human-readable amount to its integer
+ *       representation, and renders a `text/markdown` skill document the
+ *       Lando agent uses to drive the subscription checkout.
+ *     tags: [Skill]
+ *     operationId: getSkillMarkdown
+ *     parameters:
+ *       - in: path
+ *         name: encoded
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Base64-encoded subscription parameters produced by `CheckoutSessionManager`.
+ *     responses:
+ *       200:
+ *         description: Rendered skill markdown.
+ *         content:
+ *           text/markdown:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Missing or invalid `encoded` parameter.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to fetch mint info or render template.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get(
   "/:encoded",
@@ -77,15 +112,24 @@ router.get(
     const sessionManager = new CheckoutSessionManager();
     const decoded = sessionManager.decodeSubscriptionUrl(encoded);
 
+    // This endpoint generates subscription skill markdown — narrow to the
+    // subscription arm; other policy variants are rejected with a clear 400.
+    if (decoded.mode !== "subscription") {
+      throw new ApiError(
+        400,
+        `This skill endpoint only handles subscription links (got mode=${decoded.mode})`
+      );
+    }
+
     // Fetch mint decimals and convert amount from float to integer
     const decimals = await getMintDecimals(decoded.tokenMint);
     const convertedAmount = convertAmountToInteger(decoded.amount, decimals);
 
     // Replace decoded amount with converted integer
-    const decodedWithConvertedAmount = {
+    const decodedWithConvertedAmount: SubscriptionParams = {
       ...decoded,
       amount: convertedAmount,
-    } as SubscriptionParams;
+    };
 
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");
     res.send(generateSkillMarkdown(decodedWithConvertedAmount, decimals));

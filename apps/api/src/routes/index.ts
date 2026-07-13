@@ -11,8 +11,9 @@ import eventsRouter from "./events";
 import onetimeRouter from "./onetime";
 import webhooksRouter from "./webhooks";
 import tokensRouter from "./tokens";
-import jwksRouter from "./jwks";
 import adminRouter from "./admin";
+import gatewayRouter from "./gateway";
+import assetsRouter from "./assets";
 
 const router: Router = Router();
 
@@ -47,5 +48,11 @@ router.use("/tokens", tokensRouter);
 
 // Admin routes (key rotation)
 router.use("/admin", adminRouter);
+
+// Gateway merchant layer (auth + merchant endpoints)
+router.use("/gateway", gatewayRouter);
+
+// Asset catalog proxy (tokens.xyz — see ADR-0028)
+router.use("/assets", assetsRouter);
 
 export default router;

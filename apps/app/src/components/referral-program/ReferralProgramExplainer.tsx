@@ -3,28 +3,51 @@ import type { PaymentGateway } from '@tributary-so/sdk'
 
 interface ReferralProgramExplainerProps {
   gateway: PaymentGateway | null
+  /**
+   * Effective protocol share of the gateway fee, in bps (ADR-0018 carve-out).
+   * Caller resolves the custom-override vs global-default distinction on-chain
+   * encodes via `gateway.effective_protocol_share_bps(config.protocol_share_bps)`.
+   */
+  protocolShareBps: number
 }
 
 const PAYMENT_AMOUNT = 100
+
+// Illustrative defaults when no gateway is loaded yet. The gateway-fee and
+// referral numbers mirror the prior explainer; protocol/scheduler defaults
+// reflect the on-chain initial state (protocol share 2000 = 20% of the
+// gateway fee per `initialize.rs`, scheduler 1000 = 10% as a representative
+// permissionless-execution incentive).
+const DEFAULT_GATEWAY_FEE_BPS = 250
+const DEFAULT_PROTOCOL_SHARE_BPS = 2000
+const DEFAULT_SCHEDULER_SHARE_BPS = 1000
+const DEFAULT_REFERRAL_ALLOCATION_BPS = 5000
+const DEFAULT_TIERS: [number, number, number] = [6000, 3000, 1000]
 
 function bpsToPercent(bps: number): number {
   return bps / 100
 }
 
-export default function ReferralProgramExplainer({ gateway }: ReferralProgramExplainerProps) {
-  const gatewayFeePercent = gateway ? bpsToPercent(gateway.gatewayFeeBps) : 2.5
-  const referralAllocationPercent = gateway ? bpsToPercent(gateway.referralAllocationBps) : 50
-  const tiers = gateway ? gateway.referralTiersBps : [6000, 3000, 1000]
+export default function ReferralProgramExplainer({ gateway, protocolShareBps }: ReferralProgramExplainerProps) {
+  const gatewayFeeBps = gateway ? gateway.gatewayFeeBps : DEFAULT_GATEWAY_FEE_BPS
+  const schedulerShareBps = gateway ? gateway.schedulerShareBps : DEFAULT_SCHEDULER_SHARE_BPS
+  const referralAllocationBps = gateway ? gateway.referralAllocationBps : DEFAULT_REFERRAL_ALLOCATION_BPS
+  const tiers: number[] = gateway ? gateway.referralTiersBps : DEFAULT_TIERS
+  const effectiveProtocolShareBps = gateway ? protocolShareBps : DEFAULT_PROTOCOL_SHARE_BPS
 
-  const protocolFee = 1
-  const gatewayFee = PAYMENT_AMOUNT * (gatewayFeePercent / 100)
-  const referralPool = gatewayFee * (referralAllocationPercent / 100)
-  const gatewayBusinessFee = gatewayFee - referralPool
+  // Mirror shared/fees.rs::calculate_fees (gross mode). The gateway fee is the
+  // ONE total; protocol / scheduler / referral / residual are carve-outs of it.
+  const totalFee = PAYMENT_AMOUNT * (gatewayFeeBps / 10000)
+  const protocolCut = totalFee * (effectiveProtocolShareBps / 10000)
+  const schedulerCut = totalFee * (schedulerShareBps / 10000)
+  const referralPool = totalFee * (referralAllocationBps / 10000)
+  const gatewayResidual = totalFee - protocolCut - schedulerCut - referralPool
+  const recipientReceives = PAYMENT_AMOUNT - totalFee
 
   const tier1Amount = referralPool * (tiers[0] / 10000)
   const tier2Amount = referralPool * (tiers[1] / 10000)
   const tier3Amount = referralPool * (tiers[2] / 10000)
-  const recipientReceives = PAYMENT_AMOUNT - protocolFee - gatewayFee
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-linear-to-r from-lando-accent/10 to-lando-accent/5  border border-lando-accent/30 p-8 mb-6">
@@ -94,8 +117,8 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
             <div>
               <h4 className="font-semibold text-lando-text mb-1">Gateway-Funded Rewards</h4>
               <p className="text-sm text-lando-muted">
-                Rewards come from gateway fees ({gatewayFeePercent}% of payments). Gateway operators control their
-                referral budget.
+                Rewards come from the gateway fee ({bpsToPercent(gatewayFeeBps)}% of payments). Gateway operators
+                control their referral budget.
               </p>
             </div>
           </div>
@@ -128,35 +151,41 @@ export default function ReferralProgramExplainer({ gateway }: ReferralProgramExp
                 <span className="text-lando-muted">Payment Amount</span>
                 <span className="font-bold text-lando-text">$100.00</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border">
-                <span className="text-lando-muted">Protocol Fee (1%)</span>
-                <span className="font-bold text-lando-text">$1.00</span>
+              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-policy-50 px-2 ">
+                <span className="text-policy-700 font-medium">Gateway Fee ({bpsToPercent(gatewayFeeBps)}% total)</span>
+                <span className="font-bold text-policy-700">${totalFee.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border">
-                <span className="text-lando-muted">Gateway Fee ({gatewayFeePercent}%)</span>
-                <span className="font-bold text-lando-text">${gatewayFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-subscription-50 px-2 ">
-                <span className="text-subscription-700 font-medium">Referral Pool ({referralAllocationPercent}%)</span>
-                <span className="font-bold text-subscription-700">${referralPool.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-secondary-50 px-2 ">
-                <span className="text-secondary-700 font-medium">
-                  Gateway Business Fee ({100 - referralAllocationPercent}%)
-                </span>
-                <span className="font-bold text-secondary-700">${gatewayBusinessFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-lando-border bg-blue-50 px-2 ">
-                <span className="text-blue-700 font-medium">
-                  Gateway Business Fee ({100 - referralAllocationPercent}%)
-                </span>
-                <span className="font-bold text-blue-700">${gatewayBusinessFee.toFixed(2)}</span>
+              <div className="pl-4 space-y-2">
+                <div className="flex justify-between items-center py-1 text-sm">
+                  <span className="text-lando-muted">
+                    Protocol cut ({bpsToPercent(effectiveProtocolShareBps)}% of fee)
+                  </span>
+                  <span className="text-lando-text">${protocolCut.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 text-sm">
+                  <span className="text-lando-muted">Scheduler cut ({bpsToPercent(schedulerShareBps)}% of fee)</span>
+                  <span className="text-lando-text">${schedulerCut.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 text-sm border-b border-lando-border bg-subscription-50 px-2 -mx-2">
+                  <span className="text-subscription-700 font-medium">
+                    Referral pool ({bpsToPercent(referralAllocationBps)}% of fee)
+                  </span>
+                  <span className="font-bold text-subscription-700">${referralPool.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 text-sm border-b border-lando-border bg-blue-50 px-2 -mx-2">
+                  <span className="text-blue-700 font-medium">Gateway residual (balancing item)</span>
+                  <span className="font-bold text-blue-700">${gatewayResidual.toFixed(2)}</span>
+                </div>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-lando-muted">Recipient Receives</span>
                 <span className="font-bold text-lando-text">${recipientReceives.toFixed(2)}</span>
               </div>
             </div>
+            <p className="text-xs text-lando-muted mt-3">
+              Gross mode shown. The gateway fee is the single total; protocol, scheduler, referral, and residual are
+              carve-outs of it (ADR-0018).
+            </p>
           </div>
 
           <div>

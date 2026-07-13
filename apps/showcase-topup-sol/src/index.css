@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "./transitions.css";
+@plugin "./hero.ts";
+@config '../tailwind.config.js';
+
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@layer utilities {
+  @font-face {
+    font-family: "GT Cinetype";
+    src: url("/gt-cinetype.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Denim";
+    src: url("/denim.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --font-primary: "GT Cinetype", "Inter", -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
+    --font-secondary: "Denim", "Antonio", "Impact", sans-serif;
+    --radius: 0;
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: var(--font-primary) !important;
+  }
+}
+
+/* HeroUI no-radius overrides */
+[data-slot="base"],
+[data-slot="trigger"],
+[data-slot="input"],
+[data-slot="wrapper"],
+.heroui-button,
+.heroui-input,
+.heroui-select,
+.heroui-select-trigger,
+.heroui-dropdown,
+.heroui-dropdown-menu,
+.heroui-dropdown-item,
+.heroui-card,
+.heroui-modal,
+.heroui-popover,
+.heroui-alert,
+.heroui-checkbox,
+.heroui-switch,
+.heroui-tabs,
+.heroui-tab {
+  border-radius: 0px !important;
+}
+
+.wallet-adapter-button-start-icon img {
+  height: 12px !important;
+  width: 12px !important;
+}
+
+.wallet-adapter-button-trigger {
+  font-family: var(--font-secondary) !important;
+  text-transform: uppercase !important;
+  border-radius: 0px !important;
+  border: 1px solid hsl(var(--border)) !important;
+  background-color: transparent !important;
+  color: var(--color-primary) !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+  height: 1.55rem !important;
+  font-weight: normal !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+}
+
+.wallet-adapter-button-trigger:hover:not(:disabled) {
+  background-color: var(--color-primary) !important;
+  color: #aaa !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  font-family: var(--font-primary) !important;
+}
+
+.wallet-adapter-dropdown {
+  font-family: var(--font-primary) !important;
+}
+
+.wallet-adapter-dropdown-list {
+  background-color: #fff !important;
+  border: 1px solid var(--color-primary) !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+.wallet-adapter-dropdown-list-item {
+  font-family: var(--font-primary) !important;
+  color: var(--color-primary) !important;
+  font-weight: normal !important;
+  font-size: 13px !important;
+  padding: 10px;
+  text-transform: uppercase !important;
+}
+
+.wallet-adapter-dropdown-list-item:hover {
+  background-color: #f5f7f7 !important;
+}

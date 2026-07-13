@@ -1,8 +1,7 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
-const mockJwtVerify = jest.fn();
-const mockImportJWK = jest.fn();
+const mockJwtVerify = jest.fn() as jest.MockedFunction<any>;
+const mockImportJWK = jest.fn() as jest.MockedFunction<any>;
 
 jest.mock("jose", () => ({
   jwtVerify: mockJwtVerify,
@@ -24,7 +23,9 @@ jest.mock("../services/jwks", () => ({
 import { requireAuth, optionalAuth, verifyToken } from "../middleware/auth";
 import { getSigningKeyByKid } from "../services/jwks";
 
-const mockGetSigningKeyByKid = getSigningKeyByKid as jest.Mock;
+const mockGetSigningKeyByKid = getSigningKeyByKid as jest.MockedFunction<
+  typeof getSigningKeyByKid
+>;
 
 const VALID_KEY = {
   kid: "trib-2025-01-01-a",
@@ -47,8 +48,8 @@ function mockReq(overrides = {}) {
   return { headers: {}, ...overrides };
 }
 
-function mockRes() {
-  const res = { statusCode: 200, body: null };
+function mockRes(): any {
+  const res: any = { statusCode: 200, body: null };
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockImplementation((data) => {
     res.body = data;

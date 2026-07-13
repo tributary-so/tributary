@@ -1,11 +1,17 @@
-// One-time payment tracking using SPL transfers with memo fields
+// One-time payment tracking using SPL transfers with memo fields.
+//
+// Status: PARTIAL STUB. `checkStatus` returns a placeholder "pending"
+// shape and `buildPaymentMemo` / `extractTrackingId` are identity helpers.
+// Indexer-backed lookup was removed (P-1, review 2026-07-06): the previous
+// `getFromIndexer` threw "not yet implemented" while being part of the
+// public exported surface. Re-add when the indexer integration lands.
 
 export class OneTimePaymentTracker {
   constructor() {}
 
   /**
-   * Check one-time payment status by tracking ID
-   * Searches for SPL transfers with matching memo
+   * Check one-time payment status by tracking ID.
+   * Searches for SPL transfers with matching memo.
    * @param trackingId The tracking ID to search for
    * @returns Payment status with transaction details if found
    */
@@ -16,16 +22,6 @@ export class OneTimePaymentTracker {
       amount: 0,
       recipient: "",
     };
-  }
-
-  /**
-   * Get payment status from indexed data (future)
-   * Will integrate with Indexer + Core API from grant milestone 2
-   * @param _trackingId The tracking ID
-   * @returns Detailed payment status from indexer
-   */
-  async getFromIndexer(_trackingId: string) {
-    throw new Error("Indexer integration not yet implemented");
   }
 
   buildPaymentMemo(trackingId: string): string {

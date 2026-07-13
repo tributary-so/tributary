@@ -1,8 +1,8 @@
 import { BriefcaseBusiness, CheckCheck, Crown } from "lucide-react";
 
 type ProfileProps = {
-  isDAORaise: boolean,
-  showExits: boolean
+  isDAORaise: boolean | null,
+  showExits: boolean | null
 };
 
 export default function FabianSchuhProfile({ isDAORaise = true, showExits = true }: ProfileProps) {

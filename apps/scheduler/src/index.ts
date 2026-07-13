@@ -10,6 +10,7 @@ import * as anchor from "@coral-xyz/anchor";
 import * as cron from "node-cron";
 import * as fs from "fs";
 import { TributarySDK } from "@tributary-so/sdk";
+import { ComposableScheduler } from "./composable.js";
 import { exit } from "process";
 
 interface SchedulerConfig {
@@ -30,7 +31,7 @@ class PaymentScheduler {
 
     if (config.gatewayKeypairPath) {
       this.gatewayKeypairs.push(
-        this.loadKeypairFromFile(config.gatewayKeypairPath),
+        this.loadKeypairFromFile(config.gatewayKeypairPath)
       );
     } else if (config.privateKeys && config.privateKeys.length > 0) {
       for (const privateKey of config.privateKeys) {
@@ -67,7 +68,7 @@ class PaymentScheduler {
 
   private async checkAndExecutePayments(): Promise<void> {
     console.log(
-      `[${new Date().toISOString()}] Checking for payments to execute...`,
+      `[${new Date().toISOString()}] Checking for payments to execute...`
     );
 
     let totalExecutedCount = 0;
@@ -79,18 +80,19 @@ class PaymentScheduler {
       await this.sdk.updateWallet(wallet);
 
       console.log(
-        `[${new Date().toISOString()}] Processing gateway: ${keypair.publicKey.toString()}`,
+        `[${new Date().toISOString()}] Processing gateway: ${keypair.publicKey.toString()}`
       );
 
       try {
         const { address: gatewayPda } = this.sdk.getGatewayPda(
-          keypair.publicKey,
+          keypair.publicKey
         );
-        const paymentPolicies =
-          await this.sdk.getPaymentPoliciesByGateway(gatewayPda);
+        const paymentPolicies = await this.sdk.getPaymentPoliciesByGateway(
+          gatewayPda
+        );
 
         console.log(
-          `Found ${paymentPolicies.length} payment policies for this gateway`,
+          `Found ${paymentPolicies.length} payment policies for this gateway`
         );
 
         const currentTime = Math.floor(Date.now() / 1000);
@@ -106,26 +108,27 @@ class PaymentScheduler {
               let milestoneInfo = "";
               if (policy.policyType.milestone) {
                 const m = policy.policyType.milestone;
-                milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${m.totalMilestones
-                  })`;
+                milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${
+                  m.totalMilestones
+                })`;
               }
 
               console.log(
-                `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`,
+                `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`
               );
 
               await this.executePayment(policyPda);
               executedCount++;
 
               console.log(
-                `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`,
+                `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
               );
 
               await this.delay(1000);
             }
           } catch (error) {
             console.error(
-              `🚩 Error executing payment for ${policyPda.toString()}`,
+              `🚩 Error executing payment for ${policyPda.toString()}`
             );
             if (error instanceof SendTransactionError) {
               console.error(error.message);
@@ -136,7 +139,7 @@ class PaymentScheduler {
         }
 
         console.log(
-          `Gateway ${keypair.publicKey.toString()} completed. Executed: ${executedCount}, Errors: ${errorCount}`,
+          `Gateway ${keypair.publicKey.toString()} completed. Executed: ${executedCount}, Errors: ${errorCount}`
         );
 
         totalExecutedCount += executedCount;
@@ -144,13 +147,13 @@ class PaymentScheduler {
       } catch (error) {
         console.error(
           `Error processing gateway ${keypair.publicKey.toString()}:`,
-          error,
+          error
         );
       }
     }
 
     console.log(
-      `Payment execution completed. Total Executed: ${totalExecutedCount}, Total Errors: ${totalErrorCount}`,
+      `Payment execution completed. Total Executed: ${totalExecutedCount}, Total Errors: ${totalErrorCount}`
     );
   }
 
@@ -171,7 +174,7 @@ class PaymentScheduler {
       const maxRenewals = subscriptionDetails.maxRenewals;
       if (maxRenewals !== null && policy.paymentCount >= maxRenewals) {
         console.log(
-          `Policy ${policy.policyId} has reached max renewals (${maxRenewals})`,
+          `Policy ${policy.policyId} has reached max renewals (${maxRenewals})`
         );
         return false;
       }
@@ -194,7 +197,7 @@ class PaymentScheduler {
 
       if (currentMilestone >= totalMilestones) {
         console.log(
-          `Policy ${policy.policyId} has completed all ${totalMilestones} milestones`,
+          `Policy ${policy.policyId} has completed all ${totalMilestones} milestones`
         );
         return false;
       }
@@ -226,7 +229,7 @@ class PaymentScheduler {
         {
           commitment: "confirmed",
           skipPreflight: false,
-        },
+        }
       );
 
       console.log(`Payment executed with signature: ${signature}`);
@@ -245,7 +248,9 @@ class PaymentScheduler {
 
     console.log(`Starting payment scheduler with schedule: ${schedule}`);
     console.log(
-      `Gateways: ${this.gatewayKeypairs.map((k) => k.publicKey.toString()).join(", ")}`,
+      `Gateways: ${this.gatewayKeypairs
+        .map((k) => k.publicKey.toString())
+        .join(", ")}`
     );
     console.log(`Connection: ${this.config.connectionUrl}`);
 
@@ -259,7 +264,7 @@ class PaymentScheduler {
       {
         scheduled: true,
         timezone: "UTC",
-      },
+      }
     );
 
     console.log("Payment scheduler started successfully");
@@ -295,20 +300,39 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   const scheduler = new PaymentScheduler(config);
 
-  // Graceful shutdown
+  const composableEnabled =
+    process.env.ENABLE_COMPOSABLE === "true" ||
+    process.env.ENABLE_COMPOSABLE === "1";
+
+  let composableScheduler: ComposableScheduler | null = null;
+  if (composableEnabled) {
+    composableScheduler = new ComposableScheduler({
+      connectionUrl: config.connectionUrl,
+      gatewayKeypairPath: config.gatewayKeypairPath,
+      privateKeys: config.privateKeys,
+    });
+  }
+
   process.on("SIGINT", () => {
     console.log("\nReceived SIGINT, shutting down gracefully...");
     scheduler.stop();
+    composableScheduler?.stop();
     process.exit(0);
   });
 
   process.on("SIGTERM", () => {
     console.log("\nReceived SIGTERM, shutting down gracefully...");
     scheduler.stop();
+    composableScheduler?.stop();
     process.exit(0);
   });
 
   scheduler.start();
+  if (composableScheduler) {
+    composableScheduler.start().catch((e) => {
+      console.error("Composable scheduler failed to start:", e);
+    });
+  }
 }
 
-export { PaymentScheduler };
+export { PaymentScheduler, ComposableScheduler };

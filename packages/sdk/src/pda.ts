@@ -13,7 +13,7 @@ import BN from "bn.js";
 export function getConfigPda(programId: PublicKey): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEEDS.CONFIG)],
-    programId
+    programId,
   );
   return { address, bump };
 }
@@ -27,11 +27,11 @@ export function getConfigPda(programId: PublicKey): PdaResult {
  */
 export function getGatewayPda(
   gatewayAuthority: PublicKey,
-  programId: PublicKey
+  programId: PublicKey,
 ): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEEDS.GATEWAY), gatewayAuthority.toBuffer()],
-    programId
+    programId,
   );
   return { address, bump };
 }
@@ -47,11 +47,11 @@ export function getGatewayPda(
 export function getUserPaymentPda(
   user: PublicKey,
   tokenMint: PublicKey,
-  programId: PublicKey
+  programId: PublicKey,
 ): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEEDS.USER_PAYMENT), user.toBuffer(), tokenMint.toBuffer()],
-    programId
+    programId,
   );
   return { address, bump };
 }
@@ -67,7 +67,7 @@ export function getUserPaymentPda(
 export function getPaymentPolicyPda(
   userPayment: PublicKey,
   policyId: number,
-  programId: PublicKey
+  programId: PublicKey,
 ): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
     [
@@ -75,7 +75,31 @@ export function getPaymentPolicyPda(
       userPayment.toBuffer(),
       new BN(policyId).toArrayLike(Buffer, "le", 4),
     ],
-    programId
+    programId,
+  );
+  return { address, bump };
+}
+
+/**
+ * Derives a Composable Policy PDA for a specific composable payment policy.
+ * Composable policies allow execution of arbitrary instructions alongside payments.
+ * @param userPayment - The PublicKey of the user's payment PDA
+ * @param policyId - The unique identifier for this composable policy within the user's account
+ * @param programId - The PublicKey of the Tributary program
+ * @returns Object containing the PDA address and bump seed
+ */
+export function getComposablePolicyPda(
+  userPayment: PublicKey,
+  policyId: number,
+  programId: PublicKey,
+): PdaResult {
+  const [address, bump] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(SEEDS.COMPOSABLE_POLICY),
+      userPayment.toBuffer(),
+      new BN(policyId).toArrayLike(Buffer, "le", 4),
+    ],
+    programId,
   );
   return { address, bump };
 }
@@ -89,7 +113,43 @@ export function getPaymentPolicyPda(
 export function getPaymentsDelegatePda(programId: PublicKey): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEEDS.PAYMENTS)],
-    programId
+    programId,
+  );
+  return { address, bump };
+}
+
+/**
+ * Derives the pre-validation PDA for a composable policy.
+ * Stores assertion data for composable policies configured with pre-forward validation.
+ * @param composablePolicy - The PublicKey of the composable policy account
+ * @param programId - The PublicKey of the Tributary program
+ * @returns Object containing the PDA address and bump seed
+ */
+export function getPreValidationPda(
+  composablePolicy: PublicKey,
+  programId: PublicKey,
+): PdaResult {
+  const [address, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from(SEEDS.VALIDATION_PDA_PRE), composablePolicy.toBuffer()],
+    programId,
+  );
+  return { address, bump };
+}
+
+/**
+ * Derives the post-validation PDA for a composable policy.
+ * Stores assertion data for composable policies configured with post-forward validation.
+ * @param composablePolicy - The PublicKey of the composable policy account
+ * @param programId - The PublicKey of the Tributary program
+ * @returns Object containing the PDA address and bump seed
+ */
+export function getPostValidationPda(
+  composablePolicy: PublicKey,
+  programId: PublicKey,
+): PdaResult {
+  const [address, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from(SEEDS.VALIDATION_PDA_POST), composablePolicy.toBuffer()],
+    programId,
   );
   return { address, bump };
 }
@@ -105,11 +165,11 @@ export function getPaymentsDelegatePda(programId: PublicKey): PdaResult {
 export function getReferralPda(
   gateway: PublicKey,
   referralCode: Buffer,
-  programId: PublicKey
+  programId: PublicKey,
 ): PdaResult {
   const [address, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEEDS.REFERRAL), gateway.toBuffer(), referralCode],
-    programId
+    programId,
   );
   return { address, bump };
 }

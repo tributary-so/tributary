@@ -1,8 +1,11 @@
-use crate::{state::*, CONFIG_SEED};
+use crate::{error::TributaryError, state::*, CONFIG_SEED};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
     #[account(mut)]
     pub admin: Signer<'info>,
 
@@ -15,6 +18,11 @@ pub struct Initialize<'info> {
     )]
     pub config: Account<'info, ProgramConfig>,
 
+    /// CHECK: Program data account containing upgrade authority info.
+    /// Enforces that only the upgrade authority can initialize the protocol.
+    #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()) @ TributaryError::UnauthorizedInitializer)]
+    pub program_data: Account<'info, ProgramData>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -26,15 +34,14 @@ impl<'info> Initialize<'info> {
         config.admin = ctx.accounts.admin.key();
         config.fee_recipient = ctx.accounts.admin.key();
 
-        config.protocol_fee_bps = 100; // 1%
+        config.protocol_share_bps = 2000; // 20% of gateway fee → protocol
         config.emergency_pause = false;
         config.bump = ctx.bumps.config;
 
         emit!(ProgramConfigCreated {
             admin: config.admin,
             fee_recipient: config.fee_recipient,
-            protocol_fee_bps: config.protocol_fee_bps,
-            max_policies_per_user: 0, // DEPRECATED
+            protocol_share_bps: config.protocol_share_bps,
         });
 
         msg!("Program initialized with admin: {:?}", config.admin);

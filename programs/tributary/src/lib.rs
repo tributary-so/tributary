@@ -9,8 +9,8 @@ pub mod constants;
 pub mod error;
 pub mod instructions;
 pub mod policies;
+pub mod shared;
 pub mod state;
-pub mod utils;
 
 use anchor_lang::prelude::*;
 #[cfg(not(feature = "no-entrypoint"))]
@@ -31,6 +31,14 @@ pub mod tributary {
         Initialize::handle_initialize(ctx)
     }
 
+    pub fn change_program_authority(ctx: Context<ChangeProgramAuthority>) -> Result<()> {
+        ChangeProgramAuthority::handler_change_program_authority(ctx)
+    }
+
+    pub fn set_emergency_pause(ctx: Context<SetEmergencyPause>, paused: bool) -> Result<()> {
+        SetEmergencyPause::handler_set_emergency_pause(ctx, paused)
+    }
+
     pub fn create_user_payment(ctx: Context<CreateUserPayment>) -> Result<()> {
         CreateUserPayment::handler_create_user_payment(ctx)
     }
@@ -45,10 +53,19 @@ pub mod tributary {
     pub fn create_payment_gateway(
         ctx: Context<CreatePaymentGateway>,
         gateway_fee_bps: u16,
+        scheduler_share_bps: u16,
         name: [u8; 32],
         url: [u8; 64],
+        initial_feature_flags: u8,
     ) -> Result<()> {
-        CreatePaymentGateway::handler_create_payment_gateway(ctx, gateway_fee_bps, name, url)
+        CreatePaymentGateway::handler_create_payment_gateway(
+            ctx,
+            gateway_fee_bps,
+            scheduler_share_bps,
+            name,
+            url,
+            initial_feature_flags,
+        )
     }
 
     pub fn create_payment_policy(
@@ -69,7 +86,7 @@ pub mod tributary {
     pub fn change_payment_policy_status(
         ctx: Context<ChangePaymentPolicyStatus>,
         policy_id: u32,
-        new_status: PaymentStatus,
+        new_status: PolicyStatus,
     ) -> Result<()> {
         ChangePaymentPolicyStatus::handler_change_payment_policy_status(ctx, policy_id, new_status)
     }
@@ -115,6 +132,13 @@ pub mod tributary {
         UpdateGatewayProtocolFee::handle_update_gateway_protocol_fee(ctx, args)
     }
 
+    pub fn update_gateway_scheduler_share(
+        ctx: Context<UpdateGatewaySchedulerShare>,
+        scheduler_share_bps: u16,
+    ) -> Result<()> {
+        UpdateGatewaySchedulerShare::handle_update_gateway_scheduler_share(ctx, scheduler_share_bps)
+    }
+
     pub fn update_gateway_feature_flags(
         ctx: Context<UpdateGatewayFeatureFlags>,
         args: UpdateGatewayFeatureFlagsArgs,
@@ -128,6 +152,53 @@ pub mod tributary {
         memo: [u8; 64],
     ) -> Result<()> {
         TransferTokens::handler(ctx, amount, memo)
+    }
+
+    // ponytail: arg list is the on-chain program interface (locked by the IDL).
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_composable_policy(
+        ctx: Context<CreateComposablePolicy>,
+        policy_type: PolicyType,
+        memo: [u8; 32],
+        forward_config: ForwardConfig,
+        pre_validation: ValidationSpec,
+        pre_init: ValidationInit,
+        post_validation: ValidationSpec,
+        post_init: ValidationInit,
+    ) -> Result<()> {
+        CreateComposablePolicy::handler(
+            ctx,
+            policy_type,
+            memo,
+            forward_config,
+            pre_validation,
+            pre_init,
+            post_validation,
+            post_init,
+        )
+    }
+
+    pub fn execute_composable<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteComposable<'info>>,
+        instruction_data: Vec<u8>,
+        forward_amount: Option<u64>,
+    ) -> Result<()> {
+        ExecuteComposable::handler(ctx, instruction_data, forward_amount)
+    }
+
+    pub fn delete_composable_policy(
+        ctx: Context<DeleteComposablePolicy>,
+        policy_id: u32,
+    ) -> Result<()> {
+        DeleteComposablePolicy::handler(ctx, policy_id)
+    }
+
+    pub fn change_composable_status(
+        ctx: Context<ChangeComposableStatus>,
+        policy_id: u32,
+        new_status: PolicyStatus,
+    ) -> Result<()> {
+        ChangeComposableStatus::handler(ctx, policy_id, new_status)
     }
 }
 

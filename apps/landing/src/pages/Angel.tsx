@@ -9,7 +9,6 @@ import {
   Database,
   Layers,
   ChevronRight,
-  XIcon,
   TwitterIcon,
 } from "lucide-react";
 import FabianSchuhProfile from "@/components/futardio/cv";
@@ -41,7 +40,7 @@ function TableOfContents() {
           if (e.isIntersecting) setActive(e.target.id);
         });
       },
-      { rootMargin: "-15% 0px -75% 0px" }
+      { rootMargin: "-15% 0px -75% 0px" },
     );
     TOC_ITEMS.forEach((item) => {
       const el = document.getElementById(item.id);
@@ -56,10 +55,11 @@ function TableOfContents() {
         <a
           key={item.id}
           onClick={() => scrollToSection(item.id)}
-          className={`flex items-center gap-2 py-1 text-xs transition-colors cursor:pointer hover:text-foreground ${active === item.id
-            ? "text-foreground"
-            : "text-foreground/30 hover:text-foreground/60"
-            }`}
+          className={`flex items-center gap-2 py-1 text-xs transition-colors cursor:pointer hover:text-foreground ${
+            active === item.id
+              ? "text-foreground"
+              : "text-foreground/30 hover:text-foreground/60"
+          }`}
         >
           <span
             className={`font-mono ${active === item.id ? "text-primary" : ""} `}
@@ -169,17 +169,24 @@ function Hero() {
         <span className="text-foreground">Tributary.</span>
         <br />
         <span className="gradient-text">
-          The money operating system for solana
+          The rule-based money-moving primitive.
         </span>
       </h1>
-      <p className="text-lg text-foreground/60 mt-8 leading-relaxed">
-        Approve once. Money moves automatically — payments, swaps, stakes,
-        yield. Non-custodial.
+      <p className="text-xl text-foreground/80 mt-8 font-medium leading-relaxed">
+        Stop pushing your bags.{" "}
+        <span className="gradient-text">Let them flow.</span>
+      </p>
+      <p className="text-lg text-foreground/60 mt-4 leading-relaxed">
+        Crypto spent fifteen years winning the balance. It never built the flow.
+        Every rail before Tributary is push-based — you sign, you send, repeat.
+        The signature is the tax. Tributary is pull-based by construction: set
+        the riverbed once, and money moves itself within rules you define —
+        payments, swaps, stakes, yield. Non-custodial.
       </p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-14 py-8 border-y border-border">
-        <Stat value="$316B" label="Stablecoins. Zero automation." />
-        <Stat value="4,000+" label="Payments on mainnet" />
+        <Stat value="$316B" label="Stablecoins. Zero autonomy." />
+        <Stat value="4,000+" label="Pulls on mainnet" />
         <Stat value="6+" label="Integrators. $0 marketing" />
         <Stat value="9" label="Systems shipped solo" />
       </div>
@@ -203,22 +210,20 @@ function Hero() {
     </section>
   );
 }
-
 // ─── 02 · Future (quiet — context, not pitch) ───────────────────────────────
 function Future() {
   return (
     <section className="py-20">
       <SectionHeader num="02" label="The Future" />
-      <Lede>An internet economy where money behaves like software.</Lede>
+      <Lede>Money should move itself.</Lede>
       <p className="text-foreground/50 mt-6 leading-relaxed">
-        Approve once, execute forever. Compose payments, investments, treasury —
-        no custody. AI agents spend within guardrails. Three shifts landed at
-        once: stablecoins won ($316B), Solana shipped a delegation primitive,
-        DeFi became composable.
+        Set the riverbed once, execute forever. Compose payments, investments,
+        treasury — no custody. AI agents spend within guardrails. Three shifts
+        landed at once: stablecoins won ($316B), Solana shipped a delegation
+        primitive, DeFi became composable.
       </p>
       <p className="text-foreground mt-4">
-        We build the company that makes non-custodial money
-        programmable
+        We build the company that lets money be a verb, not a noun.
       </p>
     </section>
   );
@@ -230,17 +235,17 @@ function WhyNow() {
     <section className="py-20">
       <SectionHeader num="03" label="Why Now" />
       <Lede>
-        Every on-chain action requires a signature. Every signature requires a
-        human.
+        Every on-chain move needs a signature. Every signature needs a human.
+        That is the tax.
       </Lede>
       <p className="text-foreground/50 mt-6 leading-relaxed">
-        No automation — DCA, payroll, treasury are manual clicks or custodians.
-        No composability: a payment can't trigger staking; an oracle can't trigger a swap.
-        Users want no custodian. Manual processes don't scale.
-        Single-protocol schedulers can't compose.
+        The wallet is a wheelbarrow — DCA, payroll, treasury are manual pushes
+        or custodial bots holding your keys. No composability: a payment
+        can&apos;t trigger staking; an oracle can&apos;t trigger a swap. Users
+        want no custodian. Push money doesn&apos;t scale.
       </p>
       <p className="text-foreground mt-4">
-        Money on solana lacks an operating system.
+        Pull, don&apos;t push — the protocol is literally pull-based.
       </p>
     </section>
   );
@@ -284,9 +289,7 @@ function Product() {
   return (
     <section className="py-20">
       <SectionHeader num="04" label="Product" />
-      <Lede>
-        Compoasability means: WHEN → PULL → ROUTE
-      </Lede>
+      <Lede>The primitive&apos;s grammar: WHEN → PULL → ROUTE</Lede>
 
       <Lead>The Pivot</Lead>
       <div className="space-y-4">
@@ -304,8 +307,9 @@ function Product() {
             The lesson
           </p>
           <p className="text-foreground/70 text-sm">
-            Integrators started hacking around the protocol boundary — using milstones for loan re-payments.
-            Not being composable was a limitation!
+            Integrators started hacking around the protocol boundary — using
+            milstones for loan re-payments. Not being composable was a
+            limitation!
           </p>
         </div>
         <div className="border-l-2 border-border pl-5">
@@ -313,8 +317,8 @@ function Product() {
             Stage 1 — this raise
           </p>
           <p className="text-foreground/70 text-sm">
-            Payment product → composable platform → autonomous money allocation.
-            Operational prototype.
+            The minimal config → same primitive with the knobs turned up →
+            autonomous money. Operational prototype.
           </p>
         </div>
       </div>
@@ -521,7 +525,8 @@ function TheBusiness() {
             <Td className="text-foreground/70">Recent Wins</Td>
             <Td className="text-foreground/50">
               $8k Superteam Grant, <br />
-              🥇 $10K Credits (Adevar Labs),<br />
+              🥇 $10K Credits (Adevar Labs),
+              <br />
               🥉 Zerion AI Integration
             </Td>
           </tr>
@@ -560,7 +565,7 @@ function TheBusiness() {
         ))}
       </div>
       <p className="text-xs text-foreground/40 mt-4">
-        Goal: own the composable automation layer underneath it all.
+        Goal: own the riverbed underneath every flow.
       </p>
 
       <Lead>Moat</Lead>
@@ -715,9 +720,7 @@ function Ask() {
   return (
     <section className="py-20">
       <SectionHeader num="07" label="The Ask" />
-      <Lede>
-        Raising to move from payments to internet money.
-      </Lede>
+      <Lede>Raising to turn the minimal config into the full primitive.</Lede>
       <p className="text-4xl md:text-5xl font-bold text-foreground mb-2">
         Raising <span className="gradient-text">$215K.</span>
       </p>
@@ -788,11 +791,14 @@ function Closing() {
   return (
     <section className="py-20">
       <SectionHeader num="08" label="Closing" />
-      <Lede>
-        Stablecoins made money internet-native. Tributary makes it composable.
-      </Lede>
-      <p className="text-lg text-foreground/60 mb-12">
-        One approval. Programmable money.
+      <Lede>Stablecoins built the balance. Tributary built the riverbed.</Lede>
+      <p className="text-lg text-foreground/60 mb-4">
+        Set the riverbed once. Money moves itself within rules you set.
+      </p>
+      <p className="text-base text-foreground/50 mb-12">
+        <span className="gradient-text font-semibold">
+          Stop pushing your bags. Let them flow.
+        </span>
       </p>
       <div className="border-t border-border pt-6">
         <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/40 mb-1">
@@ -993,14 +999,15 @@ function Appendix() {
                 </div>
                 <div className="col-span-12 md:col-span-4 md:text-right">
                   <span
-                    className={`text-xs font-bold uppercase tracking-[0.12em] ${status.includes("PROVEN")
-                      ? "text-emerald-500"
-                      : status.includes("NEXT")
-                        ? "text-primary"
-                        : status.includes("SERIES")
-                          ? "text-amber-500"
-                          : "text-foreground/40"
-                      }`}
+                    className={`text-xs font-bold uppercase tracking-[0.12em] ${
+                      status.includes("PROVEN")
+                        ? "text-emerald-500"
+                        : status.includes("NEXT")
+                          ? "text-primary"
+                          : status.includes("SERIES")
+                            ? "text-amber-500"
+                            : "text-foreground/40"
+                    }`}
                   >
                     {status}
                   </span>
@@ -1064,8 +1071,8 @@ function Appendix() {
             </table>
           </div>
           <p className="text-xs text-foreground/40 mt-3">
-            SF Subscriptions is a delegation primitive. Tributary is the
-            composable platform on top.
+            SF Subscriptions is a delegation primitive. Tributary is the same
+            primitive with the ROUTE knob opened up.
           </p>
         </section>
 

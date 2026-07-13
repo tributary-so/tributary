@@ -7,7 +7,7 @@ import logo from "../assets/logo.png";
 
 const navItems = [
   { label: "How It Works", href: "how-it-works" },
-  { label: "Payment Models", href: "payment-models" },
+  { label: "Protocol", href: "primitive" },
   { label: "Use Cases", href: "use-cases" },
   { label: "FAQ", href: "faq" },
 ];

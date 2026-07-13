@@ -1,7 +1,7 @@
+use super::policy_status::PolicyStatus;
 use anchor_lang::prelude::*;
 
-/// Bitmap flags for milestone release conditions.
-///
+/// Bitmap flags for milestone release conditions.///
 /// Bit layout:
 ///   - Bit 0 (0b0001): Check due date before release
 ///   - Bit 1 (0b0010): Gateway authority must sign
@@ -34,19 +34,6 @@ pub enum PaymentFrequency {
     Annually,
     /// Custom payment interval defined in seconds
     Custom(u64),
-}
-
-impl PaymentFrequency {
-    /// Validates payment frequency
-    pub fn validate(&self) -> Result<()> {
-        if let PaymentFrequency::Custom(interval) = self {
-            require!(
-                *interval > 0,
-                crate::error::TributaryError::InvalidFrequency
-            );
-        }
-        Ok(())
-    }
 }
 
 /// The PolicyType enum implements different payment schemes. The initial policy
@@ -83,31 +70,40 @@ pub enum PolicyType {
     /// Pay-as-you-go payment model for AI agents and service providers.
     /// Providers can claim up to max_chunk_amount when they hit usage thresholds,
     /// with a maximum of max_amount_per_period per period. Period resets automatically.
+    /// `expiry_date = None` means the policy never expires (backward-compatible
+    /// default — legacy zeroed padding deserializes to `None`); `Some(ts)` with
+    /// `ts > 0` rejects execution once `current_time > ts`. See ADR-0024.
     PayAsYouGo {
         max_amount_per_period: u64, // 8 bytes - Total amount allowed per period
         max_chunk_amount: u64,      // 8 bytes - Max amount provider can claim in one go
         period_length_seconds: u64, // 8 bytes - Length of each period in seconds
         current_period_start: i64,  // 8 bytes - When current period started (unix timestamp)
         current_period_total: u64,  // 8 bytes - Amount claimed in current period so far
-        padding: [u8; 88],          // 88 bytes padding
+        expiry_date: Option<i64>,   // 9 bytes (1 + 8) - None = never expires
+        padding: [u8; 79],          // 79 bytes padding (total: 40+9+79 = 128)
     },
-    // Future variants can be added like this:
-    // Installment {
-    //     total_amount: u64,              // 8 bytes - Maximum amount that can be withdrawn (X$)
-    //     num_installments: u32,          // 4 bytes - Number of installments (Y)
-    //     installment_amount: u64,        // 8 bytes - Amount per installment (total_amount / num_installments)
-    //     period: PaymentFrequency,       // 9 bytes - Frequency of installments (e.g., Monthly)
-    //     start_date: i64,                // 8 bytes - When installments begin
-    //     next_installment_due: i64,      // 8 bytes - Next payment timestamp
-    //     installments_completed: u32,    // 4 bytes - Track progress
-    //     padding: [u8; 87],              // 87 bytes padding (total: 8+4+8+9+8+8+4+87=128)
-    // },
-    // OneTime {
-    //     amount: u64,                // 8 bytes
-    //     due_date: i64,              // 8 bytes
-    //     grace_period_seconds: u64,  // 8 bytes
-    //     padding: [u8; 104],        // 104 bytes padding
-    // },
+    /// One-time fixed-amount pull payment. Fires exactly once, then the policy
+    /// transitions to `Completed`. `due_date <= 0` means immediately executable;
+    /// `expiry_date = None` means the policy never expires. Flows through the
+    /// full gateway machinery (fees, referrals, composable hooks) — see ADR-0019.
+    OneTime {
+        amount: u64,              // 8 bytes  — fixed payment amount, must be > 0
+        due_date: i64,            // 8 bytes  — earliest execution; <= 0 = immediate
+        expiry_date: Option<i64>, // 9 bytes  (1 + 8) — None = never expires
+        padding: [u8; 103],       // 103 bytes padding (total: 8+8+9+103 = 128)
+    },
+    /// Single-use, time-bound authorization to transfer up to `max_amount`.
+    /// The actual settled amount is caller-supplied at execute time (determined
+    /// by the resource server after usage); `0 <= actual <= max_amount` is
+    /// enforced on-chain. `valid_after <= 0` means immediate; `deadline` is
+    /// mandatory (x402 `upto` scheme). Always transitions to `Completed` after
+    /// one settlement. Recipient-triggerable like PayAsYouGo. See ADR-0020.
+    UpTo {
+        max_amount: u64,    // 8 bytes  — ceiling on the settlement amount
+        valid_after: i64,   // 8 bytes  — earliest settlement; <= 0 = immediate
+        deadline: i64,      // 8 bytes  — hard expiry, MUST be > 0 and > valid_after
+        padding: [u8; 104], // 104 bytes padding (total: 8+8+8+104 = 128)
+    },
 }
 
 impl PolicyType {
@@ -156,19 +152,20 @@ impl PolicyType {
                 *max_chunk_amount,
                 *period_length_seconds,
             ),
+            PolicyType::OneTime {
+                amount,
+                due_date,
+                expiry_date,
+                ..
+            } => crate::policies::validate_one_time_policy(*amount, *due_date, *expiry_date),
+            PolicyType::UpTo {
+                max_amount,
+                valid_after,
+                deadline,
+                ..
+            } => crate::policies::validate_up_to_policy(*max_amount, *valid_after, *deadline),
         }
     }
-}
-
-/// Status enum for payment policies indicating whether payments can be executed.
-/// Active policies allow payment execution, while Paused policies prevent
-/// automatic payment processing until reactivated.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
-pub enum PaymentStatus {
-    /// Policy is active and payments can be executed
-    Active,
-    /// Policy is paused and payments cannot be executed
-    Paused,
 }
 
 /// This structure connects a UserPayment (user/mint) with a Policy, a Gateway.
@@ -184,8 +181,10 @@ pub struct PaymentPolicy {
     pub gateway: Pubkey,
     /// Type and parameters of this payment policy
     pub policy_type: PolicyType,
-    /// Current status of this payment policy
-    pub status: PaymentStatus,
+    /// Current status of this payment policy (Active | Paused | Completed).
+    /// `Completed` is terminal and set only by the program when the policy is
+    /// exhausted; owners may only toggle Active<->Paused.
+    pub status: PolicyStatus,
     /// Human-readable memo/description (64 bytes max)
     pub memo: [u8; 64],
     /// Total amount paid out under this policy (cumulative)
@@ -212,7 +211,7 @@ impl PaymentPolicy {
         32 + // recipient: Pubkey
         32 + // gateway: Pubkey
         PolicyType::TOTAL_SIZE + // policy type size (includes enum discriminator)
-        1 + // status: PaymentStatus
+        1 + // status: PolicyStatus
         64 + // memo: [u8; 64]
         8 + // total_paid: u64
         4 + // payment_count: u32

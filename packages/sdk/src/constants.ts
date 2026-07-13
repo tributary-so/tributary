@@ -27,6 +27,14 @@ export const GATEWAY_FEATURES = {
   NET_AMOUNT: 0x02,
   /** Bit 2: Custom protocol fee enabled — overrides default 100 bps (1 = enabled) */
   CUSTOM_PROTOCOL_FEE: 0x04,
+  /**
+   * Bit 3: Permissionless composable execution enabled (ADR-0016).
+   * Frozen at gateway creation — cannot be toggled via update_gateway_feature_flags.
+   * When set, `executeComposable` admits any signer for CONFORMING
+   * composable policies (post_validation or route pinned). The trusted three
+   * (gateway signer / owner / recipient) always pass regardless.
+   */
+  PERMISSIONLESS: 0x08,
 } as const;
 
 /**
@@ -46,4 +54,18 @@ export const SEEDS = {
   PAYMENTS: "payments",
   /** Seed for referral account PDAs */
   REFERRAL: "referral",
+  /** Seed for composable policy PDAs */
+  COMPOSABLE_POLICY: "composable_policy",
+  /** Seed for pre-validation PDAs (stores assertion data for composable policies with pre-validation) */
+  VALIDATION_PDA_PRE: "composable_validation_pre",
+  /** Seed for post-validation PDAs (stores assertion data for composable policies with post-validation) */
+  VALIDATION_PDA_POST: "composable_validation_post",
 } as const;
+
+/**
+ * Capacity of the indexed forward-account pin set on InstructionConstraint
+ * (bean tributary-q82g). Covers a Meteora DLMM route. Pins are now indexed
+ * `PinnedAccount { index, pubkey }` rather than positional `[Pubkey; 4]`
+ * (bean tributary-fln0).
+ */
+export const MAX_PINNED_FORWARD_ACCOUNTS = 4; // indexed pins, not positional

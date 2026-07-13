@@ -10,8 +10,10 @@ TypeScript SDK for the Tributary recurring payments protocol on Solana. Provides
 ## Key Features
 
 - **Complete Protocol Coverage**: All Tributary program instructions and queries
+- **Composable Pull Payments**: Programmable payments with on-chain validation (Lighthouse) and token transformation (Meteora DLMM forward swaps)
 - **Type-Safe**: Full TypeScript support with Anchor-generated types
-- **Payment Types**: Subscriptions, Milestone Payments, and Pay-as-you-go models
+- **Payment Types**: Subscriptions, Milestone, Pay-as-you-go, One-time, UpTo + composable variants
+- **Lighthouse Validation**: Fluent assertion builder — balance guards, price gates, any on-chain condition
 - **Referral System**: Built-in referral tracking and rewards
 - **Token Metadata**: Metaplex Token Metadata integration
 - **PDA Utilities**: Program Derived Address helpers for all account types
@@ -98,6 +100,59 @@ const tx = new Transaction().add(...instructions);
 const signature = await connection.sendTransaction(tx, [wallet]);
 ```
 
+### Composable Pull Payments (v2)
+
+Composable policies add two hooks to a pull payment: **validation** (a
+Lighthouse on-chain assertion that can veto the transaction) and **forward**
+(a Meteora DLMM swap that transforms the pulled token before delivery).
+
+```typescript
+import {
+  Tributary,
+  lighthouse,
+  LIGHTHOUSE_PROGRAM_ID,
+} from "@tributary-so/sdk";
+import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
+
+const USDC = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+
+// Build a Lighthouse guard: only pay when recipient's balance is below 50 USDC
+const guard = lighthouse
+  .tokenAccount(recipientUsdcAta)
+  .amount(50_000_000, "<")
+  .build();
+
+// Create a PayAsYouGo composable policy with the guard
+const ixs = await sdk.createComposable(
+  USDC,
+  recipient,
+  gateway,
+  { payAsYouGo: { maxAmountPerPeriod: new BN(1_000_000_000) /* ... */ } },
+  "Conditional payment",
+  {
+    /* forwardConfig — disabled for same-mint */
+  },
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
+  [recipientUsdcAta], // prePinnedAccounts
+  guard.data // preValidationData
+);
+
+await connection.sendTransaction(new Transaction().add(...ixs), [wallet]);
+
+// Execute (permissionless — any gateway signer)
+const execIxs = await sdk.executeComposable(
+  composablePolicyPDA,
+  Buffer.alloc(0), // no forward data
+  new BN(50_000_000), // pull 50 USDC
+  guard.accounts // Lighthouse read-accounts
+);
+await connection.sendTransaction(new Transaction().add(...execIxs), [wallet]);
+```
+
+See the [composable quickstarts](https://docs.tributary.so) and
+[Lighthouse facade guide](https://docs.tributary.so) for full worked examples.
+
 ## Architecture
 
 ### Directory Structure
@@ -110,7 +165,8 @@ src/
 ├── types.ts           # TypeScript type definitions
 ├── constants.ts       # Protocol constants
 ├── utils.ts           # Helper functions
-└── token.ts           # Token metadata utilities
+├── token.ts           # Token metadata utilities
+└── lighthouse.ts      # Fluent Lighthouse assertion builder
 ```
 
 ### Core Classes
@@ -130,6 +186,13 @@ class Tributary {
   createSubscription(...)
   createMilestone(...)
   createPayAsYouGo(...)
+  createOneTimePayment(...)
+  createUpToAuthorization(...)
+
+  // Composable payments (v2)
+  createComposable(...)
+  getCreateComposablePolicyInstruction(...)
+  executeComposable(...)
 
   // Gateway management
   createPaymentGateway(...)
@@ -330,6 +393,7 @@ executePayment(
 createPaymentGateway(
   authority: PublicKey,
   gatewayFeeBps: number,
+  schedulerShareBps: number,
   gatewayFeeRecipient: PublicKey,
   name: string,
   url: string
@@ -480,7 +544,8 @@ console.log(`Subscription created: ${signature}`);
 // Create a payment gateway
 const gatewayInstructions = await sdk.createPaymentGateway(
   wallet.publicKey, // gateway authority
-  500, // 5% gateway fee
+  500, // 5% total gateway fee
+  100, // 1% scheduler share (of the gateway fee)
   wallet.publicKey, // fee recipient
   "My Payment Gateway",
   "https://mygateway.com"

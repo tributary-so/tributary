@@ -5,7 +5,12 @@
  * without requiring external dependencies or blockchain connectivity.
  */
 
-import { TokenMeter, ComputeMeter, UsageTracker } from "../src/metering";
+import {
+  TokenMeter,
+  ComputeMeter,
+  UsageTracker,
+  generateUsageReport,
+} from "../src/metering";
 
 describe("TokenMeter", () => {
   describe("fromOpenAI", () => {
@@ -392,5 +397,67 @@ describe("UsageTracker", () => {
       expect(period.totalUsage.requests).toBeUndefined();
       expect(period.totalUsage["tokens.total"]).toBeUndefined();
     });
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// SDK-1 (review 2026-07-06): generateUsageReport previously read
+// period.totalUsage["credits"] for BOTH the limit and the used amount,
+// so remainingBudget was always 0. The fix reads the limit from
+// tracker.getLimit("credits") (the configured value) and only "used"
+// from period.totalUsage. These tests pin the corrected behaviour.
+// ────────────────────────────────────────────────────────────────────────
+describe("generateUsageReport (SDK-1)", () => {
+  function makeTracker(limit?: number) {
+    const tracker = new UsageTracker({
+      sdk: {} as any,
+      connection: {} as any,
+      policyAddress: "PolicyPda",
+      limits: limit != null ? { credits: limit } : undefined,
+      maxChunkAmount: 1000,
+    });
+    return tracker;
+  }
+
+  it("remainingBudget = limit - used when limit configured", () => {
+    const tracker = makeTracker(1000);
+    tracker.trackUsage("req-1", { credits: 250 });
+    const report = generateUsageReport(tracker);
+    expect(report.remainingBudget).toBe(750);
+    expect(report.withinLimits).toBe(true);
+  });
+
+  it("remainingBudget = 0 when usage exactly equals limit", () => {
+    const tracker = makeTracker(1000);
+    tracker.trackUsage("req-1", { credits: 1000 });
+    const report = generateUsageReport(tracker);
+    expect(report.remainingBudget).toBe(0);
+    expect(report.withinLimits).toBe(true);
+  });
+
+  it("withinLimits = false when usage exceeds limit beyond 10% buffer", () => {
+    const tracker = makeTracker(1000);
+    tracker.trackUsage("req-1", { credits: 1200 });
+    const report = generateUsageReport(tracker);
+    expect(report.remainingBudget).toBe(-200);
+    // 10% buffer of 1000 = 100; -200 < -100 → outside limits
+    expect(report.withinLimits).toBe(false);
+  });
+
+  it("withinLimits = true within the 10% buffer zone", () => {
+    const tracker = makeTracker(1000);
+    tracker.trackUsage("req-1", { credits: 1050 });
+    const report = generateUsageReport(tracker);
+    // -50 ≥ -100 (the 10% buffer of 1000)
+    expect(report.withinLimits).toBe(true);
+  });
+
+  it("falls back to limit 0 when no limits configured", () => {
+    const tracker = makeTracker(undefined);
+    tracker.trackUsage("req-1", { credits: 100 });
+    const report = generateUsageReport(tracker);
+    expect(report.remainingBudget).toBe(-100);
+    // 10% of 0 = 0; -100 < 0 → outside
+    expect(report.withinLimits).toBe(false);
   });
 });

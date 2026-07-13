@@ -1,14 +1,12 @@
-use crate::{
-    error::TributaryError,
-    policies::traits::PolicyStrategy,
-    state::{
-        PaymentGateway, PaymentPolicy, PolicyType, RELEASE_DUE_DATE, RELEASE_GATEWAY,
-        RELEASE_OWNER, RELEASE_RECIPIENT,
-    },
-};
+use crate::{error::TributaryError, state::RELEASE_DUE_DATE};
 use anchor_lang::prelude::*;
 
-/// Validate milestone policy parameters
+/// Validate milestone policy parameters at creation time.
+///
+/// Execute-time gating (due-date check via `RELEASE_DUE_DATE`, signer
+/// authorization via `RELEASE_GATEWAY`/`RELEASE_OWNER`/`RELEASE_RECIPIENT`,
+/// `current_milestone` advancement) lives in
+/// `shared::schedule::{validate_policy_execution, advance_policy}`.
 pub fn validate_milestone_policy(
     milestone_amounts: &[u64; 4],
     current_milestone: u8,
@@ -17,27 +15,25 @@ pub fn validate_milestone_policy(
     escrow_amount: u64,
     _milestone_timestamps: &[i64; 4],
 ) -> Result<()> {
-    // Validate total_milestones is between 1 and 4
     require!(
         (1..=4).contains(&total_milestones),
         TributaryError::InvalidAmount
     );
 
-    // Validate current_milestone is within bounds
     require!(
         current_milestone < total_milestones,
         TributaryError::InvalidAmount
     );
 
-    // Validate escrow_amount is greater than zero
     require!(escrow_amount > 0, TributaryError::InvalidAmount);
 
-    // Validate milestone amounts are greater than zero
     for amount in milestone_amounts.iter().take(total_milestones as usize) {
         require!(*amount > 0, TributaryError::InvalidAmount);
     }
 
-    // Validate timestamps are in the future (basic check)
+    // Validate timestamps are in the future (basic check, mainnet only).
+    // We disable this check on localnet so we can run our testsuite. There is no way to advance the
+    // slots on our setup yet.
     #[cfg(feature = "mainnet")]
     {
         // only on mainnet, simplifies testing
@@ -47,112 +43,80 @@ pub fn validate_milestone_policy(
         }
     }
 
-    // Validate release_condition is valid bitmap format
-    // Bits 1-3 must be mutually exclusive (at most one may be set)
-    let signer_bits = release_condition & 0b1110;
+    // release_condition: bits 1-3 (signer gates) must be mutually exclusive
+    // (at most one set). Bit 0 (RELEASE_DUE_DATE) is independent.
+    let signer_bits = release_condition & !RELEASE_DUE_DATE;
     require!(signer_bits.count_ones() <= 1, TributaryError::InvalidAmount);
 
     Ok(())
 }
 
-/// Strategy for handling milestone-based payment policies
-#[derive(Debug)]
-pub struct MilestoneStrategy;
+#[cfg(test)]
+mod tests {
+    // Cross-package parity (milestone tributary-f6yh / testing epic). Every
+    // case mirrors a fixture in
+    // packages/payments/src/__tests__/fixtures/policy-configs.ts so drift
+    // between the TS encoder-validators and the on-chain validators is caught
+    // by CI on either side. Names are snake_case of the TS fixture names.
+    use super::*;
+    use crate::error::TributaryError;
 
-impl PolicyStrategy for MilestoneStrategy {
-    fn validate_payment_timing(
-        &self,
-        payment_policy: &PaymentPolicy,
-        current_time: i64,
-        signer: &Pubkey,
-        user_payment_owner: &Pubkey,
-        gateway: &PaymentGateway,
-    ) -> Result<()> {
-        match &payment_policy.policy_type {
-            PolicyType::Milestone {
-                milestone_timestamps,
-                current_milestone,
-                release_condition,
-                ..
-            } => {
-                let milestone_idx = *current_milestone as usize;
-                let next_due = milestone_timestamps[milestone_idx];
+    const DUE_DATE: u8 = RELEASE_DUE_DATE; // 0b0001
 
-                // Check due date if bit 0 is set
-                if (release_condition & RELEASE_DUE_DATE) != 0 {
-                    require!(current_time >= next_due, TributaryError::PaymentNotDue);
-                }
-
-                // Check signer if any signer bit is set (bits 1-3 are mutually exclusive)
-                if (release_condition & RELEASE_GATEWAY) != 0 {
-                    require!(gateway.signer == *signer, TributaryError::Unauthorized);
-                } else if (release_condition & RELEASE_OWNER) != 0 {
-                    require!(*signer == *user_payment_owner, TributaryError::Unauthorized);
-                } else if (release_condition & RELEASE_RECIPIENT) != 0 {
-                    require!(
-                        *signer == payment_policy.recipient,
-                        TributaryError::Unauthorized
-                    );
-                }
-                // If no signer bits set, anyone can trigger
-                Ok(())
-            }
-            _ => err!(TributaryError::InvalidAmount),
-        }
+    fn cfg(amounts: [u64; 4], total: u8, release: u8, escrow: u64) -> Result<()> {
+        validate_milestone_policy(
+            &amounts,
+            0, // current_milestone (fresh)
+            release,
+            total,
+            escrow,
+            &[1_700_000_000, 1_710_000_000, 1_720_000_000, 1_730_000_000],
+        )
     }
 
-    fn calculate_payment_amount(
-        &self,
-        payment_policy: &PaymentPolicy,
-        _provided_amount: Option<u64>,
-    ) -> Result<u64> {
-        match &payment_policy.policy_type {
-            PolicyType::Milestone {
-                milestone_amounts,
-                current_milestone,
-                ..
-            } => {
-                let milestone_idx = *current_milestone as usize;
-                Ok(milestone_amounts[milestone_idx])
-            }
-            _ => err!(TributaryError::InvalidAmount),
-        }
+    #[test]
+    fn accepts_two_milestones() {
+        assert!(cfg([100, 200, 0, 0], 2, DUE_DATE, 300).is_ok());
     }
 
-    fn update_policy_state(
-        &mut self,
-        payment_policy: &mut PaymentPolicy,
-        _current_time: i64,
-    ) -> Result<()> {
-        match &mut payment_policy.policy_type {
-            PolicyType::Milestone {
-                current_milestone,
-                total_milestones,
-                ..
-            } => {
-                // Move to next milestone
-                *current_milestone = current_milestone
-                    .checked_add(1)
-                    .ok_or(TributaryError::ArithmeticOverflow)?;
-
-                // If we've completed all milestones, pause policy
-                if *current_milestone >= *total_milestones {
-                    payment_policy.status = crate::state::PaymentStatus::Paused;
-                }
-                Ok(())
-            }
-            _ => err!(TributaryError::InvalidAmount),
-        }
+    #[test]
+    fn accepts_four_milestones() {
+        assert!(cfg([1, 2, 3, 4], 4, DUE_DATE, 10).is_ok());
     }
 
-    fn should_pause_policy(&self, payment_policy: &PaymentPolicy) -> bool {
-        match &payment_policy.policy_type {
-            PolicyType::Milestone {
-                current_milestone,
-                total_milestones,
-                ..
-            } => *current_milestone >= *total_milestones,
-            _ => false,
-        }
+    #[test]
+    fn accepts_gateway_signer_with_due_date() {
+        // bit0 (due) + bit1 (gateway) = 0b0011 — single signer bit set, OK.
+        assert!(cfg([100, 200, 0, 0], 2, 0b0011, 300).is_ok());
+    }
+
+    #[test]
+    fn accepts_no_restrictions() {
+        assert!(cfg([100, 200, 0, 0], 2, 0b0000, 300).is_ok());
+    }
+
+    #[test]
+    fn rejects_total_milestones_zero() {
+        let err = cfg([100, 200, 0, 0], 0, DUE_DATE, 300).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_total_milestones_five() {
+        let err = cfg([1, 2, 3, 4], 5, DUE_DATE, 10).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_zero_milestone_amount() {
+        let err = cfg([0, 200, 0, 0], 2, DUE_DATE, 200).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_multiple_signer_bits() {
+        // bits 1 (gateway) + 2 (owner) = 0b0110 — mutually exclusive violation.
+        let err = cfg([100, 200, 0, 0], 2, 0b0110, 300).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
     }
 }

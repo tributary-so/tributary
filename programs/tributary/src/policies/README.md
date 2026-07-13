@@ -1,64 +1,40 @@
-# Policy Strategies Refactoring
+# Policy modules
 
-This directory contains the refactored policy-specific logic that was previously embedded in the `execute_payment` instruction.
+Create-time validators for each `PolicyType` variant.
 
-## Architecture
+## What lives here
 
-The refactoring implements a **Strategy Pattern** to separate policy-specific behavior from the main payment execution flow, while maintaining **state/behavior separation** for better maintainability.
+- **`subscription.rs`** — `validate_subscription_policy()`
+- **`milestone.rs`** — `validate_milestone_policy()`
+- **`pay_as_you_go.rs`** — `validate_payg_policy()`
 
-### Components
+These run only at policy creation (invoked from
+`state::payment_policy::PolicyType::validate`). They check static
+invariants: non-zero amounts, sane bounds, valid bitmaps, etc.
 
-- **`traits.rs`**: Defines `PolicyStrategy` trait and factory function
-- **`subscription.rs`**: `SubscriptionStrategy` + `validate_subscription_policy()`
-- **`milestone.rs`**: `MilestoneStrategy` + `validate_milestone_policy()`
-- **`pay_as_you_go.rs`**: `PayAsYouGoStrategy` + `validate_payg_policy()`
+## Where execute-time logic lives
 
-### Benefits
+**Not here.** Execute-time validation and schedule advancement live in
+[`crate::shared::schedule`](../shared/schedule.rs):
 
-1. **Single Responsibility**: Each strategy focuses on one policy type
-2. **Easy Testing**: Policy logic can be unit tested independently
-3. **Easy Extension**: New policies just need new strategy implementation
-4. **Better Organization**: Related logic grouped together
-5. **Reduced Complexity**: Main handler simplified from 100+ lines to ~30 lines
-6. **State/Behavior Separation**: Validation logic moved to policy modules, state definitions remain centralized
+- `validate_policy_execution()` — timing gates, milestone
+  `release_condition` signer bits, PayAsYouGo chunk/period bounds. Returns
+  the authoritative payment amount.
+- `advance_policy()` — advances `next_payment_due` / `current_milestone` /
+  `current_period_total` after a successful execution. Returns whether the
+  policy is now exhausted (→ `PolicyStatus::Completed`).
 
-### Usage
+Both `execute_payment` (PaymentPolicy) and `execute_composable`
+(ComposablePolicy) route through these two functions — one `match` over
+`PolicyType`, shared by both policy families.
 
-```rust
-// Get appropriate strategy for policy type
-let mut strategy = policies::get_policy_strategy(payment_policy)?;
+## Why no trait / strategy pattern
 
-// Execute policy-specific logic
-let execution_result = strategy.execute(payment_policy, payment_amount, current_time)?;
-
-// Policy validation during creation
-use crate::policies::validate_subscription_policy;
-validate_subscription_policy(amount, &frequency, max_renewals)?;
-```
-
-## Migration
-
-The original `execute_payment.rs` handler was 333 lines with a large match statement handling all policy types inline. After refactoring:
-
-- **Main handler**: ~120 lines (focused on common payment flow)
-- **Policy-specific logic**: Distributed across strategy files
-- **Validation functions**: Extracted to policy modules for better organization
-- **Total lines**: Similar, but much better organized and maintainable
-
-### State vs Behavior Separation
-
-✅ **State stays in `src/state/mod.rs`**:
-
-- `PolicyType` enum definitions
-- Account serialization compatibility with Anchor
-- Shared state types (`PaymentStatus`, `PaymentFrequency`)
-
-✅ **Behavior moves to `src/policies/`**:
-
-- Policy-specific validation functions
-- Strategy implementations
-- Business logic for each policy type
-
-This hybrid approach provides organizational benefits without breaking Anchor account compatibility.
-
-All existing functionality and tests are preserved.
+A `PolicyStrategy` trait + boxed factory previously lived here. It was
+removed (see bean `tributary-wawe`): the trait had exactly three impls for
+three enum variants, every method re-matched the same enum, and the
+"generalize across policy account types" payoff never materialized — the
+composable path already used the stateless `shared::schedule` helpers. The
+trait was pure dispatch ceremony with a heap allocation on every payment.
+The single shared `match` is simpler, allocation-free, and means
+policy-semantics changes land in exactly one file.

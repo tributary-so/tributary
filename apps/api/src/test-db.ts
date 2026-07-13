@@ -6,7 +6,7 @@ import "dotenv/config";
  * Usage: npx tsx src/test-db.ts
  */
 
-import { getDb, closeDb } from "./db";
+import { closeDb } from "./db";
 import { getUniqueEventNames, getEventCount, searchEvents } from "./db/queries";
 
 async function testDatabase() {

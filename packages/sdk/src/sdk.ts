@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   Connection,
   Keypair,
   PublicKey,
@@ -11,7 +12,6 @@ import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   createApproveInstruction,
-  createRevokeInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -22,8 +22,11 @@ import {
   getGatewayPda,
   getUserPaymentPda,
   getPaymentPolicyPda,
+  getComposablePolicyPda,
   getPaymentsDelegatePda,
   getReferralPda,
+  getPreValidationPda,
+  getPostValidationPda,
 } from "./pda";
 import type {
   IWallet,
@@ -34,8 +37,14 @@ import type {
   PaymentGateway,
   ProgramConfig,
   ReferralAccount,
+  ComposablePolicy,
+  ForwardConfig,
+  ValidationSpec,
+  PolicyStatus,
+  SetupStep,
+  SetupResult,
 } from "./types.js";
-import { GATEWAY_FEATURES } from "./constants";
+import { GATEWAY_FEATURES, MAX_PINNED_FORWARD_ACCOUNTS } from "./constants";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -113,8 +122,29 @@ export class Tributary {
    * Useful for changing the signer without creating a new SDK instance.
    * @param wallet - New wallet to use for signing transactions
    */
-  async updateWallet(wallet: any) {
-    this.provider = new anchor.AnchorProvider(this.connection, wallet, {
+  async updateWallet(wallet: Keypair | IWallet) {
+    // Mirror constructor's Keypair→IWallet adapter. Previously typed `any`,
+    // which silently let a raw Keypair reach AnchorProvider (expects a
+    // Wallet interface). See T-2 (review 2026-07-06).
+    const thisWallet =
+      wallet instanceof Keypair
+        ? {
+            publicKey: wallet.publicKey,
+            signTransaction: <T>(tx: T) => {
+              (tx as any).sign(wallet);
+              return Promise.resolve(tx);
+            },
+            signAllTransactions: <T>(txs: T[]) => {
+              return Promise.resolve(
+                txs.map((tx) => {
+                  (tx as any).sign(wallet);
+                  return tx;
+                })
+              );
+            },
+          }
+        : wallet;
+    this.provider = new anchor.AnchorProvider(this.connection, thisWallet, {
       preflightCommitment: "confirmed",
     });
     this.program = new anchor.Program(IDL as TributaryIdl, this.provider);
@@ -126,14 +156,33 @@ export class Tributary {
    * @param admin - Public key of the protocol administrator
    * @returns Transaction instruction to initialize the protocol
    */
-  async initialize(admin: PublicKey): Promise<TransactionInstruction> {
+  async initialize(
+    authority: PublicKey,
+    admin: PublicKey
+  ): Promise<TransactionInstruction> {
     const { address: configPda } = getConfigPda(this.programId);
+    const [programDataAddress] = PublicKey.findProgramAddressSync(
+      [this.programId.toBytes()],
+      new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+    );
+    const accountInfo = await this.connection.getAccountInfo(
+      programDataAddress
+    );
+    if (!accountInfo) throw new Error("Program data account not found");
+    if (
+      new PublicKey(accountInfo.data.slice(13, 45)).toString() !=
+      authority.toString()
+    ) {
+      throw new Error("Initialization requires the deploy authority!");
+    }
 
     return await this.program.methods
       .initialize()
       .accountsStrict({
         admin,
         config: configPda,
+        authority,
+        programData: programDataAddress,
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -349,7 +398,10 @@ export class Tributary {
    * Creates a new payment gateway for processing recurring payments.
    * Gateways can charge fees and execute payments on behalf of users.
    * @param authority - Public key that controls the gateway
-   * @param gatewayFeeBps - Fee in basis points (100 bps = 1%) charged by the gateway
+   * @param gatewayFeeBps - Total fee in basis points (100 bps = 1%) charged by the gateway,
+   *   decomposed into protocol/scheduler/referral/residual shares (ADR-0017).
+   * @param schedulerShareBps - Share of the gateway fee routed to the scheduler (execute-tx signer).
+   *   Constraint: protocol_share + scheduler_share + referral_allocation ≤ 10000 bps.
    * @param gatewayFeeRecipient - Public key that receives gateway fees
    * @param name - Display name for the gateway (max 32 characters)
    * @param url - Website URL for the gateway (max 64 characters)
@@ -358,9 +410,11 @@ export class Tributary {
   async createPaymentGateway(
     authority: PublicKey,
     gatewayFeeBps: number,
+    schedulerShareBps: number,
     gatewayFeeRecipient: PublicKey,
     name: string,
-    url: string
+    url: string,
+    initialFeatureFlags: number = 0
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const gateway = this.getGatewayPda(authority).address;
@@ -388,7 +442,13 @@ export class Tributary {
       systemProgram: SystemProgram.programId,
     };
     return await this.program.methods
-      .createPaymentGateway(gatewayFeeBps, nameBytes, urlBytes)
+      .createPaymentGateway(
+        gatewayFeeBps,
+        schedulerShareBps,
+        nameBytes,
+        urlBytes,
+        initialFeatureFlags
+      )
       .accountsStrict(accounts)
       .instruction();
   }
@@ -469,6 +529,7 @@ export class Tributary {
    * @param maxChunkAmount - Maximum amount that can be claimed in a single payment
    * @param periodLengthSeconds - Length of each period in seconds
    * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param expiryDate - Optional hard deadline (unix seconds); when `current_time > expiryDate` execution is rejected. `null`/omitted = never expires (ADR-0024).
    * @returns Transaction instruction to create the pay-as-you-go payment policy
    */
   async getCreatePayAsYouGoPolicyInstruction(
@@ -479,6 +540,7 @@ export class Tributary {
     maxChunkAmount: BN,
     periodLengthSeconds: BN,
     memo: number[],
+    expiryDate?: BN | null,
     feePayer?: PublicKey
   ): Promise<TransactionInstruction> {
     const user = this.provider.publicKey;
@@ -513,7 +575,8 @@ export class Tributary {
         periodLengthSeconds: periodLengthSeconds,
         currentPeriodStart: new BN(Math.floor(Date.now() / 1000)), // Initialize to current time
         currentPeriodTotal: new BN(0), // Initialize to 0
-        padding: new Array(88).fill(0),
+        expiryDate: expiryDate ?? null, // null = never expires (ADR-0024)
+        padding: new Array(79).fill(0),
       },
     };
     const accounts = {
@@ -638,6 +701,76 @@ export class Tributary {
   }
 
   /**
+   * Gets a transaction instruction to create a one-time payment policy.
+   * This is a low-level method that returns only the instruction.
+   * Use createOneTimePayment() for the full setup including ATAs and approvals.
+   *
+   * One-time policies fire exactly once, then transition to `Completed`. They
+   * flow through the full gateway machinery (fees, referrals, composable
+   * hooks) — see ADR-0019.
+   *
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payment
+   * @param gateway - Public key of the gateway that will execute the payment
+   * @param amount - Fixed amount to pay (in smallest token units), must be > 0
+   * @param dueDate - Earliest execution timestamp; `null`/`<= 0` means immediate
+   * @param expiryDate - Hard deadline after which execution is rejected; `null` = never expires
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param feePayer - Optional explicit fee payer (defaults to the provider wallet)
+   * @returns Transaction instruction to create the one-time payment policy
+   */
+  async getCreateOneTimePolicyInstruction(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    amount: BN,
+    dueDate: BN | null,
+    expiryDate: BN | null,
+    memo: number[],
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+
+    if (amount.lte(new BN(0))) {
+      throw new Error("amount must be greater than 0");
+    }
+
+    const policyType: PolicyType = {
+      oneTime: {
+        amount: amount,
+        // dueDate <= 0 means "immediate" — store null as 0 on-chain.
+        dueDate: dueDate ?? new BN(0),
+        expiryDate: expiryDate,
+        padding: new Array(103).fill(0),
+      },
+    };
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+    return await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
    * Creates a complete subscription setup including ATAs, user payment account, policy, and token approvals.
    * This is the high-level method for creating subscriptions that handles all the setup automatically.
    * @param tokenMint - Public key of the token to be paid
@@ -669,10 +802,34 @@ export class Tributary {
     referralCode?: string,
     feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
+    return (
+      await this.createSubscriptionWithMetadata(
+        tokenMint, recipient, gateway, amount, autoRenew, maxRenewals,
+        paymentFrequency, memo, startTime, approvalAmount,
+        executeImmediately, referralCode, feePayer
+      )
+    ).instructions;
+  }
+
+  async createSubscriptionWithMetadata(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    amount: BN,
+    autoRenew: boolean,
+    maxRenewals: number | null,
+    paymentFrequency: PaymentFrequency,
+    memo: number[],
+    startTime?: BN | null,
+    approvalAmount?: BN,
+    executeImmediately?: boolean,
+    referralCode?: string,
+    feePayer?: PublicKey
+  ): Promise<SetupResult> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
 
-    const instructions: TransactionInstruction[] = [];
+    const steps: SetupStep[] = [];
 
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
     const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
@@ -686,7 +843,7 @@ export class Tributary {
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
-      instructions.push(createAtaIx);
+      steps.push({ instruction: createAtaIx, type: "createAta", data: { owner: user, mint: tokenMint, ata: ownerTokenAccount } });
     }
 
     // Check if userPayment already exists
@@ -696,7 +853,7 @@ export class Tributary {
     // If userPayment doesn't exist, create it first
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
-      instructions.push(createUserPaymentIx);
+      steps.push({ instruction: createUserPaymentIx, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: userPaymentPda } });
     }
 
     if (referralCode) {
@@ -717,7 +874,7 @@ export class Tributary {
         generateSecureRandomString(6),
         referralAccount.owner
       );
-      instructions.push(createReferralIx);
+      steps.push({ instruction: createReferralIx, type: "createReferral", data: { gateway, code: referralCode } });
     }
 
     // Build policy type
@@ -758,22 +915,36 @@ export class Tributary {
       .accountsStrict(accounts)
       .instruction();
 
-    instructions.push(createPaymentPolicyIx);
+    steps.push({ instruction: createPaymentPolicyIx, type: "createPaymentPolicy", data: { policyType, recipient, gateway, policyPda: paymentPolicyPda.address } });
 
     // Calculate or use provided approval amount
     let finalApprovalAmount: BN;
+    let existingPoliciesRaw: Array<{ publicKey: PublicKey; account: PaymentPolicy }> = [];
+    let newPolicyContribution: BN;
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
+      newPolicyContribution = amount;
     } else {
-      const existingApproval = await this.getTotalApprovalForExistingPolicies(
+      existingPoliciesRaw = await this.getPaymentPoliciesByUserPayment(
         userPaymentPda
       );
-      const newApproval = this.calculateSubscriptionApprovalAmount(
+      const existingApproval = existingPoliciesRaw.reduce((sum, { account: policy }) => {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription!;
+          return sum.add(this.calculateSubscriptionApprovalAmount(sub.amount, sub.paymentFrequency, sub.maxRenewals));
+        } else if ("milestone" in policy.policyType) {
+          return sum.add(this.calculateMilestoneApprovalAmount(policy.policyType.milestone!.milestoneAmounts.filter((a) => !a.isZero())));
+        } else if ("payAsYouGo" in policy.policyType) {
+          return sum.add(this.calculatePayAsYouGoApprovalAmount(policy.policyType.payAsYouGo!.maxAmountPerPeriod, policy.policyType.payAsYouGo!.periodLengthSeconds));
+        }
+        return sum;
+      }, new BN(0));
+      newPolicyContribution = this.calculateSubscriptionApprovalAmount(
         amount,
         paymentFrequency,
         maxRenewals
       );
-      finalApprovalAmount = existingApproval.add(newApproval);
+      finalApprovalAmount = existingApproval.add(newPolicyContribution);
     }
 
     // Set up approval if needed
@@ -812,15 +983,27 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
-      instructions.push(approveIx);
+      steps.push({
+        instruction: approveIx,
+        type: "approve",
+        data: {
+          delegateAddress: delegate,
+          delegateLabel: "userPaymentPda",
+          ownerTokenAccount,
+          approvalAmount: finalApprovalAmount,
+          existingPolicies: existingPoliciesRaw,
+          newPolicy: {
+            policyType,
+            approvalContribution: newPolicyContribution!,
+          },
+        },
+      });
     }
 
     if (executeImmediately) {
@@ -832,10 +1015,15 @@ export class Tributary {
         gateway,
         user
       );
-      instructions.push(...executePaymentIxs);
+      for (const ix of executePaymentIxs) {
+        steps.push({ instruction: ix, type: "executePayment", data: { policyPda: paymentPolicyPda.address } });
+      }
     }
 
-    return instructions;
+    return {
+      instructions: steps.map((s) => s.instruction),
+      steps,
+    };
   }
 
   /**
@@ -1032,14 +1220,12 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
@@ -1069,6 +1255,8 @@ export class Tributary {
    * @param periodLengthSeconds - Length of each period in seconds
    * @param memo - Memo bytes for the payment policy
    * @param approvalAmount - Optional specific approval amount (calculated automatically if not provided)
+   * @param referralCode - Optional referral code
+   * @param expiryDate - Optional hard deadline (unix seconds); `null`/omitted = never expires (ADR-0024)
    * @returns Array of transaction instructions for complete setup
    */
   async createPayAsYouGo(
@@ -1079,6 +1267,244 @@ export class Tributary {
     maxChunkAmount: BN,
     periodLengthSeconds: BN,
     memo: number[],
+    approvalAmount?: BN,
+    referralCode?: string,
+    expiryDate?: BN | null,
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    return (
+      await this.createPayAsYouGoWithMetadata(
+        tokenMint, recipient, gateway, maxAmountPerPeriod, maxChunkAmount,
+        periodLengthSeconds, memo, approvalAmount, referralCode, expiryDate, feePayer
+      )
+    ).instructions;
+  }
+
+  async createPayAsYouGoWithMetadata(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmountPerPeriod: BN,
+    maxChunkAmount: BN,
+    periodLengthSeconds: BN,
+    memo: number[],
+    approvalAmount?: BN,
+    referralCode?: string,
+    expiryDate?: BN | null,
+    feePayer?: PublicKey
+  ): Promise<SetupResult> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const steps: SetupStep[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      steps.push({ instruction: createAtaIx, type: "createAta", data: { owner: user, mint: tokenMint, ata: ownerTokenAccount } });
+    }
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    // If userPayment doesn't exist, create it first
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      steps.push({ instruction: createUserPaymentIx, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: userPaymentPda } });
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      steps.push({ instruction: createReferralIx, type: "createReferral", data: { gateway, code: referralCode } });
+    }
+
+    // Build policy type
+    const currentTime = Math.floor(Date.now() / 1000);
+    const policyType: PolicyType = {
+      payAsYouGo: {
+        maxAmountPerPeriod: maxAmountPerPeriod,
+        maxChunkAmount: maxChunkAmount,
+        periodLengthSeconds: periodLengthSeconds,
+        currentPeriodStart: new BN(currentTime),
+        currentPeriodTotal: new BN(0),
+        expiryDate: expiryDate ?? null, // null = never expires (ADR-0024)
+        padding: new Array(79).fill(0),
+      },
+    };
+
+    // Determine policy ID
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const { address: configPda } = getConfigPda(this.programId);
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      config: configPda,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    // Create payment policy instruction
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+
+    steps.push({ instruction: createPaymentPolicyIx, type: "createPaymentPolicy", data: { policyType, recipient, gateway, policyPda: paymentPolicyPda.address } });
+
+    // Calculate or use provided approval amount
+    let finalApprovalAmount: BN;
+    let existingPoliciesRaw: Array<{ publicKey: PublicKey; account: PaymentPolicy }> = [];
+    let newPolicyContribution: BN;
+    if (approvalAmount) {
+      finalApprovalAmount = approvalAmount;
+      newPolicyContribution = maxAmountPerPeriod;
+    } else {
+      existingPoliciesRaw = await this.getPaymentPoliciesByUserPayment(
+        userPaymentPda
+      );
+      const existingApproval = existingPoliciesRaw.reduce((sum, { account: policy }) => {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription!;
+          return sum.add(this.calculateSubscriptionApprovalAmount(sub.amount, sub.paymentFrequency, sub.maxRenewals));
+        } else if ("milestone" in policy.policyType) {
+          return sum.add(this.calculateMilestoneApprovalAmount(policy.policyType.milestone!.milestoneAmounts.filter((a) => !a.isZero())));
+        } else if ("payAsYouGo" in policy.policyType) {
+          return sum.add(this.calculatePayAsYouGoApprovalAmount(policy.policyType.payAsYouGo!.maxAmountPerPeriod, policy.policyType.payAsYouGo!.periodLengthSeconds));
+        }
+        return sum;
+      }, new BN(0));
+      newPolicyContribution = this.calculatePayAsYouGoApprovalAmount(
+        maxAmountPerPeriod,
+        periodLengthSeconds
+      );
+      finalApprovalAmount = existingApproval.add(newPolicyContribution);
+    }
+
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const userPaymentDelegate = userPaymentPda;
+    const delegate = userPaymentDelegate;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
+        needsApproval = true;
+      } else if (
+        currentDelegate === delegate.toString() &&
+        currentDelegatedAmount !== finalApprovalAmount.toString()
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const approveIx = this.getApprovalInstruction(
+        ownerTokenAccount,
+        delegate,
+        user,
+        finalApprovalAmount
+      );
+      steps.push({
+        instruction: approveIx,
+        type: "approve",
+        data: {
+          delegateAddress: delegate,
+          delegateLabel: "userPaymentPda",
+          ownerTokenAccount,
+          approvalAmount: finalApprovalAmount,
+          existingPolicies: existingPoliciesRaw,
+          newPolicy: {
+            policyType,
+            approvalContribution: newPolicyContribution!,
+          },
+        },
+      });
+    }
+
+    return {
+      instructions: steps.map((s) => s.instruction),
+      steps,
+    };
+  }
+
+  /**
+   * Creates a complete one-time payment setup including ATAs, user payment
+   * account, policy, and token approvals. One-time policies fire exactly
+   * once then transition to `Completed`. See ADR-0019.
+   *
+   * Use getCreateOneTimePolicyInstruction() for just the instruction without
+   * setup.
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway
+   * @param amount - Fixed amount to pay (in smallest token units), must be > 0
+   * @param dueDate - Earliest execution timestamp; `null`/omitted means immediate
+   * @param expiryDate - Hard deadline after which execution is rejected; `null` = never expires
+   * @param memo - Memo bytes for the payment policy
+   * @param approvalAmount - Optional specific approval amount (defaults to `amount`)
+   * @param referralCode - Optional 6-character referral code
+   * @param feePayer - Optional explicit fee payer
+   * @returns Array of transaction instructions for the complete setup
+   */
+  async createOneTimePayment(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    amount: BN,
+    memo: number[],
+    dueDate?: BN | null,
+    expiryDate?: BN | null,
     approvalAmount?: BN,
     referralCode?: string,
     feePayer?: PublicKey
@@ -1134,16 +1560,13 @@ export class Tributary {
       instructions.push(createReferralIx);
     }
 
-    // Build policy type
-    const currentTime = Math.floor(Date.now() / 1000);
+    // Build policy type — dueDate null/<=0 means immediate (stored as 0).
     const policyType: PolicyType = {
-      payAsYouGo: {
-        maxAmountPerPeriod: maxAmountPerPeriod,
-        maxChunkAmount: maxChunkAmount,
-        periodLengthSeconds: periodLengthSeconds,
-        currentPeriodStart: new BN(currentTime),
-        currentPeriodTotal: new BN(0),
-        padding: new Array(88).fill(0),
+      oneTime: {
+        amount: amount,
+        dueDate: dueDate ?? new BN(0),
+        expiryDate: expiryDate ?? null,
+        padding: new Array(103).fill(0),
       },
     };
 
@@ -1174,24 +1597,15 @@ export class Tributary {
 
     instructions.push(createPaymentPolicyIx);
 
-    // Calculate or use provided approval amount
-    let finalApprovalAmount: BN;
-    if (approvalAmount) {
-      finalApprovalAmount = approvalAmount;
-    } else {
-      const existingApproval = await this.getTotalApprovalForExistingPolicies(
-        userPaymentPda
-      );
-      const newApproval = this.calculatePayAsYouGoApprovalAmount(
-        maxAmountPerPeriod,
-        periodLengthSeconds
-      );
-      finalApprovalAmount = existingApproval.add(newApproval);
-    }
+    // One-time fires exactly once — approval is exactly the amount (the
+    // gateway fee is taken on top of this gross pull, so the delegate must
+    // cover amount + fees). Use the provided approvalAmount or default to
+    // `amount` plus a small fee headroom buffer (caller can override with
+    // an explicit approvalAmount if they know the gateway fee precisely).
+    const finalApprovalAmount: BN = approvalAmount ?? amount;
 
     const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
-    const userPaymentDelegate = userPaymentPda;
-    const delegate = userPaymentDelegate;
+    const delegate = userPaymentPda;
     let needsApproval = false;
 
     const tokenAccountInfo = await this.connection.getParsedAccountInfo(
@@ -1213,7 +1627,7 @@ export class Tributary {
         needsApproval = true;
       } else if (
         currentDelegate === delegate.toString() &&
-        currentDelegatedAmount !== finalApprovalAmount.toString()
+        new BN(currentDelegatedAmount).lt(finalApprovalAmount)
       ) {
         needsApproval = true;
       } else if (currentDelegate === paymentsDelegatePda.toString()) {
@@ -1224,18 +1638,286 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      const revokeIx = this.getRevokeInstruction(ownerTokenAccount, user);
       const approveIx = this.getApprovalInstruction(
         ownerTokenAccount,
         delegate,
         user,
         finalApprovalAmount
       );
-      instructions.push(revokeIx);
       instructions.push(approveIx);
     }
 
     return instructions;
+  }
+
+  /**
+   * Gets a transaction instruction to create an `upto` authorization policy.
+   * Single-use, time-bound: the actual settled amount is caller-supplied at
+   * execute time, bounded by `maxAmount`. See ADR-0020.
+   *
+   * Use createUpToAuthorization() for the full setup including ATAs and approvals.
+   *
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payment
+   * @param gateway - Public key of the gateway that will execute the payment
+   * @param maxAmount - Ceiling on the settlement amount (smallest token units), must be > 0
+   * @param validAfter - Earliest settlement timestamp; `null`/`<= 0` means immediate
+   * @param deadline - Hard expiry (strict `<` at execute time); MUST be > 0 and > validAfter
+   * @param memo - Memo bytes to include with payments (max 64 bytes)
+   * @param feePayer - Optional explicit fee payer (defaults to the provider wallet)
+   * @returns Transaction instruction to create the `upto` policy
+   */
+  async getCreateUpToPolicyInstruction(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmount: BN,
+    validAfter: BN | null,
+    deadline: BN,
+    memo: number[],
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicy = this.getPaymentPolicyPda(userPaymentPda, policyId);
+
+    if (maxAmount.lte(new BN(0))) {
+      throw new Error("maxAmount must be greater than 0");
+    }
+    if (deadline.lte(new BN(0))) {
+      throw new Error("deadline must be greater than 0");
+    }
+
+    const policyType: PolicyType = {
+      upTo: {
+        maxAmount: maxAmount,
+        // validAfter <= 0 means "immediate" — store null as 0 on-chain.
+        validAfter: validAfter ?? new BN(0),
+        deadline: deadline,
+        padding: new Array(104).fill(0),
+      },
+    };
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      config: configPda,
+      paymentPolicy: paymentPolicy.address,
+      systemProgram: SystemProgram.programId,
+    };
+    return await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Creates a complete `upto` authorization setup including ATAs, user payment
+   * account, policy, and token approvals. The authorization lets the resource
+   * server / facilitator settle up to `maxAmount` once, within
+   * `[validAfter, deadline]`. See ADR-0020.
+   *
+   * Use getCreateUpToPolicyInstruction() for just the instruction without setup.
+   *
+   * @param tokenMint - Public key of the token mint
+   * @param recipient - Public key of the payment recipient
+   * @param gateway - Public key of the payment gateway
+   * @param maxAmount - Ceiling on the settlement amount (smallest token units)
+   * @param deadline - Hard expiry timestamp; MUST be > 0
+   * @param memo - Memo bytes for the payment policy
+   * @param validAfter - Earliest settlement timestamp; omitted/`null` means immediate
+   * @param approvalAmount - Optional specific approval amount (defaults to `maxAmount`)
+   * @param referralCode - Optional 6-character referral code
+   * @param feePayer - Optional explicit fee payer
+   * @returns Array of transaction instructions for the complete setup
+   */
+  async createUpToAuthorization(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmount: BN,
+    deadline: BN,
+    memo: number[],
+    validAfter?: BN | null,
+    approvalAmount?: BN,
+    referralCode?: string,
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    const user = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const instructions: TransactionInstruction[] = [];
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
+
+    if (!accountInfo) {
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        user,
+        ownerTokenAccount,
+        user,
+        tokenMint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      instructions.push(createAtaIx);
+    }
+
+    // Check if userPayment already exists
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+
+    if (!userPayment) {
+      const createUserPaymentIx = await this.createUserPayment(tokenMint);
+      instructions.push(createUserPaymentIx);
+    }
+
+    if (referralCode) {
+      if (!this.validateReferralCode(referralCode)) {
+        throw new Error(
+          "Referral code must be exactly 6 alphanumeric characters"
+        );
+      }
+      const referralAccount = await this.getReferralAccountByCode(
+        gateway,
+        referralCode
+      );
+      if (!referralAccount) {
+        throw new Error("Referral Code unknown");
+      }
+      const createReferralIx = await this.createReferralAccount(
+        gateway,
+        generateSecureRandomString(6),
+        referralAccount.owner
+      );
+      instructions.push(createReferralIx);
+    }
+
+    // Build policy type — validAfter null/<=0 means immediate (stored as 0).
+    const policyType: PolicyType = {
+      upTo: {
+        maxAmount: maxAmount,
+        validAfter: validAfter ?? new BN(0),
+        deadline: deadline,
+        padding: new Array(104).fill(0),
+      },
+    };
+
+    let policyId: number = 1;
+    if (userPayment) {
+      policyId = userPayment.createdPoliciesCount + 1;
+    }
+    const paymentPolicyPda = this.getPaymentPolicyPda(userPaymentPda, policyId);
+    const { address: configPda } = getConfigPda(this.programId);
+    const accounts = {
+      user: user,
+      feePayer: feePayer ?? user,
+      config: configPda,
+      userPayment: userPaymentPda,
+      recipient: recipient,
+      tokenMint: tokenMint,
+      gateway: gateway,
+      paymentPolicy: paymentPolicyPda.address,
+      systemProgram: SystemProgram.programId,
+    };
+
+    const createPaymentPolicyIx = await this.program.methods
+      .createPaymentPolicy(policyType, memo)
+      .accountsStrict(accounts)
+      .instruction();
+    instructions.push(createPaymentPolicyIx);
+
+    // UpTo fires exactly once — approval covers maxAmount plus fee headroom
+    // (gateway fee is taken on top of the gross pull). Caller can override
+    // with an explicit approvalAmount if they know the gateway fee precisely.
+    const finalApprovalAmount: BN = approvalAmount ?? maxAmount;
+
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const delegate = userPaymentPda;
+    let needsApproval = false;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
+        needsApproval = true;
+      } else if (
+        currentDelegate === delegate.toString() &&
+        new BN(currentDelegatedAmount).lt(finalApprovalAmount)
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const approveIx = this.getApprovalInstruction(
+        ownerTokenAccount,
+        delegate,
+        user,
+        finalApprovalAmount
+      );
+      instructions.push(approveIx);
+    }
+
+    return instructions;
+  }
+
+  /**
+   * Settle an `upto` authorization with the actual amount (determined by the
+   * resource server after usage). Thin wrapper over `executePayment` that
+   * pins the caller-supplied amount — on-chain enforces `0 <= actual <= max`
+   * and the `[validAfter, deadline)` window. See ADR-0020.
+   *
+   * @param paymentPolicyPda - Public key of the `upto` payment policy
+   * @param actualAmount - Actual settle amount (smallest token units); MAY be 0
+   * @param recipient - Public key of the payment recipient (optional if in policy)
+   * @param tokenMint - Public key of the token mint (optional if in policy)
+   * @param gateway - Public key of the payment gateway (optional if in policy)
+   * @param user - Public key of the payment user (optional if in policy)
+   * @returns Array of transaction instructions including ATA creation and settlement
+   */
+  async settleUpTo(
+    paymentPolicyPda: PublicKey,
+    actualAmount: BN,
+    recipient?: PublicKey,
+    tokenMint?: PublicKey,
+    gateway?: PublicKey,
+    user?: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    return this.executePayment(
+      paymentPolicyPda,
+      actualAmount,
+      recipient,
+      tokenMint,
+      gateway,
+      user
+    );
   }
 
   /**
@@ -1415,42 +2097,14 @@ export class Tributary {
         (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
 
       if (referralEnabled && _user) {
-        // Build the referral chain
-        const referralChain = await this.getReferralChain(_user, _gateway!);
-
-        // Filter out nulls and get the referral account addresses
-        const referralAccounts = referralChain.filter(
-          (ref): ref is PublicKey => ref !== null
+        // C-02: chain must be anchored by the payer's own ReferralAccount.
+        const remainingAccounts = await this.buildReferralRemainingAccounts(
+          _user,
+          _gateway!,
+          _tokenMint
         );
 
-        if (referralAccounts.length > 0) {
-          // Get the actual referral account addresses (not just the owner)
-          const remainingAccounts = [];
-
-          for (const referrer of referralAccounts) {
-            remainingAccounts.push({
-              pubkey: referrer,
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-
-          for (const referrer of referralAccounts) {
-            const referrerAccount = await this.getReferralAccount(referrer);
-            if (!referrerAccount) {
-              // TODO: create ATA
-              throw new Error("missing ATA!");
-            }
-            remainingAccounts.push({
-              pubkey: getAssociatedTokenAddressSync(
-                _tokenMint,
-                referrerAccount.owner
-              ),
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-
+        if (remainingAccounts && remainingAccounts.length > 1) {
           // Create new instruction with remaining accounts
           executeIx = await this.program.methods
             .executePayment(paymentAmount || null)
@@ -1615,25 +2269,13 @@ export class Tributary {
     );
   }
 
-  private getRevokeInstruction(
-    ownerTokenAccount: PublicKey,
-    owner: PublicKey
-  ): TransactionInstruction {
-    return createRevokeInstruction(
-      ownerTokenAccount,
-      owner,
-      [],
-      TOKEN_PROGRAM_ID
-    );
-  }
-
   /**
    * Migrates token delegation from the legacy global payments_delegate PDA
-   * to the per-user UserPayment PDA. Revokes the old delegate, then approves
-   * the new one with the specified amount.
+   * to the per-user UserPayment PDA. Approves the new one with the specified
+   * amount.
    * @param tokenMint - Public key of the token mint
    * @param approvalAmount - Amount to approve for the new delegate
-   * @returns Array of [revoke, approve] transaction instructions
+   * @returns Array of [approve] transaction instructions
    */
   async migrateDelegate(
     tokenMint: PublicKey,
@@ -1645,22 +2287,7 @@ export class Tributary {
       tokenMint
     );
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, owner);
-    const { address: legacyDelegate } = this.getPaymentsDelegatePda();
-
     const instructions: TransactionInstruction[] = [];
-
-    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
-      ownerTokenAccount
-    );
-
-    if (tokenAccountInfo.value?.data) {
-      const parsedData = tokenAccountInfo.value.data as any;
-      const currentDelegate = parsedData.parsed?.info?.delegate;
-
-      if (currentDelegate === legacyDelegate.toString()) {
-        instructions.push(this.getRevokeInstruction(ownerTokenAccount, owner));
-      }
-    }
 
     instructions.push(
       this.getApprovalInstruction(
@@ -1684,17 +2311,25 @@ export class Tributary {
   }
 
   /**
-   * Changes the status of a payment policy (active or paused).
+   * Changes the status of a payment policy. Only Active <-> Paused is allowed
+   * for owner-initiated transitions; `completed` is a program-internal
+   * terminal state (subscription `max_renewals` reached, or all milestones
+   * released) and is rejected on-chain with `InvalidPolicyStatusTransition`.
    * Only the policy owner can change the status.
+   *
+   * The param type accepts the full {@link PolicyStatus} (including
+   * `completed`) for parity with `changeComposablePolicyStatus`; callers
+   * passing `{ active: {} }` / `{ paused: {} }` are unaffected.
+   *
    * @param tokenMint - Public key of the token mint
    * @param policyId - ID of the policy to modify
-   * @param newStatus - New status for the policy
+   * @param newStatus - New status for the policy (`completed` rejected on-chain)
    * @returns Transaction instruction to change the policy status
    */
   async changePaymentPolicyStatus(
     tokenMint: PublicKey,
     policyId: number,
-    newStatus: { active: {} } | { paused: {} }
+    newStatus: PolicyStatus
   ): Promise<TransactionInstruction> {
     const owner = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(
@@ -1780,6 +2415,84 @@ export class Tributary {
 
     return await this.program.methods
       .deletePaymentGateway()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Deletes a user payment account, closing it and refunding rent to the owner.
+   * Only the owner can delete their own user payment account, and only when it
+   * has no active policies or composables. Blocked while the program is paused.
+   * @param tokenMint - Public key of the token mint
+   * @returns Transaction instruction to delete the user payment account
+   */
+  async deleteUserPayment(
+    tokenMint: PublicKey
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      owner: owner,
+      config: configPda,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      rentPayer: owner,
+    };
+
+    return await this.program.methods
+      .deleteUserPayment()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Rotates the protocol admin (ADR-0028). The current admin must sign.
+   * `fee_recipient` is left untouched; the new admin can rotate it via the
+   * existing admin-gated paths afterwards.
+   * @param newAdmin - Public key of the new protocol admin
+   * @returns Transaction instruction to change the program authority
+   */
+  async changeProgramAuthority(
+    newAdmin: PublicKey
+  ): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      admin,
+      newAdmin,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .changeProgramAuthority()
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Toggles the emergency pause kill-switch (AUDIT-2026-07-09 L-01).
+   * When paused, all execute_payment / execute_composable / transfer calls
+   * fail. Only the protocol admin can call this.
+   * @param paused - true to pause, false to resume
+   * @returns Transaction instruction to set the emergency pause flag
+   */
+  async setEmergencyPause(paused: boolean): Promise<TransactionInstruction> {
+    const admin = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      admin,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .setEmergencyPause(paused)
       .accountsStrict(accounts)
       .instruction();
   }
@@ -1873,26 +2586,26 @@ export class Tributary {
   }
 
   /**
-   * Updates the custom protocol fee settings for a payment gateway.
+   * Updates the custom protocol share settings for a payment gateway (ADR-0017).
    * Only the protocol admin can modify these settings.
-   * This allows setting a gateway-specific protocol fee that overrides the global default.
+   * This allows setting a gateway-specific protocol share that overrides the global default.
    * @param gatewayAuthority - Public key of the gateway authority
-   * @param useCustomProtocolFee - Whether to use custom protocol fee (true) or global default (false)
-   * @param customProtocolFeeBps - Custom protocol fee in basis points (0-10000). Only used if useCustomProtocolFee is true.
-   * @returns Transaction instruction to update gateway protocol fee settings
+   * @param useCustomProtocolFee - Whether to use custom protocol share (true) or global default (false)
+   * @param customProtocolShareBps - Custom protocol share in basis points (0-10000). Only used if useCustomProtocolFee is true.
+   * @returns Transaction instruction to update gateway protocol share settings
    */
   async updateGatewayProtocolFee(
     gatewayAuthority: PublicKey,
     useCustomProtocolFee: boolean,
-    customProtocolFeeBps: number
+    customProtocolShareBps: number
   ): Promise<TransactionInstruction> {
     const admin = this.provider.publicKey;
     const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
     const { address: configPda } = getConfigPda(this.programId);
 
-    // Validate fee
-    if (customProtocolFeeBps > 10000) {
-      throw new Error("Protocol fee cannot exceed 10000 bps (100%)");
+    // Validate share
+    if (customProtocolShareBps > 10000) {
+      throw new Error("Protocol share cannot exceed 10000 bps (100%)");
     }
 
     const accounts = {
@@ -1905,8 +2618,42 @@ export class Tributary {
     return await this.program.methods
       .updateGatewayProtocolFee({
         useCustomProtocolFee,
-        customProtocolFeeBps,
+        customProtocolShareBps,
       })
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Updates the scheduler share of the gateway fee (ADR-0017).
+   * Gateway-authority-only. The scheduler share pays the execute-tx signer;
+   * when the gateway signer self-executes it merges into fee_recipient.
+   * Constraint: protocol_share + scheduler_share + referral_allocation ≤ 10000 bps,
+   * validated on-chain against the current ProgramConfig.
+   * @param gatewayAuthority - Public key of the gateway authority (must sign)
+   * @param schedulerShareBps - Share of the gateway fee routed to the scheduler (0-10000)
+   * @returns Transaction instruction to update gateway scheduler share
+   */
+  async updateGatewaySchedulerShare(
+    gatewayAuthority: PublicKey,
+    schedulerShareBps: number
+  ): Promise<TransactionInstruction> {
+    const authority = this.provider.publicKey;
+    const { address: gatewayPda } = this.getGatewayPda(gatewayAuthority);
+    const { address: configPda } = getConfigPda(this.programId);
+
+    if (schedulerShareBps > 10000) {
+      throw new Error("Scheduler share cannot exceed 10000 bps (100%)");
+    }
+
+    const accounts = {
+      authority: authority,
+      gateway: gatewayPda,
+      config: configPda,
+    };
+
+    return await this.program.methods
+      .updateGatewaySchedulerShare(schedulerShareBps)
       .accountsStrict(accounts)
       .instruction();
   }
@@ -1975,6 +2722,735 @@ export class Tributary {
     if (!gateway) throw new Error("Gateway not found");
     const newFlags = gateway.featureFlags & ~flag;
     return this.updateGatewayFeatureFlags(gatewayAuthority, newFlags);
+  }
+
+  // ─── Composable Policy Methods ─────────────────────────────────────────
+
+  /**
+   * Gets a Composable Policy PDA for the specified user payment and policy ID.
+   * @param userPayment - Public key of the user's payment PDA
+   * @param policyId - Unique identifier for the composable policy
+   * @returns PdaResult containing the PDA address and bump
+   */
+  getComposablePolicyPda(userPayment: PublicKey, policyId: number) {
+    return getComposablePolicyPda(userPayment, policyId, this.programId);
+  }
+
+  /**
+   * Gets a transaction instruction to create a composable payment policy.
+   * Composable policies allow execution of arbitrary instructions alongside
+   * optional token forwards, enabling use cases like automated DCA, liquidation
+   * protection, and cross-protocol interactions.
+   *
+   * The validation target accounts are **owner-pinned at creation**
+   * (ADR-0016, closes validation-gaming vector d): `pinnedAccounts` is
+   * stored in the on-chain `ValidationPda` and replay-validated at
+   * execute — a relayer cannot substitute a positional slot to trip the
+   * assertion against the wrong state. Pass exactly the Lighthouse
+   * builder's `.accounts` pubkeys here (arity derived from the array
+   * length; max 2).
+   *
+   * @param tokenMint - Public key of the token to be paid
+   * @param recipient - Public key that receives the payments
+   * @param gateway - Public key of the gateway that will execute payments
+   * @param policyType - Policy configuration defining execution timing
+   * @param memo - Memo string to include with the policy (max 32 bytes)
+   * @param forwardConfig - Token forwarding configuration. In **act mode**
+   *   (ADR-0026) set `outputMint` to `PublicKey.default` (sentinel) and
+   *   the program treats the forward as consuming input without producing
+   *   a fungible output token (e.g. Velocity subaccount deposit). In
+   *   deliver modes, `outputMint` is a real SPL Mint (== inputMint for
+   *   deliver-no-transform, distinct for deliver-transform).
+   * @param validationProgram - Validation program pubkey (PublicKey.default for no validation)
+   * @param pinnedAccounts - Owner-declared Lighthouse target accounts (empty for none, max 2).
+   *   For a `lighthouse.tokenAccount(ata).amount(...).build()` assertion, pass `[ata]`.
+   *   For `accountDelta(a, b)`, pass `[a, b]`. For `sysvarClock()`, pass `[]`.
+   * @param validationData - Validation assertion data (empty Buffer if no validation)
+   * @param feePayer - Optional fee payer (defaults to provider wallet)
+   * @returns Transaction instruction to create the composable policy
+   */
+  async getCreateComposablePolicyInstruction(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    policyType: PolicyType,
+    memo: string,
+    forwardConfig: ForwardConfig,
+    preValidation: ValidationSpec = { disabled: {} },
+    prePinnedAccounts: PublicKey[] = [],
+    preValidationData: Buffer = Buffer.alloc(0),
+    postValidation: ValidationSpec = { disabled: {} },
+    postPinnedAccounts: PublicKey[] = [],
+    postValidationData: Buffer = Buffer.alloc(0),
+    feePayer?: PublicKey
+  ): Promise<TransactionInstruction> {
+    if (prePinnedAccounts.length > MAX_PINNED_ACCOUNTS) {
+      throw new Error(
+        `prePinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${prePinnedAccounts.length})`
+      );
+    }
+    if (postPinnedAccounts.length > MAX_PINNED_ACCOUNTS) {
+      throw new Error(
+        `postPinnedAccounts: at most ${MAX_PINNED_ACCOUNTS} targets (got ${postPinnedAccounts.length})`
+      );
+    }
+
+    const user = this.provider.publicKey;
+    const { address: configPda } = getConfigPda(this.programId);
+    const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
+
+    const userPayment: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(userPaymentPda);
+    const policyId = (userPayment?.createdComposableCount ?? 0) + 1;
+
+    const composablePolicyPda = this.getComposablePolicyPda(
+      userPaymentPda,
+      policyId
+    );
+    const memoBytes = encodeMemo(memo, 32);
+
+    const { address: preValidationPdaAddress } = getPreValidationPda(
+      composablePolicyPda.address,
+      this.programId
+    );
+    const { address: postValidationPdaAddress } = getPostValidationPda(
+      composablePolicyPda.address,
+      this.programId
+    );
+
+    const preProgram = specProgramOrDefault(preValidation);
+    const postProgram = specProgramOrDefault(postValidation);
+
+    // Act mode (ADR-0026): sentinel output_mint → pass SystemProgram as the
+    // output_mint account. Deliver modes pass the real SPL Mint.
+    const outputMintAccount = forwardConfig.outputMint.equals(PublicKey.default)
+      ? SystemProgram.programId
+      : forwardConfig.outputMint;
+
+    const accounts = {
+      feePayer: feePayer ?? user,
+      user,
+      recipient,
+      composablePolicy: composablePolicyPda.address,
+      userPayment: userPaymentPda,
+      gateway: gateway,
+      config: configPda,
+      preValidationPda: preValidationPdaAddress,
+      postValidationPda: postValidationPdaAddress,
+      preValidationProgram: preProgram,
+      postValidationProgram: postProgram,
+      inputMint: forwardConfig.inputMint,
+      outputMint: outputMintAccount,
+      systemProgram: SystemProgram.programId,
+    };
+
+    return await this.program.methods
+      .createComposablePolicy(
+        policyType,
+        memoBytes,
+        forwardConfig,
+        preValidation,
+        makeValidationInit(prePinnedAccounts, preValidationData),
+        postValidation,
+        makeValidationInit(postPinnedAccounts, postValidationData)
+      )
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  // ─── Composable high-level ergonomics (bean tributary-rg9m) ──────────
+
+  /**
+   * Ensures an Associated Token Account exists for `owner`/`mint`; returns a
+   * create-ATA instruction if it is missing, or an empty array if present.
+   * DRY primitive mirroring the inline blocks in `executePayment`.
+   *
+   * @param owner - Token account owner
+   * @param mint - Token mint
+   * @param payer - Fee payer for the create-ATA instruction
+   * @returns `[createATA ix]` or `[]`
+   */
+  private async ensureAta(
+    owner: PublicKey,
+    mint: PublicKey,
+    payer: PublicKey
+  ): Promise<TransactionInstruction[]> {
+    const ata = getAssociatedTokenAddressSync(mint, owner);
+    const info = await this.connection.getAccountInfo(ata);
+    if (info) return [];
+    return [
+      createAssociatedTokenAccountInstruction(
+        payer,
+        ata,
+        owner,
+        mint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      ),
+    ];
+  }
+
+  /**
+   * Ensures a UserPayment account exists for `user`/`mint`. Returns the
+   * create ix (if needed), the PDA, and the fetched account (or null).
+   * DRY primitive mirroring the inline block in `createSubscription`.
+   */
+  private async ensureUserPayment(
+    user: PublicKey,
+    mint: PublicKey,
+    feePayer: PublicKey
+  ): Promise<{
+    ix: TransactionInstruction[];
+    pda: PublicKey;
+    account: UserPayment | null;
+  }> {
+    const { address: pda } = this.getUserPaymentPda(user, mint);
+    const account: UserPayment | null =
+      await this.program.account.userPayment.fetchNullable(pda);
+    if (account) return { ix: [], pda, account };
+    return { ix: [await this.createUserPayment(mint, feePayer)], pda, account };
+  }
+
+  /**
+   * Face-only approval dispatcher over all 5 PolicyType variants. Maps each
+   * variant to the existing `calculate*ApprovalAmount` helper (or its face
+   * field for oneTime/upTo).
+   *
+   * INTERIM: no fee headroom. Composable fees are NET-on-pull (ADR-0026):
+   * the delegate must cover `face + fee`, but sizing the fee precisely needs
+   * gateway + protocol bps lookups. That lands in bean tributary-ydth
+   * (blocked by this one). Until then this returns the FACE amount only —
+   * callers may override via `approvalAmount` when they know the gross.
+   *
+   * @param policyType - The policy configuration (any of the 5 variants)
+   * @returns Face approval amount (BN), 0 for an empty/unknown variant
+   */
+  // ponytail: face-only sizing, fee headroom deferred to tributary-ydth
+  private calculatePolicyApprovalAmount(policyType: PolicyType): BN {
+    if ("subscription" in policyType && policyType.subscription) {
+      const s = policyType.subscription;
+      return this.calculateSubscriptionApprovalAmount(
+        s.amount,
+        s.paymentFrequency,
+        s.maxRenewals
+      );
+    }
+    if ("milestone" in policyType && policyType.milestone) {
+      return this.calculateMilestoneApprovalAmount(
+        policyType.milestone.milestoneAmounts.filter((a) => !a.isZero())
+      );
+    }
+    if ("payAsYouGo" in policyType && policyType.payAsYouGo) {
+      return this.calculatePayAsYouGoApprovalAmount(
+        policyType.payAsYouGo.maxAmountPerPeriod,
+        policyType.payAsYouGo.periodLengthSeconds
+      );
+    }
+    if ("oneTime" in policyType && policyType.oneTime) {
+      return policyType.oneTime.amount;
+    }
+    if ("upTo" in policyType && policyType.upTo) {
+      return policyType.upTo.maxAmount;
+    }
+    return new BN(0);
+  }
+
+  /**
+   * Creates a composable payment policy with full setup: owner input-mint ATA
+   * ensure, UserPayment ensure, the policy instruction, and delegate
+   * approve wiring. Mirrors `createSubscription()` for the composable
+   * family, with two carve-outs — composable has no referrals, and execute
+   * cannot be auto-called at create time (it needs caller-supplied forward
+   * instructionData + remainingAccounts).
+   *
+   * Use `getCreateComposablePolicyInstruction()` for just the policy ix.
+   *
+   * @param tokenMint - Public key of the input token
+   * @param recipient - Public key receiving the payment
+   * @param gateway - Public key of the payment gateway
+   * @param policyType - Policy configuration (subscription/milestone/payAsYouGo/oneTime/upTo)
+   * @param memo - Memo string (max 32 bytes)
+   * @param forwardConfig - Token forwarding configuration (output_mint sentinel = act mode)
+   * @param preValidation - Pre-validation spec (disabled by default)
+   * @param prePinnedAccounts - Owner-pinned Lighthouse targets for pre-validation
+   * @param preValidationData - Pre-validation assertion data
+   * @param postValidation - Post-validation spec (disabled by default)
+   * @param postPinnedAccounts - Owner-pinned Lighthouse targets for post-validation
+   * @param postValidationData - Post-validation assertion data
+   * @param feePayer - Optional fee payer (defaults to provider wallet)
+   * @param approvalAmount - Optional explicit approval (defaults to face-only sizing)
+   * @returns Ordered transaction instructions: `[ownerATA?, userPayment?, policy, approve?]`
+   */
+  async createComposable(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    policyType: PolicyType,
+    memo: string,
+    forwardConfig: ForwardConfig,
+    preValidation: ValidationSpec = { disabled: {} },
+    prePinnedAccounts: PublicKey[] = [],
+    preValidationData: Buffer = Buffer.alloc(0),
+    postValidation: ValidationSpec = { disabled: {} },
+    postPinnedAccounts: PublicKey[] = [],
+    postValidationData: Buffer = Buffer.alloc(0),
+    feePayer?: PublicKey,
+    approvalAmount?: BN
+  ): Promise<TransactionInstruction[]> {
+    return (
+      await this.createComposableWithMetadata(
+        tokenMint, recipient, gateway, policyType, memo, forwardConfig,
+        preValidation, prePinnedAccounts, preValidationData,
+        postValidation, postPinnedAccounts, postValidationData,
+        feePayer, approvalAmount
+      )
+    ).instructions;
+  }
+
+  async createComposableWithMetadata(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    policyType: PolicyType,
+    memo: string,
+    forwardConfig: ForwardConfig,
+    preValidation: ValidationSpec = { disabled: {} },
+    prePinnedAccounts: PublicKey[] = [],
+    preValidationData: Buffer = Buffer.alloc(0),
+    postValidation: ValidationSpec = { disabled: {} },
+    postPinnedAccounts: PublicKey[] = [],
+    postValidationData: Buffer = Buffer.alloc(0),
+    feePayer?: PublicKey,
+    approvalAmount?: BN
+  ): Promise<SetupResult> {
+    const user = this.provider.publicKey;
+    const payer = feePayer ?? user;
+    const steps: SetupStep[] = [];
+
+    // 1. Owner input-mint ATA ensure
+    const ata = getAssociatedTokenAddressSync(tokenMint, user);
+    const ataIxs = await this.ensureAta(user, tokenMint, payer);
+    for (const ix of ataIxs) {
+      steps.push({ instruction: ix, type: "createAta", data: { owner: user, mint: tokenMint, ata } });
+    }
+
+    // 2. UserPayment ensure (fetch once, reuse for policyId)
+    const up = await this.ensureUserPayment(user, tokenMint, payer);
+    for (const ix of up.ix) {
+      steps.push({ instruction: ix, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: up.pda } });
+    }
+
+    // 3. Policy ix — delegates to the low-level builder (which fetches
+    //    userPayment again; idempotent and matches the locked design).
+    const policyIx = await this.getCreateComposablePolicyInstruction(
+      tokenMint,
+      recipient,
+      gateway,
+      policyType,
+      memo,
+      forwardConfig,
+      preValidation,
+      prePinnedAccounts,
+      preValidationData,
+      postValidation,
+      postPinnedAccounts,
+      postValidationData,
+      payer
+    );
+    const composablePolicyPda = this.getComposablePolicyPda(
+      up.pda,
+      (up.account?.createdComposableCount ?? 0) + 1
+    );
+    steps.push({
+      instruction: policyIx,
+      type: "createComposablePolicy",
+      data: { policyType, recipient, gateway, forwardConfig, policyPda: composablePolicyPda.address },
+    });
+
+    // 4. Default approval (INTERIM face-only — see calculatePolicyApprovalAmount)
+    const finalApprovalAmount: BN =
+      approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
+    const newPolicyContribution = finalApprovalAmount;
+
+    // Fetch existing policies for the metadata (both types share the delegation)
+    const existingPaymentPolicies = await this.getPaymentPoliciesByUserPayment(up.pda);
+    const existingComposablePolicies = await this.getComposablePoliciesByUserPayment(up.pda);
+    const existingPoliciesRaw = [
+      ...existingPaymentPolicies,
+      ...existingComposablePolicies,
+    ];
+
+    // 5. Delegate approve — delegate is the UserPayment PDA. Mirrors
+    //    createOneTimePayment's needs-approval check.
+    const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
+    const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
+    const delegate = up.pda;
+
+    const tokenAccountInfo = await this.connection.getParsedAccountInfo(
+      ownerTokenAccount
+    );
+    let needsApproval = false;
+    if (tokenAccountInfo.value?.data) {
+      const parsedData = tokenAccountInfo.value.data as any;
+      const currentDelegate = parsedData.parsed?.info?.delegate;
+      const currentDelegatedAmount =
+        parsedData.parsed?.info?.delegatedAmount?.amount;
+
+      if (!currentDelegate) {
+        needsApproval = true;
+      } else if (
+        currentDelegate !== delegate.toString() &&
+        currentDelegate !== paymentsDelegatePda.toString()
+      ) {
+        needsApproval = true;
+      } else if (
+        currentDelegate === delegate.toString() &&
+        new BN(currentDelegatedAmount).lt(finalApprovalAmount)
+      ) {
+        needsApproval = true;
+      } else if (currentDelegate === paymentsDelegatePda.toString()) {
+        needsApproval = true;
+      }
+    } else {
+      needsApproval = true;
+    }
+
+    if (needsApproval) {
+      const approveIx = this.getApprovalInstruction(
+        ownerTokenAccount,
+        delegate,
+        user,
+        finalApprovalAmount
+      );
+      steps.push({
+        instruction: approveIx,
+        type: "approve",
+        data: {
+          delegateAddress: delegate,
+          delegateLabel: "userPaymentPda",
+          ownerTokenAccount,
+          approvalAmount: finalApprovalAmount,
+          existingPolicies: existingPoliciesRaw,
+          newPolicy: {
+            policyType,
+            approvalContribution: newPolicyContribution,
+          },
+        },
+      });
+    }
+
+    return {
+      instructions: steps.map((s) => s.instruction),
+      steps,
+    };
+  }
+
+  /**
+   * Builds the full instruction bundle to execute a composable payment,
+   * prepending create-ATA ensures for the recipient and the two fee
+   * recipients (all input-side per ADR-0026). Mirrors `executePayment()`.
+   *
+   * The two intermediate ATAs are owned + created on-chain by the program
+   * (create_ata guards on zero lamports) — they are NEVER ensured here.
+   *
+   * @param composablePolicy - Public key of the composable policy account
+   * @param instructionData - Buffer containing the forward instruction data
+   * @param forwardAmount - Optional amount to forward (null if no forward)
+   * @param remainingAccounts - Additional accounts for validation/forward
+   * @returns Ordered instructions: `[recipientATA?, gatewayFeeATA?, protocolFeeATA?, execute]`
+   */
+  async executeComposable(
+    composablePolicy: PublicKey,
+    instructionData: Buffer,
+    forwardAmount?: BN | null,
+    remainingAccounts?: AccountMeta[]
+  ): Promise<TransactionInstruction[]> {
+    const policy: ComposablePolicy =
+      await this.program.account.composablePolicy.fetch(composablePolicy);
+    const userPayment: UserPayment =
+      await this.program.account.userPayment.fetch(policy.userPayment);
+    const gateway: PaymentGateway =
+      await this.program.account.paymentGateway.fetch(policy.gateway);
+    const { address: configPda } = getConfigPda(this.programId);
+    const config: ProgramConfig =
+      await this.program.account.programConfig.fetch(configPda);
+
+    const authority = this.provider.publicKey as PublicKey;
+    const inputMint = policy.forwardConfig.inputMint;
+
+    // ── ATA ensures (input-side) ────────────────────────────────────────
+    const instructions: TransactionInstruction[] = [];
+
+    // Recipient ATA. deliverMint already derived below; reuse the same logic
+    // so the ensure matches the account the execute ix references.
+    const isActMode = policy.forwardConfig.outputMint.equals(PublicKey.default);
+    const isDeliverTransform =
+      !isActMode &&
+      !policy.forwardConfig.instructionConstraint.programId.equals(
+        PublicKey.default
+      ) &&
+      !policy.forwardConfig.outputMint.equals(inputMint);
+    const deliverMint = isActMode
+      ? inputMint
+      : isDeliverTransform
+      ? policy.forwardConfig.outputMint
+      : inputMint;
+    instructions.push(
+      ...(await this.ensureAta(policy.recipient, deliverMint, authority))
+    );
+
+    // Gateway fee recipient ATA (input-side, ADR-0026)
+    instructions.push(
+      ...(await this.ensureAta(gateway.feeRecipient, inputMint, authority))
+    );
+
+    // Protocol fee recipient ATA (input-side, ADR-0026)
+    instructions.push(
+      ...(await this.ensureAta(config.feeRecipient, inputMint, authority))
+    );
+
+    // ── Execute ix (unchanged derivation) ──────────────────────────────
+    // Act mode (ADR-0026): sentinel output_mint → no output token. The
+    // output_mint account slot is SystemProgram; no output ATA is created.
+    const outputMint = isActMode
+      ? SystemProgram.programId
+      : policy.forwardConfig.outputMint;
+
+    // User's source token account (input mint). Delegation MUST point at
+    // the UserPayment PDA — see COMPOSABLE.md §PDA Seed Summary.
+    const userTokenAccount = getAssociatedTokenAddressSync(
+      inputMint,
+      userPayment.owner
+    );
+
+    const recipientTokenAccount = getAssociatedTokenAddressSync(
+      deliverMint,
+      policy.recipient
+    );
+
+    // Intermediate ATAs are owned by the ComposablePolicy PDA — NOT the
+    // UserPayment PDA. This decouples the intermediate-ATA owner (which
+    // signs forward/sweep/close CPIs) from the user-source delegate
+    // (UserPayment PDA), so a forward program can only ever move the
+    // transient intermediate balances, never the user's source funds.
+    // See reports/C-1-validation-cpi-signer-leak.md + bean tributary-0kja.
+    const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
+      inputMint,
+      composablePolicy, // owner = ComposablePolicy PDA
+      true, // allowOwnerOffCurve — ComposablePolicy is a PDA
+      TOKEN_PROGRAM_ID
+    );
+    // Output intermediate only exists in deliver-transform mode. In act
+    // mode and deliver-no-transform we derive a placeholder (program skips
+    // creation) — use inputMint so the ATA derivation is well-defined.
+    const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
+      isDeliverTransform ? policy.forwardConfig.outputMint : inputMint,
+      composablePolicy, // owner = ComposablePolicy PDA
+      true,
+      TOKEN_PROGRAM_ID
+    );
+
+    // Fee accounts are INPUT-side post-ADR-0026: fees are skimmed from the
+    // gross pull in input_mint before the forward runs.
+    const gatewayFeeAccount = getAssociatedTokenAddressSync(
+      inputMint,
+      gateway.feeRecipient
+    );
+    const protocolFeeAccount = getAssociatedTokenAddressSync(
+      inputMint,
+      config.feeRecipient
+    );
+
+    const { address: preValidationPdaAddress } = getPreValidationPda(
+      composablePolicy,
+      this.programId
+    );
+    const { address: postValidationPdaAddress } = getPostValidationPda(
+      composablePolicy,
+      this.programId
+    );
+
+    const accounts = {
+      composablePolicy: composablePolicy,
+      userPayment: policy.userPayment,
+      gateway: policy.gateway,
+      config: configPda,
+      preValidationProgram: specProgramOrDefault(policy.preValidation),
+      postValidationProgram: specProgramOrDefault(policy.postValidation),
+      preValidationPda: preValidationPdaAddress,
+      postValidationPda: postValidationPdaAddress,
+      userTokenAccount,
+      mint: inputMint,
+      outputMint,
+      intermediateInputTokenAccount,
+      intermediateOutputTokenAccount,
+      recipientTokenAccount,
+      gatewayFeeAccount,
+      protocolFeeAccount,
+      feePayer: this.provider.publicKey,
+      paymentsDelegate: this.getPaymentsDelegatePda().address,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    };
+
+    // ValidationPda was pulled out of `remaining_accounts` in ADR-0016:
+    // the slice is now `[...lighthouseTargetAccounts, ...forwardAccounts,
+    // (scheduler_ata?)]` — no leading ValidationPda entry.
+    const executeIx = await this.program.methods
+      .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
+      .accountsStrict(accounts)
+      .remainingAccounts(remainingAccounts ?? [])
+      .instruction();
+    instructions.push(executeIx);
+
+    return instructions;
+  }
+
+  /**
+   * Compute the gross amount a composable policy will pull from the user's
+   * token account for a given face amount and gateway (ADR-0026).
+   *
+   * Composable fees are NET-on-pull (hardcoded): the pull moves
+   * `face + fee`. The delegate approval on the user's token account must
+   * cover this gross amount, and the user's balance must be ≥ gross.
+   *
+   * Use this to size the `approve` instruction issued alongside
+   * `createComposablePolicy` / `createUserPayment`, and to re-check after a
+   * gateway fee-bps change (a hike can fail execution at the delegate).
+   *
+   * @param face - The policy face amount (what the forward consumes / what
+   *   the recipient is owed before fees). For PayAsYouGo this is the chunk.
+   * @param gateway - The gateway account (carries `gatewayFeeBps`).
+   * @param protocolShareBps - The global protocol share from `ProgramConfig`,
+   *   unless the gateway has `FEATURE_CUSTOM_PROTOCOL_FEE` set.
+   * @returns The gross pull amount (`face + total_fee`).
+   */
+  requiredDelegatedAmount(
+    face: BN,
+    gateway: PaymentGateway,
+    protocolShareBps?: number
+  ): BN {
+    const feeBps = gateway.gatewayFeeBps ?? 0;
+    // NET-on-pull: total_fee = face × bps / 10000, gross = face + total_fee.
+    const totalFee = face.muln(feeBps).divn(10000);
+    return face.add(totalFee);
+    // protocolShareBps is informational — it only affects how the fee is
+    // split across protocol/scheduler/gateway, not the gross pull size.
+    // The delegate must cover face + total_fee regardless of the split.
+    void protocolShareBps;
+  }
+
+  /**
+   * Changes the status of a composable policy (active, paused, or completed).
+   * Only the policy owner can change the status.
+   * @param tokenMint - Public key of the token mint
+   * @param policyId - ID of the composable policy to modify
+   * @param newStatus - New status for the policy
+   * @returns Transaction instruction to change the composable policy status
+   */
+  async changeComposablePolicyStatus(
+    tokenMint: PublicKey,
+    policyId: number,
+    newStatus: PolicyStatus
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: composablePolicyPda } = this.getComposablePolicyPda(
+      userPaymentPda,
+      policyId
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
+    // Fetch the policy to find its gateway
+    const policy = await this.program.account.composablePolicy.fetch(
+      composablePolicyPda
+    );
+
+    const accounts = {
+      owner: owner,
+      config: configPda,
+      userPayment: userPaymentPda,
+      composablePolicy: composablePolicyPda,
+      gateway: policy.gateway,
+    };
+
+    return await this.program.methods
+      .changeComposableStatus(policyId, newStatus)
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /**
+   * Deletes a composable policy permanently.
+   * Only the policy owner can delete their composable policies.
+   * @param tokenMint - Public key of the token mint
+   * @param policyId - ID of the composable policy to delete
+   * @returns Transaction instruction to delete the composable policy
+   */
+  async deleteComposablePolicy(
+    tokenMint: PublicKey,
+    policyId: number
+  ): Promise<TransactionInstruction> {
+    const owner = this.provider.publicKey;
+    const { address: userPaymentPda } = this.getUserPaymentPda(
+      owner,
+      tokenMint
+    );
+    const { address: composablePolicyPda } = this.getComposablePolicyPda(
+      userPaymentPda,
+      policyId
+    );
+    const { address: configPda } = getConfigPda(this.programId);
+
+    const accounts = {
+      owner: owner,
+      config: configPda,
+      userPayment: userPaymentPda,
+      tokenMint: tokenMint,
+      composablePolicy: composablePolicyPda,
+      rentPayer: owner,
+    };
+
+    const policy: ComposablePolicy =
+      await this.program.account.composablePolicy.fetch(composablePolicyPda);
+
+    const remainingAccounts: AccountMeta[] = [];
+    if (isProgramCall(policy.preValidation)) {
+      const { address } = getPreValidationPda(
+        composablePolicyPda,
+        this.programId
+      );
+      remainingAccounts.push({
+        pubkey: address,
+        isSigner: false,
+        isWritable: true,
+      });
+    }
+    if (isProgramCall(policy.postValidation)) {
+      const { address } = getPostValidationPda(
+        composablePolicyPda,
+        this.programId
+      );
+      remainingAccounts.push({
+        pubkey: address,
+        isSigner: false,
+        isWritable: true,
+      });
+    }
+
+    const tx = await this.program.methods
+      .deleteComposablePolicy(policyId)
+      .accountsStrict(accounts);
+
+    if (remainingAccounts.length > 0) {
+      tx.remainingAccounts(remainingAccounts);
+    }
+
+    return tx.instruction();
   }
 
   // Query methods
@@ -2176,6 +3652,65 @@ export class Tributary {
   }
 
   /**
+   * Fetches a specific composable policy account by its address.
+   * @param policyAddress - Public key of the composable policy account
+   * @returns The composable policy account data or null if not found
+   */
+  async getComposablePolicy(
+    policyAddress: PublicKey
+  ): Promise<ComposablePolicy | null> {
+    return await this.program.account.composablePolicy.fetchNullable(
+      policyAddress
+    );
+  }
+
+  /**
+   * Retrieves all composable policies belonging to the specified user payment account.
+   * @param userPayment - Public key of the user payment PDA
+   * @returns Array of composable policies for the user payment account
+   */
+  async getComposablePoliciesByUserPayment(
+    userPayment: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
+    return await this.program.account.composablePolicy.all([
+      {
+        memcmp: {
+          offset: 9, // Skip discriminator (8) + bump (1)
+          bytes: userPayment.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Retrieves all composable policies executed by the specified gateway.
+   * @param gateway - Public key of the payment gateway
+   * @returns Array of composable policies executed by the gateway
+   */
+  async getComposablePoliciesByGateway(
+    gateway: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
+    return await this.program.account.composablePolicy.all([
+      {
+        memcmp: {
+          offset: 41, // Skip discriminator (8) + bump (1) + user_payment (32)
+          bytes: gateway.toBase58(),
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Retrieves all composable policies.
+   * @returns Array of all composable policies
+   */
+  async getAllComposablePolicies(): Promise<
+    Array<{ publicKey: PublicKey; account: ComposablePolicy }>
+  > {
+    return await this.program.account.composablePolicy.all();
+  }
+
+  /**
    * Fetches a specific referral account by the owner's public key and gateway.
    * This is a convenience method that finds the referral account for an owner within a specific gateway.
    * @param gateway - Public key of the gateway
@@ -2186,6 +3721,20 @@ export class Tributary {
     gateway: PublicKey,
     owner: PublicKey
   ): Promise<ReferralAccount | null> {
+    const found = await this.getReferralAccountAddressByOwner(gateway, owner);
+    return found ? found.account : null;
+  }
+
+  /**
+   * Same as {@link getReferralAccountByOwner} but also returns the on-chain
+   * address of the ReferralAccount PDA. Required by C-02 remediation so the
+   * caller can pass the payer's ReferralAccount as the first entry in
+   * `remaining_accounts` for `executePayment` / `transfer`.
+   */
+  async getReferralAccountAddressByOwner(
+    gateway: PublicKey,
+    owner: PublicKey
+  ): Promise<{ publicKey: PublicKey; account: ReferralAccount } | null> {
     const allReferrals = await this.program.account.referralAccount.all([
       {
         memcmp: {
@@ -2196,11 +3745,8 @@ export class Tributary {
     ]);
 
     for (const ref of allReferrals) {
-      const refData = await this.program.account.referralAccount.fetchNullable(
-        ref.publicKey
-      );
-      if (refData && refData.gateway.toString() === gateway.toString()) {
-        return refData;
+      if (ref.account.gateway.toString() === gateway.toString()) {
+        return { publicKey: ref.publicKey, account: ref.account };
       }
     }
     return null;
@@ -2223,6 +3769,13 @@ export class Tributary {
    * Builds the referral chain for a given user and gateway.
    * This method traverses the referral chain up to 3 levels deep.
    * We replace the default PublicKey by null here!
+   *
+   * C-02 remediation: the caller MUST also pass the payer's own
+   * `ReferralAccount` to `executePayment` / `transfer` as the FIRST entry in
+   * `remaining_accounts`. Use {@link getReferralAccountAddressByOwner} to
+   * obtain it, or use {@link buildReferralRemainingAccounts} which returns
+   * the full ordered list ready for `remainingAccounts(...)`.
+   *
    * @param user - Public key of the user to find the referral chain for
    * @param gateway - Public key of the gateway
    * @returns Array of referral account addresses [L1, L2, L3] (may contain nulls)
@@ -2234,7 +3787,10 @@ export class Tributary {
     const chain: (PublicKey | null)[] = [];
 
     // Get the user's referral account for this gateway
-    const userReferral = await this.getReferralAccountByOwner(gateway, user);
+    const userReferral = await this.getReferralAccountAddressByOwner(
+      gateway,
+      user
+    );
 
     if (!userReferral) {
       // User doesn't have a referral account
@@ -2242,11 +3798,15 @@ export class Tributary {
     }
 
     // L1 referrer (who referred this user)
-    if (userReferral.referrer.toString() != PublicKey.default.toString()) {
-      chain.push(userReferral.referrer);
+    if (
+      userReferral.account.referrer.toString() != PublicKey.default.toString()
+    ) {
+      chain.push(userReferral.account.referrer);
 
       // Get L1's referral account to find L2
-      const l1Referral = await this.getReferralAccount(userReferral.referrer);
+      const l1Referral = await this.getReferralAccount(
+        userReferral.account.referrer
+      );
 
       if (
         l1Referral &&
@@ -2276,6 +3836,97 @@ export class Tributary {
     }
 
     return chain;
+  }
+
+  /**
+   * Build the ordered `remaining_accounts` list for `executePayment` /
+   * `transfer` referral reward distribution.
+   *
+   * Returns `null` if the user has no ReferralAccount at all (caller should
+   * invoke the instruction without any remaining accounts). Otherwise
+   * returns a non-empty array whose first entry is the payer's own
+   * ReferralAccount (read-only), followed by the writable ancestor chain
+   * and their matching ATAs.
+   *
+   * Layout (matches `parse_and_validate_referral_accounts` on-chain):
+   *
+   * ```
+   *   [payer_referral,
+   *    L1, L2, L3,
+   *    ATA_L1, ATA_L2, ATA_L3]
+   * ```
+   */
+  async buildReferralRemainingAccounts(
+    user: PublicKey,
+    gateway: PublicKey,
+    tokenMint: PublicKey
+  ): Promise<
+    | {
+        pubkey: PublicKey;
+        isWritable: boolean;
+        isSigner: boolean;
+      }[]
+    | null
+  > {
+    const userReferral = await this.getReferralAccountAddressByOwner(
+      gateway,
+      user
+    );
+    if (!userReferral) {
+      return null;
+    }
+
+    // Always include the payer's ReferralAccount at position 0.
+    const remainingAccounts: {
+      pubkey: PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[] = [
+      // payer_referral — read-only on-chain (we never pay the payer).
+      { pubkey: userReferral.publicKey, isWritable: false, isSigner: false },
+    ];
+
+    // If the payer has no referrer, nothing else to add.
+    if (
+      userReferral.account.referrer.toString() === PublicKey.default.toString()
+    ) {
+      return remainingAccounts;
+    }
+
+    // Walk the chain [L1, L2, L3].
+    const chain: PublicKey[] = [];
+    let cursor: PublicKey | null = userReferral.account.referrer;
+    while (cursor && chain.length < 3) {
+      chain.push(cursor);
+      const next = await this.getReferralAccount(cursor);
+      if (!next || next.referrer.toString() === PublicKey.default.toString()) {
+        break;
+      }
+      cursor = next.referrer;
+    }
+
+    // Append the writable chain.
+    for (const referrer of chain) {
+      remainingAccounts.push({
+        pubkey: referrer,
+        isWritable: true,
+        isSigner: false,
+      });
+    }
+    // Append the matching ATAs.
+    for (const referrer of chain) {
+      const referrerAccount = await this.getReferralAccount(referrer);
+      if (!referrerAccount) {
+        throw new Error("Missing referral account for referrer");
+      }
+      remainingAccounts.push({
+        pubkey: getAssociatedTokenAddressSync(tokenMint, referrerAccount.owner),
+        isWritable: true,
+        isSigner: false,
+      });
+    }
+
+    return remainingAccounts;
   }
 
   async confirmTransactionWithStatus(
@@ -2443,35 +4094,14 @@ export class Tributary {
       const referralEnabled =
         (gatewayAccount.featureFlags & GATEWAY_FEATURES.REFERRAL) !== 0;
       if (referralEnabled) {
-        const referralChain = await this.getReferralChain(authority, gateway);
-        const referralAccounts = referralChain.filter(
-          (ref): ref is PublicKey => ref !== null
+        // C-02: chain must be anchored by the payer's own ReferralAccount.
+        const remainingAccounts = await this.buildReferralRemainingAccounts(
+          authority,
+          gateway,
+          tokenMint
         );
 
-        if (referralAccounts.length > 0) {
-          const remainingAccounts = [];
-          for (const referrer of referralAccounts) {
-            remainingAccounts.push({
-              pubkey: referrer,
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-          for (const referrer of referralAccounts) {
-            const referrerAccount = await this.getReferralAccount(referrer);
-            if (!referrerAccount) {
-              throw new Error("Missing referral account for referrer");
-            }
-            remainingAccounts.push({
-              pubkey: getAssociatedTokenAddressSync(
-                tokenMint,
-                referrerAccount.owner
-              ),
-              isWritable: true,
-              isSigner: false,
-            });
-          }
-
+        if (remainingAccounts && remainingAccounts.length > 1) {
           transferIx = await this.program.methods
             .transfer(amount, memoArray)
             .accountsStrict(accounts)
@@ -2484,6 +4114,44 @@ export class Tributary {
     instructions.push(transferIx);
     return instructions;
   }
+}
+
+// ── ValidationSpec helpers (v2.1) ────────────────────────────────────
+
+const MAX_PINNED_ACCOUNTS = 2;
+
+function isProgramCall(spec: ValidationSpec): boolean {
+  return (spec as { programCall?: unknown }).programCall !== undefined;
+}
+
+function specProgramOrDefault(spec: ValidationSpec): PublicKey {
+  const pc = (spec as { programCall?: { programId: PublicKey } }).programCall;
+  return pc ? pc.programId : SystemProgram.programId;
+}
+
+function makeValidationInit(
+  pinnedAccounts: PublicKey[],
+  data: Buffer
+): {
+  numPinnedAccounts: number;
+  pinnedAccounts: { index: number; pubkey: PublicKey }[];
+  validationData: Buffer;
+} {
+  // Indexed-pin model (bean tributary-fln0): the caller supplies positional
+  // Lighthouse target pubkeys; we tag each with its array index so the
+  // on-chain handler packs them into the (unchanged) positional ValidationPda
+  // layout. Indices < MAX_PINNED_ACCOUNTS, distinct — preserved here.
+  const pins: { index: number; pubkey: PublicKey }[] = pinnedAccounts.map(
+    (pubkey, index) => ({ index, pubkey })
+  );
+  while (pins.length < MAX_PINNED_FORWARD_ACCOUNTS) {
+    pins.push({ index: 0, pubkey: PublicKey.default });
+  }
+  return {
+    numPinnedAccounts: pinnedAccounts.length,
+    pinnedAccounts: pins,
+    validationData: data,
+  };
 }
 
 // Legacy export for backward compatibility

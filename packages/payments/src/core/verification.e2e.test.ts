@@ -7,6 +7,7 @@ import {
   TributaryVerifier,
   PaymentVerificationError,
   SubscriptionVerificationError,
+  PolicyVerificationError,
 } from "./verification";
 
 const WALLET = "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR";
@@ -66,6 +67,44 @@ after(() => {
   server.close();
 });
 
+function defaultPayment() {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    signature: "5UfK2hZ8rN3mQ9pL7wX1vB4cY6dA0eT2gR8nJ5sF3oH9kM7uP",
+    slot: 245123456,
+    timestamp: now - 100,
+    policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
+    amount: "100000",
+    tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    payer: WALLET,
+    recipient: RECIPIENT,
+    gateway: GATEWAY,
+    memo: MEMO,
+    recordId: 3,
+  };
+}
+
+function subPolicy(overrides: Record<string, unknown> = {}) {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    variant: "subscription",
+    policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
+    policyId: 1,
+    recipient: RECIPIENT,
+    gateway: GATEWAY,
+    memo: "foobar",
+    createdAt: now - 86400 * 30,
+    amount: "100000",
+    paymentFrequency: "monthly",
+    totalPayments: 3,
+    nextPaymentDue: now + 2592000,
+    status: "paid",
+    autoRenew: true,
+    maxRenewals: null,
+    ...overrides,
+  };
+}
+
 async function issueTestToken(
   payloadOverrides?: Record<string, unknown>,
   signOverrides?: {
@@ -75,22 +114,8 @@ async function issueTestToken(
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const defaultPayload = {
-    subscriptions: [],
-    lastPayments: [
-      {
-        signature: "5UfK2hZ8rN3mQ9pL7wX1vB4cY6dA0eT2gR8nJ5sF3oH9kM7uP",
-        slot: 245123456,
-        timestamp: now - 100,
-        policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
-        amount: "100000",
-        tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        payer: WALLET,
-        recipient: RECIPIENT,
-        gateway: GATEWAY,
-        memo: MEMO,
-        recordId: 3,
-      },
-    ],
+    policies: [],
+    lastPayments: [defaultPayment()],
   };
 
   const jwtPayload = { ...defaultPayload, ...payloadOverrides };
@@ -126,12 +151,13 @@ describe("JWT end-to-end: issue -> verify", () => {
     });
 
     it("should round-trip with memo that has surrounding whitespace", async () => {
+      const now = Math.floor(Date.now() / 1000);
       const token = await issueTestToken({
         lastPayments: [
           {
             signature: "5UfK2hZ8rN3mQ9pL7wX1vB4cY6dA0eT2gR8nJ5sF3oH9kM7uP",
             slot: 245123456,
-            timestamp: Math.floor(Date.now() / 1000) - 100,
+            timestamp: now - 100,
             policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
             amount: "100000",
             tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -187,22 +213,8 @@ describe("JWT end-to-end: issue -> verify", () => {
     it("should reject an expired token", async () => {
       const now = Math.floor(Date.now() / 1000);
       const jwtPayload = {
-        subscriptions: [],
-        lastPayments: [
-          {
-            signature: "5UfK2hZ8rN3mQ9pL7wX1vB4cY6dA0eT2gR8nJ5sF3oH9kM7uP",
-            slot: 245123456,
-            timestamp: now - 100,
-            policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
-            amount: "100000",
-            tokenMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-            payer: WALLET,
-            recipient: RECIPIENT,
-            gateway: GATEWAY,
-            memo: MEMO,
-            recordId: 3,
-          },
-        ],
+        policies: [],
+        lastPayments: [defaultPayment()],
       };
 
       const token = await new SignJWT(jwtPayload)
@@ -281,7 +293,7 @@ describe("JWT end-to-end: issue -> verify", () => {
       }`;
 
       const now = Math.floor(Date.now() / 1000);
-      const token = await new SignJWT({ subscriptions: [], lastPayments: [] })
+      const token = await new SignJWT({ policies: [], lastPayments: [] })
         .setProtectedHeader({ alg: "RS256", kid: KID, typ: "JWT" })
         .setSubject(WALLET)
         .setIssuer(ISSUER)
@@ -300,30 +312,89 @@ describe("JWT end-to-end: issue -> verify", () => {
     });
   });
 
-  describe("verifySubscription", () => {
+  describe("verifyPolicy", () => {
+    it("should round-trip a subscription policy token", async () => {
+      const token = await issueTestToken({ policies: [subPolicy()] });
+      const verifier = new TributaryVerifier({ baseUrl });
+      const claim = await verifier.verifyPolicy(token, {
+        recipient: RECIPIENT,
+        wallet: WALLET,
+        variant: "subscription",
+      });
+
+      assert.equal(claim.variant, "subscription");
+      assert.equal(claim.recipient, RECIPIENT);
+      assert.equal((claim as any).amount, "100000");
+      assert.equal((claim as any).paymentFrequency, "monthly");
+    });
+
+    it("should round-trip a oneTime policy token (authorization only)", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const token = await issueTestToken({
+        policies: [
+          {
+            variant: "oneTime",
+            policyAddress: "DxLp4mP6pZq0HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kU",
+            policyId: 4,
+            recipient: RECIPIENT,
+            gateway: GATEWAY,
+            memo: "single-shot",
+            createdAt: now - 600,
+            amount: "250000",
+            dueDate: null,
+            expiryDate: now + 86400,
+            status: "pending",
+          },
+        ],
+        lastPayments: [],
+      });
+
+      const verifier = new TributaryVerifier({ baseUrl });
+      const claim = await verifier.verifyPolicy(token, {
+        recipient: RECIPIENT,
+        wallet: WALLET,
+        variant: "oneTime",
+      });
+
+      assert.equal(claim.variant, "oneTime");
+      assert.equal((claim as any).amount, "250000");
+    });
+
+    it("should reject policy when wallet does not match", async () => {
+      const token = await issueTestToken({ policies: [subPolicy()] });
+      const verifier = new TributaryVerifier({ baseUrl });
+
+      await assert.rejects(
+        () =>
+          verifier.verifyPolicy(token, {
+            recipient: RECIPIENT,
+            wallet: "WrongWallet1111111111111111111111111111111",
+          }),
+        PolicyVerificationError
+      );
+    });
+
+    it("should reject when variant filter excludes the only policy", async () => {
+      const token = await issueTestToken({ policies: [subPolicy()] });
+      const verifier = new TributaryVerifier({ baseUrl });
+
+      await assert.rejects(
+        () =>
+          verifier.verifyPolicy(token, {
+            recipient: RECIPIENT,
+            wallet: WALLET,
+            variant: "milestone",
+          }),
+        /variant=milestone/
+      );
+    });
+  });
+
+  describe("verifySubscription (deprecated alias)", () => {
     const now = Math.floor(Date.now() / 1000);
 
     it("should round-trip a subscription token", async () => {
-      const token = await issueTestToken({
-        subscriptions: [
-          {
-            policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
-            policyId: 1,
-            recipient: RECIPIENT,
-            gateway: GATEWAY,
-            amount: "100000",
-            paymentFrequency: "monthly",
-            totalPayments: 3,
-            nextPaymentDue: now + 2592000,
-            status: "paid",
-            autoRenew: true,
-            maxRenewals: null,
-            createdAt: now - 86400 * 30,
-            memo: "foobar",
-          },
-        ],
-      });
-
+      const token = await issueTestToken({ policies: [subPolicy()] });
       const verifier = new TributaryVerifier({ baseUrl });
       const sub = await verifier.verifySubscription(token, {
         recipient: RECIPIENT,
@@ -339,26 +410,7 @@ describe("JWT end-to-end: issue -> verify", () => {
     });
 
     it("should reject subscription when wallet does not match", async () => {
-      const token = await issueTestToken({
-        subscriptions: [
-          {
-            policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
-            policyId: 1,
-            recipient: RECIPIENT,
-            gateway: GATEWAY,
-            amount: "100000",
-            paymentFrequency: "monthly",
-            totalPayments: 3,
-            nextPaymentDue: now + 2592000,
-            status: "paid",
-            autoRenew: true,
-            maxRenewals: null,
-            createdAt: now - 86400 * 30,
-            memo: "foobar",
-          },
-        ],
-      });
-
+      const token = await issueTestToken({ policies: [subPolicy()] });
       const verifier = new TributaryVerifier({ baseUrl });
 
       await assert.rejects(
@@ -374,25 +426,8 @@ describe("JWT end-to-end: issue -> verify", () => {
 
     it("should reject when subscription status is overdue", async () => {
       const token = await issueTestToken({
-        subscriptions: [
-          {
-            policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
-            policyId: 1,
-            recipient: RECIPIENT,
-            gateway: GATEWAY,
-            amount: "100000",
-            paymentFrequency: "monthly",
-            totalPayments: 3,
-            nextPaymentDue: now + 2592000,
-            status: "overdue",
-            autoRenew: true,
-            maxRenewals: null,
-            createdAt: now - 86400 * 30,
-            memo: "foobar",
-          },
-        ],
+        policies: [subPolicy({ status: "overdue" })],
       });
-
       const verifier = new TributaryVerifier({ baseUrl });
 
       await assert.rejects(
@@ -408,23 +443,7 @@ describe("JWT end-to-end: issue -> verify", () => {
 
     it("should reject when paid subscription has no matching payment memo", async () => {
       const token = await issueTestToken({
-        subscriptions: [
-          {
-            policyAddress: "DxLp1kP3mZq7HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kR",
-            policyId: 1,
-            recipient: RECIPIENT,
-            gateway: GATEWAY,
-            amount: "100000",
-            paymentFrequency: "monthly",
-            totalPayments: 3,
-            nextPaymentDue: now + 2592000,
-            status: "paid",
-            autoRenew: true,
-            maxRenewals: null,
-            createdAt: now - 86400 * 30,
-            memo: "foobar",
-          },
-        ],
+        policies: [subPolicy()],
         lastPayments: [
           {
             signature: "5UfK2hZ8rN3mQ9pL7wX1vB4cY6dA0eT2gR8nJ5sF3oH9kM7uP",
@@ -454,6 +473,41 @@ describe("JWT end-to-end: issue -> verify", () => {
         /no payment found with memo/
       );
     });
+
+    it("should skip non-subscription variants when filtering", async () => {
+      const token = await issueTestToken({
+        policies: [
+          {
+            variant: "payAsYouGo",
+            policyAddress: "DxLp3mP5oZq9HgeRZFMfWVBpDCmCN8eYwGmCjL7m9kT",
+            policyId: 3,
+            recipient: RECIPIENT,
+            gateway: GATEWAY,
+            memo: "agent-usage",
+            createdAt: now - 3600,
+            maxAmountPerPeriod: "1000000",
+            maxChunkAmount: "100000",
+            periodLengthSeconds: 86400,
+            currentPeriodStart: now - 1800,
+            currentPeriodTotal: "400000",
+            capRemainingThisPeriod: "600000",
+            periodResetsAt: now - 1800 + 86400,
+            status: "active",
+          },
+          subPolicy({ policyId: 42 }),
+        ],
+      });
+
+      const verifier = new TributaryVerifier({ baseUrl });
+      const sub = await verifier.verifySubscription(token, {
+        recipient: RECIPIENT,
+        wallet: WALLET,
+        memo: MEMO,
+      });
+
+      assert.equal(sub.variant, "subscription");
+      assert.equal(sub.policyId, 42);
+    });
   });
 
   describe("payload integrity", () => {
@@ -477,7 +531,7 @@ describe("JWT end-to-end: issue -> verify", () => {
       const rogueKeys = await generateKeyPair("ES256", { extractable: true });
 
       const now = Math.floor(Date.now() / 1000);
-      const token = await new SignJWT({ subscriptions: [], lastPayments: [] })
+      const token = await new SignJWT({ policies: [], lastPayments: [] })
         .setProtectedHeader({ alg: "ES256", kid: "rogue-key", typ: "JWT" })
         .setSubject(WALLET)
         .setIssuer(ISSUER)

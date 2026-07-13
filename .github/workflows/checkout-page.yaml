@@ -29,6 +29,10 @@ jobs:
         working-directory: ./packages/sdk
         run: pnpm run build
 
+      - name: Build tokens-client
+        working-directory: ./packages/tokens-client
+        run: pnpm run build
+
       - name: Build paymemts
         working-directory: ./packages/payments
         run: pnpm run build
@@ -41,6 +45,7 @@ jobs:
           VITE_VCS_REF: ${{ github.sha }}
           NODE_ENV: production
           VITE_SOLANA_API: ${{ secrets.VITE_SOLANA_API }}
+          VITE_SOLANA_API_DEVNET: ${{ secrets.VITE_SOLANA_API_DEVNET }}
 
       - name: Deploy to external repository
         uses: peaceiris/actions-gh-pages@v3

@@ -1,5 +1,11 @@
-// @ts-nocheck
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterAll,
+  jest,
+} from "@jest/globals";
 import { randomBytes } from "crypto";
 
 jest.mock("jose", () => ({
@@ -7,13 +13,12 @@ jest.mock("jose", () => ({
   importPKCS8: jest.fn(),
 }));
 
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockFrom = jest.fn();
-const mockWhere = jest.fn();
-const mockLimit = jest.fn();
-const mockSet = jest.fn();
+const mockSelect = jest.fn() as jest.MockedFunction<any>;
+const mockInsert = jest.fn() as jest.MockedFunction<any>;
+const mockUpdate = jest.fn() as jest.MockedFunction<any>;
+const mockFrom = jest.fn() as jest.MockedFunction<any>;
+const mockWhere = jest.fn() as jest.MockedFunction<any>;
+const mockLimit = jest.fn() as jest.MockedFunction<any>;
 
 jest.mock("../db", () => ({
   getDb: jest.fn(() => ({
@@ -131,7 +136,7 @@ describe("getCurrentSigningKey", () => {
 
     const result = await getCurrentSigningKey();
     expect(result).not.toBeNull();
-    expect(result.privateKey).toBe(pem);
+    expect(result!.privateKey).toBe(pem);
 
     delete process.env.SIGNING_KEY_ENCRYPTION_KEY;
   });

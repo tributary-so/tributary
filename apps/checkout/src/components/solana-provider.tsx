@@ -7,14 +7,14 @@ import {
   WalletMultiButton,
 } from "@solana/wallet-adapter-react-ui";
 import React, { useMemo } from "react";
+import { useCluster } from "./cluster/cluster-data-access";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 export { WalletMultiButton as WalletButton };
 
-import config from "@/constants";
-
 export function SolanaProvider({ children }: { children: React.ReactNode }) {
-  const endpoint = config.rpcUrl;
+  const { cluster } = useCluster();
+  const endpoint = useMemo(() => cluster.endpoint, [cluster]);
   const wallets = useMemo(() => [], []);
 
   return (

@@ -24,10 +24,32 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "anchor run test-cargo && anchor run test-integration"
+# `anchor test` no longer runs the suite. Anchor still builds + deploys the
+# program before invoking this script, so just print a pointer and fail fast.
+# The real entry point is `anchor run surfpool` against a running Surfpool.
+test = "printf '%s\\n' '⨯ anchor test no longer runs the test suite.' '' '  Integration, composable, and topup tests require a running Surfpool' '  mainnet-fork (the program is deployed on mainnet, so forked config + token' '  state must be seeded via Surfpool cheatcodes).' '' '  1. Start Surfpool:' '       surfpool start --legacy-anchor-compatibility' '  2. Run the whole suite (Rust + every jest suite):' '       anchor run surfpool' '' '  Rust unit tests only: cargo test' && exit 1"
+
+# Single entry point for the entire suite against a running Surfpool instance.
+# Chains Rust unit tests then every jest integration suite; the first failure
+# aborts. Requires a FRESHLY STARTED Surfpool instance — `surfnet_resetNetwork`
+# is not a full reset, so restart Surfpool between full-suite runs to avoid
+# accumulated state stalling getProgramAccounts-based SDK calls:
+#   surfpool start --legacy-anchor-compatibility --no-tui
+# (Surfpool auto-deploys the program from target/deploy on start.)
+surfpool = "anchor run test-cargo && anchor run test-integration && anchor run test-composable && anchor run test-surfpool && anchor run test-topup && anchor run test-topup-swap && anchor run test-topup-sol && anchor run test-onetime && anchor run test-upto && anchor run test-fee-rebase"
 test-cargo = "cargo test"
 test-integration = "npx jest ./tests/tributary.test.ts --preset ts-jest"
+test-composable = "npx jest ./tests/composable.test.ts --preset ts-jest"
 test-surfpool = "npx jest ./tests/surfpool.test.ts --preset ts-jest"
+test-topup = "npx jest ./tests/topup-balance.test.ts --preset ts-jest"
+test-topup-swap = "npx jest ./tests/topup-balance-swap.test.ts --preset ts-jest"
+test-topup-sol = "npx jest ./tests/topup-balance-sol.test.ts --preset ts-jest"
+test-onetime = "npx jest ./tests/one-time-payment.test.ts --preset ts-jest"
+test-upto = "npx jest ./tests/up-to-policy.test.ts --preset ts-jest"
+test-fee-rebase = "npx jest ./tests/composable-fee-rebase.test.ts --preset ts-jest"
 
 [test]
 startup_wait = 20000
+
+# This deploys the program using --upgradeable-program, and the initial upgrade authority will be set to provider.wallet
+upgradeable = true

@@ -1,0 +1,59 @@
+beans:
+    path: apps/docs/beans
+    prefix: tributary-
+    id_length: 4
+    default_status: todo
+    default_type: task
+hordr:
+    concurrency: 3
+    primary_branch: develop
+    worktree_branch_prefix: bean-
+    agents:
+        implementer:
+            harness: opencode
+            persona: |
+                You implement a single task bean.
+                Read the bean: beans show <bean-id>
+                Implement the changes described in the bean body.
+
+                If the bean is a milestone or epic, enumerate EVERY descendant
+                before you start and re-check before declaring done. Status
+                flows up: a parent is `completed` only when ALL descendants
+                (not just direct children) are `completed`.
+
+                List the full tree (nest children{} as deep as the tree goes):
+
+                  beans query --json '{ bean(id: "<bean-id>") { title status children { id title status children { id title status children { id title status } } } } }'
+
+                For each descendant whose scope your work covers, update its
+                status to `completed` with a `## Summary of Changes` section
+                pointing at the commits where the work landed.
+
+                For a (child) beans, when done, first update the bean status
+                (and every descendant you satisfied), then use the commit skill
+                for all the changes, including the bean(s). For higher order types
+                (milestones, epics, features), the bean can only be marked completed
+                when all children are completed as well. Each child needs its
+                own commit!
+        reviewer:
+            harness: opencode
+            persona: |
+                You review a single task bean's implementation by comparing the
+                worktree with `develop`.
+
+                Read the bean: beans show <bean-id>
+                Review the git diff for correctness, style, and completeness.
+        open_pr:
+            harness: opencode
+            persona: |
+                You open pull requests with trailer Refs: <bean-id>. use
+                pr-create skill.
+    workflows:
+        implement:
+            worktree: true
+            steps:
+                - agent: implementer
+                - agent: reviewer
+                - agent: open_pr
+    routing:
+        default_workflow: implement

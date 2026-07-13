@@ -32,7 +32,7 @@ Traditional SaaS subscriptions converting to crypto often add friction, but Trib
 
 Tributary is built for Solana: non-custodial, supports SPL tokens natively, and leverages Solana's speed and low costs. Unlike other providers, which often require fiat settlement and centralized processing, Tributary enables native crypto subscriptions with full on-chain transparency. Businesses get predictable revenue without the high fees and custody risks of traditional processors.
 
-For developers, Tributary provides SDKs and React components for easy integration, competing directly with Web2 simplicity while maintaining Web3 sovereignty.
+For developers, Tributary provides SDKs and React components for easy integration — the simplicity of a hosted checkout, without surrendering self-custody.
 
 ## Technical and Operational
 
@@ -46,10 +46,10 @@ The protocol is open-source and will be audited by professional firms as soon as
 
 ### What makes Tributary unique on Solana?
 
-Tributary is the first and only non-custodial recurring payment protocol on Solana that uses delegation to automate subscriptions. This "sign once" model provides Web2-like UX with Web3 security, creating network effects through our provider ecosystem.
+Tributary is the non-custodial money-moving primitive on Solana: you delegate pull authority once — _set the riverbed once_ — and money moves itself within rules you set. Pull, don't push. That single delegation replaces a thousand signatures and is what creates network effects through the provider ecosystem.
 
 ## Getting Started
 
 ### How do I integrate Tributary?
 
-Check our [Developer Guide](integration.md) for SDK integration. The React components make it easy to add subscription buttons in minutes.
+Check our [Integration Guide](integration-guide/index.md) for SDK integration. The React components make it easy to add subscription buttons in minutes.

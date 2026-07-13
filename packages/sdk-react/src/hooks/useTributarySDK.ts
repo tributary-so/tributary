@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Tributary } from "@tributary-so/sdk";
+import { Tributary, type IWallet } from "@tributary-so/sdk";
 
 export function useTributarySDK(): Tributary | null {
   const { connection } = useConnection();
@@ -11,6 +11,9 @@ export function useTributarySDK(): Tributary | null {
       return null;
     }
 
-    return new Tributary(connection, wallet as any);
+    // wallet-adapter-react's wallet satisfies IWallet once publicKey and
+    // signTransaction are present. The previous `as any` cast bypassed
+    // type-checking entirely. See T-3 (review 2026-07-06).
+    return new Tributary(connection, wallet as unknown as IWallet);
   }, [connection, wallet]);
 }

@@ -6,9 +6,20 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { Tributary } from "../packages/sdk/src/sdk";
-import { getConfigPda, getUserPaymentPda } from "../packages/sdk/src/pda";
+import {
+  getConfigPda,
+  getGatewayPda,
+  getUserPaymentPda,
+} from "../packages/sdk/src/pda";
 import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
 import { Tributary as TributaryIdl } from "../target/types/tributary";
+
+const ADMIN_KEYPAIR = [
+  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
+  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
+  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
+  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
+];
 
 describe("Surfpool - Mainnet Integration", () => {
   const provider = anchor.AnchorProvider.env();
@@ -21,11 +32,14 @@ describe("Surfpool - Mainnet Integration", () => {
   let surfpool: SurfpoolHelper;
   let sdk: Tributary;
 
-  let admin: Keypair;
-  let user: Keypair;
-  let feeRecipient: Keypair;
-  let configPDA: PublicKey;
+  const admin = Keypair.fromSecretKey(Uint8Array.from(ADMIN_KEYPAIR));
+  const feeRecipient = Keypair.generate();
+  const gatewayAuthority = Keypair.generate();
+  const configPDA = getConfigPda(program.programId).address;
+  const user = Keypair.generate();
+
   let userPaymentPDA: PublicKey;
+  let gatewayPDA: PublicKey;
 
   beforeAll(async () => {
     surfpool = new SurfpoolHelper(connection);
@@ -39,11 +53,16 @@ describe("Surfpool - Mainnet Integration", () => {
 
     sdk = new Tributary(connection, wallet.payer);
 
-    admin = Keypair.generate();
-    user = Keypair.generate();
-    feeRecipient = Keypair.generate();
-
-    configPDA = getConfigPda(program.programId).address;
+    const configAccount = await sdk.getProgramConfig(configPDA);
+    configAccount.admin = admin.publicKey;
+    const serialized = await program.coder.accounts.encode(
+      "programConfig",
+      configAccount
+    );
+    await surfpool.setAccount({
+      publicKey: configPDA,
+      data: serialized.toString("hex"),
+    });
   });
 
   describe("USDC on mainnet-forked Surfnet", () => {
@@ -88,8 +107,39 @@ describe("Surfpool - Mainnet Integration", () => {
       expect(parsedData.parsed.info.tokenAmount.uiAmount).toBe(1000);
     });
 
+    test("create gateway", async () => {
+      await sdk.updateWallet(admin);
+
+      gatewayPDA = getGatewayPda(
+        gatewayAuthority.publicKey,
+        program.programId
+      ).address;
+
+      const gatewayIx = await sdk.createPaymentGateway(
+        gatewayAuthority.publicKey,
+        0, // 0 bps gateway fee — simplifies math
+        0, // schedulerShareBps — no scheduler cut in this test
+        feeRecipient.publicKey, // fee recipient
+        "Gateway",
+        "https://tributary.so"
+      );
+      const tx = new Transaction().add(gatewayIx);
+
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed",
+      });
+
+      const gatewayAccount = await sdk.getPaymentGateway(gatewayPDA);
+
+      expect(gatewayAccount!.authority).toEqual(gatewayAuthority.publicKey);
+      expect(gatewayAccount!.feeRecipient).toEqual(feeRecipient.publicKey);
+      expect(gatewayAccount!.gatewayFeeBps).toBe(0);
+      expect(gatewayAccount!.isActive).toBe(true);
+      expect(gatewayAccount!.createdAt.toNumber()).toBeGreaterThan(0);
+    });
+
     test("create user payment for USDC mint", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       userPaymentPDA = getUserPaymentPda(
         user.publicKey,

@@ -244,7 +244,7 @@ Combine payment types for complex scenarios:
 
 ## Next Steps
 
-- [Subscription Payments](./policies/subscription.md) - Detailed subscription docs
-- [Milestone Payments](./policies/milestone.md) - Milestone implementation
-- [Pay-as-you-go](./policies/payasyougo.md) - Usage-based billing
-- [Integration Options](./integration.md) - Get started
+- [Subscription Payments](./protocol-reference/payment-policy/subscription.md) - Detailed subscription docs
+- [Milestone Payments](./protocol-reference/payment-policy/milestone.md) - Milestone implementation
+- [Pay-as-you-go](./protocol-reference/payment-policy/payasyougo.md) - Usage-based billing
+- [Integration Options](./integration-guide/index.md) - Get started

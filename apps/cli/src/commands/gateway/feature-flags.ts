@@ -1,4 +1,3 @@
-import * as anchor from '@coral-xyz/anchor'
 import {Flags} from '@oclif/core'
 import {GATEWAY_FEATURES} from '@tributary-so/sdk'
 
@@ -46,8 +45,7 @@ export default class GatewayFeatureFlags extends BaseCommand {
     const sdk = await this.getSDK()
     const authorityPubkey = sdk.provider.publicKey
 
-    let instruction: anchor.web3.TransactionInstruction
-
+    let instruction
     if (flags.enable) {
       const flag = resolveFlag(flags.enable)
       if (flag === null) this.error(`Unknown flag: ${flags.enable}`)
@@ -64,8 +62,7 @@ export default class GatewayFeatureFlags extends BaseCommand {
       this.error('Specify --enable, --disable, or --set')
     }
 
-    const tx = new anchor.web3.Transaction().add(instruction)
-    const signature = await sdk.provider.sendAndConfirm(tx)
+    const signature = await this.send(instruction)
 
     this.output({
       authority: authorityPubkey.toString(),

@@ -1,4 +1,3 @@
-import * as anchor from '@coral-xyz/anchor'
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../lib/base-command.js'
@@ -6,8 +5,8 @@ import {parsePublicKey} from '../../lib/utils.js'
 
 export default class ProgramInitialize extends BaseCommand {
   static description = 'Initialize the Tributary program'
-static examples = ['<%= config.bin %> program initialize', '<%= config.bin %> program initialize --admin <PUBKEY>']
-static flags = {
+  static examples = ['<%= config.bin %> program initialize', '<%= config.bin %> program initialize --admin <PUBKEY>']
+  static flags = {
     ...BaseCommand.baseFlags,
     admin: Flags.string({
       char: 'a',
@@ -20,13 +19,9 @@ static flags = {
     const sdk = await this.getSDK()
 
     const adminPubkey = parsePublicKey(flags.admin ?? sdk.provider.publicKey.toString())
-    if (!adminPubkey) {
-      this.error('Invalid admin public key')
-    }
+    if (!adminPubkey) this.error('Invalid admin public key')
 
-    const instruction = await sdk.initialize(adminPubkey)
-    const tx = new anchor.web3.Transaction().add(instruction)
-    const signature = await sdk.provider.sendAndConfirm(tx)
+    const signature = await this.send(await sdk.initialize(adminPubkey, adminPubkey))
 
     this.output({
       admin: adminPubkey.toString(),

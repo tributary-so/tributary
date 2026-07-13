@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
@@ -18,8 +17,8 @@ jest.mock("../services/jwks", () => ({
 }));
 
 jest.mock("../middleware/rateLimit", () => ({
-  rateLimit: () => (req: any, res: any, next: any) => next(),
-  walletRateLimit: () => (req: any, res: any, next: any) => next(),
+  rateLimit: () => (_req: any, _res: any, next: any) => next(),
+  walletRateLimit: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.mock("../db", () => ({
@@ -30,7 +29,9 @@ import tokensRouter from "../routes/tokens";
 import { errorHandler } from "../middleware/errorHandler";
 import * as tokenIssuer from "../services/token-issuer";
 
-const mockIssueToken = tokenIssuer.issueToken as jest.Mock;
+const mockIssueToken = tokenIssuer.issueToken as jest.MockedFunction<
+  typeof tokenIssuer.issueToken
+>;
 
 function createApp(): Application {
   const app = express();
@@ -220,7 +221,7 @@ describe("POST /v1/tokens/issue", () => {
       new Error("Failed to read on-chain state")
     );
 
-    const response = await request(app)
+    await request(app)
       .post("/v1/tokens/issue")
       .send({ walletPublicKey: "7xKpV2BZQ3HfeRZFMfWVBpDCmCN8eYwGmCjL7m3mVqR" })
       .expect(500);

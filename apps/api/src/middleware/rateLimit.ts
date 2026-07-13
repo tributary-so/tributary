@@ -69,3 +69,15 @@ export function walletRateLimit(options: {
     },
   });
 }
+
+/**
+ * IP-only rate limit. Used by anonymous endpoints (e.g. /v1/assets/*)
+ * where no wallet signature is available to key on. Wraps `rateLimit`
+ * with an explicit name for readability at call sites.
+ */
+export function ipRateLimit(options: {
+  windowMs: number;
+  maxRequests: number;
+}) {
+  return rateLimit(options);
+}

@@ -6,7 +6,9 @@ Hosted checkout page for Tributary recurring payments. Create shareable checkout
 
 - **Zero-Backend Checkout**: Generate checkout URLs with all payment data embedded—no server needed
 - **Subscription Support**: Recurring payments with flexible scheduling (weekly, monthly, yearly)
-- **One-Time Payments**: Simple pay-per-use checkout flows
+- **One-Time Payments**: Simple pay-per-use checkout flows (direct SPL transfer)
+- **Policy Variants**: Milestone, pay-as-you-go, one-time policy, and UpTo authorization forms under `/policy/`
+- **Direct Payments**: Simple pay-per-use checkout flows (immediate SPL transfer, no policy)
 - **Non-Custodial**: Funds stay in user wallets with secure delegation-based automation
 - **Multi-Token Support**: Configurable token mint (defaults to USDC on Solana)
 - **Custom Redirects**: Success and cancel URLs for post-payment flows
@@ -111,7 +113,7 @@ apps/checkout/
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Main App (app.tsx)                  │
-│  HashRouter + Routes: /, /subscribe/*, /pay/*          │
+│  HashRouter + Routes: /, /subscribe/*, /pay/*, /policy/*   │
 └─────────────────────────────────────────────────────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
@@ -204,11 +206,15 @@ Success state → Optional redirect
 
 **Checkout Forms**
 
-| Component          | Purpose                          | Route          |
-| ------------------ | -------------------------------- | -------------- |
-| `CheckoutLinkForm` | Generate shareable checkout URLs | `/`            |
-| `PayForm`          | One-time payment checkout        | `/pay/*`       |
-| `CheckoutForm`     | Subscription checkout            | `/subscribe/*` |
+| Component           | Purpose                                  | Route          |
+| ------------------- | ---------------------------------------- | -------------- |
+| `CheckoutLinkForm`  | Generate shareable checkout URLs (all 6) | `/`            |
+| `PayForm`           | Direct-transfer one-time checkout        | `/pay/*`       |
+| `CheckoutForm`      | Subscription checkout                    | `/subscribe/*` |
+| `MilestoneForm`     | Milestone policy authorization           | `/policy/*`    |
+| `PayAsYouGoForm`    | Pay-as-you-go policy authorization       | `/policy/*`    |
+| `OneTimePolicyForm` | One-time policy authorization            | `/policy/*`    |
+| `UpToForm`          | UpTo variable-amount authorization       | `/policy/*`    |
 
 **Order Summary (`order-summary.tsx`)**
 
@@ -302,6 +308,29 @@ Encoded data includes:
 - `successUrl`: Redirect after success
 - `cancelUrl`: Redirect on cancel
 
+### Policy Links (milestone / payAsYouGo / oneTime / upTo)
+
+```
+https://yourdomain.com/#/policy/{BASE64_ENCODED_DATA}
+```
+
+The unified `/policy/` path hosts the four non-subscription, non-transfer
+PaymentPolicy variants. The `mode` discriminator inside the blob selects
+which form the checkout renders:
+
+| `mode`       | Variant       | Notable encoded fields                                                           |
+| ------------ | ------------- | -------------------------------------------------------------------------------- |
+| `milestone`  | Milestone     | `milestoneAmounts`, `milestoneTimestamps`, `releaseCondition`, `totalMilestones` |
+| `payAsYouGo` | Pay-as-you-go | `maxAmountPerPeriod`, `maxChunkAmount`, `periodLengthSeconds`                    |
+| `oneTime`    | OneTime       | `amount`, `dueDate?`, `expiryDate?`                                              |
+| `upTo`       | UpTo          | `maxAmount`, `validAfter?`, `deadline`                                           |
+
+All policy variants also carry `gateway`, `recipient`, `tokenMint`,
+`trackingId`, `successUrl`, `cancelUrl`, and an optional `cluster`
+(`mainnet`/`devnet`/`testnet`, defaults to `mainnet`). Encoding uses
+base64url(JSON) — see `packages/payments/src/core/session.ts` for the
+full field map and `EncodedSessionData` shape.
+
 ## Integration with Tributary SDK
 
 The checkout app integrates with the Tributary SDK through a wrapper layer:
@@ -350,6 +379,20 @@ import { getTokenSymbol } from "@tributary-so/sdk";
 
 ## Payment Types Supported
 
+### Direct payment vs OneTime policy
+
+Tributary distinguishes two patterns that both move tokens once:
+
+| Pattern                       | Mechanism                                    | Creates policy? | Pausable / deletable? | Use when                                                             |
+| ----------------------------- | -------------------------------------------- | --------------- | --------------------- | -------------------------------------------------------------------- |
+| **Direct payment** (this app) | Standalone `transfer` instruction (ADR-0004) | No              | No                    | Hosted checkout: pay once, immediate                                 |
+| **OneTime policy** (ADR-0019) | `PaymentPolicy` with `PolicyType::OneTime`   | Yes             | Yes                   | Scheduled single-shot pull, full gateway lifecycle, composable hooks |
+
+This app's `/pay/{blob}` route implements the **direct payment** path — funds
+transfer immediately via SPL `transfer`, no policy is created, no gateway fees
+apply. For policy-based single-shot flows use the `OneTime PolicyType` via
+the SDK (`createOneTimePayment`) or the `apps/showcase-payment-policies` app.
+
 ### 1. Subscriptions
 
 Recurring payments with automatic execution:
@@ -378,7 +421,9 @@ Recurring payments with automatic execution:
 
 ### 2. One-Time Payments
 
-Single, non-recurring payments:
+Single, non-recurring payments (hosted-checkout "direct payment" path —
+distinct from the **OneTime PolicyType** ADR-0019; see
+[Direct payment vs OneTime policy](#direct-payment-vs-onetime-policy) below):
 
 - **Amount**: Fixed payment amount
 - **Tracking ID**: Optional identifier for your records
@@ -397,6 +442,25 @@ Single, non-recurring payments:
   cancelUrl: "https://yourapp.com/order/12345/cancel"
 }
 ```
+
+### 3. Policy Variants (under `/policy/`)
+
+The four PaymentPolicy variants share a `/policy/{blob}` URL path; the
+`mode` field inside the blob picks the rendered form. They all create a
+real PaymentPolicy PDA on-chain (unlike the direct-transfer `payment`
+mode above).
+
+| Mode         | Use case                                                    | Route                       |
+| ------------ | ----------------------------------------------------------- | --------------------------- |
+| `milestone`  | Escrowed payments released as milestones become due         | `/policy/{blob}#milestone`  |
+| `payAsYouGo` | Per-period usage cap; recipient claims in chunks            | `/policy/{blob}#payAsYouGo` |
+| `oneTime`    | Single fixed payment scheduled within a window              | `/policy/{blob}#oneTime`    |
+| `upTo`       | Single variable-amount settlement bounded by max + deadline | `/policy/{blob}#upTo`       |
+
+See `packages/payments/src/core/session.ts` (`MilestoneParams`,
+`PayAsYouGoParams`, `OneTimePolicyParams`, `UpToParams`) for the exact
+field shapes. The merchant-side link generator in `CheckoutLinkForm`
+exposes all six modes.
 
 ## Deployment
 
@@ -498,7 +562,7 @@ Build and deploy the `dist/` folder to any static hosting service:
 
 - Ensure checkout URL is complete (no truncated data)
 - Verify base64 encoding is intact
-- Check that URL format is `/#/subscribe/...` or `/#/pay/...`
+- Check that URL format is `/#/subscribe/...`, `/#/pay/...`, or `/#/policy/...`
 
 **Wallet connection fails:**
 

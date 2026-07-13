@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import type { Express } from "express";
 import {
   insertWebhook,
   getAllWebhooks,
@@ -22,6 +21,52 @@ interface UpdateWebhookBody {
   active: boolean;
 }
 
+/**
+ * @openapi
+ * /v1/webhooks:
+ *   post:
+ *     summary: Register a webhook
+ *     description: Creates a new webhook subscription for a gateway.
+ *     tags: [Webhooks]
+ *     operationId: createWebhook
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [gateway_pubkey, endpoint_url]
+ *             properties:
+ *               gateway_pubkey:
+ *                 type: string
+ *                 minLength: 32
+ *                 maxLength: 44
+ *                 description: Gateway authority public key.
+ *               endpoint_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: HTTPS (or HTTP) URL Tributary will POST events to.
+ *               active:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether the webhook is active immediately.
+ *     responses:
+ *       201:
+ *         description: Webhook created.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Webhook' }
+ *       400:
+ *         description: Missing fields or invalid URL.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal error.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 router.post("/", async (req: Request, res: Response) => {
   try {
     const {
@@ -59,6 +104,39 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /v1/webhooks:
+ *   get:
+ *     summary: List webhooks
+ *     description: Returns all webhooks, optionally filtered to active only and paginated.
+ *     tags: [Webhooks]
+ *     operationId: listWebhooks
+ *     parameters:
+ *       - in: query
+ *         name: active_only
+ *         schema: { type: boolean, default: false }
+ *         description: When `true`, return only active webhooks.
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, minimum: 0 }
+ *     responses:
+ *       200:
+ *         description: Webhook list.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Webhook' }
+ *       500:
+ *         description: Internal error.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 router.get("/", async (req: Request, res: Response) => {
   try {
     const { active_only, limit, offset } = req.query;
@@ -76,6 +154,36 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /v1/webhooks/gateway/{gatewayPubkey}:
+ *   get:
+ *     summary: List webhooks for a gateway
+ *     description: Returns all webhooks registered for the given gateway.
+ *     tags: [Webhooks]
+ *     operationId: listWebhooksByGateway
+ *     parameters:
+ *       - in: path
+ *         name: gatewayPubkey
+ *         required: true
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *       - in: query
+ *         name: active_only
+ *         schema: { type: boolean, default: false }
+ *     responses:
+ *       200:
+ *         description: Webhook list for the gateway.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Webhook' }
+ *       500:
+ *         description: Internal error.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 router.get("/gateway/:gatewayPubkey", async (req: Request, res: Response) => {
   try {
     const { gatewayPubkey } = req.params;
@@ -92,6 +200,90 @@ router.get("/gateway/:gatewayPubkey", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /v1/webhooks/{id}:
+ *   get:
+ *     summary: Get a webhook by ID
+ *     tags: [Webhooks]
+ *     operationId: getWebhook
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       200:
+ *         description: Webhook record.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Webhook' }
+ *       400:
+ *         description: Invalid ID.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Not found.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *   put:
+ *     summary: Toggle a webhook's active flag
+ *     tags: [Webhooks]
+ *     operationId: updateWebhook
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [active]
+ *             properties:
+ *               active: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Updated webhook.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Webhook' }
+ *       400:
+ *         description: Invalid ID or body.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Not found.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *   delete:
+ *     summary: Delete a webhook
+ *     tags: [Webhooks]
+ *     operationId: deleteWebhook
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       204: { description: Deleted. }
+ *       400:
+ *         description: Invalid ID.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Not found.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 router.get("/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -165,6 +357,31 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /v1/webhooks/gateway/{gatewayPubkey}:
+ *   delete:
+ *     summary: Delete all webhooks for a gateway
+ *     tags: [Webhooks]
+ *     operationId: deleteWebhooksByGateway
+ *     parameters:
+ *       - in: path
+ *         name: gatewayPubkey
+ *         required: true
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *     responses:
+ *       204: { description: Deleted. }
+ *       404:
+ *         description: No webhooks found for gateway.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal error.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 router.delete(
   "/gateway/:gatewayPubkey",
   async (req: Request, res: Response) => {

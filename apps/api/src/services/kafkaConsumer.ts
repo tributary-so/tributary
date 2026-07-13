@@ -76,7 +76,7 @@ export class KafkaPaymentConsumer {
   }
 
   private async handleMessage(payload: EachMessagePayload): Promise<void> {
-    const { topic, partition, message } = payload;
+    const { message } = payload;
 
     if (!message.value) {
       console.warn("Received empty Kafka message");

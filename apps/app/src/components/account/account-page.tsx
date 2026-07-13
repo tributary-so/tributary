@@ -3,26 +3,60 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import * as anchor from '@coral-xyz/anchor'
 import { useSDK, createAndSendTransaction } from '@/lib/client'
-import { decodeMemo, type PaymentPolicy, type UserPayment, type PaymentGateway } from '@tributary-so/sdk'
-import { Play, Pause, Trash2, RotateCcw, Copy, Check, RefreshCw, AlertCircle, Target, Zap, Inbox } from '../../icons'
+import {
+  decodeMemo,
+  getPreValidationPda,
+  getPostValidationPda,
+  parseValidationPda,
+  decodeAssertionData,
+  type PaymentPolicy,
+  type ComposablePolicy,
+  type UserPayment,
+  type PaymentGateway,
+  type ReferralAccount,
+} from '@tributary-so/sdk'
+import {
+  Play,
+  Pause,
+  Trash2,
+  RotateCcw,
+  Copy,
+  Check,
+  RefreshCw,
+  AlertCircle,
+  Target,
+  Zap,
+  Inbox,
+  Send,
+  ArrowUp,
+} from '../../icons'
 import { addToast } from '@heroui/react'
 import { formatDistanceToNow, formatDuration, intervalToDuration, differenceInSeconds, addSeconds } from 'date-fns'
 import { PublicKeyComponent } from '../ui/public-key'
-import { getTokenPrecisionAtom, getTokenSymbolAtom } from '@/lib/token-store'
-import { useAtomValue } from 'jotai'
+import { getTokenPrecisionAtom, getTokenSymbolAtom, setTokenMetadataAtom, tokenMetadataAtom } from '@/lib/token-store'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useResolveMints } from '@tributary-so/tokens-client/react'
+import { API_BASE_URL } from '@/lib/api'
 
 interface UserPaymentWithPolicies {
   userPaymentAddress: PublicKey
   userPayment: UserPayment
   policies: Array<{ publicKey: PublicKey; account: PaymentPolicy }>
+  composablePolicies: Array<{ publicKey: PublicKey; account: ComposablePolicy }>
 }
 
-type PolicyTypeKey = 'subscription' | 'milestone' | 'payAsYouGo'
+type SelectedPolicy =
+  | { kind: 'regular'; publicKey: PublicKey; account: PaymentPolicy }
+  | { kind: 'composable'; publicKey: PublicKey; account: ComposablePolicy }
+
+type PolicyTypeKey = 'subscription' | 'milestone' | 'payAsYouGo' | 'oneTime' | 'upTo'
 type StatusKey = 'active' | 'paused' | 'cancelled' | 'completed'
 
 function getPolicyTypeKey(policy: PaymentPolicy): PolicyTypeKey {
   if ('subscription' in policy.policyType) return 'subscription'
   if ('milestone' in policy.policyType) return 'milestone'
+  if ('oneTime' in policy.policyType) return 'oneTime'
+  if ('upTo' in policy.policyType) return 'upTo'
   return 'payAsYouGo'
 }
 
@@ -69,6 +103,22 @@ const POLICY_TYPE_CONFIG: Record<
     bgColor: 'bg-payasyougo-50',
     borderColor: 'border-payasyougo-200',
     description: 'Usage-based payments',
+  },
+  oneTime: {
+    Icon: Send,
+    label: 'One-time',
+    color: 'text-oneTime-700',
+    bgColor: 'bg-oneTime-50',
+    borderColor: 'border-oneTime-200',
+    description: 'Single payment',
+  },
+  upTo: {
+    Icon: ArrowUp,
+    label: 'Up to',
+    color: 'text-upTo-700',
+    bgColor: 'bg-upTo-50',
+    borderColor: 'border-upTo-200',
+    description: 'Variable-amount single settlement',
   },
 }
 
@@ -479,6 +529,20 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
         }
       }
     }
+    if ('oneTime' in policy.account.policyType) {
+      const oneTime = policy.account.policyType.oneTime
+      // A one-time policy is "overdue" only when due_date is positive and past.
+      // Immediate (due_date <= 0) policies just show "Due now" — not red.
+      if (oneTime && oneTime.dueDate && oneTime.dueDate.toNumber() > 0) {
+        return new Date(oneTime.dueDate.toNumber() * 1000) < new Date()
+      }
+    }
+    if ('upTo' in policy.account.policyType) {
+      const upTo = policy.account.policyType.upTo
+      if (upTo && upTo.deadline && upTo.deadline.toNumber() > 0) {
+        return new Date(upTo.deadline.toNumber() * 1000) < new Date()
+      }
+    }
     return false
   }, [policy.account])
 
@@ -536,6 +600,71 @@ function PolicyCard({ policy, isSelected, onClick, getNextPaymentDue }: PolicyCa
   )
 }
 
+interface ComposablePolicyCardProps {
+  policy: { publicKey: PublicKey; account: ComposablePolicy }
+  isSelected: boolean
+  onClick: () => void
+}
+
+function ComposablePolicyCard({ policy, isSelected, onClick }: ComposablePolicyCardProps) {
+  const statusKey = getStatusKey(policy.account as unknown as PaymentPolicy)
+  const memo = decodeMemo(policy.account.memo || [])
+  const forwardProgram = policy.account.forwardConfig?.instructionConstraint?.programId
+  const hasForward = forwardProgram && forwardProgram.toString() !== PublicKey.default.toString()
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        relative p-3 sm:p-4 cursor-pointer transition-all duration-200 border-b border-border
+        hover:bg-muted/30 group active:bg-muted/50
+        ${
+          isSelected
+            ? 'bg-linear-to-r from-violet-50 to-background border-l-4 border-l-violet-600'
+            : 'border-l-4 border-l-transparent'
+        }
+      `}
+    >
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
+              <Zap className="w-3 h-3" />
+              Composable
+            </span>
+            <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+              ID: {policy.account.policyId}
+            </div>
+          </div>
+        </div>
+        <StatusBadge status={statusKey} isOverdue={false} />
+      </div>
+
+      <div className="text-xs sm:text-sm font-medium text-foreground mb-1 truncate">{memo || 'Untitled Policy'}</div>
+
+      <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mb-2 min-w-0">
+        <span className="shrink-0">To:</span>
+        <span className="truncate">
+          <PublicKeyComponent publicKey={policy.account.recipient} />
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] sm:text-xs gap-2">
+        <span className="text-muted-foreground shrink-0">
+          {policy.account.paymentCount} payment{policy.account.paymentCount !== 1 ? 's' : ''}
+        </span>
+        <span className="font-medium truncate text-violet-600">{hasForward ? 'Forward' : 'Direct'}</span>
+      </div>
+
+      {isSelected && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
+          →
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface DetailPanelProps {
   policy: { publicKey: PublicKey; account: PaymentPolicy }
   userPayment: UserPaymentWithPolicies
@@ -549,7 +678,7 @@ interface DetailPanelProps {
   executingPayments: Set<string>
   togglingPolicies: Set<string>
   deletingPolicies: Set<string>
-  referralAccounts: Map<string, any>
+  referralAccounts: Map<string, ReferralAccount>
 }
 
 function SubscriptionDetailPanel(props: DetailPanelProps) {
@@ -973,6 +1102,651 @@ function PayAsYouGoDetailPanel(props: DetailPanelProps) {
   )
 }
 
+function OneTimeDetailPanel(props: DetailPanelProps) {
+  const {
+    policy,
+    userPayment,
+    formatAmount,
+    getNextPaymentDue,
+    isPaymentDue,
+    onExecute,
+    onToggle,
+    onDelete,
+    executingPayments,
+    togglingPolicies,
+    deletingPolicies,
+    referralAccounts,
+  } = props
+  const oneTime = policy.account.policyType.oneTime!
+  const tokenMint = userPayment.userPayment.tokenMint
+  const status = getStatusKey(policy.account)
+  const isCompleted = status === 'completed'
+
+  const dueDate = oneTime.dueDate && oneTime.dueDate.toNumber() > 0 ? new Date(oneTime.dueDate.toNumber() * 1000) : null
+  const expiryDate = oneTime.expiryDate ? new Date(oneTime.expiryDate.toNumber() * 1000) : null
+  const now = new Date()
+  const isExpired = !isCompleted && expiryDate !== null && expiryDate < now
+  const isOverdue = !isCompleted && dueDate !== null && dueDate < now && !isExpired
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <Send className="w-7 h-7 text-oneTime-600" />
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">One-time Payment</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Single fixed-amount payment</p>
+            </div>
+          </div>
+          <StatusBadge status={status} isOverdue={isOverdue || isExpired} />
+        </div>
+
+        <div className="flex gap-2 self-start">
+          <ActionButton
+            onClick={onExecute}
+            loading={executingPayments.has(policy.publicKey.toString())}
+            disabled={!isPaymentDue || isCompleted}
+            variant="primary"
+            title={
+              isCompleted
+                ? 'Already executed'
+                : isExpired
+                ? 'Policy expired'
+                : isPaymentDue
+                ? 'Execute payment'
+                : 'Not due yet'
+            }
+          >
+            <Play className="h-4 w-4" />
+          </ActionButton>
+          <ActionButton
+            onClick={onToggle}
+            loading={togglingPolicies.has(policy.publicKey.toString())}
+            disabled={isCompleted}
+            variant="warning"
+            title={
+              isCompleted
+                ? 'Completed policies cannot be paused'
+                : status === 'active'
+                ? 'Pause policy'
+                : 'Resume policy'
+            }
+          >
+            {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </ActionButton>
+          <ActionButton
+            onClick={onDelete}
+            loading={deletingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="danger"
+            title="Delete policy"
+          >
+            <Trash2 className="h-4 w-4" />
+          </ActionButton>
+        </div>
+      </div>
+
+      <div className="bg-linear-to-br from-oneTime-50 to-oneTime-100/50 p-4 sm:p-5 border border-oneTime-100">
+        <div className="text-xs sm:text-sm text-oneTime-600 font-medium mb-1">Payment Amount</div>
+        <div className="text-2xl sm:text-3xl font-bold text-oneTime-900 mb-1 sm:mb-2 truncate">
+          {formatAmount(oneTime.amount.toString(), tokenMint)}
+        </div>
+        <div className="text-xs sm:text-sm text-oneTime-600">
+          {isCompleted ? 'Paid out' : getNextPaymentDue(policy.account)}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Due Date
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
+            {dueDate ? dueDate.toLocaleString() : 'Immediate'}
+          </div>
+        </div>
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Expires
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
+            {expiryDate ? expiryDate.toLocaleString() : 'Never'}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label="Total Paid" value={formatAmount(policy.account.totalPaid.toString(), tokenMint)} />
+        <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
+        <StatCard label="Status" value={isCompleted ? 'Done' : isExpired ? 'Expired' : 'Pending'} />
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
+          <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
+          <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
+          <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
+          {(() => {
+            const referralAccount = referralAccounts.get(policy.account.gateway.toString())
+            return referralAccount ? (
+              <DetailRow label="Referral Code" value={decodeMemo(referralAccount.referralCode)} copyable />
+            ) : null
+          })()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UpToDetailPanel(props: DetailPanelProps) {
+  const {
+    policy,
+    userPayment,
+    formatAmount,
+    getNextPaymentDue,
+    isPaymentDue,
+    onExecute,
+    onToggle,
+    onDelete,
+    executingPayments,
+    togglingPolicies,
+    deletingPolicies,
+    referralAccounts,
+  } = props
+  const upTo = policy.account.policyType.upTo!
+  const tokenMint = userPayment.userPayment.tokenMint
+  const status = getStatusKey(policy.account)
+  const isCompleted = status === 'completed'
+
+  const validAfter = upTo.validAfter.toNumber() > 0 ? new Date(upTo.validAfter.toNumber() * 1000) : null
+  const deadline = upTo.deadline.toNumber() > 0 ? new Date(upTo.deadline.toNumber() * 1000) : null
+  const now = new Date()
+  const isExpired = !isCompleted && deadline !== null && deadline < now
+  const isOverdue = !isCompleted && deadline !== null && deadline < now
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <ArrowUp className="w-7 h-7 text-upTo-600" />
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">Up to Payment</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Variable-amount single settlement</p>
+            </div>
+          </div>
+          <StatusBadge status={status} isOverdue={isOverdue || isExpired} />
+        </div>
+
+        <div className="flex gap-2 self-start">
+          <ActionButton
+            onClick={onExecute}
+            loading={executingPayments.has(policy.publicKey.toString())}
+            disabled={!isPaymentDue || isCompleted}
+            variant="primary"
+            title={
+              isCompleted
+                ? 'Already settled'
+                : isExpired
+                ? 'Policy expired'
+                : isPaymentDue
+                ? 'Execute settlement'
+                : 'Not yet valid'
+            }
+          >
+            <Play className="h-4 w-4" />
+          </ActionButton>
+          <ActionButton
+            onClick={onToggle}
+            loading={togglingPolicies.has(policy.publicKey.toString())}
+            disabled={isCompleted}
+            variant="warning"
+            title={
+              isCompleted
+                ? 'Completed policies cannot be paused'
+                : status === 'active'
+                ? 'Pause policy'
+                : 'Resume policy'
+            }
+          >
+            {status === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </ActionButton>
+          <ActionButton
+            onClick={onDelete}
+            loading={deletingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="danger"
+            title="Delete policy"
+          >
+            <Trash2 className="h-4 w-4" />
+          </ActionButton>
+        </div>
+      </div>
+
+      <div className="bg-linear-to-br from-upTo-50 to-upTo-100/50 p-4 sm:p-5 border border-upTo-100">
+        <div className="text-xs sm:text-sm text-upTo-600 font-medium mb-1">Maximum Amount</div>
+        <div className="text-2xl sm:text-3xl font-bold text-upTo-900 mb-1 sm:mb-2 truncate">
+          {formatAmount(upTo.maxAmount.toString(), tokenMint)}
+        </div>
+        <div className="text-xs sm:text-sm text-upTo-600">
+          {isCompleted ? 'Settled' : getNextPaymentDue(policy.account)}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Valid After
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
+            {validAfter ? validAfter.toLocaleString() : 'Immediate'}
+          </div>
+        </div>
+        <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+            Deadline
+          </div>
+          <div className="text-xs sm:text-sm font-medium text-foreground">
+            {deadline ? deadline.toLocaleString() : 'N/A'}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label="Total Paid" value={formatAmount(policy.account.totalPaid.toString(), tokenMint)} />
+        <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
+        <StatCard label="Status" value={isCompleted ? 'Done' : isExpired ? 'Expired' : 'Pending'} />
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
+          <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
+          <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
+          <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
+          {(() => {
+            const referralAccount = referralAccounts.get(policy.account.gateway.toString())
+            return referralAccount ? (
+              <DetailRow label="Referral Code" value={decodeMemo(referralAccount.referralCode)} copyable />
+            ) : null
+          })()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ComposablePolicyTypeSection({
+  policyType,
+  formatAmount,
+  tokenMint,
+  getInterval,
+}: {
+  policyType: PaymentPolicy['policyType']
+  formatAmount: (rawAmount: string | null, tokenMint: PublicKey) => string
+  tokenMint: PublicKey
+  getInterval: (policy: PaymentPolicy) => string
+}) {
+  const pt = policyType as Record<string, unknown>
+
+  const renderFields = () => {
+    if (pt.subscription) {
+      const sub = pt.subscription as Record<string, unknown>
+      const freqKey = Object.keys((sub.paymentFrequency as Record<string, unknown>) ?? {})[0]
+      return (
+        <>
+          <StatCard label="Amount" value={formatAmount((sub.amount as anchor.BN).toString(), tokenMint)} />
+          <StatCard label="Frequency" value={freqKey ?? 'N/A'} />
+          <StatCard label="Auto-Renew" value={sub.autoRenew ? 'Yes' : 'No'} />
+        </>
+      )
+    }
+    if (pt.milestone) {
+      const ms = pt.milestone as Record<string, unknown>
+      const amounts = ms.milestoneAmounts as anchor.BN[]
+      const total = amounts?.reduce((sum, a) => sum.add(a), new anchor.BN(0))
+      return (
+        <>
+          <StatCard label="Milestones" value={`${ms.currentMilestone}/${ms.totalMilestones}`} />
+          <StatCard label="Total Amount" value={formatAmount(total?.toString() ?? '0', tokenMint)} />
+          <StatCard label="Escrow" value={formatAmount((ms.escrowAmount as anchor.BN)?.toString() ?? '0', tokenMint)} />
+        </>
+      )
+    }
+    if (pt.payAsYouGo) {
+      const payg = pt.payAsYouGo as Record<string, unknown>
+      return (
+        <>
+          <StatCard
+            label="Max per TX"
+            value={formatAmount((payg.maxChunkAmount as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Max per Period"
+            value={formatAmount((payg.maxAmountPerPeriod as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Period Total"
+            value={formatAmount((payg.currentPeriodTotal as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+        </>
+      )
+    }
+    if (pt.oneTime) {
+      const ot = pt.oneTime as Record<string, unknown>
+      const dueDate = (ot.dueDate as anchor.BN)?.toNumber()
+      const expiry = ot.expiryDate as anchor.BN | undefined
+      return (
+        <>
+          <StatCard label="Amount" value={formatAmount((ot.amount as anchor.BN)?.toString() ?? '0', tokenMint)} />
+          <StatCard
+            label="Due Date"
+            value={dueDate && dueDate > 0 ? new Date(dueDate * 1000).toLocaleDateString() : 'Immediate'}
+          />
+          <StatCard
+            label="Expires"
+            value={expiry && expiry.toNumber() > 0 ? new Date(expiry.toNumber() * 1000).toLocaleDateString() : 'Never'}
+          />
+        </>
+      )
+    }
+    if (pt.upTo) {
+      const ut = pt.upTo as Record<string, unknown>
+      const validAfter = (ut.validAfter as anchor.BN)?.toNumber()
+      const deadline = (ut.deadline as anchor.BN)?.toNumber()
+      return (
+        <>
+          <StatCard
+            label="Max Amount"
+            value={formatAmount((ut.maxAmount as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Valid After"
+            value={validAfter && validAfter > 0 ? new Date(validAfter * 1000).toLocaleDateString() : 'Immediate'}
+          />
+          <StatCard
+            label="Deadline"
+            value={deadline && deadline > 0 ? new Date(deadline * 1000).toLocaleDateString() : 'N/A'}
+          />
+        </>
+      )
+    }
+    return null
+  }
+
+  const fields = renderFields()
+  if (!fields) return null
+
+  const policyProxy = { policyType } as unknown as PaymentPolicy
+
+  return (
+    <div className="border-t border-border pt-3 sm:pt-4">
+      <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+        Payment Schedule
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">{fields}</div>
+      {Boolean(pt.subscription) && (
+        <div className="text-xs sm:text-sm text-muted-foreground mt-2">every {getInterval(policyProxy)}</div>
+      )}
+    </div>
+  )
+}
+
+function AssertionInfo({
+  decoded,
+}: {
+  decoded: { kind: string; logLevel: number; assertions: unknown[] } | null | undefined
+}) {
+  if (decoded === undefined) {
+    return <span className="text-xs text-muted-foreground">Loading…</span>
+  }
+  if (decoded === null) {
+    return <span className="text-xs text-muted-foreground">Unable to decode</span>
+  }
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-medium text-status-active-700">{decoded.kind}</div>
+      {decoded.assertions.map((assertion, i) => {
+        const a = assertion as Record<string, unknown>
+        const aKind = String(a.kind ?? '?')
+        const op = String(a.operator ?? '?')
+        const valueKeys = Object.keys(a).filter((k) => k !== 'kind' && k !== 'operator')
+        const val = valueKeys.map((k) => String(a[k])).join(', ')
+        return (
+          <div key={i} className="text-[11px] text-muted-foreground font-mono">
+            {aKind} {op} {val}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ComposableDetailPanel({
+  policy,
+  userPayment,
+  formatAmount,
+  onToggle,
+  onDelete,
+  togglingPolicies,
+  deletingPolicies,
+  getInterval,
+  programId,
+}: {
+  policy: { publicKey: PublicKey; account: ComposablePolicy }
+  userPayment: UserPaymentWithPolicies
+  formatAmount: (rawAmount: string | null, tokenMint: PublicKey) => string
+  onToggle: () => void
+  onDelete: () => void
+  togglingPolicies: Set<string>
+  deletingPolicies: Set<string>
+  getInterval: (policy: PaymentPolicy) => string
+  programId: PublicKey
+}) {
+  const { connection } = useConnection()
+  const statusKey = getStatusKey(policy.account as unknown as PaymentPolicy)
+  const policyTypeKey = getPolicyTypeKey(policy.account as unknown as PaymentPolicy)
+  const memo = decodeMemo(policy.account.memo || [])
+  const tokenMint = userPayment.userPayment.tokenMint
+  const fc = policy.account.forwardConfig
+  const forwardProgram = fc?.instructionConstraint?.programId
+  const hasForward = forwardProgram && forwardProgram.toString() !== PublicKey.default.toString()
+  const inputMint = fc?.inputMint
+  const outputMint = fc?.outputMint
+  const isActMode = hasForward && outputMint && outputMint.toString() === PublicKey.default.toString()
+  const preValidationEnabled =
+    policy.account.preValidation &&
+    typeof policy.account.preValidation === 'object' &&
+    'programCall' in (policy.account.preValidation as Record<string, unknown>)
+  const postValidationEnabled =
+    policy.account.postValidation &&
+    typeof policy.account.postValidation === 'object' &&
+    'programCall' in (policy.account.postValidation as Record<string, unknown>)
+
+  const [preDecoded, setPreDecoded] = useState<
+    { kind: string; logLevel: number; assertions: unknown[] } | null | undefined
+  >(undefined)
+  const [postDecoded, setPostDecoded] = useState<
+    { kind: string; logLevel: number; assertions: unknown[] } | null | undefined
+  >(undefined)
+
+  useEffect(() => {
+    if (!preValidationEnabled && !postValidationEnabled) return
+    let cancelled = false
+    const fetchAssertions = async () => {
+      try {
+        if (preValidationEnabled) {
+          const { address } = getPreValidationPda(policy.publicKey, programId)
+          const acct = await connection.getAccountInfo(address)
+          if (cancelled) return
+          if (acct) {
+            const parsed = parseValidationPda(acct.data)
+            setPreDecoded(decodeAssertionData(parsed.data))
+          } else {
+            setPreDecoded(null)
+          }
+        }
+        if (postValidationEnabled) {
+          const { address } = getPostValidationPda(policy.publicKey, programId)
+          const acct = await connection.getAccountInfo(address)
+          if (cancelled) return
+          if (acct) {
+            const parsed = parseValidationPda(acct.data)
+            setPostDecoded(decodeAssertionData(parsed.data))
+          } else {
+            setPostDecoded(null)
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setPreDecoded(null)
+          setPostDecoded(null)
+        }
+      }
+    }
+    fetchAssertions()
+    return () => {
+      cancelled = true
+    }
+  }, [policy.publicKey, connection, programId, preValidationEnabled, postValidationEnabled])
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <Zap className="w-7 h-7 text-violet-600" />
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                Composable Policy
+                <span className="ml-2 text-xs sm:text-sm font-normal text-muted-foreground">
+                  · {POLICY_TYPE_CONFIG[policyTypeKey].label}
+                </span>
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Programmable pull payment</p>
+            </div>
+          </div>
+          <StatusBadge status={statusKey} isOverdue={false} />
+        </div>
+
+        <div className="flex gap-2 self-start">
+          <ActionButton
+            onClick={onToggle}
+            loading={togglingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="warning"
+            title={statusKey === 'active' ? 'Pause composable policy' : 'Resume composable policy'}
+          >
+            {statusKey === 'active' ? <Pause className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </ActionButton>
+          <ActionButton
+            onClick={onDelete}
+            loading={deletingPolicies.has(policy.publicKey.toString())}
+            disabled={false}
+            variant="danger"
+            title="Delete composable policy"
+          >
+            <Trash2 className="h-4 w-4" />
+          </ActionButton>
+        </div>
+      </div>
+
+      {memo && (
+        <div className="bg-violet-50 p-3 sm:p-4 border border-violet-100">
+          <div className="text-[10px] sm:text-xs text-violet-600 font-medium mb-1">Memo</div>
+          <div className="text-sm sm:text-base text-foreground truncate">{memo}</div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label="Payments" value={policy.account.paymentCount.toString()} />
+        <StatCard
+          label="Total Input"
+          value={formatAmount(policy.account.totalInput.toString(), inputMint || tokenMint)}
+        />
+        <StatCard
+          label="Total Output"
+          value={isActMode ? 'N/A' : formatAmount(policy.account.totalOutput.toString(), outputMint || tokenMint)}
+        />
+      </div>
+
+      <ComposablePolicyTypeSection
+        policyType={policy.account.policyType}
+        formatAmount={formatAmount}
+        tokenMint={tokenMint}
+        getInterval={getInterval}
+      />
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Forward Configuration
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow
+            label="Forward Program"
+            value={hasForward ? forwardProgram!.toString() : 'Disabled'}
+            copyable={hasForward}
+          />
+          {inputMint && <DetailRow label="Input Mint" value={inputMint.toString()} copyable />}
+          {hasForward && !isActMode && outputMint && (
+            <DetailRow label="Output Mint" value={outputMint.toString()} copyable />
+          )}
+          {isActMode && <DetailRow label="Output Mint" value="Act mode (no output)" />}
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Validation Hooks
+        </h3>
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+          <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+              Pre-validation
+            </div>
+            {preValidationEnabled ? (
+              <AssertionInfo decoded={preDecoded} />
+            ) : (
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Disabled</span>
+            )}
+          </div>
+          <div className="bg-muted/30 p-3 sm:p-4 border border-border">
+            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide mb-0.5 sm:mb-1">
+              Post-validation
+            </div>
+            {postValidationEnabled ? (
+              <AssertionInfo decoded={postDecoded} />
+            ) : (
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Disabled</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Policy Details
+        </h3>
+        <div className="bg-muted/30 p-2 sm:p-3 space-y-1">
+          <DetailRow label="Policy Address" value={policy.publicKey.toString()} copyable />
+          <DetailRow label="Recipient" value={policy.account.recipient.toString()} copyable />
+          <DetailRow label="Gateway" value={policy.account.gateway.toString()} copyable />
+          <DetailRow label="Token Mint" value={tokenMint.toString()} copyable />
+          <DetailRow label="Rent Payer" value={policy.account.rentPayer.toString()} copyable />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LoadingState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] gap-4 sm:gap-6 px-4">
@@ -997,8 +1771,8 @@ function EmptyState() {
       <div className="text-center max-w-md">
         <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2">No Payment Policies Yet</h2>
         <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-          You haven't set up any recurring payments. Create a subscription, milestone, or pay-as-you-go policy to get
-          started.
+          You haven't set up any payment policies yet. Create a subscription, milestone, pay-as-you-go, one-time, or
+          up-to policy to get started.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
@@ -1009,6 +1783,12 @@ function EmptyState() {
           </div>
           <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <Zap className="w-4 h-4" /> Pay-as-you-go
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <Send className="w-4 h-4" /> One-time
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <ArrowUp className="w-4 h-4" /> Up-to
           </div>
         </div>
       </div>
@@ -1039,13 +1819,55 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [userPayments, setUserPayments] = useState<UserPaymentWithPolicies[]>([])
-  const [selectedPolicy, setSelectedPolicy] = useState<{ publicKey: PublicKey; account: PaymentPolicy } | null>(null)
+  const [selectedPolicy, setSelectedPolicy] = useState<SelectedPolicy | null>(null)
   const [executingPayments, setExecutingPayments] = useState<Set<string>>(new Set())
   const [togglingPolicies, setTogglingPolicies] = useState<Set<string>>(new Set())
   const [deletingPolicies, setDeletingPolicies] = useState<Set<string>>(new Set())
-  const [referralAccounts, setReferralAccounts] = useState<Map<string, any>>(new Map())
+  const [referralAccounts, setReferralAccounts] = useState<Map<string, ReferralAccount>>(new Map())
   const getTokenSymbol = useAtomValue(getTokenSymbolAtom)
   const getTokenPrecision = useAtomValue(getTokenPrecisionAtom)
+  const knownMints = useAtomValue(tokenMetadataAtom)
+  const setTokenMetadata = useSetAtom(setTokenMetadataAtom)
+
+  // D8 — collect every mint that appears in the wallet's payment policies,
+  // resolve any not yet in the atom (and enrich those that are, idempotent
+  // overwrite with richer data: logo, etc.).
+  const walletMints = useMemo(() => {
+    const set = new Set<string>()
+    for (const up of userPayments) {
+      set.add(up.userPayment.tokenMint.toBase58())
+    }
+    return Array.from(set)
+  }, [userPayments])
+
+  const resolveResults = useResolveMints(
+    walletMints,
+    { baseUrl: API_BASE_URL },
+    {
+      enabled: loaded && walletMints.length > 0,
+    },
+  )
+
+  useEffect(() => {
+    // Walk resolved data in input order; write any non-null result back.
+    for (let i = 0; i < resolveResults.length; i++) {
+      const r = resolveResults[i]
+      const mint = walletMints[i]
+      if (!r?.data || !mint) continue
+      const d = r.data
+      // Skip if the existing entry is already richer (e.g. user has a
+      // devnet entry and the upstream returned a mismatched mainnet one).
+      const existing = knownMints[mint]
+      if (existing && existing.logoURI && !d.imageUrl) continue
+      setTokenMetadata(mint, {
+        symbol: d.symbol,
+        name: d.name ?? existing?.name,
+        decimals: d.decimals ?? existing?.decimals ?? 6,
+        logoURI: d.imageUrl ?? existing?.logoURI,
+        network: existing?.network,
+      })
+    }
+  }, [resolveResults, walletMints, knownMints, setTokenMetadata])
 
   useEffect(() => {
     const fetchPolicies = async () => {
@@ -1058,6 +1880,7 @@ export default function AccountPage() {
 
         for (const userPayment of allUserPayments) {
           const policies = await sdk.getPaymentPoliciesByUser(userPayment.publicKey)
+          const composables = await sdk.getComposablePoliciesByUserPayment(userPayment.publicKey)
           for (const policy of policies) {
             const userPaymentAddress = policy.account.userPayment.toString()
             if (!userPaymentMap.has(userPaymentAddress)) {
@@ -1070,12 +1893,34 @@ export default function AccountPage() {
                   userPaymentAddress: policy.account.userPayment,
                   userPayment: fetchedUserPayment,
                   policies: [],
+                  composablePolicies: [],
                 })
               }
             }
             const entry = userPaymentMap.get(userPaymentAddress)
             if (entry) {
               entry.policies.push(policy)
+            }
+          }
+          for (const composable of composables) {
+            const userPaymentAddress = composable.account.userPayment.toString()
+            if (!userPaymentMap.has(userPaymentAddress)) {
+              const fetchedUserPayment = await sdk.getUserPayment(composable.account.userPayment)
+              if (fetchedUserPayment) {
+                if (fetchedUserPayment.owner.toString() !== wallet.publicKey.toString()) {
+                  continue
+                }
+                userPaymentMap.set(userPaymentAddress, {
+                  userPaymentAddress: composable.account.userPayment,
+                  userPayment: fetchedUserPayment,
+                  policies: [],
+                  composablePolicies: [],
+                })
+              }
+            }
+            const entry = userPaymentMap.get(userPaymentAddress)
+            if (entry) {
+              entry.composablePolicies.push(composable)
             }
           }
         }
@@ -1090,7 +1935,7 @@ export default function AccountPage() {
           }
         }
 
-        const referralMap = new Map<string, any>()
+        const referralMap = new Map<string, ReferralAccount>()
         for (const gatewayKey of uniqueGateways) {
           try {
             const referralAccount = await sdk.getReferralAccountByOwner(new PublicKey(gatewayKey), wallet.publicKey)
@@ -1104,8 +1949,13 @@ export default function AccountPage() {
         setReferralAccounts(referralMap)
 
         const allPolicies = Array.from(userPaymentMap.values()).flatMap((up) => up.policies)
-        if (allPolicies.length > 0 && !selectedPolicy) {
-          setSelectedPolicy(allPolicies[0])
+        const allComposables = Array.from(userPaymentMap.values()).flatMap((up) => up.composablePolicies)
+        if (!selectedPolicy) {
+          if (allPolicies.length > 0) {
+            setSelectedPolicy({ kind: 'regular', ...allPolicies[0] })
+          } else if (allComposables.length > 0) {
+            setSelectedPolicy({ kind: 'composable', ...allComposables[0] })
+          }
         }
 
         setLoaded(true)
@@ -1185,6 +2035,29 @@ export default function AccountPage() {
     if ('payAsYouGo' in policy.policyType) {
       return 'On-demand'
     }
+    if ('oneTime' in policy.policyType) {
+      const oneTime = policy.policyType.oneTime
+      if (policy.status?.completed) return 'Completed'
+      if (oneTime?.expiryDate) {
+        const expiry = new Date(oneTime.expiryDate.toNumber() * 1000)
+        if (expiry < new Date()) return 'Expired'
+      }
+      if (oneTime?.dueDate && oneTime.dueDate.toNumber() > 0) {
+        const due = new Date(oneTime.dueDate.toNumber() * 1000)
+        return due < new Date() ? 'Overdue' : formatDistanceToNow(due, { addSuffix: true })
+      }
+      return 'Due now'
+    }
+    if ('upTo' in policy.policyType) {
+      const upTo = policy.policyType.upTo
+      if (policy.status?.completed) return 'Completed'
+      if (upTo?.deadline && upTo.deadline.toNumber() > 0) {
+        const deadline = new Date(upTo.deadline.toNumber() * 1000)
+        if (deadline < new Date()) return 'Expired'
+        return formatDistanceToNow(deadline, { addSuffix: true })
+      }
+      return 'No deadline'
+    }
     return 'N/A'
   }
 
@@ -1203,6 +2076,26 @@ export default function AccountPage() {
           return new Date(nextTimestamp.toNumber() * 1000) <= new Date()
         }
       }
+    }
+    if ('oneTime' in policy.policyType) {
+      const oneTime = policy.policyType.oneTime
+      if (!oneTime) return false
+      // due_date <= 0 means immediate → due now.
+      const dueOk = oneTime.dueDate.toNumber() <= 0 || new Date(oneTime.dueDate.toNumber() * 1000) <= new Date()
+      if (!dueOk) return false
+      // If expiry is set and past, the policy can no longer fire.
+      if (oneTime.expiryDate && new Date(oneTime.expiryDate.toNumber() * 1000) < new Date()) return false
+      return true
+    }
+    if ('upTo' in policy.policyType) {
+      const upTo = policy.policyType.upTo
+      if (!upTo) return false
+      // valid_after <= 0 means immediate.
+      const afterOk = upTo.validAfter.toNumber() <= 0 || new Date(upTo.validAfter.toNumber() * 1000) <= new Date()
+      if (!afterOk) return false
+      // If deadline is set and past, the policy can no longer fire.
+      if (upTo.deadline.toNumber() > 0 && new Date(upTo.deadline.toNumber() * 1000) < new Date()) return false
+      return true
     }
     return false
   }
@@ -1301,6 +2194,75 @@ export default function AccountPage() {
     }
   }
 
+  const handleToggleComposableStatus = async (
+    policyPublicKey: PublicKey,
+    policy: ComposablePolicy,
+    userPayment: UserPayment,
+  ) => {
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ description: 'Wallet not connected', color: 'danger' })
+    if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
+      return addToast({ title: 'Only the policy owner can change status', color: 'danger' })
+    }
+    try {
+      setTogglingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
+      const currentStatus = policy.status as Record<string, unknown>
+      const isCurrentlyActive = currentStatus.active
+      const newStatus = isCurrentlyActive ? { paused: {} } : { active: {} }
+      const toggleIx = await sdk.changeComposablePolicyStatus(userPayment.tokenMint, policy.policyId, newStatus)
+      await createAndSendTransaction([toggleIx], wallet, connection)
+      addToast({ title: `Composable policy ${isCurrentlyActive ? 'paused' : 'resumed'}!`, color: 'success' })
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error:', err)
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to toggle status',
+        color: 'danger',
+      })
+    } finally {
+      setTogglingPolicies((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
+  const handleDeleteComposablePolicy = async (
+    policyPublicKey: PublicKey,
+    policy: ComposablePolicy,
+    userPayment: UserPayment,
+  ) => {
+    if (!sdk || !wallet.publicKey || !wallet.connected)
+      return addToast({ description: 'Wallet not connected', color: 'danger' })
+    if (userPayment.owner.toString() !== wallet.publicKey.toString()) {
+      return addToast({ title: 'Only the policy owner can delete', color: 'danger' })
+    }
+    if (!confirm('Delete this composable policy? This cannot be undone.')) return
+    try {
+      setDeletingPolicies((prev) => new Set(prev).add(policyPublicKey.toString()))
+      const deleteIx = await sdk.deleteComposablePolicy(userPayment.tokenMint, policy.policyId)
+      await createAndSendTransaction([deleteIx], wallet, connection)
+      addToast({ title: 'Composable policy deleted!', color: 'success' })
+      setSelectedPolicy(null)
+      setLoaded(false)
+    } catch (err) {
+      console.error('Error:', err)
+      addToast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete',
+        color: 'danger',
+      })
+    } finally {
+      setDeletingPolicies((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(policyPublicKey.toString())
+        return newSet
+      })
+    }
+  }
+
   if (!wallet.connected) {
     return <WalletNotConnected />
   }
@@ -1314,10 +2276,14 @@ export default function AccountPage() {
   }
 
   const currentUserPayment = selectedPolicy
-    ? userPayments.find((up) => up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()))
+    ? userPayments.find((up) =>
+        selectedPolicy.kind === 'regular'
+          ? up.policies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString())
+          : up.composablePolicies.some((p) => p.publicKey.toString() === selectedPolicy.publicKey.toString()),
+      )
     : null
 
-  const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length, 0)
+  const totalPolicies = userPayments.reduce((sum, up) => sum + up.policies.length + up.composablePolicies.length, 0)
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[500px] w-full lg:min-w-[600px] lg:max-w-[1100px] bg-background">
@@ -1346,14 +2312,15 @@ export default function AccountPage() {
         </div>
 
         <div className="flex-1 max-h-full lg:max-h-none">
-          {userPayments.map(({ policies, userPayment, userPaymentAddress }) => (
+          {userPayments.map(({ policies, composablePolicies, userPayment, userPaymentAddress }) => (
             <div key={userPaymentAddress.toString()}>
               <div className="sticky top-0 z-10 h-8 sm:h-10 flex items-center px-3 sm:px-4 bg-muted/80 backdrop-blur-xs border-b border-border">
                 <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {getTokenSymbol(userPayment.tokenMint.toString())}
                 </span>
                 <span className="ml-2 text-[10px] sm:text-xs text-muted-foreground">
-                  ({policies.length} {policies.length === 1 ? 'policy' : 'policies'})
+                  ({policies.length + composablePolicies.length}{' '}
+                  {policies.length + composablePolicies.length === 1 ? 'policy' : 'policies'})
                 </span>
               </div>
 
@@ -1362,10 +2329,29 @@ export default function AccountPage() {
                   key={policy.publicKey.toString()}
                   policy={policy}
                   userPayment={userPayment}
-                  isSelected={selectedPolicy?.publicKey.toString() === policy.publicKey.toString()}
-                  onClick={() => setSelectedPolicy(policy)}
+                  isSelected={
+                    selectedPolicy?.kind === 'regular' &&
+                    selectedPolicy.publicKey.toString() === policy.publicKey.toString()
+                  }
+                  onClick={() =>
+                    setSelectedPolicy({ kind: 'regular', publicKey: policy.publicKey, account: policy.account })
+                  }
                   formatAmount={formatAmount}
                   getNextPaymentDue={getNextPaymentDue}
+                />
+              ))}
+
+              {composablePolicies.map((policy) => (
+                <ComposablePolicyCard
+                  key={policy.publicKey.toString()}
+                  policy={policy}
+                  isSelected={
+                    selectedPolicy?.kind === 'composable' &&
+                    selectedPolicy.publicKey.toString() === policy.publicKey.toString()
+                  }
+                  onClick={() =>
+                    setSelectedPolicy({ kind: 'composable', publicKey: policy.publicKey, account: policy.account })
+                  }
                 />
               ))}
             </div>
@@ -1383,74 +2369,208 @@ export default function AccountPage() {
               <span>←</span>
               <span>Back to policies</span>
             </button>
-            {'subscription' in selectedPolicy.account.policyType && (
-              <SubscriptionDetailPanel
+            {selectedPolicy.kind === 'composable' ? (
+              <ComposableDetailPanel
                 policy={selectedPolicy}
                 userPayment={currentUserPayment}
                 formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
                 onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                  handleToggleComposableStatus(
+                    selectedPolicy.publicKey,
+                    selectedPolicy.account,
+                    currentUserPayment.userPayment,
+                  )
                 }
                 onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
+                  handleDeleteComposablePolicy(
+                    selectedPolicy.publicKey,
+                    selectedPolicy.account,
+                    currentUserPayment.userPayment,
+                  )
                 }
-                executingPayments={executingPayments}
                 togglingPolicies={togglingPolicies}
                 deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
-              />
-            )}
-            {'milestone' in selectedPolicy.account.policyType && (
-              <MilestoneDetailPanel
-                policy={selectedPolicy}
-                userPayment={currentUserPayment}
-                formatAmount={formatAmount}
                 getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
+                programId={sdk?.programId ?? new PublicKey('TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ')}
               />
-            )}
-            {'payAsYouGo' in selectedPolicy.account.policyType && (
-              <PayAsYouGoDetailPanel
-                policy={selectedPolicy}
-                userPayment={currentUserPayment}
-                formatAmount={formatAmount}
-                getInterval={getInterval}
-                getNextPaymentDue={getNextPaymentDue}
-                isPaymentDue={isPaymentDue(selectedPolicy.account)}
-                onExecute={() =>
-                  handleExecutePayment(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onToggle={() =>
-                  handleToggleStatus(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                onDelete={() =>
-                  handleDeletePolicy(selectedPolicy.publicKey, selectedPolicy.account, currentUserPayment.userPayment)
-                }
-                executingPayments={executingPayments}
-                togglingPolicies={togglingPolicies}
-                deletingPolicies={deletingPolicies}
-                referralAccounts={referralAccounts}
-              />
+            ) : (
+              <>
+                {'subscription' in selectedPolicy.account.policyType && (
+                  <SubscriptionDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'milestone' in selectedPolicy.account.policyType && (
+                  <MilestoneDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'payAsYouGo' in selectedPolicy.account.policyType && (
+                  <PayAsYouGoDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'oneTime' in selectedPolicy.account.policyType && (
+                  <OneTimeDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+                {'upTo' in selectedPolicy.account.policyType && (
+                  <UpToDetailPanel
+                    policy={selectedPolicy}
+                    userPayment={currentUserPayment}
+                    formatAmount={formatAmount}
+                    getInterval={getInterval}
+                    getNextPaymentDue={getNextPaymentDue}
+                    isPaymentDue={isPaymentDue(selectedPolicy.account)}
+                    onExecute={() =>
+                      handleExecutePayment(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onToggle={() =>
+                      handleToggleStatus(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    onDelete={() =>
+                      handleDeletePolicy(
+                        selectedPolicy.publicKey,
+                        selectedPolicy.account,
+                        currentUserPayment.userPayment,
+                      )
+                    }
+                    executingPayments={executingPayments}
+                    togglingPolicies={togglingPolicies}
+                    deletingPolicies={deletingPolicies}
+                    referralAccounts={referralAccounts}
+                  />
+                )}
+              </>
             )}
           </>
         ) : (

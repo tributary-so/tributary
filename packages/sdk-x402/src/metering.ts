@@ -11,6 +11,7 @@
 
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
+import BN from "bn.js";
 
 // Type-only import for Express (optional dependency)
 type ExpressNextFunction = (err?: any) => void;
@@ -88,13 +89,13 @@ export interface UsageTrackerConfig {
   onLimitWarning?: (
     resource: MeteredResource,
     current: number,
-    limit: number
+    limit: number,
   ) => void;
   /** Callback when usage limit is exceeded */
   onLimitExceeded?: (
     resource: MeteredResource,
     current: number,
-    limit: number
+    limit: number,
   ) => void;
 }
 
@@ -106,7 +107,7 @@ export interface MeteredService {
   trackUsage(
     requestId: string,
     usage: UsageRecord["usage"],
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void;
   /** Get current period summary */
   getCurrentPeriod(): PeriodSummary;
@@ -115,7 +116,7 @@ export interface MeteredService {
   /** Check if remaining quota is sufficient for expected usage */
   checkQuota(
     resource: MeteredResource,
-    expectedUsage: number
+    expectedUsage: number,
   ): { allowed: boolean; remaining: number };
   /** Reset current period (for testing or manual reset) */
   resetPeriod(): void;
@@ -174,7 +175,7 @@ export class ComputeMeter {
   static calculateForLLM(
     model: string,
     inputTokens: number,
-    outputTokens: number
+    outputTokens: number,
   ): number {
     // Model-specific multipliers (example values)
     const modelMultipliers: Record<string, { input: number; output: number }> =
@@ -198,7 +199,7 @@ export class ComputeMeter {
   static calculateForEmbedding(
     model: string,
     dimensions: number,
-    inputTokens: number
+    inputTokens: number,
   ): number {
     // Embedding models typically have fixed cost per token
     const modelCosts: Record<string, number> = {
@@ -218,7 +219,7 @@ export class ComputeMeter {
   static calculateForFineTune(
     epochs: number,
     trainingExamples: number,
-    modelSizeParams: number
+    modelSizeParams: number,
   ): number {
     // Rough estimate: cost proportional to epochs * examples * model size
     const baseCostPerExample = 0.0001;
@@ -226,7 +227,7 @@ export class ComputeMeter {
       epochs *
         trainingExamples *
         Math.log10(modelSizeParams) *
-        baseCostPerExample
+        baseCostPerExample,
     );
   }
 }
@@ -251,7 +252,7 @@ export class UsageTracker implements MeteredService {
   trackUsage(
     requestId: string,
     usage: UsageRecord["usage"],
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     const record: UsageRecord = {
       requestId,
@@ -296,6 +297,15 @@ export class UsageTracker implements MeteredService {
     }
   }
 
+  /**
+   * Read the configured limit for a resource. Public so report generators
+   * (generateUsageReport) can compute remainingBudget against the limit,
+   * not against usage. See SDK-1 (review 2026-07-06).
+   */
+  getLimit(resource: MeteredResource): number | undefined {
+    return this.config.limits?.[resource];
+  }
+
   getCurrentPeriod(): PeriodSummary {
     const now = Date.now();
     const periodLength = this.config.periodLengthSeconds || 86400;
@@ -305,7 +315,7 @@ export class UsageTracker implements MeteredService {
       endTime: now,
       totalUsage: { ...this.periodUsage },
       requestCount: this.requestHistory.filter(
-        (r) => r.timestamp >= this.currentPeriodStart
+        (r) => r.timestamp >= this.currentPeriodStart,
       ).length,
       totalCost: this.calculateTotalCost(),
       policyAddress: this.config.policyAddress,
@@ -318,7 +328,7 @@ export class UsageTracker implements MeteredService {
 
   checkQuota(
     resource: MeteredResource,
-    expectedUsage: number
+    expectedUsage: number,
   ): { allowed: boolean; remaining: number } {
     const limit = this.config.limits?.[resource];
     if (limit === undefined) {
@@ -372,7 +382,7 @@ export async function createUsageTracker(
   sdk: Tributary,
   connection: Connection,
   policyAddress: string,
-  maxChunkAmount: number
+  maxChunkAmount: number,
 ): Promise<UsageTracker> {
   const policy = await sdk.getPaymentPolicy(new PublicKey(policyAddress));
 
@@ -412,13 +422,13 @@ export function createUsageTrackingMiddleware(
      */
     extractUsage?: (
       req: any,
-      res: any
+      res: any,
     ) => Partial<Record<MeteredResource, number>> | null;
     /**
      * Request ID generator
      */
     generateRequestId?: () => string;
-  }
+  },
 ) {
   const extractUsage = options?.extractUsage || defaultUsageExtractor;
   const generateRequestId =
@@ -467,7 +477,7 @@ export function createUsageTrackingMiddleware(
  */
 function defaultUsageExtractor(
   req: any,
-  res: any
+  res: any,
 ): Partial<Record<MeteredResource, number>> | null {
   const usage: Partial<Record<MeteredResource, number>> = {};
 
@@ -507,13 +517,34 @@ export interface UsageReport {
 }
 
 /**
+ * Settle an `upto` authorization from accumulated usage. Computes
+ * `actual = min(totalCost, maxAmount)` and returns the settle instruction
+ * for the facilitator to sign+send. Single-use: after the instruction lands,
+ * the policy transitions `Active → Completed`.
+ *
+ * Caller is responsible for tracking the `requestId` ↔ policy binding.
+ */
+export async function settleFromUsage(
+  sdk: Tributary,
+  tracker: UsageTracker,
+  policyPda: string,
+  maxAmount: number,
+): Promise<ReturnType<Tributary["executePayment"]>> {
+  const period = tracker.getCurrentPeriod();
+  const actual = Math.min(period.totalCost, maxAmount);
+  return sdk.executePayment(new PublicKey(policyPda), new BN(actual));
+}
+
+/**
  * Generate a usage report for x402 verification
  */
 export function generateUsageReport(tracker: UsageTracker): UsageReport {
   const period = tracker.getCurrentPeriod();
 
-  // Calculate remaining budget based on policy limits
-  const creditsLimit = period.totalUsage["credits"] || 0;
+  // Calculate remaining budget against the configured limit, not usage.
+  // The previous form read period.totalUsage["credits"] for BOTH limit and
+  // used, so remainingBudget was always 0. See SDK-1 (review 2026-07-06).
+  const creditsLimit = tracker.getLimit("credits") ?? 0;
   const usedCredits = period.totalUsage["credits"] || 0;
   const remainingBudget = creditsLimit - usedCredits;
 

@@ -257,7 +257,7 @@ export async function createSubscription(
   };
 }
 
-export interface CreateOneTimePaymentParams {
+export interface CreateDirectPaymentParams {
   wallet: WalletContextState;
   recipientWallet: PublicKey;
   amount: number;
@@ -266,7 +266,10 @@ export interface CreateOneTimePaymentParams {
   tokenMint?: string;
 }
 
-export async function issueOneTimeToken(
+/** @deprecated Alias of {@link CreateDirectPaymentParams}. Use the new name. */
+export type CreateOneTimePaymentParams = CreateDirectPaymentParams;
+
+export async function issueDirectPaymentToken(
   walletPublicKey: PublicKey,
   transactionSignature: string,
   tokenMint?: string,
@@ -296,8 +299,235 @@ export async function issueOneTimeToken(
   throw new Error("Timed out waiting for payment confirmation");
 }
 
-export async function createOneTimePayment(
-  params: CreateOneTimePaymentParams
+// ponytail: gateway is always the configured checkout gateway for hosted
+// flows. Per-policy custom gateways would need a UI affordance — out of scope.
+function defaultGateway(): PublicKey {
+  return new PublicKey(config.gateway);
+}
+
+/**
+ * Issue a JWT for a policy creation by polling `/v1/tokens/issue`. Mirrors
+ * `issueSubscriptionToken` / `issueOneTimeToken` — the resource server keys
+ * on (wallet, trackingId) so the same endpoint works for every policy
+ * variant. `transactionSignature` is optional: present for direct transfers
+ * (where the gateway knows the tx), absent for policy creations (where the
+ * gateway resolves via trackingId + userPayment).
+ */
+export async function issuePolicyToken(
+  walletPublicKey: PublicKey,
+  trackingId: string,
+  tokenMint?: string,
+  transactionSignature?: string,
+  timeoutMs: number = 30000
+): Promise<TokenResponse> {
+  const body: any = {
+    walletPublicKey: walletPublicKey.toString(),
+    trackingId: trackingId.toString(),
+  };
+  if (tokenMint) body.tokenMint = tokenMint.toString();
+  if (transactionSignature) body.transactionSignature = transactionSignature;
+
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(`${config.apiBaseUrl}/v1/tokens/issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (response.ok) return response.json();
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error("Timed out waiting for policy confirmation");
+}
+
+async function sendAndConfirmInstructions(
+  tributary: Tributary,
+  wallet: WalletContextState,
+  instructions: Awaited<ReturnType<typeof tributary.createSubscription>>,
+  payer: PublicKey
+): Promise<{ blockhash: string; signature: string }> {
+  const { blockhash } = await tributary.connection.getLatestBlockhash();
+  const messageV0 = new TransactionMessage({
+    payerKey: payer,
+    recentBlockhash: blockhash,
+    instructions,
+  }).compileToV0Message();
+  const transaction = new VersionedTransaction(messageV0);
+
+  let txid: TransactionSignature;
+  let signedTx: VersionedTransaction | undefined;
+  try {
+    signedTx = await wallet.signTransaction!(transaction);
+    txid = await tributary.connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: true,
+    });
+  } catch (sendError: any) {
+    const errorMsg = sendError?.message || sendError?.toString() || "";
+    if (errorMsg.includes("This transaction has already been processed")) {
+      if (!signedTx) throw sendError;
+      console.warn(
+        "Transaction may have already been sent, attempting to confirm via status"
+      );
+      txid = bs58.encode(signedTx.signatures[0]);
+    } else {
+      throw sendError;
+    }
+  }
+
+  await confirmTransactionWithStatus(tributary.connection, txid!, "confirmed");
+  return { blockhash, signature: txid! };
+}
+
+export interface CreateMilestonePolicyParams {
+  wallet: WalletContextState;
+  recipientWallet: PublicKey;
+  tokenMintStr?: string;
+  milestoneAmounts: number[];
+  milestoneTimestamps: number[];
+  releaseCondition: number;
+  memo?: string;
+}
+
+export async function createMilestonePolicy(
+  params: CreateMilestonePolicyParams
+): Promise<void> {
+  const tributary = getTributary(params.wallet);
+  const tokenMint = new PublicKey(params.tokenMintStr || config.usdcMint);
+  const amounts = await Promise.all(
+    params.milestoneAmounts.map((a) => amountToBN(a, tokenMint.toString()))
+  );
+  const timestamps = params.milestoneTimestamps.map((t) => new anchor.BN(t));
+  const gateway = defaultGateway();
+
+  const instructions = await tributary.createMilestone(
+    tokenMint,
+    params.recipientWallet,
+    gateway,
+    amounts,
+    timestamps,
+    params.releaseCondition,
+    createMemoBuffer(params.memo ?? "tributary milestone", 64)
+  );
+  await sendAndConfirmInstructions(
+    tributary,
+    params.wallet,
+    instructions,
+    params.wallet.publicKey!
+  );
+}
+
+export interface CreatePayAsYouGoPolicyParams {
+  wallet: WalletContextState;
+  recipientWallet: PublicKey;
+  tokenMintStr?: string;
+  maxAmountPerPeriod: number;
+  maxChunkAmount: number;
+  periodLengthSeconds: number;
+  memo?: string;
+}
+
+export async function createPayAsYouGoPolicy(
+  params: CreatePayAsYouGoPolicyParams
+): Promise<void> {
+  const tributary = getTributary(params.wallet);
+  const tokenMint = new PublicKey(params.tokenMintStr || config.usdcMint);
+  const gateway = defaultGateway();
+
+  const instructions = await tributary.createPayAsYouGo(
+    tokenMint,
+    params.recipientWallet,
+    gateway,
+    await amountToBN(params.maxAmountPerPeriod, tokenMint.toString()),
+    await amountToBN(params.maxChunkAmount, tokenMint.toString()),
+    new anchor.BN(params.periodLengthSeconds),
+    createMemoBuffer(params.memo ?? "tributary payg", 64)
+  );
+  await sendAndConfirmInstructions(
+    tributary,
+    params.wallet,
+    instructions,
+    params.wallet.publicKey!
+  );
+}
+
+export interface CreateOneTimePolicyParams {
+  wallet: WalletContextState;
+  recipientWallet: PublicKey;
+  tokenMintStr?: string;
+  amount: number;
+  dueDate?: number;
+  expiryDate?: number;
+  memo?: string;
+}
+
+export async function createOneTimePolicy(
+  params: CreateOneTimePolicyParams
+): Promise<void> {
+  const tributary = getTributary(params.wallet);
+  const tokenMint = new PublicKey(params.tokenMintStr || config.usdcMint);
+  const gateway = defaultGateway();
+
+  const instructions = await tributary.createOneTimePayment(
+    tokenMint,
+    params.recipientWallet,
+    gateway,
+    await amountToBN(params.amount, tokenMint.toString()),
+    createMemoBuffer(params.memo ?? "tributary onetime", 64),
+    params.dueDate ? new anchor.BN(params.dueDate) : null,
+    params.expiryDate ? new anchor.BN(params.expiryDate) : null
+  );
+  await sendAndConfirmInstructions(
+    tributary,
+    params.wallet,
+    instructions,
+    params.wallet.publicKey!
+  );
+}
+
+export interface CreateUpToPolicyParams {
+  wallet: WalletContextState;
+  recipientWallet: PublicKey;
+  tokenMintStr?: string;
+  maxAmount: number;
+  deadline: number;
+  validAfter?: number;
+  memo?: string;
+}
+
+export async function createUpToPolicy(
+  params: CreateUpToPolicyParams
+): Promise<void> {
+  const tributary = getTributary(params.wallet);
+  const tokenMint = new PublicKey(params.tokenMintStr || config.usdcMint);
+  const gateway = defaultGateway();
+
+  const instructions = await tributary.createUpToAuthorization(
+    tokenMint,
+    params.recipientWallet,
+    gateway,
+    await amountToBN(params.maxAmount, tokenMint.toString()),
+    new anchor.BN(params.deadline),
+    createMemoBuffer(params.memo ?? "tributary upto", 64),
+    params.validAfter ? new anchor.BN(params.validAfter) : null
+  );
+  await sendAndConfirmInstructions(
+    tributary,
+    params.wallet,
+    instructions,
+    params.wallet.publicKey!
+  );
+}
+
+/**
+ * @deprecated Alias of {@link issueDirectPaymentToken}. Kept for one release
+ * to avoid breaking 3rd-party forks. The hosted-checkout "one-time" flow uses
+ * the standalone `transfer` instruction (ADR-0004) — distinct from the
+ * OneTime PolicyType (ADR-0019).
+ */
+export const issueOneTimeToken = issueDirectPaymentToken;
+
+export async function createDirectPayment(
+  params: CreateDirectPaymentParams
 ): Promise<TransactionSignature> {
   const { wallet, recipientWallet, amount, tokenMint: tokenMintStr } = params;
   const tributary = getTributary(wallet);
@@ -306,7 +536,7 @@ export async function createOneTimePayment(
   const amountInSmallestUnits = await amountToBN(amount, tokenMint.toString());
 
   const memo = params.memo || params.trackingId || "tributary payment";
-  const gateway = new PublicKey(config.gateway);
+  const gateway = defaultGateway();
 
   const transferIx = await tributary.transfer(
     tokenMint,
@@ -349,3 +579,11 @@ export async function createOneTimePayment(
 
   return txid;
 }
+
+/**
+ * @deprecated Alias of {@link createDirectPayment}. Kept for one release
+ * to avoid breaking 3rd-party forks. The hosted-checkout "one-time" flow uses
+ * the standalone `transfer` instruction (ADR-0004) — distinct from the
+ * OneTime PolicyType (ADR-0019).
+ */
+export const createOneTimePayment = createDirectPayment;

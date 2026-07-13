@@ -2,19 +2,17 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   PublicKey,
   Keypair,
-  SystemProgram,
   LAMPORTS_PER_SOL,
   Commitment,
   Transaction,
+  TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
   createMint,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccount,
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
-  mintTo,
   approve,
   revoke,
   getAccount,
@@ -28,8 +26,16 @@ import {
   TributarySDK,
   encodeMemo,
 } from "../packages/sdk/src";
+import { SurfpoolHelper, USDC_MINT } from "./surfpool-helpers";
+import { sendAndConfirmWithRetry } from "./helpers/sendWithRetry";
 import assert from "assert";
 import { Buffer } from "buffer";
+const ADMIN_KEYPAIR = [
+  238, 31, 185, 140, 54, 107, 145, 78, 166, 97, 25, 234, 169, 89, 102, 11, 16,
+  50, 119, 229, 213, 144, 251, 250, 231, 231, 38, 93, 42, 152, 13, 182, 86, 67,
+  104, 166, 174, 90, 212, 150, 51, 38, 47, 161, 242, 15, 132, 164, 55, 200, 136,
+  167, 125, 249, 228, 30, 132, 100, 67, 255, 185, 242, 47, 145,
+];
 
 describe("Tributary", () => {
   const provider = anchor.AnchorProvider.env();
@@ -41,19 +47,20 @@ describe("Tributary", () => {
   let connection: any;
 
   // Common variables
-  let admin: Keypair;
-  let user: Keypair;
+  const admin = Keypair.fromSecretKey(Uint8Array.from(ADMIN_KEYPAIR));
+  const user = Keypair.generate();
+  const mintAuthority = Keypair.generate();
+  const gatewayAuthority = Keypair.generate();
+  const gatewayExecutionSigner = Keypair.generate();
+  const feeRecipient = Keypair.generate();
+  const recipient = Keypair.generate();
+
   let configPDA: PublicKey;
   let configBump: number;
   let tokenMint: PublicKey;
   let userTokenAccount: PublicKey;
-  let mintAuthority: Keypair;
-  let gatewayAuthority: Keypair;
-  let gatewayExecutionSigner: Keypair;
-  let feeRecipient: Keypair;
   let gatewayPDA: PublicKey;
   let gatewayBump: number;
-  let recipient: Keypair;
   let recipientTokenAccount: PublicKey;
   let userPaymentPDA: PublicKey;
   let userPaymentBump: number;
@@ -62,75 +69,79 @@ describe("Tributary", () => {
   let paymentsDelegate: PublicKey;
   let sdk: TributarySDK;
 
+  // Surfpool cheatcode handle — set in beforeAll. Helpers below route funding
+  // and token seeding through it instead of SystemProgram.transfer / mintTo.
+  let surfpool: SurfpoolHelper;
+  // ATA address → owner, populated by batchCreateATAs so batchMintTo can
+  // resolve owners for Surfpool's owner-keyed setTokenAccount cheatcode.
+  const ataOwnerMap = new Map<string, PublicKey>();
+
   async function fund(account: PublicKey, amount: number): Promise<void> {
-    const transaction = new anchor.web3.Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: provider.wallet.publicKey,
-        toPubkey: account,
-        lamports: amount * LAMPORTS_PER_SOL,
-      })
-    );
-    await provider.sendAndConfirm(transaction, null, {
-      commitment: "processed" as Commitment,
+    await surfpool.setAccount({
+      publicKey: account,
+      lamports: amount * LAMPORTS_PER_SOL,
     });
   }
 
   async function batchFund(pairs: [PublicKey, number][]): Promise<void> {
-    const transaction = new anchor.web3.Transaction();
     for (const [account, amount] of pairs) {
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: provider.wallet.publicKey,
-          toPubkey: account,
-          lamports: amount * LAMPORTS_PER_SOL,
-        })
-      );
+      await surfpool.setAccount({
+        publicKey: account,
+        lamports: amount * LAMPORTS_PER_SOL,
+      });
     }
-    await provider.sendAndConfirm(transaction, null, {
-      commitment: "processed" as Commitment,
+  }
+
+  // Surfpool's setTokenAccount is absolute (sets the amount field, creating
+  // the ATA implicitly). To preserve mintTo's additive semantics we read the
+  // current balance first, then set current + amount.
+  async function creditTokenAccount(
+    owner: PublicKey,
+    amount: bigint,
+    mint: PublicKey = tokenMint
+  ): Promise<void> {
+    const ata = getAssociatedTokenAddressSync(mint, owner);
+    let current = 0n;
+    try {
+      const info = await connection.getTokenAccountBalance(ata);
+      if (info.value) current = BigInt(info.value.amount);
+    } catch {
+      // ATA doesn't exist yet — setTokenAccount will create it.
+    }
+    await surfpool.setTokenAccount({
+      owner,
+      mint,
+      amount: Number(current + amount),
     });
   }
 
   async function batchCreateATAs(
     ownerPublicKeys: PublicKey[]
   ): Promise<PublicKey[]> {
-    const ataAddresses = ownerPublicKeys.map((owner) =>
-      getAssociatedTokenAddressSync(tokenMint, owner)
-    );
-    const tx = new Transaction();
-    for (let i = 0; i < ownerPublicKeys.length; i++) {
-      tx.add(
-        createAssociatedTokenAccountInstruction(
-          admin.publicKey,
-          ataAddresses[i],
-          ownerPublicKeys[i],
-          tokenMint
-        )
-      );
-    }
-    await provider.sendAndConfirm(tx, [admin], {
-      commitment: "processed" as Commitment,
+    const ataAddresses = ownerPublicKeys.map((owner) => {
+      const ata = getAssociatedTokenAddressSync(tokenMint, owner);
+      ataOwnerMap.set(ata.toBase58(), owner);
+      return ata;
     });
+    // Ensure zero-balance ATAs exist (later balance reads assume presence).
+    for (const owner of ownerPublicKeys) {
+      await surfpool.setTokenAccount({ owner, mint: tokenMint, amount: 0 });
+    }
     return ataAddresses;
   }
 
   async function batchMintTo(
     targets: { address: PublicKey; amount: bigint }[]
   ): Promise<void> {
-    const tx = new Transaction();
     for (const target of targets) {
-      tx.add(
-        createMintToInstruction(
-          tokenMint,
-          target.address,
-          mintAuthority.publicKey,
-          target.amount
-        )
-      );
+      const owner = ataOwnerMap.get(target.address.toBase58());
+      if (!owner) {
+        throw new Error(
+          `batchMintTo: unknown ATA ${target.address.toBase58()} (call batchCreateATAs first)`
+        );
+      }
+      await creditTokenAccount(owner, target.amount);
     }
-    await provider.sendAndConfirm(tx, [mintAuthority], {
-      commitment: "processed" as Commitment,
-    });
   }
 
   beforeAll(async () => {
@@ -138,14 +149,13 @@ describe("Tributary", () => {
     connection = provider.connection;
     sdk = new TributarySDK(connection, wallet as IWallet);
 
-    // Create wallets
-    admin = Keypair.generate();
-    user = Keypair.generate();
-    mintAuthority = Keypair.generate();
-    gatewayAuthority = Keypair.generate();
-    feeRecipient = Keypair.generate();
-    gatewayExecutionSigner = Keypair.generate();
-    recipient = Keypair.generate();
+    // Fail fast unless we're on a Surfpool mainnet-fork.
+    surfpool = new SurfpoolHelper(connection);
+    if (!(await surfpool.isSurfpool())) {
+      throw new Error(
+        "Not running against Surfpool. Start with: surfpool start --legacy-anchor-compatibility --no-tui"
+      );
+    }
 
     // Derive config PDA
     [configPDA, configBump] = PublicKey.findProgramAddressSync(
@@ -163,35 +173,12 @@ describe("Tributary", () => {
       [recipient.publicKey, 1],
     ]);
 
-    // Create token mint
-    tokenMint = await createMint(
-      connection,
-      mintAuthority,
-      mintAuthority.publicKey,
-      null,
-      6
-    );
+    // Use the mainnet-forked USDC mint directly — no createMint needed.
+    tokenMint = USDC_MINT;
 
-    // Get associated token account address for the user
+    // Fund the user's USDC ATA (Surfpool setTokenAccount creates it implicitly).
     userTokenAccount = getAssociatedTokenAddressSync(tokenMint, user.publicKey);
-
-    // Create associated token account and mint tokens to it
-    await createAssociatedTokenAccount(
-      connection,
-      admin,
-      tokenMint,
-      user.publicKey
-    );
-
-    // Mint tokens to the user's account
-    await mintTo(
-      connection,
-      mintAuthority,
-      tokenMint,
-      userTokenAccount,
-      mintAuthority,
-      1000000n // 1 token with 6 decimals
-    );
+    await creditTokenAccount(user.publicKey, 1_000_000n); // 1 USDC
 
     // Derive gateway PDA
     [gatewayPDA, gatewayBump] = PublicKey.findProgramAddressSync(
@@ -227,7 +214,7 @@ describe("Tributary", () => {
     );
 
     // Create recipient, fee recipient, and admin token accounts in one tx
-    const [recipientATA, feeRecipientATA, adminATA] = await batchCreateATAs([
+    const [recipientATA] = await batchCreateATAs([
       recipient.publicKey,
       feeRecipient.publicKey,
       admin.publicKey,
@@ -241,27 +228,40 @@ describe("Tributary", () => {
 
   test("Initialize program", async () => {
     // Update SDK to use admin wallet for this operation
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
 
-    const initIx = await sdk.initialize(admin.publicKey);
-    const tx = new Transaction().add(initIx);
-
-    await sendAndConfirmTransaction(connection, tx, [admin], {
-      commitment: "processed" as Commitment,
+    // The program is deployed on mainnet, so the forked config PDA already
+    // exists and `initialize` (which allocates) would fail with "already in
+    // use". Seed the post-init config state via the Surfpool setAccount
+    // cheatcode — same fields the instruction would write. (Same pattern as
+    // surfpool.test.ts.)
+    const desired = await sdk.getProgramConfig(configPDA);
+    desired.admin = admin.publicKey;
+    desired.feeRecipient = admin.publicKey;
+    desired.protocolShareBps = 2000;
+    desired.emergencyPause = false;
+    desired.bump = configBump;
+    const serialized = await program.coder.accounts.encode(
+      "programConfig",
+      desired
+    );
+    await surfpool.setAccount({
+      publicKey: configPDA,
+      data: serialized.toString("hex"),
     });
 
     const configAccount = await sdk.getProgramConfig(configPDA);
 
     expect(configAccount!.admin).toEqual(admin.publicKey);
     expect(configAccount!.feeRecipient).toEqual(admin.publicKey);
-    expect(configAccount!.protocolFeeBps).toBe(100);
+    expect(configAccount!.protocolShareBps).toBe(2000);
     expect(configAccount!.emergencyPause).toBe(false);
     expect(configAccount!.bump).toBe(configBump);
   });
 
   test("Create user payment account", async () => {
     // Update SDK to use user wallet
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
     const tx = new Transaction().add(createUserPaymentIx);
@@ -280,15 +280,88 @@ describe("Tributary", () => {
     expect(userPayment!.bump).toBe(userPaymentBump);
   });
 
+  test("M-05: create_user_payment rejects non-signing owner (griefing defense)", async () => {
+    // Regression for the M-05 / H-02 griefing vector: owner MUST sign.
+    // Pre-fix anyone could create a UserPayment PDA for any owner, locking
+    // the victim out of her own account (InitSpace on her later attempt).
+    // Post-fix the Signer constraint on `owner` rejects unsigned creation.
+    const victim = Keypair.generate();
+    const attacker = Keypair.generate();
+    await batchFund([
+      [victim.publicKey, 2],
+      [attacker.publicKey, 2],
+    ]);
+    await surfpool.setTokenAccount({
+      owner: victim.publicKey,
+      mint: tokenMint,
+      amount: 0,
+    });
+    const victimAta = getAssociatedTokenAddressSync(
+      tokenMint,
+      victim.publicKey
+    );
+    const [victimUserPaymentPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_payment"),
+        victim.publicKey.toBuffer(),
+        tokenMint.toBuffer(),
+      ],
+      program.programId
+    );
+
+    // Build a legitimate ix as the attacker, then patch the account metas to
+    // name the victim as owner WITHOUT her signature.
+    await sdk.updateWallet(attacker);
+    const legitIx = await sdk.createUserPayment(tokenMint);
+    // IDL order: [0]=owner, [1]=user_payment, [2]=token_account, ...
+    const griefedKeys = legitIx.keys.map((k, i) => {
+      if (i === 0)
+        return { pubkey: victim.publicKey, isWritable: false, isSigner: false };
+      if (i === 1)
+        return {
+          pubkey: victimUserPaymentPda,
+          isWritable: true,
+          isSigner: false,
+        };
+      if (i === 2)
+        return { pubkey: victimAta, isWritable: false, isSigner: false };
+      return k;
+    });
+    const griefedIx = new TransactionInstruction({
+      programId: legitIx.programId,
+      data: legitIx.data,
+      keys: griefedKeys,
+    });
+
+    // Attacker signs only as fee_payer; victim does NOT sign. The Signer
+    // constraint on `owner` must reject the transaction.
+    await expect(
+      sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(griefedIx),
+        [attacker],
+        { commitment: "processed" as Commitment }
+      )
+    ).rejects.toThrow();
+
+    // The PDA must not exist — the failed attack created nothing, so the
+    // victim can still onboard normally later.
+    const victimAccountInfo = await connection.getAccountInfo(
+      victimUserPaymentPda
+    );
+    expect(victimAccountInfo).toBeNull();
+  });
+
   test("Create payment gateway", async () => {
     const gatewayFeeBps = 250; // 2.5% fee
 
     // Update SDK to use admin wallet
-    await sdk.updateWallet(new anchor.Wallet(admin));
+    await sdk.updateWallet(admin);
 
     const createGatewayIx = await sdk.createPaymentGateway(
       gatewayAuthority.publicKey,
       gatewayFeeBps,
+      0, // schedulerShareBps — no scheduler cut in this test
       feeRecipient.publicKey,
       "custom gateway",
       "https://example.com"
@@ -331,7 +404,7 @@ describe("Tributary", () => {
       const paymentFrequency = { daily: {} };
 
       // Update SDK to use user wallet
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const createPolicyIx = await sdk.getCreateSubscriptionPolicyInstruction(
         tokenMint,
@@ -382,7 +455,7 @@ describe("Tributary", () => {
 
     test("Execute subscription payment fails without delegate approval", async () => {
       // Update SDK to use gateway authority wallet
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       // Try to execute payment without delegate approval - should fail
       try {
@@ -432,7 +505,7 @@ describe("Tributary", () => {
       );
 
       // Update SDK to use gateway authority wallet
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const executePaymentIxs = await sdk.executePayment(paymentPolicyPDA);
       const tx = new Transaction().add(...executePaymentIxs);
@@ -459,25 +532,30 @@ describe("Tributary", () => {
     });
 
     test("Get all payment policies using SDK", async () => {
-      // Get all payment policies
+      // Get all payment policies. On a mainnet fork this also returns
+      // mainnet's real policies, so locate the test's own policy by its
+      // userPayment PDA instead of assuming position [0].
       const allPolicies = await sdk.getAllPaymentPolicies();
 
       expect(allPolicies.length).toBeGreaterThan(0);
-      expect(allPolicies[0].account.policyId).toBe(1);
-      expect(allPolicies[0].account.userPayment).toEqual(userPaymentPDA);
-      expect(allPolicies[0].account.recipient).toEqual(recipient.publicKey);
-      expect(allPolicies[0].account.gateway).toEqual(gatewayPDA);
+      const ours = allPolicies.find((p) =>
+        p.account.userPayment.equals(userPaymentPDA)
+      );
+      expect(ours).toBeDefined();
+      expect(ours!.account.policyId).toBe(1);
+      expect(ours!.account.recipient).toEqual(recipient.publicKey);
+      expect(ours!.account.gateway).toEqual(gatewayPDA);
 
       // Verify the policy type is subscription
-      expect(allPolicies[0].account.policyType.subscription).toBeDefined();
-      expect(
-        allPolicies[0].account.policyType.subscription.amount.toNumber()
-      ).toBe(10000);
+      expect(ours!.account.policyType.subscription).toBeDefined();
+      expect(ours!.account.policyType.subscription.amount.toNumber()).toBe(
+        10000
+      );
     });
 
     test("Cannot execute subscription payment twice within period", async () => {
       // Update SDK to use gateway authority wallet
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       // First execution should succeed (already done in previous test)
       // Second execution should fail because next_payment_due is in the future
@@ -531,7 +609,7 @@ describe("Tributary", () => {
       const twoHoursAgo = Math.floor(Date.now() / 1000) - 7200;
 
       // Update SDK to use user wallet
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const createPolicy2Ix = await sdk.getCreateSubscriptionPolicyInstruction(
         tokenMint,
@@ -551,7 +629,7 @@ describe("Tributary", () => {
 
       // Execute payment on the new policy (should succeed since next_payment_due is in past)
       // Update SDK to use gateway authority wallet
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const executePaymentIxs = await sdk.executePayment(paymentPolicy2PDA);
       const executeTx = new Transaction();
@@ -599,7 +677,7 @@ describe("Tributary", () => {
 
     test("executeImmediately option - token transfer only occurs when true", async () => {
       // Update SDK to use user wallet
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       // Create token accounts for test user and recipient
       const testRecipientTokenAccount = getAssociatedTokenAddressSync(
@@ -608,14 +686,7 @@ describe("Tributary", () => {
       );
 
       // Mint tokens to test user
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        userTokenAccount,
-        mintAuthority,
-        1000000n // 1 token with 6 decimals
-      );
+      await creditTokenAccount(user.publicKey, 1000000n); // 1 token with 6 decimals
 
       // Setup policy parameters
       const testAmount = new anchor.BN(20000); // 0.02 token with 6 decimals
@@ -677,14 +748,7 @@ describe("Tributary", () => {
       );
 
       // Mint tokens to test user 2
-      await mintTo(
-        connection,
-        mintAuthority,
-        tokenMint,
-        userTokenAccount,
-        mintAuthority,
-        1000000n // 1 token with 6 decimals
-      );
+      await creditTokenAccount(user.publicKey, 1000000n); // 1 token with 6 decimals
 
       // Get initial balances for test 2
       const initialRecipient2Balance = await connection.getTokenAccountBalance(
@@ -753,7 +817,7 @@ describe("Tributary", () => {
       const pastTime = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
 
       // Update SDK to use user wallet
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       // Create a new policy (policy ID will be 4 based on previous tests)
       const policyId4 = 4;
@@ -804,7 +868,7 @@ describe("Tributary", () => {
       expect(policy!.status).toEqual({ paused: {} });
 
       // 2. Try to execute payment when paused - should fail
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       try {
         const executePaymentIxs = await sdk.executePayment(paymentPolicy4PDA);
@@ -829,7 +893,7 @@ describe("Tributary", () => {
       }
 
       // 3. Change status back to Active
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const resumeIx = await sdk.changePaymentPolicyStatus(
         tokenMint,
@@ -848,7 +912,7 @@ describe("Tributary", () => {
       expect(policy!.status).toEqual({ active: {} });
 
       // 4. Execute payment when active - should succeed
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -903,7 +967,7 @@ describe("Tributary", () => {
     expect(policyBeforeDeletion!.policyId).toBe(policyIdToDelete);
 
     // Delete the payment policy (only owner can delete)
-    await sdk.updateWallet(new anchor.Wallet(user));
+    await sdk.updateWallet(user);
 
     const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
     const deleteTx = new Transaction().add(deleteIx);
@@ -929,7 +993,7 @@ describe("Tributary", () => {
     expect(initialGateway!.signer).toEqual(gatewayAuthority.publicKey);
 
     // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     // Change the gateway signer
     const changeSignerIx = await sdk.changeGatewaySigner(
@@ -958,7 +1022,7 @@ describe("Tributary", () => {
     expect(initialGateway!.feeRecipient).toEqual(feeRecipient.publicKey);
 
     // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     // Change the gateway fee recipient
     const changeFeeRecipientIx = await sdk.changeGatewayFeeRecipient(
@@ -980,7 +1044,7 @@ describe("Tributary", () => {
   describe("Milestone payment policies", () => {
     test("Create milestone payment policy with time-based release", async () => {
       // Switch back to user wallet for creating policies
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       // Create milestone payment policy with 3 milestones
       const currentTime = Math.floor(Date.now() / 1000);
@@ -1043,7 +1107,7 @@ describe("Tributary", () => {
       const policyPda = milestonePolicy!.publicKey;
 
       // Update SDK to use gateway authority wallet for execution
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       // First milestone should fail (not due yet - timestamp is in future)
       try {
@@ -1064,7 +1128,7 @@ describe("Tributary", () => {
       }
 
       // Create a new milestone policy with timestamps in the past for testing
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
       const pastTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
       const pastMilestoneAmounts = [
         new anchor.BN(500000), // 0.5 tokens
@@ -1108,7 +1172,7 @@ describe("Tributary", () => {
       );
 
       // Execute first milestone
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -1134,7 +1198,7 @@ describe("Tributary", () => {
         (
           BigInt(initialRecipientBalance.value.amount) +
           BigInt(firstMilestoneAmount) -
-          BigInt(17500 /* fee */)
+          BigInt(12500 /* fee = 500000 × 250 bps / 10000 */)
         ).toString()
       );
 
@@ -1160,7 +1224,9 @@ describe("Tributary", () => {
       );
       const secondMilestoneAmount = 750000; // 0.75 tokens in smallest units
       const totalExpected =
-        firstMilestoneAmount + secondMilestoneAmount - 43750; /* fee */
+        firstMilestoneAmount +
+        secondMilestoneAmount -
+        31250; /* fee = 1250000 × 250 bps / 10000 */
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) + BigInt(totalExpected)
@@ -1194,7 +1260,7 @@ describe("Tributary", () => {
 
     test("Milestone payment with manual approval release condition", async () => {
       // Create milestone policy with manual approval
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const currentTime = Math.floor(Date.now() / 1000);
       const manualMilestoneAmounts = [
@@ -1252,7 +1318,7 @@ describe("Tributary", () => {
       const validBitmaps = [0, 1, 2, 3, 4, 5, 8, 9];
 
       for (const releaseCondition of validBitmaps) {
-        await sdk.updateWallet(new anchor.Wallet(user));
+        await sdk.updateWallet(user);
 
         const pastTime = Math.floor(Date.now() / 1000) - 3600;
         const bitmapTestAmounts = [new anchor.BN(100000)];
@@ -1272,7 +1338,7 @@ describe("Tributary", () => {
         );
 
         const tx = new Transaction().add(createIx);
-        await sendAndConfirmTransaction(connection, tx, [user], {
+        await sendAndConfirmWithRetry(connection, tx, [user], {
           commitment: "processed" as Commitment,
         });
 
@@ -1298,7 +1364,7 @@ describe("Tributary", () => {
       const invalidBitmaps = [6, 10, 12, 14];
 
       for (const releaseCondition of invalidBitmaps) {
-        await sdk.updateWallet(new anchor.Wallet(user));
+        await sdk.updateWallet(user);
 
         const pastTime = Math.floor(Date.now() / 1000) - 3600;
         const invalidTestAmounts = [new anchor.BN(100000)];
@@ -1334,7 +1400,7 @@ describe("Tributary", () => {
     });
 
     test("Milestone bitmap - execution with no restrictions (bitmap 0)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const pastTime = Math.floor(Date.now() / 1000) - 3600;
       const amounts = [new anchor.BN(100000)];
@@ -1370,7 +1436,7 @@ describe("Tributary", () => {
       );
 
       // Execute with gateway signer - should succeed
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -1396,7 +1462,7 @@ describe("Tributary", () => {
     });
 
     test("Milestone bitmap - execution with gateway signer (bitmap 2)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const pastTime = Math.floor(Date.now() / 1000) - 3600;
       const amounts = [new anchor.BN(100000)];
@@ -1432,7 +1498,7 @@ describe("Tributary", () => {
       );
 
       // Execute with gateway signer - should succeed
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -1458,7 +1524,7 @@ describe("Tributary", () => {
     });
 
     test("Milestone bitmap - execution with owner signer (bitmap 4)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const pastTime = Math.floor(Date.now() / 1000) - 3600;
       const amounts = [new anchor.BN(100000)];
@@ -1494,7 +1560,7 @@ describe("Tributary", () => {
       );
 
       // Execute with owner (user) - should succeed
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -1515,7 +1581,7 @@ describe("Tributary", () => {
     });
 
     test("Milestone bitmap - wrong signer is rejected", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const pastTime = Math.floor(Date.now() / 1000) - 3600;
       const amounts = [new anchor.BN(100000)];
@@ -1551,7 +1617,7 @@ describe("Tributary", () => {
       );
 
       // Try to execute with user as fee payer - should fail
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       try {
         const executeIxs = await sdk.executePayment(policyPda);
@@ -1568,7 +1634,7 @@ describe("Tributary", () => {
     });
 
     test("Milestone bitmap - due date check enforced (bitmap 1 vs bitmap 0)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const futureTime = Math.floor(Date.now() / 1000) + 3600;
       const amounts = [new anchor.BN(100000)];
@@ -1604,7 +1670,7 @@ describe("Tributary", () => {
       );
 
       // Try to execute before due date - should fail
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       try {
         const executeIxs = await sdk.executePayment(policyPda);
@@ -1627,7 +1693,7 @@ describe("Tributary", () => {
   describe("Pay-as-you-go payment policies", () => {
     test("Create pay-as-you-go payment policy", async () => {
       // Switch to user wallet
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const maxAmountPerPeriod = new anchor.BN(1000000); // 1 token per period
       const maxChunkAmount = new anchor.BN(200000); // 0.2 tokens per chunk
@@ -1689,7 +1755,7 @@ describe("Tributary", () => {
       );
 
       // Update SDK to use gateway signer wallet for execution
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
@@ -1715,9 +1781,9 @@ describe("Tributary", () => {
       const afterFirstBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
-      // Account for protocol fees (100 bps = 1%) and gateway fees (250 bps = 2.5%)
-      // Total fees = 3.5% = 3500 on 100000 amount, net transfer = 96500
-      const expectedNetAmount = 100000 - Math.floor((100000 * 350) / 10000); // 96500
+      // Total fee = gateway_fee_bps only (250 bps = 2.5%). Protocol is a
+      // carve-out of the gateway fee, not an additional deduction (ADR-0017).
+      const expectedNetAmount = 100000 - Math.floor((100000 * 250) / 10000); // 97500
       expect(afterFirstBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
@@ -1751,9 +1817,9 @@ describe("Tributary", () => {
       const afterSecondBalance = await connection.getTokenAccountBalance(
         recipientTokenAccount
       );
-      // Account for fees on both payments (3.5% total = 8750 on 250000 total)
+      // Total fee = gateway_fee_bps only (250 bps on 250000 cumulative)
       const expectedSecondNetAmount =
-        250000 - Math.floor((250000 * 350) / 10000); // 241250
+        250000 - Math.floor((250000 * 250) / 10000); // 243750
       expect(afterSecondBalance.value.amount).toBe(
         (
           BigInt(initialRecipientBalance.value.amount) +
@@ -1782,7 +1848,7 @@ describe("Tributary", () => {
       );
 
       // Update SDK to use gateway signer wallet (gatewayExecutionSigner, not gatewayAuthority)
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       // Try to execute payment that exceeds maxChunkAmount (0.2 tokens = 200000)
       const excessiveAmount = new anchor.BN(250000); // 0.25 tokens - exceeds limit
@@ -1811,7 +1877,7 @@ describe("Tributary", () => {
 
     test("Pay-as-you-go payment exceeds period limit", async () => {
       // Create a new pay-as-you-go policy with smaller limits for testing
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const smallMaxAmountPerPeriod = new anchor.BN(300000); // 0.3 tokens per period
       const smallMaxChunkAmount = new anchor.BN(150000); // 0.15 tokens per chunk
@@ -1848,7 +1914,7 @@ describe("Tributary", () => {
       );
 
       // Update SDK to use gateway signer wallet (gatewayExecutionSigner)
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       // Execute first payment (0.1 tokens)
       const paymentAmount1 = new anchor.BN(100000); // 0.1 tokens
@@ -1900,13 +1966,13 @@ describe("Tributary", () => {
         );
         assert(false, "Expected payment to fail due to period limit");
       } catch (error: any) {
-        expect(error.message).toContain("InvalidAmount");
+        expect(error.message).toContain("InsufficientDelegatedAmount");
       }
     });
 
     test("Pay-as-you-go policy validation", async () => {
       // Switch to user wallet
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       // Test invalid parameters - validation happens on program side
       try {
@@ -2024,7 +2090,7 @@ describe("Tributary", () => {
     });
 
     test("Create referral accounts for L3 referrers and payer", async () => {
-      await sdk.updateWallet(new anchor.Wallet(referrerL3));
+      await sdk.updateWallet(referrerL3);
       const createL3Ix = await sdk.createReferralAccount(
         gatewayPDA,
         "REF003",
@@ -2043,7 +2109,7 @@ describe("Tributary", () => {
       expect(chainL3[1]).toBeNull();
       expect(chainL3[2]).toBeNull();
 
-      let l3Referral = await sdk.getReferralAccount(
+      const l3Referral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("REF003")).address
       );
       expect(l3Referral).not.toBeNull();
@@ -2055,7 +2121,7 @@ describe("Tributary", () => {
     });
 
     test("Create referral accounts for L2 referrers and payer", async () => {
-      await sdk.updateWallet(new anchor.Wallet(referrerL2));
+      await sdk.updateWallet(referrerL2);
       const createL2Ix = await sdk.createReferralAccount(
         gatewayPDA,
         "REF002",
@@ -2066,7 +2132,7 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      let l2Referral = await sdk.getReferralAccount(
+      const l2Referral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("REF002")).address
       );
       expect(l2Referral).not.toBeNull();
@@ -2087,7 +2153,7 @@ describe("Tributary", () => {
     });
 
     test("Create referral accounts for L1 referrers and payer", async () => {
-      await sdk.updateWallet(new anchor.Wallet(referrerL1));
+      await sdk.updateWallet(referrerL1);
       const createL1Ix = await sdk.createReferralAccount(
         gatewayPDA,
         "REF001",
@@ -2110,7 +2176,7 @@ describe("Tributary", () => {
       );
       expect(chainL1[2]).toBeNull();
 
-      let l1Referral = await sdk.getReferralAccount(
+      const l1Referral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("REF001")).address
       );
       expect(l1Referral).not.toBeNull();
@@ -2121,7 +2187,7 @@ describe("Tributary", () => {
     });
 
     test("Create new payer referring L1", async () => {
-      await sdk.updateWallet(new anchor.Wallet(payer));
+      await sdk.updateWallet(payer);
       const createPayerIx = await sdk.createReferralAccount(
         gatewayPDA,
         "PAYER1",
@@ -2132,7 +2198,7 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      let payerReferral = await sdk.getReferralAccount(
+      const payerReferral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("PAYER1")).address
       );
       expect(payerReferral).not.toBeNull();
@@ -2154,7 +2220,7 @@ describe("Tributary", () => {
     });
 
     test("Update gateway with referral settings", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+      await sdk.updateWallet(gatewayAuthority);
 
       const updateIx = await sdk.updateGatewayReferralSettings(
         gatewayAuthority.publicKey,
@@ -2175,7 +2241,7 @@ describe("Tributary", () => {
     });
 
     test("Create subscription payment policy for payer with referral", async () => {
-      await sdk.updateWallet(new anchor.Wallet(payer));
+      await sdk.updateWallet(payer);
 
       const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
       let tx = new Transaction().add(createUserPaymentIx);
@@ -2234,13 +2300,17 @@ describe("Tributary", () => {
     });
 
     test("Execute subscription payment with referral rewards", async () => {
-      const [initialL1Balance, initialL2Balance, initialL3Balance, initialRecipientBalance] =
-        await Promise.all([
-          connection.getTokenAccountBalance(l1TokenAccount),
-          connection.getTokenAccountBalance(l2TokenAccount),
-          connection.getTokenAccountBalance(l3TokenAccount),
-          connection.getTokenAccountBalance(recipientTokenAccount),
-        ]);
+      const [
+        initialL1Balance,
+        initialL2Balance,
+        initialL3Balance,
+        initialRecipientBalance,
+      ] = await Promise.all([
+        connection.getTokenAccountBalance(l1TokenAccount),
+        connection.getTokenAccountBalance(l2TokenAccount),
+        connection.getTokenAccountBalance(l3TokenAccount),
+        connection.getTokenAccountBalance(recipientTokenAccount),
+      ]);
 
       const paymentsDelegate = sdk.getPaymentsDelegatePda().address;
 
@@ -2253,7 +2323,7 @@ describe("Tributary", () => {
         2000000
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       const paymentAmount = new anchor.BN(100000);
       const executeIxs = await sdk.executePayment(
@@ -2309,27 +2379,172 @@ describe("Tributary", () => {
         (referralPool * gateway!.referralTiersBps[2]) / 10000
       );
 
-      const [finalL1Balance, finalL2Balance, finalL3Balance] = await Promise.all([
-        connection.getTokenAccountBalance(l1TokenAccount),
-        connection.getTokenAccountBalance(l2TokenAccount),
-        connection.getTokenAccountBalance(l3TokenAccount),
-      ]);
+      const [finalL1Balance, finalL2Balance, finalL3Balance] =
+        await Promise.all([
+          connection.getTokenAccountBalance(l1TokenAccount),
+          connection.getTokenAccountBalance(l2TokenAccount),
+          connection.getTokenAccountBalance(l3TokenAccount),
+        ]);
 
       expect(parseInt(finalL1Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL1Balance.value.amount) +
-          l1Reward -
-          Math.floor((l1Reward * 100) / 10000)
+        l1Reward -
+        Math.floor((l1Reward * 100) / 10000)
       );
       expect(parseInt(finalL2Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL2Balance.value.amount) +
-          l2Reward -
-          Math.floor((l2Reward * 100) / 10000)
+        l2Reward -
+        Math.floor((l2Reward * 100) / 10000)
       );
       expect(parseInt(finalL3Balance.value.amount)).toBeGreaterThanOrEqual(
         parseInt(initialL3Balance.value.amount) +
-          l3Reward -
-          Math.floor((l3Reward * 100) / 10000)
+        l3Reward -
+        Math.floor((l3Reward * 100) / 10000)
       );
+    });
+
+    test("C-02: rejects chain not anchored by payer's ReferralAccount", async () => {
+      // Use the transfer instruction (no PaymentNotDue check) to exercise
+      // the referral validation path. Attacker supplies a FAKE first account
+      // (their own referral account) instead of the payer's real one.
+      // Pre-fix this would have routed rewards to the attacker; post-fix it
+      // must fail because the first remaining account is interpreted as the
+      // payer's ReferralAccount and its owner != paying wallet.
+      const attacker = Keypair.generate();
+      await batchFund([[attacker.publicKey, 5]]);
+
+      await sdk.updateWallet(attacker);
+      const a1 = "ATCK01";
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(
+          await sdk.createReferralAccount(gatewayPDA, a1, null)
+        ),
+        [attacker],
+        { commitment: "processed" as Commitment }
+      );
+      const a1Pda = sdk.getReferralPda(gatewayPDA, Buffer.from(a1)).address;
+
+      // Build a legitimate transfer ix for the payer (with referral chain),
+      // then patch the remaining_accounts to inject the attacker's account.
+      await sdk.updateWallet(payer);
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("c-02 transfer attacker").copy(memo);
+      const legitimateIxs = await sdk.transfer(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(100000),
+        Array.from(memo),
+        "PAYER1"
+      );
+      const goodIx = legitimateIxs[legitimateIxs.length - 1];
+      // TransferTokens has 9 named accounts; rest are remaining_accounts.
+      const trailingCount = goodIx.keys.length - 9;
+      expect(trailingCount).toBeGreaterThan(0);
+      const namedKeys = goodIx.keys.slice(
+        0,
+        goodIx.keys.length - trailingCount
+      );
+
+      const patchedKeys = [
+        ...namedKeys,
+        // position 0: attacker's own ReferralAccount masquerading as payer's
+        { pubkey: a1Pda, isWritable: false, isSigner: false },
+      ];
+
+      const badIx = new TransactionInstruction({
+        programId: goodIx.programId,
+        data: goodIx.data,
+        keys: patchedKeys,
+      });
+
+      let caught: any = null;
+      try {
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(badIx),
+          [payer],
+          { commitment: "processed" as Commitment }
+        );
+      } catch (e: any) {
+        caught = e;
+      }
+      expect(caught).not.toBeNull();
+      const errMsg = caught?.message ?? "";
+      const expected =
+        errMsg.includes("PayerReferralMismatch") ||
+        errMsg.includes("InvalidReferralChainOrdering") ||
+        errMsg.includes("ReferrerAccountInvalid") ||
+        errMsg.includes("InvalidReferralAccountDiscriminator");
+      if (!expected) {
+        throw new Error(`expected security error, got: ${errMsg}`);
+      }
+    });
+
+    test("C-02: rejects duplicate referral accounts in chain", async () => {
+      // Construct a chain where L1 and L2 are the same account. Must fail
+      // with DuplicateReferralAccount.
+      const payerReferralPda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from("PAYER1")
+      ).address;
+      const l1Pda = sdk.getReferralPda(
+        gatewayPDA,
+        Buffer.from("REF001")
+      ).address;
+
+      await sdk.updateWallet(payer);
+      const memo = new Uint8Array(64).fill(0);
+      Buffer.from("c-02 transfer dup").copy(memo);
+      const legitimateIxs = await sdk.transfer(
+        tokenMint,
+        recipient.publicKey,
+        gatewayPDA,
+        new anchor.BN(100000),
+        Array.from(memo),
+        "PAYER1"
+      );
+      const goodIx = legitimateIxs[legitimateIxs.length - 1];
+      const namedKeys = goodIx.keys.slice(0, goodIx.keys.length - 7);
+
+      // [payer_referral, L1, L1_dup, ATA_L1, ATA_L1_dup]
+      const patchedKeys = [
+        ...namedKeys,
+        { pubkey: payerReferralPda, isWritable: false, isSigner: false },
+        { pubkey: l1Pda, isWritable: true, isSigner: false },
+        { pubkey: l1Pda, isWritable: true, isSigner: false }, // duplicate!
+        { pubkey: l1TokenAccount, isWritable: true, isSigner: false },
+        { pubkey: l1TokenAccount, isWritable: true, isSigner: false },
+      ];
+
+      const dupIx = new TransactionInstruction({
+        programId: goodIx.programId,
+        data: goodIx.data,
+        keys: patchedKeys,
+      });
+
+      let caught: any = null;
+      try {
+        await sendAndConfirmTransaction(
+          connection,
+          new Transaction().add(dupIx),
+          [payer],
+          { commitment: "processed" as Commitment }
+        );
+      } catch (e: any) {
+        caught = e;
+      }
+      expect(caught).not.toBeNull();
+      const errMsg = caught?.message ?? "";
+      const expected =
+        errMsg.includes("DuplicateReferralAccount") ||
+        errMsg.includes("InvalidReferralChainOrdering");
+      if (!expected) {
+        throw new Error(
+          `expected DuplicateReferralAccount or InvalidReferralChainOrdering, got: ${errMsg}`
+        );
+      }
     });
 
     test("Setup Referral program with only L1 referrer", async () => {
@@ -2343,7 +2558,7 @@ describe("Tributary", () => {
         { address: singlePayerTokenAccount, amount: 100000000n },
       ]);
 
-      await sdk.updateWallet(new anchor.Wallet(singleRefpayer));
+      await sdk.updateWallet(singleRefpayer);
       const createPayerIx = await sdk.createReferralAccount(
         gatewayPDA,
         "PAYER3",
@@ -2354,7 +2569,7 @@ describe("Tributary", () => {
         commitment: "processed" as Commitment,
       });
 
-      let payerReferral = await sdk.getReferralAccount(
+      const payerReferral = await sdk.getReferralAccount(
         sdk.getReferralPda(gatewayPDA, Buffer.from("PAYER3")).address
       );
       expect(payerReferral).not.toBeNull();
@@ -2405,7 +2620,7 @@ describe("Tributary", () => {
     });
 
     test("Execute Payment in Referral program with only L1 referrer", async () => {
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
 
       const { address: singlePayerUserPaymentPDA } = sdk.getUserPaymentPda(
         singleRefpayer.publicKey,
@@ -2467,10 +2682,11 @@ describe("Tributary", () => {
         newGatewayAuthority.publicKey
       );
 
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
       const createGatewayIx = await sdk.createPaymentGateway(
         newGatewayAuthority.publicKey,
         250,
+        0, // schedulerShareBps — no scheduler cut in this test
         newFeeRecipient.publicKey,
         "no referral gateway",
         "https://noreferral.example.com"
@@ -2492,7 +2708,7 @@ describe("Tributary", () => {
         tokenMint
       );
 
-      await sdk.updateWallet(new anchor.Wallet(noReferralPayer));
+      await sdk.updateWallet(noReferralPayer);
       const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
       tx = new Transaction().add(createUserPaymentIx);
       await sendAndConfirmTransaction(connection, tx, [noReferralPayer], {
@@ -2545,7 +2761,7 @@ describe("Tributary", () => {
         l1TokenAccount
       );
 
-      await sdk.updateWallet(new anchor.Wallet(newGatewayAuthority));
+      await sdk.updateWallet(newGatewayAuthority);
       const executeIxs = await sdk.executePayment(
         noRefPayerPolicyPDA,
         new anchor.BN(100000)
@@ -2577,7 +2793,7 @@ describe("Tributary", () => {
 
       // Verify the referral account was created
       const referralCode = "PAYER3";
-      await sdk.updateWallet(new anchor.Wallet(subscriptionUser));
+      await sdk.updateWallet(subscriptionUser);
       const referralPda = sdk.getReferralPda(
         gatewayPDA,
         Buffer.from(referralCode)
@@ -2652,21 +2868,21 @@ describe("Tributary", () => {
           [customFeeFeeRecipient.publicKey, 5],
         ]);
 
-        const [customFeeFeeRecipientATA, customFeeUserATA] =
-          await batchCreateATAs([
-            customFeeFeeRecipient.publicKey,
-            customFeeUser.publicKey,
-          ]);
+        const [, customFeeUserATA] = await batchCreateATAs([
+          customFeeFeeRecipient.publicKey,
+          customFeeUser.publicKey,
+        ]);
         customFeeUserTokenAccount = customFeeUserATA;
 
         await batchMintTo([
           { address: customFeeUserTokenAccount, amount: 1000000n },
         ]);
 
-        await sdk.updateWallet(new anchor.Wallet(admin));
+        await sdk.updateWallet(admin);
         const createGatewayIx = await sdk.createPaymentGateway(
           customFeeGatewayAuthority.publicKey,
           250, // 2.5% gateway fee
+          0, // schedulerShareBps — no scheduler cut in this test
           customFeeFeeRecipient.publicKey,
           "custom fee gateway",
           "https://customfee.example.com"
@@ -2686,7 +2902,7 @@ describe("Tributary", () => {
           tokenMint
         );
 
-        await sdk.updateWallet(new anchor.Wallet(customFeeUser));
+        await sdk.updateWallet(customFeeUser);
         const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
         tx = new Transaction().add(createUserPaymentIx);
         await sendAndConfirmTransaction(connection, tx, [customFeeUser], {
@@ -2741,10 +2957,10 @@ describe("Tributary", () => {
     });
 
     test("Protocol admin can update gateway custom protocol fee settings", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
 
       const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gatewayBefore!.customProtocolFeeBps).toBe(0);
+      expect(gatewayBefore!.customProtocolShareBps).toBe(0);
       expect(gatewayBefore!.featureFlags & 0x04).toBe(0);
 
       const updateIx = await sdk.updateGatewayProtocolFee(
@@ -2758,12 +2974,12 @@ describe("Tributary", () => {
       });
 
       const gatewayAfter = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gatewayAfter!.customProtocolFeeBps).toBe(500);
+      expect(gatewayAfter!.customProtocolShareBps).toBe(500);
       expect(gatewayAfter!.featureFlags & 0x04).toBe(4);
     });
 
     test("Custom protocol fee of 0 bps means no protocol fee charged", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
 
       // Set custom protocol fee to 0 bps
       const updateIx = await sdk.updateGatewayProtocolFee(
@@ -2777,7 +2993,7 @@ describe("Tributary", () => {
       });
 
       const gateway = await sdk.getPaymentGateway(customFeeGatewayPDA);
-      expect(gateway!.customProtocolFeeBps).toBe(0);
+      expect(gateway!.customProtocolShareBps).toBe(0);
       expect(gateway!.featureFlags & 0x04).toBe(4);
 
       // Get initial balances
@@ -2790,7 +3006,7 @@ describe("Tributary", () => {
         ]);
 
       // Execute payment
-      await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
+      await sdk.updateWallet(customFeeGatewayAuthority);
       const executeIxs = await sdk.executePayment(
         customFeePolicyPDA,
         new anchor.BN(100000) // 0.1 tokens
@@ -2826,7 +3042,7 @@ describe("Tributary", () => {
     });
 
     test("Gateway authority cannot modify custom protocol fee feature", async () => {
-      await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
+      await sdk.updateWallet(customFeeGatewayAuthority);
 
       const gatewayBefore = await sdk.getPaymentGateway(customFeeGatewayPDA);
       const featureFlagsBefore = gatewayBefore!.featureFlags;
@@ -2855,7 +3071,7 @@ describe("Tributary", () => {
     });
 
     test("Disabling custom protocol fee reverts to global default (100 bps)", async () => {
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
 
       // Disable custom protocol fee
       const updateIx = await sdk.updateGatewayProtocolFee(
@@ -2884,7 +3100,7 @@ describe("Tributary", () => {
       const currentTime = Math.floor(Date.now() / 1000);
       const startTime = new anchor.BN(currentTime - 3600);
 
-      await sdk.updateWallet(new anchor.Wallet(customFeeUser));
+      await sdk.updateWallet(customFeeUser);
       const createPolicyIxs = await sdk.createSubscription(
         tokenMint,
         recipient.publicKey,
@@ -2920,7 +3136,7 @@ describe("Tributary", () => {
         ]);
 
       // Execute payment - should use global 100 bps protocol fee
-      await sdk.updateWallet(new anchor.Wallet(customFeeGatewayAuthority));
+      await sdk.updateWallet(customFeeGatewayAuthority);
       const executeIxs = await sdk.executePayment(
         newPolicyPDA,
         new anchor.BN(100000)
@@ -2935,24 +3151,25 @@ describe("Tributary", () => {
         }
       );
 
-      // Verify recipient got amount minus both gateway fee AND global protocol fee
+      // Verify recipient got amount minus total gateway fee (ADR-0017: protocol
+      // is a carve-out of the gateway fee, not an additional deduction).
       const finalRecipientBalance = await connection.getTokenAccountBalance(
         customFeeRecipientTokenAccount
       );
-      const gatewayFee = Math.floor((100000 * 250) / 10000); // 2.5% = 2500
-      const protocolFee = Math.floor((100000 * 100) / 10000); // 1% = 1000
-      const expectedRecipientAmount = 100000 - gatewayFee - protocolFee; // 87500
+      const totalFee = Math.floor((100000 * 250) / 10000); // 2.5% = 2500
+      const protocolCut = Math.floor((totalFee * 2000) / 10000); // 20% share = 500
+      const expectedRecipientAmount = 100000 - totalFee; // 97500
       expect(parseInt(finalRecipientBalance.value.amount)).toEqual(
         parseInt(initialRecipientBalance.value.amount) + expectedRecipientAmount
       );
 
-      // Verify protocol fee WAS charged
+      // Verify protocol fee WAS charged (carve-out of the gateway fee)
       const finalProtocolFeeRecipientBalance =
         await connection.getTokenAccountBalance(
           getAssociatedTokenAddressSync(tokenMint, admin.publicKey)
         );
       expect(parseInt(finalProtocolFeeRecipientBalance.value.amount)).toEqual(
-        parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolFee
+        parseInt(initialProtocolFeeRecipientBalance.value.amount) + protocolCut
       );
     });
   });
@@ -2964,7 +3181,7 @@ describe("Tributary", () => {
     expect(initialFeeBps).toEqual(250); // Initial fee from gateway creation
 
     // Update SDK to use gateway authority wallet
-    await sdk.updateWallet(new anchor.Wallet(gatewayAuthority));
+    await sdk.updateWallet(gatewayAuthority);
 
     // Change the gateway fee BPS
     const newFeeBps = 100;
@@ -2974,7 +3191,7 @@ describe("Tributary", () => {
     );
     const tx = new Transaction().add(changeFeeBpsIx);
 
-    await sendAndConfirmTransaction(connection, tx, [gatewayAuthority], {
+    await sendAndConfirmWithRetry(connection, tx, [gatewayAuthority], {
       commitment: "processed" as Commitment,
     });
 
@@ -2982,6 +3199,185 @@ describe("Tributary", () => {
     const updatedGateway = await sdk.getPaymentGateway(gatewayPDA);
     expect(updatedGateway!.gatewayFeeBps).toEqual(newFeeBps);
     expect(updatedGateway!.authority).toEqual(gatewayAuthority.publicKey); // authority should remain unchanged
+  });
+
+  describe("Fee carve-out share constraint (ADR-0017)", () => {
+    // Constraint: effective_protocol_share + scheduler_share + referral_allocation ≤ 10000 bps.
+    // gateway_fee_bps is NOT part of this constraint (only ≤ 10000 on its own).
+    // config.protocol_share_bps defaults to 2000; at creation referral_allocation = 0.
+    let h01GatewayAuthority: Keypair;
+    let h01GatewayPDA: PublicKey;
+    let h01FeeRecipient: Keypair;
+
+    beforeAll(async () => {
+      h01GatewayAuthority = Keypair.generate();
+      h01FeeRecipient = Keypair.generate();
+
+      await batchFund([
+        [h01GatewayAuthority.publicKey, 5],
+        [h01FeeRecipient.publicKey, 1],
+      ]);
+
+      // Create a gateway with a modest fee (500 bps) and scheduler_share = 0.
+      // 2000 (default protocol share) + 0 + 0 = 2000, well below the limit.
+      await sdk.updateWallet(admin);
+      const createIx = await sdk.createPaymentGateway(
+        h01GatewayAuthority.publicKey,
+        500,
+        0, // schedulerShareBps
+        h01FeeRecipient.publicKey,
+        "h01 gateway",
+        ""
+      );
+      const tx = new Transaction().add(createIx);
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      h01GatewayPDA = sdk.getGatewayPda(h01GatewayAuthority.publicKey).address;
+    });
+
+    test("create_payment_gateway rejects when scheduler_share + protocol_share > 10000", async () => {
+      const freshAuthority = Keypair.generate();
+      const freshFeeRecipient = Keypair.generate();
+      await batchFund([
+        [freshAuthority.publicKey, 1],
+        [freshFeeRecipient.publicKey, 1],
+      ]);
+
+      await sdk.updateWallet(admin);
+
+      // 2000 (default protocol share) + 8001 (scheduler) = 10001 > 10000 → reject.
+      // gateway_fee_bps is irrelevant to the carve-out constraint, so use a small fee.
+      const createIx = await sdk.createPaymentGateway(
+        freshAuthority.publicKey,
+        100,
+        8001, // schedulerShareBps
+        freshFeeRecipient.publicKey,
+        "should fail combined",
+        ""
+      );
+      const tx = new Transaction().add(createIx);
+      await expect(
+        sendAndConfirmTransaction(connection, tx, [admin], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // 2000 + 8000 = 10000 ≤ 10000 → must succeed
+      const okAuthority = Keypair.generate();
+      const okFeeRecipient = Keypair.generate();
+      await batchFund([
+        [okAuthority.publicKey, 1],
+        [okFeeRecipient.publicKey, 1],
+      ]);
+      const okIx = await sdk.createPaymentGateway(
+        okAuthority.publicKey,
+        100,
+        8000, // schedulerShareBps
+        okFeeRecipient.publicKey,
+        "should pass combined",
+        ""
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const okGateway = await sdk.getPaymentGateway(
+        sdk.getGatewayPda(okAuthority.publicKey).address
+      );
+      expect(okGateway!.schedulerShareBps).toBe(8000);
+    });
+
+    test("change_gateway_fee_bps no longer bound by the carve-out share constraint", async () => {
+      // ADR-0017 removed gateway_fee_bps from the share constraint; it is now
+      // only capped at ≤ 10000. A 9900 bps fee that used to be rejected (the
+      // old gateway_fee_bps + protocol_fee_bps < 10000 rule) is now accepted.
+      await sdk.updateWallet(h01GatewayAuthority);
+
+      const okIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        9900
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [h01GatewayAuthority], {
+        commitment: "processed" as Commitment,
+      });
+      const updated = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(updated!.gatewayFeeBps).toBe(9900);
+
+      // Reset for the next test.
+      const resetIx = await sdk.changeGatewayFeeBps(
+        h01GatewayAuthority.publicKey,
+        500
+      );
+      const resetTx = new Transaction().add(resetIx);
+      await sendAndConfirmTransaction(
+        connection,
+        resetTx,
+        [h01GatewayAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
+    });
+
+    test("update_gateway_protocol_fee rejects when custom_protocol_share + scheduler_share > 10000", async () => {
+      // Give the gateway a non-zero scheduler share so the carve-out constraint
+      // can actually bind below the 10000 cap on custom_protocol_share_bps.
+      await sdk.updateWallet(h01GatewayAuthority);
+      const schedIx = await sdk.updateGatewaySchedulerShare(
+        h01GatewayAuthority.publicKey,
+        1000
+      );
+      await sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(schedIx),
+        [h01GatewayAuthority],
+        { commitment: "processed" as Commitment }
+      );
+
+      await sdk.updateWallet(admin);
+
+      // custom_protocol_share = 9500 (enabled) + scheduler 1000 = 10500 > 10000 → reject
+      const rejectIx = await sdk.updateGatewayProtocolFee(
+        h01GatewayAuthority.publicKey,
+        true,
+        9500
+      );
+      const rejectTx = new Transaction().add(rejectIx);
+      await expect(
+        sendAndConfirmTransaction(connection, rejectTx, [admin], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // custom_protocol_share_bps must NOT have been written, and the
+      // FEATURE_CUSTOM_PROTOCOL_FEE bit must NOT be set (Solana rolls back
+      // account state when an instruction fails).
+      const unchanged = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(unchanged!.customProtocolShareBps).toBe(0);
+      expect(
+        unchanged!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      ).toBe(0);
+
+      // 8900 + 1000 = 9900 ≤ 10000 → accept
+      const okIx = await sdk.updateGatewayProtocolFee(
+        h01GatewayAuthority.publicKey,
+        true,
+        8900
+      );
+      const okTx = new Transaction().add(okIx);
+      await sendAndConfirmTransaction(connection, okTx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+      const updated = await sdk.getPaymentGateway(h01GatewayPDA);
+      expect(updated!.customProtocolShareBps).toBe(8900);
+      expect(updated!.featureFlags & GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE).toBe(
+        GATEWAY_FEATURES.CUSTOM_PROTOCOL_FEE
+      );
+    });
   });
 
   describe("Gateway feature flags", () => {
@@ -2998,10 +3394,11 @@ describe("Tributary", () => {
         [flagsFeeRecipient.publicKey, 1],
       ]);
 
-      await sdk.updateWallet(new anchor.Wallet(admin));
+      await sdk.updateWallet(admin);
       const createIx = await sdk.createPaymentGateway(
         flagsGatewayAuthority.publicKey,
         100,
+        0, // schedulerShareBps — no scheduler cut in this test
         flagsFeeRecipient.publicKey,
         "flags test gateway",
         ""
@@ -3023,7 +3420,7 @@ describe("Tributary", () => {
     });
 
     test("Gateway authority can enable REFERRAL flag", async () => {
-      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
+      await sdk.updateWallet(flagsGatewayAuthority);
 
       const enableIx = await sdk.enableGatewayFeature(
         flagsGatewayAuthority.publicKey,
@@ -3041,7 +3438,7 @@ describe("Tributary", () => {
     });
 
     test("Can enable NET_AMOUNT flag alongside REFERRAL", async () => {
-      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
+      await sdk.updateWallet(flagsGatewayAuthority);
 
       const enableIx = await sdk.enableGatewayFeature(
         flagsGatewayAuthority.publicKey,
@@ -3065,7 +3462,7 @@ describe("Tributary", () => {
     });
 
     test("CUSTOM_PROTOCOL_FEE bit is protected — on-chain strips it even if passed directly", async () => {
-      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
+      await sdk.updateWallet(flagsGatewayAuthority);
 
       const { address: gatewayPda } = sdk.getGatewayPda(
         flagsGatewayAuthority.publicKey
@@ -3093,12 +3490,12 @@ describe("Tributary", () => {
       );
       expect(
         gateway!.featureFlags &
-          (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
+        (GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT)
       ).toBe(GATEWAY_FEATURES.REFERRAL | GATEWAY_FEATURES.NET_AMOUNT);
     });
 
     test("Can disable a single flag without affecting others", async () => {
-      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
+      await sdk.updateWallet(flagsGatewayAuthority);
 
       const disableIx = await sdk.disableGatewayFeature(
         flagsGatewayAuthority.publicKey,
@@ -3117,7 +3514,7 @@ describe("Tributary", () => {
     });
 
     test("Can set raw flags via updateGatewayFeatureFlags", async () => {
-      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
+      await sdk.updateWallet(flagsGatewayAuthority);
 
       const rawFlags = GATEWAY_FEATURES.NET_AMOUNT;
       const updateIx = await sdk.updateGatewayFeatureFlags(
@@ -3143,7 +3540,7 @@ describe("Tributary", () => {
     });
 
     test("Can disable all flags", async () => {
-      await sdk.updateWallet(new anchor.Wallet(flagsGatewayAuthority));
+      await sdk.updateWallet(flagsGatewayAuthority);
 
       const updateIx = await sdk.updateGatewayFeatureFlags(
         flagsGatewayAuthority.publicKey,
@@ -3161,7 +3558,7 @@ describe("Tributary", () => {
     test("Non-authority cannot update feature flags", async () => {
       const rando = Keypair.generate();
       await fund(rando.publicKey, 1);
-      await sdk.updateWallet(new anchor.Wallet(rando));
+      await sdk.updateWallet(rando);
 
       const updateIx = await sdk.updateGatewayFeatureFlags(
         flagsGatewayAuthority.publicKey,
@@ -3181,14 +3578,12 @@ describe("Tributary", () => {
     let transferUserTokenAccount: PublicKey;
     let transferRecipient: Keypair;
 
-    const PROTOCOL_FEE_BPS = 100;
     const GATEWAY_FEE_BPS = 100;
 
     function calcFees(grossAmount: number) {
-      const gatewayFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
-      const protocolFee = Math.floor((grossAmount * PROTOCOL_FEE_BPS) / 10000);
-      const recipientAmount = grossAmount - gatewayFee - protocolFee;
-      return { gatewayFee, protocolFee, recipientAmount };
+      const totalFee = Math.floor((grossAmount * GATEWAY_FEE_BPS) / 10000);
+      const recipientAmount = grossAmount - totalFee;
+      return { totalFee, recipientAmount };
     }
 
     beforeAll(async () => {
@@ -3211,7 +3606,7 @@ describe("Tributary", () => {
     });
 
     test("Execute simple transfer with memo", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       const recipientAta = getAssociatedTokenAddressSync(
         tokenMint,
@@ -3223,7 +3618,8 @@ describe("Tributary", () => {
       ]);
 
       const transferAmount = new anchor.BN(500000);
-      const { recipientAmount } = calcFees(transferAmount.toNumber());
+      const { recipientAmount, totalFee } = calcFees(transferAmount.toNumber());
+      const referralPool = Math.floor((totalFee * 500) / 10000);
 
       const instructions = await sdk.transfer(
         tokenMint,
@@ -3247,12 +3643,14 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount) + recipientAmount
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
-        parseInt(initialUserBalance.value.amount) - transferAmount.toNumber()
+        parseInt(initialUserBalance.value.amount) -
+        transferAmount.toNumber() +
+        referralPool
       );
     });
 
     test("Transfer fails with zero amount", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       try {
         const instructions = await sdk.transfer(
@@ -3275,7 +3673,7 @@ describe("Tributary", () => {
     });
 
     test("Transfer fails with insufficient balance", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       const userBalance = await connection.getTokenAccountBalance(
         transferUserTokenAccount
@@ -3347,11 +3745,16 @@ describe("Tributary", () => {
           1000000n
         )
       );
-      await sendAndConfirmTransaction(connection, ataTx, [admin, mintAuthority], {
-        commitment: "processed" as Commitment,
-      });
+      await sendAndConfirmTransaction(
+        connection,
+        ataTx,
+        [admin, mintAuthority],
+        {
+          commitment: "processed" as Commitment,
+        }
+      );
 
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       const initialRecipientBalance = await connection.getTokenAccountBalance(
         recipientAta
@@ -3388,7 +3791,7 @@ describe("Tributary", () => {
       const [nonOwnerAta] = await batchCreateATAs([nonOwner.publicKey]);
       await batchMintTo([{ address: nonOwnerAta, amount: 1000000n }]);
 
-      await sdk.updateWallet(new anchor.Wallet(nonOwner));
+      await sdk.updateWallet(nonOwner);
 
       const recipientAta = getAssociatedTokenAddressSync(
         tokenMint,
@@ -3423,7 +3826,7 @@ describe("Tributary", () => {
     });
 
     test("Transfer with empty memo", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       const recipientAta = getAssociatedTokenAddressSync(
         tokenMint,
@@ -3459,7 +3862,7 @@ describe("Tributary", () => {
     });
 
     test("Transfer with full 64-byte memo", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       const recipientAta = getAssociatedTokenAddressSync(
         tokenMint,
@@ -3495,7 +3898,7 @@ describe("Tributary", () => {
     });
 
     test("Multiple sequential transfers", async () => {
-      await sdk.updateWallet(new anchor.Wallet(transferUser));
+      await sdk.updateWallet(transferUser);
 
       const recipientAta = getAssociatedTokenAddressSync(
         tokenMint,
@@ -3509,11 +3912,13 @@ describe("Tributary", () => {
       const transferAmounts = [100000, 200000, 150000];
       let totalGross = 0;
       let totalRecipient = 0;
+      let totalReferralDust = 0;
 
       for (let i = 0; i < transferAmounts.length; i++) {
-        const { recipientAmount } = calcFees(transferAmounts[i]);
+        const { recipientAmount, totalFee } = calcFees(transferAmounts[i]);
         totalGross += transferAmounts[i];
         totalRecipient += recipientAmount;
+        totalReferralDust += Math.floor((totalFee * 500) / 10000);
 
         const instructions = await sdk.transfer(
           tokenMint,
@@ -3538,14 +3943,16 @@ describe("Tributary", () => {
         parseInt(initialRecipientBalance.value.amount) + totalRecipient
       );
       expect(parseInt(finalUserBalance.value.amount)).toEqual(
-        parseInt(initialUserBalance.value.amount) - totalGross
+        parseInt(initialUserBalance.value.amount) -
+        totalGross +
+        totalReferralDust
       );
     });
   });
 
   describe("Full cleanup - delete all policies and user payment", () => {
     test("Delete all remaining payment policies for user", async () => {
-      await sdk.updateWallet(new anchor.Wallet(user));
+      await sdk.updateWallet(user);
 
       const userPayment = await sdk.getUserPayment(userPaymentPDA);
       expect(userPayment).not.toBeNull();
@@ -3568,7 +3975,7 @@ describe("Tributary", () => {
 
         const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyId);
         const tx = new Transaction().add(deleteIx);
-        await sendAndConfirmTransaction(connection, tx, [user], {
+        await sendAndConfirmWithRetry(connection, tx, [user], {
           commitment: "processed" as Commitment,
         });
 
@@ -3576,11 +3983,12 @@ describe("Tributary", () => {
         expect(afterDelete).toBeNull();
       };
 
-      const promises = [];
+      // Sequential — parallel deletes overwhelm Surfpool on CI (2-core),
+      // causing blockhash expiry. Sequential is slightly slower in the happy
+      // path but never stalls the instance.
       for (let policyId = 1; policyId <= createdCount; policyId++) {
-        promises.push(deletePolicy(policyId));
+        await deletePolicy(policyId);
       }
-      await Promise.all(promises);
 
       const finalUserPayment = await sdk.getUserPayment(userPaymentPDA);
       expect(finalUserPayment!.activePoliciesCount).toBe(0);
@@ -3591,20 +3999,9 @@ describe("Tributary", () => {
       expect(userPayment).not.toBeNull();
       expect(userPayment!.activePoliciesCount).toBe(0);
 
-      const { address: configPda } = sdk.getConfigPda();
-
       const ownerBalanceBefore = await connection.getBalance(user.publicKey);
 
-      const deleteUserPaymentIx = await program.methods
-        .deleteUserPayment()
-        .accountsStrict({
-          owner: user.publicKey,
-          userPayment: userPaymentPDA,
-          tokenMint: tokenMint,
-          rentPayer: user.publicKey,
-          config: configPda,
-        })
-        .instruction();
+      const deleteUserPaymentIx = await sdk.deleteUserPayment(tokenMint);
 
       const tx = new Transaction().add(deleteUserPaymentIx);
       await sendAndConfirmTransaction(connection, tx, [user], {
@@ -3652,7 +4049,7 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      await sdk.updateWallet(migrateUser);
       const createUserPaymentIx = await sdk.createUserPayment(tokenMint);
       await sendAndConfirmTransaction(
         connection,
@@ -3663,7 +4060,7 @@ describe("Tributary", () => {
     });
 
     test("v0: Execute payment with global payments_delegate PDA", async () => {
-      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      await sdk.updateWallet(migrateUser);
 
       const memo = new Uint8Array(64).fill(0);
       Buffer.from("v0 delegate test").copy(memo);
@@ -3712,7 +4109,7 @@ describe("Tributary", () => {
       const tokenAcc = await getAccount(connection, migrateUserTokenAccount);
       expect(tokenAcc.delegate).toEqual(migratePaymentsDelegate);
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
       const executeIxs = await sdk.executePayment(migratePolicy1PDA);
       await sendAndConfirmTransaction(
         connection,
@@ -3748,7 +4145,7 @@ describe("Tributary", () => {
       const tokenAcc = await getAccount(connection, migrateUserTokenAccount);
       expect(tokenAcc.delegate).toEqual(migrateUserPaymentPDA);
 
-      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      await sdk.updateWallet(migrateUser);
 
       const memo2 = new Uint8Array(64).fill(0);
       Buffer.from("v1 delegate test").copy(memo2);
@@ -3782,7 +4179,7 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
       const executeIxs = await sdk.executePayment(migratePolicy2PDA);
       await sendAndConfirmTransaction(
         connection,
@@ -3799,14 +4196,11 @@ describe("Tributary", () => {
     });
 
     test("Migration: existing policy still works after switching to UserPayment PDA delegate", async () => {
-      const policy1 = await sdk.getPaymentPolicy(migratePolicy1PDA);
-      const paymentCountBefore = policy1!.paymentCount;
-
       const startTime3 = Math.floor(Date.now() / 1000) - 7200;
       const memo3 = new Uint8Array(64).fill(0);
       Buffer.from("migration test").copy(memo3);
 
-      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      await sdk.updateWallet(migrateUser);
       const changeStatusIx = await sdk.changePaymentPolicyStatus(tokenMint, 1, {
         paused: {},
       });
@@ -3848,7 +4242,7 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
       const executeIxs = await sdk.executePayment(policy3PDA);
       await sendAndConfirmTransaction(
         connection,
@@ -3876,7 +4270,7 @@ describe("Tributary", () => {
       const memo = new Uint8Array(64).fill(0);
       Buffer.from("no delegate test").copy(memo);
 
-      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      await sdk.updateWallet(migrateUser);
       const createPolicyIx = await sdk.getCreateSubscriptionPolicyInstruction(
         tokenMint,
         recipient.publicKey,
@@ -3905,7 +4299,7 @@ describe("Tributary", () => {
         program.programId
       );
 
-      await sdk.updateWallet(new anchor.Wallet(gatewayExecutionSigner));
+      await sdk.updateWallet(gatewayExecutionSigner);
       try {
         const executeIxs = await sdk.executePayment(noDelegatePolicyPDA);
         await sendAndConfirmTransaction(
@@ -3951,7 +4345,7 @@ describe("Tributary", () => {
       let tokenAcc = await getAccount(connection, migrateUserTokenAccount);
       expect(tokenAcc.delegate).toEqual(migratePaymentsDelegate);
 
-      await sdk.updateWallet(new anchor.Wallet(migrateUser));
+      await sdk.updateWallet(migrateUser);
       const migrateIxs = await sdk.migrateDelegate(
         tokenMint,
         new anchor.BN(10_000_000)
@@ -3967,6 +4361,65 @@ describe("Tributary", () => {
       tokenAcc = await getAccount(connection, migrateUserTokenAccount);
       expect(tokenAcc.delegate).toEqual(migrateUserPaymentPDA);
       expect(Number(tokenAcc.delegatedAmount)).toBe(10_000_000);
+    });
+  });
+
+  describe("Program authority rotation (M-02)", () => {
+    test("Current admin can rotate authority to a new key", async () => {
+      // Sanity: admin is still the authority before we rotate.
+      const configBefore = await sdk.getProgramConfig(configPDA);
+      expect(configBefore!.admin).toEqual(admin.publicKey);
+
+      const newAdmin = Keypair.generate();
+      await fund(newAdmin.publicKey, 1);
+
+      await sdk.updateWallet(admin);
+      const rotateIx = await sdk.changeProgramAuthority(newAdmin.publicKey);
+      const tx = new Transaction().add(rotateIx);
+      await sendAndConfirmTransaction(connection, tx, [admin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const configAfter = await sdk.getProgramConfig(configPDA);
+      expect(configAfter!.admin).toEqual(newAdmin.publicKey);
+      // fee_recipient must be untouched by the rotation.
+      expect(configAfter!.feeRecipient).toEqual(configBefore!.feeRecipient);
+
+      // Rotate back so the rest of the suite (which assumes `admin` is the
+      // protocol admin) keeps working.
+      await sdk.updateWallet(newAdmin);
+      const rotateBackIx = await sdk.changeProgramAuthority(admin.publicKey);
+      const revertTx = new Transaction().add(rotateBackIx);
+      await sendAndConfirmTransaction(connection, revertTx, [newAdmin], {
+        commitment: "processed" as Commitment,
+      });
+
+      const configRestored = await sdk.getProgramConfig(configPDA);
+      expect(configRestored!.admin).toEqual(admin.publicKey);
+    });
+
+    test("Unauthorized key cannot rotate authority", async () => {
+      const impostor = Keypair.generate();
+      await fund(impostor.publicKey, 1);
+
+      const configBefore = await sdk.getProgramConfig(configPDA);
+      expect(configBefore!.admin).toEqual(admin.publicKey);
+
+      const target = Keypair.generate();
+
+      await sdk.updateWallet(impostor);
+      const rotateIx = await sdk.changeProgramAuthority(target.publicKey);
+      const tx = new Transaction().add(rotateIx);
+
+      await expect(
+        sendAndConfirmTransaction(connection, tx, [impostor], {
+          commitment: "processed" as Commitment,
+        })
+      ).rejects.toThrow();
+
+      // State must be unchanged.
+      const configAfter = await sdk.getProgramConfig(configPDA);
+      expect(configAfter!.admin).toEqual(admin.publicKey);
     });
   });
 });

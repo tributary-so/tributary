@@ -12,15 +12,67 @@ import { ApiResponse } from "../types";
 const router: Router = Router();
 
 /**
- * GET /api/v1/subscription/:gateway?trackingId=:trackingId
- * Get full subscription details by tracking ID
- * Path params:
- *   - gateway: Gateway's public key
- * Query params:
- *   - trackingId: Subscription tracking ID (required)
- *   - userPublicKey: User's public key for user-based lookup
- *   - gatewayPublicKey: Gateway's public key for gateway-based lookup
- *   - tokenMint: Token mint address (defaults to USDC)
+ * @openapi
+ * /v1/subscriptions:
+ *   get:
+ *     summary: Look up subscription details
+ *     description: >
+ *       Returns matching subscription policy records. Provide at least one
+ *       filter (up to three combined). If `walletPublicKey` is given,
+ *       `tokenMint` is also required.
+ *     tags: [Subscriptions]
+ *     operationId: getSubscriptions
+ *     parameters:
+ *       - in: query
+ *         name: trackingId
+ *         schema: { type: string }
+ *         description: Tracking ID assigned at checkout.
+ *       - in: query
+ *         name: userPublicKey
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *         description: User (owner) wallet public key.
+ *       - in: query
+ *         name: walletPublicKey
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *         description: User wallet public key (requires `tokenMint`).
+ *       - in: query
+ *         name: gatewayPublicKey
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *         description: Gateway authority public key.
+ *       - in: query
+ *         name: tokenMint
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *         description: SPL token mint. Defaults to USDC when omitted.
+ *       - in: query
+ *         name: recipient
+ *         schema: { type: string, minLength: 32, maxLength: 44 }
+ *         description: Recipient wallet public key.
+ *     responses:
+ *       200:
+ *         description: Matching subscription records.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, data, timestamp]
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     description: Subscription policy record (gateway, recipient, schedule, status).
+ *                 timestamp: { type: integer, description: "Unix epoch ms." }
+ *       400:
+ *         description: Invalid filter combination (missing/required pair, &lt;1 or &gt;3 filters).
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: No matching subscription found.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.get(
   "/",
@@ -34,11 +86,11 @@ router.get(
       recipient,
     } = req.query;
 
-    // Validate that at least one lookup option is provided
-    if ((walletPublicKey && !tokenMint)) {
+    // walletPublicKey and tokenMint must be provided together
+    if (!!walletPublicKey !== !!tokenMint) {
       throw new ApiError(
         400,
-        "If you provide walletPublicKey you also have to provide tokenMint!"
+        "If you provide walletPublicKey or tokenMint, you must provide both"
       );
     }
 
