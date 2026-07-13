@@ -969,6 +969,24 @@ describe("Tributary", () => {
     // Delete the payment policy (only owner can delete)
     await sdk.updateWallet(user);
 
+    // CF-014: Active policies cannot be deleted — force pause first.
+    await expect(
+      (async () => {
+        const ix = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
+        const tx = new Transaction().add(ix);
+        await sendAndConfirmTransaction(connection, tx, [user]);
+      })()
+    ).rejects.toThrow();
+
+    const pauseIx = await sdk.changePaymentPolicyStatus(
+      tokenMint,
+      policyIdToDelete,
+      { paused: {} }
+    );
+    await sendAndConfirmTransaction(connection, new Transaction().add(pauseIx), [
+      user,
+    ]);
+
     const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyIdToDelete);
     const deleteTx = new Transaction().add(deleteIx);
     await sendAndConfirmTransaction(connection, deleteTx, [user]);
@@ -3972,6 +3990,24 @@ describe("Tributary", () => {
 
         const existing = await sdk.getPaymentPolicy(policyPda);
         if (!existing) return;
+
+        // CF-014: Active policies can't be deleted — pause first if needed.
+        const isActive =
+          (existing.status as { active?: unknown } | undefined)?.active !==
+          undefined;
+        if (isActive) {
+          const pauseIx = await sdk.changePaymentPolicyStatus(
+            tokenMint,
+            policyId,
+            { paused: {} }
+          );
+          await sendAndConfirmWithRetry(
+            connection,
+            new Transaction().add(pauseIx),
+            [user],
+            { commitment: "processed" as Commitment }
+          );
+        }
 
         const deleteIx = await sdk.deletePaymentPolicy(tokenMint, policyId);
         const tx = new Transaction().add(deleteIx);
