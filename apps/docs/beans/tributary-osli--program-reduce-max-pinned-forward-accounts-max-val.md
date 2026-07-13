@@ -1,11 +1,11 @@
 ---
 # tributary-osli
 title: 'Program: reduce MAX_PINNED_FORWARD_ACCOUNTS + MAX_VALIDATION_DATA_SIZE (programs/tributary/)'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-12T19:11:40Z
-updated_at: 2026-07-12T19:14:10Z
+updated_at: 2026-07-13T06:10:17Z
 parent: tributary-u8n4
 ---
 
