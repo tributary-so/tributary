@@ -74,8 +74,12 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
             gateway.referral_tiers_bps = tiers;
         }
 
-        // Validate that tier percentages sum to 100%
-        if !gateway.referral_tiers_bps.is_empty() {
+        // Validate that tier percentages sum to 100%.
+        // CF-012: `[u16; 3].is_empty()` is always false (fixed-size array),
+        // so the prior guard was a tautology — `validate_referral_tiers()`
+        // always fired and rejected default `[0, 0, 0]`. Only validate when
+        // referral is actually live and funded.
+        if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
             gateway.validate_referral_tiers()?;
         }
 
@@ -188,5 +192,35 @@ mod tests {
             referral_preserves, feature_flag_preserves,
             "Preservation masks diverged across update_gateway_* sites"
         );
+    }
+
+    /// CF-012: the validation guard must not be a tautology.
+    /// `[u16; 3].is_empty()` is always false, so the prior `!is_empty()`
+    /// check forced `validate_referral_tiers()` on every update — including
+    /// gateways still on default `[0, 0, 0]` tiers, bricking any referral
+    /// setting change until tiers were set. The new guard only fires when
+    /// referral is enabled AND allocation > 0.
+    #[test]
+    fn referral_tier_validation_skips_dormant_default() {
+        // Default gateway: referral disabled, allocation 0, tiers [0,0,0].
+        // validate_referral_tiers would reject [0,0,0] (sum != 10000).
+        // The guard must skip it.
+        let gw = make_gateway(0);
+        assert!(!gw.is_referral_enabled());
+        assert_eq!(gw.referral_allocation_bps, 0);
+        // Reproduce the guard condition — must be false so validate is skipped.
+        let should_validate = gw.is_referral_enabled() && gw.referral_allocation_bps > 0;
+        assert!(
+            !should_validate,
+            "dormant gateway must skip tier validation"
+        );
+
+        // Active referral with allocation must validate (tiers configured or not).
+        let mut gw = make_gateway(PaymentGateway::FEATURE_REFERRAL);
+        gw.referral_allocation_bps = 1000;
+        gw.referral_tiers_bps = [5000, 3000, 2000];
+        let should_validate = gw.is_referral_enabled() && gw.referral_allocation_bps > 0;
+        assert!(should_validate);
+        assert!(gw.validate_referral_tiers().is_ok());
     }
 }

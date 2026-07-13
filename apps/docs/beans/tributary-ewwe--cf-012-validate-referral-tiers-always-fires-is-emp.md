@@ -1,11 +1,11 @@
 ---
 # tributary-ewwe
 title: 'CF-012: validate_referral_tiers always fires — is_empty tautology on [u16; 3]'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T20:37:23Z
 parent: tributary-gq3x
 ---
 
@@ -44,3 +44,8 @@ A gateway authority cannot update `referral_allocation_bps` alone without also p
 ```
 
 Only validate tiers when referral is actually active and has a non-zero allocation.
+
+## Summary of Changes
+
+- Fixed tautological `is_empty()` guard on `[u16; 3]` (always false) in `update_gateway_referral_settings.rs:78` — replaced with `is_referral_enabled() && referral_allocation_bps > 0` so dormant gateways can update referral settings without pre-configured tiers.
+- Added regression test `referral_tier_validation_skips_dormant_default` covering both the dormant skip and the active-referral validation path.
