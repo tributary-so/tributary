@@ -102,7 +102,7 @@ lint:
 	cargo clippy
 
 surfpool:
-	killall -9 surfpool || surfpool start --legacy-anchor-compatibility
+	killall -9 surfpool; surfpool start --legacy-anchor-compatibility
 
 test:
 	anchor run surfpool

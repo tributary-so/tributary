@@ -3657,7 +3657,7 @@ export type Tributary = {
                     "name": "pinnedAccount"
                   }
                 },
-                4
+                2
               ]
             }
           }
@@ -4996,7 +4996,7 @@ export type Tributary = {
                     "name": "pinnedAccount"
                   }
                 },
-                4
+                2
               ]
             }
           },
