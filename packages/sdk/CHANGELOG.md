@@ -1,3 +1,5 @@
+# [@tributary-so/sdk-v2.0.0-beta.6](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-v2.0.0-beta.5...@tributary-so/sdk-v2.0.0-beta.6) (2026-07-13)
+
 # [@tributary-so/sdk-v2.0.0-beta.5](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-v2.0.0-beta.4...@tributary-so/sdk-v2.0.0-beta.5) (2026-07-13)
 
 # [@tributary-so/sdk-v2.0.0-beta.4](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-v2.0.0-beta.3...@tributary-so/sdk-v2.0.0-beta.4) (2026-07-13)
