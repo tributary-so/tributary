@@ -413,6 +413,11 @@ fn skim_input_fees<'info>(
                         sta_data.len() >= 64,
                         TributaryError::InvalidSchedulerFeeAccount
                     );
+                    require!(
+                        ata.owner == &anchor_spl::token::ID
+                            || ata.owner == &anchor_spl::token_2022::ID,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
                     let sta_mint = Pubkey::try_from(&sta_data[0..32]).unwrap_or_default();
                     let sta_owner = Pubkey::try_from(&sta_data[32..64]).unwrap_or_default();
                     // Scheduler ATA is input-side (ADR-0026).
