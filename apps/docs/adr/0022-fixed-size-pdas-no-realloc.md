@@ -7,14 +7,14 @@ variable-length field. No account ever calls `realloc`. Account sizes are
 compile-time `const` values derived from the struct layout, not runtime
 computations.
 
-| Field                      | Type                  | Rationale for the cap                                         |
-| -------------------------- | --------------------- | ------------------------------------------------------------- |
-| `ByteRangeCheck` array     | `[ByteRangeCheck; 4]` | 4 checks covers selector + 3 arg pins                         |
-| Forward pinned accounts    | `[Pubkey; 4]`         | Meteora DLMM route: lbPair + reserveX + reserveY + 1 wildcard |
-| Validation target accounts | `[Pubkey; 2]`         | Highest Lighthouse arity in use (`accountDelta` = 2)          |
-| Assertion data             | `[u8; 1024]`          | All Lighthouse assertion families fit                         |
-| Memo                       | `[u8; 32]`            | 32 bytes ≈ 32 ASCII chars                                     |
-| ComposablePolicy padding   | `[u8; 192]`           | absorbs future fields without resize                          |
+| Field                      | Type                  | Rationale for the cap                                                                             |
+| -------------------------- | --------------------- | ------------------------------------------------------------------------------------------------- |
+| `ByteRangeCheck` array     | `[ByteRangeCheck; 4]` | 4 checks covers selector + 3 arg pins                                                             |
+| Forward pinned accounts    | `[Pubkey; 2]`         | Meteora DLMM canonical swap pins 1 account (lbPair); 2 is ample headroom (amended — see ADR-0021) |
+| Validation target accounts | `[Pubkey; 2]`         | Highest Lighthouse arity in use (`accountDelta` = 2)                                              |
+| Assertion data             | `[u8; 512]`           | All Lighthouse assertion families fit (<200B in practice; amended — see ADR-0009)                 |
+| Memo                       | `[u8; 32]`            | 32 bytes ≈ 32 ASCII chars                                                                         |
+| ComposablePolicy padding   | `[u8; 192]`           | absorbs future fields without resize                                                              |
 
 When a cap is insufficient the fix is a **design change** (new program
 version, migration), not a runtime realloc.
@@ -55,7 +55,7 @@ space = T::SIZE)]` requires the space upfront. With fixed-size, `SIZE` is
    rent (too big) or truncates the last field (too small → silent data loss).
 
 5. **Rent waste is trivial.** The cost of unused capacity (e.g. 128 bytes of
-   `Pubkey` padding when only 1 of 4 pins is active) is ~0.001 SOL at current
+   `Pubkey` padding when only 1 of 2 forward pins is active) is ~0.001 SOL at current
    rent — reclaimable on account close. The engineering cost of a realloc
    system (resize instruction, size negotiation, rent reconciliation,
    migration path, test coverage for the resize edge cases) is orders of
@@ -71,9 +71,20 @@ space = T::SIZE)]` requires the space upfront. With fixed-size, `SIZE` is
 
 If a future feature requires storing genuinely user-arbitrary-length data on
 a Tributary PDA (e.g. a composable policy that chains N forward steps, or a
-validation assertion that exceeds 1024 bytes), the right answer is likely a
+validation assertion that exceeds 512 bytes), the right answer is likely a
 **separate data account** keyed by the policy (not a realloc of the policy
 itself) — the ValidationPda pattern already in use. This keeps the main
 account fixed-size while allowing unbounded companion data.
 
-(bean tributary-zvku)
+## Amendment (2026-07-12): two caps reduced
+
+The forward-pin cap (`[Pubkey; 4]` → `[Pubkey; 2]`) and the assertion-data
+cap (`[u8; 1024]` → `[u8; 512]`) were both reduced to shrink tx size and
+PDA rent. See ADR-0021 (amended) for the tx-size diagnosis (1264B > 1232B
+cap; the 64B forward-pin saving) and ADR-0009 (amended) for the rent
+reduction (588B vs 1100B per `ValidationPda`). The "fixed-size, no realloc"
+principle is unchanged — the caps moved, not the policy. (No new ADR-0030
+was created: composable is greenfield, MODIFY-IN-PLACE per the verdict in
+scrapped blocker tributary-d1qw.)
+
+(bean tributary-0dzc; doc sync tributary-1972)

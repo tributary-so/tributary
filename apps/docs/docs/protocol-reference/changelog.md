@@ -33,7 +33,7 @@ citizens alongside direct pull payments.
   `delete_composable_policy`) — programmable pull payments with optional
   validation + forward hooks executed between the pull and the settlement.
 - **`ValidationPda`** account (`["composable_validation", composable_policy]`)
-  — separate account for Lighthouse assertion data (≤1024 bytes), decoupling
+  — separate account for Lighthouse assertion data (≤512 bytes), decoupling
   storage cost from the `ComposablePolicy` itself.
 - **`ForwardConfig` + `ByteRangeCheck`** — on-chain instruction-data
   validation for forward CPIs. Up to 4 byte-range checks per policy; at least

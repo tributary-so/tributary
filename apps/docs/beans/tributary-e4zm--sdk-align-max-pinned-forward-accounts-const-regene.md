@@ -1,11 +1,11 @@
 ---
 # tributary-e4zm
 title: 'SDK: align MAX_PINNED_FORWARD_ACCOUNTS const + regenerate IDL types (packages/sdk/)'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-12T19:11:40Z
-updated_at: 2026-07-12T19:14:10Z
+updated_at: 2026-07-13T06:31:40Z
 parent: tributary-u8n4
 ---
 

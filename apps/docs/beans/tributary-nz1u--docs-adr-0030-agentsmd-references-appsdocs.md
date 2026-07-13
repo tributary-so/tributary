@@ -1,11 +1,11 @@
 ---
 # tributary-nz1u
 title: 'Docs: amend ADR-0021/0009/0016 + AGENTS.md (apps/docs/)'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-12T19:11:40Z
-updated_at: 2026-07-12T19:18:54Z
+updated_at: 2026-07-13T07:43:47Z
 parent: tributary-u8n4
 ---
 

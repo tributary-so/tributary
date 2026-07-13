@@ -17,7 +17,7 @@ powers the simple cold→hot USDC topup flow. (bean tributary-1lil)
 
 **External ValidationPda.** The assertion byte-blob is stored in a
 separate `ValidationPda` account (`["composable_validation",
-composable_policy]`, ≤1024 bytes), not inline on `ComposablePolicy`.
+composable_policy]`, ≤512 bytes), not inline on `ComposablePolicy`.
 The original v1 design carried the data inline; the v2 refactor moved
 it out (bean tributary-5guw). `ComposablePolicy` is fixed-size and
 already large; carrying up to 1KB of variable-length assertion data
@@ -32,3 +32,12 @@ enabled, at least one `ByteRangeCheck` must pin the discriminator at
 offset 0 of the forward instruction data. This stops a gateway from
 swapping in an arbitrary instruction for the allowlisted program at
 execute time — only the pinned instruction shape can land.
+
+## Amendment (2026-07-12): Reduced assertion capacity 1024→512
+
+`MAX_VALIDATION_DATA_SIZE` cut 1024→512 (rent reduction — 588B vs 1100B per
+`ValidationPda`, ~0.005 SOL each; milestone tributary-u8n4). This is a
+trailing-field shrink, non-breaking. Note: this constant does NOT drive tx
+size — `validation_data` travels as a Borsh `Vec<u8>` (actual bytes only) and
+is read from the account at execute, so the cut is rent-only. Lighthouse
+assertions in practice are <200B; 512 leaves ample headroom.

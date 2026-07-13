@@ -1,11 +1,11 @@
 ---
 # tributary-rcjh
 title: 'Formal verification: qedspec const + Layer 1 regen + drift-gate re-stamp'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-12T19:11:40Z
-updated_at: 2026-07-12T19:14:10Z
+updated_at: 2026-07-13T07:01:09Z
 parent: tributary-u8n4
 ---
 
