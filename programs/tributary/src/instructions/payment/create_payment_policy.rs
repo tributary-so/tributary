@@ -1,5 +1,6 @@
 use crate::{
-    constants::*, error::TributaryError, shared::mint::validate_mint_compatible, state::*,
+    constants::*, error::TributaryError, shared::mint::validate_mint_compatible,
+    shared::schedule::sanitize_policy_for_creation, state::*,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
@@ -68,7 +69,7 @@ impl<'info> CreatePaymentPolicy<'info> {
         verified,
         spec = "../../tributary.qedspec",
         handler = "create_payment_policy",
-        hash = "1b52a4a7fb1a17dd",
+        hash = "146d0ad59fd1f963",
         spec_hash = "6c144b6f017bd22f"
     )]
     pub fn handler_create_payment_policy(
@@ -86,41 +87,11 @@ impl<'info> CreatePaymentPolicy<'info> {
 
         let clock = Clock::get()?;
 
-        // Adjust next payment due date if in the past
+        // Adjust schedule fields for creation (CF-005): clamp past due dates
+        // and force PayAsYouGo period start to now. Single source of truth in
+        // shared::schedule — the composable create path uses the same helper.
         let mut adjusted_policy_type = policy_type.clone();
-        match &mut adjusted_policy_type {
-            PolicyType::Subscription {
-                next_payment_due, ..
-            } => {
-                if *next_payment_due <= clock.unix_timestamp {
-                    msg!("Next payment due date was in the past, adjusting to current timestamp for immediate execution");
-                    *next_payment_due = clock.unix_timestamp;
-                }
-            }
-            PolicyType::Milestone { .. } => {
-                // Milestone timestamps are absolute and should be validated to be in the future
-                // No adjustment needed here as milestones don't have a "next due" concept
-            }
-            PolicyType::PayAsYouGo {
-                current_period_start,
-                ..
-            } => {
-                // Initialize the current period start time
-                *current_period_start = clock.unix_timestamp;
-            }
-            PolicyType::OneTime { .. } => {
-                // OneTime stores due_date as-is. due_date <= 0 means
-                // "immediately executable" (handled at execute time); a
-                // positive due_date gates execution. No clamp here — the
-                // execute-time gate is the single source of truth.
-            }
-            PolicyType::UpTo { .. } => {
-                // UpTo stores valid_after/deadline as-is. valid_after <= 0
-                // means "immediately executable" (handled at execute time).
-                // No clamp — the execute-time gate is the single source of
-                // truth. See ADR-0020.
-            }
-        }
+        sanitize_policy_for_creation(&mut adjusted_policy_type, clock.unix_timestamp);
 
         let payment_policy = &mut ctx.accounts.payment_policy;
         let user_payment = &mut ctx.accounts.user_payment;

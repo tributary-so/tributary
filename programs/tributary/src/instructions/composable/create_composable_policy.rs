@@ -1,5 +1,6 @@
 use crate::{
-    constants::*, error::TributaryError, shared::mint::validate_mint_compatible, state::*,
+    constants::*, error::TributaryError, shared::mint::validate_mint_compatible,
+    shared::schedule::sanitize_policy_for_creation, state::*,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -204,6 +205,12 @@ impl<'info> CreateComposablePolicy<'info> {
         composable_policy.gateway = ctx.accounts.gateway.key();
         composable_policy.status = PolicyStatus::Active;
         composable_policy.rent_payer = ctx.accounts.fee_payer.key();
+        // CF-005: sanitize schedule fields before storing — same clamping the
+        // PaymentPolicy create path applies. Without this, a Subscription with
+        // next_payment_due = 0 (epoch) bricks the policy on first execute
+        // (compute-budget exhaustion in skip_months).
+        let mut policy_type = policy_type;
+        sanitize_policy_for_creation(&mut policy_type, clock.unix_timestamp);
         composable_policy.policy_type = policy_type;
         composable_policy.memo = memo;
         composable_policy.forward_config = forward_config;

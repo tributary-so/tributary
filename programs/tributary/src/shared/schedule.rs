@@ -27,6 +27,40 @@ use anchor_lang::prelude::*;
 /// 1200 months ≈ 100 years — anything past this is considered abuse / bug.
 const MAX_MONTHLY_ITERATIONS: u32 = 1200;
 
+/// Sanitize user-supplied schedule fields before storing a freshly-created
+/// policy. This is the single source of truth for create-time clamping and
+/// MUST be called from every policy-create path (`create_payment_policy` and
+/// `create_composable_policy`). Without it, a `Subscription` with
+/// `next_payment_due = 0` (Unix epoch) is stored as-is; the first execution's
+/// `calculate_next_payment_due` then loops ~650 times (1970→now in monthly
+/// steps), exhausting the BPF compute budget and permanently bricking the
+/// policy (CF-005). Same risk applies to `PayAsYouGo.current_period_start`.
+///
+/// Behavior matches the original inline block in `create_payment_policy`:
+///  - `Subscription`: clamp `next_payment_due` to now if in the past.
+///  - `PayAsYouGo`: force `current_period_start` to now.
+///  - `Milestone`, `OneTime`, `UpTo`: no-op (their timestamps are absolute /
+///    execute-time gated and handled by their own validation paths).
+pub fn sanitize_policy_for_creation(policy_type: &mut PolicyType, current_timestamp: i64) {
+    match policy_type {
+        PolicyType::Subscription {
+            next_payment_due, ..
+        } => {
+            if *next_payment_due <= current_timestamp {
+                msg!("Next payment due date was in the past, adjusting to current timestamp for immediate execution");
+                *next_payment_due = current_timestamp;
+            }
+        }
+        PolicyType::PayAsYouGo {
+            current_period_start,
+            ..
+        } => {
+            *current_period_start = current_timestamp;
+        }
+        PolicyType::Milestone { .. } | PolicyType::OneTime { .. } | PolicyType::UpTo { .. } => {}
+    }
+}
+
 /// Calculate the next payment due date based on payment frequency.
 /// Fixed-interval frequencies (Daily, Weekly, Custom) use O(1) arithmetic.
 /// Variable-interval frequencies (Monthly, Quarterly, etc.) use a bounded loop.
@@ -1671,6 +1705,92 @@ mod tests {
         assert_eq!(get_days_in_month(2024, 2), 29);
         assert_eq!(get_days_in_month(2020, 2), 29);
         assert_eq!(get_days_in_month(2000, 2), 29);
+    }
+
+    // ── CF-005: create-time schedule sanitization ──
+
+    #[test]
+    fn sanitize_clamps_subscription_past_due_to_now() {
+        let mut pt = subscription(1000, PaymentFrequency::Monthly, 0, None, true);
+        sanitize_policy_for_creation(&mut pt, 1_700_000_000);
+        match pt {
+            PolicyType::Subscription {
+                next_payment_due, ..
+            } => {
+                assert_eq!(
+                    next_payment_due, 1_700_000_000,
+                    "epoch due must be clamped to now (CF-005)"
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn sanitize_keeps_subscription_future_due_unchanged() {
+        let future = 2_000_000_000;
+        let mut pt = subscription(1000, PaymentFrequency::Monthly, future, None, true);
+        sanitize_policy_for_creation(&mut pt, 1_700_000_000);
+        match pt {
+            PolicyType::Subscription {
+                next_payment_due, ..
+            } => {
+                assert_eq!(next_payment_due, future, "future due must be untouched");
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn sanitize_forces_payg_period_start_to_now() {
+        let mut pt = payg(1000, 100, 3600, 0, 0);
+        sanitize_policy_for_creation(&mut pt, 1_700_000_000);
+        match pt {
+            PolicyType::PayAsYouGo {
+                current_period_start,
+                ..
+            } => {
+                assert_eq!(
+                    current_period_start, 1_700_000_000,
+                    "period start must be forced to now (CF-005)"
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn sanitize_leaves_onetime_untouched() {
+        let mut pt = PolicyType::OneTime {
+            amount: 500,
+            due_date: 0,
+            expiry_date: None,
+            padding: [0u8; 103],
+        };
+        sanitize_policy_for_creation(&mut pt, 1_700_000_000);
+        match pt {
+            PolicyType::OneTime { due_date, .. } => {
+                assert_eq!(due_date, 0, "OneTime due_date must not be clamped");
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn sanitize_leaves_upto_untouched() {
+        let mut pt = PolicyType::UpTo {
+            max_amount: 500,
+            valid_after: 0,
+            deadline: 1_800_000_000,
+            padding: [0u8; 104],
+        };
+        sanitize_policy_for_creation(&mut pt, 1_700_000_000);
+        match pt {
+            PolicyType::UpTo { valid_after, .. } => {
+                assert_eq!(valid_after, 0, "UpTo valid_after must not be clamped");
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
