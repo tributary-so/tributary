@@ -1,11 +1,11 @@
 ---
 # tributary-ahfg
 title: 'BLOCKER: Verify Meteora DLMM swap fits in 2 pinned forward accounts'
-status: todo
+status: completed
 type: task
 priority: critical
 created_at: 2026-07-12T19:10:50Z
-updated_at: 2026-07-12T19:11:40Z
+updated_at: 2026-07-13T05:54:43Z
 parent: tributary-u8n4
 ---
 

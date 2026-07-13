@@ -5,10 +5,8 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-07-12T19:12:17Z
-updated_at: 2026-07-12T19:19:49Z
+updated_at: 2026-07-13T05:55:14Z
 parent: tributary-osli
-blocked_by:
-    - tributary-ahfg
 ---
 
 Parent tributary-osli. NOTE: composable is greenfield (develop-only), so the layout shift is non-blocking — no migration needed. Shrinking 4→2 (−64B) shifts trailing ComposablePolicy field offsets, but no live accounts exist.
