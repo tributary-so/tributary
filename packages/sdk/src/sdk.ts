@@ -41,6 +41,8 @@ import type {
   ForwardConfig,
   ValidationSpec,
   PolicyStatus,
+  SetupStep,
+  SetupResult,
 } from "./types.js";
 import { GATEWAY_FEATURES, MAX_PINNED_FORWARD_ACCOUNTS } from "./constants";
 import {
@@ -800,10 +802,34 @@ export class Tributary {
     referralCode?: string,
     feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
+    return (
+      await this.createSubscriptionWithMetadata(
+        tokenMint, recipient, gateway, amount, autoRenew, maxRenewals,
+        paymentFrequency, memo, startTime, approvalAmount,
+        executeImmediately, referralCode, feePayer
+      )
+    ).instructions;
+  }
+
+  async createSubscriptionWithMetadata(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    amount: BN,
+    autoRenew: boolean,
+    maxRenewals: number | null,
+    paymentFrequency: PaymentFrequency,
+    memo: number[],
+    startTime?: BN | null,
+    approvalAmount?: BN,
+    executeImmediately?: boolean,
+    referralCode?: string,
+    feePayer?: PublicKey
+  ): Promise<SetupResult> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
 
-    const instructions: TransactionInstruction[] = [];
+    const steps: SetupStep[] = [];
 
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
     const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
@@ -817,7 +843,7 @@ export class Tributary {
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
-      instructions.push(createAtaIx);
+      steps.push({ instruction: createAtaIx, type: "createAta", data: { owner: user, mint: tokenMint, ata: ownerTokenAccount } });
     }
 
     // Check if userPayment already exists
@@ -827,7 +853,7 @@ export class Tributary {
     // If userPayment doesn't exist, create it first
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
-      instructions.push(createUserPaymentIx);
+      steps.push({ instruction: createUserPaymentIx, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: userPaymentPda } });
     }
 
     if (referralCode) {
@@ -848,7 +874,7 @@ export class Tributary {
         generateSecureRandomString(6),
         referralAccount.owner
       );
-      instructions.push(createReferralIx);
+      steps.push({ instruction: createReferralIx, type: "createReferral", data: { gateway, code: referralCode } });
     }
 
     // Build policy type
@@ -889,22 +915,36 @@ export class Tributary {
       .accountsStrict(accounts)
       .instruction();
 
-    instructions.push(createPaymentPolicyIx);
+    steps.push({ instruction: createPaymentPolicyIx, type: "createPaymentPolicy", data: { policyType, recipient, gateway, policyPda: paymentPolicyPda.address } });
 
     // Calculate or use provided approval amount
     let finalApprovalAmount: BN;
+    let existingPoliciesRaw: Array<{ publicKey: PublicKey; account: PaymentPolicy }> = [];
+    let newPolicyContribution: BN;
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
+      newPolicyContribution = amount;
     } else {
-      const existingApproval = await this.getTotalApprovalForExistingPolicies(
+      existingPoliciesRaw = await this.getPaymentPoliciesByUserPayment(
         userPaymentPda
       );
-      const newApproval = this.calculateSubscriptionApprovalAmount(
+      const existingApproval = existingPoliciesRaw.reduce((sum, { account: policy }) => {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription!;
+          return sum.add(this.calculateSubscriptionApprovalAmount(sub.amount, sub.paymentFrequency, sub.maxRenewals));
+        } else if ("milestone" in policy.policyType) {
+          return sum.add(this.calculateMilestoneApprovalAmount(policy.policyType.milestone!.milestoneAmounts.filter((a) => !a.isZero())));
+        } else if ("payAsYouGo" in policy.policyType) {
+          return sum.add(this.calculatePayAsYouGoApprovalAmount(policy.policyType.payAsYouGo!.maxAmountPerPeriod, policy.policyType.payAsYouGo!.periodLengthSeconds));
+        }
+        return sum;
+      }, new BN(0));
+      newPolicyContribution = this.calculateSubscriptionApprovalAmount(
         amount,
         paymentFrequency,
         maxRenewals
       );
-      finalApprovalAmount = existingApproval.add(newApproval);
+      finalApprovalAmount = existingApproval.add(newPolicyContribution);
     }
 
     // Set up approval if needed
@@ -949,7 +989,21 @@ export class Tributary {
         user,
         finalApprovalAmount
       );
-      instructions.push(approveIx);
+      steps.push({
+        instruction: approveIx,
+        type: "approve",
+        data: {
+          delegateAddress: delegate,
+          delegateLabel: "userPaymentPda",
+          ownerTokenAccount,
+          approvalAmount: finalApprovalAmount,
+          existingPolicies: existingPoliciesRaw,
+          newPolicy: {
+            policyType,
+            approvalContribution: newPolicyContribution!,
+          },
+        },
+      });
     }
 
     if (executeImmediately) {
@@ -961,10 +1015,15 @@ export class Tributary {
         gateway,
         user
       );
-      instructions.push(...executePaymentIxs);
+      for (const ix of executePaymentIxs) {
+        steps.push({ instruction: ix, type: "executePayment", data: { policyPda: paymentPolicyPda.address } });
+      }
     }
 
-    return instructions;
+    return {
+      instructions: steps.map((s) => s.instruction),
+      steps,
+    };
   }
 
   /**
@@ -1213,10 +1272,31 @@ export class Tributary {
     expiryDate?: BN | null,
     feePayer?: PublicKey
   ): Promise<TransactionInstruction[]> {
+    return (
+      await this.createPayAsYouGoWithMetadata(
+        tokenMint, recipient, gateway, maxAmountPerPeriod, maxChunkAmount,
+        periodLengthSeconds, memo, approvalAmount, referralCode, expiryDate, feePayer
+      )
+    ).instructions;
+  }
+
+  async createPayAsYouGoWithMetadata(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    maxAmountPerPeriod: BN,
+    maxChunkAmount: BN,
+    periodLengthSeconds: BN,
+    memo: number[],
+    approvalAmount?: BN,
+    referralCode?: string,
+    expiryDate?: BN | null,
+    feePayer?: PublicKey
+  ): Promise<SetupResult> {
     const user = this.provider.publicKey;
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
 
-    const instructions: TransactionInstruction[] = [];
+    const steps: SetupStep[] = [];
 
     const ownerTokenAccount = getAssociatedTokenAddressSync(tokenMint, user);
     const accountInfo = await this.connection.getAccountInfo(ownerTokenAccount);
@@ -1230,7 +1310,7 @@ export class Tributary {
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
-      instructions.push(createAtaIx);
+      steps.push({ instruction: createAtaIx, type: "createAta", data: { owner: user, mint: tokenMint, ata: ownerTokenAccount } });
     }
 
     // Check if userPayment already exists
@@ -1240,7 +1320,7 @@ export class Tributary {
     // If userPayment doesn't exist, create it first
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
-      instructions.push(createUserPaymentIx);
+      steps.push({ instruction: createUserPaymentIx, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: userPaymentPda } });
     }
 
     if (referralCode) {
@@ -1261,7 +1341,7 @@ export class Tributary {
         generateSecureRandomString(6),
         referralAccount.owner
       );
-      instructions.push(createReferralIx);
+      steps.push({ instruction: createReferralIx, type: "createReferral", data: { gateway, code: referralCode } });
     }
 
     // Build policy type
@@ -1303,21 +1383,35 @@ export class Tributary {
       .accountsStrict(accounts)
       .instruction();
 
-    instructions.push(createPaymentPolicyIx);
+    steps.push({ instruction: createPaymentPolicyIx, type: "createPaymentPolicy", data: { policyType, recipient, gateway, policyPda: paymentPolicyPda.address } });
 
     // Calculate or use provided approval amount
     let finalApprovalAmount: BN;
+    let existingPoliciesRaw: Array<{ publicKey: PublicKey; account: PaymentPolicy }> = [];
+    let newPolicyContribution: BN;
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
+      newPolicyContribution = maxAmountPerPeriod;
     } else {
-      const existingApproval = await this.getTotalApprovalForExistingPolicies(
+      existingPoliciesRaw = await this.getPaymentPoliciesByUserPayment(
         userPaymentPda
       );
-      const newApproval = this.calculatePayAsYouGoApprovalAmount(
+      const existingApproval = existingPoliciesRaw.reduce((sum, { account: policy }) => {
+        if ("subscription" in policy.policyType) {
+          const sub = policy.policyType.subscription!;
+          return sum.add(this.calculateSubscriptionApprovalAmount(sub.amount, sub.paymentFrequency, sub.maxRenewals));
+        } else if ("milestone" in policy.policyType) {
+          return sum.add(this.calculateMilestoneApprovalAmount(policy.policyType.milestone!.milestoneAmounts.filter((a) => !a.isZero())));
+        } else if ("payAsYouGo" in policy.policyType) {
+          return sum.add(this.calculatePayAsYouGoApprovalAmount(policy.policyType.payAsYouGo!.maxAmountPerPeriod, policy.policyType.payAsYouGo!.periodLengthSeconds));
+        }
+        return sum;
+      }, new BN(0));
+      newPolicyContribution = this.calculatePayAsYouGoApprovalAmount(
         maxAmountPerPeriod,
         periodLengthSeconds
       );
-      finalApprovalAmount = existingApproval.add(newApproval);
+      finalApprovalAmount = existingApproval.add(newPolicyContribution);
     }
 
     const paymentsDelegatePda = this.getPaymentsDelegatePda().address;
@@ -1361,10 +1455,27 @@ export class Tributary {
         user,
         finalApprovalAmount
       );
-      instructions.push(approveIx);
+      steps.push({
+        instruction: approveIx,
+        type: "approve",
+        data: {
+          delegateAddress: delegate,
+          delegateLabel: "userPaymentPda",
+          ownerTokenAccount,
+          approvalAmount: finalApprovalAmount,
+          existingPolicies: existingPoliciesRaw,
+          newPolicy: {
+            policyType,
+            approvalContribution: newPolicyContribution!,
+          },
+        },
+      });
     }
 
-    return instructions;
+    return {
+      instructions: steps.map((s) => s.instruction),
+      steps,
+    };
   }
 
   /**
@@ -2886,16 +2997,48 @@ export class Tributary {
     feePayer?: PublicKey,
     approvalAmount?: BN
   ): Promise<TransactionInstruction[]> {
+    return (
+      await this.createComposableWithMetadata(
+        tokenMint, recipient, gateway, policyType, memo, forwardConfig,
+        preValidation, prePinnedAccounts, preValidationData,
+        postValidation, postPinnedAccounts, postValidationData,
+        feePayer, approvalAmount
+      )
+    ).instructions;
+  }
+
+  async createComposableWithMetadata(
+    tokenMint: PublicKey,
+    recipient: PublicKey,
+    gateway: PublicKey,
+    policyType: PolicyType,
+    memo: string,
+    forwardConfig: ForwardConfig,
+    preValidation: ValidationSpec = { disabled: {} },
+    prePinnedAccounts: PublicKey[] = [],
+    preValidationData: Buffer = Buffer.alloc(0),
+    postValidation: ValidationSpec = { disabled: {} },
+    postPinnedAccounts: PublicKey[] = [],
+    postValidationData: Buffer = Buffer.alloc(0),
+    feePayer?: PublicKey,
+    approvalAmount?: BN
+  ): Promise<SetupResult> {
     const user = this.provider.publicKey;
     const payer = feePayer ?? user;
-    const instructions: TransactionInstruction[] = [];
+    const steps: SetupStep[] = [];
 
     // 1. Owner input-mint ATA ensure
-    instructions.push(...(await this.ensureAta(user, tokenMint, payer)));
+    const ata = getAssociatedTokenAddressSync(tokenMint, user);
+    const ataIxs = await this.ensureAta(user, tokenMint, payer);
+    for (const ix of ataIxs) {
+      steps.push({ instruction: ix, type: "createAta", data: { owner: user, mint: tokenMint, ata } });
+    }
 
     // 2. UserPayment ensure (fetch once, reuse for policyId)
     const up = await this.ensureUserPayment(user, tokenMint, payer);
-    instructions.push(...up.ix);
+    for (const ix of up.ix) {
+      steps.push({ instruction: ix, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: up.pda } });
+    }
 
     // 3. Policy ix — delegates to the low-level builder (which fetches
     //    userPayment again; idempotent and matches the locked design).
@@ -2914,11 +3057,28 @@ export class Tributary {
       postValidationData,
       payer
     );
-    instructions.push(policyIx);
+    const composablePolicyPda = this.getComposablePolicyPda(
+      up.pda,
+      (up.account?.createdComposableCount ?? 0) + 1
+    );
+    steps.push({
+      instruction: policyIx,
+      type: "createComposablePolicy",
+      data: { policyType, recipient, gateway, forwardConfig, policyPda: composablePolicyPda.address },
+    });
 
     // 4. Default approval (INTERIM face-only — see calculatePolicyApprovalAmount)
     const finalApprovalAmount: BN =
       approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
+    const newPolicyContribution = finalApprovalAmount;
+
+    // Fetch existing policies for the metadata (both types share the delegation)
+    const existingPaymentPolicies = await this.getPaymentPoliciesByUserPayment(up.pda);
+    const existingComposablePolicies = await this.getComposablePoliciesByUserPayment(up.pda);
+    const existingPoliciesRaw = [
+      ...existingPaymentPolicies,
+      ...existingComposablePolicies,
+    ];
 
     // 5. Delegate approve — delegate is the UserPayment PDA. Mirrors
     //    createOneTimePayment's needs-approval check.
@@ -2956,17 +3116,33 @@ export class Tributary {
     }
 
     if (needsApproval) {
-      instructions.push(
-        this.getApprovalInstruction(
-          ownerTokenAccount,
-          delegate,
-          user,
-          finalApprovalAmount
-        )
+      const approveIx = this.getApprovalInstruction(
+        ownerTokenAccount,
+        delegate,
+        user,
+        finalApprovalAmount
       );
+      steps.push({
+        instruction: approveIx,
+        type: "approve",
+        data: {
+          delegateAddress: delegate,
+          delegateLabel: "userPaymentPda",
+          ownerTokenAccount,
+          approvalAmount: finalApprovalAmount,
+          existingPolicies: existingPoliciesRaw,
+          newPolicy: {
+            policyType,
+            approvalContribution: newPolicyContribution,
+          },
+        },
+      });
     }
 
-    return instructions;
+    return {
+      instructions: steps.map((s) => s.instruction),
+      steps,
+    };
   }
 
   /**
