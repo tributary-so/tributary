@@ -94,10 +94,10 @@ execute_composable(policy, instruction_data, forward_amount)
 
 ## PDA Layout
 
-| PDA                | Seeds                                               | Owner             | Purpose                                                                    |
-| ------------------ | --------------------------------------------------- | ----------------- | -------------------------------------------------------------------------- |
-| `ComposablePolicy` | `["composable_policy", user_payment, policy_id_le]` | Tributary program | The policy state + **owner of both intermediate ATAs**                     |
-| `ValidationPda`    | `["composable_validation", composable_policy]`      | Tributary program | Stores ≤1024 bytes of Lighthouse assertion data (separate from the policy) |
+| PDA                | Seeds                                               | Owner             | Purpose                                                                   |
+| ------------------ | --------------------------------------------------- | ----------------- | ------------------------------------------------------------------------- |
+| `ComposablePolicy` | `["composable_policy", user_payment, policy_id_le]` | Tributary program | The policy state + **owner of both intermediate ATAs**                    |
+| `ValidationPda`    | `["composable_validation", composable_policy]`      | Tributary program | Stores ≤512 bytes of Lighthouse assertion data (separate from the policy) |
 
 `policy_id_le` is the `u32` `composable_policy.policy_id` serialized as
 little-endian bytes. The `policy_id` is sourced from
@@ -174,7 +174,7 @@ Source: `programs/tributary/src/state/composable_policy.rs`.
 | -------------------------- | ---------------------------------------------------------------------- |
 | `create_composable_policy` | Create the `ComposablePolicy` (+ optional `ValidationPda`) account(s). |
 | `execute_composable`       | Run the 3-phase flow above. Permissionless — any gateway signer.       |
-| `change_composable_status` | Toggle `Active` ↔ `Paused`.                                            |
+| `change_composable_status` | Toggle `Active` ↔ `Paused`.                                           |
 | `delete_composable_policy` | Close the policy (+ `ValidationPda`); refund rent to `rent_payer`.     |
 
 ## Related pages

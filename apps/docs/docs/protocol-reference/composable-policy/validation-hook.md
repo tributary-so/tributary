@@ -35,17 +35,17 @@ impl ValidationConfig {
 The assertion **data** is NOT stored here — it lives in the separate
 `ValidationPda` account (below).
 
-## ValidationPda — separate account, ≤ 1024 bytes
+## ValidationPda — separate account, ≤ 512 bytes
 
 The assertion payload is stored in its own PDA account, derived from the
 `ComposablePolicy` key:
 
-| PDA             | Seeds                                          | Max size                         |
-| --------------- | ---------------------------------------------- | -------------------------------- |
-| `ValidationPda` | `["composable_validation", composable_policy]` | 8 (disc) + 2 (`data_len`) + 1024 |
+| PDA             | Seeds                                          | Max size                        |
+| --------------- | ---------------------------------------------- | ------------------------------- |
+| `ValidationPda` | `["composable_validation", composable_policy]` | 8 (disc) + 2 (`data_len`) + 512 |
 
 ```rust
-pub const MAX_VALIDATION_DATA_SIZE: usize = 1024;
+pub const MAX_VALIDATION_DATA_SIZE: usize = 512;
 
 #[account]
 pub struct ValidationPda {
@@ -72,7 +72,7 @@ Source: `programs/tributary/src/state/validation_pda.rs`.
 | `8..10` | 2          | `data_len`           | `u16` LE; bounded by `MAX_VALIDATION_DATA_SIZE`   |
 | `10..`  | `data_len` | assertion `data`     | Opaque bytes passed verbatim as the CPI `ix.data` |
 
-The remaining bytes up to `8 + 2 + 1024` are zero-padded; the on-chain
+The remaining bytes up to `8 + 2 + 512` are zero-padded; the on-chain
 account is always full-sized, but only `data[10..10+data_len]` is meaningful.
 
 ## Create-time flow
@@ -179,7 +179,7 @@ const guard = lighthouse
   .amount(50_000_000, "<")
   .build();
 
-// guard.data         → Buffer (≤ 1024 bytes, stored in ValidationPda)
+// guard.data         → Buffer (≤ 512 bytes, stored in ValidationPda)
 // guard.numAccounts  → 1        (numValidationAccounts)
 // guard.accounts     → [hotWalletUsdcAta]  (Lighthouse read-account slice)
 ```

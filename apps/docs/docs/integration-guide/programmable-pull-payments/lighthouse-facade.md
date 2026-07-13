@@ -126,9 +126,9 @@ const guard = lighthouse
 // numAccounts = 0, accounts = []
 ```
 
-!!! warning "Validation data is capped at 1024 bytes"
+!!! warning "Validation data is capped at 512 bytes"
 The `ValidationPda` is allocated to fit `MAX_VALIDATION_DATA_SIZE`. Complex
-multi-assertions that exceed 1024 bytes will be rejected at policy
+multi-assertions that exceed 512 bytes will be rejected at policy
 creation. Prefer a single targeted assertion (e.g. balance `< threshold`)
 over exhaustive checks.
 
@@ -157,7 +157,7 @@ const createIx = await sdk.getCreateComposablePolicyInstruction(
   forwardConfig,
   LIGHTHOUSE_PROGRAM_ID,
   guard.numAccounts,
-  guard.data
+  guard.data,
 );
 
 // 3. Execute — remaining_accounts gets [...guard.accounts, ...forwardAccounts]
@@ -166,7 +166,7 @@ const execIx = await sdk.executeComposable(
   composablePolicyPDA,
   Buffer.alloc(0), // forward disabled → empty
   new BN(50_000_000),
-  guard.accounts
+  guard.accounts,
 );
 ```
 

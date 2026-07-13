@@ -88,10 +88,10 @@ names, not the numbers, as the source of truth when grepping logs.
 | ---- | -------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | 6051 | `InvalidValidationProgram` | Validation program not whitelisted                  | `validation_program` must be in `ALLOWED_VALIDATION_PROGRAMS` (Lighthouse). Use `SystemProgram` to disable.   |
 | 6052 | `ValidationPdaMismatch`    | Validation PDA does not match derived address       | Re-derive `ValidationPda` from `["composable_validation", composable_policy]`.                                |
-| 6053 | `ValidationDataTooLarge`   | Validation data exceeds maximum size                | Truncate to `MAX_VALIDATION_DATA_SIZE` (1024 bytes).                                                          |
+| 6053 | `ValidationDataTooLarge`   | Validation data exceeds maximum size                | Truncate to `MAX_VALIDATION_DATA_SIZE` (512 bytes).                                                           |
 | 6054 | `ValidationDataRequired`   | Validation program set but no data provided         | Either supply validation data, or set `validation_program = SystemProgram`.                                   |
 | 6055 | `ValidationNotRequired`    | Validation not configured but data was provided     | You passed assertion data with `validation_program = SystemProgram`. Either set the program or drop the data. |
-| 6056 | `InvalidValidationPda`     | ValidationPDA is malformed — data_len out of bounds | The on-chain `data_len` exceeds 1024. Account is corrupted.                                                   |
+| 6056 | `InvalidValidationPda`     | ValidationPDA is malformed — data_len out of bounds | The on-chain `data_len` exceeds 512. Account is corrupted.                                                    |
 
 ### Authorization (initialization)
 

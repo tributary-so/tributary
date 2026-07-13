@@ -101,7 +101,7 @@ const ix = await sdk.getCreateComposablePolicyInstruction(
   forwardConfig,
   LIGHTHOUSE_PROGRAM_ID, // validation program (SystemProgram = none)
   guard.numAccounts, // 1
-  guard.data // the Lighthouse assertion buffer
+  guard.data, // the Lighthouse assertion buffer
 );
 ```
 
@@ -153,7 +153,7 @@ const ix = await sdk.executeComposable(
   composablePolicyPDA,
   instructionData,
   new BN(50_000_000), // forward amount (the pull size)
-  remainingAccounts
+  remainingAccounts,
 );
 ```
 
@@ -178,7 +178,7 @@ const ix = await sdk.executeComposable(
   composablePolicyPDA,
   Buffer.from(swapIx.data), // the forward program instruction data
   new BN(SWAP_INPUT_AMOUNT),
-  remainingAccounts
+  remainingAccounts,
 );
 ```
 
@@ -190,9 +190,8 @@ accounts. They mirror the `PaymentPolicy` read pattern but use the
 
 ```typescript
 // Fetch a single composable policy by its address (null if not found)
-const policy: ComposablePolicy | null = await sdk.getComposablePolicy(
-  policyAddress
-);
+const policy: ComposablePolicy | null =
+  await sdk.getComposablePolicy(policyAddress);
 
 // All composable policies for a given UserPayment PDA
 const policies = await sdk.getComposablePoliciesByUserPayment(userPaymentPda);
@@ -273,7 +272,7 @@ type ValidationConfig = {
 };
 ```
 
-The assertion **data** (≤1024 bytes) is NOT stored inline — it lives in a
+The assertion **data** (≤512 bytes) is NOT stored inline — it lives in a
 separate `ValidationPda` account (`["composable_validation", composable_policy]`)
 that the create handler initializes via `invoke_signed`.
 
