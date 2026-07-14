@@ -9,7 +9,7 @@
 #   3. make build
 
 build:
-	mkdocs build
+	poetry run mkdocs build
 
 serve:
-	mkdocs serve
+	poetry run mkdocs serve
