@@ -18,7 +18,7 @@ export default function SlideCTA() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <span className="text-emerald-400">1% protocol fee</span>
+        <span className="text-emerald-400">20% of gateway fees</span>
         <br />
         <span className="text-muted-foreground">variable</span> business fee
       </motion.h2>

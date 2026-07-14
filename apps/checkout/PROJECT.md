@@ -63,7 +63,7 @@ Tributary Checkout provides a pre-built, customizable payment page for subscript
 
 **Low Fees**
 
-- 1% protocol fee (vs 2.9% + 30¢ typical in traditional payments)
+- Protocol takes 20% of gateway fees (~1% at typical rates vs 2.9% + 30¢ in traditional payments)
 - Instant settlement (no multi-day holds)
 - No chargebacks or fraud disputes
 

@@ -1122,7 +1122,7 @@ function Appendix() {
                 is fixed OpEx.
               </p>
               <p className="text-xs text-foreground/40 mt-4">
-                1% protocol fee + gateway spread. No balance-sheet costs.
+                20% of gateway fees (~1% at typical rates) + gateway spread. No balance-sheet costs.
               </p>
             </div>
           </div>

@@ -86,8 +86,12 @@ export function Header() {
             {navItems.map((item) => (
               <a
                 key={item.href}
+                href={"#" + item.href}
                 className="transition-colors hover:text-foreground hover:cursor-pointer"
-                onClick={() => scrollToSection(item.href)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection(item.href);
+                }}
               >
                 {item.label}
               </a>

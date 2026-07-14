@@ -86,7 +86,7 @@ const features = [
   },
   {
     title: "Low Fees",
-    description: "Only 1% protocol fee. Transparent on-chain transactions.",
+    description: "Protocol takes 20% of gateway fees (~1% at typical rates). Transparent on-chain transactions.",
   },
   {
     title: "Automatic Billing",
