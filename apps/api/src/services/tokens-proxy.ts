@@ -46,19 +46,21 @@ function isValidMint(s: unknown): s is string {
 }
 
 /** Shape returned by upstream. We project down to AssetSearchResult. */
+interface UpstreamVariant {
+  mint?: string;
+  decimals?: number;
+  kind?: string;
+  trustTier?: string | null;
+}
+
 interface UpstreamAsset {
   assetId?: string;
   symbol?: string;
   name?: string;
   category?: string | null;
   imageUrl?: string | null;
-  variants?: Array<{
-    mint?: string;
-    decimals?: number;
-    kind?: string;
-    trustTier?: string | null;
-    primary?: boolean;
-  }>;
+  // Upstream ships the chosen variant inline (not a `variants` array).
+  primaryVariant?: UpstreamVariant | null;
 }
 
 interface UpstreamSearchEnvelope {
@@ -79,8 +81,7 @@ interface UpstreamResolveEnvelope {
 function pickPrimaryVariant(
   asset: UpstreamAsset
 ): AssetSearchResult["primaryVariant"] {
-  const variants = Array.isArray(asset.variants) ? asset.variants : [];
-  const chosen = variants.find((v) => v.primary) ?? variants[0] ?? null;
+  const chosen = asset.primaryVariant;
   if (!chosen || !isValidMint(chosen.mint)) return null;
   return {
     mint: chosen.mint,
