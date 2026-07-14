@@ -1,11 +1,11 @@
 ---
 # tributary-m5wy
 title: 'CF-009: Token-2022 mints pass compatibility check but fail at CPI execution'
-status: completed
+status: todo
 type: bug
 priority: normal
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:45:19Z
+updated_at: 2026-07-13T20:06:45Z
 parent: tributary-gq3x
 ---
 
@@ -108,22 +108,3 @@ No fund theft — the user's tokens are safe. But the UX is broken and rent is t
 Change `token_program` to `Interface<'info, TokenInterface>` in all execution instructions, update all CPI calls to use the interface, and derive intermediate ATAs using the correct token program. This is a larger change that enables Token-2022 support properly.
 
 **Recommendation:** Option A as an immediate fix (prevents the lockup). Option B as a feature addition if Token-2022 support is desired.
-
-## Summary of Changes
-
-CF-009 remediation — Option A (reject all Token-2022 mints at the owner check). The bean's recommended Option B (full Token-2022 execution support via `Interface<'info, TokenInterface>`) is deferred as a feature; the ADR captures the restoration steps.
-
-**Code:**
-- `programs/tributary/src/shared/mint.rs` — `validate_mint_compatible` collapsed from a 6-extension TLV blocklist scan to a single owner comparison: reject iff `owner == spl_token_2022::ID`. This matches the program's actual CPI capability (`token_program: Program<'info, Token>` is legacy-only). Deleted the now-unreachable extension-check body and its imports (they were dead code under Option A; git history at commit `4506a59` + ADR-0012 preserve them for restoration). Tests: 8 → 3 (`allows_legacy_spl_token_mint`, `rejects_clean_token_2022_mint` [the CF-009 regression], `rejects_token_2022_mint_with_extension`).
-- `programs/tributary/src/error.rs` — updated the `UnsupportedTokenExtension` `#[msg]` to reflect the new semantics (`"Token-2022 mints are not supported; only legacy SPL Token mints are accepted"`). Variant name unchanged for API stability. No TS/Rust consumers matched on the old string.
-
-**Docs:**
-- `apps/docs/adr/0012-…md` — rewritten. ADR-0012 originally chose blocklist-over-allowlist on the assumption that clean Token-2022 mints would execute; CF-009 proved that false. New content documents the Option-A reality, why the blocklist was abandoned, and the exact restoration steps when Token-2022 execution support lands (switch `token_program` to `Interface`, update CPI sites, restore the six-extension blocklist from git history).
-- `AGENTS.md` — ADR-map row title updated: "Mint compatibility: legacy SPL Token only (Token-2022 rejected) _(amended by CF-009)_".
-
-**Verification:** `cargo check --package tributary` clean; `cargo test --package tributary --lib` 184/184 pass (3 mint tests pass); `cargo clippy` introduces zero new warnings on touched files (7 pre-existing clippy lints live in unrelated files not touched by this bean — left for their respective beans' owners).
-
-**Out of scope (noted, not fixed):**
-- Pre-existing clippy `field_reassign_with_default` at `create_composable_policy.rs:715` — unrelated to CF-009, belongs to another bean's file.
-- Stale per-call-site comments in `execute_payment.rs`/`execute_composable.rs`/`transfer.rs` justifying re-validation via "mutable Token-2022 extensions". The re-validation is still correct defense-in-depth; its specific rationale is now superseded by ADR-0012 rather than wrong. Left untouched to keep the audit-trail commit scoped.
-- Dead `|| ata.owner == &token_2022::ID` branches in scheduler-ATA routing (`execute_payment.rs:284`, `execute_composable.rs:418`) — now unreachable since token-2022 mints are rejected upstream. Harmless; left for a cleanup pass.

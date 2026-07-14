@@ -66,7 +66,7 @@ pub enum TributaryError {
     MismatchAtaReferralAccountNumbers,
     #[msg("Token mint mismatch between accounts")]
     TokenMintMismatch,
-    #[msg("Token-2022 mints are not supported; only legacy SPL Token mints are accepted")]
+    #[msg("Token-2022 Extension currently not supported")]
     UnsupportedTokenExtension,
     #[msg("Distinct Pubkeys required!")]
     DistinctPubKeysRequired,
