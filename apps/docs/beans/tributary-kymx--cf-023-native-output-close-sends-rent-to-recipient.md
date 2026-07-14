@@ -1,11 +1,11 @@
 ---
 # tributary-kymx
 title: 'CF-023: Native output close sends rent to recipient instead of fee payer'
-status: todo
+status: completed
 type: bug
 priority: low
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-14T06:46:13Z
 parent: tributary-gq3x
 ---
 
@@ -60,3 +60,14 @@ Fee_payer loses ~0.002 SOL per native-output execution. Recipient gets a small b
 ```
 
 Or accept the small rent discrepancy and document it as a design choice.
+
+## Summary of Changes
+
+CF-023 fixed in `programs/tributary/src/instructions/composable/execute_composable.rs` (`sweep_output_to_recipient`):
+
+- Native-output path now `transfer_checked`s the WSOL token balance to the recipient first, then `close_token_account`s the ATA to `fee_payer_info` for the rent refund. Previously `closeAccount` sent both balance + rent to the recipient, costing the fee_payer ~0.002 SOL per native-output execution.
+- Added `fee_payer_info` parameter to `sweep_output_to_recipient` (9 params, single call site — ponytail comment updated).
+- The downstream skip at `&& !native_output` (line ~1498) still correctly prevents a double-close — the sweep closes during settlement either way; only the destination changed (recipient → fee_payer).
+- The post-sweep output-balance check at `needs_output_ata && !native_output` is already skipped for native output, so the closed ATA doesn't trigger a false read error.
+
+All 190 lib tests pass.
