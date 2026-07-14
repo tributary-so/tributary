@@ -1,11 +1,11 @@
 ---
 # tributary-0p7p
 title: 'Scheduler: tsup Bundle + Multi-Stage Dockerfile'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-14T19:00:55Z
-updated_at: 2026-07-14T19:00:55Z
+updated_at: 2026-07-14T20:23:19Z
 parent: tributary-geyq
 ---
 
