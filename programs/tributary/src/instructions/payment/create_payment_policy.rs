@@ -69,7 +69,7 @@ impl<'info> CreatePaymentPolicy<'info> {
         verified,
         spec = "../../tributary.qedspec",
         handler = "create_payment_policy",
-        hash = "146d0ad59fd1f963",
+        hash = "46d488d88d37f4a2",
         spec_hash = "6c144b6f017bd22f"
     )]
     pub fn handler_create_payment_policy(
@@ -104,7 +104,13 @@ impl<'info> CreatePaymentPolicy<'info> {
         //     TributaryError::MaxPoliciesReached
         // );
 
-        let policy_id = user_payment.created_policies_count.saturating_add(1);
+        // CF-021: checked_add — at u32::MAX, saturating_add(1) returns
+        // u32::MAX, colliding with the previous ID at that number and
+        // producing a confusing "already in use" Anchor init error.
+        let policy_id = user_payment
+            .created_policies_count
+            .checked_add(1)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         payment_policy.user_payment = user_payment.key();
         payment_policy.recipient = ctx.accounts.recipient.key();

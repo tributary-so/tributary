@@ -193,11 +193,14 @@ impl<'info> CreateComposablePolicy<'info> {
         validate_init(&post_validation, &post_init)?;
 
         let clock = Clock::get()?;
+        // CF-021: checked_add — same fix as create_payment_policy. At
+        // u32::MAX the saturating_add(1) collides with the prior ID.
         let policy_id = ctx
             .accounts
             .user_payment
             .created_composable_count
-            .saturating_add(1);
+            .checked_add(1)
+            .ok_or(TributaryError::ArithmeticOverflow)?;
 
         let composable_policy = &mut ctx.accounts.composable_policy;
         composable_policy.bump = ctx.bumps.composable_policy;
