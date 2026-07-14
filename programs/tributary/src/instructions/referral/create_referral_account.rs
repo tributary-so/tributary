@@ -4,9 +4,12 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 #[instruction(referral_code: [u8; 6])]
 pub struct CreateReferralAccount<'info> {
-    /// CHECK: The owner account - does NOT need to sign
-    #[account()]
-    pub owner: AccountInfo<'info>,
+    /// CF-022: owner must sign — prevents referral-code squatting where an
+    /// attacker creates an account with a victim's owner key and themselves
+    /// as the referrer, redirecting the L1 reward when the code is used.
+    /// The SDK already passes `owner = provider.publicKey`, so the existing
+    /// client flow (owner signs as fee_payer) is unaffected.
+    pub owner: Signer<'info>,
 
     #[account(
         init,
