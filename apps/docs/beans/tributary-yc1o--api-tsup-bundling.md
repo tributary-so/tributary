@@ -1,11 +1,11 @@
 ---
 # tributary-yc1o
 title: 'API: tsup Bundling'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-14T19:22:42Z
-updated_at: 2026-07-14T19:22:42Z
+updated_at: 2026-07-14T20:15:30Z
 parent: tributary-z74k
 ---
 
@@ -38,7 +38,23 @@ Currently masked by running `tsx` at runtime. tsup resolves this at build time.
 
 ## Acceptance
 
-- [ ] `pnpm run build` produces `dist/index.js` (bundled ESM)
-- [ ] `node dist/index.js` starts without module resolution errors
-- [ ] No tsx required at runtime
-- [ ] API serves requests (health check, routes respond)
+- [x] `pnpm run build` produces `dist/index.js` (bundled CJS, self-contained)
+- [x] `node dist/index.js` starts — verified, serves requests (200 on / and /v1/health)
+- [x] No tsx required at runtime (`start` = `node dist/index.js`); tsx stays in devDeps for `dev` and `db:test` scripts
+- [x] API serves requests — `GET /` → 200, `GET /v1/health` → {"status":"ok"}
+
+## Summary of Changes
+
+- **`apps/api/tsup.config.ts`** (new): tsup config producing a single self-contained CJS bundle (`dist/index.js`, ~8MB). Bundles app code, workspace deps (`@tributary-so/*`), and ALL transitive npm deps (including `@metaplex-foundation/*`, `@coral-xyz/anchor` via the SDK). Only ws optional native addons (`bufferutil`, `utf-8-validate`) stay external.
+- **`apps/api/package.json`**: `build` → `tsup`, `start` → `node dist/index.js` (was `npx tsx src/index.ts`). Added `tsup` to devDeps. Added `bn.js` to deps (directly imported by `src/db/merchant.ts`, was previously relying on transitive resolution).
+
+### Key decision: CJS, not ESM
+
+The bean suggested `format: ["esm"]`. Switched to **CJS** because:
+1. The API imports CJS server deps (dotenv, express, kafkajs) that use dynamic `require()` — bundling those into ESM throws `Dynamic require of "fs" is not supported`.
+2. CJS resolves all CJS/ESM interop at build time AND runtime — no shims, no `type: "module"` needed.
+3. `require.main === module` works natively in CJS (no ESM entry-point detection rewrite needed).
+
+### Key decision: bundle everything (not externalize)
+
+Initial attempt externalized npm deps and bundled only workspace packages. Failed because `pnpm deploy --legacy --prod` doesn't properly hoist transitive workspace deps (`@metaplex-foundation/*` via `@tributary-so/sdk` → `lighthouse-sdk-legacy`). Bundling everything sidesteps the hoist gap entirely — the bundle is self-contained, Docker needs no node_modules for the API.
