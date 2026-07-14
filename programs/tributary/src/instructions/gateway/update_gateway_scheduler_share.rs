@@ -27,6 +27,8 @@ impl<'info> UpdateGatewaySchedulerShare<'info> {
         ctx: Context<UpdateGatewaySchedulerShare>,
         scheduler_share_bps: u16,
     ) -> Result<()> {
+        require!(scheduler_share_bps <= 10000, TributaryError::InvalidFeeBps);
+
         let gateway = &mut ctx.accounts.gateway;
 
         gateway.scheduler_share_bps = scheduler_share_bps;

@@ -5,30 +5,48 @@ Tributary has two cost dimensions: **payment fees** (deducted from each transfer
 ---
 
 ## Payment Fees
+Every payment executed through Tributary uses a **unified gateway fee model** (ADR-0017): the gateway declares **one total fee** (`gateway_fee_bps`), and the protocol decomposes it into four carve-outs. The protocol's cut is **20% of the gateway fee by default** — not a flat percentage of the payment.
 
-Every payment executed through Tributary splits the gross amount between the recipient, the gateway provider, and the protocol treasury.
+### How the fee decomposes
 
-| Fee Layer           | Default              | Range                           | Who Controls                      |
-| ------------------- | -------------------- | ------------------------------- | --------------------------------- |
-| Protocol fee        | 100 bps (1%)         | Fixed at program initialization | Protocol admin                    |
-| Gateway fee         | Set per gateway      | 0–10,000 bps                    | Gateway authority                 |
-| Custom protocol fee | Optional per gateway | 0–10,000 bps                    | Protocol admin (overrides global) |
+| Carve-out             | Default share of gateway fee | Range                           | Who Controls                      |
+| --------------------- | ---------------------------- | ------------------------------- | --------------------------------- |
+| Protocol fee          | 20% (`protocol_share_bps = 2000`) | Fixed at program initialization; overridable per-gateway | Protocol admin |
+| Scheduler fee         | Set per gateway              | 0–10,000 bps                    | Gateway authority                 |
+| Referral pool         | Set per gateway              | 0–2,500 bps (0–25%)            | Gateway authority                 |
+| Gateway residual      | Remainder                    | `total − protocol − scheduler − referral` | Gateway authority          |
+| **Gateway fee (total)** | **One number, gateway-set** | **0–10,000 bps (0–100%)**     | **Gateway authority**             |
+
+The four carve-out shares must sum to ≤ 10,000 bps (enforced at every gateway-config write site).
 
 ### Fee Distribution
 
 ```
-$100.00 Payment
-├── $1.00 → Protocol Treasury (1% protocol fee)
-├── $2.50 → Payment Gateway (2.5% gateway fee, provider-configurable)
-│           └── of which referral rewards are allocated if enabled
-└── $96.50 → Recipient
-```
+$100.00 Payment, 5% gateway fee (500 bps), 10% scheduler, 10% referral
 
-Fees are calculated as `(amount * bps) / 10000`, rounding down. Dust from rounding goes to the protocol treasury.
+Total fee pool: $5.00 (5% of $100)
+├── $1.00 → Protocol Treasury (20% of $5.00 fee pool)
+├── $0.50 → Scheduler (10% of $5.00 fee pool — pays the execute signer)
+├── $0.50 → Referral pool (10% of $5.00 fee pool, if enabled)
+└── $3.00 → Gateway residual (remaining 60% of $5.00 fee pool)
+
+Recipient receives: $95.00
+```
+Fees are calculated as `(amount * bps) / 10000`, truncating toward zero. Dust from rounding goes to the protocol treasury.
+
+### The "1%" is derived, not fixed
+
+At the **default 20% protocol share** and a **typical 5% gateway fee**, the protocol's effective take is **1% of the payment amount** (`500 bps × 20% = 100 bps = 1%`). But the protocol's absolute take scales with the gateway fee:
+
+| Gateway fee | Protocol share (default 20%) | Effective protocol take |
+| ----------- | ---------------------------- | ---------------------- |
+| 2.5%        | 20%                          | 0.5% of payment        |
+| 5%          | 20%                          | 1% of payment          |
+| 10%         | 20%                          | 2% of payment          |
 
 ### Custom Protocol Fee
 
-The protocol admin can override the global protocol fee on a per-gateway basis. This is useful for special arrangements (e.g., zero protocol fee for strategic partners). When enabled, the custom fee replaces the global 100 bps default — it does not stack.
+The protocol admin can override the global protocol share on a per-gateway basis via `custom_protocol_share_bps` (requires `FEATURE_CUSTOM_PROTOCOL_FEE` bit set on the gateway). This is useful for special arrangements (e.g., zero protocol fee for strategic partners). When enabled, the custom share replaces the global `protocol_share_bps` for that gateway — it does not stack.
 
 ```typescript
 // Enable 0% protocol fee for a gateway (admin only)

@@ -1397,6 +1397,78 @@ function ComposablePolicyTypeSection({
 }) {
   const pt = policyType as Record<string, unknown>
 
+  // Pay-as-you-go: rich schedule with usage gauge + period time progress,
+  // mirroring the regular PayAsYouGoDetailPanel + subscription time bar.
+  if (pt.payAsYouGo) {
+    const payg = pt.payAsYouGo as Record<string, unknown>
+    const used = (payg.currentPeriodTotal as anchor.BN) ?? new anchor.BN(0)
+    const limit = (payg.maxAmountPerPeriod as anchor.BN) ?? new anchor.BN(0)
+    const periodStartRaw = (payg.currentPeriodStart as anchor.BN)?.toNumber() ?? 0
+    const periodLength = (payg.periodLengthSeconds as anchor.BN)?.toNumber() ?? 0
+    const periodStartDate = periodStartRaw > 0 ? new Date(periodStartRaw * 1000) : null
+    const periodEndDate = periodStartDate && periodLength > 0 ? addSeconds(periodStartDate, periodLength) : null
+
+    const now = new Date()
+    let timeProgress = 0
+    if (periodStartDate && periodEndDate) {
+      const total = differenceInSeconds(periodEndDate, periodStartDate)
+      const elapsed = differenceInSeconds(now, periodStartDate)
+      if (total > 0) timeProgress = Math.min(100, Math.max(0, (elapsed / total) * 100))
+    }
+
+    const intervalLabel =
+      periodLength > 0
+        ? formatDuration(intervalToDuration({ start: 0, end: periodLength * 1000 }), {
+            format: ['days', 'hours', 'minutes'],
+          })
+        : 'N/A'
+
+    return (
+      <div className="border-t border-border pt-3 sm:pt-4">
+        <h3 className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground mb-2 sm:mb-3">
+          Payment Schedule
+        </h3>
+
+        <div className="bg-linear-to-br from-payasyougo-50 to-payasyougo-100/50 p-4 sm:p-5 border border-payasyougo-100 mb-3">
+          <UsageGauge used={used} limit={limit} formatAmount={(amt) => formatAmount(amt, tokenMint)} />
+        </div>
+
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="text-muted-foreground">Period length</span>
+            <span className="font-semibold text-payasyougo-700">{intervalLabel}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="text-muted-foreground">Time to period reset</span>
+            <span className="font-semibold text-payasyougo-700">
+              {periodEndDate ? formatDistanceToNow(periodEndDate, { addSuffix: true }) : 'N/A'}
+            </span>
+          </div>
+          <ProgressBar progress={timeProgress} color="bg-payasyougo-600" />
+          <div className="flex flex-col xs:flex-row justify-between gap-0.5 xs:gap-0 text-[10px] sm:text-xs text-muted-foreground">
+            <span>Started: {periodStartDate ? formatDistanceToNow(periodStartDate, { addSuffix: true }) : 'N/A'}</span>
+            <span>Resets: {periodEndDate ? periodEndDate.toLocaleDateString() : 'N/A'}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mt-3">
+          <StatCard
+            label="Max per TX"
+            value={formatAmount((payg.maxChunkAmount as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Max per Period"
+            value={formatAmount((payg.maxAmountPerPeriod as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+          <StatCard
+            label="Period Used"
+            value={formatAmount((payg.currentPeriodTotal as anchor.BN)?.toString() ?? '0', tokenMint)}
+          />
+        </div>
+      </div>
+    )
+  }
+
   const renderFields = () => {
     if (pt.subscription) {
       const sub = pt.subscription as Record<string, unknown>
@@ -1418,25 +1490,6 @@ function ComposablePolicyTypeSection({
           <StatCard label="Milestones" value={`${ms.currentMilestone}/${ms.totalMilestones}`} />
           <StatCard label="Total Amount" value={formatAmount(total?.toString() ?? '0', tokenMint)} />
           <StatCard label="Escrow" value={formatAmount((ms.escrowAmount as anchor.BN)?.toString() ?? '0', tokenMint)} />
-        </>
-      )
-    }
-    if (pt.payAsYouGo) {
-      const payg = pt.payAsYouGo as Record<string, unknown>
-      return (
-        <>
-          <StatCard
-            label="Max per TX"
-            value={formatAmount((payg.maxChunkAmount as anchor.BN)?.toString() ?? '0', tokenMint)}
-          />
-          <StatCard
-            label="Max per Period"
-            value={formatAmount((payg.maxAmountPerPeriod as anchor.BN)?.toString() ?? '0', tokenMint)}
-          />
-          <StatCard
-            label="Period Total"
-            value={formatAmount((payg.currentPeriodTotal as anchor.BN)?.toString() ?? '0', tokenMint)}
-          />
         </>
       )
     }

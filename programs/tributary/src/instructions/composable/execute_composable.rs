@@ -8,8 +8,9 @@ use crate::{
 };
 use anchor_lang::{prelude::*, AccountDeserialize};
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::Token;
-use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, TransferChecked};
+use anchor_spl::token_interface::{
+    self, CloseAccount, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 /// Validate byte-range checks on instruction_data using the configured checks.
 ///
@@ -413,6 +414,11 @@ fn skim_input_fees<'info>(
                         sta_data.len() >= 64,
                         TributaryError::InvalidSchedulerFeeAccount
                     );
+                    require!(
+                        ata.owner == &anchor_spl::token::ID
+                            || ata.owner == &anchor_spl::token_2022::ID,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
                     let sta_mint = Pubkey::try_from(&sta_data[0..32]).unwrap_or_default();
                     let sta_owner = Pubkey::try_from(&sta_data[32..64]).unwrap_or_default();
                     // Scheduler ATA is input-side (ADR-0026).
@@ -517,6 +523,18 @@ fn sweep_output_to_recipient<'info>(
     require!(output_amount > 0, TributaryError::ForwardProducedNoOutput);
 
     if native_output {
+        // NATIVE_OUTPUT: closeAccount sends ALL lamports (WSOL token value
+        // + rent) to the recipient's SYSTEM WALLET (not a WSOL ATA).
+        // closeAccount is the ONLY way to unwrap WSOL→SOL at a system
+        // wallet — transfer_checked requires a token-account destination,
+        // which the recipient does not have in native mode.
+        //
+        // CF-023 (rent routing): the rent-exempt minimum (~0.002 SOL)
+        // travels with the WSOL value to the recipient. Separating it
+        // would require the recipient to hold a WSOL ATA, defeating the
+        // purpose of NATIVE_OUTPUT. Accepted as a design trade-off — the
+        // fee_payer absorbs ~0.002 SOL per native-output execution, the
+        // recipient gets a small bonus. Not exploitable.
         close_token_account(
             intermediate_output,
             recipient_token_account,
@@ -769,7 +787,7 @@ pub struct ExecuteComposable<'info> {
     )]
     pub protocol_fee_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

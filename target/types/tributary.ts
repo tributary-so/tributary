@@ -979,7 +979,15 @@ export type Tributary = {
       ],
       "accounts": [
         {
-          "name": "owner"
+          "name": "owner",
+          "docs": [
+            "CF-022: owner must sign — prevents referral-code squatting where an",
+            "attacker creates an account with a victim's owner key and themselves",
+            "as the referrer, redirecting the L1 reward when the code is used.",
+            "The SDK already passes `owner = provider.publicKey`, so the existing",
+            "client flow (owner signs as fee_payer) is unaffected."
+          ],
+          "signer": true
         },
         {
           "name": "referralAccount",
@@ -1807,8 +1815,7 @@ export type Tributary = {
           "writable": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -2003,8 +2010,7 @@ export type Tributary = {
           "writable": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         }
       ],
       "args": [
@@ -2195,8 +2201,7 @@ export type Tributary = {
           "writable": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         }
       ],
       "args": [

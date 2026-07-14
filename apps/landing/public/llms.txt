@@ -1,0 +1,50 @@
+# Tributary
+
+> Tributary is the rule-based money-moving primitive on Solana. A user delegates
+> spending authority once; money then moves itself within rules the user set — a
+> trigger condition (WHEN), a value to pull (PULL), and a destination to route to
+> (ROUTE). It is one primitive, not a portfolio of products. "Recurring payments"
+> is its simplest live knob-configuration; the same primitive composes into
+> conditional, auto-routed, composable flows. Non-custodial by design (funds never
+> leave the wallet until a rule fires; $0 TVL), permissionless, MIT-licensed,
+> Ottersec-verified. Live on Solana mainnet since October 2025. Soul: _money
+> should move itself._ Motif: _If This Then Money._
+
+## What it is
+- [Tributary homepage](https://tributary.so): the rule-based money-moving primitive on Solana.
+- [Documentation](https://docs.tributary.so): SDK reference, integration guides, and on-chain program architecture.
+- [GitHub](https://github.com/tributary-so/tributary): open-source Rust/Anchor program + TypeScript SDK suite (MIT).
+- [npm: @tributary-so/sdk](https://www.npmjs.com/package/@tributary-so/sdk): the official TypeScript SDK.
+- [Hosted checkout](https://checkout.tributary.so): accept USDC flows without writing Solana code.
+- [Quickstart](https://docs.tributary.so/quickstart): embed a flow in minutes.
+
+## The one primitive, three knobs
+- **WHEN** — the trigger: a schedule, an oracle condition, a balance threshold, or an on-chain assertion.
+- **PULL** — the value transfer: fixed, variable, usage-based, or milestone amounts of any SPL token.
+- **ROUTE** — the destination: a wallet, a DEX swap, a deposit, or any allowlisted program.
+- A fully-specified movement of money = one WHEN x one PULL x one ROUTE. _If This Then Money_ is the literal grammar: WHEN (If This) -> PULL + ROUTE (Then Money).
+
+## Two configurations of the same primitive (not two products)
+- **PaymentPolicy (v1, live)** — WHEN = schedule, PULL = fixed/variable/usage, ROUTE = wallet. Five schedule models: Subscription, Milestone, Pay-as-you-go, OneTime, UpTo. This is what the market calls "recurring payments" — the minimal knob setting, already in production.
+- **ComposablePolicy (v2)** — the same primitive with WHEN and ROUTE turned on. A validation gate (Lighthouse on-chain assertions) opens or shuts the flow; a forward transform (Meteora DLMM) lets one stream become another. This is the differentiator: auto-topup, auto-DCA, conditional rebalancing, agent budgets.
+
+## Core concepts (canonical definitions)
+The full, canonical definitions — written to be quoted by AI engines — live in [llms-full.txt](https://tributary.so/llms-full.txt):
+
+- **Pull payment** — a transfer initiated by the recipient under spending authority the payer delegated in advance. Tributary is, literally, a pull-payment primitive: "pull, don't push" is the technical handle; "stop pushing your bags" is the defiant handle. Same idea, two registers.
+- **Token delegation (for billing)** — granting a program permission to debit a specific SPL token account up to defined limits, without transferring custody. One delegate per user per token account.
+- **Non-custodial by design** — funds stay in the user's wallet; the protocol holds only delegated, revocable authority. $0 TVL, $0 balance-sheet risk — a property of the architecture, not a promise.
+- **Self-driving money** — the gloss on the motif: once the riverbed (the rules) is set, money moves itself.
+- **x402 / HTTP 402** — the HTTP 402 "Payment Required" status code repurposed as a native pay-per-request protocol; Tributary's x402 middleware is the billing layer for AI agents.
+
+## What it composes into (one integration, every flow)
+Subscriptions - milestone release - pay-as-you-go / metered billing - one-time charges - auto-topup (prevent "insufficient SOL") - auto-DCA - conditional rebalancing - AI-agent budgets - revenue waterfalls. The same three knobs express all of them.
+
+## Comparisons
+- **vs Helio** — Helio is custodial (holds funds) with one schedule model; Tributary is non-custodial with five models and composable WHEN/ROUTE.
+- **vs Solana Foundation Subscriptions** — SF Subscriptions is a single-model subscription road; Tributary is the logistics network (same delegation, generalized to every rule-based flow). Complementary, not competitive.
+- **vs Stripe** — Stripe aggregates TradFi fiat rails; Tributary is a native on-chain pull primitive for Solana stablecoins. Largely complementary.
+- Full comparison matrix in [llms-full.txt](https://tributary.so/llms-full.txt).
+
+## Optional
+- [llms-full.txt](https://tributary.so/llms-full.txt): the complete machine-readable knowledge base — primitive definition, the three knobs, both configurations, all concept definitions, use cases, the trust ladder, and FAQ — concatenated for single-fetch ingestion.

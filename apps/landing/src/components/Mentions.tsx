@@ -287,6 +287,18 @@ const endorsers: Endorser[] = [
       />
     ),
   },
+  {
+    name: "Circle Alliance",
+    url: "https://partners.circle.com/partner/tributary",
+    mark: (
+      <img
+        width="16"
+        height="16"
+        aria-hidden="true"
+        src="/circleLogoMark.svg"
+      />
+    ),
+  },
 ];
 
 function Endorsements() {

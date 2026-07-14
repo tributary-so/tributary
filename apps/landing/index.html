@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tributary — Money should move itself</title>
+    <title>Tributary — Rule-Based Money-Moving Primitive on Solana</title>
     <meta
       name="description"
-      content="The rule-based money-moving primitive on Solana. Delegate once — set the riverbed once — and money flows within rules you set. If This Then Money. Stop pushing your bags. Let them flow."
+      content="The rule-based money-moving primitive on Solana. Delegate once; money flows within rules you set — subscriptions, auto-topup, agent budgets. Non-custodial."
     />
     <meta
       name="keywords"
@@ -33,9 +33,12 @@
       property="og:image"
       content="https://app.tributary.so/banner1200.png"
     />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Tributary — non-custodial recurring payments on Solana" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@tributary_so" />
+    <meta name="twitter:site" content="@tributaryso" />
     <meta name="twitter:url" content="https://tributary.so" />
     <meta
       name="twitter:title"
@@ -49,6 +52,32 @@
       name="twitter:image"
       content="https://app.tributary.so/banner1200.png"
     />
+    <meta name="twitter:image:width" content="1200" />
+    <meta name="twitter:image:height" content="630" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Tributary",
+        "url": "https://tributary.so",
+        "logo": "https://tributary.so/logo.svg",
+        "description": "The rule-based money-moving primitive on Solana. A single delegation composes WHEN (trigger), PULL (value), and ROUTE (destination) into any rule-based flow — subscriptions, milestones, pay-as-you-go, auto-topup, and composable automation — non-custodially via SPL token delegation.",
+        "foundingDate": "2025",
+        "founder": {
+          "@type": "Person",
+          "name": "Dr.-Ing. Fabian Schuh",
+          "jobTitle": "Founder",
+          "sameAs": ["https://github.com/xer0c"]
+        },
+        "sameAs": [
+          "https://twitter.com/tributaryso",
+          "https://github.com/tributary-so",
+          "https://t.me/tributaryso",
+          "https://docs.tributary.so"
+        ]
+      }
+    </script>
 
     <script type="application/ld+json">
       {
@@ -67,7 +96,7 @@
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD",
-          "description": "1% protocol fee per transaction. No monthly charges. No setup fees."
+          "description": "Protocol takes 20% of the gateway fee (~1% at typical rates). No monthly charges. No setup fees."
         },
         "author": {
           "@type": "Organization",
@@ -75,7 +104,7 @@
           "url": "https://tributary.so",
           "logo": "https://tributary.so/logo.svg",
           "sameAs": [
-            "https://twitter.com/tributary_so",
+            "https://twitter.com/tributaryso",
             "https://github.com/tributary-so"
           ]
         },
@@ -97,6 +126,35 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How money moves itself with Tributary",
+        "description": "One delegation turns a balance into a flow: the user sets the riverbed once (WHEN x PULL x ROUTE), the primitive pulls on rule, and funds route to their destination without escrow or custody.",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "User approves token delegation",
+            "text": "The payer signs a single transaction delegating spending authority to Tributary's on-chain program for a specific token, amount, and schedule. Funds remain in the payer's wallet — nothing is locked or transferred to escrow."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Protocol executes the pull",
+            "text": "When a payment is due, the Tributary program pulls the authorized amount from the delegated token account on schedule. No manual signing per charge, no custody, no intermediary holds the funds."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Funds flow to the recipient",
+            "text": "Pulled funds route to the recipient under the rules set (WHEN x PULL x ROUTE). The payer can pause, resume, or revoke the delegation at any time from their wallet."
+          }
+        ]
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
         "@type": "FAQPage",
         "mainEntity": [
           {
@@ -104,7 +162,7 @@
             "name": "What is Tributary?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Tributary is a Solana-native payment protocol enabling automated, non-custodial recurring payments through token delegation. It supports four payment models: Subscriptions, Milestones, Pay-as-you-go, and One-time. Live on Solana mainnet with 400ms finality and sub-cent fees."
+              "text": "Tributary is the rule-based money-moving primitive on Solana. A user delegates spending authority once, and money then moves itself within rules they set — a trigger (WHEN), a value to pull (PULL), a destination to route to (ROUTE). Its live configuration is what the market calls recurring payments — subscriptions, milestones, pay-as-you-go, one-time — and the same primitive composes into conditional, auto-routed flows. Non-custodial; live on Solana mainnet with 400ms finality and sub-cent fees."
             }
           },
           {
@@ -146,6 +204,54 @@
               "@type": "Answer",
               "text": "Tributary powers x402 (HTTP 402 Payment Required) for web micropayments. This enables seamless payment flows over HTTP without breaking the request-response cycle — ideal for API monetization, AI agent billing, and pay-per-use services."
             }
+          },
+          {
+            "@type": "Question",
+            "name": "What is a pull payment?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A pull payment is a money transfer initiated by the recipient under spending authority the payer delegated in advance — the opposite of a push payment, where the sender signs every transaction. On Solana, Tributary implements pull payments via SPL token delegation: the recipient's program debits the payer's token account up to agreed limits without ever taking custody of the funds."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do non-custodial subscriptions work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non-custodial subscriptions work by delegating spending authority instead of locking funds: the subscriber signs one transaction granting Tributary permission to pull a set amount on a schedule, and the funds stay in the subscriber's wallet until each charge is due. The protocol never holds the funds, so there is zero TVL risk and the subscriber can revoke at any time."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Tributary vs Helio — what is the difference?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Helio is a custodial payment processor on Solana that holds funds in its own wallets, while Tributary is a non-custodial pull-payment protocol where funds never leave the user's wallet until a payment is pulled. Choose Helio for hosted, processor-style checkout; choose Tributary when custody risk, composability, or open-source verifiability matter."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can AI agents pay for their own API calls?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes — AI agents can pay for their own API calls using x402, the HTTP 402 Payment Required status code repurposed as a native pay-per-request protocol. Tributary provides x402 middleware that lets an agent hold a delegated token balance and settle each request against it, enabling autonomous agent billing without per-call human approval."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What blockchains does Tributary support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Tributary runs on Solana mainnet, using SPL token delegation and the network's 400ms finality and sub-cent fees. It supports any SPL token — including USDC, USDT, and SOL (wrapped) — for subscriptions, milestones, and pay-as-you-go billing."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does Tributary cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Tributary is free to integrate — no monthly fees and no setup costs. The protocol takes 20% of an optional gateway fee (~1% at typical rates), charged only when payments are processed through the hosted gateway."
+            }
           }
         ]
       }
@@ -159,61 +265,5 @@
       data-domain="tributary.so"
       src="https://p.chainsquad.com/js/script.js"
     ></script>
-    <div style="display: none; visibility: hidden" hidden>
-      <a
-        href="https://www.tinystartups.com/startup/tributary"
-        target="_blank"
-        rel="noopener"
-        style="
-          display: inline-flex;
-          align-items: center;
-          gap: 14px;
-          padding: 14px 22px 14px 18px;
-          border-radius: 14px;
-          text-decoration: none;
-          font-family: 'Inter', system-ui, sans-serif;
-          background: linear-gradient(#fff, #fff) padding-box,
-            linear-gradient(90deg, #3525e6, #d81fe0, #22b8f0) border-box;
-          border: 2px solid transparent;
-          color: #0e0b1f;
-        "
-      >
-        <svg width="56" height="56" viewBox="0 0 100 100">
-          <defs>
-            <linearGradient id="tsg" x1=".1" y1="0" x2=".9" y2="1">
-              <stop offset="0%" stop-color="#3525E6" />
-              <stop offset="55%" stop-color="#D81FE0" />
-              <stop offset="100%" stop-color="#22B8F0" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M50 6C52 32 68 48 94 50C68 52 52 68 50 94C48 68 32 52 6 50C32 48 48 32 50 6Z"
-            fill="url(#tsg)"
-          />
-        </svg>
-        <span style="display: flex; flex-direction: column; line-height: 1.15">
-          <span
-            style="
-              font-family: monospace;
-              font-size: 9px;
-              font-weight: 600;
-              letter-spacing: 0.18em;
-              text-transform: uppercase;
-              color: #6a6585;
-            "
-          >
-            Launched on
-          </span>
-          <span
-            style="font-size: 22px; font-weight: 800; letter-spacing: -0.025em"
-          >
-            Tiny Startups
-          </span>
-          <span style="font-size: 11px; color: #6a6585; margin-top: 4px">
-            tinystartups.com
-          </span>
-        </span>
-      </a>
-    </div>
   </body>
 </html>

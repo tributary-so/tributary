@@ -58,7 +58,15 @@ export default class ComposablePolicyExecute extends BaseCommand {
     if (flags['forward-amount']) {
       forwardAmount = new BN(flags['forward-amount'])
     } else if (variant === 'payAsYouGo') {
-      forwardAmount = (policyAccount.policyType as {payAsYouGo: {maxChunkAmount: BN}}).payAsYouGo.maxChunkAmount
+      // Composable is always NET-on-pull (ADR-0026): gross = face + fee,
+      // and PayAsYouGo caps bind on GROSS. Using maxChunkAmount as-is
+      // would make gross = maxChunk + fee > maxChunk → InvalidAmount.
+      // Adjust: face = floor(maxChunk × 10000 / (10000 + gateway_fee_bps))
+      const maxChunk = (policyAccount.policyType as {payAsYouGo: {maxChunkAmount: BN}}).payAsYouGo.maxChunkAmount
+      const gatewayAccount = await sdk.program.account.paymentGateway.fetchNullable(policyAccount.gateway)
+      if (!gatewayAccount) this.error('Gateway not found')
+      const feeBps = gatewayAccount.gatewayFeeBps
+      forwardAmount = feeBps > 0 ? maxChunk.muln(10_000).divn(10_000 + feeBps) : maxChunk
     }
 
     const instructionData = flags['forward-ix']

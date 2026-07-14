@@ -7,7 +7,7 @@ import {
   getAssertTokenAccountInstructionDataSerializer,
   IntegerOperator,
 } from "lighthouse-sdk-legacy";
-import type { ComposablePolicy } from "@tributary-so/sdk";
+import type { ComposablePolicy, PaymentGateway } from "@tributary-so/sdk";
 
 export type AssertionFamily = "accountInfo" | "tokenAccount" | "unknown";
 
@@ -142,13 +142,14 @@ export interface ScheduleReadiness {
 
 export function isScheduleReady(
   policy: ComposablePolicy,
-  currentTime: number
+  currentTime: number,
+  gatewayAccount: PaymentGateway,
 ): ScheduleReadiness {
   if (!(policy.status as any)?.active) {
     return { ready: false, amount: null };
   }
 
-  const policyType = policy.policyType as any;
+  const policyType = policy.policyType;
 
   if (policyType.subscription) {
     const sub = policyType.subscription;
@@ -175,15 +176,21 @@ export function isScheduleReady(
 
   if (policyType.payAsYouGo) {
     const payg = policyType.payAsYouGo;
-    const periodStart = payg.currentPeriodStart.toNumber();
-    const periodLength = payg.periodLengthSeconds.toNumber();
-    const rolledOver = currentTime - periodStart >= periodLength;
-    const currentTotal = rolledOver ? 0 : payg.currentPeriodTotal.toNumber();
-    const headroom = payg.maxAmountPerPeriod.toNumber() - currentTotal;
-    if (headroom <= 0) return { ready: false, amount: null };
+    const maxChunk = payg.maxChunkAmount;
+    const feeBps = gatewayAccount.gatewayFeeBps;
+    const remainingPeriod = payg.maxAmountPerPeriod.sub(payg.currentPeriodTotal);
+
+    // Calculate amount with fee adjustment if needed
+    const amount = feeBps > 0
+      ? maxChunk.muln(10_000).divn(10_000 + feeBps)
+      : maxChunk;
+
+    // Take the minimum of amount and remaining period balance
+    const freeAmount = amount.gt(remainingPeriod) ? remainingPeriod : amount;
+
     return {
-      ready: true,
-      amount: new BN(Math.min(payg.maxChunkAmount.toNumber(), headroom)),
+      ready: freeAmount.gten(0),
+      amount: freeAmount,
     };
   }
 

@@ -107,12 +107,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
-                  to="mailto:info@tributary.so"
+                <a
+                  href="mailto:info@tributary.so"
                   className="hover:text-foreground transition-colors"
                 >
                   Contact
-                </Link>
+                </a>
               </li>
             </ul>
           </div>

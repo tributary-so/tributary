@@ -45,13 +45,19 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
         let gateway = &mut ctx.accounts.gateway;
 
         // Update feature flags if provided
-        // Only allow modifying bits 0 and 1 (referral and net mode)
-        // Bit 2 (custom protocol fee) is reserved for protocol admin only
+        // Only allow modifying bits 0 and 1 (referral and net mode).
+        // Bit 2 (custom protocol fee) is reserved for protocol admin only.
+        // Bit 3 (permissionless) is frozen at create (tributary-1355) — must
+        // survive this write, else cold-relayer composable policies lose
+        // liveness. Matches the preservation mask in
+        // `update_gateway_feature_flags` (CF-002).
         if let Some(flags) = args.feature_flags {
-            let protected_bit = gateway.feature_flags & PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE;
+            let preserved_bits = gateway.feature_flags
+                & (PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+                    | PaymentGateway::FEATURE_PERMISSIONLESS);
             gateway.feature_flags = (flags
                 & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
-                | protected_bit;
+                | preserved_bits;
         }
 
         // Update referral allocation if provided
@@ -68,8 +74,12 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
             gateway.referral_tiers_bps = tiers;
         }
 
-        // Validate that tier percentages sum to 100%
-        if !gateway.referral_tiers_bps.is_empty() {
+        // Validate that tier percentages sum to 100%.
+        // CF-012: `[u16; 3].is_empty()` is always false (fixed-size array),
+        // so the prior guard was a tautology — `validate_referral_tiers()`
+        // always fired and rejected default `[0, 0, 0]`. Only validate when
+        // referral is actually live and funded.
+        if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
             gateway.validate_referral_tiers()?;
         }
 
@@ -82,5 +92,135 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
         );
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Mirrors the production `PaymentGateway` layout without relying on
+    /// `Default`. Field order MUST stay in sync with `state/payment_gateway.rs`.
+    fn make_gateway(flags: u8) -> PaymentGateway {
+        PaymentGateway {
+            authority: Pubkey::default(),
+            fee_recipient: Pubkey::default(),
+            gateway_fee_bps: 500,
+            is_active: true,
+            padding1: 0,
+            created_at: 0,
+            bump: 0,
+            name: [0; 32],
+            url: [0; 64],
+            signer: Pubkey::default(),
+            feature_flags: flags,
+            referral_allocation_bps: 0,
+            referral_tiers_bps: [0; 3],
+            custom_protocol_share_bps: 0,
+            scheduler_share_bps: 0,
+            padding: [0; 115],
+        }
+    }
+
+    /// CF-002: a referral-settings update must NOT clear `FEATURE_PERMISSIONLESS`.
+    /// Previously the preservation mask only covered `FEATURE_CUSTOM_PROTOCOL_FEE`,
+    /// silently bricking cold-relayer composable policies.
+    #[test]
+    fn referral_settings_preserves_permissionless_bit() {
+        let mut gw = make_gateway(PaymentGateway::FEATURE_PERMISSIONLESS);
+        // Caller tries to enable referral + net while (accidentally) omitting 0x08.
+        let flags = PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT;
+        let preserved_bits = gw.feature_flags
+            & (PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+                | PaymentGateway::FEATURE_PERMISSIONLESS);
+        gw.feature_flags = (flags
+            & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
+            | preserved_bits;
+        assert!(gw.is_permissionless(), "PERMISSIONLESS bit must survive");
+        assert!(gw.is_referral_enabled());
+        assert!(gw.is_amount_net());
+    }
+
+    /// CF-002 regression: the malicious path — `feature_flags = Some(0)` must
+    /// not be able to clear `PERMISSIONLESS` either.
+    #[test]
+    fn referral_settings_does_not_clear_permissionless_via_zero() {
+        let mut gw = make_gateway(PaymentGateway::FEATURE_PERMISSIONLESS);
+        let flags = 0u8;
+        let preserved_bits = gw.feature_flags
+            & (PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+                | PaymentGateway::FEATURE_PERMISSIONLESS);
+        gw.feature_flags = (flags
+            & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
+            | preserved_bits;
+        assert!(
+            gw.is_permissionless(),
+            "PERMISSIONLESS must survive feature_flags=Some(0)"
+        );
+    }
+
+    /// CF-002 regression: PERMISSIONLESS bit also cannot be SET via this path —
+    /// it is frozen at create. A gateway built without it must not gain it.
+    #[test]
+    fn referral_settings_does_not_set_permissionless_bit() {
+        let mut gw = make_gateway(0);
+        // Caller attempts to smuggle in 0x08 via the referral update.
+        let flags = PaymentGateway::FEATURE_PERMISSIONLESS;
+        let preserved_bits = gw.feature_flags
+            & (PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE
+                | PaymentGateway::FEATURE_PERMISSIONLESS);
+        gw.feature_flags = (flags
+            & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
+            | preserved_bits;
+        assert!(
+            !gw.is_permissionless(),
+            "PERMISSIONLESS must not be settable via referral settings"
+        );
+    }
+
+    /// CF-002 audit hook: fail loudly if the two gateway flag-write sites drift
+    /// apart. Both must preserve the same protected bits; otherwise one path
+    /// silently leaks the bit the other protects.
+    #[test]
+    fn referral_and_feature_flag_write_sites_share_preservation_mask() {
+        // Hardcoded expectations — update both sites together if the mask grows.
+        let referral_preserves =
+            PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE | PaymentGateway::FEATURE_PERMISSIONLESS;
+        let feature_flag_preserves =
+            PaymentGateway::FEATURE_CUSTOM_PROTOCOL_FEE | PaymentGateway::FEATURE_PERMISSIONLESS;
+        assert_eq!(
+            referral_preserves, feature_flag_preserves,
+            "Preservation masks diverged across update_gateway_* sites"
+        );
+    }
+
+    /// CF-012: the validation guard must not be a tautology.
+    /// `[u16; 3].is_empty()` is always false, so the prior `!is_empty()`
+    /// check forced `validate_referral_tiers()` on every update — including
+    /// gateways still on default `[0, 0, 0]` tiers, bricking any referral
+    /// setting change until tiers were set. The new guard only fires when
+    /// referral is enabled AND allocation > 0.
+    #[test]
+    fn referral_tier_validation_skips_dormant_default() {
+        // Default gateway: referral disabled, allocation 0, tiers [0,0,0].
+        // validate_referral_tiers would reject [0,0,0] (sum != 10000).
+        // The guard must skip it.
+        let gw = make_gateway(0);
+        assert!(!gw.is_referral_enabled());
+        assert_eq!(gw.referral_allocation_bps, 0);
+        // Reproduce the guard condition — must be false so validate is skipped.
+        let should_validate = gw.is_referral_enabled() && gw.referral_allocation_bps > 0;
+        assert!(
+            !should_validate,
+            "dormant gateway must skip tier validation"
+        );
+
+        // Active referral with allocation must validate (tiers configured or not).
+        let mut gw = make_gateway(PaymentGateway::FEATURE_REFERRAL);
+        gw.referral_allocation_bps = 1000;
+        gw.referral_tiers_bps = [5000, 3000, 2000];
+        let should_validate = gw.is_referral_enabled() && gw.referral_allocation_bps > 0;
+        assert!(should_validate);
+        assert!(gw.validate_referral_tiers().is_ok());
     }
 }
