@@ -67,6 +67,12 @@ jobs:
           pnpm run --filter ./packages/payments release || true
           pnpm run --filter ./packages/sdk-react release || true
           pnpm run --filter ./packages/sdk-x402 release || true
-          pnpm run --filter ./app/cli release || true
+          pnpm run --filter ./apps/api release || true
+          pnpm run --filter ./apps/app release || true
+          pnpm run --filter ./apps/checkout release || true
+          pnpm run --filter ./apps/cli release || true
+          pnpm run --filter ./apps/landing release || true
+          pnpm run --filter ./apps/lando release || true
+          pnpm run --filter ./apps/scheduler release || true
 
           pnpm run --filter ./programs/tributary release || true
