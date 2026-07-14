@@ -156,7 +156,12 @@
           "changelogFile": "CHANGELOG.md"
         }
       ],
-      "@anolilab/semantic-release-pnpm",
+      [
+        "@anolilab/semantic-release-pnpm",
+        {
+          "npmPublish": false
+        }
+      ],
       [
         "@semantic-release/git",
         {
