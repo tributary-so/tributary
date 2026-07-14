@@ -1,11 +1,11 @@
 ---
 # tributary-5nyo
 title: 'API: Multi-Stage Dockerfile'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-14T19:23:07Z
-updated_at: 2026-07-14T19:23:07Z
+updated_at: 2026-07-14T20:48:54Z
 parent: tributary-z74k
 blocked_by:
     - tributary-yc1o
@@ -64,7 +64,7 @@ Note: API has three workspace deps to build (sdk, tokens-client, payments). The 
 
 ## Acceptance
 
-- [ ] `docker build -f apps/api/Dockerfile .` succeeds
+- [x] `docker build -f apps/api/Dockerfile .` succeeds
 - [ ] Container starts without module resolution errors
 - [ ] All three workspace deps (sdk, payments, tokens-client) resolve correctly
 - [ ] Image excludes devDependencies
