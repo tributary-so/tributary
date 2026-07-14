@@ -1,4 +1,3 @@
-TODAY := $(shell date +%Y-%m-%d)
 DEPLOY_KEY_PATH := ~/.config/solana/ADmSd9uYBRbLGa9rN1NtFv5LXtwLPdtVwGT5xhAYY4xZ.json
 PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.json
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
@@ -94,6 +93,7 @@ bump:
 	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/README.md
 	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/README.md
 	echo "$(TODAY): $(MESSAGE)" >> packages/payments/README.md
+	echo "$(TODAY): $(MESSAGE)" >> programs/tributary/README.md
 
 lint:
 	pnpm run -r --filter "./programs/*" lint
