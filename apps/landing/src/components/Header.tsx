@@ -76,7 +76,7 @@ export function Header() {
     <header className="relative z-50 py-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between">
         <Link className="inline-flex text-primary items-center gap-3" to="/">
-          <img src={logo} alt="Tributary Logo" className="h-4 w-4" />
+          <img src={logo} alt="Tributary — the rule-based money-moving primitive on Solana" className="h-4 w-4" />
           <span className="font-semibold text-xs uppercase tracking-[0.3em]">
             TRIBUTARY
           </span>
