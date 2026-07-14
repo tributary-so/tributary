@@ -55,6 +55,12 @@ pub fn validate_milestone_policy(
 
     // release_condition: bits 1-3 (signer gates) must be mutually exclusive
     // (at most one set). Bit 0 (RELEASE_DUE_DATE) is independent.
+    // CF-018: bits 4-7 are unused — reject so SDK bugs setting high bits
+    // can't silently pass validation with weaker-than-intended security.
+    require!(
+        release_condition & 0b11110000 == 0,
+        TributaryError::InvalidAmount
+    );
     let signer_bits = release_condition & !RELEASE_DUE_DATE;
     require!(signer_bits.count_ones() <= 1, TributaryError::InvalidAmount);
 
@@ -135,6 +141,15 @@ mod tests {
         // CF-015: escrow_amount (1) < sum (1000+2000+3000+4000) — would
         // undercount total-liability metadata by up to 4x.
         let err = cfg([1000, 2000, 3000, 4000], 4, DUE_DATE, 1).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_unused_release_bits() {
+        // CF-018: bit 4 (0b10000) is unused — must be rejected, not silently
+        // dropped. Without this check an SDK setting a high bit would pass
+        // validation while behaving as a weaker policy.
+        let err = cfg([100, 200, 0, 0], 2, 0b10001, 300).unwrap_err();
         assert!(err == error!(TributaryError::InvalidAmount));
     }
 }
