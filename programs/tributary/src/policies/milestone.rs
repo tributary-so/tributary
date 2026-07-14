@@ -20,10 +20,12 @@ pub fn validate_milestone_policy(
         TributaryError::InvalidAmount
     );
 
-    require!(
-        current_milestone < total_milestones,
-        TributaryError::InvalidAmount
-    );
+    // CF-020: a fresh policy must start at milestone 0. Previously
+    // `current_milestone < total_milestones` allowed e.g. current=2/total=4,
+    // which would skip milestones 0 and 1 — their escrowed amounts become
+    // permanently unclaimable. Self-inflicted (owner signs creation) but
+    // logically inconsistent.
+    require!(current_milestone == 0, TributaryError::InvalidAmount);
 
     require!(escrow_amount > 0, TributaryError::InvalidAmount);
 
@@ -150,6 +152,23 @@ mod tests {
         // dropped. Without this check an SDK setting a high bit would pass
         // validation while behaving as a weaker policy.
         let err = cfg([100, 200, 0, 0], 2, 0b10001, 300).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_nonzero_current_milestone_at_creation() {
+        // CF-020: a fresh policy must start at milestone 0. Starting at
+        // current=2 would skip milestones 0 and 1, burning their escrowed
+        // amounts. The cfg() helper hardcodes current=0, so call directly.
+        let err = validate_milestone_policy(
+            &[100, 200, 0, 0],
+            2, // current_milestone > 0 — must be rejected
+            DUE_DATE,
+            4,
+            300,
+            &[1_700_000_000, 1_710_000_000, 1_720_000_000, 1_730_000_000],
+        )
+        .unwrap_err();
         assert!(err == error!(TributaryError::InvalidAmount));
     }
 }
