@@ -13,7 +13,7 @@ pub fn validate_milestone_policy(
     release_condition: u8,
     total_milestones: u8,
     escrow_amount: u64,
-    _milestone_timestamps: &[i64; 4],
+    milestone_timestamps: &[i64; 4],
 ) -> Result<()> {
     require!(
         (1..=4).contains(&total_milestones),
@@ -43,6 +43,18 @@ pub fn validate_milestone_policy(
         .ok_or(TributaryError::ArithmeticOverflow)?;
     require!(escrow_amount >= sum, TributaryError::InvalidAmount);
 
+    // CF-019: timestamps must be non-decreasing. Milestones execute in
+    // fixed order (0, 1, 2, ...) via `current_milestone` increment, so an
+    // out-of-order pair is not directly exploitable — but it is logically
+    // inconsistent and masks SDK bugs. Pure ordering check (no Clock dep),
+    // runs on all clusters.
+    for i in 1..total_milestones as usize {
+        require!(
+            milestone_timestamps[i] >= milestone_timestamps[i - 1],
+            TributaryError::InvalidPaymentDueDate
+        );
+    }
+
     // Validate timestamps are in the future (basic check, mainnet only).
     // We disable this check on localnet so we can run our testsuite. There is no way to advance the
     // slots on our setup yet.
@@ -50,7 +62,7 @@ pub fn validate_milestone_policy(
     {
         // only on mainnet, simplifies testing
         let current_time = Clock::get()?.unix_timestamp;
-        for timestamp in _milestone_timestamps.iter().take(total_milestones as usize) {
+        for timestamp in milestone_timestamps.iter().take(total_milestones as usize) {
             require!(*timestamp > current_time, TributaryError::InvalidInterval);
         }
     }
@@ -170,5 +182,35 @@ mod tests {
         )
         .unwrap_err();
         assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn accepts_non_decreasing_timestamps() {
+        // CF-019: equal-or-increasing timestamps are valid (== is permitted
+        // so a policy can have two milestones payable at the same instant).
+        assert!(validate_milestone_policy(
+            &[100, 200, 300, 0],
+            0,
+            DUE_DATE,
+            3,
+            600,
+            &[1_700_000_000, 1_700_000_000, 1_710_000_000, 0],
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn rejects_descending_timestamps() {
+        // CF-019: timestamps[1] < timestamps[0] — logically inconsistent.
+        let err = validate_milestone_policy(
+            &[100, 200, 0, 0],
+            0,
+            DUE_DATE,
+            2,
+            300,
+            &[1_710_000_000, 1_700_000_000, 0, 0],
+        )
+        .unwrap_err();
+        assert!(err == error!(TributaryError::InvalidPaymentDueDate));
     }
 }
