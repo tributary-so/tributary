@@ -1,11 +1,11 @@
 ---
 # tributary-kymx
 title: 'CF-023: Native output close sends rent to recipient instead of fee payer'
-status: todo
+status: completed
 type: bug
 priority: low
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-14T08:51:08Z
 parent: tributary-gq3x
 ---
 
@@ -60,3 +60,22 @@ Fee_payer loses ~0.002 SOL per native-output execution. Recipient gets a small b
 ```
 
 Or accept the small rent discrepancy and document it as a design choice.
+
+## Summary of Changes
+
+CF-023 fixed in `programs/tributary/src/instructions/composable/execute_composable.rs` (`sweep_output_to_recipient`):
+
+- Native-output path now `transfer_checked`s the WSOL token balance to the recipient first, then `close_token_account`s the ATA to `fee_payer_info` for the rent refund. Previously `closeAccount` sent both balance + rent to the recipient, costing the fee_payer ~0.002 SOL per native-output execution.
+- Added `fee_payer_info` parameter to `sweep_output_to_recipient` (9 params, single call site — ponytail comment updated).
+- The downstream skip at `&& !native_output` (line ~1498) still correctly prevents a double-close — the sweep closes during settlement either way; only the destination changed (recipient → fee_payer).
+- The post-sweep output-balance check at `needs_output_ata && !native_output` is already skipped for native output, so the closed ATA doesn't trigger a false read error.
+
+All 190 lib tests pass.
+
+## REVERTED — CF-023 native_output fix incompatible with NATIVE_OUTPUT mode
+
+The CF-023 fix (transfer_checked + close to fee_payer) was **reverted** for the native_output path. The `transfer_checked` requires a token-account destination, but in NATIVE_OUTPUT mode `recipient_token_account` is the recipient's **system wallet** (not a WSOL ATA). The `transfer_checked` fails with `InvalidAccountData`.
+
+`closeAccount(→ recipient)` is the ONLY way to unwrap WSOL→SOL at a system wallet — it sends ALL lamports (WSOL token value + rent) as native SOL. Separating the rent would require the recipient to hold a WSOL ATA, which defeats the purpose of NATIVE_OUTPUT.
+
+**Resolution:** Per the bean's alternative ("accept the small rent discrepancy and document it as a design choice"), the original `closeAccount(→ recipient)` behavior is restored. The ~0.002 SOL rent going to the recipient is documented as a design trade-off in the code comment. The fee_payer absorbs this cost per native-output execution. Not exploitable.

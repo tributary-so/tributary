@@ -1,11 +1,11 @@
 ---
 # tributary-akcd
 title: 'CF-002: FEATURE_PERMISSIONLESS silently cleared by update_gateway_referral_settings'
-status: todo
+status: completed
 type: bug
 priority: critical
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T20:22:57Z
 parent: tributary-gq3x
 ---
 
@@ -155,3 +155,27 @@ fn referral_settings_preserves_permissionless_bit() {
 ```
 
 Additionally, audit every `update_gateway_*` instruction for the same missing-bit pattern.
+
+## Summary of Changes
+
+**CF-002 fix landed** in `programs/tributary/src/instructions/gateway/update_gateway_referral_settings.rs`:
+
+- Preservation mask in the `feature_flags` write path now covers both `FEATURE_CUSTOM_PROTOCOL_FEE` (0x04) AND `FEATURE_PERMISSIONLESS` (0x08), matching the mask in `update_gateway_feature_flags.rs:47–52`. Previously only 0x04 was preserved, silently bricking cold-relayer composable policies whenever a gateway authority touched referral settings.
+- Added 4 unit tests in the same module:
+  - `referral_settings_preserves_permissionless_bit` — the core regression test from the bean's verification section.
+  - `referral_settings_does_not_clear_permissionless_via_zero` — the malicious-path regression (`feature_flags = Some(0)`).
+  - `referral_settings_does_not_set_permissionless_bit` — bit is also not smugglable IN via this path (frozen-at-create invariant).
+  - `referral_and_feature_flag_write_sites_share_preservation_mask` — audit hook that fails loudly if the two flag-write sites ever drift apart.
+
+**Audit of remaining `update_gateway_*` sites** (per bean's 'Additionally…' instruction):
+- `update_gateway_feature_flags.rs` — already correct (the reference mask).
+- `update_gateway_protocol_fee.rs` — surgical `|= FEATURE_CUSTOM_PROTOCOL_FEE` / `&= !FEATURE_CUSTOM_PROTOCOL_FEE`; never a full overwrite, PERMISSIONLESS safe.
+- `update_gateway_scheduler_share.rs` — does not touch `feature_flags`.
+
+No other write site exhibits the missing-bit pattern.
+
+**Verification:**
+```
+cargo test --package tributary --lib instructions::gateway::
+→ 7 passed; 0 failed
+```

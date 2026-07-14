@@ -1,11 +1,11 @@
 ---
 # tributary-m5wy
 title: 'CF-009: Token-2022 mints pass compatibility check but fail at CPI execution'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-14T07:01:01Z
 parent: tributary-gq3x
 ---
 
@@ -108,3 +108,32 @@ No fund theft — the user's tokens are safe. But the UX is broken and rent is t
 Change `token_program` to `Interface<'info, TokenInterface>` in all execution instructions, update all CPI calls to use the interface, and derive intermediate ATAs using the correct token program. This is a larger change that enables Token-2022 support properly.
 
 **Recommendation:** Option A as an immediate fix (prevents the lockup). Option B as a feature addition if Token-2022 support is desired.
+
+## Summary of Changes — Option B (Token-2022 support)
+
+CF-009 implemented as Option B (full Token-2022 support) instead of the previously-applied Option A (reject all Token-2022).
+
+### Changes
+
+1. **3 execution instructions** — `token_program` field switched from `Program<'info, Token>` (legacy-only) to `Interface<'info, TokenInterface>` (accepts both Token and Token-2022):
+   - `programs/tributary/src/instructions/payment/transfer.rs`
+   - `programs/tributary/src/instructions/payment/execute_payment.rs`
+   - `programs/tributary/src/instructions/composable/execute_composable.rs`
+
+2. **Imports** — `use anchor_spl::token::Token` → `use anchor_spl::token_interface::TokenInterface` in all 3 files.
+
+3. **No CPI changes needed** — all transfer/close CPI calls already dispatched through `token_interface::*`. The migration was already done in the CPI layer; only the Anchor account validation (`Program<Token>`) was blocking Token-2022.
+
+4. **Ownership checks** — both execution paths already accepted `token::ID || token_2022::ID` for scheduler-ATA validation (CF-008 fix).
+
+5. **`validate_mint_compatible`** — extension blocklist is the active defense (restored by the Option A revert commit `6a4a355b`). Clean Token-2022 mints now flow through the full create → delegate → execute lifecycle.
+
+6. **ADR-0012** — added "Amendment (CF-009 Option B)" section documenting the Interface switch.
+
+7. **No qed hash update needed** — the qed attributes only validate function body hash, not accounts-struct hash. Function bodies unchanged.
+
+### Why Option B was low-risk
+
+The CPI layer was already Token-2022-compatible (`token_interface::*` everywhere). The only blocker was Anchor's `Program<Token>` validation, which rejects Token-2022 at the account-validation layer before any CPI runs. Switching to `Interface<TokenInterface>` lifts that gate — everything downstream was already ready.
+
+All 195 lib tests pass.

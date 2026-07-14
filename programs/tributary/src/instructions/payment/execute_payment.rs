@@ -10,8 +10,7 @@ use crate::{
     state::*,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::Token;
-use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
+use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 
 #[derive(Accounts)]
 pub struct ExecutePayment<'info> {
@@ -102,7 +101,7 @@ pub struct ExecutePayment<'info> {
     )]
     pub protocol_fee_account: InterfaceAccount<'info, TokenAccount>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> ExecutePayment<'info> {
@@ -277,6 +276,11 @@ impl<'info> ExecutePayment<'info> {
                     let sta_data = scheduler_ata.try_borrow_data()?;
                     require!(
                         sta_data.len() >= 64,
+                        TributaryError::InvalidSchedulerFeeAccount
+                    );
+                    require!(
+                        scheduler_ata.owner == &anchor_spl::token::ID
+                            || scheduler_ata.owner == &anchor_spl::token_2022::ID,
                         TributaryError::InvalidSchedulerFeeAccount
                     );
                     let sta_mint = Pubkey::try_from(&sta_data[0..32]).unwrap_or_default();

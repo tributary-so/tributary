@@ -1,11 +1,11 @@
 ---
 # tributary-ptaw
 title: 'CF-016: OneTime non-positive expiry_date permanently locks policy'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T21:02:39Z
 parent: tributary-gq3x
 ---
 
@@ -62,3 +62,14 @@ Or validate at create time:
      // existing checks...
  }
 ```
+
+## Summary of Changes
+
+CF-016 fixed in `programs/tributary/src/shared/schedule.rs` (OneTime arm of `validate_policy_execution`):
+
+- Wrapped the unconditional `require!(current_time <= *exp, ...)` in `if *exp > 0`, mirroring the existing PayAsYouGo arm (lines 416–420). `Some(0)`/`Some(neg)` is now treated as "no gate" — matches ADR-0024 semantics (`Some(ts)` with `ts > 0` rejects) and unblocks policies that previously could never execute.
+- Added regression test `onetime_zero_or_negative_expiry_treated_as_no_gate` mirroring `payg_zero_or_negative_expiry_treated_as_no_gate`.
+
+Chose the execute-time gate fix over the create-time validator alternative because: (a) it matches the file's existing PayAsYouGo convention, (b) it also unblocks already-created policies with sentinel expiry, (c) it matches the documented ADR-0024 contract (`Some(ts>0)` rejects).
+
+All 66 `schedule::` tests pass.

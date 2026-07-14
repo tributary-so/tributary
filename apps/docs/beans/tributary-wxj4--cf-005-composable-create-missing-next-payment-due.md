@@ -1,11 +1,11 @@
 ---
 # tributary-wxj4
 title: 'CF-005: Composable Create missing next_payment_due / current_period_start sanitization'
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T20:34:01Z
 parent: tributary-gq3x
 ---
 
@@ -197,3 +197,15 @@ fn composable_subscription_clamps_past_due_date() {
 ```
 
 After the fix, creating a composable subscription with `next_payment_due = 0` stores `next_payment_due = now`. The first execution's `advance_policy` only advances one month forward (O(1) effectively), staying well within the compute budget.
+
+## Summary of Changes
+
+CF-005 fixed by extracting the create-time schedule sanitization into a shared helper and applying it to BOTH create paths:
+
+- **shared/schedule.rs**: Added `sanitize_policy_for_creation(&mut PolicyType, i64)` — clamps `Subscription.next_payment_due` to now if in the past, forces `PayAsYouGo.current_period_start` to now. `Milestone`, `OneTime`, `UpTo` are no-ops (matching existing PaymentPolicy behavior — milestone timestamp validation is CF-019/CF-020/CF-015 scope, OneTime/UpTo are execute-time gated).
+- **create_payment_policy.rs**: Replaced the inline 34-line match block with a call to the shared helper. Pure refactor — behavior identical. Updated qedgen hash (1b52a4a7fb1a17dd → 146d0ad59fd1f963).
+- **create_composable_policy.rs**: Added the sanitization call before storing `policy_type` (the actual fix — this path previously stored user-supplied values as-is).
+
+Added 5 unit tests in `shared/schedule::tests` covering all PolicyType variants.
+
+All 188 lib tests pass, 0 failures. No new clippy warnings.

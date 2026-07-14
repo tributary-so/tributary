@@ -1,11 +1,11 @@
 ---
 # tributary-k34n
 title: 'CF-013: scheduler_share_bps missing explicit <=10000 bounds check'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T20:39:16Z
 parent: tributary-gq3x
 ---
 
@@ -44,3 +44,8 @@ require!(new_fee_bps <= 10000, TributaryError::InvalidFeeBps);
      let gateway = &mut ctx.accounts.gateway;
      gateway.scheduler_share_bps = scheduler_share_bps;
 ```
+
+## Summary of Changes
+
+- Added explicit `require!(scheduler_share_bps <= 10000, TributaryError::InvalidFeeBps)` guard in `update_gateway_scheduler_share.rs` before assignment, matching the pattern in `change_gateway_fee_bps.rs`.
+- Build verified (`cargo build -p tributary`).

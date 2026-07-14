@@ -1,11 +1,11 @@
 ---
 # tributary-6vjk
 title: 'CF-008: Scheduler ATA validated via raw byte parsing without token-program ownership check'
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T20:26:14Z
 parent: tributary-gq3x
 ---
 
@@ -101,3 +101,12 @@ The practical impact is limited because `transfer_checked` is the actual fund-mo
 Apply the same fix to `execute_composable.rs:411–426`.
 
 **Alternative (cleaner):** Use `InterfaceAccount<'info, TokenAccount>` instead of raw byte parsing. However, since the scheduler ATA is in `remaining_accounts` (not a named field in the Accounts struct), this requires either promoting it to a named field or using `load()` on the InterfaceAccount.
+
+## Summary of Changes
+
+Added a token-program ownership check on the scheduler ATA before parsing its raw bytes in both `execute_payment` and `execute_composable`. The account must now be owned by either `anchor_spl::token::ID` or `anchor_spl::token_2022::ID` before the mint/owner byte-slice validation runs, closing the defense-in-depth gap where a crafted non-token account could pass the raw byte checks.
+
+- `programs/tributary/src/instructions/payment/execute_payment.rs`: added ownership require before byte parsing
+- `programs/tributary/src/instructions/composable/execute_composable.rs`: same guard, same pattern
+
+Build clean (`cargo check`), 183 unit tests pass, `cargo fmt --check` clean.

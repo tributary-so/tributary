@@ -1,11 +1,11 @@
 ---
 # tributary-aon7
 title: 'CF-021: create_payment_policy uses saturating_add for policy ID'
-status: todo
+status: completed
 type: bug
 priority: low
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-14T06:37:11Z
 parent: tributary-gq3x
 ---
 
@@ -36,3 +36,13 @@ Practically unreachable (requires ~4 billion policies at ~0.01 SOL rent each ≈
 +    .checked_add(1)
 +    .ok_or(TributaryError::ArithmeticOverflow)?;
 ```
+
+## Summary of Changes
+
+CF-021 fixed in both create paths (root-cause, not just the named file):
+
+- `programs/tributary/src/instructions/payment/create_payment_policy.rs`: `saturating_add(1)` → `checked_add(1).ok_or(ArithmeticOverflow)?`. At u32::MAX the saturating path returned u32::MAX, colliding with the prior ID at that number and producing a confusing Anchor `init` failure.
+- `programs/tributary/src/instructions/composable/create_composable_policy.rs`: same fix (identical bug, same pattern, root-cause).
+- Re-ran `qedgen adapt --program programs/tributary --spec tributary.qedspec` to refresh the qed verified-hash on `handler_create_payment_policy` (`146d0ad59fd1f963` → `46d488d88d37f4a2`). The composable handler has no qed attribute, so no hash update needed there.
+
+All 190 lib tests pass.

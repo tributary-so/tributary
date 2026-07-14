@@ -7,8 +7,7 @@ use crate::{
     state::*,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::Token;
-use anchor_spl::token_interface::{self, Mint, TokenAccount, TransferChecked};
+use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 use qedgen_macros::qed;
 
 #[derive(Accounts)]
@@ -62,7 +61,7 @@ pub struct TransferTokens<'info> {
     )]
     pub protocol_fee_account: InterfaceAccount<'info, TokenAccount>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> TransferTokens<'info> {

@@ -31,6 +31,12 @@ pub struct DeletePaymentPolicy<'info> {
             policy_id.to_le_bytes().as_ref()
         ],
         bump = payment_policy.bump,
+        // CF-014: reject deletion of Active policies — force a deliberate
+        // pause-first step so the owner can't nuke a policy with pending
+        // payments and leave a stale delegate on the user's token account.
+        // Mirrors DeleteComposablePolicy. Paused/Completed still allowed.
+        constraint = payment_policy.status != PolicyStatus::Active
+            @ TributaryError::InvalidPolicyStatusTransition,
     )]
     pub payment_policy: Account<'info, PaymentPolicy>,
 

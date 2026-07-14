@@ -13,22 +13,46 @@ pub fn validate_milestone_policy(
     release_condition: u8,
     total_milestones: u8,
     escrow_amount: u64,
-    _milestone_timestamps: &[i64; 4],
+    milestone_timestamps: &[i64; 4],
 ) -> Result<()> {
     require!(
         (1..=4).contains(&total_milestones),
         TributaryError::InvalidAmount
     );
 
-    require!(
-        current_milestone < total_milestones,
-        TributaryError::InvalidAmount
-    );
+    // CF-020: a fresh policy must start at milestone 0. Previously
+    // `current_milestone < total_milestones` allowed e.g. current=2/total=4,
+    // which would skip milestones 0 and 1 — their escrowed amounts become
+    // permanently unclaimable. Self-inflicted (owner signs creation) but
+    // logically inconsistent.
+    require!(current_milestone == 0, TributaryError::InvalidAmount);
 
     require!(escrow_amount > 0, TributaryError::InvalidAmount);
 
     for amount in milestone_amounts.iter().take(total_milestones as usize) {
         require!(*amount > 0, TributaryError::InvalidAmount);
+    }
+
+    // CF-015: escrow_amount is metadata used by off-chain indexers/auditors
+    // for total-liability accounting. It must cover the sum of the active
+    // milestone amounts so the recorded escrow never undercounts actual
+    // scheduled payouts (up to 4x for a full 4-milestone policy).
+    let sum: u64 = milestone_amounts[..total_milestones as usize]
+        .iter()
+        .try_fold(0u64, |acc, &v| acc.checked_add(v))
+        .ok_or(TributaryError::ArithmeticOverflow)?;
+    require!(escrow_amount >= sum, TributaryError::InvalidAmount);
+
+    // CF-019: timestamps must be non-decreasing. Milestones execute in
+    // fixed order (0, 1, 2, ...) via `current_milestone` increment, so an
+    // out-of-order pair is not directly exploitable — but it is logically
+    // inconsistent and masks SDK bugs. Pure ordering check (no Clock dep),
+    // runs on all clusters.
+    for i in 1..total_milestones as usize {
+        require!(
+            milestone_timestamps[i] >= milestone_timestamps[i - 1],
+            TributaryError::InvalidPaymentDueDate
+        );
     }
 
     // Validate timestamps are in the future (basic check, mainnet only).
@@ -38,13 +62,19 @@ pub fn validate_milestone_policy(
     {
         // only on mainnet, simplifies testing
         let current_time = Clock::get()?.unix_timestamp;
-        for timestamp in _milestone_timestamps.iter().take(total_milestones as usize) {
+        for timestamp in milestone_timestamps.iter().take(total_milestones as usize) {
             require!(*timestamp > current_time, TributaryError::InvalidInterval);
         }
     }
 
     // release_condition: bits 1-3 (signer gates) must be mutually exclusive
     // (at most one set). Bit 0 (RELEASE_DUE_DATE) is independent.
+    // CF-018: bits 4-7 are unused — reject so SDK bugs setting high bits
+    // can't silently pass validation with weaker-than-intended security.
+    require!(
+        release_condition & 0b11110000 == 0,
+        TributaryError::InvalidAmount
+    );
     let signer_bits = release_condition & !RELEASE_DUE_DATE;
     require!(signer_bits.count_ones() <= 1, TributaryError::InvalidAmount);
 
@@ -118,5 +148,69 @@ mod tests {
         // bits 1 (gateway) + 2 (owner) = 0b0110 — mutually exclusive violation.
         let err = cfg([100, 200, 0, 0], 2, 0b0110, 300).unwrap_err();
         assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_escrow_below_milestone_sum() {
+        // CF-015: escrow_amount (1) < sum (1000+2000+3000+4000) — would
+        // undercount total-liability metadata by up to 4x.
+        let err = cfg([1000, 2000, 3000, 4000], 4, DUE_DATE, 1).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_unused_release_bits() {
+        // CF-018: bit 4 (0b10000) is unused — must be rejected, not silently
+        // dropped. Without this check an SDK setting a high bit would pass
+        // validation while behaving as a weaker policy.
+        let err = cfg([100, 200, 0, 0], 2, 0b10001, 300).unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn rejects_nonzero_current_milestone_at_creation() {
+        // CF-020: a fresh policy must start at milestone 0. Starting at
+        // current=2 would skip milestones 0 and 1, burning their escrowed
+        // amounts. The cfg() helper hardcodes current=0, so call directly.
+        let err = validate_milestone_policy(
+            &[100, 200, 0, 0],
+            2, // current_milestone > 0 — must be rejected
+            DUE_DATE,
+            4,
+            300,
+            &[1_700_000_000, 1_710_000_000, 1_720_000_000, 1_730_000_000],
+        )
+        .unwrap_err();
+        assert!(err == error!(TributaryError::InvalidAmount));
+    }
+
+    #[test]
+    fn accepts_non_decreasing_timestamps() {
+        // CF-019: equal-or-increasing timestamps are valid (== is permitted
+        // so a policy can have two milestones payable at the same instant).
+        assert!(validate_milestone_policy(
+            &[100, 200, 300, 0],
+            0,
+            DUE_DATE,
+            3,
+            600,
+            &[1_700_000_000, 1_700_000_000, 1_710_000_000, 0],
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn rejects_descending_timestamps() {
+        // CF-019: timestamps[1] < timestamps[0] — logically inconsistent.
+        let err = validate_milestone_policy(
+            &[100, 200, 0, 0],
+            0,
+            DUE_DATE,
+            2,
+            300,
+            &[1_710_000_000, 1_700_000_000, 0, 0],
+        )
+        .unwrap_err();
+        assert!(err == error!(TributaryError::InvalidPaymentDueDate));
     }
 }

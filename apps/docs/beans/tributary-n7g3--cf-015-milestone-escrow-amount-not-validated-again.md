@@ -1,11 +1,11 @@
 ---
 # tributary-n7g3
 title: 'CF-015: Milestone escrow_amount not validated against sum of milestone_amounts'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-07-13T20:06:45Z
-updated_at: 2026-07-13T20:06:45Z
+updated_at: 2026-07-13T20:59:48Z
 parent: tributary-gq3x
 ---
 
@@ -40,3 +40,9 @@ A policy can be created with `escrow_amount = 1` and `milestone_amounts = [1000,
 +    .ok_or(TributaryError::ArithmeticOverflow)?;
 +require!(escrow_amount >= sum, TributaryError::InvalidAmount);
 ```
+
+## Summary of Changes
+
+- `programs/tributary/src/policies/milestone.rs`: added overflow-safe sum check in `validate_milestone_policy` — `escrow_amount >= sum(milestone_amounts[..total_milestones])` via `checked_add` fold, erroring `ArithmeticOverflow` on overflow and `InvalidAmount` when escrow undercounts the scheduled payouts.
+- Added unit test `rejects_escrow_below_milestone_sum` reproducing the bean's exact scenario (escrow=1, amounts=[1000,2000,3000,4000]); all 185 lib tests pass.
+- Pre-existing clippy `manual_is_multiple_of` lint in `shared/referral.rs:294` is unrelated to this change (confirmed present on HEAD before this commit).
