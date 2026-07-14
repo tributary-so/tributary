@@ -445,8 +445,14 @@ pub fn validate_policy_execution(
             if *due_date > 0 {
                 require!(current_time >= *due_date, TributaryError::PaymentNotDue);
             }
+            // Optional overall expiry (ADR-0024). Some(ts) with ts > 0 rejects
+            // once current_time > ts; Some(0)/Some(neg) is treated as "no gate"
+            // (current_time is always positive, <= 0 is unreachable). Mirrors
+            // the PayAsYouGo arm above — fixes CF-016.
             if let Some(exp) = expiry_date {
-                require!(current_time <= *exp, TributaryError::PolicyExpired);
+                if *exp > 0 {
+                    require!(current_time <= *exp, TributaryError::PolicyExpired);
+                }
             }
             Ok(*amount)
         }
@@ -1182,6 +1188,20 @@ mod tests {
         let amount =
             validate_policy_execution(&pt, JAN_31_2024, None, &MilestoneSigners::none()).unwrap();
         assert_eq!(amount, 100);
+    }
+
+    /// `Some(0)` / negative expiry is treated as "no gate" — mirrors the
+    /// PayAsYouGo arm. Without this guard a OneTime policy with
+    /// `expiry_date = Some(0)` could never execute (CF-016).
+    #[test]
+    fn onetime_zero_or_negative_expiry_treated_as_no_gate() {
+        for exp in [0i64, -1] {
+            let pt = one_time(100, 0, Some(exp));
+            let amount =
+                validate_policy_execution(&pt, 9_999_999_999, None, &MilestoneSigners::none())
+                    .unwrap_or_else(|e| panic!("exp={exp} should not gate: {e:?}"));
+            assert_eq!(amount, 100);
+        }
     }
 
     #[test]
