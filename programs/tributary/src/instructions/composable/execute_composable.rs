@@ -8,8 +8,9 @@ use crate::{
 };
 use anchor_lang::{prelude::*, AccountDeserialize};
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::Token;
-use anchor_spl::token_interface::{self, CloseAccount, Mint, TokenAccount, TransferChecked};
+use anchor_spl::token_interface::{
+    self, CloseAccount, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 /// Validate byte-range checks on instruction_data using the configured checks.
 ///
@@ -793,7 +794,7 @@ pub struct ExecuteComposable<'info> {
     )]
     pub protocol_fee_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

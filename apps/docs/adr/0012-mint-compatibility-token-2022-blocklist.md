@@ -35,3 +35,13 @@ bypassed, leaves every downstream path open.
 `Pausable` was considered but does not exist in spl-token-2022 6.0.0
 (the pinned version). If it ships in a later version, add it to the
 blocklist — pausing would silently break execution mid-stream.
+
+## Amendment (CF-009 Option B)
+
+All execution instructions (`execute_payment`, `transfer`,
+`execute_composable`) now type `token_program` as
+`Interface<'info, TokenInterface>` instead of `Program<'info, Token>`.
+This accepts both the legacy SPL Token program and Token-2022, so
+clean Token-2022 mints (no dangerous extensions) flow through the
+full create → delegate → execute lifecycle. The extension blocklist
+above is the active defense — not deferred, not dead code.
