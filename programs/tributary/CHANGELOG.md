@@ -1,3 +1,13 @@
+# [@tributary-so/contract-v1.12.1](https://github.com/tributary-so/tributary/compare/@tributary-so/contract-v1.12.0...@tributary-so/contract-v1.12.1) (2026-07-14)
+
+
+* 💚 ci: resovle release issue with program ([1cd1e2b](https://github.com/tributary-so/tributary/commit/1cd1e2b4f9bd4b27fbd9b89f157a8d0a89f497c3))
+
+
+### BREAKING CHANGES
+
+* v2.0 release of program
+
 # [@tributary-so/contract-v1.12.0](https://github.com/tributary-so/tributary/compare/@tributary-so/contract-v1.11.0...@tributary-so/contract-v1.12.0) (2026-07-14)
 
 # [@tributary-so/contract-v1.11.0](https://github.com/tributary-so/tributary/compare/@tributary-so/contract-v1.10.0...@tributary-so/contract-v1.11.0) (2026-07-13)
