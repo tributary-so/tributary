@@ -506,9 +506,8 @@ fn skim_input_fees<'info>(
 /// output EXISTS; the output AMOUNT floor is the owner's job via
 /// `post_validation`. Returns the swept amount.
 //
-// ponytail: 9 params, single call site — distinct SPL accounts + decimals +
-// native flag + fee_payer for rent routing, all needed for the one transfer.
-// Keep flat.
+// ponytail: 8 params, single call site — distinct SPL accounts + decimals +
+// native flag, all needed for the one transfer. Keep flat.
 #[allow(clippy::too_many_arguments)]
 fn sweep_output_to_recipient<'info>(
     intermediate_output: &AccountInfo<'info>,
@@ -519,32 +518,26 @@ fn sweep_output_to_recipient<'info>(
     recipient_token_account: &AccountInfo<'info>,
     intermediate_owner_seeds: &[&[&[u8]]],
     native_output: bool,
-    fee_payer_info: &AccountInfo<'info>,
 ) -> Result<u64> {
     let output_amount = read_token_amount(intermediate_output)?;
     require!(output_amount > 0, TributaryError::ForwardProducedNoOutput);
 
     if native_output {
-        // CF-023: transfer the WSOL token balance to the recipient, THEN
-        // close the ATA to fee_payer for the rent refund. Previously
-        // closeAccount sent both balance + rent to the recipient, costing
-        // the fee_payer ~0.002 SOL per native-output execution.
-        let cpi_accounts = TransferChecked {
-            from: intermediate_output.clone(),
-            mint: output_mint.clone(),
-            to: recipient_token_account.clone(),
-            authority: intermediate_owner_info.clone(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
-            cpi_accounts,
-            intermediate_owner_seeds,
-        );
-        token_interface::transfer_checked(cpi_ctx, output_amount, output_mint_decimals)?;
-
+        // NATIVE_OUTPUT: closeAccount sends ALL lamports (WSOL token value
+        // + rent) to the recipient's SYSTEM WALLET (not a WSOL ATA).
+        // closeAccount is the ONLY way to unwrap WSOL→SOL at a system
+        // wallet — transfer_checked requires a token-account destination,
+        // which the recipient does not have in native mode.
+        //
+        // CF-023 (rent routing): the rent-exempt minimum (~0.002 SOL)
+        // travels with the WSOL value to the recipient. Separating it
+        // would require the recipient to hold a WSOL ATA, defeating the
+        // purpose of NATIVE_OUTPUT. Accepted as a design trade-off — the
+        // fee_payer absorbs ~0.002 SOL per native-output execution, the
+        // recipient gets a small bonus. Not exploitable.
         close_token_account(
             intermediate_output,
-            fee_payer_info,
+            recipient_token_account,
             intermediate_owner_info,
             token_program,
             intermediate_owner_seeds[0],
@@ -1353,7 +1346,6 @@ impl<'info> ExecuteComposable<'info> {
                 &ctx.accounts.recipient_token_account.to_account_info(),
                 intermediate_owner_seeds,
                 native_output,
-                &fee_payer_info,
             )?;
             sweep_amount = output_amount;
 
