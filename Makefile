@@ -3,10 +3,11 @@ PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
 SOLANA_API := $(or $(SOLANA_API),https://api.mainnet-beta.solana.com)
 SOLANA_WS := $(subst https://,wss://,$(SOLANA_API))
-SOL_ARGS:=--with-compute-unit-price 1000 \
-		  --keypair $(DEPLOY_KEY_PATH) \
-		  --ws $(SOLANA_WS) \
-		  --max-sign-attempts 1000
+SOL_ARGS:=--keypair $(DEPLOY_KEY_PATH) \
+		  --ws $(SOLANA_WS) # \
+          #--with-compute-unit-price 1000 \
+		  #--max-sign-attempts 1000
+
 prep:
 	avm use 0.31.0
 

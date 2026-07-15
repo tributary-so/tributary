@@ -43,7 +43,7 @@ instruction type.
 import DLMM from "@meteora-ag/dlmm";
 
 const METEORA_DLMM_PUBKEY = new PublicKey(
-  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
 );
 
 // Build the swap ix once with a dummy user — you only need the data layout
@@ -131,7 +131,7 @@ const execIxs = await sdk.executeComposable(
   composablePolicyPDA,
   Buffer.from(swapIx.data), // the raw instruction data (selector must match)
   new anchor.BN(amount), // pull amount (null for subscription)
-  remainingAccounts
+  remainingAccounts,
 );
 ```
 
@@ -164,12 +164,84 @@ When `inputMint === outputMint` and forward is disabled
 the pull goes straight to the recipient with no forward CPI. See the
 [AI agent budget quickstart](./quickstarts/ai-agent-budget.md).
 
+## Building forward instructions (ForwardBuilder)
+
+The manual `swapIx.keys.map(...)` block above works, but it duplicates logic that
+the scheduler and CLI also need (validation-target resolution, account assembly,
+PayAsYouGo face→gross math). To kill that duplication, `@tributary-so/sdk` exports
+the shared primitives and a `ForwardBuilder` interface; concrete implementations
+(Meteora DLMM first) live in the opt-in `@tributary-so/forward-builders` package.
+
+```typescript
+import { createMeteoraDlmmForward } from "@tributary-so/forward-builders";
+import {
+  isForwardEnabled,
+  resolveValidationTargets,
+  assembleComposableRemainingAccounts,
+  resolveDefaultForwardAmount,
+} from "@tributary-so/sdk";
+
+// 1. Resolve the face amount (handles PayAsYouGo gross→face; null for fixed-amount variants)
+const face = resolveDefaultForwardAmount(policy, gateway);
+
+// 2. Build the forward instruction (or skip if forward is disabled)
+const fwd = isForwardEnabled(policy)
+  ? await createMeteoraDlmmForward({ pool, slippageBps: 100 }).build({
+      connection,
+      policy,
+      composablePolicyPda: composablePolicyPDA,
+      face,
+    })
+  : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
+
+// 3. Assemble remaining_accounts in ADR-0016 order: [pre, forward, post]
+const remaining = assembleComposableRemainingAccounts({
+  preTargets: await resolveValidationTargets(
+    connection,
+    composablePolicyPDA,
+    policy.preValidation,
+    validationProgramId,
+    "pre",
+  ),
+  forwardAccounts: fwd.forwardAccounts,
+  postTargets: await resolveValidationTargets(
+    connection,
+    composablePolicyPDA,
+    policy.postValidation,
+    validationProgramId,
+    "post",
+  ),
+});
+
+const execIxs = await sdk.executeComposable(
+  composablePolicyPDA,
+  fwd.instructionData,
+  face,
+  remaining,
+);
+```
+
+### Why the builder returns `{ pubkey, isWritable }[]`
+
+The builder does **not** return `isSigner`. The assembler
+(`assembleComposableRemainingAccounts`) stamps `isSigner: false` on every account.
+This is the ADR-0008 privilege boundary enforced at the type level: a builder
+cannot leak signer authority because the `ForwardAccountMeta` type has no field
+to carry it. Per-account `isWritable` comes from the forward program's own account
+list (e.g. DLMM's `swapIx.keys`), not a blanket `true`.
+
+See [ADR-0030](../../../adr/0030-composable-execution-primitives.md) for the
+full rationale (primitives-not-orchestrator, sibling-package structure, assembler
+owns ADR-0008).
+
 ## Checklist before you ship
 
 - [ ] `programId` is in `ALLOWED_FORWARD_PROGRAMS`
 - [ ] At least one `ByteRangeCheck` pins offset 0 (the discriminator)
 - [ ] `outputMint` matches your intended settlement shape
-- [ ] Forward accounts at execute time are marked `isWritable: true`
+- [ ] Forward accounts at execute time use per-account `isWritable` from the
+      forward program (or use a `ForwardBuilder` from `@tributary-so/forward-builders`,
+      which handles this for you)
 - [ ] Swap-level slippage (`minOutAmount` in the swap ix) is set — or use
       [post-validation](./lighthouse-facade.md) as an output floor
 

@@ -6,22 +6,23 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  SystemProgram,
   Transaction,
   SendTransactionError,
   type AccountInfo,
 } from "@solana/web3.js";
 import { NATIVE_MINT } from "@solana/spl-token";
 import BN from "bn.js";
-import DLMM from "@meteora-ag/dlmm";
+import { createMeteoraDlmmForward } from "@tributary-so/forward-builders";
 import {
   Tributary as TributarySDK,
   PaymentGateway,
   ComposablePolicy,
   getPreValidationPda,
-  getPostValidationPda,
   getGatewayPda,
   parseValidationPda,
+  isForwardEnabled,
+  resolveValidationTargets,
+  assembleComposableRemainingAccounts,
   type ValidationPdaAccount,
 } from "@tributary-so/sdk";
 import { exit } from "process";
@@ -37,9 +38,6 @@ const MAX_FAILURES = 3;
 const COOLDOWN_MS = 5 * 60_000;
 
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const METEORA_DLMM_PUBKEY = new PublicKey(
-  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
-);
 const METEORA_DLMM_SOL_USDC_POOL = new PublicKey(
   "BGm1tav58oGcsQJehL9WXBFXF7D27vZsKefj4xJKD5Y"
 );
@@ -75,86 +73,6 @@ const FORWARD_CONTEXT: Record<string, ForwardContext> = {
     applyHostFeeInFix: true,
   },
 };
-
-interface BuiltForward {
-  ixData: Buffer;
-  forwardAccounts: {
-    pubkey: PublicKey;
-    isSigner: boolean;
-    isWritable: boolean;
-  }[];
-  forwardAmount: BN;
-}
-
-async function buildForwardIx(
-  policy: ComposablePolicy,
-  composablePolicyPda: PublicKey,
-  ctx: ForwardContext | null,
-  amount: BN,
-  connection: Connection
-): Promise<BuiltForward> {
-  if (ctx) {
-    const pool = await DLMM.create(connection, ctx.pool, {
-      cluster: "mainnet-beta",
-      skipSolWrappingOperation: true,
-    });
-    const inputMint = policy.forwardConfig.inputMint;
-    const outputMint = policy.forwardConfig.outputMint;
-    const swapForY = inputMint.equals(pool.tokenX.publicKey);
-    const binArrays = await pool.getBinArrayForSwap(swapForY);
-    const quote = pool.swapQuote(
-      amount,
-      swapForY,
-      new BN(ctx.slippageBps),
-      binArrays
-    );
-
-    const swapTx = await pool.swap({
-      lbPair: ctx.pool,
-      inToken: inputMint,
-      outToken: outputMint,
-      inAmount: amount,
-      minOutAmount: quote.minOutAmount,
-      user: composablePolicyPda,
-      binArraysPubkey: quote.binArraysPubkey as PublicKey[],
-    });
-    const swapIx = swapTx.instructions.find((i) =>
-      i.programId.equals(METEORA_DLMM_PUBKEY)
-    );
-    if (!swapIx) {
-      throw new Error("DLMM swap instruction not found in pool.swap() output");
-    }
-
-    let keys = swapIx.keys;
-    if (ctx.applyHostFeeInFix) {
-      keys = keys.map((k) =>
-        k.pubkey.equals(SystemProgram.programId)
-          ? {
-              pubkey: METEORA_DLMM_PUBKEY,
-              isSigner: k.isSigner,
-              isWritable: k.isWritable,
-            }
-          : k
-      );
-    }
-
-    return {
-      ixData: Buffer.from(swapIx.data),
-      forwardAccounts: keys.map((k) => ({
-        pubkey: k.pubkey,
-        isSigner: false,
-        isWritable: true,
-      })),
-      forwardAmount: amount,
-    };
-  } else {
-    return {
-      ixData: Buffer.alloc(0),
-      forwardAccounts: [],
-      forwardAmount: amount,
-    };
-  }
-}
 
 class ComposableScheduler {
   private sdk: TributarySDK;
@@ -462,13 +380,19 @@ class ComposableScheduler {
           policy.gateway
         ).amount ?? new BN(0);
 
-      const built = await buildForwardIx(
-        policy.account,
-        policy.publicKey,
-        policy.forwardContext,
-        amount,
-        this.sdk.connection
-      );
+      const forwardPayload =
+        isForwardEnabled(policy.account) && policy.forwardContext
+          ? await createMeteoraDlmmForward({
+              pool: policy.forwardContext.pool,
+              slippageBps: policy.forwardContext.slippageBps,
+              applyHostFeeInFix: policy.forwardContext.applyHostFeeInFix,
+            }).build({
+              connection: this.sdk.connection,
+              policy: policy.account,
+              composablePolicyPda: policy.publicKey,
+              face: amount,
+            })
+          : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
 
       // ── remaining_accounts (ADR-0016, no ValidationPda in slice) ────
       // Program contract (execute_composable.rs run_validation_cpi):
@@ -479,34 +403,32 @@ class ComposableScheduler {
       // validation_pda.pinned_accounts — exactly the owner-declared targets
       // read here. Post-validation targets occupy the trailing slice.
       const [preTargets, postTargets] = await Promise.all([
-        this.resolveValidationTargets(
+        resolveValidationTargets(
+          this.sdk.connection,
+          policy.publicKey,
           policy.account.preValidation,
-          getPreValidationPda(policy.publicKey, this.sdk.programId).address
+          this.sdk.programId,
+          "pre"
         ),
-        this.resolveValidationTargets(
+        resolveValidationTargets(
+          this.sdk.connection,
+          policy.publicKey,
           policy.account.postValidation,
-          getPostValidationPda(policy.publicKey, this.sdk.programId).address
+          this.sdk.programId,
+          "post"
         ),
       ]);
 
-      const remainingAccounts = [
-        ...preTargets.map((pubkey) => ({
-          pubkey,
-          isSigner: false,
-          isWritable: false,
-        })),
-        ...(built.forwardAccounts ?? []),
-        ...postTargets.map((pubkey) => ({
-          pubkey,
-          isSigner: false,
-          isWritable: false,
-        })),
-      ];
+      const remainingAccounts = assembleComposableRemainingAccounts({
+        preTargets,
+        forwardAccounts: forwardPayload.forwardAccounts,
+        postTargets,
+      });
 
       const ixs = await this.sdk.executeComposable(
         policy.publicKey,
-        built.ixData,
-        built.forwardAmount,
+        forwardPayload.instructionData,
+        amount,
         remainingAccounts
       );
 
@@ -553,26 +475,6 @@ class ComposableScheduler {
       }
       this.recordFailure(policy.publicKey);
     }
-  }
-
-  private async resolveValidationTargets(
-    spec: ComposablePolicy["preValidation"],
-    valPda: PublicKey
-  ): Promise<PublicKey[]> {
-    // Disabled spec → no target accounts in remaining_accounts. The program
-    // still expects the matching post/pre slice length to be 0.
-    if (!("programCall" in spec)) return [];
-
-    const acct = await this.sdk.connection.getAccountInfo(valPda);
-    if (!acct?.data) {
-      // ponytail: ValidationPda missing — return empty and let the on-chain
-      // pin-check / typed deserialise reject loudly. (Pre-filter already
-      // pushed the policy through; this only fires if state changed between
-      // pre-filter and fire.)
-      return [];
-    }
-    const parsed = parseValidationPda(acct.data);
-    return parsed.pinnedAccounts.slice(0, parsed.numPinnedAccounts);
   }
 
   private recordFailure(policyPda: PublicKey): void {
