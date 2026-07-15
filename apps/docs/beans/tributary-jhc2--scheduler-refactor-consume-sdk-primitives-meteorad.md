@@ -1,11 +1,11 @@
 ---
 # tributary-jhc2
 title: Scheduler refactor — consume SDK primitives + MeteoraDlmmForward (apps/scheduler/)
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-07-15T10:13:17Z
-updated_at: 2026-07-15T10:13:17Z
+updated_at: 2026-07-15T11:31:04Z
 parent: tributary-l8wr
 blocked_by:
     - tributary-t4je
@@ -102,3 +102,23 @@ const ixs = await this.sdk.executeComposable(
 - `composable.ts:454-556` — `fire()` method to refactor
 - `composable.ts:558-576` — `resolveValidationTargets` to delete
 - `evaluator.ts:177-194` — PayAsYouGo amount derivation, swap inline formula → `grossCapToFace`
+
+## Summary of Changes
+
+### composable.ts (−140 net lines)
+- **Deleted**  function +  interface (~80 lines) — replaced by `createMeteoraDlmmForward().build()` from `@tributary-so/forward-builders`
+- **Deleted** `ComposableScheduler.resolveValidationTargets()` private method (~19 lines) — replaced by SDK primitive `resolveValidationTargets()`
+- **Refactored** `fire()` to consume: `isForwardEnabled`, `createMeteoraDlmmForward`, `resolveValidationTargets`, `assembleComposableRemainingAccounts`
+- **Removed** now-unused imports: `DLMM`, `SystemProgram`, `getPostValidationPda`, `METEORA_DLMM_PUBKEY` const
+- **Kept** `FORWARD_CONTEXT` / `lookupForwardContext` / prefilter batch logic (per D5 — Bean 2 territory)
+
+### evaluator.ts
+- Replaced inline `maxChunk.muln(10_000).divn(10_000 + feeBps)` with `grossCapToFace(maxChunk, feeBps)` from SDK
+
+### package.json
+- Added `@tributary-so/forward-builders: workspace:*` dependency
+
+### Verification
+- `pnpm run build` (tsup) — clean
+- `pnpm run lint` (eslint) — clean
+- Surfpool integration tests require a running validator (pre-existing constraint)

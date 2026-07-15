@@ -8,6 +8,7 @@ import {
   IntegerOperator,
 } from "lighthouse-sdk-legacy";
 import type { ComposablePolicy, PaymentGateway } from "@tributary-so/sdk";
+import { grossCapToFace } from "@tributary-so/sdk";
 
 export type AssertionFamily = "accountInfo" | "tokenAccount" | "unknown";
 
@@ -143,7 +144,7 @@ export interface ScheduleReadiness {
 export function isScheduleReady(
   policy: ComposablePolicy,
   currentTime: number,
-  gatewayAccount: PaymentGateway,
+  gatewayAccount: PaymentGateway
 ): ScheduleReadiness {
   if (!(policy.status as any)?.active) {
     return { ready: false, amount: null };
@@ -178,12 +179,11 @@ export function isScheduleReady(
     const payg = policyType.payAsYouGo;
     const maxChunk = payg.maxChunkAmount;
     const feeBps = gatewayAccount.gatewayFeeBps;
-    const remainingPeriod = payg.maxAmountPerPeriod.sub(payg.currentPeriodTotal);
-
+    const remainingPeriod = payg.maxAmountPerPeriod.sub(
+      payg.currentPeriodTotal
+    );
     // Calculate amount with fee adjustment if needed
-    const amount = feeBps > 0
-      ? maxChunk.muln(10_000).divn(10_000 + feeBps)
-      : maxChunk;
+    const amount = grossCapToFace(maxChunk, feeBps);
 
     // Take the minimum of amount and remaining period balance
     const freeAmount = amount.gt(remainingPeriod) ? remainingPeriod : amount;

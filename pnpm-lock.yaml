@@ -753,6 +753,9 @@ importers:
       '@solana/web3.js':
         specifier: ^1.98.4
         version: 1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      '@tributary-so/forward-builders':
+        specifier: workspace:*
+        version: link:../../packages/forward-builders
       '@tributary-so/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk

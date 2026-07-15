@@ -17,6 +17,7 @@
     "@rollup/plugin-inject": "^5.0.5",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
+    "@tributary-so/forward-builders": "workspace:*",
     "@tributary-so/sdk": "workspace:*",
     "bn.js": "^5.2.2",
     "commander": "^14.0.1",
