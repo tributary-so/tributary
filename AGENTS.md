@@ -44,6 +44,7 @@ packages/sdk-react/   React hooks bindings
 packages/sdk-x402/    x402 / HTTP-402 payment integration
 packages/payments/    Payment helper utilities
 packages/lighthouse/  Vendored official Lighthouse SDK (not on npm)
+packages/forward-builders/  ForwardBuilder implementations (@tributary-so/forward-builders; opt-in forward-program deps)
 tests/                Integration test suite (jest, runs against Surfpool)
 apps/docs/            MkDocs documentation site (what/how/why)
 apps/docs/adr/        Architecture Decision Records (numbered, immutable-once-deployed)
@@ -507,6 +508,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0026] | Composable input-side fees + act/deliver settlement shapes                              |
 | [0027] | Gateway merchant layer — off-chain derived analytics                                    |
 | [0029] | Program authority rotation (`change_program_authority`) — admin key recovery path       |
+| [0030] | Composable execution primitives — ForwardBuilder interface + shared helpers             |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -535,6 +537,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0026]: apps/docs/adr/0026-composable-input-side-fees-act-deliver-shapes.md
 [0027]: apps/docs/adr/0027-gateway-merchant-layer-off-chain-derived-analytics.md
 [0029]: apps/docs/adr/0029-program-authority-rotation.md
+[0030]: apps/docs/adr/0030-composable-execution-primitives.md
 
 ## SDK
 

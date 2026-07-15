@@ -1,11 +1,11 @@
 ---
 # tributary-ljt9
 title: ADR-0030 + documentation (apps/docs/)
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-15T10:13:59Z
-updated_at: 2026-07-15T10:13:59Z
+updated_at: 2026-07-15T10:33:15Z
 parent: tributary-l8wr
 ---
 
@@ -105,14 +105,23 @@ const remaining = assembleComposableRemainingAccounts({
 - Add `packages/forward-builders/` to Repository Layout
 
 ## TDD checklist
-- [ ] ADR-0030 follows the format of existing ADRs (Decision + Rejected alternatives)
-- [ ] Forward CPI Guide updated with ForwardBuilder pattern + code example
-- [ ] AGENTS.md ADR table updated with 0030 entry
-- [ ] AGENTS.md Repository Layout includes `packages/forward-builders/`
-- [ ] `mkdocs.yml` nav unchanged (no new top-level pages) OR updated if new pages added
-- [ ] `make build` (docs) succeeds
+- [x] ADR-0030 follows the format of existing ADRs (Decision + Rejected alternatives)
+- [x] Forward CPI Guide updated with ForwardBuilder pattern + code example
+- [x] AGENTS.md ADR table updated with 0030 entry
+- [x] AGENTS.md Repository Layout includes `packages/forward-builders/`
+- [x] `mkdocs.yml` nav unchanged (no new top-level pages) — forward-cpi-guide.md already existed
+- [x] `make build` (docs) succeeds (ADRs live outside docs_dir; 0030 link warns identically to existing 0026 link — accepted repo convention)
 
 ## Key references
 - Milestone D1–D6 (full design decisions)
 - `apps/docs/adr/0029-program-authority-rotation.md` — ADR format template
 - `apps/docs/mkdocs.yml` — nav structure
+
+## Summary of Changes
+
+- **New ADR-0030** (`apps/docs/adr/0030-composable-execution-primitives.md`): locks in primitives-not-orchestrator (D1), ForwardBuilder interface in SDK + impls in sibling `@tributary-so/forward-builders` package (D2), assembler owns ADR-0008 enforcement at the type level (D3), per-account isWritable from forward program (D4). Includes 4 rejected alternatives.
+- **Forward CPI Guide** (`apps/docs/docs/integration-guide/programmable-pull-payments/forward-cpi-guide.md`): new 'Building forward instructions (ForwardBuilder)' section with full code example (resolveDefaultForwardAmount → isForwardEnabled → build → assembleComposableRemainingAccounts), plus a rationale callout for the no-isSigner type enforcement. Updated pre-ship checklist (per-account isWritable instead of blanket true, or use a ForwardBuilder).
+- **AGENTS.md**: ADR-0030 row added to the v2 ADR map table + link index; `packages/forward-builders/` added to Repository Layout.
+- **mkdocs.yml**: unchanged — the forward-cpi-guide page already exists, no new nav entry needed.
+
+Docs build verified: `make -C apps/docs build` → 'Documentation built in 8.35s'. The 0030 ADR link warns in mkdocs exactly like the pre-existing 0026 link (ADRs live in `apps/docs/adr/`, a sibling of the mkdocs `docs_dir` `apps/docs/docs/`); the raw link resolves correctly on GitHub — accepted repo convention.
