@@ -14,17 +14,12 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
 
-# Build workspace deps the scheduler imports, then the scheduler itself
 RUN pnpm --filter @tributary-so/sdk run build \
  && pnpm --filter @tributary-so/scheduler run build
-
-# Prune to a self-contained dir — scheduler's transitive dep tree only.
-# pnpm deploy auto-resolves the full workspace tree (sdk dist, lighthouse
-# dist, @metaplex-foundation/umi) — no manual node_modules enumeration.
-RUN pnpm --filter @tributary-so/scheduler deploy --legacy --prod /deploy
 
 FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /deploy /app
+COPY --from=builder /app/apps/scheduler/dist/index.js /app/dist/index.js
+COPY --from=builder /app/apps/scheduler/dist/index.js.map /app/dist/index.js.map
 CMD ["node", "dist/index.js"]
