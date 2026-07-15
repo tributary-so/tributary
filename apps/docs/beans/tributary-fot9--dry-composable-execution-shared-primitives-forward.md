@@ -1,11 +1,11 @@
 ---
 # tributary-fot9
 title: DRY composable execution — shared primitives + forward-builders package
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-15T10:11:00Z
-updated_at: 2026-07-15T10:11:00Z
+updated_at: 2026-07-15T14:41:40Z
 ---
 
 # DRY Composable Execution — Shared Primitives + Forward-Builders Package
