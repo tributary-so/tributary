@@ -15,7 +15,8 @@ COPY . .
 RUN pnpm install --frozen-lockfile --offline
 
 RUN pnpm --filter @tributary-so/sdk run build \
- && pnpm --filter @tributary-so/scheduler run build
+    && pnpm --filter @tributary-so/forward-builders run build \
+    && pnpm --filter @tributary-so/scheduler run build
 
 FROM node:20-slim AS runtime
 WORKDIR /app
