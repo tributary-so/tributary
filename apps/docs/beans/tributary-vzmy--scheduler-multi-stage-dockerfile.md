@@ -1,11 +1,11 @@
 ---
 # tributary-vzmy
 title: 'Scheduler: Multi-Stage Dockerfile'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-14T19:23:07Z
-updated_at: 2026-07-14T19:23:07Z
+updated_at: 2026-07-14T20:23:18Z
 parent: tributary-0p7p
 blocked_by:
     - tributary-lb9f
@@ -66,8 +66,23 @@ Key properties:
 
 ## Acceptance
 
-- [ ] `docker build -f apps/scheduler/Dockerfile .` succeeds
-- [ ] Container starts without `ERR_MODULE_NOT_FOUND`, `ERR_UNSUPPORTED_DIR_IMPORT`, or `SyntaxError`
-- [ ] Image excludes devDependencies (verify: no `typescript` or `eslint` in final layer)
-- [ ] Source-only `.ts` change does NOT invalidate the `pnpm fetch` layer
-- [ ] No corepack download at container start
+- [x] `docker build -f apps/scheduler/Dockerfile .` succeeds
+- [x] Container starts without `ERR_MODULE_NOT_FOUND`, `ERR_UNSUPPORTED_DIR_IMPORT`, or `SyntaxError`
+- [x] Image excludes devDependencies (verify: no `typescript` or `eslint` in final layer)
+- [x] Source-only `.ts` change does NOT invalidate the `pnpm fetch` layer
+- [x] No corepack download at container start
+
+## Summary of Changes
+
+Rewrote `apps/scheduler/Dockerfile` as a three-stage build (base → builder → runtime):
+
+- **Lockfile-cached deps:** `COPY pnpm-lock.yaml package.json` + `pnpm fetch` with BuildKit cache mount before `COPY . .` — source-only `.ts` edits no longer invalidate the install layer.
+- **Production pruning:** `pnpm --filter @tributary-so/scheduler deploy --legacy --prod /deploy` auto-resolves the full transitive workspace tree (sdk dist, lighthouse dist, `@metaplex-foundation/umi`) — no manual `COPY --from=deps` per package.
+- **DevDeps excluded:** verified `typescript`, `eslint`, `tsx`, `tsc` all absent from the final image.
+- **No corepack at runtime:** final stage is bare `node:20-slim`, `CMD ["node", "dist/index.js"]` — no pnpm/corepack, no runtime download.
+
+**Deviation from spec (necessary fix):** added `package.json` to the pre-`fetch` `COPY`. Without it, corepack can't read the `packageManager` pin and downloads `pnpm@11.13.0` (latest), which requires Node 22+ and crashes on `node:sqlite`. The `package.json` doesn't change on source-only edits, so the cache property holds.
+
+**Verified:**
+- `docker build` → EXIT 0, image 297 MB
+- `docker run` → boots cleanly to `SOLANA_API required` env check (no `ERR_MODULE_NOT_FOUND`, `ERR_UNSUPPORTED_DIR_IMPORT`, or `SyntaxError`)

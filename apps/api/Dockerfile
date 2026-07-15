@@ -3,30 +3,23 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-FROM base AS deps
+FROM base AS builder
 WORKDIR /app
+
+COPY pnpm-lock.yaml package.json ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
+
 COPY . .
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
+RUN pnpm install --frozen-lockfile --offline
 
-WORKDIR /app/packages/sdk
-RUN pnpm run build
+RUN pnpm --filter @tributary-so/sdk run build \
+ && pnpm --filter @tributary-so/tokens-client run build \
+ && pnpm --filter @tributary-so/payments run build \
+ && pnpm --filter @tributary-so/api run build
 
-WORKDIR /app/packages/tokens-client
-RUN pnpm run build
-
-WORKDIR /app/packages/payments
-RUN pnpm run build
-
-WORKDIR /app/apps/api
-RUN pnpm run build
-
-FROM base AS build
-COPY . /app
-COPY --from=deps /app/packages/sdk /app/packages/sdk
-COPY --from=deps /app/packages/payments /app/packages/payments
-COPY --from=deps /app/packages/tokens-client /app/packages/tokens-client
-COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=deps /app/apps/api/node_modules /app/apps/api/node_modules
-
-WORKDIR /app/apps/api
-CMD [ "pnpm", "start" ]
+FROM node:20-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/apps/api/dist/index.js /app/dist/index.js
+COPY --from=builder /app/apps/api/dist/index.js.map /app/dist/index.js.map
+CMD ["node", "dist/index.js"]
