@@ -1,11 +1,11 @@
 ---
 # tributary-n1bj
 title: '@tributary-so/forward-builders package with MeteoraDlmmForward'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-15T10:12:23Z
-updated_at: 2026-07-15T10:12:23Z
+updated_at: 2026-07-15T11:20:54Z
 parent: tributary-l8wr
 blocked_by:
     - tributary-t4je
@@ -112,3 +112,27 @@ return {
 - `composable.ts:89-157` — source to extract from
 - `composable.ts:43-44` — METEORA_DLMM_SOL_USDC_POOL (stays in scheduler config, NOT in this package)
 - ADR-0008: CPI signer sanitization
+
+## Summary of Changes
+
+New package `@tributary-so/forward-builders` (`packages/forward-builders/`) exporting the first concrete `ForwardBuilder` implementation, extracted from `apps/scheduler/src/composable.ts:buildForwardIx`.
+
+### Files added
+- `packages/forward-builders/package.json` — package manifest (deps: `@tributary-so/sdk` workspace, `@meteora-ag/dlmm`, `@solana/web3.js`, `bn.js`; devDeps: jest/ts-jest/tsup/typescript). ESM build via tsup mirroring `packages/sdk/`.
+- `packages/forward-builders/tsconfig.json` / `tsup.config.ts` / `jest.config.cjs` — build + test config (jest config mirrors `packages/payments/` package-local convention).
+- `packages/forward-builders/src/index.ts` — re-exports `createMeteoraDlmmForward` + `METEORA_DLMM_PUBKEY`.
+- `packages/forward-builders/src/constants.ts` — `METEORA_DLMM_PUBKEY` (`LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`).
+- `packages/forward-builders/src/meteora-dlmm.ts` — `createMeteoraDlmmForward(opts): ForwardBuilder`. Faithful port of scheduler `buildForwardIx` body, with the ADR-0008 boundary fix: returns `{ pubkey, isWritable }[]` (no `isSigner` field), per-account `isWritable` preserved from `swapIx.keys` (was: force all writable in scheduler).
+- `packages/forward-builders/src/meteora-dlmm.test.ts` — 7 passing unit tests (DLMM mocked). Covers: interface conformance, instructionData, per-account isWritable preservation, no-isSigner invariant, applyHostFeeInFix rewrite on/off, missing-swap-ix error.
+
+### Verification
+- `pnpm --filter @tributary-so/forward-builders build` → clean ESM + d.ts emit.
+- `pnpm --filter @tributary-so/forward-builders test` → 7/7 pass.
+
+### Behavior change vs scheduler (per milestone D3/D4)
+`forwardAccounts` now carries per-account `isWritable` from the swap instruction's own key list instead of forcing all-writable. The `isSigner: false` stamping has moved to the SDK assembler (`assembleComposableRemainingAccounts`) — the builder type literally has no `isSigner` field (ADR-0008).
+
+### Deferred (per milestone D6)
+- Scheduler refactor to consume this builder → bean tributary-jhc2.
+- CLI forward-builder support → bean tributary-r00t / future feature.
+- Integration parity test (scheduler fire path) → bean tributary-jhc2 (checklist item 7).

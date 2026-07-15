@@ -1,0 +1,194 @@
+/**
+ * Unit tests for createMeteoraDlmmForward (ADR-0030).
+ *
+ * The DLMM client is mocked so these run without RPC. The assertions target
+ * the key-transformation logic that was previously inlined in the scheduler:
+ *
+ *  - per-account `isWritable` preserved from `swapIx.keys` (NOT all-true)
+ *  - `applyHostFeeInFix` rewrites SystemProgram → DLMM program id
+ *  - returned accounts never carry `isSigner` (ADR-0008 — type-level)
+ *  - `instructionData` is the raw swap instruction data
+ */
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import BN from "bn.js";
+import type { ComposablePolicy, ForwardBuilder } from "@tributary-so/sdk";
+
+const TOKEN_X = new PublicKey("So11111111111111111111111111111111111111112");
+
+let mockPool: any = null;
+
+jest.mock("@meteora-ag/dlmm", () => ({
+  __esModule: true,
+  default: {
+    create: async () => mockPool,
+  },
+}));
+
+import { createMeteoraDlmmForward } from "./meteora-dlmm";
+import { METEORA_DLMM_PUBKEY } from "./constants";
+
+const POOL = new PublicKey("BGm1tav58oGcsQJehL9WXBFXF7D27vZsKefj4xJKD5Y");
+const INPUT_MINT = new PublicKey(
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+); // USDC
+const OUTPUT_MINT = TOKEN_X; // WSOL
+
+function policy(inputMint: PublicKey, outputMint: PublicKey): ComposablePolicy {
+  return {
+    forwardConfig: { inputMint, outputMint },
+  } as unknown as ComposablePolicy;
+}
+
+interface MockKey {
+  pubkey: PublicKey;
+  isSigner: boolean;
+  isWritable: boolean;
+}
+
+function setPool(
+  swapIxKeys: MockKey[],
+  swapData: Buffer,
+  programId: PublicKey = METEORA_DLMM_PUBKEY
+) {
+  mockPool = {
+    tokenX: { publicKey: OUTPUT_MINT }, // input != tokenX → swapForY = false
+    getBinArrayForSwap: async () => [],
+    swapQuote: () => ({ minOutAmount: new BN(1), binArraysPubkey: [] }),
+    swap: async () => ({
+      instructions: [{ programId, keys: swapIxKeys, data: swapData }],
+    }),
+  };
+}
+
+const FAKE_CONN = {} as any; // build() forwards it to DLMM.create untouched
+
+describe("createMeteoraDlmmForward", () => {
+  beforeEach(() => {
+    mockPool = null;
+  });
+
+  test("returns a ForwardBuilder (implements the interface)", () => {
+    const builder: ForwardBuilder = createMeteoraDlmmForward({
+      pool: POOL,
+      slippageBps: 100,
+    });
+    expect(typeof builder.build).toBe("function");
+  });
+
+  test("build() returns non-empty instructionData from swapIx.data", async () => {
+    const swapData = Buffer.from([1, 2, 3, 4, 5]);
+    setPool(
+      [{ pubkey: PublicKey.unique(), isSigner: false, isWritable: true }],
+      swapData
+    );
+    const builder = createMeteoraDlmmForward({ pool: POOL, slippageBps: 100 });
+    const res = await builder.build({
+      connection: FAKE_CONN,
+      policy: policy(INPUT_MINT, OUTPUT_MINT),
+      composablePolicyPda: PublicKey.unique(),
+      face: new BN(1_000_000),
+    });
+    expect(Buffer.isBuffer(res.instructionData)).toBe(true);
+    expect(res.instructionData.equals(swapData)).toBe(true);
+  });
+
+  test("build() preserves per-account isWritable from swapIx.keys (NOT all-true)", async () => {
+    const keys: MockKey[] = [
+      { pubkey: PublicKey.unique(), isSigner: true, isWritable: true },
+      { pubkey: PublicKey.unique(), isSigner: false, isWritable: false },
+      { pubkey: PublicKey.unique(), isSigner: true, isWritable: false },
+    ];
+    setPool(keys, Buffer.from([9]));
+    const builder = createMeteoraDlmmForward({ pool: POOL, slippageBps: 100 });
+    const res = await builder.build({
+      connection: FAKE_CONN,
+      policy: policy(INPUT_MINT, OUTPUT_MINT),
+      composablePolicyPda: PublicKey.unique(),
+      face: new BN(1_000_000),
+    });
+    expect(res.forwardAccounts.map((a) => a.isWritable)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  test("build() never emits isSigner on forwardAccounts", async () => {
+    const keys: MockKey[] = [
+      { pubkey: PublicKey.unique(), isSigner: true, isWritable: true },
+      { pubkey: PublicKey.unique(), isSigner: false, isWritable: false },
+    ];
+    setPool(keys, Buffer.from([9]));
+    const builder = createMeteoraDlmmForward({ pool: POOL, slippageBps: 100 });
+    const res = await builder.build({
+      connection: FAKE_CONN,
+      policy: policy(INPUT_MINT, OUTPUT_MINT),
+      composablePolicyPda: PublicKey.unique(),
+      face: new BN(1_000_000),
+    });
+    for (const a of res.forwardAccounts) {
+      expect(a).not.toHaveProperty("isSigner");
+    }
+  });
+
+  test("applyHostFeeInFix rewrites SystemProgram → DLMM program id", async () => {
+    const sysKey: MockKey = {
+      pubkey: SystemProgram.programId,
+      isSigner: false,
+      isWritable: true,
+    };
+    const other: MockKey = {
+      pubkey: PublicKey.unique(),
+      isSigner: false,
+      isWritable: false,
+    };
+    setPool([sysKey, other], Buffer.from([9]));
+    const builder = createMeteoraDlmmForward({
+      pool: POOL,
+      slippageBps: 100,
+      applyHostFeeInFix: true,
+    });
+    const res = await builder.build({
+      connection: FAKE_CONN,
+      policy: policy(INPUT_MINT, OUTPUT_MINT),
+      composablePolicyPda: PublicKey.unique(),
+      face: new BN(1_000_000),
+    });
+    expect(res.forwardAccounts[0].pubkey.equals(METEORA_DLMM_PUBKEY)).toBe(
+      true
+    );
+    expect(res.forwardAccounts[1].pubkey.equals(other.pubkey)).toBe(true);
+  });
+
+  test("applyHostFeeInFix disabled leaves SystemProgram key untouched", async () => {
+    const sysKey: MockKey = {
+      pubkey: SystemProgram.programId,
+      isSigner: false,
+      isWritable: true,
+    };
+    setPool([sysKey], Buffer.from([9]));
+    const builder = createMeteoraDlmmForward({ pool: POOL, slippageBps: 100 });
+    const res = await builder.build({
+      connection: FAKE_CONN,
+      policy: policy(INPUT_MINT, OUTPUT_MINT),
+      composablePolicyPda: PublicKey.unique(),
+      face: new BN(1_000_000),
+    });
+    expect(res.forwardAccounts[0].pubkey.equals(SystemProgram.programId)).toBe(
+      true
+    );
+  });
+
+  test("throws when DLMM swap instruction is absent from pool.swap() output", async () => {
+    setPool([], Buffer.from([0]), SystemProgram.programId);
+    const builder = createMeteoraDlmmForward({ pool: POOL, slippageBps: 100 });
+    await expect(
+      builder.build({
+        connection: FAKE_CONN,
+        policy: policy(INPUT_MINT, OUTPUT_MINT),
+        composablePolicyPda: PublicKey.unique(),
+        face: new BN(1_000_000),
+      })
+    ).rejects.toThrow(/swap instruction not found/);
+  });
+});

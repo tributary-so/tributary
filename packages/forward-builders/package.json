@@ -1,0 +1,50 @@
+{
+  "name": "@tributary-so/forward-builders",
+  "repository": {
+    "url": "https://github.com/tributary-so/tributary",
+    "type": "git"
+  },
+  "license": "MIT",
+  "private": false,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Concrete ForwardBuilder implementations for Tributary composable execution (ADR-0030).",
+  "scripts": {
+    "lint": "exit 0",
+    "test": "jest",
+    "clean": "rm -rf ./dist",
+    "build": "npx tsup",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@meteora-ag/dlmm": "^1.0.0",
+    "@solana/web3.js": "^1.98.4",
+    "@tributary-so/sdk": "workspace:*",
+    "bn.js": "^5.2.2"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/jest": "^29.0.3",
+    "@types/node": "^22.10.6",
+    "esbuild-fix-imports-plugin": "^1.0.23",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.0.2",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "main": "./dist/packages/forward-builders/src/index.js",
+  "types": "./dist/packages/forward-builders/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/packages/forward-builders/src/index.d.ts",
+      "default": "./dist/packages/forward-builders/src/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@9.6.0"
+}
