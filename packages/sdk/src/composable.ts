@@ -22,6 +22,7 @@
  */
 
 import { PublicKey, type AccountMeta, type Connection } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
 import { getPostValidationPda, getPreValidationPda } from "./pda";
 import {
@@ -193,4 +194,35 @@ export function assembleComposableRemainingAccounts(args: {
       isWritable: false,
     })),
   ];
+}
+
+/**
+ * Derive the scheduler fee ATA for the permissionless execution path
+ * (ADR-0016 amended).
+ *
+ * When the caller (`authority` / fee_payer) is NOT the gateway signer and
+ * the gateway has a non-zero `schedulerShareBps`, the program requires the
+ * relayer's input-mint ATA as the LAST entry in `remaining_accounts`.
+ * Without it, execution fails with `MissingSchedulerFeeAccount`.
+ *
+ * Returns the ATA pubkey when the permissionless + scheduler-share
+ * conditions are met, or `null` otherwise (trusted-signer path or zero
+ * scheduler share → no ATA needed).
+ *
+ * The ATA is the standard associated token account for `(inputMint,
+ * authority)` — the program validates `owner == fee_payer` and
+ * `mint == input_mint` on-chain (`InvalidSchedulerFeeAccount`).
+ *
+ * Pure function — PDA derivation only, no RPC.
+ */
+export function deriveSchedulerAta(args: {
+  authority: PublicKey;
+  gatewaySigner: PublicKey;
+  schedulerShareBps: number;
+  inputMint: PublicKey;
+}): PublicKey | null {
+  const { authority, gatewaySigner, schedulerShareBps, inputMint } = args;
+  const isPermissionless = !authority.equals(gatewaySigner);
+  if (!isPermissionless || schedulerShareBps <= 0) return null;
+  return getAssociatedTokenAddressSync(inputMint, authority);
 }

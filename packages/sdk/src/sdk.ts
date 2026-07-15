@@ -45,6 +45,7 @@ import type {
   SetupResult,
 } from "./types.js";
 import { GATEWAY_FEATURES, MAX_PINNED_FORWARD_ACCOUNTS } from "./constants";
+import { deriveSchedulerAta } from "./composable";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -3209,6 +3210,23 @@ export class Tributary {
       ...(await this.ensureAta(config.feeRecipient, inputMint, authority))
     );
 
+    // ── Scheduler fee ATA (permissionless path, ADR-0016 amended) ──────
+    // When the caller (fee_payer) is NOT the gateway signer and the
+    // gateway has scheduler_share_bps > 0, the program requires the
+    // relayer's input-mint ATA as the LAST remaining_account. Without it,
+    // execution fails with MissingSchedulerFeeAccount.
+    const schedulerAta = deriveSchedulerAta({
+      authority,
+      gatewaySigner: gateway.signer,
+      schedulerShareBps: gateway.schedulerShareBps,
+      inputMint,
+    });
+    if (schedulerAta) {
+      instructions.push(
+        ...(await this.ensureAta(authority, inputMint, authority))
+      );
+    }
+
     // ── Execute ix (unchanged derivation) ──────────────────────────────
     // Act mode (ADR-0026): sentinel output_mint → no output token. The
     // output_mint account slot is SystemProgram; no output ATA is created.
@@ -3297,10 +3315,15 @@ export class Tributary {
     // ValidationPda was pulled out of `remaining_accounts` in ADR-0016:
     // the slice is now `[...lighthouseTargetAccounts, ...forwardAccounts,
     // (scheduler_ata?)]` — no leading ValidationPda entry.
+    // The scheduler_ata (when permissionless + scheduler_share > 0) is
+    // appended as the LAST entry by the SDK facade (ADR-0016 amended).
+    const fullRemainingAccounts = schedulerAta
+      ? [...(remainingAccounts ?? []), { pubkey: schedulerAta, isSigner: false, isWritable: true }]
+      : remainingAccounts ?? [];
     const executeIx = await this.program.methods
       .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
       .accountsStrict(accounts)
-      .remainingAccounts(remainingAccounts ?? [])
+      .remainingAccounts(fullRemainingAccounts)
       .instruction();
     instructions.push(executeIx);
 
