@@ -1,11 +1,11 @@
 ---
 # tributary-t4je
 title: SDK composable-execution primitives (packages/sdk/)
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-15T10:11:49Z
-updated_at: 2026-07-15T10:11:49Z
+updated_at: 2026-07-15T10:52:35Z
 parent: tributary-l8wr
 ---
 
@@ -91,3 +91,18 @@ export interface ForwardBuildResult {
 - `composable.ts:295-300` — current `lookupForwardContext` (stays, replaced in Bean 2)
 - `composable.ts:558-576` — current `resolveValidationTargets` (private method, to be replaced)
 - `sdk.ts:3162-3304` — current `executeComposable` (unchanged, takes assembled remainingAccounts)
+
+## Implementation TODO
+
+- [x] Write composable.test.ts (RED)
+- [x] Implement packages/sdk/src/composable.ts (GREEN)
+- [x] Wire into packages/sdk/src/index.ts
+- [x] Tests pass + typecheck
+
+## Summary of Changes
+
+- **New: `packages/sdk/src/composable.ts`** — exports 5 primitives (`isForwardEnabled`, `grossCapToFace`, `resolveDefaultForwardAmount`, `resolveValidationTargets`, `assembleComposableRemainingAccounts`) + types (`ForwardBuilder`, `ForwardAccountMeta`, `ForwardBuildResult`).
+- **New: `tests/composable-primitives.test.ts`** — 22 unit tests covering the full TDD checklist (pure functions, PDA resolution with mocked Connection, assembly order + ADR-0008 signer sanitization). Named to avoid collision with the existing `tests/composable.test.ts` Surfpool integration suite.
+- **Edited: `packages/sdk/src/index.ts`** — added `export * from "./composable"`.
+
+All primitives are additive — `executeComposable` is unchanged. The assembler owns the ADR-0008 boundary (`isSigner: false` always); `ForwardAccountMeta` has no `isSigner` field so builders cannot leak signer authority. Verified: typecheck clean, lint clean, SDK build clean, 22/22 tests pass.
