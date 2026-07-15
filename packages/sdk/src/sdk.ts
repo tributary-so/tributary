@@ -2916,16 +2916,14 @@ export class Tributary {
    * variant to the existing `calculate*ApprovalAmount` helper (or its face
    * field for oneTime/upTo).
    *
-   * INTERIM: no fee headroom. Composable fees are NET-on-pull (ADR-0026):
-   * the delegate must cover `face + fee`, but sizing the fee precisely needs
-   * gateway + protocol bps lookups. That lands in bean tributary-ydth
-   * (blocked by this one). Until then this returns the FACE amount only —
-   * callers may override via `approvalAmount` when they know the gross.
+   * Returns the FACE total only (no fee headroom). Payment-policy callers use
+   * this directly (fees are NET-on-amount there). Composable callers must wrap
+   * the result in {@link calculateComposableApproval} to add NET-on-pull fee
+   * headroom (ADR-0026).
    *
    * @param policyType - The policy configuration (any of the 5 variants)
    * @returns Face approval amount (BN), 0 for an empty/unknown variant
    */
-  // ponytail: face-only sizing, fee headroom deferred to tributary-ydth
   private calculatePolicyApprovalAmount(policyType: PolicyType): BN {
     if ("subscription" in policyType && policyType.subscription) {
       const s = policyType.subscription;
@@ -2953,6 +2951,36 @@ export class Tributary {
       return policyType.upTo.maxAmount;
     }
     return new BN(0);
+  }
+
+  /**
+   * Composable gross approval sizing — wraps the face-only
+   * {@link calculatePolicyApprovalAmount} in {@link requiredDelegatedAmount}
+   * so the delegate covers fees across the policy's whole life (ADR-0026:
+   * composable is NET-on-pull, every execution pulls `face + fee`, and the
+   * SPL `delegated_amount` is a total cap decremented per pull).
+   *
+   * Cap policy for unbounded variants (subscription with `maxRenewals: null`,
+   * PayAsYouGo): deliberately **matches the payment-policy helpers — 1 year**.
+   * One mental model across both policy families; the approval is re-issued on
+   * every create/approve and trivially topped up, so 1yr parity is sufficient.
+   * 2yr was considered and rejected as YAGNI; if composables in practice need
+   * longer, callers pass an explicit `approvalAmount` (or the helper's
+   * year-multiplier changes in one place).
+   *
+   * @param policyType - The policy configuration (any of the 5 variants)
+   * @param gateway - The gateway account (carries `gatewayFeeBps`), or `null`
+   *   if not fetched/unknown — degrades to face-only (0 bps).
+   * @returns Gross approval amount (`face_total + total_fee`), face-only when
+   *   the gateway is unknown.
+   */
+  calculateComposableApproval(
+    policyType: PolicyType,
+    gateway: PaymentGateway | null
+  ): BN {
+    const face = this.calculatePolicyApprovalAmount(policyType);
+    if (!gateway) return face;
+    return this.requiredDelegatedAmount(face, gateway);
   }
 
   /**
@@ -3067,9 +3095,15 @@ export class Tributary {
       data: { policyType, recipient, gateway, forwardConfig, policyPda: composablePolicyPda.address },
     });
 
-    // 4. Default approval (INTERIM face-only — see calculatePolicyApprovalAmount)
+    // 4. Default approval — NET-on-pull gross (ADR-0026): face + fee headroom
+    //    so the delegate covers fees across the policy's whole life. Gateway
+    //    is fetched only when defaulting (caller may pass an explicit override).
     const finalApprovalAmount: BN =
-      approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
+      approvalAmount ??
+      this.calculateComposableApproval(
+        policyType,
+        await this.getPaymentGateway(gateway)
+      );
     const newPolicyContribution = finalApprovalAmount;
 
     // Fetch existing policies for the metadata (both types share the delegation)

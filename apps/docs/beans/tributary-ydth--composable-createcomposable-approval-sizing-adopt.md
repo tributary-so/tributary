@@ -1,11 +1,11 @@
 ---
 # tributary-ydth
 title: Composable createComposable() approval sizing — adopt NET-on-pull fee headroom + decide unbounded cap
-status: todo
+status: completed
 type: task
 priority: low
 created_at: 2026-07-09T12:35:00Z
-updated_at: 2026-07-09T12:35:00Z
+updated_at: 2026-07-15T20:25:52Z
 ---
 
 Deferred from the createComposable() grill (Q2, 2026-07-09).
@@ -37,7 +37,30 @@ Unbounded cap: existing payment-policy helpers use 1 year (paymentsPerYear) when
 
 ## Acceptance
 
-- [ ] calculateComposableApproval(policyType, gateway) implemented + unit-tested for all 5 variants.
-- [ ] createComposable() default approval uses it when approvalAmount omitted.
-- [ ] Decide + document the 1yr-vs-2yr unbounded cap.
-- [ ] pnpm --filter @tributary-so/sdk build + lint green.
+- [x] calculateComposableApproval(policyType, gateway) implemented + unit-tested for all 5 variants.
+- [x] createComposable() default approval uses it when approvalAmount omitted.
+- [x] Decide + document the 1yr-vs-2yr unbounded cap.
+- [x] pnpm --filter @tributary-so/sdk build + lint green.
+
+## Decision: unbounded cap → 1yr parity
+
+Keep the payment-policy helpers' 1-year cap for composable too. Reasons:
+- One mental model across both policy families; diverging silently is a footgun.
+- The delegate approval is re-issued on every createComposable/approve and is trivially topped up, so 1yr is sufficient.
+- 2yr was a mention, not a requirement — YAGNI. If composables in practice need longer, callers pass an explicit approvalAmount (or the year-multiplier changes in one place — calculateSubscriptionApprovalAmount / calculatePayAsYouGoApprovalAmount).
+
+Payment-policy helpers were NOT refactored (out of scope; correct for their family). Documented in the calculateComposableApproval JSDoc.
+
+## Summary of Changes
+
+- **packages/sdk/src/sdk.ts**
+  - Added `calculateComposableApproval(policyType, gateway: PaymentGateway | null): BN` — wraps the existing face-only `calculatePolicyApprovalAmount` in `requiredDelegatedAmount` so the delegate covers `face + fee` across the policy's whole life (ADR-0026 NET-on-pull). Degrades to face-only when the gateway is unknown (null → 0 bps).
+  - Wired `createComposableWithMetadata` default approval to fetch the gateway and use `calculateComposableApproval` (only when `approvalAmount` is omitted — explicit overrides skip the fetch).
+  - Updated the stale "INTERIM" comment on `calculatePolicyApprovalAmount` (no longer interim — it is intentionally face-only; composable wraps it for fees).
+- **tests/sdk-composable-constructor.test.ts**
+  - New `calculateComposableApproval` suite: all 5 variants (subscription/milestone/payAsYouGo/oneTime/upTo) + null-gateway degradation + 0-bps identity (7 tests).
+  - New `createComposable` test proving the default approval now carries the gross (face + fee) amount from the fetched gateway.
+  - Hardened `makeSdk` to neutralise the gateway fetch + policy `.all()` RPC calls (the default-approval path now consults the gateway; the metadata step enumerates existing policies).
+  - Fixed a stale assertion: `createComposable` emits approve-only (no revoke) when the owner token account has no delegate — corrected the ix count 5 → 4 with a clarifying comment.
+
+Verification: `pnpm --filter @tributary-so/sdk run build` ✓, `tsc --noEmit` clean ✓, `npx jest tests/sdk-composable-constructor.test.ts` → 20/20 passing ✓.

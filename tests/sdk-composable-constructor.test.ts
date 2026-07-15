@@ -34,10 +34,19 @@ function makeSdk(user = Keypair.generate()): TributarySDK {
   const conn = new Connection("http://127.0.0.1:1"); // lazy; never contacted
   const sdk = new TributarySDK(conn, user);
   // Neutralise every RPC touch-point the high-level methods use.
+  const acct = (sdk as any).program.account;
   (sdk as any).connection = {
     getAccountInfo: async () => null,
     getParsedAccountInfo: async () => ({ value: null, context: { slot: 0 } }),
   };
+  // Default-approval path now consults the gateway for fee headroom
+  // (calculateComposableApproval). Unknown gateway → null → face-only, which
+  // preserves the interim numbers the createComposable tests assume.
+  acct.paymentGateway.fetchNullable = async () => null;
+  // createComposableWithMetadata also enumerates existing policies for the
+  // metadata step list — neutralise both families so no .all() hits RPC.
+  acct.paymentPolicy.all = async () => [];
+  acct.composablePolicy.all = async () => [];
   return sdk;
 }
 
@@ -164,6 +173,132 @@ describe("calculatePolicyApprovalAmount (face-only dispatcher)", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+// calculateComposableApproval — NET-on-pull gross (face + fee) dispatcher
+// (ADR-0026). Wraps the face-only dispatcher in requiredDelegatedAmount so
+// the delegate covers fees across the policy's whole life.
+// ═══════════════════════════════════════════════════════════════════════
+describe("calculateComposableApproval (gross = face + fee, all 5 variants)", () => {
+  const sdk = makeSdk();
+  // 100 bps = 1% fee. gross = face + floor(face * 100 / 10000).
+  const gateway = (bps: number): any => ({ gatewayFeeBps: bps });
+  const gross = (pt: any, g: any) =>
+    sdk.calculateComposableApproval(pt, g) as BN;
+
+  test("subscription → (amount × renewals) × (1 + bps)", () => {
+    // face = 1_000_000 × 12 = 12_000_000; fee = 120_000; gross = 12_120_000
+    const amt = gross(
+      {
+        subscription: {
+          amount: new BN(1_000_000),
+          autoRenew: true,
+          maxRenewals: 12,
+          paymentFrequency: { monthly: {} },
+          nextPaymentDue: new BN(0),
+        },
+      },
+      gateway(100)
+    );
+    expect(amt.toString()).toBe("12120000");
+  });
+
+  test("milestone → sum(amounts) × (1 + bps)", () => {
+    // face = 600; fee = 6; gross = 606
+    const amt = gross(
+      {
+        milestone: {
+          milestoneAmounts: [new BN(100), new BN(200), new BN(300), new BN(0)],
+          milestoneTimestamps: [new BN(0), new BN(0), new BN(0), new BN(0)],
+          currentMilestone: 0,
+          releaseCondition: 1,
+          totalMilestones: 3,
+          escrowAmount: new BN(600),
+        },
+      },
+      gateway(100)
+    );
+    expect(amt.toString()).toBe("606");
+  });
+
+  test("payAsYouGo → (maxAmountPerPeriod × periods/yr) × (1 + bps)", () => {
+    // face = 50_000_000 × 365 = 18_250_000_000; fee = 182_500_000
+    const amt = gross(
+      {
+        payAsYouGo: {
+          maxAmountPerPeriod: new BN(50_000_000),
+          maxChunkAmount: new BN(1_000_000),
+          periodLengthSeconds: new BN(86400),
+          currentPeriodStart: new BN(0),
+          currentPeriodTotal: new BN(0),
+          expiryDate: null,
+        },
+      },
+      gateway(100)
+    );
+    expect(amt.toString()).toBe("18432500000");
+  });
+
+  test("oneTime → amount × (1 + bps)", () => {
+    // face = 7_777_777; fee = floor(77_777.77) = 77_777; gross = 7_855_554
+    const amt = gross(
+      {
+        oneTime: {
+          amount: new BN(7_777_777),
+          dueDate: new BN(0),
+          expiryDate: null,
+        },
+      },
+      gateway(100)
+    );
+    expect(amt.toString()).toBe("7855554");
+  });
+
+  test("upTo → maxAmount × (1 + bps)", () => {
+    // face = 9_999; fee = floor(99.99) = 99; gross = 10_098
+    const amt = gross(
+      {
+        upTo: {
+          maxAmount: new BN(9_999),
+          validAfter: new BN(0),
+          deadline: new BN(1),
+        },
+      },
+      gateway(100)
+    );
+    expect(amt.toString()).toBe("10098");
+  });
+
+  test("null gateway → degrades to face-only (0 bps)", () => {
+    const amt = gross(
+      {
+        subscription: {
+          amount: new BN(1_000_000),
+          autoRenew: true,
+          maxRenewals: 12,
+          paymentFrequency: { monthly: {} },
+          nextPaymentDue: new BN(0),
+        },
+      },
+      null
+    );
+    expect(amt.toString()).toBe("12000000");
+  });
+
+  test("0 bps gateway → gross == face", () => {
+    const amt = gross(
+      {
+        oneTime: {
+          amount: new BN(7_777_777),
+          dueDate: new BN(0),
+          expiryDate: null,
+        },
+      },
+      gateway(0)
+    );
+    expect(amt.toString()).toBe("7777777");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
 // createComposable — high-level constructor
 // ═══════════════════════════════════════════════════════════════════════
 describe("createComposable", () => {
@@ -190,17 +325,18 @@ describe("createComposable", () => {
       forwardConfigNoSwap(tokenMint)
     );
 
-    // Order: [ownerATA(create), userPayment(create), policy, revoke, approve]
-    expect(ixs.length).toBe(5);
+    // Order: [ownerATA(create), userPayment(create), policy, approve].
+    // Composable emits approve-only (no revoke): when the owner token account
+    // has no delegate yet, there is nothing to revoke — only a fresh approve.
+    expect(ixs.length).toBe(4);
     expect(ixs[0].programId.equals(ASSOCIATED_TOKEN_PROGRAM_ID)).toBe(true);
     // userPayment create + policy create are both Tributary-program ixs
     // (createUserPayment builds the PDA via an Anchor `init` CPI, so the
     // ix targets the program, not SystemProgram directly).
     expect(ixs[1].programId.equals(PROGRAM_ID)).toBe(true);
     expect(ixs[2].programId.equals(PROGRAM_ID)).toBe(true);
-    // revoke + approve are SPL token ixs
+    // approve is an SPL token ix
     expect(ixs[3].programId.equals(TOKEN_PROGRAM_ID)).toBe(true);
-    expect(ixs[4].programId.equals(TOKEN_PROGRAM_ID)).toBe(true);
   });
 
   test("idempotent: existing ownerATA + userPayment + delegate → only [policy]", async () => {
@@ -346,6 +482,48 @@ describe("createComposable", () => {
     // SPL Approve ix data: [discriminator(1)] [amount u64 LE]
     const amt = approveIx.data.readBigUInt64LE(1);
     expect(amt).toBe(BigInt(42));
+  });
+
+  test("default approval uses gross (face + fee) from the fetched gateway", async () => {
+    const sdk = makeSdk();
+    const user = sdk.provider.publicKey;
+    (sdk as any).connection.getAccountInfo = async () => ({
+      lamports: 1,
+      data: Buffer.alloc(0),
+      owner: SystemProgram.programId,
+      executable: false,
+      rentEpoch: 0,
+    });
+    (sdk as any).program.account.userPayment.fetchNullable = async () => ({
+      owner: user,
+      tokenMint,
+      createdPoliciesCount: 0,
+      createdComposableCount: 0,
+    });
+    // No delegate set → an approve ix is emitted.
+    (sdk as any).connection.getParsedAccountInfo = async () => ({
+      value: null,
+      context: { slot: 0 },
+    });
+    // Gateway charges 100 bps (1%).
+    (sdk as any).program.account.paymentGateway.fetchNullable = async () => ({
+      gatewayFeeBps: 100,
+    });
+
+    const ixs = await sdk.createComposable(
+      tokenMint,
+      recipient,
+      gateway,
+      subscriptionPolicy(1_000_000), // maxRenewals: 12 → face = 12_000_000
+      "memo",
+      forwardConfigNoSwap(tokenMint)
+    );
+
+    // Approve is last (delegate was missing). Gross = 12_000_000 + 120_000.
+    const approveIx = ixs[ixs.length - 1];
+    expect(approveIx.programId.equals(TOKEN_PROGRAM_ID)).toBe(true);
+    const amt = approveIx.data.readBigUInt64LE(1);
+    expect(amt).toBe(BigInt("12120000"));
   });
 });
 
