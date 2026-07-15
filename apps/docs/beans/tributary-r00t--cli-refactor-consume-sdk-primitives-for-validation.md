@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: high
 created_at: 2026-07-15T10:13:17Z
-updated_at: 2026-07-15T10:13:17Z
+updated_at: 2026-07-15T12:28:17Z
 parent: tributary-l8wr
 blocked_by:
     - tributary-t4je
@@ -119,3 +119,18 @@ code does NOT do. This is an improvement — prevents exceeding the period cap.
 - `execute.ts:78-106` — validation-target inline blocks to replace
 - `execute.ts:113-120` — assembly block to replace
 - `execute.ts:57-70` — PayAsYouGo amount to replace
+
+## Summary of Changes
+
+Refactored `apps/cli/src/commands/composable-policy/execute.ts` to consume SDK composable primitives (ADR-0030):
+
+- **Validation-target resolution**: replaced the two inline `getPreValidationPda`/`getPostValidationPda` + `parseValidationPda` blocks (pre & post) with `resolveValidationTargets(...)`.
+- **remaining_accounts assembly**: replaced the inline `AccountMeta[]` spread with `assembleComposableRemainingAccounts({...})`. CLI `--forward-accounts` still mark every forward account writable (raw pubkey path, no builder — Bean 2 territory).
+- **PayAsYouGo face amount**: replaced the inline `maxChunk.muln(10_000).divn(10_000 + feeBps)` with `resolveDefaultForwardAmount(policyAccount, gateway)`. This also adds the period-cap floor (`BN.min(face, remainingPeriod)`) the old inline math lacked — an improvement that prevents exceeding the per-period allowance.
+- **Imports**: dropped `getPostValidationPda`, `getPreValidationPda`, `parseValidationPda`, and the `AccountMeta` type from `execute.ts` (all still used by `pda/validation-pda.ts`); added `resolveValidationTargets`, `assembleComposableRemainingAccounts`, `resolveDefaultForwardAmount` and types `ComposablePolicy`, `PaymentGateway` from `@tributary-so/sdk`.
+
+Verification:
+- `pnpm --filter @tributary-so/cli run lint` — passes (only pre-existing unrelated `complexity` warning in `payment-policy/create.ts`).
+- `tsc --noEmit -p apps/cli/tsconfig.json` — clean compile, zero errors.
+
+Behavior preserved: remaining_accounts order `[...pre, ...fwd, ...post]`, flag overrides (`--validation-accounts`, `--post-validation-accounts`, `--forward-amount`), and the PayAsYouGo-only guard on `--forward-amount`.
