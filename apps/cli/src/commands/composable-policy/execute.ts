@@ -1,6 +1,12 @@
 import {Args, Flags} from '@oclif/core'
-import {type AccountMeta, PublicKey} from '@solana/web3.js'
-import {getPostValidationPda, getPreValidationPda, parseValidationPda} from '@tributary-so/sdk'
+import {PublicKey} from '@solana/web3.js'
+import {
+  assembleComposableRemainingAccounts,
+  type ComposablePolicy,
+  type PaymentGateway,
+  resolveDefaultForwardAmount,
+  resolveValidationTargets,
+} from '@tributary-so/sdk'
 import BN from 'bn.js'
 import {readFileSync} from 'node:fs'
 
@@ -58,15 +64,12 @@ export default class ComposablePolicyExecute extends BaseCommand {
     if (flags['forward-amount']) {
       forwardAmount = new BN(flags['forward-amount'])
     } else if (variant === 'payAsYouGo') {
-      // Composable is always NET-on-pull (ADR-0026): gross = face + fee,
-      // and PayAsYouGo caps bind on GROSS. Using maxChunkAmount as-is
-      // would make gross = maxChunk + fee > maxChunk → InvalidAmount.
-      // Adjust: face = floor(maxChunk × 10000 / (10000 + gateway_fee_bps))
-      const maxChunk = (policyAccount.policyType as {payAsYouGo: {maxChunkAmount: BN}}).payAsYouGo.maxChunkAmount
       const gatewayAccount = await sdk.program.account.paymentGateway.fetchNullable(policyAccount.gateway)
       if (!gatewayAccount) this.error('Gateway not found')
-      const feeBps = gatewayAccount.gatewayFeeBps
-      forwardAmount = feeBps > 0 ? maxChunk.muln(10_000).divn(10_000 + feeBps) : maxChunk
+      forwardAmount = resolveDefaultForwardAmount(
+        policyAccount as ComposablePolicy,
+        gatewayAccount as PaymentGateway,
+      )
     }
 
     const instructionData = flags['forward-ix']
@@ -75,31 +78,26 @@ export default class ComposablePolicyExecute extends BaseCommand {
         : readFileSync(flags['forward-ix'])
       : Buffer.alloc(0)
 
-    // ── Pre-validation targets: auto-derive from ValidationPda ────────
-    let preValAccounts: PublicKey[] = []
-    if ('programCall' in policyAccount.preValidation) {
-      const {address: preValPda} = getPreValidationPda(policy, sdk.programId)
-      const acctInfo = await sdk.connection.getAccountInfo(preValPda)
-      if (acctInfo) {
-        const parsed = parseValidationPda(acctInfo.data)
-        preValAccounts = parsed.pinnedAccounts.slice(0, parsed.numPinnedAccounts)
-      }
-    }
+    // ── Validation targets: auto-derive from ValidationPda ────────────
+    let preValAccounts = await resolveValidationTargets(
+      sdk.connection,
+      policy,
+      policyAccount.preValidation,
+      sdk.programId,
+      'pre',
+    )
 
     if (flags['validation-accounts']) {
       preValAccounts = flags['validation-accounts'].split(',').map((s) => new PublicKey(s.trim()))
     }
 
-    // ── Post-validation targets: auto-derive from ValidationPda ───────
-    let postValAccounts: PublicKey[] = []
-    if ('programCall' in policyAccount.postValidation) {
-      const {address: postValPda} = getPostValidationPda(policy, sdk.programId)
-      const acctInfo = await sdk.connection.getAccountInfo(postValPda)
-      if (acctInfo) {
-        const parsed = parseValidationPda(acctInfo.data)
-        postValAccounts = parsed.pinnedAccounts.slice(0, parsed.numPinnedAccounts)
-      }
-    }
+    let postValAccounts = await resolveValidationTargets(
+      sdk.connection,
+      policy,
+      policyAccount.postValidation,
+      sdk.programId,
+      'post',
+    )
 
     if (flags['post-validation-accounts']) {
       postValAccounts = flags['post-validation-accounts'].split(',').map((s) => new PublicKey(s.trim()))
@@ -110,14 +108,12 @@ export default class ComposablePolicyExecute extends BaseCommand {
       ? flags['forward-accounts'].split(',').map((s) => new PublicKey(s.trim()))
       : []
 
-    // ── Assemble remaining_accounts ────────────────────────────────────
-    // Program contract (execute_composable.rs):
-    //   [...preValTargets, ...forwardAccounts, ...postValTargets, (scheduler_ata?)]
-    const remainingAccounts: AccountMeta[] = [
-      ...preValAccounts.map((pubkey) => ({isSigner: false, isWritable: false, pubkey})),
-      ...forwardAccounts.map((pubkey) => ({isSigner: false, isWritable: true, pubkey})),
-      ...postValAccounts.map((pubkey) => ({isSigner: false, isWritable: false, pubkey})),
-    ]
+    // ── Assemble remaining_accounts (ADR-0016 order, ADR-0008 signer stamp) ─
+    const remainingAccounts = assembleComposableRemainingAccounts({
+      forwardAccounts: forwardAccounts.map((pubkey) => ({isWritable: true, pubkey})),
+      postTargets: postValAccounts,
+      preTargets: preValAccounts,
+    })
 
     const signature = await this.sendAll(
       await sdk.executeComposable(policy, instructionData, forwardAmount, remainingAccounts),
