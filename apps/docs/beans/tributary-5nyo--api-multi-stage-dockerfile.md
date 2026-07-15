@@ -5,7 +5,7 @@ status: completed
 type: feature
 priority: high
 created_at: 2026-07-14T19:23:07Z
-updated_at: 2026-07-14T20:48:54Z
+updated_at: 2026-07-15T07:57:56Z
 parent: tributary-z74k
 blocked_by:
     - tributary-yc1o
@@ -71,3 +71,21 @@ Note: API has three workspace deps to build (sdk, tokens-client, payments). The 
 - [ ] Source-only change does NOT invalidate the `pnpm fetch` layer
 - [ ] No corepack download at container start
 - [ ] API serves requests (health check endpoint responds)
+
+## Summary of Changes
+
+**apps/api/Dockerfile** — full rewrite:
+
+- Removed `pnpm deploy --legacy --prod` entirely. The tsup bundle (sibling task tributary-yc1o) is a self-contained CJS bundle (noExternal: /.\*/) — only two ws optional native addons (bufferutil, utf-8-validate) stay external and fail gracefully via try/catch. No node_modules needed at runtime. The pnpm deploy step was re-resolving 279 packages from the network on every build (~3 min) — pure dead weight.
+- Runtime stage copies only dist/index.js + dist/index.js.map from the builder. Zero node_modules in the final image.
+- Lockfile caching: COPY pnpm-lock.yaml + package.json, then pnpm fetch with BuildKit cache mount. Source-only changes do NOT invalidate the fetch layer (verified).
+- package.json copied alongside lockfile so corepack reads the correct packageManager field (pnpm@10.28.2) instead of downloading the latest (pnpm 11, which requires Node 22+ and crashes on node:20-slim).
+- CMD ["node", "dist/index.js"] — no pnpm/corepack at runtime.
+
+Verified:
+
+- docker build succeeds (requires DOCKER_BUILDKIT=1 for cache mount)
+- Container starts, GET /v1/health returns {"status":"ok"}
+- Image size: 221MB (node:20-slim base ~200MB + 20MB bundle)
+- Zero node_modules at runtime
+- Source-only change keeps pnpm fetch layer CACHED
