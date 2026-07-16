@@ -31,16 +31,17 @@ jest.mock("@tributary-so/sdk", () => ({
   PaymentPolicy: {},
 }));
 jest.mock("../db/queries", () => ({
-  getPaymentRecords: jest.fn(),
+  getPaymentExecutionsByPolicyAddress: jest.fn(),
 }));
 
 import paymentPoliciesRouter from "../routes/payment-policies";
 import { getSubscriptionDetails } from "../services/subscription";
-import { getPaymentRecords } from "../db/queries";
+import { getPaymentExecutionsByPolicyAddress } from "../db/queries";
 
 const mockGetSubscriptionDetails =
   getSubscriptionDetails as jest.MockedFunction<any>;
-const mockGetPaymentRecords = getPaymentRecords as jest.MockedFunction<any>;
+const mockGetPaymentExecutions =
+  getPaymentExecutionsByPolicyAddress as jest.MockedFunction<any>;
 
 function createApp(): Application {
   const app = express();
@@ -240,8 +241,8 @@ describe("Payment Policies API Routes", () => {
   });
 
   describe("GET /v1/payment-policies/:address/executions", () => {
-    it("returns execution records via getPaymentRecords", async () => {
-      mockGetPaymentRecords.mockResolvedValueOnce([
+    it("returns execution records via getPaymentExecutionsByPolicyAddress", async () => {
+      mockGetPaymentExecutions.mockResolvedValueOnce([
         {
           id: 1,
           signature: "5Kq3...mock",
@@ -261,15 +262,14 @@ describe("Payment Policies API Routes", () => {
       expect(response.body.success).toBe(true);
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data).toHaveLength(1);
-      expect(mockGetPaymentRecords).toHaveBeenCalledWith(
-        expect.objectContaining({
-          paymentPolicy: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
-        })
+      expect(mockGetPaymentExecutions).toHaveBeenCalledWith(
+        "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        expect.objectContaining({ limit: undefined, offset: undefined })
       );
     });
 
     it("passes through pagination params", async () => {
-      mockGetPaymentRecords.mockResolvedValueOnce([]);
+      mockGetPaymentExecutions.mockResolvedValueOnce([]);
 
       await request(app)
         .get(
@@ -278,13 +278,14 @@ describe("Payment Policies API Routes", () => {
         .query({ limit: 5, offset: 10 })
         .expect(200);
 
-      expect(mockGetPaymentRecords).toHaveBeenCalledWith(
+      expect(mockGetPaymentExecutions).toHaveBeenCalledWith(
+        "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
         expect.objectContaining({ limit: 5, offset: 10 })
       );
     });
 
     it("defaults limit/offset when omitted", async () => {
-      mockGetPaymentRecords.mockResolvedValueOnce([]);
+      mockGetPaymentExecutions.mockResolvedValueOnce([]);
 
       await request(app)
         .get(
@@ -292,11 +293,10 @@ describe("Payment Policies API Routes", () => {
         )
         .expect(200);
 
-      expect(mockGetPaymentRecords).toHaveBeenCalledWith({
-        paymentPolicy: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
-        limit: undefined,
-        offset: undefined,
-      });
+      expect(mockGetPaymentExecutions).toHaveBeenCalledWith(
+        "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        { limit: undefined, offset: undefined }
+      );
     });
   });
 });

@@ -19,7 +19,7 @@ import {
   getSubscriptionDetails,
   SubscriptionDetails,
 } from "../services/subscription";
-import { getPaymentRecords } from "../db/queries";
+import { getPaymentExecutionsByPolicyAddress } from "../db/queries";
 import { asyncHandler, ApiError } from "../middleware";
 import { ApiResponse } from "../types";
 
@@ -36,7 +36,7 @@ const router: Router = Router();
  */
 function normalizePaymentPolicy(
   account: PaymentPolicy,
-  publicKey: PublicKey,
+  publicKey: PublicKey
 ): SubscriptionDetails {
   // Strip the trailing `padding` field from whichever policyType variant is active.
   let policyType: SubscriptionDetails["policyType"];
@@ -75,16 +75,17 @@ function normalizePaymentPolicy(
  * today and doesn't grow a sibling-owned service file.
  */
 async function fetchPaymentPolicyByAddress(
-  address: string,
+  address: string
 ): Promise<SubscriptionDetails | null> {
   const connection = getConnection();
   const tributary = new Tributary(connection, Keypair.generate());
-  const account =
-    await tributary.program.account.paymentPolicy.fetchNullable(address);
+  const account = await tributary.program.account.paymentPolicy.fetchNullable(
+    address
+  );
   if (!account) return null;
   return normalizePaymentPolicy(
     account as PaymentPolicy,
-    new PublicKey(address),
+    new PublicKey(address)
   );
 }
 
@@ -167,7 +168,7 @@ router.get(
     if (!!walletPublicKey !== !!tokenMint) {
       throw new ApiError(
         400,
-        "If you provide walletPublicKey or tokenMint, you must provide both",
+        "If you provide walletPublicKey or tokenMint, you must provide both"
       );
     }
 
@@ -182,14 +183,14 @@ router.get(
     if (Object.keys(options).length < 1) {
       throw new ApiError(
         400,
-        "Must specify one of trackingId, userPublicKey, gatewayPublicKey, recipient, or (walletPublicKey & tokenMint)!",
+        "Must specify one of trackingId, userPublicKey, gatewayPublicKey, recipient, or (walletPublicKey & tokenMint)!"
       );
     }
 
     if (Object.keys(options).length > 3) {
       throw new ApiError(
         400,
-        "Too many filters specified. Up to 3 query args allowed.",
+        "Too many filters specified. Up to 3 query args allowed."
       );
     }
 
@@ -212,7 +213,7 @@ router.get(
       timestamp: Date.now(),
     };
     res.json(response);
-  }),
+  })
 );
 
 /**
@@ -284,7 +285,7 @@ router.get(
       timestamp: Date.now(),
     };
     res.json(response);
-  }),
+  })
 );
 
 /**
@@ -344,12 +345,7 @@ router.get(
       throw new ApiError(400, "Missing address parameter");
     }
 
-    // ponytail: brief names `getPaymentExecutionsByPolicyAddress` (sibling
-    // bean, not yet landed). `getPaymentRecords({ paymentPolicy })` is the
-    // functionally identical query that already exists — swap the import when
-    // a dedicated alias ships.
-    const records = await getPaymentRecords({
-      paymentPolicy: address,
+    const records = await getPaymentExecutionsByPolicyAddress(address, {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
@@ -360,7 +356,7 @@ router.get(
       timestamp: Date.now(),
     };
     res.json(response);
-  }),
+  })
 );
 
 export default router;
