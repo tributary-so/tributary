@@ -61,6 +61,7 @@ jobs:
       has_lando: ${{ steps.detect.outputs.has_lando }}
       has_app: ${{ steps.detect.outputs.has_app }}
       has_api: ${{ steps.detect.outputs.has_api }}
+      has_forward_builder: ${{ steps.detect.outputs.has_forward_builder }}
       sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
 
     steps:
@@ -90,6 +91,7 @@ jobs:
           HAS_CHECKOUT=0
           HAS_APP=0
           HAS_API=0
+          HAS_FORWARD_BUILDER=0
           HAS_LANDO=0
           HAS_CLI=0
 
@@ -101,6 +103,7 @@ jobs:
             HAS_SDK=1
             # require rebuild when sdk changes!
             HAS_API=1
+            HAS_FORWARD_BUILDER=1
             HAS_APP=1
             HAS_CHECKOUT=1
             HAS_CLI=1
@@ -140,6 +143,10 @@ jobs:
             HAS_API=1
             echo "::notice::api changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^packages/forward-builders/"; then
+            HAS_FORWARD_BUILDER=1
+            echo "::notice::api changed"
+          fi
           if echo "$CHANGED_FILES" | grep -q "^apps/lando/"; then
             HAS_LANDO=1
             echo "::notice::lando changed"
@@ -156,6 +163,7 @@ jobs:
             HAS_CHECKOUT=1
             HAS_APP=1
             HAS_API=1
+            HAS_FORWARD_BUILDER=1
             HAS_LANDO=1
             HAS_CLI=1
           fi
@@ -170,6 +178,7 @@ jobs:
           echo "has_lando=$HAS_LANDO" >> "$GITHUB_OUTPUT"
           echo "has_app=$HAS_APP" >> "$GITHUB_OUTPUT"
           echo "has_api=$HAS_API" >> "$GITHUB_OUTPUT"
+          echo "has_forward_builder=$HAS_FORWARD_BUILDER" >> "$GITHUB_OUTPUT"
           echo "has_cli=$HAS_CLI" >> "$GITHUB_OUTPUT"
 
           # we always test SDK no matter

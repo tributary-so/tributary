@@ -58,15 +58,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pnpm run --filter ./packages/sdk build
-          pnpm run --filter ./packages/payments build
-          pnpm run --filter ./packages/sdk-react build
-          pnpm run --filter ./packages/sdk-x402 build
+          pnpm run --filter "./packages/*" build
 
+          # Packages to release
           pnpm run --filter ./packages/sdk release || true
           pnpm run --filter ./packages/payments release || true
           pnpm run --filter ./packages/sdk-react release || true
           pnpm run --filter ./packages/sdk-x402 release || true
+          pnpm run --filter ./packages/forward-builders release || true
+
+          # Apps to release
           pnpm run --filter ./apps/api release || true
           pnpm run --filter ./apps/app release || true
           pnpm run --filter ./apps/checkout release || true
@@ -75,4 +76,5 @@ jobs:
           pnpm run --filter ./apps/lando release || true
           pnpm run --filter ./apps/scheduler release || true
 
+          # contracts to release
           pnpm run --filter ./programs/tributary release || true
