@@ -5,8 +5,13 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-07-16T10:23:50Z
-updated_at: 2026-07-16T18:44:22Z
+updated_at: 2026-07-16T18:47:45Z
 parent: tributary-oepl
+blocked_by:
+    - tributary-gd1l
+    - tributary-ijzd
+    - tributary-29wo
+    - tributary-7ape
 ---
 
 In apps/api/src/db/events.ts: import event types from @tributary-so/sdk (PaymentRecordEvent, ComposableExecutedEvent, ComposablePolicyCreatedEvent, etc.) instead of hand-writing interfaces. Add composable event names to TributaryEventName union: tributary_composable_executed, tributary_composable_policy_created, tributary_composable_policy_deleted, tributary_composable_policy_status_changed. Add them to TributaryEventDataMap. Keep helper functions (bytesToString, parsePaymentFrequency, etc.) - those are decode utilities, not types.
