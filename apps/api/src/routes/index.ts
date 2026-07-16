@@ -7,6 +7,7 @@ import { Router } from "express";
 import healthRouter from "./health";
 import skillRouter from "./skill";
 import subscriptionRouter from "./subscription";
+import paymentPoliciesRouter from "./payment-policies";
 import eventsRouter from "./events";
 import onetimeRouter from "./onetime";
 import webhooksRouter from "./webhooks";
@@ -28,8 +29,11 @@ router.use("/health", healthRouter);
 // Skill generation
 router.use("/skill", skillRouter);
 
-// Subscription management
+// Subscription management (deprecated alias — kept for backward compat)
 router.use("/subscriptions", subscriptionRouter);
+
+// Payment policies (canonical PaymentPolicy family: list / single / executions)
+router.use("/payment-policies", paymentPoliciesRouter);
 
 // One-time payment queries
 router.use("/onetime", onetimeRouter);
