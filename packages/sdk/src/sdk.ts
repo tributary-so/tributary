@@ -45,6 +45,7 @@ import type {
   SetupResult,
 } from "./types.js";
 import { GATEWAY_FEATURES, MAX_PINNED_FORWARD_ACCOUNTS } from "./constants";
+import { deriveSchedulerAta } from "./composable";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -2916,16 +2917,14 @@ export class Tributary {
    * variant to the existing `calculate*ApprovalAmount` helper (or its face
    * field for oneTime/upTo).
    *
-   * INTERIM: no fee headroom. Composable fees are NET-on-pull (ADR-0026):
-   * the delegate must cover `face + fee`, but sizing the fee precisely needs
-   * gateway + protocol bps lookups. That lands in bean tributary-ydth
-   * (blocked by this one). Until then this returns the FACE amount only —
-   * callers may override via `approvalAmount` when they know the gross.
+   * Returns the FACE total only (no fee headroom). Payment-policy callers use
+   * this directly (fees are NET-on-amount there). Composable callers must wrap
+   * the result in {@link calculateComposableApproval} to add NET-on-pull fee
+   * headroom (ADR-0026).
    *
    * @param policyType - The policy configuration (any of the 5 variants)
    * @returns Face approval amount (BN), 0 for an empty/unknown variant
    */
-  // ponytail: face-only sizing, fee headroom deferred to tributary-ydth
   private calculatePolicyApprovalAmount(policyType: PolicyType): BN {
     if ("subscription" in policyType && policyType.subscription) {
       const s = policyType.subscription;
@@ -2953,6 +2952,36 @@ export class Tributary {
       return policyType.upTo.maxAmount;
     }
     return new BN(0);
+  }
+
+  /**
+   * Composable gross approval sizing — wraps the face-only
+   * {@link calculatePolicyApprovalAmount} in {@link requiredDelegatedAmount}
+   * so the delegate covers fees across the policy's whole life (ADR-0026:
+   * composable is NET-on-pull, every execution pulls `face + fee`, and the
+   * SPL `delegated_amount` is a total cap decremented per pull).
+   *
+   * Cap policy for unbounded variants (subscription with `maxRenewals: null`,
+   * PayAsYouGo): deliberately **matches the payment-policy helpers — 1 year**.
+   * One mental model across both policy families; the approval is re-issued on
+   * every create/approve and trivially topped up, so 1yr parity is sufficient.
+   * 2yr was considered and rejected as YAGNI; if composables in practice need
+   * longer, callers pass an explicit `approvalAmount` (or the helper's
+   * year-multiplier changes in one place).
+   *
+   * @param policyType - The policy configuration (any of the 5 variants)
+   * @param gateway - The gateway account (carries `gatewayFeeBps`), or `null`
+   *   if not fetched/unknown — degrades to face-only (0 bps).
+   * @returns Gross approval amount (`face_total + total_fee`), face-only when
+   *   the gateway is unknown.
+   */
+  calculateComposableApproval(
+    policyType: PolicyType,
+    gateway: PaymentGateway | null
+  ): BN {
+    const face = this.calculatePolicyApprovalAmount(policyType);
+    if (!gateway) return face;
+    return this.requiredDelegatedAmount(face, gateway);
   }
 
   /**
@@ -3067,9 +3096,15 @@ export class Tributary {
       data: { policyType, recipient, gateway, forwardConfig, policyPda: composablePolicyPda.address },
     });
 
-    // 4. Default approval (INTERIM face-only — see calculatePolicyApprovalAmount)
+    // 4. Default approval — NET-on-pull gross (ADR-0026): face + fee headroom
+    //    so the delegate covers fees across the policy's whole life. Gateway
+    //    is fetched only when defaulting (caller may pass an explicit override).
     const finalApprovalAmount: BN =
-      approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
+      approvalAmount ??
+      this.calculateComposableApproval(
+        policyType,
+        await this.getPaymentGateway(gateway)
+      );
     const newPolicyContribution = finalApprovalAmount;
 
     // Fetch existing policies for the metadata (both types share the delegation)
@@ -3209,6 +3244,23 @@ export class Tributary {
       ...(await this.ensureAta(config.feeRecipient, inputMint, authority))
     );
 
+    // ── Scheduler fee ATA (permissionless path, ADR-0016 amended) ──────
+    // When the caller (fee_payer) is NOT the gateway signer and the
+    // gateway has scheduler_share_bps > 0, the program requires the
+    // relayer's input-mint ATA as the LAST remaining_account. Without it,
+    // execution fails with MissingSchedulerFeeAccount.
+    const schedulerAta = deriveSchedulerAta({
+      authority,
+      gatewaySigner: gateway.signer,
+      schedulerShareBps: gateway.schedulerShareBps,
+      inputMint,
+    });
+    if (schedulerAta) {
+      instructions.push(
+        ...(await this.ensureAta(authority, inputMint, authority))
+      );
+    }
+
     // ── Execute ix (unchanged derivation) ──────────────────────────────
     // Act mode (ADR-0026): sentinel output_mint → no output token. The
     // output_mint account slot is SystemProgram; no output ATA is created.
@@ -3297,10 +3349,15 @@ export class Tributary {
     // ValidationPda was pulled out of `remaining_accounts` in ADR-0016:
     // the slice is now `[...lighthouseTargetAccounts, ...forwardAccounts,
     // (scheduler_ata?)]` — no leading ValidationPda entry.
+    // The scheduler_ata (when permissionless + scheduler_share > 0) is
+    // appended as the LAST entry by the SDK facade (ADR-0016 amended).
+    const fullRemainingAccounts = schedulerAta
+      ? [...(remainingAccounts ?? []), { pubkey: schedulerAta, isSigner: false, isWritable: true }]
+      : remainingAccounts ?? [];
     const executeIx = await this.program.methods
       .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
       .accountsStrict(accounts)
-      .remainingAccounts(remainingAccounts ?? [])
+      .remainingAccounts(fullRemainingAccounts)
       .instruction();
     instructions.push(executeIx);
 

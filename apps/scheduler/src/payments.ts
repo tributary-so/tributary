@@ -14,6 +14,8 @@ interface SchedulerConfig {
   connectionUrl: string;
   gatewayKeypairPath?: string;
   privateKeys?: string[];
+  relayerKeypairPath?: string;
+  relayerPrivateKeys?: string[];
   cronSchedule?: string;
 }
 

@@ -64,6 +64,8 @@ interface SchedulerConfig {
   connectionUrl: string;
   gatewayKeypairPath?: string;
   privateKeys?: string[];
+  relayerKeypairPath?: string;
+  relayerPrivateKeys?: string[];
 }
 
 const FORWARD_CONTEXT: Record<string, ForwardContext> = {
@@ -77,6 +79,7 @@ const FORWARD_CONTEXT: Record<string, ForwardContext> = {
 class ComposableScheduler {
   private sdk: TributarySDK;
   private gatewayKeypairs: Keypair[];
+  private relayerKeypairs: Keypair[];
   private config: SchedulerConfig;
   private watched: Map<string, WatchedPolicy[]> = new Map();
   private cooldowns: Map<string, CooldownEntry> = new Map();
@@ -87,6 +90,7 @@ class ComposableScheduler {
   constructor(config: SchedulerConfig) {
     this.config = config;
     this.gatewayKeypairs = [];
+    this.relayerKeypairs = [];
 
     const connection = new Connection(config.connectionUrl, "confirmed");
     this.sdk = new TributarySDK(connection, this.gatewayKeypairs[0]);
@@ -107,6 +111,26 @@ class ComposableScheduler {
     if (this.gatewayKeypairs.length === 0) {
       console.log("Error: need at least one private key!");
       exit(1);
+    }
+
+    // ── Cold-relayer keypairs (ADR-0016 amended) ─────────────────────
+    // Optional: when provided, fire() signs with the relayer instead of
+    // the gateway signer. This makes execution permissionless
+    // (is_permissionless = true on-chain), which triggers the
+    // scheduler_ATA fee-routing path.
+    if (config.relayerKeypairPath) {
+      this.relayerKeypairs.push(
+        this.loadKeypairFromFile(config.relayerKeypairPath)
+      );
+    } else if (
+      config.relayerPrivateKeys &&
+      config.relayerPrivateKeys.length > 0
+    ) {
+      for (const privateKey of config.relayerPrivateKeys) {
+        if (privateKey.trim()) {
+          this.relayerKeypairs.push(this.loadKeypair(privateKey.trim()));
+        }
+      }
     }
   }
 
@@ -129,6 +153,17 @@ class ComposableScheduler {
         .map((k) => k.publicKey.toString())
         .join(", ")}`
     );
+    if (this.relayerKeypairs.length > 0) {
+      console.log(
+        `Relayers (cold-relayer path): ${this.relayerKeypairs
+          .map((k) => k.publicKey.toString())
+          .join(", ")}`
+      );
+    } else {
+      console.log(
+        "Relayers: none — signing with gateway keypairs (trusted-signer path)"
+      );
+    }
     console.log(`Connection: ${this.config.connectionUrl}`);
 
     for (const keypair of this.gatewayKeypairs) {
@@ -238,9 +273,13 @@ class ComposableScheduler {
         }/${policies.length} fireable`
       );
 
+      // ponytail: single relayer for all gateways. Round-robin / per-gateway
+      // relayer assignment adds config complexity for no current use case.
+      const signer = this.relayerKeypairs[0] ?? keypair;
+
       await Promise.all(
         fireable.map((p) =>
-          this.fire(p, keypair).catch((e) =>
+          this.fire(p, signer).catch((e) =>
             console.error(`fire error for ${p.publicKey.toString()}:`, e)
           )
         )
@@ -369,8 +408,8 @@ class ComposableScheduler {
     return fireable;
   }
 
-  private async fire(policy: WatchedPolicy, gateway: Keypair): Promise<void> {
-    await this.sdk.updateWallet(new anchor.Wallet(gateway));
+  private async fire(policy: WatchedPolicy, signer: Keypair): Promise<void> {
+    await this.sdk.updateWallet(new anchor.Wallet(signer));
 
     try {
       const amount =
@@ -397,11 +436,9 @@ class ComposableScheduler {
       // ── remaining_accounts (ADR-0016, no ValidationPda in slice) ────
       // Program contract (execute_composable.rs run_validation_cpi):
       //   [...preLighthouseTargets, ...forwardAccounts, ...postLighthouseTargets, (scheduler_ata?)]
-      // The ValidationPda itself is a dedicated Anchor account
-      // (pre_validation_pda / post_validation_pda), NOT in remaining_accounts.
-      // remaining[0..num_pinned] is pin-checked against
-      // validation_pda.pinned_accounts — exactly the owner-declared targets
-      // read here. Post-validation targets occupy the trailing slice.
+      // The scheduler_ata (permissionless path) is appended by the SDK
+      // facade (sdk.executeComposable) via deriveSchedulerAta — the
+      // scheduler does NOT include it here.
       const [preTargets, postTargets] = await Promise.all([
         resolveValidationTargets(
           this.sdk.connection,
@@ -433,14 +470,14 @@ class ComposableScheduler {
       );
 
       const transaction = new Transaction().add(...ixs);
-      transaction.feePayer = gateway.publicKey;
+      transaction.feePayer = signer.publicKey;
       const { blockhash } = await this.sdk.connection.getLatestBlockhash(
         "confirmed"
       );
       transaction.recentBlockhash = blockhash;
 
       const sim = await this.sdk.connection.simulateTransaction(transaction, [
-        gateway,
+        signer,
       ]);
       if (sim.value.err) {
         throw new Error(
