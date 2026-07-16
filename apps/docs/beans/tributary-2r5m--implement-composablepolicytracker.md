@@ -3,8 +3,9 @@
 title: Implement ComposablePolicyTracker
 status: todo
 type: task
+priority: normal
 created_at: 2026-07-16T10:23:11Z
-updated_at: 2026-07-16T10:23:11Z
+updated_at: 2026-07-16T18:12:10Z
 parent: tributary-3mho
 ---
 
