@@ -1,11 +1,11 @@
 ---
 # tributary-g3df
 title: DRY composable execution — shared primitives + forward-builders package
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-15T10:10:52Z
-updated_at: 2026-07-15T10:10:52Z
+updated_at: 2026-07-15T19:52:53Z
 ---
 
 # DRY Composable Execution — Shared Primitives + Forward-Builders Package
