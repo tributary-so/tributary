@@ -253,6 +253,32 @@ export async function getPaymentRecords(options?: {
   }));
 }
 
+// ponytail: brief names `getComposableExecutionsByPolicyAddress`; the sibling
+// db/queries.ts bean (milestone `tributary-cbvp`) may reconcile/dedupe this.
+// Mirrors getPaymentRecords against the ComposableExecuted event. Returns
+// `Event[]` (no strong composable event type exists in events.ts yet — the
+// events-centralization sibling adds `TributaryComposableExecuted`).
+export async function getComposableExecutionsByPolicyAddress(
+  composablePolicy: string,
+  options?: { limit?: number; offset?: number }
+): Promise<Event[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_ComposableExecuted"),
+    sql`${events.data}->>'composable_policy' = ${composablePolicy}`,
+  ];
+
+  return db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+}
+
 export async function getPaymentPolicyCreatedEvents(options?: {
   gateway?: string;
   recipient?: string;
