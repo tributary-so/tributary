@@ -158,8 +158,6 @@ describe("Payment Policies API Routes", () => {
     });
 
     it("rejects more than 3 filters", async () => {
-      mockGetSubscriptionDetails.mockResolvedValueOnce([]);
-
       const response = await request(app)
         .get("/v1/payment-policies")
         .query({
@@ -296,6 +294,73 @@ describe("Payment Policies API Routes", () => {
       expect(mockGetPaymentExecutions).toHaveBeenCalledWith(
         "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
         { limit: undefined, offset: undefined }
+      );
+    });
+  });
+
+  /**
+   * Shape parity: /payment-policies is the canonical name for the data that
+   * /subscriptions serves. Both delegate to getSubscriptionDetails, so the
+   * response envelope + record shape must be identical. This locks the
+   * contract so a future refactor of one endpoint can't silently drift.
+   */
+  describe("Shape parity with /subscriptions", () => {
+    const SUBSCRIPTION_SHAPED_RECORD = {
+      owner: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+      recipient: "8WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+      gateway: "7WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+      policyId: 1,
+      memo: "shape_parity_check",
+      totalPaid: 1000000,
+      createdAt: 1704067200,
+      updatedAt: 1704067200,
+      policyAccount: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+      policyType: { subscription: { amount: 1000000 } },
+    };
+
+    it("returns the same envelope keys as /subscriptions", async () => {
+      mockGetSubscriptionDetails.mockResolvedValueOnce([
+        SUBSCRIPTION_SHAPED_RECORD,
+      ]);
+
+      const response = await request(app)
+        .get("/v1/payment-policies")
+        .query({
+          gatewayPublicKey: "7WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        })
+        .expect(200);
+
+      expect(Object.keys(response.body).sort()).toEqual(
+        ["data", "success", "timestamp"].sort()
+      );
+    });
+
+    it("returns data records with the same field shape as /subscriptions", async () => {
+      mockGetSubscriptionDetails.mockResolvedValueOnce([
+        SUBSCRIPTION_SHAPED_RECORD,
+      ]);
+
+      const response = await request(app)
+        .get("/v1/payment-policies")
+        .query({
+          gatewayPublicKey: "7WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        })
+        .expect(200);
+
+      const record = response.body.data[0];
+      expect(Object.keys(record).sort()).toEqual(
+        [
+          "createdAt",
+          "gateway",
+          "memo",
+          "owner",
+          "policyAccount",
+          "policyId",
+          "policyType",
+          "recipient",
+          "totalPaid",
+          "updatedAt",
+        ].sort()
       );
     });
   });

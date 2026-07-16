@@ -151,8 +151,6 @@ describe("Composable Policies API Routes", () => {
     });
 
     it("rejects more than 3 filters", async () => {
-      mockGetDetails.mockResolvedValueOnce([]);
-
       const response = await request(app)
         .get("/v1/composable-policies")
         .query({
