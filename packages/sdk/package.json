@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "lint": "exit 0",
-    "test": "exit 0",
+    "test": "npx tsx --test src/__tests__/**/*.test.ts",
     "clean": "rm -rf ./dist",
     "build": "npx tsup",
     "manager": "npx tsx src/manager.ts",
