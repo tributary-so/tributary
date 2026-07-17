@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-07-16T10:23:50Z
-updated_at: 2026-07-16T18:48:42Z
+updated_at: 2026-07-17T07:23:21Z
 parent: tributary-oepl
 blocked_by:
     - tributary-gd1l
@@ -35,3 +35,87 @@ This bean is the API *consumer* of SDK work owned by these still-`todo` sibling 
 Note (pre-existing, orthogonal): the `TributaryEventName` union already uses *lowercase* event-name strings (e.g. `tributary_payment_record`) that do NOT match the names actually stored in postgres (`tributary_PaymentRecord`, PascalCase — see `kafkaConsumer.ts` topic + all live queries in `db/queries.ts`/`db/merchant.ts`). This casing mismatch affects all 12 existing entries and is out of scope here, but should be reconciled in a separate bean.
 
 Refusing to ship half-finished work: hand-writing the interfaces (the anti-goal of this bean) or expanding into the SDK (scope the 4 sibling beans own) are both off-limits per the brief.
+
+
+## Blocker (2026-07-17) — SDK type representation mismatch (camelCase/BN/PublicKey vs snake_case/number/string)
+
+The previous blocker (missing SDK exports) is **resolved**: all 4 sibling beans
+(`tributary-gd1l`, `tributary-ijzd`, `tributary-29wo`, `tributary-7ape`) are
+`completed`, and `packages/sdk/src/types.ts` now exports all 19 `IdlEvents`
+aliases (`PaymentRecordEvent`, `ComposableExecutedEvent`, etc.).
+
+Re-dispatched and attempted the swap. It is **not mechanical**: the SDK event
+types do not match the API's data contract, so swapping them in breaks
+consumers and the external webhook contract.
+
+### Evidence (representation differences)
+
+The SDK's `PaymentRecordEvent = IdlEvents<Tributary>["paymentRecord"]` resolves to:
+```
+{ paymentPolicy: PublicKey; gateway: PublicKey; amount: BN; timestamp: BN;
+  memo: number[]; recordId: number; payer: PublicKey; recipient: PublicKey;
+  tokenMint: PublicKey }
+```
+
+Confirmed at the source: `target/types/tributary.ts` (Anchor 0.31.0 codegen)
+emits camelCase field names — e.g. `{ "name": "recordId" }` — even though the
+IDL JSON (`target/idl/tributary.json`) declares `{ "name": "record_id" }`.
+Anchor camelCases struct fields in its TS output and uses `BN` for u64/i64 and
+the `@solana/web3.js` `PublicKey` class for pubkeys.
+
+The hand-written `TributaryPaymentRecord` (snake_case, `number` amounts, `string`
+pubkeys, optional `payer`/`recipient`, no `token_mint`) is **not drift** — it
+deliberately models the API's actual data pipeline:
+
+1. **Kafka contract** (`kafkaConsumer.ts:7-23`, hand-written `KafkaPaymentRecordEvent`):
+   `data.payment_policy: string`, `data.amount: string`, `data.record_id: number`.
+2. **Postgres JSONB** (every query in `db/queries.ts`): `data->>'payment_policy'`
+   — snake_case, string amounts.
+3. **External webhook payload** (`webhookForwarder.ts:4-8,34-38`):
+   `WebhookPayload.data: TributaryPaymentRecord` is `JSON.stringify`'d and POSTed
+   to merchant endpoints — `payment_policy` / `record_id` / etc. are the
+   **external contract** with merchant webhook consumers.
+
+### Breakage from the swap (measured)
+
+With the 12 interfaces aliased to SDK types + 4 composable events added,
+`tsc --noEmit` in `apps/api` produced 6 NEW errors (baseline = 2 pre-existing
+unrelated):
+- `kafkaConsumer.ts:124-126`: `string` not assignable to `PublicKey`; `number`
+  not assignable to `BN`.
+- `onetime.ts:16`: `gateway: PublicKey` not assignable to `string`.
+- `onetime.ts:21,25`: `Property 'payment_policy' does not exist` (did you mean
+  `paymentPolicy`?); `Property 'record_id' does not exist` (did you mean
+  `recordId`?).
+
+### Why this needs a human decision (not a guess)
+
+Every in-scope-for-this-bean resolution is off-limits or out of scope:
+
+- **Rewrite the API pipeline to camelCase + BN + PublicKey**: touches
+  `kafkaConsumer.ts`, `db/queries.ts` (every `data->>'...'` query), `onetime.ts`,
+  `webhookForwarder.ts`, and all tests — AND silently changes the field names in
+  the webhook payload POSTed to merchants (`payment_policy`→`paymentPolicy`,
+  `record_id`→`recordId`, + new `token_mint`). That is a breaking change to an
+  external contract and a scope explosion past a single task bean.
+- **Add a normalization/mapping layer** between SDK types and snake_case storage:
+  over-engineering, not in this bean's scope.
+- **Keep the hand-written interfaces**: rejects the bean's stated premise.
+
+The sibling beans did their job (SDK exports event types), but those types model
+Anchor's on-chain Borsh-decode representation, not the API's snake_case JSON
+storage/Kafka/webhook format. The two representations are genuinely different and
+the choice between them (or a mapping strategy) is an architecture decision, not
+an implementer's call.
+
+### Reproduction
+
+1. `cd packages/sdk && pnpm run build` (SDK dist present, event types exported).
+2. Swap the 12 interfaces in `apps/api/src/db/events.ts` for
+   `export type TributaryPaymentRecord = PaymentRecordEvent;` etc. + add 4
+   composable events to the union + map.
+3. `cd apps/api && npx tsc --noEmit` → 6 new errors above.
+
+Work tree reverted to clean HEAD; no half-finished swap left behind. Bean kept
+`in-progress` (was `todo`; left the status alone since this is a second blocker,
+not a start of work — happy to flip to `in-progress` if the daemon prefers).
