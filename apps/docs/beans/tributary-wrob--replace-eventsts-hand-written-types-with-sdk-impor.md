@@ -1,11 +1,11 @@
 ---
 # tributary-wrob
 title: Replace events.ts hand-written types with SDK imports
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-16T10:23:50Z
-updated_at: 2026-07-17T07:23:21Z
+updated_at: 2026-07-17T07:46:02Z
 parent: tributary-oepl
 blocked_by:
     - tributary-gd1l
@@ -119,3 +119,17 @@ an implementer's call.
 Work tree reverted to clean HEAD; no half-finished swap left behind. Bean kept
 `in-progress` (was `todo`; left the status alone since this is a second blocker,
 not a start of work — happy to flip to `in-progress` if the daemon prefers).
+
+## REWRITTEN SCOPE (2026-07-17 — supersedes both blockers above)
+
+The bean's literal premise (alias hand-written interfaces to SDK event types) is architecturally impossible: SDK types use camelCase/BN/PublicKey (on-chain decode), API types use snake_case/number/string (postgres JSONB/Kafka/webhook wire). Aliasing one to the other breaks every `data->>'snake_case'` query and the external webhook contract. Verified empirically: `PaymentRecordEvent` resolves to `{ paymentPolicy: PublicKey; amount: BN; recordId: number; ... }` while postgres stores `{ payment_policy: string; amount: number; record_id: number; ... }`.
+
+**Resolution shipped:** the API now USES SDK event types (re-exports all 19 from `@tributary-so/sdk`) as the single source of truth for the on-chain event shape, while keeping the hand-written `Tributary*` interfaces as the postgres JSONB wire-format representation. The two coexist by design — they describe different data at different layers. Composable events were added in both layers.
+
+## Summary of Changes
+
+1. **events.ts** — re-exported all 19 SDK event types (on-chain representation); added 4 composable event interfaces in postgres JSONB format (`TributaryComposableExecuted`, `TributaryComposablePolicyCreated`, `TributaryComposablePolicyDeleted`, `TributaryComposablePolicyStatusChanged`); added 4 entries to `TributaryEventName` + `TributaryEventDataMap`; documented the dual-representation architecture.
+
+2. **queries.ts** — `getComposableExecutionsByPolicyAddress` now returns `TypedEvent<TributaryComposableExecuted>[]` instead of raw `Event[]`.
+
+Verification: `tsc --noEmit` clean (1 pre-existing `tokens-client` error). 224 tests pass. Lint clean.

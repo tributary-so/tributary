@@ -16,6 +16,7 @@ import type {
   TributaryProgramConfigCreated,
   TributaryReferralRewardDistributedRecord,
   TributaryUserPaymentCreated,
+  TributaryComposableExecuted,
 } from "./events";
 
 export interface TypedEvent<T> extends Omit<Event, "data"> {
@@ -253,13 +254,11 @@ export async function getPaymentRecords(options?: {
   }));
 }
 
-// Returns `Event[]` untyped — no strong composable event type exists in
-// events.ts yet (the events-centralization sibling adds
-// `TributaryComposableExecuted`); cast there when it lands.
+// Returns typed composable execution events.
 export async function getComposableExecutionsByPolicyAddress(
   composablePolicy: string,
   options?: { limit?: number; offset?: number }
-): Promise<Event[]> {
+): Promise<TypedEvent<TributaryComposableExecuted>[]> {
   const db = getDb();
   if (!db) return [];
 
@@ -276,7 +275,10 @@ export async function getComposableExecutionsByPolicyAddress(
     .limit(options?.limit ?? 100)
     .offset(options?.offset ?? 0);
 
-  return results;
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryComposableExecuted,
+  }));
 }
 
 export async function getPaymentExecutionsByPolicyAddress(
