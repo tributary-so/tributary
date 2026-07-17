@@ -69,10 +69,9 @@ function normalizePaymentPolicy(
 /**
  * Fetch a single PaymentPolicy account straight from RPC by its PDA address.
  *
- * ponytail: brief names `PaymentPolicyTracker` (rename in flight, bean
- * tributary-vd06). We construct a Tributary program instance directly — same
- * one-line pattern as `PaymentTracker`'s constructor — so this route compiles
- * today and doesn't grow a sibling-owned service file.
+ * ponytail: we construct a Tributary program instance directly — same
+ * one-line pattern as `PaymentPolicyTracker`'s constructor — so this route
+ * stays self-contained without growing a sibling-owned service file.
  */
 async function fetchPaymentPolicyByAddress(
   address: string

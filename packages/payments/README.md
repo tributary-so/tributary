@@ -26,14 +26,16 @@ npm install @tributary-so/payments
 ## Quick Start
 
 ```typescript
-import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
+import { PaymentsClient, PaymentPolicyTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 // Initialize with connection and tributary
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
+const manager = new PaymentsClient(
+  new PaymentPolicyTracker(connection, tributary)
+);
 
 const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"],
@@ -64,14 +66,16 @@ window.location.href = session.url;
 ### One-Time Payment Quick Start
 
 ```typescript
-import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
+import { PaymentsClient, PaymentPolicyTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 // Initialize with connection and tributary
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
+const manager = new PaymentsClient(
+  new PaymentPolicyTracker(connection, tributary)
+);
 
 const session = await manager.checkout.sessions.create({
   payment_method_types: ["tributary"],
@@ -100,13 +104,15 @@ window.location.href = session.url;
 Check subscription status efficiently using our dual lookup strategy - either user-based OR gateway-based:
 
 ```typescript
-import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
+import { PaymentsClient, PaymentPolicyTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
+const manager = new PaymentsClient(
+  new PaymentPolicyTracker(connection, tributary)
+);
 
 // Option 1: User-based lookup (for user-facing apps)
 async function checkUserSubscription() {
@@ -172,13 +178,15 @@ checkUserSubscription();
 One-time payments are tracked via SPL transfers with memo fields. Status checking requires indexing (planned in Milestone 2):
 
 ```typescript
-import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
+import { PaymentsClient, PaymentPolicyTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
+const manager = new PaymentsClient(
+  new PaymentPolicyTracker(connection, tributary)
+);
 
 // Check one-time payment status
 async function checkOneTimePayment() {
@@ -445,17 +453,19 @@ This enables:
 
 ### PaymentsClient
 
-The main client class. Pass an optional `PaymentTracker` to enable `.policies`
+The main client class. Pass an optional `PaymentPolicyTracker` to enable `.policies`
 queries; checkout sessions and one-time tracking need no tracker.
 
 ```typescript
-import { PaymentsClient, PaymentTracker } from "@tributary-so/payments";
+import { PaymentsClient, PaymentPolicyTracker } from "@tributary-so/payments";
 import { Connection } from "@solana/web3.js";
 import { Tributary } from "@tributary-so/sdk";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const tributary = new Tributary(connection, wallet);
-const manager = new PaymentsClient(new PaymentTracker(connection, tributary));
+const manager = new PaymentsClient(
+  new PaymentPolicyTracker(connection, tributary)
+);
 ```
 
 #### checkout.sessions.create()

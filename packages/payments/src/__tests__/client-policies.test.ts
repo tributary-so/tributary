@@ -2,7 +2,7 @@
 // Feature tributary-gj27 (milestone tributary-f6yh, Axis 7).
 
 import { PaymentsClient } from "../core/client";
-import { PaymentTracker } from "../core/tracking";
+import { PaymentPolicyTracker } from "../core/tracking";
 
 // Build a fake tracker returning canned policies. account.policyType mirrors
 // the Anchor-serialized on-chain enum shape ({ subscription: {...} }, etc.)
@@ -44,7 +44,10 @@ const OPTS = { trackingId: "t" };
 describe("PaymentsClient.policies (Axis 7)", () => {
   it("checkStatus summarizes matching policies", async () => {
     const client = new PaymentsClient(
-      fakeTracker([subPolicy(), milestonePolicy()]) as unknown as PaymentTracker
+      fakeTracker([
+        subPolicy(),
+        milestonePolicy(),
+      ]) as unknown as PaymentPolicyTracker
     );
     const status = await client.policies.checkStatus(OPTS);
     expect(status.total).toBe(2);
@@ -56,21 +59,24 @@ describe("PaymentsClient.policies (Axis 7)", () => {
       fakeTracker([
         subPolicy("paused"),
         subPolicy("active"),
-      ]) as unknown as PaymentTracker
+      ]) as unknown as PaymentPolicyTracker
     );
     expect(await client.policies.isActive(OPTS)).toBe(true);
   });
 
   it("isActive returns false when none active", async () => {
     const client = new PaymentsClient(
-      fakeTracker([subPolicy("completed")]) as unknown as PaymentTracker
+      fakeTracker([subPolicy("completed")]) as unknown as PaymentPolicyTracker
     );
     expect(await client.policies.isActive(OPTS)).toBe(false);
   });
 
   it("getDetails returns the raw matching policies", async () => {
     const client = new PaymentsClient(
-      fakeTracker([subPolicy(), milestonePolicy()]) as unknown as PaymentTracker
+      fakeTracker([
+        subPolicy(),
+        milestonePolicy(),
+      ]) as unknown as PaymentPolicyTracker
     );
     const details = await client.policies.getDetails(OPTS);
     expect(details).toHaveLength(2);
@@ -83,7 +89,7 @@ describe("PaymentsClient.policies (Axis 7)", () => {
         subPolicy(),
         milestonePolicy(),
         oneTimePolicy(),
-      ]) as unknown as PaymentTracker
+      ]) as unknown as PaymentPolicyTracker
     );
     const onlySubs = await client.policies.getDetails({
       ...OPTS,
@@ -95,7 +101,10 @@ describe("PaymentsClient.policies (Axis 7)", () => {
 
   it("variant=oneTime filters to oneTime policies", async () => {
     const client = new PaymentsClient(
-      fakeTracker([subPolicy(), oneTimePolicy()]) as unknown as PaymentTracker
+      fakeTracker([
+        subPolicy(),
+        oneTimePolicy(),
+      ]) as unknown as PaymentPolicyTracker
     );
     const res = await client.policies.getDetails({
       ...OPTS,
@@ -107,7 +116,7 @@ describe("PaymentsClient.policies (Axis 7)", () => {
 
   it("variant=payment returns no PaymentPolicies (payments are not policies)", async () => {
     const client = new PaymentsClient(
-      fakeTracker([subPolicy()]) as unknown as PaymentTracker
+      fakeTracker([subPolicy()]) as unknown as PaymentPolicyTracker
     );
     const res = await client.policies.getDetails({
       ...OPTS,
@@ -137,7 +146,7 @@ describe("PaymentsClient.subscriptions deprecated alias (Axis 7)", () => {
 
   it("delegates to .policies and warns", async () => {
     const client = new PaymentsClient(
-      fakeTracker([subPolicy()]) as unknown as PaymentTracker
+      fakeTracker([subPolicy()]) as unknown as PaymentPolicyTracker
     );
     const status = await client.subscriptions.checkStatus(OPTS);
     expect(status.total).toBe(1);

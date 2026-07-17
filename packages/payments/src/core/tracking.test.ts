@@ -1,12 +1,12 @@
 // @ts-nocheck
-// Unit tests for PaymentTracker (G-4, review 2026-07-06).
+// Unit tests for PaymentPolicyTracker (G-4, review 2026-07-06).
 //
 // The on-chain lookups (`getPoliciesByGateway`, `getPoliciesByOwner`,
 // `getPaymentPoliciesForOptions`) all delegate to the Tributary SDK. We
 // build the tracker against a fresh mock instance per test and assert the
-// lookup methods are called with the right derived PDAs / memcmp filters.
+// lookup methods are called with the right derived PDAs / filter shape.
 // Without these tests, a regression in any of those delegation paths
-// (wrong PDA, wrong memcmp offset, swallowed error) would only surface in
+// (wrong PDA, wrong filter field, swallowed error) would only surface in
 // end-to-end runs.
 //
 // Note on mocks: setup.ts globally mocks `@tributary-so/sdk` and
@@ -15,7 +15,7 @@
 // tracker against it.
 
 import { Tributary } from "@tributary-so/sdk";
-import { PaymentTracker, ComposablePolicyTracker } from "./tracking";
+import { PaymentPolicyTracker, ComposablePolicyTracker } from "./tracking";
 
 const GATEWAY = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
 const RECIPIENT = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
@@ -30,24 +30,18 @@ function makeTracker() {
     })),
     getPaymentPoliciesByGateway: jest.fn().mockResolvedValue([]),
     getPaymentPoliciesByUserPayment: jest.fn().mockResolvedValue([]),
-    program: {
-      account: {
-        paymentPolicy: {
-          all: jest.fn().mockResolvedValue([]),
-        },
-      },
-    },
+    getPaymentPolicies: jest.fn().mockResolvedValue([]),
   };
   const ctor = Tributary as unknown as jest.Mock;
   ctor.mockImplementation(() => sdk);
-  const tracker = new PaymentTracker(
+  const tracker = new PaymentPolicyTracker(
     {} as any,
     new Tributary({} as any, {} as any)
   );
   return { tracker, sdk };
 }
 
-describe("PaymentTracker", () => {
+describe("PaymentPolicyTracker", () => {
   describe("getPoliciesByGateway", () => {
     it("delegates to sdk.getPaymentPoliciesByGateway with a PublicKey", async () => {
       const { tracker, sdk } = makeTracker();
@@ -101,78 +95,81 @@ describe("PaymentTracker", () => {
   });
 
   describe("getPaymentPoliciesForOptions", () => {
-    it("builds no filters when options is empty", async () => {
+    it("delegates to sdk.getPaymentPolicies with empty filters when no options given", async () => {
       const { tracker, sdk } = makeTracker();
       await tracker.getPaymentPoliciesForOptions({});
-      expect(sdk.program.account.paymentPolicy.all).toHaveBeenCalledWith([]);
+      expect(sdk.getPaymentPolicies).toHaveBeenCalledTimes(1);
+      expect(sdk.getPaymentPolicies).toHaveBeenCalledWith({});
     });
 
-    it("adds user_payment memcmp at offset 8 when wallet + tokenMint given", async () => {
+    it("derives userPayment PDA from wallet + tokenMint pair", async () => {
       const { tracker, sdk } = makeTracker();
       await tracker.getPaymentPoliciesForOptions({
         walletPublicKey: WALLET,
         tokenMint: MINT,
       });
-      const filters = sdk.program.account.paymentPolicy.all.mock.calls[0][0];
-      expect(filters).toHaveLength(1);
-      expect(filters[0].memcmp.offset).toBe(8);
-      expect(typeof filters[0].memcmp.bytes).toBe("string");
+      expect(sdk.getUserPaymentPda).toHaveBeenCalledTimes(1);
+      const [walletArg, mintArg] = sdk.getUserPaymentPda.mock.calls[0];
+      expect(walletArg.toBase58()).toBe(WALLET);
+      expect(mintArg.toBase58()).toBe(MINT);
+      const passed = sdk.getPaymentPolicies.mock.calls[0][0];
+      expect(passed.userPayment).toBeDefined();
+      expect(passed.userPayment.toBase58()).toBe("UserPaymentPda");
+      expect(Object.keys(passed)).toEqual(["userPayment"]);
     });
 
-    it("adds recipient memcmp at offset 8+32", async () => {
+    it("translates recipient into {recipient: PublicKey}", async () => {
       const { tracker, sdk } = makeTracker();
       await tracker.getPaymentPoliciesForOptions({ recipient: RECIPIENT });
-      const filters = sdk.program.account.paymentPolicy.all.mock.calls[0][0];
-      expect(filters).toHaveLength(1);
-      expect(filters[0].memcmp.offset).toBe(8 + 32);
-      expect(filters[0].memcmp.bytes).toBe(RECIPIENT);
+      const passed = sdk.getPaymentPolicies.mock.calls[0][0];
+      expect(passed.recipient).toBeDefined();
+      expect(passed.recipient.toBase58()).toBe(RECIPIENT);
+      expect(Object.keys(passed)).toEqual(["recipient"]);
     });
 
-    it("adds gateway memcmp at offset 8+32+32", async () => {
+    it("translates gatewayPublicKey into {gateway: PublicKey}", async () => {
       const { tracker, sdk } = makeTracker();
       await tracker.getPaymentPoliciesForOptions({
         gatewayPublicKey: GATEWAY,
       });
-      const filters = sdk.program.account.paymentPolicy.all.mock.calls[0][0];
-      expect(filters).toHaveLength(1);
-      expect(filters[0].memcmp.offset).toBe(8 + 32 + 32);
-      expect(filters[0].memcmp.bytes).toBe(GATEWAY);
+      const passed = sdk.getPaymentPolicies.mock.calls[0][0];
+      expect(passed.gateway).toBeDefined();
+      expect(passed.gateway.toBase58()).toBe(GATEWAY);
+      expect(Object.keys(passed)).toEqual(["gateway"]);
     });
 
-    it("combines wallet + recipient + gateway filters in declaration order", async () => {
+    it("passes trackingId through verbatim (SDK owns memo encoding)", async () => {
+      const { tracker, sdk } = makeTracker();
+      await tracker.getPaymentPoliciesForOptions({ trackingId: "abc" });
+      const passed = sdk.getPaymentPolicies.mock.calls[0][0];
+      expect(passed.trackingId).toBe("abc");
+      expect(Object.keys(passed)).toEqual(["trackingId"]);
+    });
+
+    it("combines all filter options in a single delegation call", async () => {
       const { tracker, sdk } = makeTracker();
       await tracker.getPaymentPoliciesForOptions({
         walletPublicKey: WALLET,
         tokenMint: MINT,
-        recipient: RECIPIENT,
         gatewayPublicKey: GATEWAY,
+        recipient: RECIPIENT,
+        trackingId: "combo",
       });
-      const filters = sdk.program.account.paymentPolicy.all.mock.calls[0][0];
-      expect(filters).toHaveLength(3);
-      expect(filters[0].memcmp.offset).toBe(8);
-      expect(filters[1].memcmp.offset).toBe(8 + 32);
-      expect(filters[2].memcmp.offset).toBe(8 + 32 + 32);
-    });
-
-    it("encodes trackingId via bs58(encodeMemo(id, 64)) at the memo offset", async () => {
-      const { tracker, sdk } = makeTracker();
-      await tracker.getPaymentPoliciesForOptions({ trackingId: "abc" });
-      const filters = sdk.program.account.paymentPolicy.all.mock.calls[0][0];
-      expect(filters).toHaveLength(1);
-      expect(filters[0].memcmp.offset).toBe(8 + 32 + 32 + 32 + 118);
-      // bytes is bs58 of a fixed 64-byte memo buffer; sanity-check shape only.
-      expect(typeof filters[0].memcmp.bytes).toBe("string");
-      expect(filters[0].memcmp.bytes.length).toBeGreaterThan(0);
+      expect(sdk.getPaymentPolicies).toHaveBeenCalledTimes(1);
+      const passed = sdk.getPaymentPolicies.mock.calls[0][0];
+      expect(Object.keys(passed).sort()).toEqual(
+        ["gateway", "recipient", "trackingId", "userPayment"].sort()
+      );
     });
   });
 });
 
 // ComposablePolicyTracker tests (tributary-fqro).
 //
-// Unlike PaymentTracker, ComposablePolicyTracker does NOT build memcmp
-// filters itself — it translates PolicyLookupOptions into the SDK's
-// `{userPayment?, gateway?, recipient?, trackingId?}` shape and delegates
-// to `sdk.getComposablePolicies(filters)`. The SDK owns the offsets.
+// Unlike PaymentPolicyTracker in its pre-delegation form, neither tracker
+// now builds memcmp filters itself — each translates PolicyLookupOptions into
+// the SDK's `{userPayment?, gateway?, recipient?, trackingId?}` shape and
+// delegates (`sdk.getPaymentPolicies` / `sdk.getComposablePolicies`). The SDK owns the offsets.
 // These tests verify: (a) the option→filter translation, (b) delegation
 // to the SDK, and (c) normalization of raw accounts into the API shape
 // (memo decoded, BN→number, padding/bump stripped, policyAccount carried).

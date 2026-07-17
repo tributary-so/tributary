@@ -13,7 +13,7 @@ jest.mock("../services/solana", () => ({
   getConnection: jest.fn(() => ({})),
 }));
 jest.mock("@tributary-so/payments", () => ({
-  PaymentTracker: jest.fn(),
+  PaymentPolicyTracker: jest.fn(),
   PolicyLookupOptions: {},
 }));
 const fetchNullableMock: jest.MockedFunction<any> = jest.fn() as any;
