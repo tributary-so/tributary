@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 import { ComposableScheduler } from "./composable.js";
-import { PaymentScheduler, SchedulerConfig } from "./payments.js"
-
+import { PaymentScheduler, SchedulerConfig } from "./payments.js";
 
 // CLI interface
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -20,12 +19,28 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     privateKeys = process.env.PRIVATE_KEY.split(";").filter((k) => k.trim());
   }
 
+  let relayerPrivateKeys: string[] | undefined;
+  if (process.env.RELAYER_PRIVATE_KEY) {
+    relayerPrivateKeys = process.env.RELAYER_PRIVATE_KEY.split(";").filter(
+      (k) => k.trim()
+    );
+  }
+
+  const dryRun = process.argv.includes("--dry-run");
+
   const config: SchedulerConfig = {
     connectionUrl: process.env.SOLANA_API,
     gatewayKeypairPath: process.env.ANCHOR_WALLET,
     privateKeys: privateKeys,
+    relayerKeypairPath: process.env.RELAYER_WALLET,
+    relayerPrivateKeys: relayerPrivateKeys,
     cronSchedule: process.env.CRON_SCHEDULE || "0 * * * *",
+    dryRun,
   };
+
+  if (dryRun) {
+    console.log("=== DRY-RUN MODE — no transactions will be sent ===");
+  }
 
   const paymentsEnabled =
     process.env.ENABLE_PAYMENTS === "true" ||
@@ -46,6 +61,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       connectionUrl: config.connectionUrl,
       gatewayKeypairPath: config.gatewayKeypairPath,
       privateKeys: config.privateKeys,
+      relayerKeypairPath: config.relayerKeypairPath,
+      relayerPrivateKeys: config.relayerPrivateKeys,
+      dryRun,
     });
   }
 

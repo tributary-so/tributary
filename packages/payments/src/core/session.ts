@@ -200,7 +200,7 @@ export interface EncodedSessionData {
 
 export class CheckoutSessionManager {
   private BASE_URL = "https://checkout.tributary.so";
-  // private tracker: PaymentTracker | null;
+  // private tracker: PaymentPolicyTracker | null;
 
   constructor() {}
 

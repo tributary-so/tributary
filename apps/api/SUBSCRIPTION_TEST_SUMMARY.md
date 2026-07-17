@@ -42,7 +42,7 @@ apps/api/src/__tests__/
 - ✅ Multiple policies retrieval
 - ✅ Empty results handling
 - ✅ Policy type handling (Subscription, PayAsYouGo, Milestone)
-- ✅ Parameter passing to PaymentTracker
+- ✅ Parameter passing to PaymentPolicyTracker
 - ✅ Error handling
 - ✅ Memo decoding
 - ✅ BN to number conversion
@@ -84,7 +84,7 @@ apps/api/src/__tests__/
 
 ### Mocking Strategy
 
-- Service layer: Mock PaymentTracker from @tributary-so/payments
+- Service layer: Mock PaymentPolicyTracker from @tributary-so/payments
 - API layer: Mock service functions
 - Solana connection: Mock getConnection()
 - Clean separation between layers
@@ -123,7 +123,7 @@ pnpm test:coverage
 2. **src/**tests**/subscription.service.test.ts** (3.8KB)
 
    - 13 service layer tests
-   - Mocks PaymentTracker
+   - Mocks PaymentPolicyTracker
    - Tests all policy types
    - Error handling
 

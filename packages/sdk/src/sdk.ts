@@ -7,7 +7,9 @@ import {
   SystemProgram,
   TransactionInstruction,
   TransactionSignature,
+  GetProgramAccountsFilter,
 } from "@solana/web3.js";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
@@ -45,6 +47,7 @@ import type {
   SetupResult,
 } from "./types.js";
 import { GATEWAY_FEATURES, MAX_PINNED_FORWARD_ACCOUNTS } from "./constants";
+import { deriveSchedulerAta } from "./composable";
 import {
   computePaymentsPerYear,
   encodeMemo,
@@ -804,9 +807,19 @@ export class Tributary {
   ): Promise<TransactionInstruction[]> {
     return (
       await this.createSubscriptionWithMetadata(
-        tokenMint, recipient, gateway, amount, autoRenew, maxRenewals,
-        paymentFrequency, memo, startTime, approvalAmount,
-        executeImmediately, referralCode, feePayer
+        tokenMint,
+        recipient,
+        gateway,
+        amount,
+        autoRenew,
+        maxRenewals,
+        paymentFrequency,
+        memo,
+        startTime,
+        approvalAmount,
+        executeImmediately,
+        referralCode,
+        feePayer
       )
     ).instructions;
   }
@@ -843,7 +856,11 @@ export class Tributary {
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
-      steps.push({ instruction: createAtaIx, type: "createAta", data: { owner: user, mint: tokenMint, ata: ownerTokenAccount } });
+      steps.push({
+        instruction: createAtaIx,
+        type: "createAta",
+        data: { owner: user, mint: tokenMint, ata: ownerTokenAccount },
+      });
     }
 
     // Check if userPayment already exists
@@ -853,7 +870,11 @@ export class Tributary {
     // If userPayment doesn't exist, create it first
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
-      steps.push({ instruction: createUserPaymentIx, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: userPaymentPda } });
+      steps.push({
+        instruction: createUserPaymentIx,
+        type: "createUserPayment",
+        data: { owner: user, mint: tokenMint, pda: userPaymentPda },
+      });
     }
 
     if (referralCode) {
@@ -874,7 +895,11 @@ export class Tributary {
         generateSecureRandomString(6),
         referralAccount.owner
       );
-      steps.push({ instruction: createReferralIx, type: "createReferral", data: { gateway, code: referralCode } });
+      steps.push({
+        instruction: createReferralIx,
+        type: "createReferral",
+        data: { gateway, code: referralCode },
+      });
     }
 
     // Build policy type
@@ -915,11 +940,23 @@ export class Tributary {
       .accountsStrict(accounts)
       .instruction();
 
-    steps.push({ instruction: createPaymentPolicyIx, type: "createPaymentPolicy", data: { policyType, recipient, gateway, policyPda: paymentPolicyPda.address } });
+    steps.push({
+      instruction: createPaymentPolicyIx,
+      type: "createPaymentPolicy",
+      data: {
+        policyType,
+        recipient,
+        gateway,
+        policyPda: paymentPolicyPda.address,
+      },
+    });
 
     // Calculate or use provided approval amount
     let finalApprovalAmount: BN;
-    let existingPoliciesRaw: Array<{ publicKey: PublicKey; account: PaymentPolicy }> = [];
+    let existingPoliciesRaw: Array<{
+      publicKey: PublicKey;
+      account: PaymentPolicy;
+    }> = [];
     let newPolicyContribution: BN;
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
@@ -928,17 +965,37 @@ export class Tributary {
       existingPoliciesRaw = await this.getPaymentPoliciesByUserPayment(
         userPaymentPda
       );
-      const existingApproval = existingPoliciesRaw.reduce((sum, { account: policy }) => {
-        if ("subscription" in policy.policyType) {
-          const sub = policy.policyType.subscription!;
-          return sum.add(this.calculateSubscriptionApprovalAmount(sub.amount, sub.paymentFrequency, sub.maxRenewals));
-        } else if ("milestone" in policy.policyType) {
-          return sum.add(this.calculateMilestoneApprovalAmount(policy.policyType.milestone!.milestoneAmounts.filter((a) => !a.isZero())));
-        } else if ("payAsYouGo" in policy.policyType) {
-          return sum.add(this.calculatePayAsYouGoApprovalAmount(policy.policyType.payAsYouGo!.maxAmountPerPeriod, policy.policyType.payAsYouGo!.periodLengthSeconds));
-        }
-        return sum;
-      }, new BN(0));
+      const existingApproval = existingPoliciesRaw.reduce(
+        (sum, { account: policy }) => {
+          if ("subscription" in policy.policyType) {
+            const sub = policy.policyType.subscription!;
+            return sum.add(
+              this.calculateSubscriptionApprovalAmount(
+                sub.amount,
+                sub.paymentFrequency,
+                sub.maxRenewals
+              )
+            );
+          } else if ("milestone" in policy.policyType) {
+            return sum.add(
+              this.calculateMilestoneApprovalAmount(
+                policy.policyType.milestone!.milestoneAmounts.filter(
+                  (a) => !a.isZero()
+                )
+              )
+            );
+          } else if ("payAsYouGo" in policy.policyType) {
+            return sum.add(
+              this.calculatePayAsYouGoApprovalAmount(
+                policy.policyType.payAsYouGo!.maxAmountPerPeriod,
+                policy.policyType.payAsYouGo!.periodLengthSeconds
+              )
+            );
+          }
+          return sum;
+        },
+        new BN(0)
+      );
       newPolicyContribution = this.calculateSubscriptionApprovalAmount(
         amount,
         paymentFrequency,
@@ -1016,7 +1073,11 @@ export class Tributary {
         user
       );
       for (const ix of executePaymentIxs) {
-        steps.push({ instruction: ix, type: "executePayment", data: { policyPda: paymentPolicyPda.address } });
+        steps.push({
+          instruction: ix,
+          type: "executePayment",
+          data: { policyPda: paymentPolicyPda.address },
+        });
       }
     }
 
@@ -1274,8 +1335,17 @@ export class Tributary {
   ): Promise<TransactionInstruction[]> {
     return (
       await this.createPayAsYouGoWithMetadata(
-        tokenMint, recipient, gateway, maxAmountPerPeriod, maxChunkAmount,
-        periodLengthSeconds, memo, approvalAmount, referralCode, expiryDate, feePayer
+        tokenMint,
+        recipient,
+        gateway,
+        maxAmountPerPeriod,
+        maxChunkAmount,
+        periodLengthSeconds,
+        memo,
+        approvalAmount,
+        referralCode,
+        expiryDate,
+        feePayer
       )
     ).instructions;
   }
@@ -1310,7 +1380,11 @@ export class Tributary {
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
-      steps.push({ instruction: createAtaIx, type: "createAta", data: { owner: user, mint: tokenMint, ata: ownerTokenAccount } });
+      steps.push({
+        instruction: createAtaIx,
+        type: "createAta",
+        data: { owner: user, mint: tokenMint, ata: ownerTokenAccount },
+      });
     }
 
     // Check if userPayment already exists
@@ -1320,7 +1394,11 @@ export class Tributary {
     // If userPayment doesn't exist, create it first
     if (!userPayment) {
       const createUserPaymentIx = await this.createUserPayment(tokenMint);
-      steps.push({ instruction: createUserPaymentIx, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: userPaymentPda } });
+      steps.push({
+        instruction: createUserPaymentIx,
+        type: "createUserPayment",
+        data: { owner: user, mint: tokenMint, pda: userPaymentPda },
+      });
     }
 
     if (referralCode) {
@@ -1341,7 +1419,11 @@ export class Tributary {
         generateSecureRandomString(6),
         referralAccount.owner
       );
-      steps.push({ instruction: createReferralIx, type: "createReferral", data: { gateway, code: referralCode } });
+      steps.push({
+        instruction: createReferralIx,
+        type: "createReferral",
+        data: { gateway, code: referralCode },
+      });
     }
 
     // Build policy type
@@ -1383,11 +1465,23 @@ export class Tributary {
       .accountsStrict(accounts)
       .instruction();
 
-    steps.push({ instruction: createPaymentPolicyIx, type: "createPaymentPolicy", data: { policyType, recipient, gateway, policyPda: paymentPolicyPda.address } });
+    steps.push({
+      instruction: createPaymentPolicyIx,
+      type: "createPaymentPolicy",
+      data: {
+        policyType,
+        recipient,
+        gateway,
+        policyPda: paymentPolicyPda.address,
+      },
+    });
 
     // Calculate or use provided approval amount
     let finalApprovalAmount: BN;
-    let existingPoliciesRaw: Array<{ publicKey: PublicKey; account: PaymentPolicy }> = [];
+    let existingPoliciesRaw: Array<{
+      publicKey: PublicKey;
+      account: PaymentPolicy;
+    }> = [];
     let newPolicyContribution: BN;
     if (approvalAmount) {
       finalApprovalAmount = approvalAmount;
@@ -1396,17 +1490,37 @@ export class Tributary {
       existingPoliciesRaw = await this.getPaymentPoliciesByUserPayment(
         userPaymentPda
       );
-      const existingApproval = existingPoliciesRaw.reduce((sum, { account: policy }) => {
-        if ("subscription" in policy.policyType) {
-          const sub = policy.policyType.subscription!;
-          return sum.add(this.calculateSubscriptionApprovalAmount(sub.amount, sub.paymentFrequency, sub.maxRenewals));
-        } else if ("milestone" in policy.policyType) {
-          return sum.add(this.calculateMilestoneApprovalAmount(policy.policyType.milestone!.milestoneAmounts.filter((a) => !a.isZero())));
-        } else if ("payAsYouGo" in policy.policyType) {
-          return sum.add(this.calculatePayAsYouGoApprovalAmount(policy.policyType.payAsYouGo!.maxAmountPerPeriod, policy.policyType.payAsYouGo!.periodLengthSeconds));
-        }
-        return sum;
-      }, new BN(0));
+      const existingApproval = existingPoliciesRaw.reduce(
+        (sum, { account: policy }) => {
+          if ("subscription" in policy.policyType) {
+            const sub = policy.policyType.subscription!;
+            return sum.add(
+              this.calculateSubscriptionApprovalAmount(
+                sub.amount,
+                sub.paymentFrequency,
+                sub.maxRenewals
+              )
+            );
+          } else if ("milestone" in policy.policyType) {
+            return sum.add(
+              this.calculateMilestoneApprovalAmount(
+                policy.policyType.milestone!.milestoneAmounts.filter(
+                  (a) => !a.isZero()
+                )
+              )
+            );
+          } else if ("payAsYouGo" in policy.policyType) {
+            return sum.add(
+              this.calculatePayAsYouGoApprovalAmount(
+                policy.policyType.payAsYouGo!.maxAmountPerPeriod,
+                policy.policyType.payAsYouGo!.periodLengthSeconds
+              )
+            );
+          }
+          return sum;
+        },
+        new BN(0)
+      );
       newPolicyContribution = this.calculatePayAsYouGoApprovalAmount(
         maxAmountPerPeriod,
         periodLengthSeconds
@@ -2916,16 +3030,14 @@ export class Tributary {
    * variant to the existing `calculate*ApprovalAmount` helper (or its face
    * field for oneTime/upTo).
    *
-   * INTERIM: no fee headroom. Composable fees are NET-on-pull (ADR-0026):
-   * the delegate must cover `face + fee`, but sizing the fee precisely needs
-   * gateway + protocol bps lookups. That lands in bean tributary-ydth
-   * (blocked by this one). Until then this returns the FACE amount only —
-   * callers may override via `approvalAmount` when they know the gross.
+   * Returns the FACE total only (no fee headroom). Payment-policy callers use
+   * this directly (fees are NET-on-amount there). Composable callers must wrap
+   * the result in {@link calculateComposableApproval} to add NET-on-pull fee
+   * headroom (ADR-0026).
    *
    * @param policyType - The policy configuration (any of the 5 variants)
    * @returns Face approval amount (BN), 0 for an empty/unknown variant
    */
-  // ponytail: face-only sizing, fee headroom deferred to tributary-ydth
   private calculatePolicyApprovalAmount(policyType: PolicyType): BN {
     if ("subscription" in policyType && policyType.subscription) {
       const s = policyType.subscription;
@@ -2953,6 +3065,36 @@ export class Tributary {
       return policyType.upTo.maxAmount;
     }
     return new BN(0);
+  }
+
+  /**
+   * Composable gross approval sizing — wraps the face-only
+   * {@link calculatePolicyApprovalAmount} in {@link requiredDelegatedAmount}
+   * so the delegate covers fees across the policy's whole life (ADR-0026:
+   * composable is NET-on-pull, every execution pulls `face + fee`, and the
+   * SPL `delegated_amount` is a total cap decremented per pull).
+   *
+   * Cap policy for unbounded variants (subscription with `maxRenewals: null`,
+   * PayAsYouGo): deliberately **matches the payment-policy helpers — 1 year**.
+   * One mental model across both policy families; the approval is re-issued on
+   * every create/approve and trivially topped up, so 1yr parity is sufficient.
+   * 2yr was considered and rejected as YAGNI; if composables in practice need
+   * longer, callers pass an explicit `approvalAmount` (or the helper's
+   * year-multiplier changes in one place).
+   *
+   * @param policyType - The policy configuration (any of the 5 variants)
+   * @param gateway - The gateway account (carries `gatewayFeeBps`), or `null`
+   *   if not fetched/unknown — degrades to face-only (0 bps).
+   * @returns Gross approval amount (`face_total + total_fee`), face-only when
+   *   the gateway is unknown.
+   */
+  calculateComposableApproval(
+    policyType: PolicyType,
+    gateway: PaymentGateway | null
+  ): BN {
+    const face = this.calculatePolicyApprovalAmount(policyType);
+    if (!gateway) return face;
+    return this.requiredDelegatedAmount(face, gateway);
   }
 
   /**
@@ -2999,10 +3141,20 @@ export class Tributary {
   ): Promise<TransactionInstruction[]> {
     return (
       await this.createComposableWithMetadata(
-        tokenMint, recipient, gateway, policyType, memo, forwardConfig,
-        preValidation, prePinnedAccounts, preValidationData,
-        postValidation, postPinnedAccounts, postValidationData,
-        feePayer, approvalAmount
+        tokenMint,
+        recipient,
+        gateway,
+        policyType,
+        memo,
+        forwardConfig,
+        preValidation,
+        prePinnedAccounts,
+        preValidationData,
+        postValidation,
+        postPinnedAccounts,
+        postValidationData,
+        feePayer,
+        approvalAmount
       )
     ).instructions;
   }
@@ -3031,13 +3183,21 @@ export class Tributary {
     const ata = getAssociatedTokenAddressSync(tokenMint, user);
     const ataIxs = await this.ensureAta(user, tokenMint, payer);
     for (const ix of ataIxs) {
-      steps.push({ instruction: ix, type: "createAta", data: { owner: user, mint: tokenMint, ata } });
+      steps.push({
+        instruction: ix,
+        type: "createAta",
+        data: { owner: user, mint: tokenMint, ata },
+      });
     }
 
     // 2. UserPayment ensure (fetch once, reuse for policyId)
     const up = await this.ensureUserPayment(user, tokenMint, payer);
     for (const ix of up.ix) {
-      steps.push({ instruction: ix, type: "createUserPayment", data: { owner: user, mint: tokenMint, pda: up.pda } });
+      steps.push({
+        instruction: ix,
+        type: "createUserPayment",
+        data: { owner: user, mint: tokenMint, pda: up.pda },
+      });
     }
 
     // 3. Policy ix — delegates to the low-level builder (which fetches
@@ -3064,17 +3224,32 @@ export class Tributary {
     steps.push({
       instruction: policyIx,
       type: "createComposablePolicy",
-      data: { policyType, recipient, gateway, forwardConfig, policyPda: composablePolicyPda.address },
+      data: {
+        policyType,
+        recipient,
+        gateway,
+        forwardConfig,
+        policyPda: composablePolicyPda.address,
+      },
     });
 
-    // 4. Default approval (INTERIM face-only — see calculatePolicyApprovalAmount)
+    // 4. Default approval — NET-on-pull gross (ADR-0026): face + fee headroom
+    //    so the delegate covers fees across the policy's whole life. Gateway
+    //    is fetched only when defaulting (caller may pass an explicit override).
     const finalApprovalAmount: BN =
-      approvalAmount ?? this.calculatePolicyApprovalAmount(policyType);
+      approvalAmount ??
+      this.calculateComposableApproval(
+        policyType,
+        await this.getPaymentGateway(gateway)
+      );
     const newPolicyContribution = finalApprovalAmount;
 
     // Fetch existing policies for the metadata (both types share the delegation)
-    const existingPaymentPolicies = await this.getPaymentPoliciesByUserPayment(up.pda);
-    const existingComposablePolicies = await this.getComposablePoliciesByUserPayment(up.pda);
+    const existingPaymentPolicies = await this.getPaymentPoliciesByUserPayment(
+      up.pda
+    );
+    const existingComposablePolicies =
+      await this.getComposablePoliciesByUserPayment(up.pda);
     const existingPoliciesRaw = [
       ...existingPaymentPolicies,
       ...existingComposablePolicies,
@@ -3209,6 +3384,23 @@ export class Tributary {
       ...(await this.ensureAta(config.feeRecipient, inputMint, authority))
     );
 
+    // ── Scheduler fee ATA (permissionless path, ADR-0016 amended) ──────
+    // When the caller (fee_payer) is NOT the gateway signer and the
+    // gateway has scheduler_share_bps > 0, the program requires the
+    // relayer's input-mint ATA as the LAST remaining_account. Without it,
+    // execution fails with MissingSchedulerFeeAccount.
+    const schedulerAta = deriveSchedulerAta({
+      authority,
+      gatewaySigner: gateway.signer,
+      schedulerShareBps: gateway.schedulerShareBps,
+      inputMint,
+    });
+    if (schedulerAta) {
+      instructions.push(
+        ...(await this.ensureAta(authority, inputMint, authority))
+      );
+    }
+
     // ── Execute ix (unchanged derivation) ──────────────────────────────
     // Act mode (ADR-0026): sentinel output_mint → no output token. The
     // output_mint account slot is SystemProgram; no output ATA is created.
@@ -3297,10 +3489,18 @@ export class Tributary {
     // ValidationPda was pulled out of `remaining_accounts` in ADR-0016:
     // the slice is now `[...lighthouseTargetAccounts, ...forwardAccounts,
     // (scheduler_ata?)]` — no leading ValidationPda entry.
+    // The scheduler_ata (when permissionless + scheduler_share > 0) is
+    // appended as the LAST entry by the SDK facade (ADR-0016 amended).
+    const fullRemainingAccounts = schedulerAta
+      ? [
+          ...(remainingAccounts ?? []),
+          { pubkey: schedulerAta, isSigner: false, isWritable: true },
+        ]
+      : remainingAccounts ?? [];
     const executeIx = await this.program.methods
       .executeComposable(Buffer.from(instructionData), forwardAmount ?? null)
       .accountsStrict(accounts)
-      .remainingAccounts(remainingAccounts ?? [])
+      .remainingAccounts(fullRemainingAccounts)
       .instruction();
     instructions.push(executeIx);
 
@@ -3463,6 +3663,30 @@ export class Tributary {
     Array<{ publicKey: PublicKey; account: PaymentGateway }>
   > {
     return await this.program.account.paymentGateway.all();
+  }
+
+  /**
+   * Retrieves all payment gateways where the specified key is the authorized
+   * signer. Unlike the authority (which is unique per gateway PDA), a single
+   * signer key can manage multiple gateways — this returns all of them.
+   * @param signer - Public key of the gateway signer
+   * @returns Array of payment gateway accounts with their public keys
+   */
+  async getPaymentGatewaysBySigner(
+    signer: PublicKey
+  ): Promise<Array<{ publicKey: PublicKey; account: PaymentGateway }>> {
+    // PaymentGateway Borsh layout (after 8-byte discriminator):
+    //   authority(32) + fee_recipient(32) + gateway_fee_bps(2) + is_active(1)
+    //   + padding1(8) + created_at(8) + bump(1) + name(32) + url(64)
+    //   → signer @ offset 8 + 180 = 188
+    return await this.program.account.paymentGateway.all([
+      {
+        memcmp: {
+          offset: 188,
+          bytes: signer.toBase58(),
+        },
+      },
+    ]);
   }
 
   /**
@@ -3708,6 +3932,96 @@ export class Tributary {
     Array<{ publicKey: PublicKey; account: ComposablePolicy }>
   > {
     return await this.program.account.composablePolicy.all();
+  }
+
+  // ── Combined-filter lookups ────────────────────────────────────────
+
+  /**
+   * Retrieve PaymentPolicy accounts with a combined memcmp filter set.
+   *
+   * Every field is optional; omitting all returns every PaymentPolicy
+   * (subject to RPC limits).
+   *
+   * @param filters - userPayment, gateway, recipient, trackingId
+   */
+  async getPaymentPolicies(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    return await this.program.account.paymentPolicy.all(
+      this.buildPaymentPolicyFilters(filters),
+    );
+  }
+
+  /**
+   * Retrieve ComposablePolicy accounts with a combined memcmp filter set.
+   *
+   * @param filters - userPayment, gateway, recipient, trackingId
+   */
+  async getComposablePolicies(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
+    return await this.program.account.composablePolicy.all(
+      this.buildComposablePolicyFilters(filters),
+    );
+  }
+
+  /**
+   * PaymentPolicy memcmp offsets (from account start):
+   *   disc 8 · user_payment 8 · recipient 40 · gateway 72
+   *   policy_type 104 (PolicyType::TOTAL_SIZE = 129)
+   *   status 233 · memo 234
+   */
+  private buildPaymentPolicyFilters(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): GetProgramAccountsFilter[] {
+    const result: GetProgramAccountsFilter[] = [];
+    if (filters?.userPayment)
+      result.push({ memcmp: { offset: 8, bytes: filters.userPayment.toBase58() } });
+    if (filters?.recipient)
+      result.push({ memcmp: { offset: 40, bytes: filters.recipient.toBase58() } });
+    if (filters?.gateway)
+      result.push({ memcmp: { offset: 72, bytes: filters.gateway.toBase58() } });
+    if (filters?.trackingId)
+      result.push({
+        memcmp: { offset: 234, bytes: bs58.encode(encodeMemo(filters.trackingId, 64)) },
+      });
+    return result;
+  }
+
+  /**
+   * ComposablePolicy memcmp offsets (from account start):
+   *   disc 8 · bump 8 · user_payment 9 · gateway 41
+   *   status 73 · rent_payer 74 · policy_type 106 (129)
+   *   forward_config 235 (205) · pre_validation 440 (33)
+   *   post_validation 473 (33) · memo 506 · recipient 538
+   */
+  private buildComposablePolicyFilters(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): GetProgramAccountsFilter[] {
+    const result: GetProgramAccountsFilter[] = [];
+    if (filters?.userPayment)
+      result.push({ memcmp: { offset: 9, bytes: filters.userPayment.toBase58() } });
+    if (filters?.gateway)
+      result.push({ memcmp: { offset: 41, bytes: filters.gateway.toBase58() } });
+    if (filters?.trackingId)
+      result.push({
+        memcmp: { offset: 506, bytes: bs58.encode(encodeMemo(filters.trackingId, 32)) },
+      });
+    if (filters?.recipient)
+      result.push({ memcmp: { offset: 538, bytes: filters.recipient.toBase58() } });
+    return result;
   }
 
   /**

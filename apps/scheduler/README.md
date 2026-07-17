@@ -96,6 +96,27 @@ PRIVATE_KEY="[1,...,64];[65,...,128]" \
 pnpm start
 ```
 
+### Cold-Relayer Path (Composable Scheduler)
+
+When `RELAYER_WALLET` or `RELAYER_PRIVATE_KEY` is set, the composable scheduler
+signs `executeComposable` transactions with the relayer keypair instead of the
+gateway signer. This makes execution **permissionless** on-chain
+(`is_permissionless = true`), which triggers the scheduler fee-routing path:
+the relayer's input-mint ATA is appended as the last `remaining_account` so the
+program can pay the scheduler cut (`scheduler_share_bps`) to the relayer.
+
+Without a relayer key, the scheduler falls back to signing with the gateway
+keypair (trusted-signer path — `is_permissionless = false`, no scheduler ATA
+needed).
+
+```bash
+SOLANA_API=https://api.mainnet-beta.solana.com \
+ANCHOR_WALLET=/path/to/gateway-keypair.json \
+RELAYER_WALLET=/path/to/relayer-keypair.json \
+ENABLE_COMPOSABLE=true \
+pnpm start
+```
+
 ## Environment Variables
 
 ### Required (one of)
@@ -111,10 +132,12 @@ pnpm start
 
 ### Optional
 
-| Variable            | Description                                       | Default                  |
-| ------------------- | ------------------------------------------------- | ------------------------ |
-| `CRON_SCHEDULE`     | Cron expression for PaymentPolicy execution (UTC) | `0 * * * *` (every hour) |
-| `ENABLE_COMPOSABLE` | Start the ComposablePolicy poll loop (`true`/`1`) | `false`                  |
+| Variable              | Description                                                                | Default                  |
+| --------------------- | -------------------------------------------------------------------------- | ------------------------ |
+| `CRON_SCHEDULE`       | Cron expression for PaymentPolicy execution (UTC)                          | `0 * * * *` (every hour) |
+| `ENABLE_COMPOSABLE`   | Start the ComposablePolicy poll loop (`true`/`1`)                          | `false`                  |
+| `RELAYER_WALLET`      | Path to relayer keypair JSON (composable cold-relayer path)                | `false`                  |
+| `RELAYER_PRIVATE_KEY` | Relayer private key(s), semicolon-separated (composable cold-relayer path) | `false`                  |
 
 ### Cron Schedule Examples
 

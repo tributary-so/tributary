@@ -28,7 +28,12 @@ jest.mock("@tributary-so/sdk", () => ({
   // tracking.ts can call bs58.encode() on it without exploding. Tests
   // that need to assert the encoded shape can override this per-test.
   encodeMemo: jest.fn(() => Buffer.alloc(64, 0xab)),
+  // Stub for `decodeMemo(buf)` — returns a fixed string so the
+  // ComposablePolicyTracker normalization path doesn't explode. Per-test
+  // overrides can assert the decoded shape.
+  decodeMemo: jest.fn(() => "decoded-memo"),
   PaymentPolicy: {},
+  ComposablePolicy: {},
 }));
 
 jest.mock("@solana/web3.js", () => ({

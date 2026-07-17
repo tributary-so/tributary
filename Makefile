@@ -1,4 +1,4 @@
-DEPLOY_KEY_PATH := ~/.config/solana/ADmSd9uYBRbLGa9rN1NtFv5LXtwLPdtVwGT5xhAYY4xZ.json
+DEPLOY_KEY_PATH := $(or $(TRIBUTRAY_DEPLOY_KEY_PATH),~/.config/solana/id.json)
 PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.json
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
 SOLANA_API := $(or $(SOLANA_API),https://api.mainnet-beta.solana.com)
@@ -32,12 +32,13 @@ devnet_build:
 	anchor build
 
 devnet_deploy:
-	anchor deploy --provider.cluster devnet --program-keypair $(PROGRAM_ID_PATH) -p tributary
+	solana -k ${DEPLOY_KEY_PATH} balance
+	solana program write-buffer $(SOL_ARGS) ./target/deploy/tributary.so
+	solana -k ${DEPLOY_KEY_PATH} balance
 
 devnet_deploy_buffer:
 	solana balance
 	solana program write-buffer --buffer $(BUFFER) ./target/deploy/tributary.so
-	solana program deploy --program-id $(PROGRAM_ID_PATH) --buffer $(BUFFER)
 	solana balance
 
 # Mainnet ######################################
@@ -50,12 +51,12 @@ mainnet_build:
 mainnet_deploy_buffer:
 	solana -k ${DEPLOY_KEY_PATH} balance
 	solana program write-buffer $(SOL_ARGS) --buffer $(BUFFER) ./target/deploy/tributary.so
-	solana program deploy --ws $(SOLANA_API) --keypair $(DEPLOY_KEY_PATH) --program-id $(PROGRAM_ID_PATH) --buffer $(BUFFER)
 	solana -k ${DEPLOY_KEY_PATH} balance
 
 mainnet_deploy:
 	solana -k ${DEPLOY_KEY_PATH} balance
-	solana program deploy $(SOL_ARGS) --program-id $(PROGRAM_ID_PATH) ./target/deploy/tributary.so
+	#solana program deploy $(SOL_ARGS) --program-id $(PROGRAM_ID_PATH) ./target/deploy/tributary.so
+	solana program write-buffer $(SOL_ARGS) ./target/deploy/tributary.so
 	solana -k ${DEPLOY_KEY_PATH} balance
 
 publish_idl:

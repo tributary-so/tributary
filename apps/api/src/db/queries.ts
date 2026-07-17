@@ -16,6 +16,7 @@ import type {
   TributaryProgramConfigCreated,
   TributaryReferralRewardDistributedRecord,
   TributaryUserPaymentCreated,
+  TributaryComposableExecuted,
 } from "./events";
 
 export interface TypedEvent<T> extends Omit<Event, "data"> {
@@ -238,6 +239,59 @@ export async function getPaymentRecords(options?: {
       sql`${events.data}->>'payment_policy' = ${options.paymentPolicy}`
     );
   }
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryPaymentRecord,
+  }));
+}
+
+// Returns typed composable execution events.
+export async function getComposableExecutionsByPolicyAddress(
+  composablePolicy: string,
+  options?: { limit?: number; offset?: number }
+): Promise<TypedEvent<TributaryComposableExecuted>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_ComposableExecuted"),
+    sql`${events.data}->>'composable_policy' = ${composablePolicy}`,
+  ];
+
+  const results = await db
+    .select()
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(desc(events.timestamp))
+    .limit(options?.limit ?? 100)
+    .offset(options?.offset ?? 0);
+
+  return results.map((event) => ({
+    ...event,
+    data: event.data as TributaryComposableExecuted,
+  }));
+}
+
+export async function getPaymentExecutionsByPolicyAddress(
+  paymentPolicy: string,
+  options?: { limit?: number; offset?: number }
+): Promise<TypedEvent<TributaryPaymentRecord>[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(events.eventName, "tributary_PaymentRecord"),
+    sql`${events.data}->>'payment_policy' = ${paymentPolicy}`,
+  ];
 
   const results = await db
     .select()

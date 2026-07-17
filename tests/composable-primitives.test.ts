@@ -6,6 +6,7 @@
  * execution suite lives in tests/composable.test.ts (Surfpool integration).
  */
 import { PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
 import {
   isForwardEnabled,
@@ -13,6 +14,7 @@ import {
   resolveDefaultForwardAmount,
   resolveValidationTargets,
   assembleComposableRemainingAccounts,
+  deriveSchedulerAta,
 } from "../packages/sdk/src/composable";
 import type { ComposablePolicy, PaymentGateway } from "../packages/sdk/src";
 
@@ -400,5 +402,57 @@ describe("assembleComposableRemainingAccounts", () => {
         postTargets: [],
       })
     ).toEqual([]);
+  });
+});
+
+// ── deriveSchedulerAta ───────────────────────────────────────────────
+
+describe("deriveSchedulerAta", () => {
+  test("authority == gateway.signer → null (trusted signer path)", () => {
+    const signer = PublicKey.unique();
+    expect(
+      deriveSchedulerAta({
+        authority: signer,
+        gatewaySigner: signer,
+        schedulerShareBps: 100,
+        inputMint: PublicKey.unique(),
+      })
+    ).toBeNull();
+  });
+
+  test("permissionless but schedulerShare=0 → null", () => {
+    expect(
+      deriveSchedulerAta({
+        authority: PublicKey.unique(),
+        gatewaySigner: PublicKey.unique(),
+        schedulerShareBps: 0,
+        inputMint: PublicKey.unique(),
+      })
+    ).toBeNull();
+  });
+
+  test("permissionless + schedulerShare>0 → input-mint ATA of authority", () => {
+    const relayer = PublicKey.unique();
+    const mint = PublicKey.unique();
+    const ata = deriveSchedulerAta({
+      authority: relayer,
+      gatewaySigner: PublicKey.unique(),
+      schedulerShareBps: 50,
+      inputMint: mint,
+    });
+    expect(ata).not.toBeNull();
+    const expected = getAssociatedTokenAddressSync(mint, relayer);
+    expect(ata!.equals(expected)).toBe(true);
+  });
+
+  test("schedulerShare just above zero (1 bps) → still derives", () => {
+    expect(
+      deriveSchedulerAta({
+        authority: PublicKey.unique(),
+        gatewaySigner: PublicKey.unique(),
+        schedulerShareBps: 1,
+        inputMint: PublicKey.unique(),
+      })
+    ).not.toBeNull();
   });
 });

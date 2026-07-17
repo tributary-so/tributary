@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "lint": "exit 0",
-    "test": "exit 0",
+    "test": "npx tsx --test src/__tests__/**/*.test.ts",
     "clean": "rm -rf ./dist",
     "build": "npx tsup",
     "manager": "npx tsx src/manager.ts",
@@ -37,6 +37,7 @@
     "esbuild-fix-imports-plugin": "^1.0.23",
     "eslint": "^10.0.0",
     "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
     "typedoc": "^0.28.14",
     "typescript": "^5.7.3"
   },

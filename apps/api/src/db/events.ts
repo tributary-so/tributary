@@ -1,3 +1,46 @@
+/**
+ * Re-export the on-chain event types from the SDK.
+ *
+ * IMPORTANT — two representations coexist:
+ *
+ * 1. **SDK event types** (below): the on-chain Anchor-decoded shape —
+ *    camelCase fields, `BN` for u64/i64, `PublicKey` class for pubkeys.
+ *    Use these when decoding events directly from RPC (program.addEventListener
+ *    or coder). Single source of truth for the on-chain event shape.
+ *
+ * 2. **Hand-written `Tributary*` interfaces** (further below): the postgres
+ *    JSONB / Kafka / webhook wire shape — snake_case fields, `number` for
+ *    amounts, `string` for pubkeys. These model what the external Kafka
+ *    producer emits and what lives in the `events.data` jsonb column. They
+ *    are NOT drift from the SDK types; they describe a different
+ *    representation (storage format vs. on-chain decode format).
+ *
+ * Aliasing one to the other breaks every `data->>'snake_case'` query and the
+ * external webhook contract (field names change). See ADR-worthy note in
+ * bean tributary-wrob for the full rationale.
+ */
+export type {
+  PaymentRecordEvent,
+  ComposableExecutedEvent,
+  ComposablePolicyCreatedEvent,
+  ComposablePolicyDeletedEvent,
+  ComposablePolicyStatusChangedEvent,
+  PaymentPolicyCreatedEvent,
+  PaymentPolicyDeletedEvent,
+  PaymentPolicyStatusChangedEvent,
+  PaymentGatewayCreatedEvent,
+  PaymentGatewayDeletedEvent,
+  GatewaySignerChangedEvent,
+  GatewayFeeRecipientChangedEvent,
+  GatewayFeeBpsChangedEvent,
+  ProgramConfigCreatedEvent,
+  UserPaymentCreatedEvent,
+  UserPaymentDeletedEvent,
+  ProgramAuthorityChangedEvent,
+  EmergencyPauseChangedEvent,
+  ReferralRewardDistributedRecordEvent,
+} from "@tributary-so/sdk";
+
 export type PublicKey = string;
 
 export type PaymentStatus = "Active" | "Paused";
@@ -132,6 +175,50 @@ export interface TributaryUserPaymentCreated {
   token_mint: PublicKey;
 }
 
+// ── Composable policy events (postgres JSONB / Kafka wire format) ──
+
+export interface TributaryComposableExecuted {
+  composable_policy: PublicKey;
+  gateway: PublicKey;
+  target_program: PublicKey;
+  input_amount: number;
+  output_amount: number;
+  gateway_fee: number;
+  protocol_fee: number;
+  recipient: PublicKey;
+  timestamp: number;
+  record_id: number;
+  memo: number[];
+}
+
+export interface TributaryComposablePolicyCreated {
+  composable_policy: PublicKey;
+  user_payment: PublicKey;
+  gateway: PublicKey;
+  recipient: PublicKey;
+  policy_id: number;
+  policy_type: PolicyType;
+  memo: number[];
+  // Complex nested structs — typed as unknown until a consumer needs them.
+  forward_config: unknown;
+  pre_validation: unknown;
+  post_validation: unknown;
+  has_pre_validation_pda: boolean;
+  has_post_validation_pda: boolean;
+}
+
+export interface TributaryComposablePolicyDeleted {
+  composable_policy: PublicKey;
+  user_payment: PublicKey;
+  policy_id: number;
+}
+
+export interface TributaryComposablePolicyStatusChanged {
+  composable_policy: PublicKey;
+  old_status: PaymentStatus;
+  new_status: PaymentStatus;
+}
+
 export type TributaryEventName =
   | "tributary_gateway_fee_bps_changed"
   | "tributary_gateway_fee_recipient_changed"
@@ -144,7 +231,11 @@ export type TributaryEventName =
   | "tributary_payment_record"
   | "tributary_program_config_created"
   | "tributary_referral_reward_distributed_record"
-  | "tributary_user_payment_created";
+  | "tributary_user_payment_created"
+  | "tributary_composable_executed"
+  | "tributary_composable_policy_created"
+  | "tributary_composable_policy_deleted"
+  | "tributary_composable_policy_status_changed";
 
 export type TributaryEventDataMap = {
   tributary_gateway_fee_bps_changed: TributaryGatewayFeeBpsChanged;
@@ -159,6 +250,10 @@ export type TributaryEventDataMap = {
   tributary_program_config_created: TributaryProgramConfigCreated;
   tributary_referral_reward_distributed_record: TributaryReferralRewardDistributedRecord;
   tributary_user_payment_created: TributaryUserPaymentCreated;
+  tributary_composable_executed: TributaryComposableExecuted;
+  tributary_composable_policy_created: TributaryComposablePolicyCreated;
+  tributary_composable_policy_deleted: TributaryComposablePolicyDeleted;
+  tributary_composable_policy_status_changed: TributaryComposablePolicyStatusChanged;
 };
 
 export function isTributaryEvent(
