@@ -17,6 +17,7 @@ interface SchedulerConfig {
   relayerKeypairPath?: string;
   relayerPrivateKeys?: string[];
   cronSchedule?: string;
+  dryRun?: boolean;
 }
 
 class PaymentScheduler {
@@ -79,74 +80,92 @@ class PaymentScheduler {
       await this.sdk.updateWallet(wallet);
 
       console.log(
-        `[${new Date().toISOString()}] Processing gateway: ${keypair.publicKey.toString()}`
+        `[${new Date().toISOString()}] Processing gateways for signer: ${keypair.publicKey.toString()}`
       );
 
-      try {
-        const { address: gatewayPda } = this.sdk.getGatewayPda(
-          keypair.publicKey
-        );
-        const paymentPolicies = await this.sdk.getPaymentPoliciesByGateway(
-          gatewayPda
-        );
+      // Discover all gateways where this keypair is the signer (not just the
+      // authority). A single signer can manage multiple gateways.
+      const gateways = await this.sdk.getPaymentGatewaysBySigner(
+        keypair.publicKey
+      );
 
+      if (gateways.length === 0) {
         console.log(
-          `Found ${paymentPolicies.length} payment policies for this gateway`
+          `[${new Date().toISOString()}] No gateways found for signer ${keypair.publicKey.toString()}`
+        );
+      }
+
+      for (const { publicKey: gatewayPda, account: gateway } of gateways) {
+        console.log(
+          `[${new Date().toISOString()}] Gateway ${gatewayPda.toString()} (authority: ${gateway.authority.toString()})`
         );
 
-        const currentTime = Math.floor(Date.now() / 1000);
-        let executedCount = 0;
-        let errorCount = 0;
+        try {
+          const paymentPolicies = await this.sdk.getPaymentPoliciesByGateway(
+            gatewayPda
+          );
 
-        for (const {
-          publicKey: policyPda,
-          account: policy,
-        } of paymentPolicies) {
-          try {
-            if (this.shouldExecutePayment(policy, currentTime)) {
-              let milestoneInfo = "";
-              if (policy.policyType.milestone) {
-                const m = policy.policyType.milestone;
-                milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${m.totalMilestones
+          console.log(
+            `Found ${
+              paymentPolicies.length
+            } payment policies for gateway ${gatewayPda.toString()}`
+          );
+
+          const currentTime = Math.floor(Date.now() / 1000);
+          let executedCount = 0;
+          let errorCount = 0;
+
+          for (const {
+            publicKey: policyPda,
+            account: policy,
+          } of paymentPolicies) {
+            try {
+              if (this.shouldExecutePayment(policy, currentTime)) {
+                let milestoneInfo = "";
+                if (policy.policyType.milestone) {
+                  const m = policy.policyType.milestone;
+                  milestoneInfo = ` (milestone ${m.currentMilestone + 1}/${
+                    m.totalMilestones
                   })`;
+                }
+
+                console.log(
+                  `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`
+                );
+
+                await this.executePayment(policyPda);
+                executedCount++;
+
+                console.log(
+                  `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
+                );
+
+                await this.delay(1000);
               }
-
-              console.log(
-                `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`
+            } catch (error) {
+              console.error(
+                `🚩 Error executing payment for ${policyPda.toString()}`
               );
-
-              await this.executePayment(policyPda);
-              executedCount++;
-
-              console.log(
-                `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
-              );
-
-              await this.delay(1000);
+              if (error instanceof SendTransactionError) {
+                console.error(error.message);
+                console.error(error.logs);
+              }
+              errorCount++;
             }
-          } catch (error) {
-            console.error(
-              `🚩 Error executing payment for ${policyPda.toString()}`
-            );
-            if (error instanceof SendTransactionError) {
-              console.error(error.message);
-              console.error(error.logs);
-            }
-            errorCount++;
           }
+
+          console.log(
+            `Gateway ${gatewayPda.toString()} completed. Executed: ${executedCount}, Errors: ${errorCount}`
+          );
+
+          totalExecutedCount += executedCount;
+          totalErrorCount += errorCount;
+        } catch (error) {
+          console.error(
+            `Error processing gateway ${gatewayPda.toString()}:`,
+            error
+          );
         }
-
-        console.log(
-          `Gateway ${keypair.publicKey.toString()} completed. Executed: ${executedCount}, Errors: ${errorCount}`
-        );
-
-        totalExecutedCount += executedCount;
-        totalErrorCount += errorCount;
-      } catch (error) {
-        console.error(
-          `Error processing gateway ${keypair.publicKey.toString()}:`,
-          error
-        );
       }
     }
 
@@ -214,6 +233,12 @@ class PaymentScheduler {
   }
 
   private async executePayment(paymentPolicyPda: PublicKey): Promise<void> {
+    if (this.config.dryRun) {
+      console.log(
+        `[DRY-RUN] Would execute payment for ${paymentPolicyPda.toString()}`
+      );
+      return;
+    }
     try {
       const transaction = new anchor.web3.Transaction();
       const instructions = await this.sdk.executePayment(paymentPolicyPda);
@@ -251,6 +276,9 @@ class PaymentScheduler {
         .join(", ")}`
     );
     console.log(`Connection: ${this.config.connectionUrl}`);
+    if (this.config.dryRun) {
+      console.log("Mode: DRY-RUN (no transactions will be sent)");
+    }
 
     this.checkAndExecutePayments().catch(console.error);
 
@@ -272,6 +300,5 @@ class PaymentScheduler {
     console.log("Payment scheduler stopped");
   }
 }
-
 
 export { PaymentScheduler, SchedulerConfig };

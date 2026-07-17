@@ -18,7 +18,6 @@ import {
   PaymentGateway,
   ComposablePolicy,
   getPreValidationPda,
-  getGatewayPda,
   parseValidationPda,
   isForwardEnabled,
   resolveValidationTargets,
@@ -66,6 +65,7 @@ interface SchedulerConfig {
   privateKeys?: string[];
   relayerKeypairPath?: string;
   relayerPrivateKeys?: string[];
+  dryRun?: boolean;
 }
 
 const FORWARD_CONTEXT: Record<string, ForwardContext> = {
@@ -86,6 +86,9 @@ class ComposableScheduler {
   private pollTimer?: ReturnType<typeof setInterval>;
   private rescanTimer?: ReturnType<typeof setInterval>;
   private paymentGateways: Map<string, PaymentGateway> = new Map();
+  // Maps a signer pubkey → list of gateway PDAs that signer manages.
+  // A single signer can manage multiple gateways (different authorities).
+  private signerToGatewayPdas: Map<string, PublicKey[]> = new Map();
 
   constructor(config: SchedulerConfig) {
     this.config = config;
@@ -165,18 +168,24 @@ class ComposableScheduler {
       );
     }
     console.log(`Connection: ${this.config.connectionUrl}`);
+    if (this.config.dryRun) {
+      console.log("Mode: DRY-RUN (no transactions will be sent)");
+    }
 
     for (const keypair of this.gatewayKeypairs) {
-      const { address: gatewayPda } = getGatewayPda(
-        keypair.publicKey,
-        this.sdk.programId
+      // Discover ALL gateways where this keypair is the signer — not just the
+      // one where keypair == authority. A signer can manage multiple gateways.
+      const gateways = await this.sdk.getPaymentGatewaysBySigner(
+        keypair.publicKey
       );
-      const gateway = await this.sdk.getPaymentGateway(gatewayPda);
-      if (gateway) {
-        this.paymentGateways.set(keypair.publicKey.toString(), gateway); // also mapped from authority!
+      const pdaList: PublicKey[] = [];
+      for (const { publicKey: gatewayPda, account: gateway } of gateways) {
         this.paymentGateways.set(gatewayPda.toString(), gateway);
-      } else {
-        console.error(`No gateway found for ${keypair.publicKey}`);
+        pdaList.push(gatewayPda);
+      }
+      this.signerToGatewayPdas.set(keypair.publicKey.toBase58(), pdaList);
+      if (pdaList.length === 0) {
+        console.error(`No gateway found for signer ${keypair.publicKey}`);
       }
     }
 
@@ -208,39 +217,50 @@ class ComposableScheduler {
     this.cooldowns.clear();
 
     for (const keypair of this.gatewayKeypairs) {
-      const { address: gatewayPda } = getGatewayPda(
-        keypair.publicKey,
-        this.sdk.programId
-      );
-      try {
-        const policies = await this.sdk.program.account.composablePolicy.all([
-          {
-            // ponytail: ComposablePolicy Borsh layout —
-            // disc(8) + bump(1) + user_payment(32) → gateway @ offset 41
-            memcmp: { offset: 41, bytes: gatewayPda.toBase58() },
-          },
-        ]);
+      const gatewayPdas =
+        this.signerToGatewayPdas.get(keypair.publicKey.toBase58()) ?? [];
 
-        const watched: WatchedPolicy[] = [];
-        for (const { publicKey, account } of policies) {
-          const ctx = this.lookupForwardContext(account);
-          const gateway = this.paymentGateways.get(gatewayPda.toString());
-          if (gateway) {
-            watched.push({ publicKey, account, forwardContext: ctx, gateway });
+      for (const gatewayPda of gatewayPdas) {
+        try {
+          const policies = await this.sdk.program.account.composablePolicy.all([
+            {
+              // ponytail: ComposablePolicy Borsh layout —
+              // disc(8) + bump(1) + user_payment(32) → gateway @ offset 41
+              memcmp: { offset: 41, bytes: gatewayPda.toBase58() },
+            },
+          ]);
+
+          const watched: WatchedPolicy[] = [];
+          for (const { publicKey, account } of policies) {
+            const ctx = this.lookupForwardContext(account);
+            const gateway = this.paymentGateways.get(gatewayPda.toString());
+            if (gateway) {
+              watched.push({
+                publicKey,
+                account,
+                forwardContext: ctx,
+                gateway,
+              });
+            }
           }
-        }
 
-        this.watched.set(keypair.publicKey.toBase58(), watched);
-        console.log(
-          `Gateway ${keypair.publicKey.toString()}: ${
-            watched.length
-          } composable policies`
-        );
-      } catch (error) {
-        console.error(
-          `Rescan failed for gateway ${keypair.publicKey.toString()}:`,
-          error
-        );
+          // Aggregate policies across all gateways this signer manages
+          const existing = this.watched.get(keypair.publicKey.toBase58()) ?? [];
+          this.watched.set(keypair.publicKey.toBase58(), [
+            ...existing,
+            ...watched,
+          ]);
+          console.log(
+            `Gateway ${gatewayPda.toString()}: ${
+              watched.length
+            } composable policies (signer ${keypair.publicKey.toString()})`
+          );
+        } catch (error) {
+          console.error(
+            `Rescan failed for gateway ${gatewayPda.toString()}:`,
+            error
+          );
+        }
       }
     }
   }
@@ -409,6 +429,19 @@ class ComposableScheduler {
   }
 
   private async fire(policy: WatchedPolicy, signer: Keypair): Promise<void> {
+    if (this.config.dryRun) {
+      const amount =
+        isScheduleReady(
+          policy.account,
+          Math.floor(Date.now() / 1000),
+          policy.gateway
+        ).amount ?? new BN(0);
+      console.log(
+        `[${new Date().toISOString()}] [DRY-RUN] Would fire composable ${policy.publicKey.toString()} (amount: ${amount.toString()}, signer: ${signer.publicKey.toString()})`
+      );
+      return;
+    }
+
     await this.sdk.updateWallet(new anchor.Wallet(signer));
 
     try {
