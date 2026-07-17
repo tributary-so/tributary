@@ -12,6 +12,17 @@ module.exports = {
       "ts-jest",
       {
         tsconfig: "jest.tsconfig.json",
+        // ponytail: document-registry crash in TS (isDocumentRegistryEntry
+        // reads .sourceFile off undefined) when ts-jest's full-Program compile
+        // pulls packages/sdk source via the `paths` mapping. SDK files resolve
+        // to packages/sdk/tsconfig.json (moduleResolution: "bundler") whose
+        // impliedNodeFormat differs from jest.tsconfig.json's bucket key, so
+        // releaseDocumentWithKey dereferences undefined on program release.
+        // isolatedModules skips Program creation entirely — no cross-file
+        // resolution, no registry churn. Upgrade path: drop the `paths`
+        // mapping and import the built SDK dist instead, then full
+        // type-checking can come back.
+        isolatedModules: true,
       },
     ],
   },
