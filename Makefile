@@ -11,9 +11,6 @@ SOL_ARGS:=--keypair $(DEPLOY_KEY_PATH) \
 prep:
 	avm use 0.31.0
 
-test:
-	anchor test
-
 run_surfpool:
 	surfpool start --legacy-anchor-compatibility --watch
 
@@ -54,6 +51,10 @@ mainnet_deploy_buffer:
 	solana -k ${DEPLOY_KEY_PATH} balance
 
 mainnet_deploy:
+	@echo "===================================="
+	@echo "UPLOAD NOW REQUIRES SQUADS MULTISIG!"
+	@echo "===================================="
+	@exit 1;
 	solana -k ${DEPLOY_KEY_PATH} balance
 	#solana program deploy $(SOL_ARGS) --program-id $(PROGRAM_ID_PATH) ./target/deploy/tributary.so
 	solana program write-buffer $(SOL_ARGS) ./target/deploy/tributary.so
@@ -71,11 +72,15 @@ submit-verifable-build:
 	--commit-hash $(shell git show-ref -s origin/main) \
 	--keypair $(DEPLOY_KEY_PATH)
 
-verifiable_build:
+squads-tx:
+	solana-verify export-pda-tx https://github.com/tributary-so/tributary --program-id TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ --uploader 8NU2313J4MtANzEWeNnTUMy1Mf5Agavucf9oX4AagSaB --encoding base58 --compute-unit-price 0
+
+verify-submit:
+	solana-verify remote submit-job --program-id TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ --uploader 8NU2313J4MtANzEWeNnTUMy1Mf5Agavucf9oX4AagSaB
+
+verifiable-build:
 	solana-verify build
 	solana-verify get-executable-hash ./target/deploy/tributary.so
-	make mainnet_deploy
-	solana-verify get-program-hash -u $(SOLANA_API) $(PROGRAM_ID)
 
 build:
 	pnpm run -r --filter "./programs/*" build
