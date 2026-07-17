@@ -178,6 +178,7 @@ pub struct ComposableExecuted {
     pub recipient: Pubkey,
     pub timestamp: i64,
     pub record_id: u32,
+    pub memo: [u8; 32],
 }
 
 /// An event that is thrown when a composable policy status is changed

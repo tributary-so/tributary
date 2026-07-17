@@ -1456,6 +1456,7 @@ impl<'info> ExecuteComposable<'info> {
             recipient,
             timestamp: now,
             record_id: composable_policy.payment_count,
+            memo: composable_policy.memo,
         });
 
         msg!(

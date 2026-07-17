@@ -3236,6 +3236,15 @@ export type Tributary = {
           {
             "name": "recordId",
             "type": "u32"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }

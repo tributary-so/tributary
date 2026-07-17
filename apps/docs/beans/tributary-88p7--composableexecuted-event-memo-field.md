@@ -1,10 +1,11 @@
 ---
 # tributary-88p7
 title: ComposableExecuted event memo field
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-07-16T10:22:40Z
-updated_at: 2026-07-16T10:22:40Z
+updated_at: 2026-07-16T11:43:28Z
 parent: tributary-coqt
 ---
 

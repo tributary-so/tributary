@@ -1,6 +1,6 @@
 import { PublicKey, Transaction, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { type Tributary } from "../../../target/types/tributary.js";
-import { IdlAccounts, IdlTypes } from "@coral-xyz/anchor";
+import { IdlAccounts, IdlEvents, IdlTypes } from "@coral-xyz/anchor";
 import BN from "bn.js";
 
 export type IWallet = {
@@ -277,3 +277,33 @@ export interface SetupResult {
   instructions: TransactionInstruction[];
   steps: SetupStep[];
 }
+
+
+// ── IDL-derived event types ─────────────────────────────────────────
+// Single source of truth for all on-chain event shapes.
+// Consumers (API event indexer, dashboard, tests) import from here
+// instead of hand-writing interfaces that drift from the IDL.
+//
+// Note: IdlEvents<Tributary> keys are camelCase (matching the IDL
+// type-definition names). The export aliases use PascalCase + "Event"
+// suffix for ergonomic imports.
+
+export type PaymentRecordEvent = IdlEvents<Tributary>["paymentRecord"];
+export type ComposableExecutedEvent = IdlEvents<Tributary>["composableExecuted"];
+export type ComposablePolicyCreatedEvent = IdlEvents<Tributary>["composablePolicyCreated"];
+export type ComposablePolicyDeletedEvent = IdlEvents<Tributary>["composablePolicyDeleted"];
+export type ComposablePolicyStatusChangedEvent = IdlEvents<Tributary>["composablePolicyStatusChanged"];
+export type PaymentPolicyCreatedEvent = IdlEvents<Tributary>["paymentPolicyCreated"];
+export type PaymentPolicyDeletedEvent = IdlEvents<Tributary>["paymentPolicyDeleted"];
+export type PaymentPolicyStatusChangedEvent = IdlEvents<Tributary>["paymentPolicyStatusChanged"];
+export type PaymentGatewayCreatedEvent = IdlEvents<Tributary>["paymentGatewayCreated"];
+export type PaymentGatewayDeletedEvent = IdlEvents<Tributary>["paymentGatewayDeleted"];
+export type GatewaySignerChangedEvent = IdlEvents<Tributary>["gatewaySignerChanged"];
+export type GatewayFeeRecipientChangedEvent = IdlEvents<Tributary>["gatewayFeeRecipientChanged"];
+export type GatewayFeeBpsChangedEvent = IdlEvents<Tributary>["gatewayFeeBpsChanged"];
+export type ProgramConfigCreatedEvent = IdlEvents<Tributary>["programConfigCreated"];
+export type UserPaymentCreatedEvent = IdlEvents<Tributary>["userPaymentCreated"];
+export type UserPaymentDeletedEvent = IdlEvents<Tributary>["userPaymentDeleted"];
+export type ProgramAuthorityChangedEvent = IdlEvents<Tributary>["programAuthorityChanged"];
+export type EmergencyPauseChangedEvent = IdlEvents<Tributary>["emergencyPauseChanged"];
+export type ReferralRewardDistributedRecordEvent = IdlEvents<Tributary>["referralRewardDistributedRecord"];
