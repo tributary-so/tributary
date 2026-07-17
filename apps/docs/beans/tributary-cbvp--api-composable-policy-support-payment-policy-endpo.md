@@ -1,11 +1,11 @@
 ---
 # tributary-cbvp
 title: API Composable Policy Support + Payment Policy Endpoint Restructure
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-16T10:22:18Z
-updated_at: 2026-07-16T10:22:18Z
+updated_at: 2026-07-17T11:31:48Z
 ---
 
 ## Goal
