@@ -1,10 +1,11 @@
 ---
 # tributary-6f5k
 title: PaymentPolicyTracker — rename + delegate to SDK
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-07-16T10:23:11Z
-updated_at: 2026-07-16T10:23:11Z
+updated_at: 2026-07-17T10:10:09Z
 parent: tributary-s16v
 ---
 

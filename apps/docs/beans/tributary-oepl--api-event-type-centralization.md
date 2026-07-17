@@ -1,10 +1,11 @@
 ---
 # tributary-oepl
 title: API event type centralization
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-07-16T10:23:50Z
-updated_at: 2026-07-16T10:23:50Z
+updated_at: 2026-07-17T07:48:00Z
 parent: tributary-tbbj
 ---
 

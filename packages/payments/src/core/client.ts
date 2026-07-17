@@ -2,7 +2,7 @@
 
 import { CheckoutSessionManager } from "./session";
 import { OneTimePaymentTracker } from "./onetime";
-import { PaymentTracker, PolicyLookupOptions } from "./tracking";
+import { PaymentPolicyTracker, PolicyLookupOptions } from "./tracking";
 import type { TributaryConfigVariant } from "../types/tributary";
 
 /** Options for the policy query methods. Extends lookup options with an
@@ -48,15 +48,15 @@ function matchesVariant(
 export class PaymentsClient {
   private _checkout: CheckoutSessionManager;
   private _onetimeTracker: OneTimePaymentTracker;
-  private _tracker: PaymentTracker | null;
+  private _tracker: PaymentPolicyTracker | null;
 
   /**
-   * @param tracker Optional {@link PaymentTracker} backing the
+   * @param tracker Optional {@link PaymentPolicyTracker} backing the
    *   {@link policies} query methods. Without one, `.policies.*` throw a
    *   clear error; checkout / one-time tracking still work. (Dependency
    *   injection keeps the client unit-testable without a live Connection.)
    */
-  constructor(tracker?: PaymentTracker) {
+  constructor(tracker?: PaymentPolicyTracker) {
     // Zero configuration initialization
     this._checkout = new CheckoutSessionManager();
     this._onetimeTracker = new OneTimePaymentTracker();
@@ -105,7 +105,7 @@ export class PaymentsClient {
   /**
    * Policy management namespace (renamed from `.subscriptions`, Axis 7).
    * Works for every PaymentPolicy variant — the underlying
-   * {@link PaymentTracker.getPaymentPoliciesForOptions} returns all matching
+   * {@link PaymentPolicyTracker.getPaymentPoliciesForOptions} returns all matching
    * policies regardless of variant; pass `options.variant` to narrow.
    */
   get policies() {
@@ -158,10 +158,10 @@ export class PaymentsClient {
     return this.policies;
   }
 
-  private _requireTracker(): PaymentTracker {
+  private _requireTracker(): PaymentPolicyTracker {
     if (!this._tracker) {
       throw new Error(
-        "PaymentsClient has no PaymentTracker; pass one to the constructor to use .policies queries."
+        "PaymentsClient has no PaymentPolicyTracker; pass one to the constructor to use .policies queries."
       );
     }
     return this._tracker;

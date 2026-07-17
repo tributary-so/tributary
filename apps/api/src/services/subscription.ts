@@ -1,10 +1,13 @@
 /**
  * Subscription Service
- * Handles subscription status checking using the PaymentTracker
+ * Handles subscription status checking using the PaymentPolicyTracker
  */
 
 import { PublicKey } from "@solana/web3.js";
-import { PaymentTracker, PolicyLookupOptions } from "@tributary-so/payments";
+import {
+  PaymentPolicyTracker,
+  PolicyLookupOptions,
+} from "@tributary-so/payments";
 import { getConnection } from "./solana";
 import { decodeMemo, PaymentPolicy } from "@tributary-so/sdk";
 
@@ -62,10 +65,10 @@ export type SubscriptionDetails = Omit<
  * @returns Matched payment policies with BN/padding artifacts normalized away
  */
 export async function getSubscriptionDetails(
-  options: PolicyLookupOptions,
+  options: PolicyLookupOptions
 ): Promise<SubscriptionDetails[]> {
   const connection = getConnection();
-  const tracker = new PaymentTracker(connection);
+  const tracker = new PaymentPolicyTracker(connection);
   const policies = await tracker.getPaymentPoliciesForOptions(options);
 
   // remove the paddings

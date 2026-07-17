@@ -10,7 +10,7 @@ Modular Express API for Tributary subscription and payment services. Provides RE
 - **Kafka Integration**: Consumes on-chain payment events and pushes real-time notifications to subscribed clients
 - **Webhook Management**: Register and manage webhooks for payment event notifications
 - **Event Querying**: Comprehensive event database queries with filtering and pagination
-- **Subscription Status Tracking**: Check subscription status by tracking ID using PaymentTracker
+- **Subscription Status Tracking**: Check subscription status by tracking ID using PaymentPolicyTracker
 - **Health Monitoring**: Built-in health check endpoint
 - **Error Handling**: Centralized error handling with custom ApiError class
 - **Type Safety**: Full TypeScript support with comprehensive type definitions
@@ -149,7 +149,7 @@ api/
 │   │   └── index.ts          # Middleware exports
 │   ├── services/               # Business logic services
 │   │   ├── solana.ts         # Solana connection and token operations
-│   │   ├── subscription.ts    # Subscription status via PaymentTracker
+│   │   ├── subscription.ts    # Subscription status via PaymentPolicyTracker
 │   │   ├── onetime.ts        # One-time payment queries
 │   │   ├── webhookForwarder.ts # Webhook delivery with retries
 │   │   ├── kafkaConsumer.ts  # Kafka payment event consumer
@@ -266,7 +266,7 @@ Kafka Event → Kafka Consumer → WebhookService → HTTP POST → External End
 **Services (`src/services/`)**
 
 - `solana.ts`: Solana RPC connection management and token mint operations
-- `subscription.ts`: PaymentTracker integration for subscription status queries
+- `subscription.ts`: PaymentPolicyTracker integration for subscription status queries
 - `onetime.ts`: One-time payment details retrieval
 - `websocket.ts`: Socket.IO server with Redis adapter for multi-server deployments
 - `kafkaConsumer.ts`: Kafka consumer for `tributary_PaymentRecord` events

@@ -3230,6 +3230,15 @@
           {
             "name": "record_id",
             "type": "u32"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }

@@ -7,7 +7,9 @@ import {
   SystemProgram,
   TransactionInstruction,
   TransactionSignature,
+  GetProgramAccountsFilter,
 } from "@solana/web3.js";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
@@ -3930,6 +3932,96 @@ export class Tributary {
     Array<{ publicKey: PublicKey; account: ComposablePolicy }>
   > {
     return await this.program.account.composablePolicy.all();
+  }
+
+  // ── Combined-filter lookups ────────────────────────────────────────
+
+  /**
+   * Retrieve PaymentPolicy accounts with a combined memcmp filter set.
+   *
+   * Every field is optional; omitting all returns every PaymentPolicy
+   * (subject to RPC limits).
+   *
+   * @param filters - userPayment, gateway, recipient, trackingId
+   */
+  async getPaymentPolicies(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
+    return await this.program.account.paymentPolicy.all(
+      this.buildPaymentPolicyFilters(filters),
+    );
+  }
+
+  /**
+   * Retrieve ComposablePolicy accounts with a combined memcmp filter set.
+   *
+   * @param filters - userPayment, gateway, recipient, trackingId
+   */
+  async getComposablePolicies(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
+    return await this.program.account.composablePolicy.all(
+      this.buildComposablePolicyFilters(filters),
+    );
+  }
+
+  /**
+   * PaymentPolicy memcmp offsets (from account start):
+   *   disc 8 · user_payment 8 · recipient 40 · gateway 72
+   *   policy_type 104 (PolicyType::TOTAL_SIZE = 129)
+   *   status 233 · memo 234
+   */
+  private buildPaymentPolicyFilters(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): GetProgramAccountsFilter[] {
+    const result: GetProgramAccountsFilter[] = [];
+    if (filters?.userPayment)
+      result.push({ memcmp: { offset: 8, bytes: filters.userPayment.toBase58() } });
+    if (filters?.recipient)
+      result.push({ memcmp: { offset: 40, bytes: filters.recipient.toBase58() } });
+    if (filters?.gateway)
+      result.push({ memcmp: { offset: 72, bytes: filters.gateway.toBase58() } });
+    if (filters?.trackingId)
+      result.push({
+        memcmp: { offset: 234, bytes: bs58.encode(encodeMemo(filters.trackingId, 64)) },
+      });
+    return result;
+  }
+
+  /**
+   * ComposablePolicy memcmp offsets (from account start):
+   *   disc 8 · bump 8 · user_payment 9 · gateway 41
+   *   status 73 · rent_payer 74 · policy_type 106 (129)
+   *   forward_config 235 (205) · pre_validation 440 (33)
+   *   post_validation 473 (33) · memo 506 · recipient 538
+   */
+  private buildComposablePolicyFilters(filters?: {
+    userPayment?: PublicKey;
+    gateway?: PublicKey;
+    recipient?: PublicKey;
+    trackingId?: string;
+  }): GetProgramAccountsFilter[] {
+    const result: GetProgramAccountsFilter[] = [];
+    if (filters?.userPayment)
+      result.push({ memcmp: { offset: 9, bytes: filters.userPayment.toBase58() } });
+    if (filters?.gateway)
+      result.push({ memcmp: { offset: 41, bytes: filters.gateway.toBase58() } });
+    if (filters?.trackingId)
+      result.push({
+        memcmp: { offset: 506, bytes: bs58.encode(encodeMemo(filters.trackingId, 32)) },
+      });
+    if (filters?.recipient)
+      result.push({ memcmp: { offset: 538, bytes: filters.recipient.toBase58() } });
+    return result;
   }
 
   /**
