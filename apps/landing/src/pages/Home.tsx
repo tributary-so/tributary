@@ -53,7 +53,7 @@ const paymentTypes = [
       "Pause/resume anytime",
     ],
     tags: ["SaaS", "Content", "Memberships"],
-    color: "primary",
+    color: "text-primary",
   },
   {
     name: "Milestones",
@@ -66,7 +66,7 @@ const paymentTypes = [
       "Time/manual release",
     ],
     tags: ["Freelance", "Consulting", "Projects"],
-    color: "accent",
+    color: "text-accent",
   },
   {
     name: "Pay-as-you-go",
@@ -79,7 +79,7 @@ const paymentTypes = [
       "Provider claims",
     ],
     tags: ["AI/LLM", "API", "Cloud"],
-    color: "blue-500",
+    color: "text-blue-500",
   },
   {
     name: "One-Time",
@@ -92,7 +92,7 @@ const paymentTypes = [
       "Full fee + composable hooks",
     ],
     tags: ["Invoices", "Bonuses", "Escrow release"],
-    color: "amber-500",
+    color: "text-amber-500",
     new: true,
   },
   {
@@ -106,7 +106,7 @@ const paymentTypes = [
       "Recipient-triggerable (x402)",
     ],
     tags: ["x402 / HTTP 402", "LLM sessions", "Compute jobs"],
-    color: "purple-500",
+    color: "text-purple-500",
     new: true,
   },
 ];
@@ -357,12 +357,11 @@ export default function HomeContent() {
             <span className="text-foreground">
               The signature is the tax. The wallet is a wheelbarrow.
             </span>{" "}
-            Every &quot;automation&quot; in crypto is either a custodial bot
+            Every "automation" in crypto is either a custodial bot
             that holds your keys, or a calendar reminder that still needs you to
             sign.{" "}
             <span className="text-foreground">
-              Money that can&apos;t act on its own is money that can&apos;t
-              scale.
+              Money that can't act on its own is money that can't scale.
             </span>
           </p>
         </div>
@@ -378,7 +377,7 @@ export default function HomeContent() {
               Icon: Brain,
               title: "AI Agent",
               scenario: "Needs compute. Wants to pay for its own API calls.",
-              pain: "It can&apos;t — not without your private key. Hand over full wallet access, or the agent can&apos;t function autonomously.",
+              pain: "It can't — not without your private key. Hand over full wallet access, or the agent can't function autonomously.",
             },
           ].map((v) => (
             <div
@@ -631,7 +630,7 @@ export default function HomeContent() {
             </div>
             <div className="border border-border/50 bg-muted/10 p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-400">PULL</span>
+                <span className="text-xs font-bold text-primary">PULL</span>
                 <span className="text-xs text-muted-foreground">
                   Delegated claim
                 </span>
@@ -645,7 +644,7 @@ export default function HomeContent() {
             </div>
             <div className="border border-border/50 bg-muted/10 p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-purple-400">ROUTE</span>
+                <span className="text-xs font-bold text-primary">ROUTE</span>
                 <span className="text-xs text-muted-foreground">
                   Meteora DLMM swap
                 </span>
@@ -724,7 +723,7 @@ await sdk.createComposablePolicy({
             >
               <div className="p-5 space-y-4">
                 <div className="flex items-start justify-between">
-                  <type.icon className={`h-6 w-6 text-${type.color}`} />
+                  <type.icon className={`h-6 w-6 ${type.color}`} />
                   <div className="flex flex-wrap gap-1">
                     {"new" in type && type.new && (
                       <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 text-accent border border-accent/30">
@@ -787,7 +786,7 @@ await sdk.createComposablePolicy({
                 <div className="font-mono text-sm text-muted-foreground">
                   {label}
                 </div>
-                <div className="text-2xl font-bold gradient-text">{value}</div>
+                <div className="text-2xl font-bold text-foreground">{value}</div>
               </div>
             ))}
           </div>
@@ -1069,7 +1068,8 @@ await sdk.createComposablePolicy({
       <section id="cta" className="py-16">
         <div className="border border-border bg-muted/20 p-12 text-center">
           <h2 className="mb-4 text-3xl font-bold">
-            <span className="gradient-text">Money should move itself.</span>
+            <span className="text-foreground">Money should </span>
+            <span className="gradient-text">move itself.</span>
           </h2>
           <p className="mb-2 text-foreground max-w-xl mx-auto font-medium">
             Stop pushing your bags. Let them flow.
@@ -1086,12 +1086,6 @@ await sdk.createComposablePolicy({
             >
               <Code2 className="h-4 w-4" />
               Read the Docs
-            </a>
-            <a
-              href="https://app.tributary.so"
-              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all h-11 px-6"
-            >
-              See it running
             </a>
             <a
               href="mailto:info@tributary.so"

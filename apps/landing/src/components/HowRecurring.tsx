@@ -4,7 +4,7 @@ export default function HowRecurring() {
     <section id="how-it-works" className="py-16">
       <div className="mb-8 max-w-3xl space-y-3">
         <h2 className="text-xl font-semibold">
-          Truely
+          Truly
           <span className="gradient-text">recurring</span>
           payments
         </h2>

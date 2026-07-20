@@ -55,11 +55,9 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-border bg-neutral-900 w-full max-w-full ${
-        className || ""
-      }`}
+      className={`relative overflow-hidden border border-border/50 bg-neutral-900 w-full max-w-full ${className || ""}`}
     >
-      <div className="bg-neutral-800 px-4 py-3 flex items-center gap-2">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-700">
         <Terminal className="w-4 h-4 text-neutral-400" />
         {title && (
           <span className="text-neutral-300 text-sm font-medium">{title}</span>
@@ -113,7 +111,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
 
       <button
         onClick={handleCopy}
-        className="absolute top-14 right-4 bg-primary hover:bg-primary/80 text-white text-sm px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-primary/20 flex items-center gap-2"
+        className="absolute top-14 right-4 bg-primary hover:bg-primary/80 text-white text-sm px-4 py-2 transition-all duration-300 shadow-lg hover:shadow-primary/20 flex items-center gap-2"
       >
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
         {copied ? "Copied!" : "Copy"}

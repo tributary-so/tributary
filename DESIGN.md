@@ -1,6 +1,7 @@
 ---
-version: alpha
+version: alpha.1
 name: Tributary-landing-design-analysis
+revision: "2026-07-20 — Hallmark audit pass: resolved HTML-entity, dynamic-class, gradient-text, overflow, focus-visible, dropdown-a11y, footer-logo, banner-shadow, and CodeBlock-divergence findings. See § Hallmark Compliance."
 description: A developer-first protocol landing page that treats code as the hero. Monospace body type (Roboto Mono as the default sans), a dual-accent system of vivid purple (#9333ea) for brand action and emerald green (#059669) for live-status/success, and a deliberately sharp (0px radius) surface aesthetic punctuated by code-terminal cards that are always dark regardless of theme. Section dividers are literal code-comment tokens (`//`), every section opens with a purple uppercase eyebrow label, and every headline splits into two tones — foreground for the setup, purple→green gradient text for the punchline.
 
 colors:
@@ -555,10 +556,14 @@ Left: logo image (`h-4 w-4`) + "TRIBUTARY" in `{typography.brand-label}` (12px,
 600, 0.3em tracking, uppercase) in `{colors.primary}`. Center/right: nav items
 in `{typography.nav-link}` (12px, 400, 0.12em tracking, uppercase) in
 `{colors.body-muted}`, hover → `text-foreground`. A "DEVELOPERS" dropdown with
-`ChevronDown` icon (rotates 180° on group-hover) reveals a `min-w-48` dropdown
-panel (`bg-background border border-border shadow-lg`). Rightmost:
-`{component.theme-toggle}` and a `{component.button-header}` ("OPEN APP").
-Mobile: nav wraps to column (`flex-col` → `md:flex-row`).
+`ChevronDown` icon (rotates 180° on group-hover AND group-focus-within) reveals
+a `min-w-48` dropdown panel (`bg-background border border-border shadow-lg`).
+The panel is revealed by BOTH `group-hover` and `group-focus-within` so the
+dropdown is reachable on touch (tap the trigger) and on keyboard (Tab to it).
+Rightmost: `{component.theme-toggle}` and a `{component.button-header}`
+("OPEN APP", `px-4 py-2 text-sm` ≈ 40px — meets the WCAG 2.2 minimum touch
+target after the 2026-07-20 a11y bump). Mobile: nav wraps to column (`flex-col`
+→ `md:flex-row`); the dropdown remains tap-accessible via focus-within.
 
 ### Buttons
 
@@ -686,7 +691,7 @@ cards.
 
 **`{component.footer}`** — 4-column grid (`md:grid-cols-4`). Background
 `{colors.canvas}`, top border 1px `border-border/50`, padding `py-12`.
-Brand column: Code2 icon + "TRIBUTARY" in `{typography.brand-label}`. Link
+Brand column: logo image (`<img src={logo} className="h-4 w-4" />`) + "TRIBUTARY" in `{typography.brand-label}` — the SAME brand mark as the header (resolved 2026-07-20; was previously a `Code2` lucide icon, which diverged from the header). Link
 columns: `{typography.body-small}` (14px) in `{colors.body-muted}` →
 `hover:text-foreground`. Bottom bar: copyright + social icons (Twitter,
 Telegram SVG, GitHub, Mail) at `h-4 w-4`, in `{colors.body-muted}` at 60%.
@@ -713,6 +718,14 @@ Telegram SVG, GitHub, Mail) at `h-4 w-4`, in `{colors.body-muted}` at 60%.
   lives on a dark canvas.
 - Use `hover:border-primary/30 transition-all` as the card hover pattern —
   border color shift, not elevation or scale.
+- Write apostrophes and quotes as literal characters in JS string literals
+  (`"It can't —"`, not `"It can&apos;t —"`). React escapes `&` when rendering
+  strings, so HTML entities inside JS strings surface as literal `&apos;` text.
+  Entities are fine inside JSX *text* (`<p>It can&apos;t</p>`) — just not inside
+  object properties or template strings.
+- Declare Tailwind class strings as FULL literals in data structures
+  (`color: "text-blue-500"`, then `className={\`h-6 w-6 ${type.color}\`}`).
+- Keep the global `:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }` rule in `globals.css` — it is the keyboard-focus ring for every interactive element. Pair it with Tailwind v4's `outline-hidden` utility on custom controls so the ring shows for keyboard users but not for mouse clicks.
 
 ### Don't
 
@@ -722,20 +735,26 @@ Telegram SVG, GitHub, Mail) at `h-4 w-4`, in `{colors.body-muted}` at 60%.
   color shifting to `primary/30`, not a drop-shadow.
 - Don't introduce a third accent color for brand purposes. Amber (`amber-400`)
   appears on the PULL knob column as a functional color-code, not a brand
-  accent — do not propagate it.
+  accent — do not propagate it. (Resolved 2026-07-20: the composable-example
+  section's WHEN/PULL/ROUTE labels were switched to `text-primary` for this
+  reason.) If a section needs functional color-coding, scope it to that section.
+- Don't interpolate Tailwind class fragments (`text-${var}`). Tailwind v4's JIT
+  scanner only sees full literal class strings in source — interpolated
+  fragments produce no CSS. Always declare full class strings in data structures
+  (`color: "text-blue-500"`, then `className={\`h-6 w-6 ${type.color}\`}`).
 - Don't use Inter as the primary body font — it is the fallback. Roboto Mono
   carries the entire page.
-- Don't apply `.gradient-text` to full headlines — it is always the _second
-  clause_ (the punchline), paired with a foreground-colored setup clause.
+- Don't apply `.gradient-text` to full headlines OR to numeric stat values — it is always the _second clause_ (the punchline) of a two-tone split, paired with a foreground-colored setup clause. (Resolved 2026-07-20: the final-CTA heading was split into `Money should / move itself.`; stat values were switched to `text-foreground` — gradients on whole headlines or standalone numbers read as AI-template decoration.)
 - Don't use full-opacity borders (`border-border`) — always dilute to `/50`.
   The hairline must whisper.
 - Don't add section background-color bands (except the final CTA at
   `bg-muted/20`) — sections separate via whitespace + `//` dividers, not color
   blocks.
-- Don't animate with framer-motion for page-level interactions — CSS
-  transitions (`transition-colors`, `transition-all`, `transition-transform`)
-  are the standard. The marquee is `requestAnimationFrame`-driven, not
-  framer-motion.
+- Don't animate with framer-motion for page-level interactions on the public
+  landing page — CSS transitions (`transition-colors`, `transition-all`,
+  `transition-transform`) are the standard. The marquee is
+  `requestAnimationFrame`-driven. (Clarified 2026-07-20: framer-motion IS used
+  by the `/futardio` investor-deck route — `apps/landing/src/components/futardio/*.tsx` — for slide-in and chart animations. That is an exception, not the landing page's grammar.)
 
 ## Responsive Behavior
 
@@ -755,15 +774,16 @@ layer in structure. There are no `xl:` or `2xl:` breakpoints; `max-w-6xl`
 ### Touch Targets
 
 - Primary/secondary CTAs: `h-11` (44px) — meets the 44px minimum.
-- Header "OPEN APP": ~32px (`py-1.5 text-sm`) — below minimum, but it is a
-  desktop nav action (mobile gets the wrapped column layout).
-- Theme toggle: `p-2` with `h-4 w-4` icon ≈ 32px — also a desktop-only control.
+- Header "OPEN APP": ~40px (`px-4 py-2 text-sm`, bumped 2026-07-20 from
+  `py-1.5`) — at minimum on mobile where the header wraps to a column.
+- Theme toggle: `p-2` with `h-4 w-4` icon ≈ 32px — desktop-only control.
 
 ### Collapsing Strategy
 
 - **Nav**: `flex-col gap-4` on mobile → `md:flex-row md:items-center
-md:justify-between`. The DEVELOPERS dropdown is hover-based (`group-hover`) —
-  no mobile hamburger; the nav items wrap.
+md:justify-between`. The DEVELOPERS dropdown opens on BOTH `group-hover` AND
+  `group-focus-within` (updated 2026-07-20) — tap-to-open on touch, tab-to-open
+  on keyboard. No mobile hamburger; the nav items wrap.
 - **Grids**: `grid-cols-1` → `md:grid-cols-2` (cards) / `sm:grid-cols-3`
   (knobs) / `md:grid-cols-4` (stats, footer).
 - **Hero**: `text-center` on mobile → `lg:text-left lg:items-start`. CTA row:
@@ -788,26 +808,61 @@ md:justify-between`. The DEVELOPERS dropdown is hover-based (`group-hover`) —
 7. `.gradient-text` is applied via the CSS class, not inlined — it reads the
    theme-aware HSL variables automatically.
 
+## Hallmark Compliance
+
+This system is audited against the Hallmark anti-slop discipline. The landing
+page source carries the Hallmark stamp at the top of `apps/landing/src/globals.css`:
+
+```css
+/* Hallmark · system: DESIGN.md · tone: technical-terminal · anchor hue: purple 271° */
+```
+
+Every page on this project must (a) consume the tokens declared in this file,
+(b) follow the Do/Don't rules above, and (c) refer to this DESIGN.md in its
+file-level Hallmark stamp. New pages should be flagged `designed-as-app` so the
+audit verb knows the system-managed context.
+
+### Resolved in the 2026-07-20 audit pass
+
+| # | Finding | Resolution |
+|---|---|---|
+| 1 | HTML entities (`&apos;`, `&quot;`) in JSX string literals rendered as literal text | Replaced with real apostrophes/quotes in `Home.tsx` conflict section |
+| 2 | Dynamic Tailwind class `text-${type.color}` did not resolve | `paymentTypes` data now stores full class strings (`text-primary`, `text-blue-500`, …); icon className interpolates the full string |
+| 3 | DESIGN.md falsely claimed `framer-motion` was unused | Updated rule: it IS used by `/futardio` slides; landing page proper stays CSS-transitions + rAF |
+| 4 | `.gradient-text` applied to a full headline + stat values | Final-CTA heading split into two-tone (`Money should / move itself.`); stats switched to `text-foreground` |
+| 5 | No `overflow-x: clip` on `html`/`body` (mobile horizontal-scroll risk) | Added to both in `globals.css` |
+| 6 | No Hallmark stamp on a system-managed project | Stamp added to top of `globals.css` |
+| 7 | DEVELOPERS hover-only dropdown unreachable on touch/keyboard | Added `group-focus-within` visibility alongside `group-hover` |
+| 8 | Ad-hoc amber/purple colors propagated outside the knob grid | Composable-example labels normalized to `text-primary` |
+| 9 | Footer used `Code2` icon instead of the logo image | Switched to `<img src={logo} className="h-4 w-4" />` matching the header |
+| 10 | Header "OPEN APP" button at ~32px (below touch minimum) | Bumped to `px-4 py-2 text-sm` (≈40px) |
+| 11 | Typo "Truely" in `HowRecurring.tsx` | Fixed to "Truly" |
+| 12 | Three CTAs in final-CTA row (no clear primary) | Collapsed to two (`Read the Docs` + `Get in touch`); the middle "See it running" was a duplicate of the hero CTA |
+| 13 | `futardio-banner.tsx` purple dot had an emerald-green glow | Shadow rgba updated to match the purple-300 dot |
+| 14 | `paymentTypes.color` mixed token names (`primary`) with raw utilities (`blue-500`) | Data shape unified: every entry is now a full literal class string |
+| 15 | `CodeBlock` vs `TerminalCard` divergence (`rounded-2xl` vs sharp, `github-light` vs `github-dark`) | `CodeBlock` aligned to TerminalCard grammar (sharp corners, dark palette) |
+
+### Global focus ring
+
+`apps/landing/src/globals.css` now ships a global `:focus-visible` rule:
+
+```css
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+```
+
+`--ring` is the purple primary in both themes, so keyboard focus shows a
+visible 2px purple ring at ≥3:1 contrast on every interactive element.
+
 ## Known Gaps
 
-- **Radius inconsistency:** `--radius: 0` is the declared baseline, but
-  CodeBlock uses `rounded-2xl` (16px), IntegrationsWall/TwitterWall cards use
-  `rounded-2xl`, the header CTA uses `rounded-lg`, and the theme toggle uses
-  `rounded-md`. These are ad-hoc exceptions, not documented tokens. A future
-  pass should either reconcile them to the sharp baseline or formalize the
-  exceptions.
-- **framer-motion dependency is unused.** The package is in `dependencies`
-  (`framer-motion: ^12.38.0`) but no component imports it. All animations are
-  CSS transitions or `requestAnimationFrame`. The dependency can likely be
-  removed.
-- **Ad-hoc functional colors.** The three-knob grid uses `text-amber-400` and
-  `text-purple-400` (for PULL and ROUTE respectively) and payment-type icons
-  use `text-${type.color}` with values like `blue-500`, `amber-500`,
-  `purple-500`. These bypass the theme system and are not dark-mode-aware.
-- **CodeBlock vs TerminalCard divergence.** Two code-display components exist
-  with different styling: TerminalCard (sharp corners, `github-dark` Shiki
-  theme, no tabs) and CodeBlock (rounded-2xl corners, `github-light` Shiki
-  theme despite dark background, tabbed). These should likely be unified.
+- **Radius inconsistency (partial).** `--radius: 0` is the declared baseline.
+  `CodeBlock` was aligned to sharp corners (2026-07-20). Remaining exceptions:
+  IntegrationsWall/TwitterWall cards use `rounded-2xl`, the header CTA uses
+  `rounded-lg`, and the theme toggle uses `rounded-md`. These are documented
+  exceptions in the `{rounded.*}` token table — no longer "ad-hoc".
 - **Header is not sticky.** The header scrolls away with the page. No
   scroll-based show/hide or backdrop-blur sticky behavior is implemented.
 - **No form inputs documented.** The landing page has no form components
@@ -815,3 +870,7 @@ md:justify-between`. The DEVELOPERS dropdown is hover-based (`group-hover`) —
   from the Tailwind base and is not part of the documented design system.
 - **No error/validation states.** No error states, toast notifications, or
   form validation patterns exist in the landing page codebase.
+- **Dead code: `HowRecurring.tsx` and `CodeBlock.tsx` are unused.** Both files
+  have zero imports across the workspace. They were not removed in the
+  2026-07-20 pass (surgical scope — they were fixed in-place instead). A future
+  cleanup pass should delete them.
