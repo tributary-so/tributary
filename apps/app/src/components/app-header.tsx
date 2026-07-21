@@ -28,7 +28,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-1 hover:bg-accent hover:text-accent-foreground transition-colors"
+      className="p-2 hover:bg-accent hover:text-accent-foreground transition-colors"
       aria-label="Toggle theme"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -84,7 +84,7 @@ export function AppHeader() {
             {connected && (
               <button
                 onClick={() => navigate('/account')}
-                className="border border-border px-3 py-1 text-xs uppercase tracking-[0.12em] hover:bg-accent transition-colors"
+                className="border border-border px-4 py-2 text-xs uppercase tracking-[0.12em] hover:bg-accent transition-colors"
               >
                 Dashboard
               </button>

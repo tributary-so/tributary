@@ -56,7 +56,7 @@ const FutardioBanner: React.FC = () => {
         <div className="max-w-4xl mx-auto text-center lg:text-left">
           {/* Live Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 bg-purple-300/10 border border-purple-300/30 backdrop-blur-md">
-            <div className="w-2 h-2 rounded-full bg-purple-300 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+            <div className="w-2 h-2 rounded-full bg-purple-300 animate-pulse shadow-[0_0_10px_rgba(216,180,254,0.6)]" />
             <span className="text-[10px] font-semibold uppercase tracking-widest text-purple-300">
               Live on Futardio
             </span>

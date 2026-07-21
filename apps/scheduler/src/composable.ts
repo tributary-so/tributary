@@ -30,6 +30,7 @@ import {
   evaluateAssertion,
   isScheduleReady,
 } from "./evaluator.js";
+import { logger } from "./logger.js";
 
 const POLL_INTERVAL_MS = 30_000;
 const RESCAN_INTERVAL_MS = 10 * 60_000;
@@ -112,7 +113,7 @@ class ComposableScheduler {
     }
 
     if (this.gatewayKeypairs.length === 0) {
-      console.log("Error: need at least one private key!");
+      logger.error("Need at least one private key");
       exit(1);
     }
 
@@ -145,31 +146,31 @@ class ComposableScheduler {
     try {
       return this.loadKeypair(fs.readFileSync(filePath, "ascii"));
     } catch (error) {
-      console.error("Error reading keypair:", error);
+      logger.error(`Error reading keypair ${filePath}:`, error);
       throw error;
     }
   }
 
   async start(): Promise<void> {
-    console.log(
-      `[${new Date().toISOString()}] Starting composable scheduler. Gateways: ${this.gatewayKeypairs
+    logger.info(
+      `Starting composable scheduler. Gateways: ${this.gatewayKeypairs
         .map((k) => k.publicKey.toString())
         .join(", ")}`
     );
     if (this.relayerKeypairs.length > 0) {
-      console.log(
+      logger.info(
         `Relayers (cold-relayer path): ${this.relayerKeypairs
           .map((k) => k.publicKey.toString())
           .join(", ")}`
       );
     } else {
-      console.log(
+      logger.info(
         "Relayers: none — signing with gateway keypairs (trusted-signer path)"
       );
     }
-    console.log(`Connection: ${this.config.connectionUrl}`);
+    logger.info(`Connection: ${this.config.connectionUrl}`);
     if (this.config.dryRun) {
-      console.log("Mode: DRY-RUN (no transactions will be sent)");
+      logger.info("Mode: DRY-RUN (no transactions will be sent)");
     }
 
     for (const keypair of this.gatewayKeypairs) {
@@ -185,7 +186,7 @@ class ComposableScheduler {
       }
       this.signerToGatewayPdas.set(keypair.publicKey.toBase58(), pdaList);
       if (pdaList.length === 0) {
-        console.error(`No gateway found for signer ${keypair.publicKey}`);
+        logger.warn(`No gateway found for signer ${keypair.publicKey}`);
       }
     }
 
@@ -193,27 +194,25 @@ class ComposableScheduler {
     await this.tick();
 
     this.pollTimer = setInterval(
-      () => this.tick().catch((e) => console.error("tick error:", e)),
+      () => this.tick().catch((e) => logger.error("tick error:", e)),
       POLL_INTERVAL_MS
     );
     this.rescanTimer = setInterval(
-      () => this.rescanAll().catch((e) => console.error("rescan error:", e)),
+      () => this.rescanAll().catch((e) => logger.error("rescan error:", e)),
       RESCAN_INTERVAL_MS
     );
 
-    console.log("Composable scheduler started successfully");
+    logger.info("Composable scheduler started successfully");
   }
 
   stop(): void {
     if (this.pollTimer) clearInterval(this.pollTimer);
     if (this.rescanTimer) clearInterval(this.rescanTimer);
-    console.log("Composable scheduler stopped");
+    logger.info("Composable scheduler stopped");
   }
 
   private async rescanAll(): Promise<void> {
-    console.log(
-      `[${new Date().toISOString()}] Rescanning composable policies...`
-    );
+    logger.info("Rescanning composable policies...");
     this.cooldowns.clear();
 
     for (const keypair of this.gatewayKeypairs) {
@@ -250,13 +249,13 @@ class ComposableScheduler {
             ...existing,
             ...watched,
           ]);
-          console.log(
+          logger.info(
             `Gateway ${gatewayPda.toString()}: ${
               watched.length
             } composable policies (signer ${keypair.publicKey.toString()})`
           );
         } catch (error) {
-          console.error(
+          logger.error(
             `Rescan failed for gateway ${gatewayPda.toString()}:`,
             error
           );
@@ -287,10 +286,10 @@ class ComposableScheduler {
       const fireable = await this.prefilter(policies, currentTime);
       if (fireable.length === 0) continue;
 
-      console.log(
-        `[${new Date().toISOString()}] Gateway ${keypair.publicKey.toString()}: ${
-          fireable.length
-        }/${policies.length} fireable`
+      logger.info(
+        `Gateway ${keypair.publicKey.toString()}: ${fireable.length}/${
+          policies.length
+        } fireable`
       );
 
       // ponytail: single relayer for all gateways. Round-robin / per-gateway
@@ -300,7 +299,7 @@ class ComposableScheduler {
       await Promise.all(
         fireable.map((p) =>
           this.fire(p, signer).catch((e) =>
-            console.error(`fire error for ${p.publicKey.toString()}:`, e)
+            logger.error(`fire error for ${p.publicKey.toString()}:`, e)
           )
         )
       );
@@ -315,9 +314,7 @@ class ComposableScheduler {
     const notOnCooldown = policies.filter((p) => {
       const cd = this.cooldowns.get(p.publicKey.toBase58());
       if (cd && cd.cooldownUntil > now) {
-        console.log(
-          `[${new Date().toISOString()}] ${p.publicKey.toString()} on cooldown — skipping`
-        );
+        logger.debug(`${p.publicKey.toString()} on cooldown — skipping`);
         return false;
       }
       return true;
@@ -420,8 +417,8 @@ class ComposableScheduler {
       if (evaluateAssertion(m.family, m.parsed!.data, targetAcct)) {
         fireable.push(m.policy);
       } else {
-        console.log(
-          `[${new Date().toISOString()}] ${m.policy.publicKey.toString()} validation prefilter: assertion not satisfied`
+        logger.debug(
+          `${m.policy.publicKey.toString()} validation prefilter: assertion not satisfied`
         );
       }
     }
@@ -436,8 +433,8 @@ class ComposableScheduler {
           Math.floor(Date.now() / 1000),
           policy.gateway
         ).amount ?? new BN(0);
-      console.log(
-        `[${new Date().toISOString()}] [DRY-RUN] Would fire composable ${policy.publicKey.toString()} (amount: ${amount.toString()}, signer: ${signer.publicKey.toString()})`
+      logger.debug(
+        `[DRY-RUN] Would fire composable ${policy.publicKey.toString()} (amount: ${amount.toString()}, signer: ${signer.publicKey.toString()})`
       );
       return;
     }
@@ -529,19 +526,17 @@ class ComposableScheduler {
         }
       );
 
-      console.log(
-        `[${new Date().toISOString()}] ✅ Composable executed: ${policy.publicKey.toString()} → ${signature}`
+      logger.debug(
+        `✅ Composable executed: ${policy.publicKey.toString()} → ${signature}`
       );
       this.cooldowns.delete(policy.publicKey.toBase58());
     } catch (error) {
-      console.error(
-        `[${new Date().toISOString()}] 🚩 Composable failed: ${policy.publicKey.toString()}`
-      );
+      logger.error(`🚩 Composable failed: ${policy.publicKey.toString()}`);
       if (error instanceof SendTransactionError) {
-        console.error(error.message);
-        console.error(error.logs);
+        logger.error(error.message);
+        logger.error(error.logs);
       } else {
-        console.error(error);
+        logger.error(error);
       }
       this.recordFailure(policy.publicKey);
     }
@@ -556,10 +551,8 @@ class ComposableScheduler {
     entry.consecutiveFailures += 1;
     if (entry.consecutiveFailures >= MAX_FAILURES) {
       entry.cooldownUntil = Date.now() + COOLDOWN_MS;
-      console.log(
-        `[${new Date().toISOString()}] ${key} hit ${MAX_FAILURES} strikes — cooldown ${
-          COOLDOWN_MS / 1000
-        }s`
+      logger.warn(
+        `${key} hit ${MAX_FAILURES} strikes — cooldown ${COOLDOWN_MS / 1000}s`
       );
     }
     this.cooldowns.set(key, entry);

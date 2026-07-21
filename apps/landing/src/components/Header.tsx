@@ -101,7 +101,7 @@ export function Header() {
                 DEVELOPERS
                 <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
               </button>
-              <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all">
                 <div className="bg-background border border-border shadow-lg min-w-48 py-2">
                   {products.map((product) =>
                     product.external ? (
@@ -141,7 +141,7 @@ export function Header() {
           </nav>
           <a
             href="https://app.tributary.so"
-            className="text-sm border border-primary px-3 py-1.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+            className="text-sm border border-primary px-4 py-2 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             OPEN APP
           </a>

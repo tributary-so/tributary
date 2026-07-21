@@ -9,5 +9,10 @@
  * `apps/scheduler/src/composable.ts:buildForwardIx`.
  */
 
-export { createMeteoraDlmmForward } from "./meteora-dlmm";
+export {
+  createMeteoraDlmmForward,
+  meteoraDlmmForwardConfig,
+  METEORA_DLMM_SWAP_DISCRIMINATOR,
+  type MeteoraDlmmForwardConfigOptions,
+} from "./meteora-dlmm";
 export { METEORA_DLMM_PUBKEY } from "./constants";

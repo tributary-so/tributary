@@ -115,6 +115,29 @@ module.exports = {
           900: 'hsl(266 61% 24%)',
           foreground: 'hsl(0 0% 100%)',
         },
+        upTo: {
+          DEFAULT: 'hsl(290 84% 52%)',
+          50: 'hsl(290 100% 97%)',
+          100: 'hsl(290 95% 94%)',
+          200: 'hsl(290 92% 86%)',
+          300: 'hsl(290 88% 75%)',
+          400: 'hsl(290 85% 65%)',
+          500: 'hsl(290 84% 52%)',
+          600: 'hsl(291 78% 44%)',
+          700: 'hsl(292 72% 36%)',
+          800: 'hsl(293 67% 28%)',
+          900: 'hsl(294 61% 21%)',
+          foreground: 'hsl(0 0% 100%)',
+        },
+        lando: {
+          text: 'hsl(var(--foreground))',
+          muted: 'hsl(var(--muted-foreground))',
+          accent: {
+            DEFAULT: 'hsl(160 84% 39%)',
+            foreground: 'hsl(0 0% 100%)',
+          },
+          border: 'hsl(var(--border))',
+        },
         status: {
           active: {
             DEFAULT: 'hsl(142 71% 45%)',

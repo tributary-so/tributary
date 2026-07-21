@@ -101,16 +101,6 @@ export default function DashboardFeature() {
               <BriefcaseBusiness className="h-4 w-4" />
               Business Onboarding
             </a>
-
-            <a
-              href="https://docs.tributary.so"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border bg-background shadow-2xs hover:bg-accent hover:text-accent-foreground inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-hidden transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-6"
-            >
-              <BookOpen className="h-4 w-4" />
-              Documentation
-            </a>
           </div>
         </div>
         <div className="flex flex-col justify-center space-y-4">

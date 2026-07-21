@@ -9,6 +9,7 @@ import * as cron from "node-cron";
 import * as fs from "fs";
 import { TributarySDK } from "@tributary-so/sdk";
 import { exit } from "process";
+import { logger } from "./logger.js";
 
 interface SchedulerConfig {
   connectionUrl: string;
@@ -42,7 +43,7 @@ class PaymentScheduler {
     }
 
     if (this.gatewayKeypairs.length === 0) {
-      console.log("Error: need at least one private key!");
+      logger.error("Need at least one private key");
       exit(1);
     }
 
@@ -61,15 +62,13 @@ class PaymentScheduler {
       const jsonContent = fs.readFileSync(filePath, "ascii");
       return this.loadKeypair(jsonContent);
     } catch (error) {
-      console.error("Error reading keypair:", error);
+      logger.error(`Error reading keypair ${filePath}:`, error);
       throw error;
     }
   }
 
   private async checkAndExecutePayments(): Promise<void> {
-    console.log(
-      `[${new Date().toISOString()}] Checking for payments to execute...`
-    );
+    logger.info("Checking for payments to execute...");
 
     let totalExecutedCount = 0;
     let totalErrorCount = 0;
@@ -79,8 +78,8 @@ class PaymentScheduler {
       const wallet = new anchor.Wallet(keypair);
       await this.sdk.updateWallet(wallet);
 
-      console.log(
-        `[${new Date().toISOString()}] Processing gateways for signer: ${keypair.publicKey.toString()}`
+      logger.debug(
+        `Processing gateways for signer: ${keypair.publicKey.toString()}`
       );
 
       // Discover all gateways where this keypair is the signer (not just the
@@ -90,14 +89,14 @@ class PaymentScheduler {
       );
 
       if (gateways.length === 0) {
-        console.log(
-          `[${new Date().toISOString()}] No gateways found for signer ${keypair.publicKey.toString()}`
+        logger.debug(
+          `No gateways found for signer ${keypair.publicKey.toString()}`
         );
       }
 
       for (const { publicKey: gatewayPda, account: gateway } of gateways) {
-        console.log(
-          `[${new Date().toISOString()}] Gateway ${gatewayPda.toString()} (authority: ${gateway.authority.toString()})`
+        logger.debug(
+          `Gateway ${gatewayPda.toString()} (authority: ${gateway.authority.toString()})`
         );
 
         try {
@@ -105,7 +104,7 @@ class PaymentScheduler {
             gatewayPda
           );
 
-          console.log(
+          logger.debug(
             `Found ${
               paymentPolicies.length
             } payment policies for gateway ${gatewayPda.toString()}`
@@ -129,39 +128,39 @@ class PaymentScheduler {
                   })`;
                 }
 
-                console.log(
+                logger.debug(
                   `Executing payment for policy: ${policyPda.toString()}${milestoneInfo}`
                 );
 
                 await this.executePayment(policyPda);
                 executedCount++;
 
-                console.log(
+                logger.debug(
                   `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
                 );
 
                 await this.delay(1000);
               }
             } catch (error) {
-              console.error(
+              logger.error(
                 `🚩 Error executing payment for ${policyPda.toString()}`
               );
               if (error instanceof SendTransactionError) {
-                console.error(error.message);
-                console.error(error.logs);
+                logger.error(error.message);
+                logger.error(error.logs);
               }
               errorCount++;
             }
           }
 
-          console.log(
+          logger.info(
             `Gateway ${gatewayPda.toString()} completed. Executed: ${executedCount}, Errors: ${errorCount}`
           );
 
           totalExecutedCount += executedCount;
           totalErrorCount += errorCount;
         } catch (error) {
-          console.error(
+          logger.error(
             `Error processing gateway ${gatewayPda.toString()}:`,
             error
           );
@@ -169,7 +168,7 @@ class PaymentScheduler {
       }
     }
 
-    console.log(
+    logger.info(
       `Payment execution completed. Total Executed: ${totalExecutedCount}, Total Errors: ${totalErrorCount}`
     );
   }
@@ -190,7 +189,7 @@ class PaymentScheduler {
 
       const maxRenewals = subscriptionDetails.maxRenewals;
       if (maxRenewals !== null && policy.paymentCount >= maxRenewals) {
-        console.log(
+        logger.debug(
           `Policy ${policy.policyId} has reached max renewals (${maxRenewals})`
         );
         return false;
@@ -213,7 +212,7 @@ class PaymentScheduler {
       const totalMilestones = milestoneDetails.totalMilestones;
 
       if (currentMilestone >= totalMilestones) {
-        console.log(
+        logger.debug(
           `Policy ${policy.policyId} has completed all ${totalMilestones} milestones`
         );
         return false;
@@ -234,7 +233,7 @@ class PaymentScheduler {
 
   private async executePayment(paymentPolicyPda: PublicKey): Promise<void> {
     if (this.config.dryRun) {
-      console.log(
+      logger.debug(
         `[DRY-RUN] Would execute payment for ${paymentPolicyPda.toString()}`
       );
       return;
@@ -255,9 +254,9 @@ class PaymentScheduler {
         }
       );
 
-      console.log(`Payment executed with signature: ${signature}`);
+      logger.debug(`Payment executed with signature: ${signature}`);
     } catch (error) {
-      console.error(`Failed to execute payment`);
+      logger.error(`Failed to execute payment`);
       throw error;
     }
   }
@@ -269,23 +268,25 @@ class PaymentScheduler {
   public start(): void {
     const schedule = this.config.cronSchedule || "*/5 * * * *";
 
-    console.log(`Starting payment scheduler with schedule: ${schedule}`);
-    console.log(
+    logger.info(`Starting payment scheduler with schedule: ${schedule}`);
+    logger.info(
       `Gateways: ${this.gatewayKeypairs
         .map((k) => k.publicKey.toString())
         .join(", ")}`
     );
-    console.log(`Connection: ${this.config.connectionUrl}`);
+    logger.info(`Connection: ${this.config.connectionUrl}`);
     if (this.config.dryRun) {
-      console.log("Mode: DRY-RUN (no transactions will be sent)");
+      logger.info("Mode: DRY-RUN (no transactions will be sent)");
     }
 
-    this.checkAndExecutePayments().catch(console.error);
+    this.checkAndExecutePayments().catch((e) => logger.error("tick error:", e));
 
     cron.schedule(
       schedule,
       () => {
-        this.checkAndExecutePayments().catch(console.error);
+        this.checkAndExecutePayments().catch((e) =>
+          logger.error("tick error:", e)
+        );
       },
       {
         scheduled: true,
@@ -293,11 +294,11 @@ class PaymentScheduler {
       }
     );
 
-    console.log("Payment scheduler started successfully");
+    logger.info("Payment scheduler started successfully");
   }
 
   public stop(): void {
-    console.log("Payment scheduler stopped");
+    logger.info("Payment scheduler stopped");
   }
 }
 

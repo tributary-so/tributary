@@ -22,7 +22,8 @@
     "bn.js": "^5.2.2",
     "commander": "^14.0.1",
     "lighthouse-sdk-legacy": "workspace:*",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

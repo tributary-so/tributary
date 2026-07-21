@@ -15,7 +15,8 @@ import {
 import * as anchor from "@coral-xyz/anchor";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import config from "../constants";
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+// ponytail: use anchor.utils.bytes.bs58 from the main entry — anchor's deep utils paths
+// break under Node ESM (directory imports).
 
 export interface TokenResponse {
   token: string;
@@ -222,7 +223,7 @@ export async function createSubscription(
         "Transaction may have already been sent, attempting to confirm via status"
       );
 
-      txid = bs58.encode(signedTx.signatures[0]);
+      txid = anchor.utils.bytes.bs58.encode(signedTx.signatures[0]);
     } else {
       throw sendError;
     }
@@ -368,7 +369,7 @@ async function sendAndConfirmInstructions(
       console.warn(
         "Transaction may have already been sent, attempting to confirm via status"
       );
-      txid = bs58.encode(signedTx.signatures[0]);
+      txid = anchor.utils.bytes.bs58.encode(signedTx.signatures[0]);
     } else {
       throw sendError;
     }
@@ -569,7 +570,7 @@ export async function createDirectPayment(
       console.warn(
         "Transaction may have already been sent, attempting to confirm via status"
       );
-      txid = bs58.encode(signedTx!.signatures[0]);
+      txid = anchor.utils.bytes.bs58.encode(signedTx!.signatures[0]);
     } else {
       throw sendError;
     }

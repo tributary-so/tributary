@@ -1,5 +1,6 @@
-import { Code2, Github, Twitter, Mail } from "lucide-react";
+import { Github, Twitter, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
+import logo from "../assets/logo.png";
 
 export function Footer() {
   return (
@@ -8,7 +9,7 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <Code2 className="h-5 w-5 text-primary" />
+              <img src={logo} alt="Tributary" className="h-4 w-4" />
               <span className="font-semibold uppercase tracking-[0.3em]">
                 TRIBUTARY
               </span>

@@ -139,6 +139,32 @@ pnpm start
 | `RELAYER_WALLET`      | Path to relayer keypair JSON (composable cold-relayer path)                | `false`                  |
 | `RELAYER_PRIVATE_KEY` | Relayer private key(s), semicolon-separated (composable cold-relayer path) | `false`                  |
 
+### Logging
+
+All log output goes through a winston logger (`src/logger.ts`). Level and
+format are env-controlled so ops can tune output without redeploying.
+
+| Variable     | Description                                                                                         | Default |
+| ------------ | --------------------------------------------------------------------------------------------------- | ------- |
+| `LOG_LEVEL`  | Minimum level emitted: `error` / `warn` / `info` / `debug`                                          | `info`  |
+| `LOG_FORMAT` | `json` for one JSON object per line (machine-parsed), otherwise `timestamp [level] message` (human) | human   |
+| `LOG_FILE`   | When set, also write logs to this path (in addition to stdout/stderr)                               | unset   |
+| `LOG_ROTATE` | `true` to rotate `LOG_FILE` at 10 MB / 5 files (built-in `File` transport — no extra rotate dep)    | `false` |
+
+Stream routing:
+
+- `error` and `warn` → **stderr**
+- `info` and `debug` → **stdout**
+
+This fixes the stderr-only capture case: capturing stderr alone shows
+errors/warnings; capturing stdout alone shows the normal tick flow.
+
+Level guidance:
+
+- `info` (default) — tick summaries, gateway-level counts, lifecycle events, errors
+- `debug` — per-policy iteration: cooldown skips, validation prefilter
+  results, individual execution attempts and signatures
+
 ### Cron Schedule Examples
 
 | Schedule      | Meaning                |
