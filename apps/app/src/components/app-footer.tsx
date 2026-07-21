@@ -4,9 +4,9 @@ export function AppFooter() {
   return (
     <footer className="border-t border-border/50">
       <div className="mx-auto max-w-5xl px-4 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
+        <div className="grid md:grid-cols-3 gap-8">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
               <Droplets className="h-5 w-5 text-primary" />
               <span className="font-semibold uppercase tracking-[0.3em]">TRIBUTARY</span>
             </div>
@@ -14,7 +14,6 @@ export function AppFooter() {
               Non-custodial payment policies on Solana. Delegate once; money moves on schedule.
             </p>
           </div>
-          <div></div>
           <div>
             <div className="font-medium text-sm mb-4">Resources</div>
             <ul className="space-y-2 text-sm text-muted-foreground">
@@ -87,7 +86,7 @@ export function AppFooter() {
           </div>
         </div>
         <div className="text-center text-sm text-muted-foreground/60 mt-8">
-          &copy; 2026 Tributary. Built with ❤️ on Solana.
+          &copy; 2026 Tributary. Built on Solana.
         </div>
       </div>
     </footer>

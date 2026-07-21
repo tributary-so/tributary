@@ -53,7 +53,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dfts-qrcode": "^1.1.0",
-    "framer-motion": "^12.38.0",
+    "framer-motion": "^12.42.2",
     "isomorphic-fetch": "^3.0.0",
     "jotai": "^2.14.0",
     "lucide-react": "^0.544.0",

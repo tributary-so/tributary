@@ -37,6 +37,9 @@ export default function TerminalCard({
 
   return (
     <div className="overflow-hidden border border-border/50 bg-neutral-900">
+      {/* Terminal-card chrome (traffic-light dots + filename pill) is the
+          documented brand voice — matches apps/landing/src/components/TerminalCard.
+          Not re-drawn IDE chrome; this IS the component's identity. */}
       <div className="flex items-center justify-between px-5 py-1 border-b border-neutral-700">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
