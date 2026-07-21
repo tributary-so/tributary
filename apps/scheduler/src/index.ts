@@ -2,15 +2,16 @@
 
 import { ComposableScheduler } from "./composable.js";
 import { PaymentScheduler, SchedulerConfig } from "./payments.js";
+import { logger } from "./logger.js";
 
 // CLI interface
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (!process.env.SOLANA_API) {
-    console.error("Environment variable SOLANA_API required");
+    logger.error("Environment variable SOLANA_API required");
     process.exit(1);
   }
   if (!process.env.ANCHOR_WALLET && !process.env.PRIVATE_KEY) {
-    console.error("Environment variable ANCHOR_WALLET or PRIVATE_KEY required");
+    logger.error("Environment variable ANCHOR_WALLET or PRIVATE_KEY required");
     process.exit(1);
   }
 
@@ -39,7 +40,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
 
   if (dryRun) {
-    console.log("=== DRY-RUN MODE — no transactions will be sent ===");
+    logger.info("=== DRY-RUN MODE — no transactions will be sent ===");
   }
 
   const paymentsEnabled =
@@ -68,14 +69,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
 
   process.on("SIGINT", () => {
-    console.log("\nReceived SIGINT, shutting down gracefully...");
+    logger.info("Received SIGINT, shutting down gracefully...");
     scheduler?.stop();
     composableScheduler?.stop();
     process.exit(0);
   });
 
   process.on("SIGTERM", () => {
-    console.log("\nReceived SIGTERM, shutting down gracefully...");
+    logger.info("Received SIGTERM, shutting down gracefully...");
     scheduler?.stop();
     composableScheduler?.stop();
     process.exit(0);
@@ -86,7 +87,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   if (composableScheduler) {
     composableScheduler.start().catch((e) => {
-      console.error("Composable scheduler failed to start:", e);
+      logger.error("Composable scheduler failed to start:", e);
     });
   }
 }

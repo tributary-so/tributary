@@ -1,11 +1,11 @@
 ---
 # tributary-2w46
 title: Refactor scheduler logging to winston
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-21T09:24:26Z
-updated_at: 2026-07-21T09:25:10Z
+updated_at: 2026-07-21T09:56:45Z
 blocked_by:
     - tributary-y0g1
 ---
@@ -51,3 +51,17 @@ NOT under any active milestone. Tracked standalone. Logically depends on milesto
 - Errors land on stderr (verify with process.stderr separately captured).
 - README documents the new env vars.
 - No console.log/error remaining in src/ (eslint rule could enforce).
+
+## Summary of Changes
+
+- Added `winston@^3.19.0` to `apps/scheduler/package.json`.
+- New `apps/scheduler/src/logger.ts`: single shared winston instance, env-driven (`LOG_LEVEL`, `LOG_FORMAT=json`, `LOG_FILE`, `LOG_ROTATE=true`). Console transport uses `stderrLevels: [error, warn]` so errors/warns land on stderr and info/debug on stdout — replaces task #2's in-process stderr redirect. Optional File transport (built-in `File` with maxsize/maxFiles for rotation; no `winston-daily-rotate-file` dep).
+- Replaced every `console.log/error` in `src/{index,payments,composable}.ts` with `logger.info/error/warn/debug`. `evaluator.ts` unchanged (pure, no console).
+- Level mapping:
+  - **error**: env-validation failures, payment/composable execution errors, send-and-confirm failures, fire errors.
+  - **warn**: 3-strike cooldown entry; missing-gateway-for-signer.
+  - **info**: startup banner, schedule/connection/dry-run lines, tick summaries ("Gateway X completed…", "Payment execution completed. Total…", "Gateway X: N/M fireable"), rescan counts, lifecycle (start/stop/SIGINT/SIGTERM).
+  - **debug**: per-policy iteration — cooldown skips, validation prefilter misses, max-renewals/milestone-complete skips, per-policy "Executing payment for…" / "✅ executed… signature" lines, dry-run per-policy lines, keypair-debug lines.
+- Updated `apps/scheduler/README.md` with a Logging subsection covering all four env vars and stream routing.
+
+Verified at runtime: build green, `LOG_FORMAT=json` output valid per jq, errors → stderr, info/debug → stdout, file transport writes when `LOG_FILE` set, no `console.*` left in `src/`.
