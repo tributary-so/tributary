@@ -1,3 +1,5 @@
+# [@tributary-so/app-v2.0.1](https://github.com/tributary-so/tributary/compare/@tributary-so/app-v2.0.0...@tributary-so/app-v2.0.1) (2026-07-21)
+
 # [@tributary-so/app-v2.0.0](https://github.com/tributary-so/tributary/compare/@tributary-so/app-v1.14.0...@tributary-so/app-v2.0.0) (2026-07-14)
 
 
