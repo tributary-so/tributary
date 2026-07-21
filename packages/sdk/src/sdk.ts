@@ -9,7 +9,8 @@ import {
   TransactionSignature,
   GetProgramAccountsFilter,
 } from "@solana/web3.js";
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+// ponytail: anchor's dist/cjs/utils/bytes is a directory import (rejected by Node ESM at
+// runtime) and dist/esm/utils/* has its own broken dir imports — use the main entry instead.
 import {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
@@ -3951,7 +3952,7 @@ export class Tributary {
     trackingId?: string;
   }): Promise<Array<{ publicKey: PublicKey; account: PaymentPolicy }>> {
     return await this.program.account.paymentPolicy.all(
-      this.buildPaymentPolicyFilters(filters),
+      this.buildPaymentPolicyFilters(filters)
     );
   }
 
@@ -3967,7 +3968,7 @@ export class Tributary {
     trackingId?: string;
   }): Promise<Array<{ publicKey: PublicKey; account: ComposablePolicy }>> {
     return await this.program.account.composablePolicy.all(
-      this.buildComposablePolicyFilters(filters),
+      this.buildComposablePolicyFilters(filters)
     );
   }
 
@@ -3985,14 +3986,25 @@ export class Tributary {
   }): GetProgramAccountsFilter[] {
     const result: GetProgramAccountsFilter[] = [];
     if (filters?.userPayment)
-      result.push({ memcmp: { offset: 8, bytes: filters.userPayment.toBase58() } });
+      result.push({
+        memcmp: { offset: 8, bytes: filters.userPayment.toBase58() },
+      });
     if (filters?.recipient)
-      result.push({ memcmp: { offset: 40, bytes: filters.recipient.toBase58() } });
+      result.push({
+        memcmp: { offset: 40, bytes: filters.recipient.toBase58() },
+      });
     if (filters?.gateway)
-      result.push({ memcmp: { offset: 72, bytes: filters.gateway.toBase58() } });
+      result.push({
+        memcmp: { offset: 72, bytes: filters.gateway.toBase58() },
+      });
     if (filters?.trackingId)
       result.push({
-        memcmp: { offset: 234, bytes: bs58.encode(encodeMemo(filters.trackingId, 64)) },
+        memcmp: {
+          offset: 234,
+          bytes: anchor.utils.bytes.bs58.encode(
+            encodeMemo(filters.trackingId, 64)
+          ),
+        },
       });
     return result;
   }
@@ -4012,15 +4024,26 @@ export class Tributary {
   }): GetProgramAccountsFilter[] {
     const result: GetProgramAccountsFilter[] = [];
     if (filters?.userPayment)
-      result.push({ memcmp: { offset: 9, bytes: filters.userPayment.toBase58() } });
+      result.push({
+        memcmp: { offset: 9, bytes: filters.userPayment.toBase58() },
+      });
     if (filters?.gateway)
-      result.push({ memcmp: { offset: 41, bytes: filters.gateway.toBase58() } });
+      result.push({
+        memcmp: { offset: 41, bytes: filters.gateway.toBase58() },
+      });
     if (filters?.trackingId)
       result.push({
-        memcmp: { offset: 506, bytes: bs58.encode(encodeMemo(filters.trackingId, 32)) },
+        memcmp: {
+          offset: 506,
+          bytes: anchor.utils.bytes.bs58.encode(
+            encodeMemo(filters.trackingId, 32)
+          ),
+        },
       });
     if (filters?.recipient)
-      result.push({ memcmp: { offset: 538, bytes: filters.recipient.toBase58() } });
+      result.push({
+        memcmp: { offset: 538, bytes: filters.recipient.toBase58() },
+      });
     return result;
   }
 
