@@ -2,6 +2,13 @@
 module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
+  // ponytail: scheduler src uses .js extensions on relative imports
+  // (ESM/bundler convention). ts-jest's node resolver needs the bare path.
+  // Scoped to relative imports — workspace (@tributary-so/*) and
+  // node_modules are untouched.
+  moduleNameMapper: {
+    "^(\\.{1,2}/.+)\\.js$": "$1",
+  },
   // Integration suites run against a Surfpool mainnet-fork, whose RPC is
   // slower than localnet. Give every test a generous default so slower
   // setup/execution paths (milestone chains, referral graphs, …) don't trip

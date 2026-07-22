@@ -1,11 +1,11 @@
 ---
 # tributary-y0g1
 title: Scheduler ops hygiene — RPC runaway, cooldown backoff, observability
-status: todo
+status: completed
 type: milestone
 priority: critical
 created_at: 2026-07-21T09:21:28Z
-updated_at: 2026-07-21T09:25:10Z
+updated_at: 2026-07-22T11:59:24Z
 ---
 
 Operational fixes for apps/scheduler sourced from a 23h production log investigation (scheduler.log, 118k lines). Two co-running schedulers (PaymentScheduler cron 5min, ComposableScheduler poll 30s + rescan 10min) were found burning ~100x baseline RPC due to a duplicate-accumulation bug in rescanAll, plus a flat-5min cooldown with no backoff, plus console.error output silently discarded.

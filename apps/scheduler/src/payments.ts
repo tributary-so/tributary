@@ -9,7 +9,24 @@ import * as cron from "node-cron";
 import * as fs from "fs";
 import { TributarySDK } from "@tributary-so/sdk";
 import { exit } from "process";
-import { logger } from "./logger.js";
+import { logger, parseErrorFromLogs } from "./logger.js";
+import {
+  wrapConnectionWithMetrics,
+  recordTx,
+  recordTxFail,
+  setCooldownCount,
+  observeTick,
+  observeTxConfirm,
+} from "./metrics.js";
+
+const MAX_FAILURES = 3;
+const COOLDOWN_MS = 5 * 60_000;
+const COOLDOWN_MAX_MS = 30 * 60_000;
+
+interface CooldownEntry {
+  consecutiveFailures: number;
+  cooldownUntil: number;
+}
 
 interface SchedulerConfig {
   connectionUrl: string;
@@ -25,6 +42,7 @@ class PaymentScheduler {
   private sdk: TributarySDK;
   private gatewayKeypairs: Keypair[];
   private config: SchedulerConfig;
+  private cooldowns: Map<string, CooldownEntry> = new Map();
 
   constructor(config: SchedulerConfig) {
     this.config = config;
@@ -48,7 +66,10 @@ class PaymentScheduler {
     }
 
     const connection = new Connection(config.connectionUrl, "confirmed");
-    this.sdk = new TributarySDK(connection, this.gatewayKeypairs[0]);
+    // Wrap once: every RPC call (SDK-internal too) bumps rpc_calls_total.
+    // Would have surfaced the y0g1 runaway within one tick.
+    const instrumented = wrapConnectionWithMetrics(connection);
+    this.sdk = new TributarySDK(instrumented, this.gatewayKeypairs[0]);
   }
 
   private loadKeypair(data: string) {
@@ -68,11 +89,12 @@ class PaymentScheduler {
   }
 
   private async checkAndExecutePayments(): Promise<void> {
+    const tickStart = Date.now();
     logger.info("Checking for payments to execute...");
 
     let totalExecutedCount = 0;
     let totalErrorCount = 0;
-
+    let totalSkippedCount = 0;
     for (let i = 0; i < this.gatewayKeypairs.length; i++) {
       const keypair = this.gatewayKeypairs[i];
       const wallet = new anchor.Wallet(keypair);
@@ -119,6 +141,13 @@ class PaymentScheduler {
             account: policy,
           } of paymentPolicies) {
             try {
+              const cooldown = this.cooldowns.get(policyPda.toBase58());
+              if (cooldown && cooldown.cooldownUntil > Date.now()) {
+                logger.debug(`${policyPda.toString()} on cooldown — skipping`);
+                totalSkippedCount++;
+                continue;
+              }
+
               if (this.shouldExecutePayment(policy, currentTime)) {
                 let milestoneInfo = "";
                 if (policy.policyType.milestone) {
@@ -134,6 +163,8 @@ class PaymentScheduler {
 
                 await this.executePayment(policyPda);
                 executedCount++;
+                this.cooldowns.delete(policyPda.toBase58());
+                recordTx("payout", "success");
 
                 logger.debug(
                   `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
@@ -145,10 +176,16 @@ class PaymentScheduler {
               logger.error(
                 `🚩 Error executing payment for ${policyPda.toString()}`
               );
+              let errorCode = "unknown";
               if (error instanceof SendTransactionError) {
                 logger.error(error.message);
                 logger.error(error.logs);
+                errorCode =
+                  parseErrorFromLogs(error?.logs ?? []).code ?? "unknown";
               }
+              recordTx("payout", "fail");
+              recordTxFail("payout", errorCode);
+              this.recordFailure(policyPda);
               errorCount++;
             }
           }
@@ -168,8 +205,13 @@ class PaymentScheduler {
       }
     }
 
+    const durationSeconds = (Date.now() - tickStart) / 1000;
+    observeTick("payout", durationSeconds);
+    setCooldownCount("payout", this.cooldowns.size);
     logger.info(
-      `Payment execution completed. Total Executed: ${totalExecutedCount}, Total Errors: ${totalErrorCount}`
+      `Tick summary: executed=${totalExecutedCount} errors=${totalErrorCount} skipped=${totalSkippedCount} cooldowns=${
+        this.cooldowns.size
+      } duration=${Date.now() - tickStart}ms`
     );
   }
 
@@ -236,6 +278,7 @@ class PaymentScheduler {
       logger.debug(
         `[DRY-RUN] Would execute payment for ${paymentPolicyPda.toString()}`
       );
+      recordTx("payout", "dry_run");
       return;
     }
     try {
@@ -245,6 +288,7 @@ class PaymentScheduler {
         transaction.add(instruction);
       }
 
+      const confirmStart = Date.now();
       const signature = await this.sdk.provider.sendAndConfirm(
         transaction,
         [],
@@ -253,12 +297,37 @@ class PaymentScheduler {
           skipPreflight: false,
         }
       );
+      observeTxConfirm("payout", (Date.now() - confirmStart) / 1000);
 
       logger.debug(`Payment executed with signature: ${signature}`);
     } catch (error) {
       logger.error(`Failed to execute payment`);
       throw error;
     }
+  }
+
+  private recordFailure(policyPda: PublicKey): void {
+    const key = policyPda.toBase58();
+    const entry = this.cooldowns.get(key) ?? {
+      consecutiveFailures: 0,
+      cooldownUntil: 0,
+    };
+    entry.consecutiveFailures += 1;
+    if (entry.consecutiveFailures >= MAX_FAILURES) {
+      const backoffExp = Math.min(
+        Math.floor((entry.consecutiveFailures - MAX_FAILURES) / MAX_FAILURES),
+        6
+      );
+      const multiplier = Math.pow(2, backoffExp);
+      const cooldownMs = Math.min(COOLDOWN_MS * multiplier, COOLDOWN_MAX_MS);
+      entry.cooldownUntil = Date.now() + cooldownMs;
+      logger.warn(
+        `${key} hit ${entry.consecutiveFailures} strikes — cooldown ${
+          cooldownMs / 1000
+        }s (backoff 2^${backoffExp})`
+      );
+    }
+    this.cooldowns.set(key, entry);
   }
 
   private delay(ms: number): Promise<void> {
