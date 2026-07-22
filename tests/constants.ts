@@ -58,7 +58,7 @@ export const RAYDIUM_CPMM_PUBKEY = new PublicKey(
  * discriminator).
  */
 export const RAYDIUM_CPMM_USDC_WSOL_POOL = new PublicKey(
-  "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv"
+  "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
 );
 
 /**

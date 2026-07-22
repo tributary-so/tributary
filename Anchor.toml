@@ -47,6 +47,7 @@ test-topup-sol = "npx jest ./tests/topup-balance-sol.test.ts --preset ts-jest"
 test-onetime = "npx jest ./tests/one-time-payment.test.ts --preset ts-jest"
 test-upto = "npx jest ./tests/up-to-policy.test.ts --preset ts-jest"
 test-fee-rebase = "npx jest ./tests/composable-fee-rebase.test.ts --preset ts-jest"
+test-topup-raydium = "npx jest ./tests/topup-balance-swap-raydium.test.ts --preset ts-jest"
 
 [test]
 startup_wait = 20000

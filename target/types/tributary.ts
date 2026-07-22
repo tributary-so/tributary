@@ -3161,6 +3161,11 @@ export type Tributary = {
       "code": 6068,
       "name": "inputResidueSweepFailed",
       "msg": "Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user"
+    },
+    {
+      "code": 6069,
+      "name": "wrongForwardAccounts",
+      "msg": "Forward Program pinned to different forward accounts!"
     }
   ],
   "types": [
