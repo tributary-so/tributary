@@ -1053,6 +1053,16 @@ pnpm run lint:fix
 - **CPI signer sanitization** — validation & forward builders do **not** forward `is_signer` from `remaining_accounts` (closes a privilege pass-through vector).
 - **Intermediate ATA ownership** — owned by the ComposablePolicy PDA, isolating transient balances from user source funds.
 - **`security.txt`** — embedded on-chain via `solana-security-txt`.
+- **Formal verification** — pull-amount bounds and fee-conservation logic are
+  formally specified (`.qedspec`) and model-checked. The core pure functions
+  (`calculate_fees`, `validate_policy_execution`, `advance_policy`,
+  `ByteRangeCheck::validate`, `validate_byte_ranges`) are verified by Kani
+  bounded model checking for all symbolic inputs and by property-based testing
+  (23 properties). Compile-time drift gates (`#[qed(verified)]`) bind the spec
+  to the source on `create_payment_policy` and `transfer`. See
+  [`formal_verification/README.md`](formal_verification/README.md) for the full
+  layered architecture, what is proven vs. integration-tested, and current
+  proof status.
 - **Audits** — see [`AUDITS.md`](AUDITS.md) and [`SECURITY.md`](SECURITY.md). Findings are documented in [`reports/`](reports/).
 
 Report vulnerabilities to **security@tributary.so** per the policy in

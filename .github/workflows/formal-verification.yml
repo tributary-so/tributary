@@ -1,0 +1,57 @@
+name: Formal Verification
+
+# Spec validation + drift-gate compile check.
+#
+# What runs here:
+#   - qedgen check         → spec internal consistency (property preservation)
+#   - cargo check          → #[qed(verified)] drift gates fire on spec↔code mismatch
+#
+# What does NOT run here (too slow / blocked — run locally):
+#   - Kani BMC             → cargo kani --tests (3s–10min per harness)
+#   - Lean proofs          → lake build (58 obligations need strengthening)
+#   - Proptests            → already covered by program-tests.yml (cargo test)
+#
+# See formal_verification/README.md for the full layered verification architecture.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "tributary.qedspec"
+      - "formal_verification/**"
+      - "programs/tributary/src/instructions/payment/create_payment_policy.rs"
+      - "programs/tributary/src/instructions/payment/transfer.rs"
+      - "programs/tributary/tests/proptest_pure_fns.rs"
+      - "programs/tributary/tests/kani_pure_fns.rs"
+      - ".github/workflows/formal-verification.yml"
+  pull_request:
+    paths:
+      - "tributary.qedspec"
+      - "formal_verification/**"
+      - "programs/tributary/src/instructions/payment/create_payment_policy.rs"
+      - "programs/tributary/src/instructions/payment/transfer.rs"
+      - "programs/tributary/tests/proptest_pure_fns.rs"
+      - "programs/tributary/tests/kani_pure_fns.rs"
+
+jobs:
+  spec-check:
+    name: Spec validation + drift gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install qedgen
+        run: |
+          git clone --depth 1 https://github.com/qedgen/solana-skills.git /tmp/qedgen-skills
+          cd /tmp/qedgen-skills && bash install.sh
+          qedgen --version
+
+      - name: Validate spec
+        run: qedgen check --spec tributary.qedspec
+
+      - name: Compile-check drift gates
+        working-directory: ./programs/tributary
+        run: cargo check
