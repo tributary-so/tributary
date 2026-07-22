@@ -1068,9 +1068,6 @@ importers:
       '@heroui/theme':
         specifier: ^2.4.26
         version: 2.4.26(tailwindcss@4.2.2)
-      '@meteora-ag/dlmm':
-        specifier: ^1.0.0
-        version: 1.9.10(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1116,6 +1113,9 @@ importers:
       '@tanstack/react-query':
         specifier: 5.90.20
         version: 5.90.20(react@19.2.3)
+      '@tributary-so/forward-builders':
+        specifier: workspace:*
+        version: link:../../packages/forward-builders
       '@tributary-so/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
