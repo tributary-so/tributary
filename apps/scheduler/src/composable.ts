@@ -35,6 +35,7 @@ const POLL_INTERVAL_MS = 30_000;
 const RESCAN_INTERVAL_MS = 10 * 60_000;
 const MAX_FAILURES = 3;
 const COOLDOWN_MS = 5 * 60_000;
+const COOLDOWN_MAX_MS = 30 * 60_000;
 
 // ponytail: pool is pinned on the policy (pinnedAccounts[0], ADR-0030);
 // slippage + host-fee-fix are scheduler-side tuning knobs with no per-pair
@@ -556,9 +557,17 @@ class ComposableScheduler {
     };
     entry.consecutiveFailures += 1;
     if (entry.consecutiveFailures >= MAX_FAILURES) {
-      entry.cooldownUntil = Date.now() + COOLDOWN_MS;
+      const backoffExp = Math.min(
+        Math.floor((entry.consecutiveFailures - MAX_FAILURES) / MAX_FAILURES),
+        6
+      );
+      const multiplier = Math.pow(2, backoffExp);
+      const cooldownMs = Math.min(COOLDOWN_MS * multiplier, COOLDOWN_MAX_MS);
+      entry.cooldownUntil = Date.now() + cooldownMs;
       logger.warn(
-        `${key} hit ${MAX_FAILURES} strikes — cooldown ${COOLDOWN_MS / 1000}s`
+        `${key} hit ${entry.consecutiveFailures} strikes — cooldown ${
+          cooldownMs / 1000
+        }s (backoff 2^${backoffExp})`
       );
     }
     this.cooldowns.set(key, entry);
