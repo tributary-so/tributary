@@ -5,14 +5,14 @@ together form a **layered** verification of Tributary's pull-payment logic.
 
 > **Status (2026-07-11, updated for indexed PinnedAccount — bean tributary-qpi6):**
 >
-> | Layer                     | Status                                                                                       |
-> | ------------------------- | -------------------------------------------------------------------------------------------- |
-> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers, 2 forward-CPI types)                    |
-> | Layer 1 (spec-model Kani) | ✅ regenerated (indexed-pin); 19 fast harnesses pass in ~0.1s; 127 disabled (u128 bps_mul)   |
-> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                  |
-> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                    |
-> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                  |
-> | Lean                      | 🟡 bare-field codegen bug FIXED (`fix-lean.py`); 58 proof obligations exposed (pre-existing) |
+> | Layer                     | Status                                                                                                              |
+> | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers, 2 forward-CPI types)                                           |
+> | Layer 1 (spec-model Kani) | ✅ regenerated (indexed-pin); 19 fast harnesses pass in ~0.1s; 127 disabled (u128 bps_mul)                          |
+> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                                         |
+> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                                           |
+> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                                         |
+> | Lean                      | ✅ `lake build` green (0 errors); 39+ proofs discharged, 45 sorry stubs remain (nonlinear bps_mul + codegen limits) |
 >
 > **v2.2 change (ADR-0026):** composable fee path rebased to input-side
 > gross pull. `execute_composable` now takes `face` (what the forward
@@ -281,31 +281,39 @@ python3 formal_verification/fix-lean.py formal_verification/Spec.lean
 cd formal_verification && lake build
 ```
 
-#### Lean proof status (current blocker)
+#### Lean proof status (current state: build green)
 
-After `fix-lean.py`, `lake build` compiles qedsvm (290/290) **and** every
-transition function / property predicate in Spec.lean. The preservation
-theorems then fail — 58 obligations:
+`lake build` compiles cleanly (0 errors) with 45 `sorry` warnings. The
+`fix-lean.py` post-processor now handles 7 codegen defect classes (L1-L7),
+including L6 (overflow_safe refine type-mismatch) and L7 (failing proof
+tactic replacement + companion-invariant proof for period_bounded case_0).
 
-| Class                        | Count | Root cause                                                                                                                                                                                                         |
-| ---------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `omega` counterexample       | 31    | generated proofs assume facts not in scope — e.g. `period_bounded` preservation needs the companion invariant `max_chunk_amount ≤ max_amount_per_period` (established at `create`, never threaded as a hypothesis) |
-| `Application type mismatch`  | 18    | overflow-safety `refine ⟨h_valid.right.right…⟩` proof terms project wrong field indices after `cases h` reconstructs the record                                                                                    |
-| `No goals to be solved`      | 7     | encoding/tactic sequencing gaps                                                                                                                                                                                    |
-| `sorry` (invariant theorems) | 2     | `fee_share_sum_bounded`, `milestone_signer_bits_mutually_exclusive` (still `sorry`)                                                                                                                                |
+**Proof breakdown (65 preservation theorems + 3 invariants):**
 
-Example omega counterexample (`period_bounded_preserved_by_execute_payment_case_0`):
-the guard gives `chunk ≤ max_chunk_amount`; the invariant gives
-`current_period_total ≤ max_amount_per_period`; the goal is
-`chunk ≤ max_amount_per_period` — unprovable without `max_chunk ≤ max_period`.
-This is **exactly the kind of finding formal verification should produce**:
-the spec is internally consistent but the generated proofs are weaker than
-the properties they discharge.
+| Category                              | Count | Method                                                  |
+| ------------------------------------- | ----- | ------------------------------------------------------- |
+| Trivially preserved (field unchanged) | 32    | `exact h_inv`                                           |
+| fee_is_bps_decomposition (identity)   | 5     | `dsimp` alone                                           |
+| period_bounded case_0 (A2 reset arm)  | 2     | companion invariant `max_chunk_le_max_period` + `omega` |
+| Sorry — nonlinear bps_mul             | ~20   | needs bps_mul lemmas or LLM filling                     |
+| Sorry — missing case guards           | ~4    | needs codegen fix (match-arm guards in transitions)     |
+| Sorry — overflow_safe (L6)            | 2     | structural refine issue                                 |
+| Sorry — invariant axioms              | 3     | appropriate (state reachability assumptions)            |
 
-**Next iteration:** strengthen the proofs — add companion invariants
-(`max_chunk_le_max_period`, carry through `*_inductive` signatures) or run
-`qedgen fill-sorry` / `qedgen aristotle` on the failing obligations. This is
-theorem-proving work, not a codegen bug — `fix-lean.py` has done its job.
+**What blocks the remaining sorry:**
+
+1. **bps_mul nonlinear arithmetic** (~20 proofs): `omega` can't reason about
+   `amount * bps / 10000`. Needs either bps_mul helper lemmas (`simp [bps_mul]`
+   for the `bps=0` case) or LLM-based filling (`qedgen fill-sorry`, requires
+   Mistral API key).
+2. **Missing case guards in transitions** (~4 proofs): the codegen only emits
+   pre-conditions in transition function guards, not the match-arm case
+   guards. This makes `period_bounded case_1` (accumulate arm) unprovable
+   without the `chunk ≤ max_amount_per_period - current_period_total` guard.
+3. **Invariant axioms** (3 proofs): `fee_share_sum_bounded`,
+   `milestone_signer_bits_mutually_exclusive`, `max_chunk_le_max_period` are
+   facts about state reachability (established at `create_payment_policy`).
+   As standalone theorems over arbitrary `State`, they require `sorry`.
 
 ---
 

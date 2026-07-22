@@ -494,6 +494,15 @@ invariant fee_share_sum_bounded :
 invariant milestone_signer_bits_mutually_exclusive :
   (state.release_requires_gateway + state.release_requires_owner + state.release_requires_recipient) <= 1
 
+// Companion invariant for period_bounded (A2) preservation. Without this,
+// omega cannot close period_bounded_preserved_by_execute_*: the guard gives
+// chunk ≤ max_chunk_amount, but the goal needs chunk ≤ max_amount_per_period.
+// Established at create_payment_policy (abort theorem InvalidAmount_2 already
+// enforces max_chunk ≤ max_per_period). Trivially preserved (neither field
+// is written by any execute/transfer/release handler).
+invariant max_chunk_le_max_period :
+  state.max_chunk_amount <= state.max_amount_per_period
+
 // ── Forward-CPI pin invariants (bean tributary-qpi6) ──────────────────
 // These are CONSTRAINT-LEVEL invariants over an InstructionConstraint value,
 // not over the flat State. They are enforced at create_composable_policy
