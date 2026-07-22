@@ -508,6 +508,7 @@ class ComposableScheduler {
         signer,
       ]);
       if (sim.value.err) {
+        logger.debug(sim.value.logs?.join("\n"));
         throw new Error(
           `simulation failed: ${JSON.stringify(sim.value.err)} (${(
             parseErrorFromLogs(sim.value.logs ?? []).code

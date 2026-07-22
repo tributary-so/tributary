@@ -160,7 +160,12 @@ export function isScheduleReady(
     if (sub.maxRenewals !== null && policy.paymentCount >= sub.maxRenewals) {
       return { ready: false, amount: null };
     }
-    return { ready: true, amount: sub.amount };
+
+    // Calculate amount with fee adjustment if needed
+    const feeBps = gatewayAccount.gatewayFeeBps;
+    const amount = grossCapToFace(sub.amount, feeBps);
+
+    return { ready: true, amount };
   }
 
   if (policyType.milestone) {
@@ -172,7 +177,11 @@ export function isScheduleReady(
     if (ms.milestoneTimestamps[ms.currentMilestone].toNumber() > currentTime) {
       return { ready: false, amount: null };
     }
-    return { ready: true, amount: ms.milestoneAmounts[ms.currentMilestone] };
+
+    // Calculate amount with fee adjustment if needed
+    const feeBps = gatewayAccount.gatewayFeeBps;
+    const amount = grossCapToFace(ms.milestoneAmounts[ms.currentMilestone], feeBps);
+    return { ready: true, amount };
   }
 
   if (policyType.payAsYouGo) {
