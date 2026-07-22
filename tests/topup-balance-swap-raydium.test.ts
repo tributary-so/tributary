@@ -82,29 +82,35 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     program = env.program;
 
     // ── Raydium CLMM-specific warmup ──────────────────────────────
-    // Force surfpool to lazy-fetch + cache the CLMM program + the fixed
-    // pool + all swap-CPI accounts. The CLMM swap_v2 CPI touches: pool,
-    // ammConfig, observation state, tick-array bitmap extension, tick
-    // arrays, vaults — all must exist on the fork.
+    // Force surfpool to lazy-fetch + register the CLMM program + all
+    // swap-CPI accounts. The key challenge: surfpool's BPF loader doesn't
+    // auto-register programs from getAccountInfo — the CPI processor
+    // returns "Unknown program". The fix: read the program's raw data and
+    // re-setAccount it with executable:true, which forces surfpool to
+    // register it in its program cache.
     //
-    // streamAccount forces surfpool to deeply cache the program account
-    // (a plain getAccountInfo returns metadata but doesn't register the
-    // program in surfpool's BPF loader — "Unknown program" at CPI time).
-    // This is the CLMM equivalent of what DLMM.create() does implicitly
-    // for the Meteora path.
+    // The Meteora DLMM path doesn't need this because DLMM.create() does
+    // deeper account parsing that implicitly triggers surfpool's loader.
     clmmPool = RAYDIUM_CLMM_USDC_WSOL_POOL;
 
-    await env.surfpool.streamAccount({
-      publicKey: RAYDIUM_CLMM_PUBKEY,
-      includeOwnedAccounts: true,
-    });
-
+    // Step 1: force-fetch the CLMM program account from mainnet
     const clmmProgram = await env.connection.getAccountInfo(
       RAYDIUM_CLMM_PUBKEY
     );
     expect(clmmProgram).not.toBeNull();
     expect(clmmProgram!.executable).toBe(true);
 
+    // Step 2: re-setAccount the program data so surfpool registers it as
+    // an executable BPF program in its loader cache.
+    await env.surfpool.setAccount({
+      publicKey: RAYDIUM_CLMM_PUBKEY,
+      data: clmmProgram!.data.toString("hex"),
+      owner: clmmProgram!.owner.toBase58(),
+      executable: true,
+      lamports: clmmProgram!.lamports,
+    });
+
+    // Step 3: warm up pool + ammConfig + observation + bitmap extension
     const poolAcct = await env.connection.getAccountInfo(clmmPool);
     expect(poolAcct).not.toBeNull();
     expect(poolAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
@@ -128,8 +134,6 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
       RAYDIUM_CLMM_PUBKEY,
       clmmPool
     ).publicKey;
-    // Bitmap extension is optional — may be null if the pool doesn't use
-    // extended tick arrays. That's fine; the swap ix lists it regardless.
     const exBitmapAcct = await env.connection.getAccountInfo(exBitmapPda);
     if (exBitmapAcct) {
       expect(exBitmapAcct.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
