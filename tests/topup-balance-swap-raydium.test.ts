@@ -20,8 +20,8 @@ import {
   type ComposablePolicy,
 } from "../packages/sdk/src";
 import {
-  createRaydiumCpmmForward,
-  raydiumCpmmForwardConfig,
+  createRaydiumClmmForward,
+  raydiumClmmForwardConfig,
 } from "../packages/forward-builders/src";
 import { USDC_MINT } from "./surfpool-helpers";
 import {
@@ -32,10 +32,10 @@ import {
 } from "./helpers/composable";
 import { setupTopupSwapEnv, type TopupSwapEnv } from "./helpers/topup-swap-env";
 import {
-  RAYDIUM_CPMM_PUBKEY,
-  RAYDIUM_CPMM_USDC_WSOL_POOL,
+  RAYDIUM_CLMM_PUBKEY,
+  RAYDIUM_CLMM_USDC_WSOL_POOL,
   LIGHTHOUSE_PUBKEY,
-  loadCpmmPoolAmmConfig,
+  loadClmmPoolAmmConfig,
 } from "./constants";
 
 // ── Test constants ────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ import {
 const SWAP_INPUT_AMOUNT = 50_000_000; // 50 USDC
 // ponytail: pool + amm_config are pinned on-chain; slippage is a
 // scheduler-side knob (matches apps/scheduler/src/composable.ts:42-43).
-// CPMM has no host-fee SystemProgram quirk → no applyHostFeeInFix flag.
+// CLMM has no host-fee SystemProgram quirk → no applyHostFeeInFix flag.
 const FORWARD_SLIPPAGE_BPS = 100;
 
 const TOKEN_PROGRAM_ID = new PublicKey(
@@ -53,11 +53,12 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 );
 
-// CPMM pool + amm_config lazy-fork from mainnet via surfpool. Give the
-// suite room.
+// CLMM pool + amm_config + tick-arrays lazy-fork from mainnet via surfpool.
+// The builder reads pool state + tick-arrays + runs a simulation, so it's
+// heavier than CPMM but matches the Meteora DLMM pattern.
 jest.setTimeout(300_000);
 
-describe("Composable Topup-Swap Flow — Raydium CPMM (USDC → WSOL)", () => {
+describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
   let env: TopupSwapEnv;
   let program: anchor.Program<Tributary>;
 
@@ -66,39 +67,39 @@ describe("Composable Topup-Swap Flow — Raydium CPMM (USDC → WSOL)", () => {
   let postValidationPDA: PublicKey;
   let composablePolicyId: number;
 
-  // Fixed USDC/WSOL pool (verified on mainnet). The paired amm_config is
-  // read on-chain via loadCpmmPoolAmmConfig (configId @ offset 8 of the
-  // pool_state account — not derivable from the pool address alone).
-  let cpmmPool: PublicKey;
-  let cpmmAmmConfig: PublicKey;
+  // Fixed USDC/WSOL CLMM pool (verified on mainnet). The paired amm_config
+  // is read on-chain via loadClmmPoolAmmConfig (configId @ offset 9 of the
+  // pool_state account — after disc(8) + bump(1)).
+  let clmmPool: PublicKey;
+  let clmmAmmConfig: PublicKey;
 
   beforeAll(async () => {
     env = await setupTopupSwapEnv();
     program = env.program;
 
-    // ── Raydium-specific warmup ─────────────────────────────────────
-    // Force surfpool to lazy-fetch the CPMM program + the fixed pool so
+    // ── Raydium CLMM-specific warmup ──────────────────────────────
+    // Force surfpool to lazy-fetch the CLMM program + the fixed pool so
     // the forward CPI resolves. Read amm_config from the pool account.
-    cpmmPool = RAYDIUM_CPMM_USDC_WSOL_POOL;
+    clmmPool = RAYDIUM_CLMM_USDC_WSOL_POOL;
 
-    const cpmmProgram = await env.connection.getAccountInfo(
-      RAYDIUM_CPMM_PUBKEY
+    const clmmProgram = await env.connection.getAccountInfo(
+      RAYDIUM_CLMM_PUBKEY
     );
-    expect(cpmmProgram).not.toBeNull();
-    expect(cpmmProgram!.executable).toBe(true);
+    expect(clmmProgram).not.toBeNull();
+    expect(clmmProgram!.executable).toBe(true);
 
-    const poolAcct = await env.connection.getAccountInfo(cpmmPool);
+    const poolAcct = await env.connection.getAccountInfo(clmmPool);
     expect(poolAcct).not.toBeNull();
-    expect(poolAcct!.owner.equals(RAYDIUM_CPMM_PUBKEY)).toBe(true);
+    expect(poolAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
 
-    cpmmAmmConfig = await loadCpmmPoolAmmConfig(env.connection, cpmmPool);
+    clmmAmmConfig = await loadClmmPoolAmmConfig(env.connection, clmmPool);
 
-    const configAcct = await env.connection.getAccountInfo(cpmmAmmConfig);
+    const configAcct = await env.connection.getAccountInfo(clmmAmmConfig);
     expect(configAcct).not.toBeNull();
-    expect(configAcct!.owner.equals(RAYDIUM_CPMM_PUBKEY)).toBe(true);
+    expect(configAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
   });
 
-  test("Create composable swap policy — CPMM forward USDC→WSOL + Lighthouse", async () => {
+  test("Create composable swap policy — CLMM forward USDC→WSOL + Lighthouse", async () => {
     await env.sdk.updateWallet(new anchor.Wallet(env.wallets.coldWallet));
 
     const userPayment = await env.sdk.getUserPayment(env.pdas.userPayment);
@@ -135,18 +136,18 @@ describe("Composable Topup-Swap Flow — Raydium CPMM (USDC → WSOL)", () => {
     };
 
     const memo = new Array(32).fill(0);
-    Buffer.from("Topup WSOL cpmm").copy(Buffer.from(memo));
+    Buffer.from("Topup WSOL clmm").copy(Buffer.from(memo));
 
-    // Forward ENABLED: Raydium CPMM swap_base_input (USDC → WSOL). The
-    // constraint pins pool_state at index 3 + amm_config at index 2, plus
-    // the swap_base_input discriminator at offset 0 (ADR-0032). Built by
-    // the setup-time half of the forward-builder so it cannot drift from
-    // what the fire-time builder emits.
-    const forwardConfig = raydiumCpmmForwardConfig({
+    // Forward ENABLED: Raydium CLMM swap_v2 (USDC → WSOL). The
+    // constraint pins poolId at index 2 + ammConfig at index 1, plus
+    // the swap_v2 discriminator at offset 0. Built by the setup-time
+    // half of the forward-builder so it cannot drift from what the
+    // fire-time builder emits.
+    const forwardConfig = raydiumClmmForwardConfig({
       inputMint: USDC_MINT,
       outputMint: NATIVE_MINT,
-      pool: cpmmPool,
-      ammConfig: cpmmAmmConfig,
+      pool: clmmPool,
+      ammConfig: clmmAmmConfig,
     });
 
     // Lighthouse: assert hotWallet WSOL balance < 1 WSOL before topping up.
@@ -197,12 +198,12 @@ describe("Composable Topup-Swap Flow — Raydium CPMM (USDC → WSOL)", () => {
       composablePolicyPDA
     );
     expect(policy.forwardConfig.instructionConstraint.programId).toEqual(
-      RAYDIUM_CPMM_PUBKEY
+      RAYDIUM_CLMM_PUBKEY
     );
     expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
     expect(policy.forwardConfig.outputMint).toEqual(NATIVE_MINT);
     expect(policy.forwardConfig.instructionConstraint.numDataChecks).toBe(1);
-    // CPMM uses BOTH pin slots: pool_state (index 3) + amm_config (index 2).
+    // CLMM uses BOTH pin slots: poolId (index 2) + ammConfig (index 1).
     expect(policy.forwardConfig.instructionConstraint.numPinnedAccounts).toBe(
       2
     );
@@ -233,17 +234,16 @@ describe("Composable Topup-Swap Flow — Raydium CPMM (USDC → WSOL)", () => {
 
     // ── Fire-time forward (mirror apps/scheduler/src/composable.ts:437-487)
     //
-    // CPMM build() is zero-RPC (all accounts are pure PDA/ATA derivations),
-    // so this is faster than the Meteora path. min_out defaults to
-    // bps-floor (floor(face * (10000 - bps) / 10000)) per ADR-0032.
+    // CLMM build() reads pool state + tick arrays + runs simulation (like
+    // the Meteora DLMM builder), so it's RPC-heavier than CPMM.
     const face = new BN(SWAP_INPUT_AMOUNT);
     const policy = (await program.account.composablePolicy.fetch(
       composablePolicyPDA
     )) as unknown as ComposablePolicy;
 
-    const forwardPayload = await createRaydiumCpmmForward({
-      pool: cpmmPool,
-      ammConfig: cpmmAmmConfig,
+    const forwardPayload = await createRaydiumClmmForward({
+      pool: clmmPool,
+      ammConfig: clmmAmmConfig,
       slippageBps: FORWARD_SLIPPAGE_BPS,
     }).build({
       connection: env.connection,
@@ -368,9 +368,9 @@ describe("Composable Topup-Swap Flow — Raydium CPMM (USDC → WSOL)", () => {
       composablePolicyPDA
     )) as unknown as ComposablePolicy;
 
-    const forwardPayload = await createRaydiumCpmmForward({
-      pool: cpmmPool,
-      ammConfig: cpmmAmmConfig,
+    const forwardPayload = await createRaydiumClmmForward({
+      pool: clmmPool,
+      ammConfig: clmmAmmConfig,
       slippageBps: FORWARD_SLIPPAGE_BPS,
     }).build({
       connection: env.connection,

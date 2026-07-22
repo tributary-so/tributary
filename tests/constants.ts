@@ -46,19 +46,25 @@ export const RAYDIUM_CPMM_PUBKEY = new PublicKey(
 );
 
 /**
- * Raydium CPMM USDC/WSOL pool — used by topup-balance-swap-raydium.test.ts
- * as the forward target for a USDC→WSOL swap. Owned by RAYDIUM_CPMM_PUBKEY.
- * Surfpool lazy-forks the pool + vault + observation_state accounts from
- * mainnet when the test reads them.
+ * Raydium CLMM — third entry in ALLOWED_FORWARD_PROGRAMS (concentrated
+ * liquidity AMM, Uniswap V3 model). Mirrored from
+ * packages/forward-builders/src/constants.ts.
+ */
+export const RAYDIUM_CLMM_PUBKEY = new PublicKey(
+  "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+);
+
+/**
+ * Raydium CLMM USDC/WSOL pool — used by topup-balance-swap-raydium.test.ts
+ * as the forward target for a USDC→WSOL swap. Owned by RAYDIUM_CLMM_PUBKEY.
+ * Surfpool lazy-forks pool + tick-arrays + observation state from mainnet.
  *
  * The paired `amm_config` (fee tier) is read on-chain via
- * {@link loadCpmmPoolAmmConfig} rather than hardcoded — the config is a
- * PDA derived from the program + an index, and its bytes live at offset 8
- * of the pool_state account (configId is the first field after the 8-byte
- * discriminator).
+ * {@link loadClmmPoolAmmConfig} (configId @ offset 9 of pool_state —
+ * after disc(8) + bump(1)).
  */
-export const RAYDIUM_CPMM_USDC_WSOL_POOL = new PublicKey(
-  "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+export const RAYDIUM_CLMM_USDC_WSOL_POOL = new PublicKey(
+  "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv"
 );
 
 /**
@@ -70,46 +76,43 @@ export const LIGHTHOUSE_PUBKEY = new PublicKey(
 );
 
 /**
- * CPMM pool_state layout (Raydium) — only the field we need:
- *   disc(8) + configId(32) + poolCreator(32) + vaultA(32) + vaultB(32)
- *   + mintLp(32) + mintA(32) + mintB(32) + ...
+ * CLMM pool_state layout (Raydium) — only the field we need:
+ *   disc(8) + bump(1) + configId(32) + creator(32) + mintA(32) + mintB(32)
+ *   + vaultA(32) + vaultB(32) + observationId(32) + ...
  *
- * → configId @ offset 8 (the amm_config PDA, first field after discriminator)
+ * → configId @ offset 9 (after disc(8) + bump(1))
  *
- * Full layout lives in @raydium-io/raydium-sdk-v2 CpmmPoolInfoLayout; we
- * only read the one field, so no need to pull in the full struct here.
+ * Full layout lives in @raydium-io/raydium-sdk-v2 PoolInfoLayout; we only
+ * read the one field.
  */
-const CPMM_POOL_CONFIG_OFFSET = 8;
+const CLMM_POOL_CONFIG_OFFSET = 9;
 
 /**
- * Read the `amm_config` PDA for a fixed Raydium CPMM pool.
+ * Read the `amm_config` PDA for a fixed Raydium CLMM pool.
  *
  * The `amm_config` is the fee-tier account paired with the pool. It's a
  * PDA derived from `(programId, config_index)` — not derivable from the
- * pool address alone — so we read it from the pool_state account (offset 8,
- * right after the 8-byte discriminator).
+ * pool address alone — so we read it from the pool_state account (offset 9,
+ * after disc(8) + bump(1)).
  *
- * Used by topup-balance-swap-raydium.test.ts to get the second pin slot
- * (`pinnedAccounts[1]` = amm_config at swap-account index 2, ADR-0032).
- *
- * Throws if the pool account is missing or not owned by the CPMM program.
+ * Throws if the pool account is missing or not owned by the CLMM program.
  */
-export async function loadCpmmPoolAmmConfig(
+export async function loadClmmPoolAmmConfig(
   connection: Connection,
   pool: PublicKey
 ): Promise<PublicKey> {
   const acct = await connection.getAccountInfo(pool, "confirmed");
   if (!acct?.data) {
     throw new Error(
-      `Raydium CPMM pool ${pool.toBase58()} not found on the current fork`
+      `Raydium CLMM pool ${pool.toBase58()} not found on the current fork`
     );
   }
-  if (!acct.owner.equals(RAYDIUM_CPMM_PUBKEY)) {
+  if (!acct.owner.equals(RAYDIUM_CLMM_PUBKEY)) {
     throw new Error(
-      `Account ${pool.toBase58()} is not a Raydium CPMM pool (owner=${acct.owner.toBase58()})`
+      `Account ${pool.toBase58()} is not a Raydium CLMM pool (owner=${acct.owner.toBase58()})`
     );
   }
   return new PublicKey(
-    acct.data.subarray(CPMM_POOL_CONFIG_OFFSET, CPMM_POOL_CONFIG_OFFSET + 32)
+    acct.data.subarray(CLMM_POOL_CONFIG_OFFSET, CLMM_POOL_CONFIG_OFFSET + 32)
   );
 }

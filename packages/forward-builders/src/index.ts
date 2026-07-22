@@ -22,4 +22,15 @@ export {
   type RaydiumCpmmForwardOptions,
   type RaydiumCpmmForwardConfigOptions,
 } from "./raydium-cpmm";
-export { METEORA_DLMM_PUBKEY, RAYDIUM_CPMM_PUBKEY } from "./constants";
+export {
+  METEORA_DLMM_PUBKEY,
+  RAYDIUM_CPMM_PUBKEY,
+  RAYDIUM_CLMM_PUBKEY,
+} from "./constants";
+export {
+  createRaydiumClmmForward,
+  raydiumClmmForwardConfig,
+  RAYDIUM_CLMM_SWAP_V2_DISCRIMINATOR,
+  type RaydiumClmmForwardOptions,
+  type RaydiumClmmForwardConfigOptions,
+} from "./raydium-clmm";

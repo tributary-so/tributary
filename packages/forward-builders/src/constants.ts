@@ -23,3 +23,17 @@ export const METEORA_DLMM_PUBKEY = new PublicKey(
 export const RAYDIUM_CPMM_PUBKEY = new PublicKey(
   "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"
 );
+
+/**
+ * Raydium CLMM program id (third entry in Tributary's
+ * `ALLOWED_FORWARD_PROGRAMS`).
+ *
+ * Concentrated liquidity AMM (Uniswap V3 model): ticks/tick-arrays like
+ * DLMM's bins, dynamic swap accounts, sqrtPrice-based quoting. The
+ * `swap_v2` instruction takes a known `amount` + `otherAmountThreshold` +
+ * `sqrtPriceLimitX64` + `isBaseInput` — matching Tributary's known-`face`
+ * forward model.
+ */
+export const RAYDIUM_CLMM_PUBKEY = new PublicKey(
+  "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+);
