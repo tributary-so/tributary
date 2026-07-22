@@ -1,3 +1,5 @@
+# [@tributary-so/contract-v2.1.1](https://github.com/tributary-so/tributary/compare/@tributary-so/contract-v2.1.0...@tributary-so/contract-v2.1.1) (2026-07-22)
+
 # [@tributary-so/contract-v2.1.0](https://github.com/tributary-so/tributary/compare/@tributary-so/contract-v2.0.0...@tributary-so/contract-v2.1.0) (2026-07-17)
 
 # [@tributary-so/contract-v1.12.2](https://github.com/tributary-so/tributary/compare/@tributary-so/contract-v1.12.1...@tributary-so/contract-v1.12.2) (2026-07-14)
