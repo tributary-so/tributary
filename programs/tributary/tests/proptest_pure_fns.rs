@@ -189,12 +189,12 @@ proptest! {
     #[test]
     fn prop_payg_accepts_valid_chunk(
         max_chunk in 1u64..1_000_000_000,
-        max_per_period in 1u64..1_000_000_000,
+        max_extra in 0u64..1_000_000_000,
         period_secs in 1u64..1_000_000_000,
         period_start in 0i64..2_000_000_000i64,
         chunk_factor in 1u64..1000,
     ) {
-        prop_assume!(max_chunk <= max_per_period);
+        let max_per_period = max_chunk + max_extra;
         let chunk = chunk_factor.min(max_chunk);
         let pt = PolicyType::PayAsYouGo {
             max_amount_per_period: max_per_period,
@@ -219,14 +219,14 @@ proptest! {
 proptest! {
     #[test]
     fn prop_payg_never_completes(
-        max_per_period in 1u64..1_000_000_000,
         max_chunk in 1u64..1_000_000_000,
+        max_extra in 0u64..1_000_000_000,
         period_secs in 1u64..1_000_000_000,
         period_start in 0i64..2_000_000_000i64,
         now in 0i64..2_000_000_000i64,
         amount in 0u64..1_000_000_000,
     ) {
-        prop_assume!(max_chunk <= max_per_period);
+        let max_per_period = max_chunk + max_extra;
         let mut pt = PolicyType::PayAsYouGo {
             max_amount_per_period: max_per_period,
             max_chunk_amount: max_chunk,
@@ -261,12 +261,12 @@ proptest! {
     #[test]
     fn prop_upto_always_completes(
         max_amount in 0u64..u64::MAX,
-        valid_after in 0i64..i64::MAX,
-        deadline in 1i64..i64::MAX,
+        valid_after in 0i64..1_000_000_000,
+        deadline_extra in 1i64..1_000_000_000,
         settle in 0u64..u64::MAX,
         now in 0i64..i64::MAX,
     ) {
-        prop_assume!(deadline > valid_after);
+        let deadline = valid_after + deadline_extra;
         let mut pt = PolicyType::UpTo {
             max_amount,
             valid_after,
@@ -431,9 +431,10 @@ proptest! {
         tier0 in 0u16..=10_000,
         tier1 in 0u16..=10_000,
     ) {
-        // tier_bps must sum to 10000 (validated at gateway creation)
+        // Construct tier_bps summing to exactly 10000 (validated at gateway
+        // creation) instead of rejecting when tier0+tier1 > 10000.
+        let tier1 = tier1.min(10_000u16.saturating_sub(tier0));
         let tier2 = 10000u16.saturating_sub(tier0).saturating_sub(tier1);
-        prop_assume!(tier0 + tier1 + tier2 == 10000);
 
         // Replicate the referral math (checked arithmetic like the real code):
         // pool = gateway_fee * allocation_bps / 10000
@@ -611,10 +612,10 @@ proptest! {
     #[test]
     fn prop_onetime_due_and_expiry(
         amount in 1u64..1_000_000_000,
-        due in 0i64..2_000_000_000i64,
-        expiry in 1i64..2_000_000_000i64,
+        due in 0i64..1_000_000_000i64,
+        expiry_offset in 1i64..1_000_000_000i64,
     ) {
-        prop_assume!(due <= expiry);
+        let expiry = due + expiry_offset;
         let pt = PolicyType::OneTime {
             amount,
             due_date: due,
