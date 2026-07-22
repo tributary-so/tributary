@@ -9,7 +9,15 @@ import * as cron from "node-cron";
 import * as fs from "fs";
 import { TributarySDK } from "@tributary-so/sdk";
 import { exit } from "process";
-import { logger } from "./logger.js";
+import { logger, parseErrorFromLogs } from "./logger.js";
+import {
+  wrapConnectionWithMetrics,
+  recordTx,
+  recordTxFail,
+  setCooldownCount,
+  observeTick,
+  observeTxConfirm,
+} from "./metrics.js";
 
 const MAX_FAILURES = 3;
 const COOLDOWN_MS = 5 * 60_000;
@@ -58,7 +66,10 @@ class PaymentScheduler {
     }
 
     const connection = new Connection(config.connectionUrl, "confirmed");
-    this.sdk = new TributarySDK(connection, this.gatewayKeypairs[0]);
+    // Wrap once: every RPC call (SDK-internal too) bumps rpc_calls_total.
+    // Would have surfaced the y0g1 runaway within one tick.
+    const instrumented = wrapConnectionWithMetrics(connection);
+    this.sdk = new TributarySDK(instrumented, this.gatewayKeypairs[0]);
   }
 
   private loadKeypair(data: string) {
@@ -84,7 +95,6 @@ class PaymentScheduler {
     let totalExecutedCount = 0;
     let totalErrorCount = 0;
     let totalSkippedCount = 0;
-
     for (let i = 0; i < this.gatewayKeypairs.length; i++) {
       const keypair = this.gatewayKeypairs[i];
       const wallet = new anchor.Wallet(keypair);
@@ -154,6 +164,7 @@ class PaymentScheduler {
                 await this.executePayment(policyPda);
                 executedCount++;
                 this.cooldowns.delete(policyPda.toBase58());
+                recordTx("payout", "success");
 
                 logger.debug(
                   `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
@@ -165,10 +176,15 @@ class PaymentScheduler {
               logger.error(
                 `🚩 Error executing payment for ${policyPda.toString()}`
               );
+              let errorCode = "unknown";
               if (error instanceof SendTransactionError) {
                 logger.error(error.message);
                 logger.error(error.logs);
+                errorCode =
+                  parseErrorFromLogs(error?.logs ?? []).code ?? "unknown";
               }
+              recordTx("payout", "fail");
+              recordTxFail("payout", errorCode);
               this.recordFailure(policyPda);
               errorCount++;
             }
@@ -189,6 +205,9 @@ class PaymentScheduler {
       }
     }
 
+    const durationSeconds = (Date.now() - tickStart) / 1000;
+    observeTick("payout", durationSeconds);
+    setCooldownCount("payout", this.cooldowns.size);
     logger.info(
       `Tick summary: executed=${totalExecutedCount} errors=${totalErrorCount} skipped=${totalSkippedCount} cooldowns=${
         this.cooldowns.size
@@ -259,6 +278,7 @@ class PaymentScheduler {
       logger.debug(
         `[DRY-RUN] Would execute payment for ${paymentPolicyPda.toString()}`
       );
+      recordTx("payout", "dry_run");
       return;
     }
     try {
@@ -268,6 +288,7 @@ class PaymentScheduler {
         transaction.add(instruction);
       }
 
+      const confirmStart = Date.now();
       const signature = await this.sdk.provider.sendAndConfirm(
         transaction,
         [],
@@ -276,6 +297,7 @@ class PaymentScheduler {
           skipPreflight: false,
         }
       );
+      observeTxConfirm("payout", (Date.now() - confirmStart) / 1000);
 
       logger.debug(`Payment executed with signature: ${signature}`);
     } catch (error) {

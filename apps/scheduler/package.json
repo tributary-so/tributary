@@ -23,6 +23,7 @@
     "commander": "^14.0.1",
     "lighthouse-sdk-legacy": "workspace:*",
     "node-cron": "^3.0.3",
+    "prom-client": "^15.1.3",
     "winston": "^3.19.0"
   },
   "devDependencies": {

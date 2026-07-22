@@ -3,6 +3,7 @@
 import { ComposableScheduler } from "./composable.js";
 import { PaymentScheduler, SchedulerConfig } from "./payments.js";
 import { logger } from "./logger.js";
+import { startMetricsServer, stopMetricsServer } from "./metrics.js";
 
 // Merge stderr into stdout so deployments that capture stdout only
 // (docker logs, systemd StandardOutput=journal without StandardError)
@@ -10,7 +11,7 @@ import { logger } from "./logger.js";
 // streams separate.
 if (process.env.LOG_SPLIT_STREAMS !== "true") {
   process.stderr.write = process.stdout.write.bind(
-    process.stdout,
+    process.stdout
   ) as typeof process.stderr.write;
 }
 
@@ -33,7 +34,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   let relayerPrivateKeys: string[] | undefined;
   if (process.env.RELAYER_PRIVATE_KEY) {
     relayerPrivateKeys = process.env.RELAYER_PRIVATE_KEY.split(";").filter(
-      (k) => k.trim(),
+      (k) => k.trim()
     );
   }
 
@@ -82,6 +83,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     logger.info("Received SIGINT, shutting down gracefully...");
     scheduler?.stop();
     composableScheduler?.stop();
+    stopMetricsServer();
     process.exit(0);
   });
 
@@ -89,8 +91,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     logger.info("Received SIGTERM, shutting down gracefully...");
     scheduler?.stop();
     composableScheduler?.stop();
+    stopMetricsServer();
     process.exit(0);
   });
+
+  // Metrics server (Prometheus pull scrape). Boot before schedulers so
+  // /metrics is live even if a scheduler start() throws. Port and enable
+  // via METRICS_PORT (default 9100) / METRICS_ENABLED (default true).
+  startMetricsServer();
 
   if (scheduler) {
     scheduler.start();
