@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-07-01T09:28:05Z
-updated_at: 2026-07-22T12:30:53Z
+updated_at: 2026-07-22T12:40:25Z
 parent: tributary-ujni
 ---
 
@@ -60,3 +60,76 @@ supplement. Signaling `hordr blocked`.
   into QEDGen's Crucible frame, OR build a minimal `crucible init` harness
   targeting only the 3 security-critical handlers (execute_payment,
   execute_composable, transfer) with a single conservation invariant.
+
+
+
+## Blocker triply-verified — 2026-07-22 (third implementer pass)
+
+Independently reproduced the QEDGen v2.38 fuzz-codegen failure AND investigated
+three avenues the prior two passes missed. All confirm the blocker is genuine
+and multi-layered.
+
+**New finding 1 — sibling `tributary-o2vs` cross-check:**
+`tributary-o2vs` (completed) resolved the *Kani*-path codegen bugs via
+`formal_verification/fix-kani.py` (266-line Python post-processor). BUT those
+fixes are purely **syntactic** textual transforms (bare field → `s.field`,
+ML-syntax → Rust syntax, overflow wrapping). The fuzz-path blocker is
+fundamentally different: the 38 `todo!("agent-fill: accounts::<Name> ...")`
+stubs require generating **semantically valid Solana account-fixture struct
+literals** — funded payer, valid PDAs, token accounts with balances, delegate
+approvals. No regex post-processor can produce this; it's the same fixture
+knowledge `mollusk_oracle.rs` (21 KB) already encodes in Mollusk's API.
+
+**New finding 2 — IDL location + second codegen layer:**
+The `declare_fuzz_program!(tributary = "idls/tributary.json")` macro resolves
+the IDL relative to the **fuzz crate root**
+(`programs/tributary/.qed/fuzz/tributary/idls/`), not the program root.
+Providing it there fixes the E0432 "unresolved import `tributary`" errors —
+but exposes a **second** codegen bug: ~40 instruction/account **name
+mismatches**. QEDGen emits `Handler*`/`Handle*` prefixed names
+(`HandlerChangeProgramAuthority`, `HandleInitialize`,
+`HandleUpdateGatewayFeatureFlags`, bare `Handler`) that don't exist in the
+IDL-derived module (actual: `ChangeProgramAuthority`, `Initialize`,
+`UpdateGatewayFeatureFlags`). This layer IS textually post-processable
+(strip `Handler*`/`Handle*` prefix → IDL PascalCase), but it's a *third*
+codegen bug on top of the two already documented.
+
+**New finding 3 — Anchor version gap:**
+Generated Cargo.toml pins `anchor-lang = "1.0.1"` + `solana-* = "3.x"`.
+Tributary builds with Anchor 0.31.0 / Solana 1.18.x. The IDL format emitted
+by Anchor 0.31 may not be fully compatible with the types the 1.0.1 macro
+expects. (The macro DID expand after providing the IDL, so this is a
+potential runtime-deserialization risk, not a hard compile failure.)
+
+**Post-processor feasibility assessment:**
+A `fix-fuzz.py` analogous to `fix-kani.py` could fix the name mismatches
+(regex strip `Handler*`/`Handle*` prefix) and the macro-resolution issue
+(instruct the user to place the IDL at the crate root). But it CANNOT fill
+the 38 account-fixture stubs with valid Solana state. A harness with
+`Default::default()` / `Pubkey::default()` accounts compiles but every
+action fails at Anchor's account-validation gate before reaching any logic
+that could panic — useless for the bean's goal ("surface
+panic/unwrap/overflow crashes"). Real fixtures require porting the
+`mollusk_oracle.rs` setup pattern into Crucible's `accounts::*` struct
+literal format: funded payer, ProgramConfig singleton, UserPayment +
+PaymentGateway + PaymentPolicy PDAs, token accounts with balances, delegate
+approval, fee-recipient ATAs. That is days of focused work, not a
+post-processor.
+
+**Conclusion unchanged:** Genuinely blocked on QEDGen v2.38 fuzz-codegen
+maturity (three layers: name mismatches + account-fixture stubs + potential
+IDL version gap). The primary coverage-guided + conservation/authority
+fuzzing path (`tributary-ya7m`, completed) delivers the verified coverage
+this bean was meant to supplement. Signaling `hordr blocked`.
+
+**To unblock (either):**
+- (a) QEDGen codegen fix: emit correct IDL-derived names (no `Handler*`
+  prefix) AND compilable account-fixture struct literals instead of
+  `todo!()` stubs (upstream tooling change — at least 3 codegen bugs).
+- (b) Dedicated bean: write a `fix-fuzz.py` post-processor for the name
+  layer, then hand-fill the 38 account fixtures by porting the Mollusk
+  harness fixture pattern (`tests/mollusk_oracle.rs`) into Crucible's
+  `accounts::*` struct format. Or build a minimal `crucible init` harness
+  targeting only the 3 security-critical handlers (execute_payment,
+  execute_composable, transfer) with the lamport-conservation invariant
+  the generated skeleton already provides (lines 40–76).
