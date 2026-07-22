@@ -78,10 +78,12 @@ class PaymentScheduler {
   }
 
   private async checkAndExecutePayments(): Promise<void> {
+    const tickStart = Date.now();
     logger.info("Checking for payments to execute...");
 
     let totalExecutedCount = 0;
     let totalErrorCount = 0;
+    let totalSkippedCount = 0;
 
     for (let i = 0; i < this.gatewayKeypairs.length; i++) {
       const keypair = this.gatewayKeypairs[i];
@@ -132,6 +134,7 @@ class PaymentScheduler {
               const cooldown = this.cooldowns.get(policyPda.toBase58());
               if (cooldown && cooldown.cooldownUntil > Date.now()) {
                 logger.debug(`${policyPda.toString()} on cooldown — skipping`);
+                totalSkippedCount++;
                 continue;
               }
 
@@ -187,7 +190,9 @@ class PaymentScheduler {
     }
 
     logger.info(
-      `Payment execution completed. Total Executed: ${totalExecutedCount}, Total Errors: ${totalErrorCount}`
+      `Tick summary: executed=${totalExecutedCount} errors=${totalErrorCount} skipped=${totalSkippedCount} cooldowns=${
+        this.cooldowns.size
+      } duration=${Date.now() - tickStart}ms`
     );
   }
 

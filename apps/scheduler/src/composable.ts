@@ -258,7 +258,13 @@ class ComposableScheduler {
   }
 
   private async tick(): Promise<void> {
+    const tickStart = Date.now();
     const currentTime = Math.floor(Date.now() / 1000);
+
+    let totalWatched = 0;
+    let totalFireable = 0;
+    let totalFired = 0;
+    let totalErrors = 0;
 
     for (const keypair of this.gatewayKeypairs) {
       const signerKey = keypair.publicKey.toBase58();
@@ -267,7 +273,10 @@ class ComposableScheduler {
       );
       if (policies.length === 0) continue;
 
+      totalWatched += policies.length;
+
       const fireable = await this.prefilter(policies, currentTime);
+      totalFireable += fireable.length;
       if (fireable.length === 0) continue;
 
       logger.info(
@@ -282,12 +291,21 @@ class ComposableScheduler {
 
       await Promise.all(
         fireable.map((p) =>
-          this.fire(p, signer).catch((e) =>
-            logger.error(`fire error for ${p.publicKey.toString()}:`, e)
-          )
+          this.fire(p, signer)
+            .then(() => totalFired++)
+            .catch((e) => {
+              totalErrors++;
+              logger.error(`fire error for ${p.publicKey.toString()}:`, e);
+            })
         )
       );
     }
+
+    logger.info(
+      `Composable tick: watched=${totalWatched} fireable=${totalFireable} fired=${totalFired} errors=${totalErrors} cooldowns=${
+        this.cooldowns.size
+      } duration=${Date.now() - tickStart}ms`
+    );
   }
 
   private async prefilter(
