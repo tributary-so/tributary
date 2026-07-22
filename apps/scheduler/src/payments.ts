@@ -11,6 +11,14 @@ import { TributarySDK } from "@tributary-so/sdk";
 import { exit } from "process";
 import { logger } from "./logger.js";
 
+const MAX_FAILURES = 3;
+const COOLDOWN_MS = 5 * 60_000;
+
+interface CooldownEntry {
+  consecutiveFailures: number;
+  cooldownUntil: number;
+}
+
 interface SchedulerConfig {
   connectionUrl: string;
   gatewayKeypairPath?: string;
@@ -25,6 +33,7 @@ class PaymentScheduler {
   private sdk: TributarySDK;
   private gatewayKeypairs: Keypair[];
   private config: SchedulerConfig;
+  private cooldowns: Map<string, CooldownEntry> = new Map();
 
   constructor(config: SchedulerConfig) {
     this.config = config;
@@ -119,6 +128,12 @@ class PaymentScheduler {
             account: policy,
           } of paymentPolicies) {
             try {
+              const cooldown = this.cooldowns.get(policyPda.toBase58());
+              if (cooldown && cooldown.cooldownUntil > Date.now()) {
+                logger.debug(`${policyPda.toString()} on cooldown — skipping`);
+                continue;
+              }
+
               if (this.shouldExecutePayment(policy, currentTime)) {
                 let milestoneInfo = "";
                 if (policy.policyType.milestone) {
@@ -134,6 +149,7 @@ class PaymentScheduler {
 
                 await this.executePayment(policyPda);
                 executedCount++;
+                this.cooldowns.delete(policyPda.toBase58());
 
                 logger.debug(
                   `✅ Payment executed successfully for ${policyPda.toString()}${milestoneInfo}`
@@ -149,6 +165,7 @@ class PaymentScheduler {
                 logger.error(error.message);
                 logger.error(error.logs);
               }
+              this.recordFailure(policyPda);
               errorCount++;
             }
           }
@@ -259,6 +276,22 @@ class PaymentScheduler {
       logger.error(`Failed to execute payment`);
       throw error;
     }
+  }
+
+  private recordFailure(policyPda: PublicKey): void {
+    const key = policyPda.toBase58();
+    const entry = this.cooldowns.get(key) ?? {
+      consecutiveFailures: 0,
+      cooldownUntil: 0,
+    };
+    entry.consecutiveFailures += 1;
+    if (entry.consecutiveFailures >= MAX_FAILURES) {
+      entry.cooldownUntil = Date.now() + COOLDOWN_MS;
+      logger.warn(
+        `${key} hit ${MAX_FAILURES} strikes — cooldown ${COOLDOWN_MS / 1000}s`
+      );
+    }
+    this.cooldowns.set(key, entry);
   }
 
   private delay(ms: number): Promise<void> {
