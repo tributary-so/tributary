@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "qedgen-kani-prelude"
+version = "0.1.0"
+
+[[package]]
 name = "tributary-kani"
 version = "0.1.0"
+dependencies = [
+ "qedgen-kani-prelude",
+]

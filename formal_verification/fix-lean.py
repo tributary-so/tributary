@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """
-Post-process qedgen v2.38-generated Spec.lean to fix Lean-backend codegen bugs.
+Post-process qedgen-generated Spec.lean to fix Lean-backend codegen bugs.
 
-Mirrors fix-kani.py (which fixes the same class of bugs in the Rust/Kani
-backend). The Lean backend emits four codegen defects that prevent
-`lake build` from reaching Proofs.lean:
+Status (2026-07-22, qedgen v2.47.0): the Lean backend is LLM-assisted and
+slow to regenerate locally; this script is retained until a clean v2.47
+output can be diffed against the v2.38 patterns below. The Kani twin
+(fix-kani.py) was RETIRED after v2.47 fixed all 4 of its bug classes —
+the same may be true here, but verification requires `qedgen codegen --lean`
+to complete (hangs offline). See formal_verification/README.md.
+
+Mirrors fix-fuzz.py (which fixes the same class of bare-field bugs in the
+Crucible fuzz backend, still required in v2.47).
+
+The Lean backend emits these codegen defects that prevent `lake build` from
+reaching Proofs.lean:
 
 Bug L1 — bare State-field reads in transition guards + effect RHS.
          Guards use `emergency_pause = 0` instead of `s.emergency_pause = 0`;

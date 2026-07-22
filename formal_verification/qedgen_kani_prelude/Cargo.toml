@@ -1,15 +1,12 @@
 [package]
-name = "tributary-kani"
+name = "qedgen-kani-prelude"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [lib]
-path = "kani.rs"
-
-[dependencies]
-qedgen-kani-prelude = { path = "qedgen_kani_prelude" }
+path = "src/lib.rs"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)'] }
 
-[workspace]
