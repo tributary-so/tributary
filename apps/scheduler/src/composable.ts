@@ -51,6 +51,7 @@ interface WatchedPolicy {
   publicKey: PublicKey;
   account: ComposablePolicy;
   gateway: PaymentGateway;
+  signerKeypair: Keypair;
 }
 
 interface SchedulerConfig {
@@ -67,7 +68,7 @@ class ComposableScheduler {
   private gatewayKeypairs: Keypair[];
   private relayerKeypairs: Keypair[];
   private config: SchedulerConfig;
-  private watched: Map<string, WatchedPolicy[]> = new Map();
+  private watched: Map<string, WatchedPolicy> = new Map();
   private cooldowns: Map<string, CooldownEntry> = new Map();
   private pollTimer?: ReturnType<typeof setInterval>;
   private rescanTimer?: ReturnType<typeof setInterval>;
@@ -200,6 +201,10 @@ class ComposableScheduler {
     logger.info("Rescanning composable policies...");
     this.cooldowns.clear();
 
+    // Build fresh map keyed by policy pubkey — replaces previous entries,
+    // dedupes automatically. Policy pubkeys are globally unique.
+    const fresh = new Map<string, WatchedPolicy>();
+
     for (const keypair of this.gatewayKeypairs) {
       const gatewayPdas =
         this.signerToGatewayPdas.get(keypair.publicKey.toBase58()) ?? [];
@@ -214,27 +219,21 @@ class ComposableScheduler {
             },
           ]);
 
-          const watched: WatchedPolicy[] = [];
           for (const { publicKey, account } of policies) {
             const gateway = this.paymentGateways.get(gatewayPda.toString());
             if (gateway) {
-              watched.push({
+              fresh.set(publicKey.toBase58(), {
                 publicKey,
                 account,
                 gateway,
+                signerKeypair: keypair,
               });
             }
           }
 
-          // Aggregate policies across all gateways this signer manages
-          const existing = this.watched.get(keypair.publicKey.toBase58()) ?? [];
-          this.watched.set(keypair.publicKey.toBase58(), [
-            ...existing,
-            ...watched,
-          ]);
           logger.info(
             `Gateway ${gatewayPda.toString()}: ${
-              watched.length
+              policies.length
             } composable policies (signer ${keypair.publicKey.toString()})`
           );
         } catch (error) {
@@ -245,6 +244,8 @@ class ComposableScheduler {
         }
       }
     }
+
+    this.watched = fresh;
   }
 
   private hasValidation(policy: ComposablePolicy): boolean {
@@ -255,8 +256,10 @@ class ComposableScheduler {
     const currentTime = Math.floor(Date.now() / 1000);
 
     for (const keypair of this.gatewayKeypairs) {
-      const gatewayKey = keypair.publicKey.toBase58();
-      const policies = this.watched.get(gatewayKey) ?? [];
+      const signerKey = keypair.publicKey.toBase58();
+      const policies = [...this.watched.values()].filter(
+        (p) => p.signerKeypair.publicKey.toBase58() === signerKey
+      );
       if (policies.length === 0) continue;
 
       const fireable = await this.prefilter(policies, currentTime);
@@ -515,6 +518,26 @@ class ComposableScheduler {
         `✅ Composable executed: ${policy.publicKey.toString()} → ${signature}`
       );
       this.cooldowns.delete(policy.publicKey.toBase58());
+
+      // Refresh cached account so tick() sees post-execution state
+      // (advanced nextPaymentDue, incremented paymentCount, etc.)
+      // without waiting up to 10 min for the next rescan.
+      try {
+        const updated = await this.sdk.program.account.composablePolicy.fetch(
+          policy.publicKey
+        );
+        if (updated) {
+          this.watched.set(policy.publicKey.toBase58(), {
+            ...policy,
+            account: updated as ComposablePolicy,
+          });
+        } else {
+          // Account closed (completed/deleted) — stop watching
+          this.watched.delete(policy.publicKey.toBase58());
+        }
+      } catch {
+        // ponytail: best-effort — stale snapshot corrected on next rescan
+      }
     } catch (error) {
       logger.error(`🚩 Composable failed: ${policy.publicKey.toString()}`);
       logger.error((error as Error).message);
