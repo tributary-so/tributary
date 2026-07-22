@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-07-01T09:28:05Z
-updated_at: 2026-07-22T12:40:25Z
+updated_at: 2026-07-22T12:46:59Z
 parent: tributary-ujni
 ---
 
