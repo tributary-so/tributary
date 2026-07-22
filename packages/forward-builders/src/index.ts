@@ -15,4 +15,11 @@ export {
   METEORA_DLMM_SWAP_DISCRIMINATOR,
   type MeteoraDlmmForwardConfigOptions,
 } from "./meteora-dlmm";
-export { METEORA_DLMM_PUBKEY } from "./constants";
+export {
+  createRaydiumCpmmForward,
+  raydiumCpmmForwardConfig,
+  RAYDIUM_CPMM_SWAP_BASE_INPUT_DISCRIMINATOR,
+  type RaydiumCpmmForwardOptions,
+  type RaydiumCpmmForwardConfigOptions,
+} from "./raydium-cpmm";
+export { METEORA_DLMM_PUBKEY, RAYDIUM_CPMM_PUBKEY } from "./constants";
