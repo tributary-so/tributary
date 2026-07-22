@@ -1,7 +1,7 @@
 ---
 # tributary-u9hz
-title: '#4 Stop clearing cooldowns in rescanAll'
-status: todo
+title: "#4 Stop clearing cooldowns in rescanAll"
+status: completed
 type: task
 priority: high
 created_at: 2026-07-21T09:22:56Z
@@ -25,7 +25,7 @@ The rescan's job is to refresh the POLICY SET (new policies added, deleted ones 
 
   const livePdas = new Set(this.allWatchedPdas());
   for (const key of [...this.cooldowns.keys()]) {
-    if (!livePdas.has(key)) this.cooldowns.delete(key);
+  if (!livePdas.has(key)) this.cooldowns.delete(key);
   }
 
 (Add a small private helper allWatchedPdas() that flattens this.watched.)
@@ -36,8 +36,10 @@ The rescan's job is to refresh the POLICY SET (new policies added, deleted ones 
 - Delete a policy on-chain, trigger rescan, verify its cooldown entry is pruned.
 - Cooldown expiry behaviour unchanged.
 
-
-
 ## Tags
 
 scheduler, ops
+
+## Summary of Changes
+
+- **`composable.ts`**: Removed `this.cooldowns.clear()` from `rescanAll()`. Cooldown state now survives rescans — failing policies stay cooled down across the 10-min rescan boundary. Added orphan pruning after `this.watched = fresh`: cooldown entries for policies no longer in the watched set (deleted/closed on-chain) are cleaned up.

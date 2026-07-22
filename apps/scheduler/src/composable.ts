@@ -200,7 +200,6 @@ class ComposableScheduler {
 
   private async rescanAll(): Promise<void> {
     logger.info("Rescanning composable policies...");
-    this.cooldowns.clear();
 
     // Build fresh map keyed by policy pubkey — replaces previous entries,
     // dedupes automatically. Policy pubkeys are globally unique.
@@ -247,6 +246,11 @@ class ComposableScheduler {
     }
 
     this.watched = fresh;
+
+    // Prune orphaned cooldown entries (policies deleted/closed on-chain)
+    for (const key of [...this.cooldowns.keys()]) {
+      if (!this.watched.has(key)) this.cooldowns.delete(key);
+    }
   }
 
   private hasValidation(policy: ComposablePolicy): boolean {
