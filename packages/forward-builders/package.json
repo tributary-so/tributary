@@ -5,8 +5,7 @@
     "type": "git"
   },
   "license": "MIT",
-  "private": false,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Concrete ForwardBuilder implementations for Tributary composable execution (ADR-0030).",
   "scripts": {
@@ -14,7 +13,8 @@
     "test": "jest",
     "clean": "rm -rf ./dist",
     "build": "npx tsup",
-    "prepack": "pnpm run build"
+    "prepack": "pnpm run build",
+    "release": "semantic-release -e semantic-release-monorepo"
   },
   "dependencies": {
     "@meteora-ag/dlmm": "^1.0.0",
@@ -35,6 +35,9 @@
   "engines": {
     "node": ">=16"
   },
+  "files": [
+    "dist/**/*"
+  ],
   "main": "./dist/packages/forward-builders/src/index.js",
   "types": "./dist/packages/forward-builders/src/index.d.ts",
   "exports": {
