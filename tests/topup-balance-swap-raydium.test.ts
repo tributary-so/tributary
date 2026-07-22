@@ -20,10 +20,6 @@ import {
   type ComposablePolicy,
 } from "../packages/sdk/src";
 import {
-  getPdaObservationAccount,
-  getPdaExBitmapAccount,
-} from "@raydium-io/raydium-sdk-v2";
-import {
   createRaydiumClmmForward,
   raydiumClmmForwardConfig,
 } from "../packages/forward-builders/src";
@@ -82,35 +78,35 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     program = env.program;
 
     // ── Raydium CLMM-specific warmup ──────────────────────────────
-    // Force surfpool to lazy-fetch + register the CLMM program + all
-    // swap-CPI accounts. The key challenge: surfpool's BPF loader doesn't
-    // auto-register programs from getAccountInfo — the CPI processor
-    // returns "Unknown program". The fix: read the program's raw data and
-    // re-setAccount it with executable:true, which forces surfpool to
-    // register it in its program cache.
-    //
-    // The Meteora DLMM path doesn't need this because DLMM.create() does
-    // deeper account parsing that implicitly triggers surfpool's loader.
+    // Match the Meteora pattern: just read the program + pool via
+    // getAccountInfo so surfpool lazy-fetches them from mainnet.
+    // Additionally read the BPF ProgramData account (upgradeable BPF
+    // programs store their bytecode there — surfpool needs both the
+    // program account AND its ProgramData to register the program in
+    // the CPI cache).
     clmmPool = RAYDIUM_CLMM_USDC_WSOL_POOL;
 
-    // Step 1: force-fetch the CLMM program account from mainnet
+    // Warmup 1: CLMM program + its ProgramData account.
     const clmmProgram = await env.connection.getAccountInfo(
       RAYDIUM_CLMM_PUBKEY
     );
     expect(clmmProgram).not.toBeNull();
     expect(clmmProgram!.executable).toBe(true);
 
-    // Step 2: re-setAccount the program data so surfpool registers it as
-    // an executable BPF program in its loader cache.
-    await env.surfpool.setAccount({
-      publicKey: RAYDIUM_CLMM_PUBKEY,
-      data: clmmProgram!.data.toString("hex"),
-      owner: clmmProgram!.owner.toBase58(),
-      executable: true,
-      lamports: clmmProgram!.lamports,
-    });
+    // BPF Upgradeable: ProgramData PDA = findProgramAddressSync([programId], BPF_LOADER_UPGRADEABLE)
+    const BPF_LOADER_UPGRADEABLE = new PublicKey(
+      "BPFLoaderUpgradeab1e11111111111111111111111"
+    );
+    const [clmmProgramData] = PublicKey.findProgramAddressSync(
+      [RAYDIUM_CLMM_PUBKEY.toBuffer()],
+      BPF_LOADER_UPGRADEABLE
+    );
+    const programDataAcct = await env.connection.getAccountInfo(
+      clmmProgramData
+    );
+    expect(programDataAcct).not.toBeNull();
 
-    // Step 3: warm up pool + ammConfig + observation + bitmap extension
+    // Warmup 2: pool + ammConfig (same as Meteora).
     const poolAcct = await env.connection.getAccountInfo(clmmPool);
     expect(poolAcct).not.toBeNull();
     expect(poolAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
@@ -120,24 +116,6 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     const configAcct = await env.connection.getAccountInfo(clmmAmmConfig);
     expect(configAcct).not.toBeNull();
     expect(configAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
-
-    // Warm up the observation state + tick-array bitmap extension (both
-    // are swap_v2 CPI accounts). Reading them forces surfpool to fetch.
-    const observationPda = getPdaObservationAccount(
-      RAYDIUM_CLMM_PUBKEY,
-      clmmPool
-    ).publicKey;
-    const observationAcct = await env.connection.getAccountInfo(observationPda);
-    expect(observationAcct).not.toBeNull();
-
-    const exBitmapPda = getPdaExBitmapAccount(
-      RAYDIUM_CLMM_PUBKEY,
-      clmmPool
-    ).publicKey;
-    const exBitmapAcct = await env.connection.getAccountInfo(exBitmapPda);
-    if (exBitmapAcct) {
-      expect(exBitmapAcct.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
-    }
   });
 
   test("Create composable swap policy — CLMM forward USDC→WSOL + Lighthouse", async () => {
