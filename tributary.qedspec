@@ -21,11 +21,11 @@
 //   - Access control: milestone release_condition signer-bit authorization.
 //
 // OUT OF SCOPE (integration-tested only — see Honest Claim in README):
-//   account wiring / PDA derivation, forward-program allowlist (Meteora),
-//   signer sanitization (ADR-0008), emergency-pause wiring, admin/config
-//   handlers, post_validation assertions (Lighthouse). Swap-output
-//   conservation is Meteora DLMM's responsibility. `delegated_amount` is
-//   SPL Token program state (read-only here).
+//   account wiring / PDA derivation, forward-program allowlist (Meteora DLMM
+//   + Raydium CPMM), signer sanitization (ADR-0008), emergency-pause wiring,
+//   admin/config handlers, post_validation assertions (Lighthouse). Swap-
+//   output conservation is the forward program's responsibility.
+//   `delegated_amount` is SPL Token program state (read-only here).
 
 spec Tributary
 program_id "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
@@ -542,10 +542,10 @@ invariant milestone_signer_bits_mutually_exclusive :
 //                           when emergency_pause != 0 or policy_status != 0
 //                           (see the `requires` guards on each handler).
 //   cpi_boundary_documented : signer sanitization (ADR-0008), the forward
-//                           allowlist (Meteora DLMM), and the validation
-//                           allowlist (Lighthouse) are enforced on-chain
-//                           and verified by integration tests + fuzzing,
-//                           not by a state predicate in this spec.
+//                           allowlist (Meteora DLMM + Raydium CPMM), and the
+//                           validation allowlist (Lighthouse) are enforced
+//                           on-chain and verified by integration tests +
+//                           fuzzing, not by a state predicate in this spec.
 //
 // ── Composable v2.2 (ADR-0026) documentation invariants ─────────────
 // Account-wiring and mode-conditional rules — real guarantees but live in
