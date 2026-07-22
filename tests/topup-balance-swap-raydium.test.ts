@@ -20,6 +20,10 @@ import {
   type ComposablePolicy,
 } from "../packages/sdk/src";
 import {
+  getPdaObservationAccount,
+  getPdaExBitmapAccount,
+} from "@raydium-io/raydium-sdk-v2";
+import {
   createRaydiumClmmForward,
   raydiumClmmForwardConfig,
 } from "../packages/forward-builders/src";
@@ -78,9 +82,22 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     program = env.program;
 
     // ── Raydium CLMM-specific warmup ──────────────────────────────
-    // Force surfpool to lazy-fetch the CLMM program + the fixed pool so
-    // the forward CPI resolves. Read amm_config from the pool account.
+    // Force surfpool to lazy-fetch + cache the CLMM program + the fixed
+    // pool + all swap-CPI accounts. The CLMM swap_v2 CPI touches: pool,
+    // ammConfig, observation state, tick-array bitmap extension, tick
+    // arrays, vaults — all must exist on the fork.
+    //
+    // streamAccount forces surfpool to deeply cache the program account
+    // (a plain getAccountInfo returns metadata but doesn't register the
+    // program in surfpool's BPF loader — "Unknown program" at CPI time).
+    // This is the CLMM equivalent of what DLMM.create() does implicitly
+    // for the Meteora path.
     clmmPool = RAYDIUM_CLMM_USDC_WSOL_POOL;
+
+    await env.surfpool.streamAccount({
+      publicKey: RAYDIUM_CLMM_PUBKEY,
+      includeOwnedAccounts: true,
+    });
 
     const clmmProgram = await env.connection.getAccountInfo(
       RAYDIUM_CLMM_PUBKEY
@@ -97,6 +114,26 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     const configAcct = await env.connection.getAccountInfo(clmmAmmConfig);
     expect(configAcct).not.toBeNull();
     expect(configAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
+
+    // Warm up the observation state + tick-array bitmap extension (both
+    // are swap_v2 CPI accounts). Reading them forces surfpool to fetch.
+    const observationPda = getPdaObservationAccount(
+      RAYDIUM_CLMM_PUBKEY,
+      clmmPool
+    ).publicKey;
+    const observationAcct = await env.connection.getAccountInfo(observationPda);
+    expect(observationAcct).not.toBeNull();
+
+    const exBitmapPda = getPdaExBitmapAccount(
+      RAYDIUM_CLMM_PUBKEY,
+      clmmPool
+    ).publicKey;
+    // Bitmap extension is optional — may be null if the pool doesn't use
+    // extended tick arrays. That's fine; the swap ix lists it regardless.
+    const exBitmapAcct = await env.connection.getAccountInfo(exBitmapPda);
+    if (exBitmapAcct) {
+      expect(exBitmapAcct.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
+    }
   });
 
   test("Create composable swap policy — CLMM forward USDC→WSOL + Lighthouse", async () => {
