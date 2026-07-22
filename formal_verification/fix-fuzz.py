@@ -184,14 +184,17 @@ def main() -> int:
         print(f"error: harness not found: {harness}", file=sys.stderr)
         return 1
 
-    src = harness.read_text()
-    src = patch_so_path(src, harness, "tributary")
-    patched = patch_call_sites(src)
-    if patched == src:
-        print(f"warning: no call-site patches applied to {harness}", file=sys.stderr)
-    else:
-        harness.write_text(patched)
+    original = harness.read_text()
+    after_path = patch_so_path(original, harness, "tributary")
+    after_calls = patch_call_sites(after_path)
+    if after_path != original:
+        print(f"patched .so path in {harness}")
+    if after_calls != after_path:
         print(f"patched call sites in {harness}")
+    if after_calls != original:
+        harness.write_text(after_calls)
+    else:
+        print(f"warning: no patches applied to {harness}", file=sys.stderr)
 
     # Also shrink the IDL (Bug A) — adjacent to src/.
     idl = harness.parent.parent / "idls" / "tributary.json"
