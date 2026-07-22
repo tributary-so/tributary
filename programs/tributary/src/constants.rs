@@ -11,8 +11,10 @@ pub const COMPOSABLE_POLICY_SEED: &[u8] = b"composable_policy";
 pub const VALIDATION_PDA_PRE_SEED: &[u8] = b"composable_validation_pre";
 pub const VALIDATION_PDA_POST_SEED: &[u8] = b"composable_validation_post";
 
-pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] =
-    &[pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo")]; // meteora dlm
+pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] = &[
+    pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"), // Meteora DLMM
+    pubkey!("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"), // Raydium CPMM
+];
 
 pub const ALLOWED_VALIDATION_PROGRAMS: &[Pubkey] =
     &[pubkey!("L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95")]; // Lighthouse

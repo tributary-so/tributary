@@ -629,6 +629,15 @@ mod tests {
         assert!(validate_forward_config(&enabled_config(allowlisted, 1)).is_ok());
     }
 
+    /// Raydium CPMM (`CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C`) is the
+    /// second allowlisted forward program (bean tributary-2st5 / milestone
+    /// tributary-404h). A forward config targeting it must validate.
+    #[test]
+    fn enabled_forward_accepts_raydium_cpmm_target() {
+        let cpmm = pubkey!("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C");
+        assert!(validate_forward_config(&enabled_config(cpmm, 1)).is_ok());
+    }
+
     #[test]
     fn native_output_rejects_non_wsol_output_mint() {
         let allowlisted = ALLOWED_FORWARD_PROGRAMS[0];
