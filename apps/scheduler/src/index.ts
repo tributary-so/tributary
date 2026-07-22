@@ -4,6 +4,16 @@ import { ComposableScheduler } from "./composable.js";
 import { PaymentScheduler, SchedulerConfig } from "./payments.js";
 import { logger } from "./logger.js";
 
+// Merge stderr into stdout so deployments that capture stdout only
+// (docker logs, systemd StandardOutput=journal without StandardError)
+// still see error-level output. Set LOG_SPLIT_STREAMS=true to keep
+// streams separate.
+if (process.env.LOG_SPLIT_STREAMS !== "true") {
+  process.stderr.write = process.stdout.write.bind(
+    process.stdout,
+  ) as typeof process.stderr.write;
+}
+
 // CLI interface
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (!process.env.SOLANA_API) {
@@ -23,7 +33,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   let relayerPrivateKeys: string[] | undefined;
   if (process.env.RELAYER_PRIVATE_KEY) {
     relayerPrivateKeys = process.env.RELAYER_PRIVATE_KEY.split(";").filter(
-      (k) => k.trim()
+      (k) => k.trim(),
     );
   }
 

@@ -1,7 +1,7 @@
 ---
 # tributary-6m8o
-title: '#2 Capture scheduler stderr (console.error lost)'
-status: todo
+title: "#2 Capture scheduler stderr (console.error lost)"
+status: completed
 type: task
 priority: critical
 created_at: 2026-07-21T09:22:56Z
@@ -31,8 +31,11 @@ Preferred approach: the in-process redirect (defensive, deployment-agnostic) PLU
 - README has a 'Logging' subsection stating stderr is merged into stdout by default and how to split them back if needed.
 - No behavior change for happy-path console.log output.
 
-
-
 ## Tags
 
 scheduler, ops
+
+## Summary of Changes
+
+- **`apps/scheduler/src/index.ts`**: Added in-process stderr→stdout redirect at startup (before any logging). All stderr output (winston error/warn, uncaught exceptions, node warnings) now lands in stdout. Gated on `LOG_SPLIT_STREAMS=true` to restore separate streams when a log shipper handles stderr independently.
+- **`apps/scheduler/README.md`**: Updated Logging section — documented merged-by-default stream routing, added `LOG_SPLIT_STREAMS` env var to the table, explained how to split streams back, and why merging is the default (docker logs / systemd stdout-only capture was silently discarding all error diagnostics).

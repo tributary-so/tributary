@@ -144,20 +144,29 @@ pnpm start
 All log output goes through a winston logger (`src/logger.ts`). Level and
 format are env-controlled so ops can tune output without redeploying.
 
-| Variable     | Description                                                                                         | Default |
-| ------------ | --------------------------------------------------------------------------------------------------- | ------- |
-| `LOG_LEVEL`  | Minimum level emitted: `error` / `warn` / `info` / `debug`                                          | `info`  |
-| `LOG_FORMAT` | `json` for one JSON object per line (machine-parsed), otherwise `timestamp [level] message` (human) | human   |
-| `LOG_FILE`   | When set, also write logs to this path (in addition to stdout/stderr)                               | unset   |
-| `LOG_ROTATE` | `true` to rotate `LOG_FILE` at 10 MB / 5 files (built-in `File` transport — no extra rotate dep)    | `false` |
+| Variable            | Description                                                                                         | Default          |
+| ------------------- | --------------------------------------------------------------------------------------------------- | ---------------- |
+| `LOG_LEVEL`         | Minimum level emitted: `error` / `warn` / `info` / `debug`                                          | `info`           |
+| `LOG_FORMAT`        | `json` for one JSON object per line (machine-parsed), otherwise `timestamp [level] message` (human) | human            |
+| `LOG_FILE`          | When set, also write logs to this path (in addition to stdout/stderr)                               | unset            |
+| `LOG_ROTATE`        | `true` to rotate `LOG_FILE` at 10 MB / 5 files (built-in `File` transport — no extra rotate dep)    | `false`          |
+| `LOG_SPLIT_STREAMS` | Set `true` to keep `error`/`warn` on stderr and `info`/`debug` on stdout (separate streams)         | `false` (merged) |
 
-Stream routing:
+Stream routing (default — merged):
+
+- All levels → **stdout** (stderr is merged into stdout at process start)
+
+This ensures deployments that capture stdout only (e.g. `docker logs`,
+systemd `StandardOutput=journal` without `StandardError=journal`,
+PM2 with `merge_type:false`) still see error-level output. Without this,
+all failure diagnostics (`🚩` lines, `SendTransactionError` details) are
+silently discarded.
+
+To split streams back (e.g. when your log shipper handles stderr
+separately), set `LOG_SPLIT_STREAMS=true`. Then:
 
 - `error` and `warn` → **stderr**
 - `info` and `debug` → **stdout**
-
-This fixes the stderr-only capture case: capturing stderr alone shows
-errors/warnings; capturing stdout alone shows the normal tick flow.
 
 Level guidance:
 
