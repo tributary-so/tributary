@@ -1,11 +1,11 @@
 ---
 # tributary-mygq
 title: 'Security: intermediate-output non-zero post_validation'
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-07-22T11:41:22Z
-updated_at: 2026-07-22T11:41:45Z
+updated_at: 2026-07-22T12:46:17Z
 parent: tributary-404h
 ---
 
