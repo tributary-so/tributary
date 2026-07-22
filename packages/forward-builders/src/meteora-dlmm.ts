@@ -119,16 +119,16 @@ export function createMeteoraDlmmForward(
 // constraint pins on-chain. See Tributary ADR-0030.
 
 /**
- * Anchor discriminator for Meteora DLMM's `swap` instruction — the first 8
- * bytes of `sha256("global:swap")`. Sourced from @meteora-ag/dlmm's published
- * IDL (ix name "swap"). Tributary's `create_composable_policy` requires any
+ * Anchor discriminator for Meteora DLMM's `swap2` instruction — the first 8
+ * bytes of `sha256("global:swap2")`. Sourced from @meteora-ag/dlmm's published
+ * IDL (ix name "swap2"). Tributary's `create_composable_policy` requires any
  * forward-enabled `InstructionConstraint` to carry at least one `ByteRangeCheck`
  * covering offset 0 (`DiscriminatorCheckRequired`); pinning the swap selector
  * there closes the boundary so the gateway signer can't substitute a different
  * DLMM instruction (e.g. initialize/withdraw) at execute time.
  */
 export const METEORA_DLMM_SWAP_DISCRIMINATOR = [
-  248, 198, 158, 145, 225, 117, 135, 200,
+  65, 75, 63, 76, 235, 91, 91, 136
 ] as const;
 
 /**
@@ -164,6 +164,8 @@ export interface MeteoraDlmmForwardConfigOptions {
  * is the constraint half of the pair whose fire half is
  * {@link createMeteoraDlmmForward}; the two are co-located here so they cannot
  * drift apart.
+ *
+ * https://github.com/MeteoraAg/dlmm-sdk/blob/main/idls/dlmm.json#L4090
  */
 export function meteoraDlmmForwardConfig(
   opts: MeteoraDlmmForwardConfigOptions

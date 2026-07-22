@@ -30,7 +30,7 @@ import {
   evaluateAssertion,
   isScheduleReady,
 } from "./evaluator.js";
-import { logger } from "./logger.js";
+import { logger, parseErrorFromLogs } from "./logger.js";
 
 const POLL_INTERVAL_MS = 30_000;
 const RESCAN_INTERVAL_MS = 10 * 60_000;
@@ -250,8 +250,7 @@ class ComposableScheduler {
             ...watched,
           ]);
           logger.info(
-            `Gateway ${gatewayPda.toString()}: ${
-              watched.length
+            `Gateway ${gatewayPda.toString()}: ${watched.length
             } composable policies (signer ${keypair.publicKey.toString()})`
           );
         } catch (error) {
@@ -287,8 +286,7 @@ class ComposableScheduler {
       if (fireable.length === 0) continue;
 
       logger.info(
-        `Gateway ${keypair.publicKey.toString()}: ${fireable.length}/${
-          policies.length
+        `Gateway ${keypair.publicKey.toString()}: ${fireable.length}/${policies.length
         } fireable`
       );
 
@@ -452,15 +450,15 @@ class ComposableScheduler {
       const forwardPayload =
         isForwardEnabled(policy.account) && policy.forwardContext
           ? await createMeteoraDlmmForward({
-              pool: policy.forwardContext.pool,
-              slippageBps: policy.forwardContext.slippageBps,
-              applyHostFeeInFix: policy.forwardContext.applyHostFeeInFix,
-            }).build({
-              connection: this.sdk.connection,
-              policy: policy.account,
-              composablePolicyPda: policy.publicKey,
-              face: amount,
-            })
+            pool: policy.forwardContext.pool,
+            slippageBps: policy.forwardContext.slippageBps,
+            applyHostFeeInFix: policy.forwardContext.applyHostFeeInFix,
+          }).build({
+            connection: this.sdk.connection,
+            policy: policy.account,
+            composablePolicyPda: policy.publicKey,
+            face: amount,
+          })
           : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
 
       // ── remaining_accounts (ADR-0016, no ValidationPda in slice) ────
@@ -511,9 +509,9 @@ class ComposableScheduler {
       ]);
       if (sim.value.err) {
         throw new Error(
-          `simulation failed: ${JSON.stringify(sim.value.err)}\nlogs: ${(
-            sim.value.logs ?? []
-          ).join("\n")}`
+          `simulation failed: ${JSON.stringify(sim.value.err)} (${(
+            parseErrorFromLogs(sim.value.logs ?? []).code
+          )})`
         );
       }
 
@@ -532,11 +530,9 @@ class ComposableScheduler {
       this.cooldowns.delete(policy.publicKey.toBase58());
     } catch (error) {
       logger.error(`🚩 Composable failed: ${policy.publicKey.toString()}`);
+      logger.error((error as Error).message);
       if (error instanceof SendTransactionError) {
-        logger.error(error.message);
-        logger.error(error.logs);
-      } else {
-        logger.error(error);
+        logger.error(parseErrorFromLogs(error?.logs ?? []).code);
       }
       this.recordFailure(policy.publicKey);
     }
