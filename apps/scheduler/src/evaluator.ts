@@ -160,6 +160,10 @@ export function isScheduleReady(
     if (sub.maxRenewals !== null && policy.paymentCount >= sub.maxRenewals) {
       return { ready: false, amount: null };
     }
+    // Non-PayAsYouGo: face IS the raw policy amount. On-chain resolves it
+    // from the schedule; forward_amount param MUST be null for these
+    // (execute_composable rejects Some for non-PayAsYouGo). The `amount`
+    // here is only used to build the forward ix face.
     return { ready: true, amount: sub.amount };
   }
 
@@ -182,10 +186,9 @@ export function isScheduleReady(
     const remainingPeriod = payg.maxAmountPerPeriod.sub(
       payg.currentPeriodTotal
     );
-    // Calculate amount with fee adjustment if needed
+    // PayAsYouGo maxChunkAmount binds on GROSS (ADR-0026): convert to face.
+    // This is the only variant that passes forward_amount to execute_composable.
     const amount = grossCapToFace(maxChunk, feeBps);
-
-    // Take the minimum of amount and remaining period balance
     const freeAmount = amount.gt(remainingPeriod) ? remainingPeriod : amount;
 
     return {
@@ -194,5 +197,27 @@ export function isScheduleReady(
     };
   }
 
+  if (policyType.oneTime) {
+    const ot = policyType.oneTime;
+    // Status flips to Completed after firing, but double-gate on paymentCount.
+    if (policy.paymentCount > 0) return { ready: false, amount: null };
+    if (ot.dueDate.toNumber() > currentTime) {
+      return { ready: false, amount: null };
+    }
+    if (
+      ot.expiryDate !== null &&
+      ot.expiryDate.toNumber() > 0 &&
+      currentTime > ot.expiryDate.toNumber()
+    ) {
+      return { ready: false, amount: null };
+    }
+    return { ready: true, amount: ot.amount };
+  }
+
+  // UpTo: cannot be scheduler-driven via composable. The on-chain handler
+  // rejects forward_amount=Some for non-PayAsYouGo, and
+  // validate_policy_execution requires provided_amount for UpTo — so neither
+  // Some nor None works. UpTo settlement is recipient/resource-server
+  // triggered, not scheduler-triggered.
   return { ready: false, amount: null };
 }

@@ -1284,7 +1284,7 @@ impl<'info> ExecuteComposable<'info> {
                 );
                 require!(
                     remaining_mid[idx].key() == pin.pubkey,
-                    TributaryError::ByteRangeCheckFailed
+                    TributaryError::WrongForwardAccounts
                 );
             }
             run_forward_cpi(

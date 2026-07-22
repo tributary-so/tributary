@@ -10,7 +10,6 @@ import {
   SendTransactionError,
   type AccountInfo,
 } from "@solana/web3.js";
-import { NATIVE_MINT } from "@solana/spl-token";
 import BN from "bn.js";
 import { createMeteoraDlmmForward } from "@tributary-so/forward-builders";
 import {
@@ -37,16 +36,11 @@ const RESCAN_INTERVAL_MS = 10 * 60_000;
 const MAX_FAILURES = 3;
 const COOLDOWN_MS = 5 * 60_000;
 
-const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const METEORA_DLMM_SOL_USDC_POOL = new PublicKey(
-  "BGm1tav58oGcsQJehL9WXBFXF7D27vZsKefj4xJKD5Y"
-);
-
-interface ForwardContext {
-  pool: PublicKey;
-  slippageBps: number;
-  applyHostFeeInFix: boolean;
-}
+// ponytail: pool is pinned on the policy (pinnedAccounts[0], ADR-0030);
+// slippage + host-fee-fix are scheduler-side tuning knobs with no per-pair
+// need yet. Promote to config when a pair actually diverges.
+const FORWARD_SLIPPAGE_BPS = 100;
+const FORWARD_APPLY_HOST_FEE_IN_FIX = true;
 
 interface CooldownEntry {
   consecutiveFailures: number;
@@ -56,7 +50,6 @@ interface CooldownEntry {
 interface WatchedPolicy {
   publicKey: PublicKey;
   account: ComposablePolicy;
-  forwardContext: ForwardContext | null;
   gateway: PaymentGateway;
 }
 
@@ -68,14 +61,6 @@ interface SchedulerConfig {
   relayerPrivateKeys?: string[];
   dryRun?: boolean;
 }
-
-const FORWARD_CONTEXT: Record<string, ForwardContext> = {
-  [`${USDC_MINT.toBase58()}:${NATIVE_MINT.toBase58()}`]: {
-    pool: METEORA_DLMM_SOL_USDC_POOL,
-    slippageBps: 100,
-    applyHostFeeInFix: true,
-  },
-};
 
 class ComposableScheduler {
   private sdk: TributarySDK;
@@ -231,13 +216,11 @@ class ComposableScheduler {
 
           const watched: WatchedPolicy[] = [];
           for (const { publicKey, account } of policies) {
-            const ctx = this.lookupForwardContext(account);
             const gateway = this.paymentGateways.get(gatewayPda.toString());
             if (gateway) {
               watched.push({
                 publicKey,
                 account,
-                forwardContext: ctx,
                 gateway,
               });
             }
@@ -250,7 +233,8 @@ class ComposableScheduler {
             ...watched,
           ]);
           logger.info(
-            `Gateway ${gatewayPda.toString()}: ${watched.length
+            `Gateway ${gatewayPda.toString()}: ${
+              watched.length
             } composable policies (signer ${keypair.publicKey.toString()})`
           );
         } catch (error) {
@@ -261,13 +245,6 @@ class ComposableScheduler {
         }
       }
     }
-  }
-
-  private lookupForwardContext(
-    account: ComposablePolicy
-  ): ForwardContext | null {
-    const key = `${account.forwardConfig.inputMint.toBase58()}:${account.forwardConfig.outputMint.toBase58()}`;
-    return FORWARD_CONTEXT[key] ?? null;
   }
 
   private hasValidation(policy: ComposablePolicy): boolean {
@@ -286,7 +263,8 @@ class ComposableScheduler {
       if (fireable.length === 0) continue;
 
       logger.info(
-        `Gateway ${keypair.publicKey.toString()}: ${fireable.length}/${policies.length
+        `Gateway ${keypair.publicKey.toString()}: ${fireable.length}/${
+          policies.length
         } fireable`
       );
 
@@ -425,14 +403,14 @@ class ComposableScheduler {
 
   private async fire(policy: WatchedPolicy, signer: Keypair): Promise<void> {
     if (this.config.dryRun) {
-      const amount =
+      const face =
         isScheduleReady(
           policy.account,
           Math.floor(Date.now() / 1000),
           policy.gateway
         ).amount ?? new BN(0);
       logger.debug(
-        `[DRY-RUN] Would fire composable ${policy.publicKey.toString()} (amount: ${amount.toString()}, signer: ${signer.publicKey.toString()})`
+        `[DRY-RUN] Would fire composable ${policy.publicKey.toString()} (face: ${face.toString()}, signer: ${signer.publicKey.toString()})`
       );
       return;
     }
@@ -440,26 +418,34 @@ class ComposableScheduler {
     await this.sdk.updateWallet(new anchor.Wallet(signer));
 
     try {
-      const amount =
-        isScheduleReady(
-          policy.account,
-          Math.floor(Date.now() / 1000),
-          policy.gateway
-        ).amount ?? new BN(0);
+      const readiness = isScheduleReady(
+        policy.account,
+        Math.floor(Date.now() / 1000),
+        policy.gateway
+      );
+      const face = readiness.amount ?? new BN(0);
 
-      const forwardPayload =
-        isForwardEnabled(policy.account) && policy.forwardContext
-          ? await createMeteoraDlmmForward({
-            pool: policy.forwardContext.pool,
-            slippageBps: policy.forwardContext.slippageBps,
-            applyHostFeeInFix: policy.forwardContext.applyHostFeeInFix,
+      // Only PayAsYouGo accepts a caller-supplied amount to execute_composable.
+      // All other variants resolve the amount on-chain from the schedule;
+      // passing Some(amt) for them returns InvalidAmount (execute_composable.rs).
+      const isPayAsYouGo = !!(policy.account.policyType as any).payAsYouGo;
+      const forwardAmount = isPayAsYouGo ? face : null;
+
+      const forwardPayload = isForwardEnabled(policy.account)
+        ? await createMeteoraDlmmForward({
+            // pool is pinned on-chain at InstructionConstraint.pinnedAccounts[0]
+            // (index=0 → forward-account slot 0 = lbPair for DLMM swap).
+            pool: policy.account.forwardConfig.instructionConstraint
+              .pinnedAccounts[0].pubkey,
+            slippageBps: FORWARD_SLIPPAGE_BPS,
+            applyHostFeeInFix: FORWARD_APPLY_HOST_FEE_IN_FIX,
           }).build({
             connection: this.sdk.connection,
             policy: policy.account,
             composablePolicyPda: policy.publicKey,
-            face: amount,
+            face,
           })
-          : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
+        : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
 
       // ── remaining_accounts (ADR-0016, no ValidationPda in slice) ────
       // Program contract (execute_composable.rs run_validation_cpi):
@@ -493,7 +479,7 @@ class ComposableScheduler {
       const ixs = await this.sdk.executeComposable(
         policy.publicKey,
         forwardPayload.instructionData,
-        amount,
+        forwardAmount,
         remainingAccounts
       );
 
@@ -508,10 +494,11 @@ class ComposableScheduler {
         signer,
       ]);
       if (sim.value.err) {
+        logger.debug(sim.value.logs?.join("\n"));
         throw new Error(
-          `simulation failed: ${JSON.stringify(sim.value.err)} (${(
+          `simulation failed: ${JSON.stringify(sim.value.err)} (${
             parseErrorFromLogs(sim.value.logs ?? []).code
-          )})`
+          })`
         );
       }
 
