@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """
 Post-process qedgen v2.47-generated Crucible fuzz harness (`<root>/.qed/fuzz/<prog>/src/main.rs`)
-to fix two residual codegen bugs after the v2.38→v2.47 jump.
+to fix three residual codegen bugs after the v2.38→v2.47 jump.
+
+Upstream issues (filed 2026-07-22 against qedgen/solana-skills):
+  Bug A — https://github.com/QEDGen/solana-skills/issues/341
+          `[u8; N>32]: Default` not satisfied.
+  Bug B — https://github.com/QEDGen/solana-skills/issues/340
+          fuzz input u64 passed where IDL expects a typed arg.
+  Bug C — https://github.com/QEDGen/solana-skills/issues/342
+          ctx.add_program() hardcodes program-crate-rooted .so path.
 
 Bug A — `[u8; N>32]: Default` not satisfied.
         The macro `declare_fuzz_program!` derives Default for IDL types; padding
@@ -20,6 +28,10 @@ Bug B — fuzz input `u64` passed where IDL expects a typed arg.
         the instruction path. Coverage-guided fuzzing then mutates the account
         state; post-state guards (lamport conservation, ownership, etc) catch
         host-side panics regardless of these defaults.
+
+Bug C — ctx.add_program() hardcodes the program-crate-rooted .so path.
+        Walk up from the harness to find the workspace-rooted
+        `target/deploy/<name>.so` and rewrite the literal.
 
 Usage:
   qedgen probe --fuzz 0 --root programs/tributary --no-smoke
