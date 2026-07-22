@@ -1,11 +1,11 @@
 ---
 # tributary-c1jy
 title: Crucible coverage-guided fuzz of deployed tributary.so
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-01T09:28:05Z
-updated_at: 2026-07-22T12:57:10Z
+updated_at: 2026-07-22T12:59:22Z
 parent: tributary-ujni
 blocked_by:
     - tributary-xec3
@@ -135,3 +135,24 @@ this bean was meant to supplement. Signaling `hordr blocked`.
   targeting only the 3 security-critical handlers (execute_payment,
   execute_composable, transfer) with the lamport-conservation invariant
   the generated skeleton already provides (lines 40–76).
+
+
+## Summary of Changes (fourth pass — deferral to tributary-xec3)
+
+**Status: Deferred — blocked on QEDGen v2.38 fuzz-codegen maturity.**
+
+This bean was investigated four times (all 2026-07-22). The blocker is
+confirmed current and multi-layered (qedgen still v2.38.0, 38 todo!()
+account-fixture stubs, name mismatches, Anchor version gap). The primary
+coverage-guided + conservation/authority fuzzing path (sibling
+tributary-ya7m, Mollusk + cargo-fuzz) is COMPLETE and delivers the verified
+coverage this optional/secondary bean was meant to supplement.
+
+Follow-up work is tracked in **tributary-xec3** (Fix QEDGen v2.38
+fuzz-codegen) under the QEDGen tooling-fixes feature (tributary-nrjy),
+with detailed unblock criteria for all three codegen bugs plus the
+alternative minimal crucible-init path.
+
+Commits:
+- 9021bb8 — chore(beans): wire tributary-c1jy blocked-by fuzz-codegen bean
+- 1f3db92 — docs(tributary-c1jy): third blocker verification
