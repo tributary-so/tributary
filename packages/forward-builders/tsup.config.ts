@@ -11,5 +11,5 @@ export default defineConfig({
   sourcemap: true,
   esbuildPlugins: [fixImportsPlugin()],
   platform: "node",
-  external: [],
+  external: ["@meteora-ag/dlmm", "@raydium-io/raydium-sdk-v2"],
 });
