@@ -38,3 +38,19 @@ qedgen-macros = { git = "https://github.com/qedgen/solana-skills", tag = "v2.38.
 [dev-dependencies]
 chrono = "0.4"
 proptest = "1"
+# Layer-2 behavior/sequence fuzzing (bean tributary-ya7m). In-process SVM —
+# loads the compiled tributary.so, hand-crafted account fixtures (incl. a
+# TokenAccount with delegate pre-set, bypassing the approve CPI), conservation
+# + authority-inversion oracles. Run: cargo test --test mollusk_oracle
+mollusk-svm = "0.14"
+# Registers the SPL Token + Token-2022 program processors so the harness's
+# transfer_checked CPI (delegate pull) executes against the real token logic.
+mollusk-svm-programs-token = "0.14"
+mollusk-svm-programs-token-2022 = "0.14"
+# mollusk core is built against these newer solana crate lines (4.x / 3.x);
+# we add them so the harness uses the SAME types mollusk's API expects,
+# bridging to anchor's 2.x Pubkey only at account-struct field sites.
+solana-account = "4"
+solana-instruction = "3"
+solana-pubkey = "4"
+solana-rent = "4"
