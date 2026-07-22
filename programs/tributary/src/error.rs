@@ -142,4 +142,6 @@ pub enum TributaryError {
     ActModeRequiresForward,
     #[msg("Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user")]
     InputResidueSweepFailed,
+    #[msg("Forward Program pinned to different forward accounts!")]
+    WrongForwardAccounts,
 }
