@@ -1,11 +1,11 @@
 ---
 # tributary-404h
 title: Raydium CPMM forward support
-status: todo
+status: completed
 type: milestone
 priority: normal
 created_at: 2026-07-22T11:40:46Z
-updated_at: 2026-07-22T11:41:05Z
+updated_at: 2026-07-22T12:58:56Z
 ---
 
 Add Raydium CPMM as a second ALLOWED_FORWARD_PROGRAM and ship a matching ForwardBuilder in @tributary-so/forward-builders. Includes a security investigation into intermediate-output non-zero post_validation (generalizes to all forward programs).
