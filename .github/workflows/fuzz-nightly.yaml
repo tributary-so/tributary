@@ -1,0 +1,75 @@
+name: Nightly Fuzz
+
+# Bean tributary-ya7m — behavior/sequence fuzzing. Nightly 10-min run on
+# develop + manual dispatch. NO PR gating (fuzzing that blocks every PR is CI
+# cancer — Layer 1 proptests + the Mollusk oracle `cargo test` run per-commit
+# in the regular suite; this workflow is the deep, long-running coverage dive).
+#
+# Layers exercised:
+#   1. proptest_pure_fns — cranked to 100k cases (the fast regression net)
+#   2. mollusk_oracle     — SVM conservation + authority oracles (real .so)
+#   3. cargo-fuzz         — coverage-guided byte-range attack (nightly deep dive)
+
+on:
+  schedule:
+    # 03:30 UTC — off-peak, 10-min run
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      fuzz_seconds:
+        description: "cargo-fuzz max run time (seconds)"
+        required: false
+        default: "600"
+
+permissions:
+  contents: read
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  fuzz:
+    name: Fuzz (proptest + Mollusk + cargo-fuzz)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable + nightly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable, nightly
+          components: rust-src
+
+      - name: Install Solana CLI (for cargo build-sbf)
+        uses: solana-program/dtl-install-action@v1
+        with:
+          release: v2.2.11
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: fuzz-${{ runner.os }}-${{ hashFiles('programs/tributary/Cargo.toml', 'Cargo.lock') }}
+
+      - name: Build program (.so for Mollusk)
+        run: cargo build-sbf --manifest-path programs/tributary/Cargo.toml
+
+      - name: Layer 1 — proptests (cranked)
+        run: PROPTEST_CASES=100000 cargo test --manifest-path programs/tributary/Cargo.toml --test proptest_pure_fns
+
+      - name: Layer 1 — milestone release_condition enumeration
+        run: cargo test --manifest-path programs/tributary/Cargo.toml --test milestone_release_enumeration
+
+      - name: Layer 2 — Mollusk conservation + authority oracles
+        run: cargo test --manifest-path programs/tributary/Cargo.toml --test mollusk_oracle -- --nocapture
+
+      - name: Layer 2 — cargo-fuzz byte-range attack (10 min)
+        working-directory: programs/tributary/fuzz
+        run: |
+          cargo +nightly fuzz run composable_byte_range_attack -- \
+            -max_total_time=${{ github.event.inputs.fuzz_seconds || 600 }} \
+            -print_final_stats=1

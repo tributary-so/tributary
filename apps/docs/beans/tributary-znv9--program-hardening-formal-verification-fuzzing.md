@@ -1,11 +1,11 @@
 ---
 # tributary-znv9
 title: Program Hardening — Formal Verification + Fuzzing
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-02T12:00:19Z
-updated_at: 2026-07-02T12:00:19Z
+updated_at: 2026-07-22T13:02:43Z
 ---
 
 Tracks all formal verification (QEDGen, Lean, Kani) and fuzzing (Mollusk, cargo-fuzz, Crucible) work for the deployed Tributary program.
