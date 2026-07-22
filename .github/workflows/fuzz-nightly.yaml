@@ -9,6 +9,8 @@ name: Nightly Fuzz
 #   1. proptest_pure_fns — cranked to 100k cases (the fast regression net)
 #   2. mollusk_oracle     — SVM conservation + authority oracles (real .so)
 #   3. cargo-fuzz         — coverage-guided byte-range attack (nightly deep dive)
+#   4. crucible (QEDGen)  — protocol-mode Crucible harness, post-state guards
+#                          (bean tributary-c1jy — required fix-fuzz.py post-processor)
 
 on:
   schedule:
@@ -73,3 +75,25 @@ jobs:
           cargo +nightly fuzz run composable_byte_range_attack -- \
             -max_total_time=${{ github.event.inputs.fuzz_seconds || 600 }} \
             -print_final_stats=1
+
+      - name: Install QEDGen + Crucible (for Layer 3)
+        run: |
+          cargo install qedgen --quiet || true
+          cargo install --git https://github.com/asymmetric-research/crucible crucible-fuzz-cli --quiet || true
+
+      - name: Layer 3 — QEDGen Crucible harness (synth + fix-fuzz.py + run)
+        working-directory: programs/tributary
+        run: |
+          # Synthesise the harness (dry run — emits source, no build/fuzz).
+          qedgen probe --fuzz 0 --root . --no-smoke
+          # Apply the post-processor that fixes 3 qedgen v2.47 codegen seams:
+          #   Bug A: shrink [u8; N>32] padding in idls/tributary.json (Default)
+          #   Bug B: rewrite bare-identifier call args to typed expressions
+          #   Bug C: repath ctx.add_program() to the workspace-rooted .so
+          python3 ../../formal_verification/fix-fuzz.py .qed/fuzz/tributary/src/main.rs
+          # Run — 0 crashes = green. Post-state guards (lamport conservation,
+          # ownership, rent, realloc, token-balance conserved) are the detector.
+          cd .qed/fuzz
+          crucible run tributary invariant_test \
+            --timeout ${{ github.event.inputs.fuzz_seconds || 600 }} \
+            -j 4
