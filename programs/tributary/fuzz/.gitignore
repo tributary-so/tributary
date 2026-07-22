@@ -1,0 +1,6 @@
+# cargo-fuzz artifacts + growing corpus (nightly/regression runs).
+# Seed inputs are force-added (tracked) — they override this ignore. The
+# coverage-guided corpus that grows during runs stays untracked.
+target/
+artifacts/
+corpus/
