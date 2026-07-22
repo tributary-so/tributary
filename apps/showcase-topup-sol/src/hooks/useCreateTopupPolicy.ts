@@ -21,15 +21,10 @@ import {
   getUserPaymentPda,
   getComposablePolicyPda,
 } from "@tributary-so/sdk";
+import { meteoraDlmmForwardConfig } from "@tributary-so/forward-builders";
 import type { TopupFormState } from "@/lib/form";
-import {
-  getUsdcMint,
-  WSOL_MINT,
-  METEORA_DLMM_PUBKEY,
-  FORWARD_FLAG_NATIVE_OUTPUT,
-} from "@/lib/pools";
+import { getUsdcMint, WSOL_MINT } from "@/lib/pools";
 import { usdcToRaw, solToLamports } from "@/lib/units";
-import { buildSwapQuote } from "@/lib/meteora";
 import { useCluster } from "@/components/cluster/cluster-data-access";
 
 export interface CreateResult {
@@ -47,8 +42,9 @@ type Status = "idle" | "preparing" | "sending" | "success" | "error";
  *   4. createComposablePolicy — PayAsYouGo + Meteora forward + Lighthouse guard
  *
  * The gateway is selected upstream (GatewaySelect) and must already exist.
- * The discriminator for ForwardConfig.data_checks is read from a dry-run
- * Meteora quote on the chosen pool. No execution happens here — only setup.
+ * The ForwardConfig (programId, swap discriminator, pinned pool) is built by
+ * `meteoraDlmmForwardConfig` from @tributary-so/forward-builders (ADR-0030).
+ * No execution happens here — only setup.
  */
 export function useCreateTopupPolicy() {
   const { connection } = useConnection();
@@ -137,17 +133,17 @@ export function useCreateTopupPolicy() {
           )
         );
 
-        // ── Meteora swap discriminator (pins ForwardConfig.data_checks) ─
+        // ── ForwardConfig (Meteora DLMM USDC→WSOL, optional NATIVE_OUTPUT) ─
+        // meteoraDlmmForwardConfig pins programId, the swap2 discriminator
+        // (dataChecks[0]), and the pool (pinnedAccounts[0]) — the same
+        // constraint the fire-time createMeteoraDlmmForward emits (ADR-0030).
         const poolAddress = new PublicKey(form.poolAddress);
-        const quote = await buildSwapQuote(
-          connection,
-          poolAddress,
-          usdcMint,
-          WSOL_MINT,
-          new BN(chunkRaw.toString()),
-          form.slippageBps
-        );
-        const discriminator = quote.discriminator;
+        const forwardConfig = meteoraDlmmForwardConfig({
+          inputMint: usdcMint,
+          outputMint: WSOL_MINT, // NATIVE_OUTPUT requires WSOL
+          pool: poolAddress,
+          unwrapNativeSol: form.unwrap,
+        });
 
         // ── PayAsYouGo policy type ─────────────────────────────────────
         const now = Math.floor(Date.now() / 1000);
@@ -165,32 +161,6 @@ export function useCreateTopupPolicy() {
 
         const memo = new Array(64).fill(0);
         Buffer.from("Topup SOL").copy(Buffer.from(memo));
-
-        // ── ForwardConfig (Meteora DLMM USDC→WSOL, optional NATIVE_OUTPUT)
-        const forwardConfig = {
-          instructionConstraint: {
-            programId: METEORA_DLMM_PUBKEY,
-            numDataChecks: 1,
-            dataChecks: [
-              { offset: 0, length: 8, expected: discriminator },
-              { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-              { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-              { offset: 0, length: 0, expected: [0, 0, 0, 0, 0, 0, 0, 0] },
-            ],
-            numPinnedAccounts: 1,
-            pinnedAccounts: [
-              // ponytail: placeholder pin — replace with real Meteora DLMM
-              // pool pubkey from showcase config (follow-up).
-              { index: 0, pubkey: PublicKey.unique() },
-              { index: 0, pubkey: PublicKey.default },
-              { index: 0, pubkey: PublicKey.default },
-              { index: 0, pubkey: PublicKey.default },
-            ],
-          },
-          inputMint: usdcMint,
-          outputMint: WSOL_MINT, // NATIVE_OUTPUT requires WSOL
-          forwardFlags: form.unwrap ? FORWARD_FLAG_NATIVE_OUTPUT : 0,
-        };
 
         // ── Lighthouse guard: hot-wallet native SOL below threshold ────
         const guard = lighthouse
