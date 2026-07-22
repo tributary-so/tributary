@@ -479,21 +479,28 @@ class ComposableScheduler {
       // The scheduler_ata (permissionless path) is appended by the SDK
       // facade (sdk.executeComposable) via deriveSchedulerAta — the
       // scheduler does NOT include it here.
+      const preEnabled = !!(policy.account.preValidation as any).programCall;
+      const postEnabled = !!(policy.account.postValidation as any).programCall;
+
       const [preTargets, postTargets] = await Promise.all([
-        resolveValidationTargets(
-          this.sdk.connection,
-          policy.publicKey,
-          policy.account.preValidation,
-          this.sdk.programId,
-          "pre"
-        ),
-        resolveValidationTargets(
-          this.sdk.connection,
-          policy.publicKey,
-          policy.account.postValidation,
-          this.sdk.programId,
-          "post"
-        ),
+        preEnabled
+          ? resolveValidationTargets(
+              this.sdk.connection,
+              policy.publicKey,
+              policy.account.preValidation,
+              this.sdk.programId,
+              "pre"
+            )
+          : [],
+        postEnabled
+          ? resolveValidationTargets(
+              this.sdk.connection,
+              policy.publicKey,
+              policy.account.postValidation,
+              this.sdk.programId,
+              "post"
+            )
+          : [],
       ]);
 
       const remainingAccounts = assembleComposableRemainingAccounts({
