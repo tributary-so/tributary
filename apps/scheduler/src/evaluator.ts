@@ -183,16 +183,25 @@ export function isScheduleReady(
     const payg = policyType.payAsYouGo;
     const maxChunk = payg.maxChunkAmount;
     const feeBps = gatewayAccount.gatewayFeeBps;
-    const remainingPeriod = payg.maxAmountPerPeriod.sub(
-      payg.currentPeriodTotal
-    );
+
+    // Detect period rollover: if the period window has elapsed, the
+    // on-chain program resets currentPeriodTotal to 0. Mirror that here
+    // so the scheduler doesn't skip a ready policy whose stale
+    // currentPeriodTotal makes it look exhausted.
+    const periodEnd = payg.currentPeriodStart.add(payg.periodLengthSeconds);
+    // ponytail: BN.lten() only works for n < 0x4000000 (67M) — unix
+    // timestamps far exceed that. Use .lte(new BN(n)) for correct comparison.
+    const periodRolledOver = periodEnd.lte(new BN(currentTime));
+    const currentTotal = periodRolledOver ? new BN(0) : payg.currentPeriodTotal;
+
+    const remainingPeriod = payg.maxAmountPerPeriod.sub(currentTotal);
     // PayAsYouGo maxChunkAmount binds on GROSS (ADR-0026): convert to face.
     // This is the only variant that passes forward_amount to execute_composable.
     const amount = grossCapToFace(maxChunk, feeBps);
     const freeAmount = amount.gt(remainingPeriod) ? remainingPeriod : amount;
 
     return {
-      ready: freeAmount.gten(0),
+      ready: freeAmount.gtn(0),
       amount: freeAmount,
     };
   }

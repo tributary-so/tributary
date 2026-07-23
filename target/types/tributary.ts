@@ -1725,6 +1725,19 @@ export type Tributary = {
           ]
         },
         {
+          "name": "forwardProgram",
+          "docs": [
+            "Forward program account (e.g. Meteora DLMM, Raydium CLMM/CPMM).",
+            "Validated in the handler against",
+            "`composable_policy.forward_config.instruction_constraint.program_id`.",
+            "Pass SystemProgram when forward is disabled (deliver-no-transform).",
+            "The runtime needs this AccountInfo to resolve the CPI target's",
+            "bytecode for `invoke_signed` — unlike validation, which previously",
+            "relied on the forward program being self-listed in its own swap",
+            "instruction's AccountMetas (Meteora does, Raydium CLMM does not)."
+          ]
+        },
+        {
           "name": "preValidationPda",
           "docs": [
             "Pre-validation PDA — typed-deserialised in the handler when",
@@ -3079,91 +3092,96 @@ export type Tributary = {
     },
     {
       "code": 6052,
+      "name": "forwardProgramMismatch",
+      "msg": "forward_program account does not match the policy's instruction_constraint.program_id"
+    },
+    {
+      "code": 6053,
       "name": "forwardProducedNoOutput",
       "msg": "Forward CPI produced no output (intermediate output balance is zero)"
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "forwardDisabledRequiresSameMint",
       "msg": "Forward disabled (target_program = default) requires input_mint == output_mint"
     },
     {
-      "code": 6054,
+      "code": 6055,
       "name": "payerReferralMismatch",
       "msg": "Payer ReferralAccount does not match the paying wallet"
     },
     {
-      "code": 6055,
+      "code": 6056,
       "name": "duplicateReferralAccount",
       "msg": "Duplicate ReferralAccount supplied in remaining_accounts"
     },
     {
-      "code": 6056,
+      "code": 6057,
       "name": "invalidValidationPda",
       "msg": "ValidationPDA is malformed — data_len out of bounds"
     },
     {
-      "code": 6057,
+      "code": 6058,
       "name": "nativeOutputRequiresWsol",
       "msg": "NATIVE_OUTPUT forward flag requires output_mint == WSOL (NATIVE_MINT)"
     },
     {
-      "code": 6058,
+      "code": 6059,
       "name": "missingSchedulerFeeAccount",
       "msg": "Permissionless execution with scheduler_share_bps > 0 requires the scheduler fee account as the last remaining_account"
     },
     {
-      "code": 6059,
+      "code": 6060,
       "name": "invalidSchedulerFeeAccount",
       "msg": "Scheduler fee account must be owned by the fee_payer and match the source mint"
     },
     {
-      "code": 6060,
+      "code": 6061,
       "name": "permissionlessExecutionRequiresSafetyNet",
       "msg": "Permissionless execution requires post_validation = ProgramCall OR forward route pinned (ADR-0016 safety net)"
     },
     {
-      "code": 6061,
+      "code": 6062,
       "name": "degenerateForwardPins",
       "msg": "Forward enabled but InstructionConstraint has zero effective pins (degenerate)"
     },
     {
-      "code": 6062,
+      "code": 6063,
       "name": "duplicatePinIndex",
       "msg": "Duplicate pin index in InstructionConstraint.pinned_accounts"
     },
     {
-      "code": 6063,
+      "code": 6064,
       "name": "defaultPinPubkey",
       "msg": "Pinned account in validation init has a default (zero) pubkey"
     },
     {
-      "code": 6064,
+      "code": 6065,
       "name": "inlineValidationNotImplemented",
       "msg": "Inline validation is not yet implemented"
     },
     {
-      "code": 6065,
+      "code": 6066,
       "name": "policyExpired",
       "msg": "One-time policy has expired"
     },
     {
-      "code": 6066,
+      "code": 6067,
       "name": "invalidOutputMintAccount",
       "msg": "Act-mode (sentinel output_mint) requires the SystemProgram as the output_mint account"
     },
     {
-      "code": 6067,
+      "code": 6068,
       "name": "actModeRequiresForward",
       "msg": "Act-mode settlement (no output delivery) requires forward to be enabled"
     },
     {
-      "code": 6068,
+      "code": 6069,
       "name": "inputResidueSweepFailed",
       "msg": "Forward consumed input but left a non-zero intermediate_input residue that could not be returned to the user"
     },
     {
-      "code": 6069,
+      "code": 6070,
       "name": "wrongForwardAccounts",
       "msg": "Forward Program pinned to different forward accounts!"
     }

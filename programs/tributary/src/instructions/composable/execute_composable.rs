@@ -698,6 +698,17 @@ pub struct ExecuteComposable<'info> {
     /// Pass SystemProgram when post_validation is Disabled.
     pub post_validation_program: UncheckedAccount<'info>,
 
+    /// Forward program account (e.g. Meteora DLMM, Raydium CLMM/CPMM).
+    /// Validated in the handler against
+    /// `composable_policy.forward_config.instruction_constraint.program_id`.
+    /// Pass SystemProgram when forward is disabled (deliver-no-transform).
+    /// The runtime needs this AccountInfo to resolve the CPI target's
+    /// bytecode for `invoke_signed` — unlike validation, which previously
+    /// relied on the forward program being self-listed in its own swap
+    /// instruction's AccountMetas (Meteora does, Raydium CLMM does not).
+    /// CHECK: Validated in the handler.
+    pub forward_program: UncheckedAccount<'info>,
+
     /// Pre-validation PDA — typed-deserialised in the handler when
     /// pre_validation is ProgramCall.
     /// CHECK: Validated in the handler (seeds + typed deserialisation).
@@ -905,6 +916,17 @@ impl<'info> ExecuteComposable<'info> {
                     .num_data_checks,
             )?;
         }
+
+        // ── Validate forward_program named account ───────────────────────
+        // When forward is enabled, the passed forward_program MUST match
+        // the policy's instruction_constraint.program_id. When forward is
+        // disabled (Pubkey::default()), the caller passes SystemProgram.
+        require!(
+            ctx.accounts.forward_program.key() == ic_program_id
+                || (ic_program_id == Pubkey::default()
+                    && ctx.accounts.forward_program.key() == ctx.accounts.system_program.key()),
+            TributaryError::ForwardProgramMismatch
+        );
 
         // ── Validate intermediate ATA addresses ──────────────────────────
         // The intermediate ATAs are owned by the ComposablePolicy PDA — NOT

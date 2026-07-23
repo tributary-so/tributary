@@ -1215,6 +1215,7 @@ describe("Composable Policies", () => {
         gateway: gatewayPDA,
         preValidationProgram: PublicKey.default,
         postValidationProgram: PublicKey.default,
+        forwardProgram: METEORA_DLMM_PUBKEY,
         preValidationPda: getValidationPda(
           composablePolicyPDA,
           program.programId,
@@ -1367,6 +1368,7 @@ describe("Composable Policies", () => {
         gateway: gatewayPDA,
         preValidationProgram: PublicKey.default,
         postValidationProgram: PublicKey.default,
+        forwardProgram: METEORA_DLMM_PUBKEY,
         preValidationPda: getValidationPda(
           composablePolicyPDA,
           program.programId,
@@ -1522,6 +1524,7 @@ describe("Composable Policies", () => {
         userTokenAccount: userTokenAccount,
         preValidationProgram: PublicKey.default,
         postValidationProgram: PublicKey.default,
+        forwardProgram: METEORA_DLMM_PUBKEY,
         preValidationPda: getValidationPda(
           composablePolicyPDA,
           program.programId,
@@ -2143,6 +2146,7 @@ describe("Composable Policies", () => {
           userTokenAccount,
           preValidationProgram: PublicKey.default,
           postValidationProgram: PublicKey.default,
+          forwardProgram: METEORA_DLMM_PUBKEY,
           preValidationPda: preValidationPdaAddress,
           postValidationPda: postValidationPdaAddress,
           mint: tokenMint,

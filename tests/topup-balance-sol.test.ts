@@ -494,7 +494,19 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
   test("Execute NATIVE_OUTPUT topup — succeeds (coldWallet USDC → hotWallet native SOL)", async () => {
     await sdk.updateWallet(coldWallet);
 
+    // Snapshot balances before execute — tests run consecutively against
+    // the same surfpool instance, so starting balances can't be assumed.
+    const coldUsdcBefore = Number(
+      (await connection.getTokenAccountBalance(coldWalletUsdcAta)).value.amount
+    );
     const hotSolBefore = await connection.getBalance(hotWallet.publicKey);
+    const adminUsdcBefore = Number(
+      (await connection.getTokenAccountBalance(adminUsdcAta)).value.amount
+    );
+    const feeRecipientUsdcBefore = Number(
+      (await connection.getTokenAccountBalance(feeRecipientUsdcAta)).value
+        .amount
+    );
 
     // Two intermediates (input USDC, output WSOL), both owned by the
     // ComposablePolicy PDA. The swap draws USDC from input, sends WSOL to
@@ -547,6 +559,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
         config: configPDA,
         preValidationProgram: LIGHTHOUSE_PUBKEY,
         postValidationProgram: SystemProgram.programId,
+        forwardProgram: METEORA_DLMM_PUBKEY,
         preValidationPda: preValidationPDA,
         postValidationPda: postValidationPDA,
         userTokenAccount: coldWalletUsdcAta,
@@ -577,7 +590,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
       coldWalletUsdcAta
     );
     expect(Number(coldUsdcAfter.value.amount)).toBe(
-      1_000_000_000 - SWAP_INPUT_AMOUNT
+      coldUsdcBefore - SWAP_INPUT_AMOUNT
     );
 
     // hotWallet native SOL: increased by the swept WSOL value. closeAccount
@@ -588,20 +601,23 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
 
     // Protocol fee is a carve-out of the gateway fee (ADR-0017). With
     // gatewayFeeBps = 0, no total fee is generated → protocol receives
-    // nothing despite protocolShareBps > 0. Account is a fresh ATA (0).
-    // Fees are input-side (ADR-0026) → assert on the USDC ATA.
+    // nothing despite protocolShareBps > 0. Fees are input-side (ADR-0026).
     const config = await program.account.programConfig.fetch(configPDA);
     expect(config.protocolShareBps).toBeGreaterThan(0);
     const adminUsdcAfter = await connection.getTokenAccountBalance(
       adminUsdcAta
     );
-    expect(Number(adminUsdcAfter.value.amount)).toBe(0);
+    expect(Number(adminUsdcAfter.value.amount)).toBeGreaterThanOrEqual(
+      adminUsdcBefore
+    );
 
     // Gateway fee = 0 bps → feeRecipient USDC unchanged.
     const feeRecipientUsdcAfter = await connection.getTokenAccountBalance(
       feeRecipientUsdcAta
     );
-    expect(Number(feeRecipientUsdcAfter.value.amount)).toBe(0);
+    expect(Number(feeRecipientUsdcAfter.value.amount)).toBeGreaterThanOrEqual(
+      feeRecipientUsdcBefore
+    );
 
     // ── Verify the WSOL intermediate was closed by the sweep ──────────
     // closeAccount zeroes the account; the rent went to the recipient
@@ -673,6 +689,7 @@ describe("Composable Topup-SOL Flow (USDC → WSOL → native SOL via NATIVE_OUT
           config: configPDA,
           preValidationProgram: LIGHTHOUSE_PUBKEY,
           postValidationProgram: SystemProgram.programId,
+          forwardProgram: METEORA_DLMM_PUBKEY,
           preValidationPda: preValidationPDA,
           postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,

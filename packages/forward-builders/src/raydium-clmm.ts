@@ -1,21 +1,13 @@
 import {
+  Raydium,
   ClmmInstrument,
-  ClmmConfigLayout,
-  PoolInfoLayout,
-  TickArrayLayout,
-  TickArrayBitmapExtensionLayout,
   PoolUtils,
-  fetchTickArrays,
   getPdaExBitmapAccount,
-  getPdaObservationAccount,
   MIN_SQRT_PRICE_X64,
   MAX_SQRT_PRICE_X64,
 } from "@raydium-io/raydium-sdk-v2";
-import {
-  TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
-import { type Connection, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { Keypair, type Connection, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import type {
   ComposablePolicy,
@@ -39,45 +31,13 @@ export interface RaydiumClmmForwardOptions {
 /**
  * Build a Raydium CLMM `swap_v2` as a Tributary composable forward step.
  *
- * CLMM is a concentrated-liquidity AMM (Uniswap V3 model). Unlike CPMM's
- * fixed 13-account swap, CLMM needs **dynamic tick-array accounts** that
- * depend on the current pool price — analogous to Meteora DLMM's bin arrays.
+ * Delegates to the SDK's `getPoolInfoFromRpc` (handles pool decoding, mint
+ * info, tick-array fetch, and compute-pool construction internally) then
+ * runs the SDK's swap simulation. Follows the same delegation pattern as
+ * the Meteora builder (`DLMM.create` + `dlmmPool.swap`).
  *
- * `build()` follows the same pattern as the Raydium SDK's own
- * `Clmm.swap()` (see raydium-sdk-V2/src/raydium/clmm/clmm.ts), but without
- * the wallet/ATA-management layer — Tributary owns the intermediates:
- *
- * 1. Read pool_state + ammConfig + tick-array bitmap extension from RPC.
- * 2. Fetch tick arrays via the SDK's `fetchTickArrays()` (handles bitmap
- *    logic + batch fetch internally).
- * 3. Run the SDK's swap simulation (`PoolUtils.getOutputAmountAndRemainAccounts`)
- *    to determine which tick arrays the swap crosses + the expected output.
- * 4. Compute `otherAmountThreshold` (min output) = expected × (1 − slippage).
- * 5. Build `swap_v2` via `ClmmInstrument.swapV2Instruction`.
- *
- * Account layout for `swap_v2`:
- *
- * | idx | account                  | source                              |
- * |-----|--------------------------|-------------------------------------|
- * | 0   | payer                    | composablePolicyPda (CPI signer)    |
- * | 1   | ammConfig                | opts.ammConfig                      |
- * | 2   | poolId                   | opts.pool                           |
- * | 3   | inputTokenAccount        | ATA(composablePolicyPda, inputMint) |
- * | 4   | outputTokenAccount       | ATA(composablePolicyPda, outputMint)|
- * | 5   | inputVault               | pool.vault{A|B} (from pool_state)   |
- * | 6   | outputVault              | pool.vault{A|B} (from pool_state)   |
- * | 7   | observationId            | pool.observationId (from pool_state)|
- * | 8   | TOKEN_PROGRAM_ID         |                                     |
- * | 9   | TOKEN_2022_PROGRAM_ID    |                                     |
- * | 10  | MEMO_PROGRAM_ID          |                                     |
- * | 11  | inputTokenMint           |                                     |
- * | 12  | outputTokenMint          |                                     |
- * | 13  | tickArrayBitmapExtension | getPdaExBitmapAccount(CLMM, pool)   |
- * | 14+ | tickArray[]              | simulation-determined               |
- *
- * Vault + observation addresses are taken FROM the pool_state account
- * (matching the SDK's `makeSwapBaseInInstructions` pattern) rather than
- * derived — the stored values are authoritative.
+ * A dummy `Keypair` is passed to `Raydium.load()` — we only need the RPC
+ * helpers, not signing. The swap instruction's payer is `composablePolicyPda`.
  */
 export function createRaydiumClmmForward(
   opts: RaydiumClmmForwardOptions
@@ -96,128 +56,44 @@ export function createRaydiumClmmForward(
     }) {
       const inputMint = policy.forwardConfig.inputMint;
       const outputMint = policy.forwardConfig.outputMint;
-      const poolId = opts.pool;
 
-      // ── 1. Read pool_state + ammConfig + bitmap extension ────────
-      const poolAccount = await connection.getAccountInfo(poolId, "confirmed");
-      if (!poolAccount?.data) {
-        throw new Error(`CLMM pool ${poolId.toBase58()} not found`);
-      }
-      const poolState = PoolInfoLayout.decode(poolAccount.data);
-
-      const configAccount = await connection.getAccountInfo(
-        opts.ammConfig,
-        "confirmed"
-      );
-      if (!configAccount?.data) {
-        throw new Error(
-          `CLMM ammConfig ${opts.ammConfig.toBase58()} not found`
-        );
-      }
-      const configState = ClmmConfigLayout.decode(configAccount.data);
-
-      const exBitmapPda = getPdaExBitmapAccount(
-        RAYDIUM_CLMM_PUBKEY,
-        poolId
-      ).publicKey;
-      const exBitmapAccount = await connection.getAccountInfo(
-        exBitmapPda,
-        "confirmed"
-      );
-      const exBitmapInfo = exBitmapAccount?.data
-        ? TickArrayBitmapExtensionLayout.decode(exBitmapAccount.data)
-        : TickArrayBitmapExtensionLayout.decode(Buffer.alloc(120, 0));
-
-      // ── 2. Determine swap direction + fetch tick arrays ──────────
-      // Use the SDK's fetchTickArrays() — it handles the bitmap logic
-      // (findTickArrayAddress) + batch fetch internally. Matches the
-      // pattern in Clmm.swap() / PoolUtils.fetchMultiplePoolTickArrays.
-      const isInputMintA = poolState.mintA.equals(inputMint);
-      const zeroForOne = isInputMintA; // selling A → price goes down
-
-      const tickArrays = await fetchTickArrays(
-        RAYDIUM_CLMM_PUBKEY,
+      // ── 1. Load SDK + fetch pool info from RPC ────────────────────
+      // getPoolInfoFromRpc returns computePoolInfo + poolKeys + tickArrays
+      // — the SDK handles ALL decoding (pool state, ammConfig, bitmap ext,
+      // mints, tick arrays) internally. No manual layout decoding needed.
+      const raydium = await Raydium.load({
+        owner: Keypair.generate(),
         connection,
-        poolId,
-        poolState.tickCurrent,
-        poolState.tickSpacing,
-        poolState.tickArrayBitmap,
-        zeroForOne
-      );
+        cluster: "mainnet",
+        disableFeatureCheck: true,
+        disableLoadToken: true,
+        blockhashCommitment: "confirmed",
+      });
 
-      if (tickArrays.length === 0) {
-        throw new Error(
-          "No initialized tick arrays found near the current tick — pool may have no liquidity"
-        );
-      }
+      const { poolKeys, computePoolInfo, tickArrays } =
+        await raydium.clmm.getPoolInfoFromRpc(opts.pool.toBase58());
 
-      // ── 3. Run swap simulation ───────────────────────────────────
-      // Build ComputeClmmPoolInfo from raw RPC data. The SDK's type
-      // expects ApiV3Token/Decimal (from REST API); we construct the
-      // structurally-compatible shape from on-chain data. Runtime
-      // correctness is verified by the simulation itself.
-      const blockTimestamp = Math.floor(Date.now() / 1000);
-
-      const tickArrayCache: Record<
-        string,
-        ReturnType<typeof TickArrayLayout.decode> & { address: PublicKey }
-      > = {};
+      // ── 2. Run swap simulation ────────────────────────────────────
+      // getPoolInfoFromRpc returns pre-fetched tickArrays; build the cache
+      // the simulation expects (keyed by startTickIndex).
+      // ponytail: SDK type mismatch between getPoolInfoFromRpc's tickArrays
+      // return and getOutputAmountAndRemainAccounts' cache param — runtime
+      // shapes are compatible, TS types aren't. Cast through unknown.
+      const tickArrayCache: Record<string, unknown> = {};
       for (const ta of tickArrays) {
-        tickArrayCache[ta.value.startTickIndex] = {
-          ...ta.value,
-          address: ta.address,
-        };
+        const t = ta as { startTickIndex: number; address: PublicKey };
+        tickArrayCache[t.startTickIndex] = { ...ta, address: t.address };
       }
 
-      const computePoolInfo = {
-        accInfo: poolState,
-        id: poolId,
-        version: 6,
-        mintA: {
-          address: poolState.mintA.toBase58(),
-          decimals: poolState.mintDecimalsA,
-          programId: TOKEN_PROGRAM_ID,
-        },
-        mintB: {
-          address: poolState.mintB.toBase58(),
-          decimals: poolState.mintDecimalsB,
-          programId: TOKEN_PROGRAM_ID,
-        },
-        vaultA: poolState.vaultA,
-        vaultB: poolState.vaultB,
-        ammConfig: {
-          id: opts.ammConfig,
-          index: configState.index,
-          tradeFeeRate: configState.tradeFeeRate,
-          protocolFeeRate: configState.protocolFeeRate,
-          fundFeeRate: configState.fundFeeRate,
-          tickSpacing: configState.tickSpacing,
-          fundOwner: configState.fundOwner,
-        },
-        observationId: poolState.observationId,
-        exBitmapAccount: exBitmapPda,
-        creator: poolState.creator,
-        programId: RAYDIUM_CLMM_PUBKEY,
-        tickSpacing: poolState.tickSpacing,
-        liquidity: poolState.liquidity,
-        sqrtPriceX64: poolState.sqrtPriceX64,
-        currentPrice: null,
-        tickCurrent: poolState.tickCurrent,
-        feeGrowthGlobalX64A: poolState.feeGrowthGlobalX64A,
-        feeGrowthGlobalX64B: poolState.feeGrowthGlobalX64B,
-        protocolFeesTokenA: poolState.protocolFeesTokenA,
-        protocolFeesTokenB: poolState.protocolFeesTokenB,
-        tickArrayBitmap: poolState.tickArrayBitmap,
-        startTime: poolState.startTime.toNumber(),
-        exBitmapInfo,
-        rewardInfos: poolState.rewardInfos,
-      } as any;
+      const isInputMintA =
+        computePoolInfo.mintA.address === inputMint.toBase58();
+      const blockTimestamp = Math.floor(Date.now() / 1000);
 
       const { expectedAmountOut, remainingAccounts } =
         PoolUtils.getOutputAmountAndRemainAccounts(
           computePoolInfo,
-          exBitmapInfo,
-          tickArrayCache,
+          computePoolInfo.exBitmapInfo,
+          tickArrayCache as never,
           inputMint,
           face,
           blockTimestamp
@@ -229,14 +105,12 @@ export function createRaydiumClmmForward(
         );
       }
 
-      // ── 4. Compute min output (slippage) ─────────────────────────
+      // ── 3. Compute min output (slippage) ──────────────────────────
       const minOut = expectedAmountOut
         .muln(10_000 - opts.slippageBps)
         .divn(10_000);
 
-      // ── 5. Build swap_v2 instruction ─────────────────────────────
-      // Vault + observation addresses from pool_state (authoritative),
-      // matching the SDK's makeSwapBaseInInstructions pattern.
+      // ── 4. Build swap_v2 instruction ──────────────────────────────
       const userInputAccount = getAssociatedTokenAddressSync(
         inputMint,
         composablePolicyPda,
@@ -247,7 +121,10 @@ export function createRaydiumClmmForward(
         composablePolicyPda,
         true
       );
-
+      const exBitmapPda = getPdaExBitmapAccount(
+        RAYDIUM_CLMM_PUBKEY,
+        opts.pool
+      ).publicKey;
       const sqrtPriceLimitX64 = isInputMintA
         ? MIN_SQRT_PRICE_X64.add(new BN(1))
         : MAX_SQRT_PRICE_X64.sub(new BN(1));
@@ -255,16 +132,24 @@ export function createRaydiumClmmForward(
       const swapIx = ClmmInstrument.swapV2Instruction(
         RAYDIUM_CLMM_PUBKEY,
         composablePolicyPda,
-        poolId,
-        opts.ammConfig,
+        opts.pool,
+        new PublicKey(computePoolInfo.ammConfig.id),
         userInputAccount,
         userOutputAccount,
-        isInputMintA ? poolState.vaultA : poolState.vaultB,
-        isInputMintA ? poolState.vaultB : poolState.vaultA,
-        isInputMintA ? poolState.mintA : poolState.mintB,
-        isInputMintA ? poolState.mintB : poolState.mintA,
+        isInputMintA
+          ? new PublicKey(computePoolInfo.vaultA)
+          : new PublicKey(computePoolInfo.vaultB),
+        isInputMintA
+          ? new PublicKey(computePoolInfo.vaultB)
+          : new PublicKey(computePoolInfo.vaultA),
+        isInputMintA
+          ? new PublicKey(computePoolInfo.mintA.address)
+          : new PublicKey(computePoolInfo.mintB.address),
+        isInputMintA
+          ? new PublicKey(computePoolInfo.mintB.address)
+          : new PublicKey(computePoolInfo.mintA.address),
         remainingAccounts,
-        poolState.observationId,
+        new PublicKey(poolKeys.observationId),
         face,
         minOut,
         sqrtPriceLimitX64,

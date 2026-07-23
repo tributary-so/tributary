@@ -91,7 +91,7 @@ const ERR_CAP_OR_DELEGATE_ON_GROSS =
   /0x1771|0x1775|custom program error.*600[15]/;
 const ERR_TOKEN_MINT_MISMATCH = /0x178e|custom program error.*6030/;
 const ERR_FORWARD_DISABLED_REQUIRES_SAME_MINT =
-  /0x17a5|custom program error.*6053/;
+  /0x17a6|custom program error.*6054/;
 
 // Gateway fee in bps used by the cap-basis / delegate / fee-skim tests.
 // 100 bps = 1% — keeps arithmetic integer-friendly while exercising the
@@ -523,6 +523,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
           config: configPDA,
           preValidationProgram: SystemProgram.programId,
           postValidationProgram: SystemProgram.programId,
+          forwardProgram: SystemProgram.programId,
           preValidationPda: preValidationPDA,
           postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,
@@ -590,6 +591,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
           config: configPDA,
           preValidationProgram: SystemProgram.programId,
           postValidationProgram: SystemProgram.programId,
+          forwardProgram: SystemProgram.programId,
           preValidationPda: preValidationPDA,
           postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,
@@ -736,6 +738,16 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
     );
     const coldBalanceBefore = Number(coldBefore.value.amount);
 
+    // Snapshot fee-account balances — may carry residual from prior executes
+    // against the same surfpool instance.
+    const adminBefore = Number(
+      (await connection.getTokenAccountBalance(adminUsdcAta)).value.amount
+    );
+    const feeRecipientBefore = Number(
+      (await connection.getTokenAccountBalance(feeRecipientUsdcAta)).value
+        .amount
+    );
+
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       policyPda2,
@@ -754,6 +766,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
         config: configPDA,
         preValidationProgram: SystemProgram.programId,
         postValidationProgram: SystemProgram.programId,
+        forwardProgram: SystemProgram.programId,
         preValidationPda: getPreValidationPda(policyPda2, program.programId)
           .address,
         postValidationPda: getPostValidationPda(policyPda2, program.programId)
@@ -803,10 +816,12 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
     const feeRecipientAfter = await connection.getTokenAccountBalance(
       feeRecipientUsdcAta
     );
-    expect(Number(feeRecipientAfter.value.amount)).toBe(expectedGatewayFee);
+    expect(Number(feeRecipientAfter.value.amount)).toBe(
+      feeRecipientBefore + expectedGatewayFee
+    );
 
     const adminAfter = await connection.getTokenAccountBalance(adminUsdcAta);
-    expect(Number(adminAfter.value.amount)).toBe(protocolCut);
+    expect(Number(adminAfter.value.amount)).toBe(adminBefore + protocolCut);
 
     // Policy state: gross pulled tracked on total_input.
     const policy = await program.account.composablePolicy.fetch(policyPda2);
@@ -875,6 +890,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
           config: configPDA,
           preValidationProgram: SystemProgram.programId,
           postValidationProgram: SystemProgram.programId,
+          forwardProgram: SystemProgram.programId,
           preValidationPda: preValidationPDA,
           postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,
@@ -946,6 +962,7 @@ describe("Composable Fee Rebase (ADR-0026)", () => {
           config: configPDA,
           preValidationProgram: SystemProgram.programId,
           postValidationProgram: SystemProgram.programId,
+          forwardProgram: SystemProgram.programId,
           preValidationPda: preValidationPDA,
           postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,

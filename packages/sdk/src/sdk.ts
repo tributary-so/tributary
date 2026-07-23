@@ -3481,6 +3481,12 @@ export class Tributary {
       config: configPda,
       preValidationProgram: specProgramOrDefault(policy.preValidation),
       postValidationProgram: specProgramOrDefault(policy.postValidation),
+      forwardProgram:
+        policy.forwardConfig.instructionConstraint.programId.equals(
+          PublicKey.default
+        )
+          ? SystemProgram.programId
+          : policy.forwardConfig.instructionConstraint.programId,
       preValidationPda: preValidationPdaAddress,
       postValidationPda: postValidationPdaAddress,
       userTokenAccount,
