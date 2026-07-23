@@ -1,11 +1,11 @@
 ---
 # tributary-aubo
 title: 'Docs: ADR-0031 Raydium CPMM forward'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-22T11:41:22Z
-updated_at: 2026-07-22T11:41:22Z
+updated_at: 2026-07-22T12:58:56Z
 parent: tributary-404h
 ---
 

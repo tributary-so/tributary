@@ -208,3 +208,87 @@ pull delegate has no effect on the security model of the hooks.
 `ProgramConfig.emergency_pause` is a global kill switch enforced at the top
 of every `execute_composable` (and `execute_payment`) call. See
 [allowlists-and-sentinels.md](allowlists-and-sentinels.md) for details.
+
+## 7. Settlement output guards — what the on-chain `>0` covers, and what it doesn't
+
+The composable execution pipeline (ADR-0026) has three settlement shapes.
+Each has a different on-chain backstop against a malicious or compromised
+gateway that controls the forward CPI's `remaining_accounts` and (within
+the pinned `InstructionConstraint`) the instruction data.
+
+| Shape                                                                    | On-chain guard                                                                         | Gateway vector                                                                                         | `post_validation` role                                                |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| **deliver-no-transform** (forward disabled, `output_mint == input_mint`) | n/a — forward never runs; intermediate holds deterministic `face` after fee skim       | none                                                                                                   | not needed                                                            |
+| **deliver-transform** (forward enabled, distinct `output_mint`)          | `output_amount > 0` at `sweep_output_to_recipient` (`execute_composable.rs:523`)       | **magnitude (dust)** — gateway sets swap `minimum_amount_out = 0`; recipient gets 1 unit; guard passes | optional; owner-economic magnitude floor                              |
+| **act mode** (sentinel `output_mint`)                                    | **none** — no intermediate_output ATA; forward consumes input for non-token settlement | **full** — forward delivers nothing observable to Tributary                                            | the only backstop, but target is use-case-specific (external account) |
+
+### What the `>0` guard closes
+
+- **No output at all.** If the forward produces zero output (empty swap,
+  wrong route), the guard reverts the transaction. The user loses only gas.
+- **Wrong destination.** The intermediate_output ATA is re-derived from
+  the policy's declared `output_mint` at execute time
+  (`execute_composable.rs:949`). ATA derivation is deterministic
+  (owner + token_program + mint). If the gateway misroutes the forward's
+  own destination slot (e.g. Raydium CPMM `swap_base_input` account index
+  11, which is not pinned), the swap credits a different account, Tributary
+  reads 0 in its own intermediate, the guard fails, tx reverts. Fails
+  closed.
+
+### What the `>0` guard does NOT close (the magnitude gap)
+
+The guard is an **existence** assertion, not a **magnitude** assertion.
+A gateway can set the swap's `minimum_amount_out` to 0 in the instruction
+data (the `InstructionConstraint` pins the discriminator at offset 0 and
+the pool, not the amount fields). The swap returns dust (1 unit); the
+guard passes; the recipient receives 1 unit of output for a `face`-sized
+input pull. This generalizes the `min_output_amount` field removed in
+v2.1.
+
+**Owner opt-in magnitude floor** (deliver-transform): add a Lighthouse
+`post_validation` assertion on the intermediate_output ATA:
+
+```typescript
+import { lighthouse } from "@tributary-so/sdk";
+
+// ownerFloor = the minimum acceptable output amount, or 0 for existence
+// parity with the on-chain guard (defense-in-depth).
+const guard = lighthouse
+  .tokenAccount(intermediateOutputAta)
+  .amount(ownerFloor, ">=")
+  .build();
+// guard.data        → Buffer stored in the post ValidationPda
+// guard.numAccounts → 1
+// guard.accounts    → [intermediateOutputAta]
+```
+
+The post ValidationPda seed is
+`["composable_validation_post", composablePolicy]`.
+
+### Act mode — no on-chain backstop
+
+Act mode skips intermediate_output ATA creation, the deliver sweep, AND
+the `>0` guard. The forward consumes input for a non-token settlement
+(e.g. a Velocity subaccount deposit). Tributary cannot observe the
+delivery on-chain — there is no intermediate_output ATA to read.
+
+The owner's `post_validation` is genuinely the only floor here, AND the
+target account is use-case-specific (the external settlement account),
+not a Tributary-controlled intermediate. The SDK emits a builder-time
+warning when an act-mode policy is created without a `post_validation`
+ProgramCall — see the [SDK reference](../../integration-guide/programmable-pull-payments/sdk.md).
+
+### Why no on-chain enforcement
+
+Enforcing `post_validation = ProgramCall` on-chain is rejected (ADR-0031):
+
+- **Act mode is unenforceable** — the target account is external and
+  use-case-specific; the program cannot know which account to assert
+  against.
+- **Deliver-transform existence is already covered** — the catastrophic
+  vectors revert. The residual magnitude gap is owner-economic.
+- **Flexibility** — legitimate use cases accept any non-zero output
+  (volatile pools, trusted gateways).
+
+See [ADR-0031](../../../adr/0031-settlement-output-post-validation-posture.md)
+for the full decision and rejected alternatives.

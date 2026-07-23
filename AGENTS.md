@@ -272,8 +272,9 @@ default-pubkey wildcards). No duplicate indices. The execute check:
 `remaining_mid[fwd_base + pin.index].key() == pin.pubkey`.
 
 - `program_id` must be in `ALLOWED_FORWARD_PROGRAMS` (currently: Meteora DLMM
-  `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`). `Pubkey::default()` disables
-  the forward step entirely.
+  `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`, Raydium CPMM
+  `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` — ADR-0032). `Pubkey::default()`
+  disables the forward step entirely.
 - When enabled, at least one `ByteRangeCheck` must pin the discriminator at
   offset 0 — prevents a gateway from swapping in an arbitrary instruction.
 - **Degenerate-pin guard**: `InstructionConstraint` with zero effective pins
@@ -444,7 +445,7 @@ DLMM unintended signer authority.
 Forward and validation target programs are hard-allowlisted on-chain
 (`programs/tributary/src/constants.rs`):
 
-- `ALLOWED_FORWARD_PROGRAMS`: Meteora DLMM
+- `ALLOWED_FORWARD_PROGRAMS`: Meteora DLMM, Raydium CPMM (ADR-0032)
 - `ALLOWED_VALIDATION_PROGRAMS`: Lighthouse
 
 Sentinels (`Pubkey::default()` / `SystemProgram`) disable the respective hook.
@@ -509,6 +510,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0027] | Gateway merchant layer — off-chain derived analytics                                    |
 | [0029] | Program authority rotation (`change_program_authority`) — admin key recovery path       |
 | [0030] | Composable execution primitives — ForwardBuilder interface + shared helpers             |
+| [0032] | Raydium CPMM as a second `ALLOWED_FORWARD_PROGRAM`                                      |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -538,6 +540,7 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0027]: apps/docs/adr/0027-gateway-merchant-layer-off-chain-derived-analytics.md
 [0029]: apps/docs/adr/0029-program-authority-rotation.md
 [0030]: apps/docs/adr/0030-composable-execution-primitives.md
+[0032]: apps/docs/adr/0032-raydium-cpmm-forward.md
 
 ## SDK
 

@@ -17,12 +17,25 @@
     "release": "semantic-release -e semantic-release-monorepo"
   },
   "dependencies": {
-    "@meteora-ag/dlmm": "^1.0.0",
     "@solana/web3.js": "^1.98.4",
     "@tributary-so/sdk": "workspace:*",
     "bn.js": "^5.2.2"
   },
+  "peerDependencies": {
+    "@meteora-ag/dlmm": "^1.0.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha"
+  },
+  "peerDependenciesMeta": {
+    "@meteora-ag/dlmm": {
+      "optional": true
+    },
+    "@raydium-io/raydium-sdk-v2": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@meteora-ag/dlmm": "^1.0.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha",
     "@types/bn.js": "^5.2.0",
     "@types/jest": "^29.0.3",
     "@types/node": "^22.10.6",

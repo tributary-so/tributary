@@ -1,11 +1,11 @@
 ---
 # tributary-teqe
 title: 'Program: add Raydium CPMM to ALLOWED_FORWARD_PROGRAMS'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-22T11:41:22Z
-updated_at: 2026-07-22T11:41:22Z
+updated_at: 2026-07-22T12:28:25Z
 parent: tributary-404h
 ---
 

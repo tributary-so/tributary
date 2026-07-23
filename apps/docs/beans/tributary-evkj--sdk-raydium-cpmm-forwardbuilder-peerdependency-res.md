@@ -1,11 +1,11 @@
 ---
 # tributary-evkj
 title: 'SDK: Raydium CPMM ForwardBuilder + peerDependency restructure'
-status: todo
+status: completed
 type: feature
 priority: high
 created_at: 2026-07-22T11:41:22Z
-updated_at: 2026-07-22T11:41:22Z
+updated_at: 2026-07-22T12:38:43Z
 parent: tributary-404h
 ---
 
