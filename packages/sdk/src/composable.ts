@@ -15,10 +15,11 @@
  * specific forward-program implementation (concrete impls live in
  * `@tributary-so/forward-builders`).
  *
- * There is intentionally **no orchestrator**. Callers chain the primitives
- * explicitly — the CLI needs to override individual steps via flags, and an
- * opts-bag orchestrator would just re-encode the primitives as optional
- * params (ADR-0030 §1).
+ * The straight-line orchestrator {@link buildComposableExecutionPayload}
+ * composes the primitives for the common case where no per-step override is
+ * needed (ADR-0030 §1, amended — third caller materialized in tests +
+ * external integrators; the CLI override path keeps the primitives
+ * exported alongside).
  */
 
 import { PublicKey, type AccountMeta, type Connection } from "@solana/web3.js";
@@ -225,4 +226,94 @@ export function deriveSchedulerAta(args: {
   const isPermissionless = !authority.equals(gatewaySigner);
   if (!isPermissionless || schedulerShareBps <= 0) return null;
   return getAssociatedTokenAddressSync(inputMint, authority);
+}
+
+/**
+ * Build the full execution payload (`instructionData` + `remaining_accounts`)
+ * for `execute_composable` by composing the four primitives in order
+ * (ADR-0030 §1, amended).
+ *
+ * Flow:
+ * 1. **Forward gate** — when {@link isForwardEnabled} is true and a
+ *    `forwardBuilder` is supplied, run it with the caller-resolved `face` to
+ *    obtain the forward instruction data + forward-program account slice.
+ *    Throws when forward is enabled but no builder is passed — the
+ *    orchestrator cannot synthesize a forward instruction. When forward is
+ *    disabled, `instructionData` is an empty buffer and the forward-account
+ *    slice is empty (any supplied builder is ignored).
+ * 2. **Validation targets** — pre and post targets are resolved in parallel
+ *    via {@link resolveValidationTargets}; each returns `[]` when the
+ *    respective spec is not `ProgramCall`.
+ * 3. **Assembly** — {@link assembleComposableRemainingAccounts} stamps the
+ *    ADR-0016 order `[...preTargets, ...forwardAccounts, ...postTargets]`
+ *    with `isSigner: false` on every entry (ADR-0008).
+ *
+ * Does **not** derive `face` — the caller resolves it via
+ * {@link resolveDefaultForwardAmount} or a manual override. Does **not**
+ * append the scheduler fee ATA — the SDK `executeComposable` facade owns
+ * that (ADR-0016 amended). Callers needing per-step override (CLI flags)
+ * should call the primitives directly.
+ */
+export async function buildComposableExecutionPayload(args: {
+  connection: Connection;
+  policy: ComposablePolicy;
+  composablePolicyPda: PublicKey;
+  programId: PublicKey;
+  forwardBuilder?: ForwardBuilder;
+  face: BN;
+}): Promise<{ instructionData: Buffer; remainingAccounts: AccountMeta[] }> {
+  const {
+    connection,
+    policy,
+    composablePolicyPda,
+    programId,
+    forwardBuilder,
+    face,
+  } = args;
+
+  const forwardOn = isForwardEnabled(policy);
+
+  let instructionData: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  let forwardAccounts: ForwardAccountMeta[] = [];
+
+  if (forwardOn) {
+    if (!forwardBuilder) {
+      throw new Error(
+        "buildComposableExecutionPayload: forward is enabled on the policy but no forwardBuilder was supplied"
+      );
+    }
+    const built = await forwardBuilder.build({
+      connection,
+      policy,
+      composablePolicyPda,
+      face,
+    });
+    instructionData = built.instructionData;
+    forwardAccounts = built.forwardAccounts;
+  }
+
+  const [preTargets, postTargets] = await Promise.all([
+    resolveValidationTargets(
+      connection,
+      composablePolicyPda,
+      policy.preValidation,
+      programId,
+      "pre"
+    ),
+    resolveValidationTargets(
+      connection,
+      composablePolicyPda,
+      policy.postValidation,
+      programId,
+      "post"
+    ),
+  ]);
+
+  const remainingAccounts = assembleComposableRemainingAccounts({
+    preTargets,
+    forwardAccounts,
+    postTargets,
+  });
+
+  return { instructionData, remainingAccounts };
 }
