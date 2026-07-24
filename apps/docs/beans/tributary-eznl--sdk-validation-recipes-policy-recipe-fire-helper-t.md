@@ -1,11 +1,11 @@
 ---
 # tributary-eznl
 title: 'SDK: validation recipes + policy recipe + fire helper (tier 2 + tier 3)'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-24T10:33:51Z
-updated_at: 2026-07-24T10:33:51Z
+updated_at: 2026-07-24T11:12:49Z
 parent: tributary-69jm
 ---
 
