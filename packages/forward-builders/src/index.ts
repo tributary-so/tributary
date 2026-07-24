@@ -34,6 +34,9 @@ export {
   createRaydiumClmmForward,
   raydiumClmmForwardConfig,
   RAYDIUM_CLMM_SWAP_V2_DISCRIMINATOR,
+  createSwapWhenBalanceLow as createRaydiumClmmSwapWhenBalanceLow,
   type RaydiumClmmForwardOptions,
   type RaydiumClmmForwardConfigOptions,
+  type CreateClmmSwapWhenBalanceLowOptions,
+  type ClmmSwapWhenBalanceLowCreateBundle,
 } from "./raydium-clmm";
