@@ -22,8 +22,11 @@ export {
   createRaydiumCpmmForward,
   raydiumCpmmForwardConfig,
   RAYDIUM_CPMM_SWAP_BASE_INPUT_DISCRIMINATOR,
+  createSwapWhenBalanceLow as createRaydiumCpmmSwapWhenBalanceLow,
   type RaydiumCpmmForwardOptions,
   type RaydiumCpmmForwardConfigOptions,
+  type CreateCpmmSwapWhenBalanceLowOptions,
+  type CpmmSwapWhenBalanceLowCreateBundle,
 } from "./raydium-cpmm";
 export {
   METEORA_DLMM_PUBKEY,
