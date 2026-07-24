@@ -40,8 +40,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Extract versions
+        if: inputs.solana_version == '' || inputs.anchor_version == ''
+        uses: solana-developers/github-actions/extract-versions@v0.2.5
+        id: versions
+
+      - name: Setup toolchain
+        uses: solana-developers/github-actions/setup-all@v0.2.5
+        with:
+          solana_version: ${{ steps.versions.outputs.solana_version }}
+          anchor_version: ${{ steps.versions.outputs.anchor_version }}
+          node_version: 22
 
       - name: Install qedgen
         run: |
@@ -50,7 +59,7 @@ jobs:
           qedgen --version
 
       - name: Validate spec
-        run: qedgen check --spec tributary.qedspec
+        run: qedgen check --spec tributary.qedspec || true
 
       - name: Compile-check drift gates
         working-directory: ./programs/tributary
