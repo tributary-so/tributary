@@ -22,6 +22,19 @@ on:
         description: "cargo-fuzz max run time (seconds)"
         required: false
         default: "600"
+      solana_version:
+        type: string
+        required: false
+        default: ""
+      anchor_version:
+        type: string
+        required: false
+        default: ""
+      # Optional cargo features to pass to `anchor build` (e.g. "mainnet").
+      features:
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -37,16 +50,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust stable + nightly
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable, nightly
-          components: rust-src
+      - name: Install dependencies
+        run: |
+          pnpm install
+          corepack enable
 
-      - name: Install Solana CLI (for cargo build-sbf)
-        uses: solana-program/dtl-install-action@v1
+      - name: Extract versions
+        if: inputs.solana_version == '' || inputs.anchor_version == ''
+        uses: solana-developers/github-actions/extract-versions@v0.2.5
+        id: versions
+
+      - name: Setup toolchain
+        uses: solana-developers/github-actions/setup-all@v0.2.5
         with:
-          release: v2.2.11
+          solana_version: ${{ inputs.solana_version || steps.versions.outputs.solana_version }}
+          anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
+          node_version: 22
 
       - name: Cache cargo registry
         uses: actions/cache@v4
