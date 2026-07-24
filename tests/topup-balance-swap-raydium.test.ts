@@ -12,24 +12,13 @@ import {
   getComposablePolicyPda,
   getPreValidationPda,
   getPostValidationPda,
-} from "../packages/sdk/src/pda";
-import {
-  lighthouse,
-  resolveValidationTargets,
-  assembleComposableRemainingAccounts,
+  buildComposableExecutionPayload,
+  encodeMemo,
   type ComposablePolicy,
+  type ForwardBuilder,
 } from "../packages/sdk/src";
-import {
-  createRaydiumClmmForward,
-  raydiumClmmForwardConfig,
-} from "../packages/forward-builders/src";
+import { createRaydiumClmmSwapWhenBalanceLow } from "../packages/forward-builders/src";
 import { USDC_MINT } from "./surfpool-helpers";
-import {
-  DISABLED_SPEC,
-  DISABLED_INIT,
-  programCallSpec,
-  validationInit,
-} from "./helpers/composable";
 import { setupTopupSwapEnv, type TopupSwapEnv } from "./helpers/topup-swap-env";
 import { sendV0WithAlt } from "./helpers/v0-alt";
 import {
@@ -40,15 +29,14 @@ import {
 } from "./constants";
 
 // ── Test constants ────────────────────────────────────────────────────
-// Topup chunk pulled from coldWallet (USDC, 6 decimals) → swapped to WSOL.
 const SWAP_INPUT_AMOUNT = 50_000_000; // 50 USDC
 const FORWARD_SLIPPAGE_BPS = 100;
 
 const TOKEN_PROGRAM_ID = new PublicKey(
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
 );
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
-  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
 );
 
 jest.setTimeout(300_000);
@@ -61,6 +49,7 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
   let preValidationPDA: PublicKey;
   let postValidationPDA: PublicKey;
   let composablePolicyId: number;
+  let forwardBuilder: ForwardBuilder;
 
   let clmmPool: PublicKey;
   let clmmAmmConfig: PublicKey;
@@ -71,26 +60,22 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
 
     clmmPool = RAYDIUM_CLMM_USDC_WSOL_POOL;
 
-    // Warmup: CLMM program + ProgramData (surfpool CPI cache).
-    const clmmProgram = await env.connection.getAccountInfo(
-      RAYDIUM_CLMM_PUBKEY
-    );
+    const clmmProgram =
+      await env.connection.getAccountInfo(RAYDIUM_CLMM_PUBKEY);
     expect(clmmProgram).not.toBeNull();
     expect(clmmProgram!.executable).toBe(true);
 
     const BPF_LOADER_UPGRADEABLE = new PublicKey(
-      "BPFLoaderUpgradeab1e11111111111111111111111"
+      "BPFLoaderUpgradeab1e11111111111111111111111",
     );
     const [clmmProgramData] = PublicKey.findProgramAddressSync(
       [RAYDIUM_CLMM_PUBKEY.toBuffer()],
-      BPF_LOADER_UPGRADEABLE
+      BPF_LOADER_UPGRADEABLE,
     );
-    const programDataAcct = await env.connection.getAccountInfo(
-      clmmProgramData
-    );
+    const programDataAcct =
+      await env.connection.getAccountInfo(clmmProgramData);
     expect(programDataAcct).not.toBeNull();
 
-    // Warmup: pool + ammConfig.
     const poolAcct = await env.connection.getAccountInfo(clmmPool);
     expect(poolAcct).not.toBeNull();
     expect(poolAcct!.owner.equals(RAYDIUM_CLMM_PUBKEY)).toBe(true);
@@ -110,15 +95,15 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     composablePolicyPDA = getComposablePolicyPda(
       env.pdas.userPayment,
       composablePolicyId,
-      program.programId
+      program.programId,
     ).address;
     preValidationPDA = getPreValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
     ).address;
     postValidationPDA = getPostValidationPda(
       composablePolicyPDA,
-      program.programId
+      program.programId,
     ).address;
 
     const now = Math.floor(Date.now() / 1000);
@@ -135,34 +120,35 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
       },
     };
 
-    const memo = new Array(32).fill(0);
-    Buffer.from("Topup WSOL clmm").copy(Buffer.from(memo));
-
-    const forwardConfig = raydiumClmmForwardConfig({
+    // createRaydiumClmmSwapWhenBalanceLow composes all three tiers: tier-1
+    // forward config + builder, tier-2 recipientOutputBalanceCheck (the
+    // "balance low" pre-swap trigger), tier-3 composablePolicyRecipe
+    // enforcement.
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const recipe = createRaydiumClmmSwapWhenBalanceLow({
+      policyType,
+      memo: "Topup WSOL clmm",
+      recipient: env.wallets.hotWallet.publicKey,
       inputMint: USDC_MINT,
       outputMint: NATIVE_MINT,
       pool: clmmPool,
       ammConfig: clmmAmmConfig,
+      slippageBps: FORWARD_SLIPPAGE_BPS,
+      threshold: 1_000_000_000,
+      op: "<",
     });
-
-    // Lighthouse: assert hotWallet WSOL balance < 1 WSOL before topping up.
-    const guard = lighthouse
-      .tokenAccount(env.atas.hotWalletWsol)
-      .amount(1_000_000_000, "<")
-      .build();
+    warnSpy.mockRestore();
+    ({ forwardBuilder } = recipe);
 
     const ix = await program.methods
       .createComposablePolicy(
-        policyType,
-        memo,
-        forwardConfig,
-        programCallSpec(LIGHTHOUSE_PUBKEY),
-        validationInit(
-          [guard.accounts[0]?.pubkey ?? PublicKey.default],
-          guard.data
-        ),
-        DISABLED_SPEC,
-        DISABLED_INIT
+        recipe.create.policyType,
+        encodeMemo(recipe.create.memo, 32),
+        recipe.create.forwardConfig,
+        recipe.create.preValidation,
+        recipe.create.preValidationInit,
+        recipe.create.postValidation,
+        recipe.create.postValidationInit,
       )
       .accountsStrict({
         feePayer: env.wallets.hotWallet.publicKey,
@@ -186,20 +172,19 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
       env.connection,
       new Transaction().add(ix),
       [env.wallets.hotWallet, env.wallets.coldWallet],
-      { commitment: "processed" }
+      { commitment: "processed" },
     );
 
-    const policy = await program.account.composablePolicy.fetch(
-      composablePolicyPDA
-    );
+    const policy =
+      await program.account.composablePolicy.fetch(composablePolicyPDA);
     expect(policy.forwardConfig.instructionConstraint.programId).toEqual(
-      RAYDIUM_CLMM_PUBKEY
+      RAYDIUM_CLMM_PUBKEY,
     );
     expect(policy.forwardConfig.inputMint).toEqual(USDC_MINT);
     expect(policy.forwardConfig.outputMint).toEqual(NATIVE_MINT);
     expect(policy.forwardConfig.instructionConstraint.numDataChecks).toBe(1);
     expect(policy.forwardConfig.instructionConstraint.numPinnedAccounts).toBe(
-      2
+      2,
     );
     expect(policy.recipient).toEqual(env.wallets.hotWallet.publicKey);
     expect(policy.status).toEqual({ active: {} });
@@ -208,79 +193,53 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
   test("Execute swap topup — succeeds (coldWallet USDC → hotWallet WSOL)", async () => {
     await env.sdk.updateWallet(new anchor.Wallet(env.wallets.coldWallet));
 
-    // Snapshot balances before execute — tests run consecutively against the
-    // same surfpool instance, so starting balances can't be assumed.
     const coldUsdcBefore = Number(
       (await env.connection.getTokenAccountBalance(env.atas.coldWalletUsdc))
-        .value.amount
+        .value.amount,
     );
     const hotWsolBefore = Number(
       (await env.connection.getTokenAccountBalance(env.atas.hotWalletWsol))
-        .value.amount
+        .value.amount,
     );
     const adminUsdcBefore = Number(
       (await env.connection.getTokenAccountBalance(env.atas.adminUsdc)).value
-        .amount
+        .amount,
     );
     const feeRecipientUsdcBefore = Number(
       (await env.connection.getTokenAccountBalance(env.atas.feeRecipientUsdc))
-        .value.amount
+        .value.amount,
     );
 
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       composablePolicyPDA,
       true,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
     );
     const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
       NATIVE_MINT,
       composablePolicyPDA,
       true,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
     );
 
     const face = new BN(SWAP_INPUT_AMOUNT);
     const policy = (await program.account.composablePolicy.fetch(
-      composablePolicyPDA
+      composablePolicyPDA,
     )) as unknown as ComposablePolicy;
 
-    const forwardPayload = await createRaydiumClmmForward({
-      pool: clmmPool,
-      ammConfig: clmmAmmConfig,
-      slippageBps: FORWARD_SLIPPAGE_BPS,
-    }).build({
-      connection: env.connection,
-      policy,
-      composablePolicyPda: composablePolicyPDA,
-      face,
-    });
-
-    const [preTargets, postTargets] = await Promise.all([
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.preValidation,
-        program.programId,
-        "pre"
-      ),
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.postValidation,
-        program.programId,
-        "post"
-      ),
-    ]);
-
-    const remainingAccounts = assembleComposableRemainingAccounts({
-      preTargets,
-      forwardAccounts: forwardPayload.forwardAccounts,
-      postTargets,
-    });
+    const { instructionData, remainingAccounts } =
+      await buildComposableExecutionPayload({
+        connection: env.connection,
+        policy,
+        composablePolicyPda: composablePolicyPDA,
+        programId: program.programId,
+        forwardBuilder,
+        face,
+      });
 
     const ix = await program.methods
-      .executeComposable(forwardPayload.instructionData, face)
+      .executeComposable(instructionData, face)
       .accountsStrict({
         feePayer: env.wallets.coldWallet.publicKey,
         paymentsDelegate: env.pdas.paymentsDelegate,
@@ -309,108 +268,83 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
       .instruction();
 
     // v0 + ALT: CLMM tickSpacing=1 generates enough tick arrays that the
-    // legacy 1232-byte limit is exceeded. ALT compresses accounts to 1-byte
-    // indices.
+    // legacy 1232-byte limit is exceeded.
     await sendV0WithAlt(env.connection, [ix], [env.wallets.coldWallet]);
 
     // ── Verify balances ──────────────────────────────────────────────
     const coldUsdcAfter = await env.connection.getTokenAccountBalance(
-      env.atas.coldWalletUsdc
+      env.atas.coldWalletUsdc,
     );
     expect(Number(coldUsdcAfter.value.amount)).toBe(
-      coldUsdcBefore - SWAP_INPUT_AMOUNT
+      coldUsdcBefore - SWAP_INPUT_AMOUNT,
     );
 
     const hotWsolAfter = await env.connection.getTokenAccountBalance(
-      env.atas.hotWalletWsol
+      env.atas.hotWalletWsol,
     );
     expect(Number(hotWsolAfter.value.amount)).toBeGreaterThan(hotWsolBefore);
 
     const config = await program.account.programConfig.fetch(env.pdas.config);
     expect(config.protocolShareBps).toBeGreaterThan(0);
     const adminUsdcAfter = await env.connection.getTokenAccountBalance(
-      env.atas.adminUsdc
+      env.atas.adminUsdc,
     );
     expect(Number(adminUsdcAfter.value.amount)).toBeGreaterThanOrEqual(
-      adminUsdcBefore
+      adminUsdcBefore,
     );
 
     const feeRecipientUsdcAfter = await env.connection.getTokenAccountBalance(
-      env.atas.feeRecipientUsdc
+      env.atas.feeRecipientUsdc,
     );
     expect(Number(feeRecipientUsdcAfter.value.amount)).toBeGreaterThanOrEqual(
-      feeRecipientUsdcBefore
+      feeRecipientUsdcBefore,
     );
 
     // ── Verify policy state ───────────────────────────────────────────
-    const policyAfter = await program.account.composablePolicy.fetch(
-      composablePolicyPDA
-    );
+    const policyAfter =
+      await program.account.composablePolicy.fetch(composablePolicyPDA);
     expect(policyAfter.totalInput.toNumber()).toBe(SWAP_INPUT_AMOUNT);
     expect(policyAfter.totalOutput.toNumber()).toBeGreaterThan(0);
     expect(policyAfter.paymentCount).toBe(1);
     expect(
-      policyAfter.policyType.payAsYouGo.currentPeriodTotal.toNumber()
+      policyAfter.policyType.payAsYouGo.currentPeriodTotal.toNumber(),
     ).toBe(SWAP_INPUT_AMOUNT);
   });
 
   test("Execute swap topup again — fails (PayAsYouGo period cap exhausted)", async () => {
     await env.sdk.updateWallet(new anchor.Wallet(env.wallets.coldWallet));
 
+    const face = new BN(SWAP_INPUT_AMOUNT);
+    const policy = (await program.account.composablePolicy.fetch(
+      composablePolicyPDA,
+    )) as unknown as ComposablePolicy;
+
+    const { instructionData, remainingAccounts } =
+      await buildComposableExecutionPayload({
+        connection: env.connection,
+        policy,
+        composablePolicyPda: composablePolicyPDA,
+        programId: program.programId,
+        forwardBuilder,
+        face,
+      });
+
     const intermediateInputTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       composablePolicyPDA,
       true,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
     );
     const intermediateOutputTokenAccount = getAssociatedTokenAddressSync(
       NATIVE_MINT,
       composablePolicyPDA,
       true,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID,
     );
-
-    const face = new BN(SWAP_INPUT_AMOUNT);
-    const policy = (await program.account.composablePolicy.fetch(
-      composablePolicyPDA
-    )) as unknown as ComposablePolicy;
-
-    const forwardPayload = await createRaydiumClmmForward({
-      pool: clmmPool,
-      ammConfig: clmmAmmConfig,
-      slippageBps: FORWARD_SLIPPAGE_BPS,
-    }).build({
-      connection: env.connection,
-      policy,
-      composablePolicyPda: composablePolicyPDA,
-      face,
-    });
-
-    const [preTargets, postTargets] = await Promise.all([
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.preValidation,
-        program.programId,
-        "pre"
-      ),
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.postValidation,
-        program.programId,
-        "post"
-      ),
-    ]);
-    const remainingAccounts = assembleComposableRemainingAccounts({
-      preTargets,
-      forwardAccounts: forwardPayload.forwardAccounts,
-      postTargets,
-    });
 
     try {
       const ix = await program.methods
-        .executeComposable(forwardPayload.instructionData, face)
+        .executeComposable(instructionData, face)
         .accountsStrict({
           feePayer: env.wallets.coldWallet.publicKey,
           paymentsDelegate: env.pdas.paymentsDelegate,
@@ -448,12 +382,11 @@ describe("Composable Topup-Swap Flow — Raydium CLMM (USDC → WSOL)", () => {
     }
 
     // Policy state unchanged (transaction reverted).
-    const policyAfter = await program.account.composablePolicy.fetch(
-      composablePolicyPDA
-    );
+    const policyAfter =
+      await program.account.composablePolicy.fetch(composablePolicyPDA);
     expect(policyAfter.paymentCount).toBe(1);
     expect(
-      policyAfter.policyType.payAsYouGo.currentPeriodTotal.toNumber()
+      policyAfter.policyType.payAsYouGo.currentPeriodTotal.toNumber(),
     ).toBe(SWAP_INPUT_AMOUNT);
   });
 });
