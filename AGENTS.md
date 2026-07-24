@@ -508,9 +508,12 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0025] | JWT payload generalized to `policies: PolicyClaim[]` (all 5 variants)                   |
 | [0026] | Composable input-side fees + act/deliver settlement shapes                              |
 | [0027] | Gateway merchant layer — off-chain derived analytics                                    |
+| [0028] | tokens.xyz asset catalog proxy — type-ahead token search + mint resolver                |
 | [0029] | Program authority rotation (`change_program_authority`) — admin key recovery path       |
 | [0030] | Composable execution primitives — ForwardBuilder interface + shared helpers             |
+| [0031] | Settlement output post_validation — on-chain `>0` guard stays; no enforcement; SDK warns |
 | [0032] | Raydium CPMM as a second `ALLOWED_FORWARD_PROGRAM`                                      |
+| [0033] | Validation recipe layer — three-tier recipes + policy recipe + fire helper               |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -538,9 +541,12 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0025]: apps/docs/adr/0025-jwt-payload-generalized-policyclaim-union.md
 [0026]: apps/docs/adr/0026-composable-input-side-fees-act-deliver-shapes.md
 [0027]: apps/docs/adr/0027-gateway-merchant-layer-off-chain-derived-analytics.md
+[0028]: apps/docs/adr/0028-tokens-xyz-asset-catalog-proxy.md
 [0029]: apps/docs/adr/0029-program-authority-rotation.md
 [0030]: apps/docs/adr/0030-composable-execution-primitives.md
+[0031]: apps/docs/adr/0031-settlement-output-post-validation-posture.md
 [0032]: apps/docs/adr/0032-raydium-cpmm-forward.md
+[0033]: apps/docs/adr/0033-validation-recipe-layer.md
 
 ## SDK
 
