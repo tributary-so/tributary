@@ -12,13 +12,21 @@
  * - {@link lighthouseValidation} — bridge from a built {@link LighthouseAssertion}
  *   to `{ spec, init }`. Also the escape hatch for custom assertions not
  *   yet recipe'd.
- *
- * Sibling recipes (`balanceCheck` + site variants) are added by
- * tributary-r6kz; `composablePolicyRecipe` (tier 3) is tributary-p3tf.
+ * - {@link balanceCheck} — generic SPL token-account amount assertion.
+ * - {@link intermediateOutputBalanceCheck} / {@link intermediateInputBalanceCheck}
+ *   / {@link recipientOutputBalanceCheck} — site variants that derive the
+ *   ATA internally (pure sync math) then delegate to {@link balanceCheck}.
  */
 
 import type { PublicKey } from "@solana/web3.js";
-import { LIGHTHOUSE_PROGRAM_ID, type LighthouseAssertion } from "./lighthouse";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  lighthouse,
+  LIGHTHOUSE_PROGRAM_ID,
+  type IntegerOperator,
+  type IntOpString,
+  type LighthouseAssertion,
+} from "./lighthouse";
 import { makeValidationInit } from "./sdk";
 import type { ValidationSpec } from "./types";
 
@@ -64,4 +72,96 @@ export function lighthouseValidation(guard: LighthouseAssertion): {
       guard.data
     ),
   };
+}
+
+// ─── Balance check recipes ──────────────────────────────────────────────
+
+/**
+ * Assert that an SPL token account's `amount` field satisfies `threshold op`.
+ *
+ * Wraps `lighthouse.tokenAccount(target).amount(threshold, op).build()` →
+ * {@link lighthouseValidation}. Pure function — no I/O.
+ *
+ * @example Threshold top-up guard (fires when balance drops below 50 USDC)
+ * ```ts
+ * balanceCheck({ target: hotWalletAta, threshold: 50_000_000, op: "<" })
+ * ```
+ */
+export function balanceCheck(args: {
+  target: PublicKey;
+  threshold: number | bigint;
+  op: IntegerOperator | IntOpString;
+}): { spec: ValidationSpec; init: ValidationInit } {
+  const guard = lighthouse
+    .tokenAccount(args.target)
+    .amount(args.threshold, args.op)
+    .build();
+  return lighthouseValidation(guard);
+}
+
+/**
+ * Site variant: assert the intermediate **output** ATA balance (owned by
+ * the ComposablePolicy PDA). Derives the ATA via
+ * `getAssociatedTokenAddressSync(outputMint, composablePolicyPda, true)`,
+ * then delegates to {@link balanceCheck}.
+ */
+export function intermediateOutputBalanceCheck(args: {
+  composablePolicyPda: PublicKey;
+  outputMint: PublicKey;
+  threshold: number | bigint;
+  op: IntegerOperator | IntOpString;
+}): { spec: ValidationSpec; init: ValidationInit } {
+  const target = getAssociatedTokenAddressSync(
+    args.outputMint,
+    args.composablePolicyPda,
+    true // allowOwnerOffCurve — ComposablePolicy is a PDA
+  );
+  return balanceCheck({
+    target,
+    threshold: args.threshold,
+    op: args.op,
+  });
+}
+
+/**
+ * Site variant: assert the intermediate **input** ATA balance (owned by
+ * the ComposablePolicy PDA). Derives the ATA via
+ * `getAssociatedTokenAddressSync(inputMint, composablePolicyPda, true)`,
+ * then delegates to {@link balanceCheck}.
+ */
+export function intermediateInputBalanceCheck(args: {
+  composablePolicyPda: PublicKey;
+  inputMint: PublicKey;
+  threshold: number | bigint;
+  op: IntegerOperator | IntOpString;
+}): { spec: ValidationSpec; init: ValidationInit } {
+  const target = getAssociatedTokenAddressSync(
+    args.inputMint,
+    args.composablePolicyPda,
+    true
+  );
+  return balanceCheck({
+    target,
+    threshold: args.threshold,
+    op: args.op,
+  });
+}
+
+/**
+ * Site variant: assert the **recipient's** output ATA balance. Derives the
+ * ATA via `getAssociatedTokenAddressSync(outputMint, recipient)`, then
+ * delegates to {@link balanceCheck}.
+ */
+export function recipientOutputBalanceCheck(args: {
+  recipient: PublicKey;
+  outputMint: PublicKey;
+  threshold: number | bigint;
+  op: IntegerOperator | IntOpString;
+}): { spec: ValidationSpec; init: ValidationInit } {
+  const target = getAssociatedTokenAddressSync(args.outputMint, args.recipient);
+  return balanceCheck({
+    target,
+    threshold: args.threshold,
+    op: args.op,
+  });
 }
