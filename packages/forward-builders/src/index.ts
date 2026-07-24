@@ -13,7 +13,10 @@ export {
   createMeteoraDlmmForward,
   meteoraDlmmForwardConfig,
   METEORA_DLMM_SWAP_DISCRIMINATOR,
+  createSwapWhenBalanceLow,
   type MeteoraDlmmForwardConfigOptions,
+  type CreateSwapWhenBalanceLowOptions,
+  type SwapWhenBalanceLowCreateBundle,
 } from "./meteora-dlmm";
 export {
   createRaydiumCpmmForward,
