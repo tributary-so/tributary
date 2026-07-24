@@ -38,6 +38,24 @@ assemble the slice in the wrong order because they never assemble it at all.
 An orchestrator is deferred until a third caller wants the full pipeline with zero
 overrides. Two callers (scheduler, CLI) do not yet justify it.
 
+#### Amendment (2026-07-24): Orchestrator now justified — `buildComposableExecutionPayload`
+
+A third caller materialized: the validation recipe layer (ADR-0033) and its
+named recipes (`createSwapWhenBalanceLow` per forward builder), plus external
+integrators and the SDK test suite, all want the full pipeline with **zero**
+per-step overrides. The straight-line orchestrator
+`buildComposableExecutionPayload` (in `packages/sdk/src/composable.ts`) now
+exists — it composes `isForwardEnabled` → `ForwardBuilder.build` →
+`resolveValidationTargets` (pre/post) → `assembleComposableRemainingAccounts`
+into `{ instructionData, remainingAccounts }`. It does **not** derive `face`
+(caller-resolved) and does **not** append the scheduler fee ATA (the SDK
+`executeComposable` facade owns that, ADR-0016 amended).
+
+The primitives stay alongside for the CLI override path (per-flag replacement).
+§1's original stance holds for that caller; the orchestrator serves the
+zero-override callers. See ADR-0033 §"Tier 3" and rejected-alternative #1
+below (now adopted).
+
 ### 2. ForwardBuilder interface in the SDK; implementations in a sibling package
 
 The SDK owns the **interface**:
@@ -105,6 +123,14 @@ tighter and more honest than a blanket `true`.
    `forwardPayloadOverride`). That is just the primitives re-encoded as optional
    parameters — more rigid, no safer, and it hides which steps were overridden.
    Deferred to a third caller that wants the full pipeline with zero overrides.
+
+   **Update (2026-07-24):** the third caller materialized (ADR-0033 recipe
+   layer + named recipes + tests + external integrators). The orchestrator was
+   adopted as `buildComposableExecutionPayload` — **not** as the rejected
+   opts-bag shape. It takes explicit named params (`face`, `forwardBuilder?`)
+   with no override bag: zero-override callers get a straight-line function,
+   and the CLI keeps calling the primitives directly for per-flag override.
+   The opts-bag rejection stands; only the "deferred" qualifier is resolved.
 
 2. **Meteora implementation in SDK core** — adds `@meteora-ag/dlmm` to the SDK's
    dependency surface. Every SDK consumer — browser apps, the marketing landing
