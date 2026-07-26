@@ -1,11 +1,11 @@
 ---
 # tributary-z893
 title: Whirlpool swap forward — implementation
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-23T18:41:47Z
-updated_at: 2026-07-23T18:41:47Z
+updated_at: 2026-07-26T12:26:53Z
 parent: tributary-na7u
 ---
 
