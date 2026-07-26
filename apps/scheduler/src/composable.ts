@@ -11,7 +11,7 @@ import {
   type AccountInfo,
 } from "@solana/web3.js";
 import BN from "bn.js";
-import { createMeteoraDlmmForward } from "@tributary-so/forward-builders";
+import { getForwardBuilderFor } from "@tributary-so/forward-builders";
 import {
   Tributary as TributarySDK,
   PaymentGateway,
@@ -474,11 +474,7 @@ class ComposableScheduler {
       const forwardAmount = isPayAsYouGo ? face : null;
 
       const forwardPayload = isForwardEnabled(policy.account)
-        ? await createMeteoraDlmmForward({
-            // pool is pinned on-chain at InstructionConstraint.pinnedAccounts[0]
-            // (index=0 → forward-account slot 0 = lbPair for DLMM swap).
-            pool: policy.account.forwardConfig.instructionConstraint
-              .pinnedAccounts[0].pubkey,
+        ? await getForwardBuilderFor(policy.account, {
             slippageBps: FORWARD_SLIPPAGE_BPS,
             applyHostFeeInFix: FORWARD_APPLY_HOST_FEE_IN_FIX,
           }).build({

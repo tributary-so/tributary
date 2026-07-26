@@ -42,3 +42,7 @@ export {
   type WhirlpoolForwardOptions,
   type WhirlpoolForwardConfigOptions,
 } from "./whirlpool";
+export {
+  getForwardBuilderFor,
+  type ForwardBuilderDispatchOptions,
+} from "./dispatch";
