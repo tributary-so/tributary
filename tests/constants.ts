@@ -68,6 +68,26 @@ export const RAYDIUM_CLMM_USDC_WSOL_POOL = new PublicKey(
 );
 
 /**
+ * Orca Whirlpool — fourth entry in ALLOWED_FORWARD_PROGRAMS
+ * (concentrated-liquidity AMM, Uniswap V3 model). Mirrored from
+ * packages/forward-builders/src/constants.ts.
+ */
+export const WHIRLPOOL_PUBKEY = new PublicKey(
+  "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+);
+
+/**
+ * Orca Whirlpool USDC/WSOL pool — used by topup-balance-swap-whirlpool.test.ts
+ * as the forward target for a USDC→WSOL swap. Owned by WHIRLPOOL_PUBKEY.
+ * Surfpool lazy-forks pool + tick-arrays + oracle state from mainnet.
+ *
+ * Canonical mint ordering: tokenMintA=USDC (EPjF…), tokenMintB=WSOL (So111…).
+ */
+export const WHIRLPOOL_USDC_WSOL_POOL = new PublicKey(
+  "HJPjoWUrhoZzkNfRpHuieeFk9WcZWjwy6PBjZ81ngnd"
+);
+
+/**
  * Lighthouse — currently the ONLY entry in ALLOWED_VALIDATION_PROGRAMS.
  * Used as the validation program in composable policy tests.
  */
