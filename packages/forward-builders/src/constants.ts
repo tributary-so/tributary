@@ -37,3 +37,15 @@ export const RAYDIUM_CPMM_PUBKEY = new PublicKey(
 export const RAYDIUM_CLMM_PUBKEY = new PublicKey(
   "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
 );
+
+/**
+ * Orca Whirlpool program id (fourth entry in Tributary's
+ * `ALLOWED_FORWARD_PROGRAMS`).
+ *
+ * Concentrated-liquidity AMM (Uniswap V3 model). The Token-2022-aware
+ * `swap_v2` instruction is the forward entry point — same known-`face`
+ * pattern as the CLMM builder.
+ */
+export const WHIRLPOOL_PUBKEY = new PublicKey(
+  "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+);

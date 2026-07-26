@@ -23,19 +23,29 @@
   },
   "peerDependencies": {
     "@meteora-ag/dlmm": "^1.0.0",
-    "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha"
+    "@orca-so/whirlpools": "^8.0.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha",
+    "@solana/kit": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "@meteora-ag/dlmm": {
       "optional": true
     },
+    "@orca-so/whirlpools": {
+      "optional": true
+    },
     "@raydium-io/raydium-sdk-v2": {
+      "optional": true
+    },
+    "@solana/kit": {
       "optional": true
     }
   },
   "devDependencies": {
     "@meteora-ag/dlmm": "^1.0.0",
+    "@orca-so/whirlpools": "^8.0.1",
     "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha",
+    "@solana/kit": "^3.0.3",
     "@types/bn.js": "^5.2.0",
     "@types/jest": "^29.0.3",
     "@types/node": "^22.10.6",

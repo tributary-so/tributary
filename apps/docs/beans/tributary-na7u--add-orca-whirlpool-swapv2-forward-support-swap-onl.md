@@ -1,11 +1,11 @@
 ---
 # tributary-na7u
 title: Add Orca Whirlpool (swapV2) forward support — swap only
-status: todo
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-23T14:19:57Z
-updated_at: 2026-07-23T14:19:57Z
+updated_at: 2026-07-26T18:30:02Z
 ---
 
 Add Orca Whirlpool as the fourth ALLOWED_FORWARD_PROGRAM so composable policies can route pulls through Whirlpool concentrated-liquidity pools (e.g. pull USDC, deliver WSOL). Scope is **swapping only** — no position/LP forwards (increaseLiquidity is a separate, Act-shaped follow-up).
