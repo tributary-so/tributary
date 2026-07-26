@@ -19,8 +19,7 @@ import {
   getPreValidationPda,
   parseValidationPda,
   isForwardEnabled,
-  resolveValidationTargets,
-  assembleComposableRemainingAccounts,
+  buildComposableExecutionPayload,
   type ValidationPdaAccount,
 } from "@tributary-so/sdk";
 import { exit } from "process";
@@ -473,61 +472,36 @@ class ComposableScheduler {
       const isPayAsYouGo = !!(policy.account.policyType as any).payAsYouGo;
       const forwardAmount = isPayAsYouGo ? face : null;
 
-      const forwardPayload = isForwardEnabled(policy.account)
-        ? await createMeteoraDlmmForward({
+      const forwardBuilder = isForwardEnabled(policy.account)
+        ? createMeteoraDlmmForward({
             // pool is pinned on-chain at InstructionConstraint.pinnedAccounts[0]
             // (index=0 → forward-account slot 0 = lbPair for DLMM swap).
             pool: policy.account.forwardConfig.instructionConstraint
               .pinnedAccounts[0].pubkey,
             slippageBps: FORWARD_SLIPPAGE_BPS,
             applyHostFeeInFix: FORWARD_APPLY_HOST_FEE_IN_FIX,
-          }).build({
-            connection: this.sdk.connection,
-            policy: policy.account,
-            composablePolicyPda: policy.publicKey,
-            face,
           })
-        : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
+        : undefined;
 
-      // ── remaining_accounts (ADR-0016, no ValidationPda in slice) ────
-      // Program contract (execute_composable.rs run_validation_cpi):
-      //   [...preLighthouseTargets, ...forwardAccounts, ...postLighthouseTargets, (scheduler_ata?)]
-      // The scheduler_ata (permissionless path) is appended by the SDK
-      // facade (sdk.executeComposable) via deriveSchedulerAta — the
-      // scheduler does NOT include it here.
-      const preEnabled = !!(policy.account.preValidation as any).programCall;
-      const postEnabled = !!(policy.account.postValidation as any).programCall;
-
-      const [preTargets, postTargets] = await Promise.all([
-        preEnabled
-          ? resolveValidationTargets(
-              this.sdk.connection,
-              policy.publicKey,
-              policy.account.preValidation,
-              this.sdk.programId,
-              "pre"
-            )
-          : [],
-        postEnabled
-          ? resolveValidationTargets(
-              this.sdk.connection,
-              policy.publicKey,
-              policy.account.postValidation,
-              this.sdk.programId,
-              "post"
-            )
-          : [],
-      ]);
-
-      const remainingAccounts = assembleComposableRemainingAccounts({
-        preTargets,
-        forwardAccounts: forwardPayload.forwardAccounts,
-        postTargets,
-      });
+      // ── payload construction (ADR-0030 orchestrator) ───────────────
+      // buildComposableExecutionPayload owns forward-build + validation
+      // resolution + remaining_accounts assembly in ADR-0016 order
+      // ([...preTargets, ...forwardAccounts, ...postTargets]). The
+      // scheduler_ata (permissionless path) is appended by the SDK facade
+      // (sdk.executeComposable) via deriveSchedulerAta.
+      const { instructionData, remainingAccounts } =
+        await buildComposableExecutionPayload({
+          connection: this.sdk.connection,
+          policy: policy.account,
+          composablePolicyPda: policy.publicKey,
+          programId: this.sdk.programId,
+          forwardBuilder,
+          face,
+        });
 
       const ixs = await this.sdk.executeComposable(
         policy.publicKey,
-        forwardPayload.instructionData,
+        instructionData,
         forwardAmount,
         remainingAccounts
       );

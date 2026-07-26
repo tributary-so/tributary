@@ -13,14 +13,20 @@ export {
   createMeteoraDlmmForward,
   meteoraDlmmForwardConfig,
   METEORA_DLMM_SWAP_DISCRIMINATOR,
+  createSwapWhenBalanceLow,
   type MeteoraDlmmForwardConfigOptions,
+  type CreateSwapWhenBalanceLowOptions,
+  type SwapWhenBalanceLowCreateBundle,
 } from "./meteora-dlmm";
 export {
   createRaydiumCpmmForward,
   raydiumCpmmForwardConfig,
   RAYDIUM_CPMM_SWAP_BASE_INPUT_DISCRIMINATOR,
+  createSwapWhenBalanceLow as createRaydiumCpmmSwapWhenBalanceLow,
   type RaydiumCpmmForwardOptions,
   type RaydiumCpmmForwardConfigOptions,
+  type CreateCpmmSwapWhenBalanceLowOptions,
+  type CpmmSwapWhenBalanceLowCreateBundle,
 } from "./raydium-cpmm";
 export {
   METEORA_DLMM_PUBKEY,
@@ -31,6 +37,9 @@ export {
   createRaydiumClmmForward,
   raydiumClmmForwardConfig,
   RAYDIUM_CLMM_SWAP_V2_DISCRIMINATOR,
+  createSwapWhenBalanceLow as createRaydiumClmmSwapWhenBalanceLow,
   type RaydiumClmmForwardOptions,
   type RaydiumClmmForwardConfigOptions,
+  type CreateClmmSwapWhenBalanceLowOptions,
+  type ClmmSwapWhenBalanceLowCreateBundle,
 } from "./raydium-clmm";

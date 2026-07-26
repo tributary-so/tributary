@@ -4483,7 +4483,14 @@ function specProgramOrDefault(spec: ValidationSpec): PublicKey {
   return pc ? pc.programId : SystemProgram.programId;
 }
 
-function makeValidationInit(
+/**
+ * Build the on-chain `ValidationInit` struct (indexed pinned accounts +
+ * assertion data) for a composable policy validation phase.
+ *
+ * Exported so the validation-recipe layer (`validation-recipes.ts`) can
+ * produce the same struct without duplicating the padding/indexing logic.
+ */
+export function makeValidationInit(
   pinnedAccounts: PublicKey[],
   data: Buffer
 ): {

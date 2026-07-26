@@ -14,6 +14,16 @@ import type {
   ComposablePolicy,
   ForwardBuilder,
   ForwardConfig,
+  PolicyType,
+  ValidationInit,
+  ValidationRecipeOutput,
+  ValidationSpec,
+} from "@tributary-so/sdk";
+import {
+  composablePolicyRecipe,
+  recipientOutputBalanceCheck,
+  type IntegerOperator,
+  type IntOpString,
 } from "@tributary-so/sdk";
 import { RAYDIUM_CPMM_PUBKEY } from "./constants";
 
@@ -236,5 +246,131 @@ export function raydiumCpmmForwardConfig(
     inputMint: opts.inputMint,
     outputMint: opts.outputMint,
     forwardFlags: opts.unwrapNativeSol ? 1 : 0,
+  };
+}
+
+// ── Named recipe: createSwapWhenBalanceLow ────────────────────────────
+// Composes the three tiers (tributary-69jm) into a single create bundle:
+// tier-1 `raydiumCpmmForwardConfig` + `createRaydiumCpmmForward`, tier-2
+// `recipientOutputBalanceCheck` (the "balance low" trigger), tier-3
+// `composablePolicyRecipe` (enforcement). The integrator provides only
+// accounts + programId; the recipe wires everything else.
+
+/**
+ * The `create` half of {@link createSwapWhenBalanceLow} — everything
+ * `getCreateComposablePolicyInstruction` consumes, bundled.
+ */
+export interface CpmmSwapWhenBalanceLowCreateBundle {
+  policyType: PolicyType;
+  memo: string;
+  recipient: PublicKey;
+  forwardConfig: ForwardConfig;
+  preValidation: ValidationSpec;
+  preValidationInit: ValidationInit;
+  postValidation: ValidationSpec;
+  postValidationInit: ValidationInit;
+}
+
+/**
+ * Options for {@link createSwapWhenBalanceLow} (CPMM variant).
+ */
+export interface CreateCpmmSwapWhenBalanceLowOptions {
+  // ── Policy identity ──
+  policyType: PolicyType;
+  /** Memo (max 32 bytes encoded). */
+  memo: string;
+  recipient: PublicKey;
+
+  // ── Forward params (tier 1) ──
+  inputMint: PublicKey;
+  outputMint: PublicKey;
+  /** CPMM pool to swap through. Pinned on-chain at `pinnedAccounts[0]` (index 3). */
+  pool: PublicKey;
+  /** CPMM amm-config (fee tier). Pinned on-chain at `pinnedAccounts[1]` (index 2). */
+  ammConfig: PublicKey;
+  /** Slippage tolerance in basis points (e.g. 100 = 1%). */
+  slippageBps: number;
+  /** Forward to `raydiumCpmmForwardConfig` (WSOL → native SOL unwrap). */
+  unwrapNativeSol?: boolean;
+  /** Forward to `createRaydiumCpmmForward` (explicit min-out override). */
+  minimumAmountOut?: BN;
+
+  // ── Validation params (tier 2) ──
+  /**
+   * The recipient's output ATA balance is checked pre-swap; the policy
+   * only fires when `amount op threshold` holds (e.g. `<` threshold →
+   * top up). This is the "balance low" trigger.
+   */
+  threshold: number | bigint;
+  op: IntegerOperator | IntOpString;
+  /**
+   * Optional post-validation recipe (e.g. a floor on swapped output).
+   * Defaults to none — `composablePolicyRecipe` will warn that a
+   * deliver-transform swap lacks a post floor (economic, not security).
+   */
+  post?: ValidationRecipeOutput | null;
+  /** Escape hatch: suppress the act-mode-no-post throw. */
+  allowUnsafeActMode?: boolean;
+}
+
+/**
+ * Build a complete "swap when the recipient's balance is low" composable
+ * policy bundle for Raydium CPMM.
+ *
+ * The canonical auto-topup recipe: pull `inputMint` from the user, swap it
+ * for `outputMint` via the pinned CPMM pool, and deliver to `recipient` —
+ * but only when the recipient's output ATA balance has dropped below
+ * `threshold`. Composes all three tiers so the integrator needs only
+ * `tokenMint` + `gateway` + programId at create time.
+ *
+ * Returns:
+ * - `create` — the argument bundle for `getCreateComposablePolicyInstruction`
+ *   (`policyType`, `memo`, `recipient`, `forwardConfig`, pre/post spec+init).
+ * - `forwardBuilder` — the fire-time CPMM swap builder for
+ *   `buildComposableExecutionPayload`.
+ */
+export function createSwapWhenBalanceLow(
+  opts: CreateCpmmSwapWhenBalanceLowOptions
+): {
+  create: CpmmSwapWhenBalanceLowCreateBundle;
+  forwardBuilder: ForwardBuilder;
+} {
+  const forwardConfig = raydiumCpmmForwardConfig({
+    inputMint: opts.inputMint,
+    outputMint: opts.outputMint,
+    pool: opts.pool,
+    ammConfig: opts.ammConfig,
+    unwrapNativeSol: opts.unwrapNativeSol,
+  });
+
+  const pre = recipientOutputBalanceCheck({
+    recipient: opts.recipient,
+    outputMint: opts.outputMint,
+    threshold: opts.threshold,
+    op: opts.op,
+  });
+
+  const recipe = composablePolicyRecipe({
+    forwardConfig,
+    pre,
+    post: opts.post,
+    allowUnsafeActMode: opts.allowUnsafeActMode,
+  });
+
+  const forwardBuilder = createRaydiumCpmmForward({
+    pool: opts.pool,
+    ammConfig: opts.ammConfig,
+    slippageBps: opts.slippageBps,
+    minimumAmountOut: opts.minimumAmountOut,
+  });
+
+  return {
+    create: {
+      policyType: opts.policyType,
+      memo: opts.memo,
+      recipient: opts.recipient,
+      ...recipe,
+    },
+    forwardBuilder,
   };
 }
