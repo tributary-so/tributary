@@ -26,6 +26,7 @@ export {
   METEORA_DLMM_PUBKEY,
   RAYDIUM_CPMM_PUBKEY,
   RAYDIUM_CLMM_PUBKEY,
+  WHIRLPOOL_PUBKEY,
 } from "./constants";
 export {
   createRaydiumClmmForward,
@@ -34,3 +35,10 @@ export {
   type RaydiumClmmForwardOptions,
   type RaydiumClmmForwardConfigOptions,
 } from "./raydium-clmm";
+export {
+  createWhirlpoolForward,
+  whirlpoolForwardConfig,
+  WHIRLPOOL_SWAP_V2_DISCRIMINATOR,
+  type WhirlpoolForwardOptions,
+  type WhirlpoolForwardConfigOptions,
+} from "./whirlpool";
