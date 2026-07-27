@@ -89,9 +89,9 @@ export async function sendV0WithAlt(
 
   // ── 3. Wait for slot to advance past ALT creation slot ──────────
   // An ALT is only usable in a bank whose slot > recentSlot.
-  for (;;) {
+  for (; ;) {
     const s = await connection.getSlot("confirmed");
-    if (s > recentSlot) break;
+    if (s > recentSlot + 1) break;
     await new Promise((r) => setTimeout(r, 50));
   }
 
@@ -109,6 +109,15 @@ export async function sendV0WithAlt(
     const vtx = new VersionedTransaction(msg);
     vtx.sign(signers);
 
+    // Simulate first to get program logs (skipPreflight=true hides them on send).
+    const sim = await connection.simulateTransaction(vtx);
+    if (sim.value.err) {
+      throw new Error(
+        `Sim failed: ${JSON.stringify(sim.value.err)}\nLogs:\n${(
+          sim.value.logs ?? []
+        ).join("\n")}`
+      );
+    }
     try {
       const sig = await connection.sendTransaction(vtx, {
         skipPreflight: true,

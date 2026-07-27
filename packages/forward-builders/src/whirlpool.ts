@@ -6,7 +6,6 @@ import {
   address,
   createNoopSigner,
   createSolanaRpc,
-  getBase64Decoder,
   isWritableRole,
 } from "@solana/kit";
 import { type Connection, PublicKey } from "@solana/web3.js";
@@ -100,9 +99,8 @@ export function createWhirlpoolForward(
       }
 
       // ── convert kit metas → ForwardAccountMeta ────────────────────
-      const decoder = getBase64Decoder();
       return {
-        instructionData: Buffer.from(decoder.decode(swapIx.data)),
+        instructionData: Buffer.from(swapIx.data),
         forwardAccounts: swapIx.accounts.map((meta) => ({
           pubkey: new PublicKey(meta.address),
           isWritable: isWritableRole(meta.role),
@@ -209,8 +207,8 @@ export async function whirlpoolForwardConfig(
   if (!opts.outputMint.equals(expectedOutput)) {
     throw new Error(
       `Output mint ${opts.outputMint.toBase58()} does not match pool's ` +
-        `complementary mint ${expectedOutput.toBase58()} ` +
-        `(pool ${opts.pool.toBase58()})`
+      `complementary mint ${expectedOutput.toBase58()} ` +
+      `(pool ${opts.pool.toBase58()})`
     );
   }
 

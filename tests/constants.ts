@@ -84,7 +84,7 @@ export const WHIRLPOOL_PUBKEY = new PublicKey(
  * Canonical mint ordering: tokenMintA=USDC (EPjF…), tokenMintB=WSOL (So111…).
  */
 export const WHIRLPOOL_USDC_WSOL_POOL = new PublicKey(
-  "HJPjoWUrhoZzkNfRpHuieeFk9WcZWjwy6PBjZ81ngnd"
+  "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE"
 );
 
 /**

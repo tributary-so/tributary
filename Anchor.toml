@@ -39,7 +39,7 @@ test = "printf '%s\\n' '⨯ anchor test no longer runs the test suite.' '' '  In
 #  export ANCHOR_PROVIDER_URL=http://localhost:8899 ANCHOR_WALLET=/home/xeroc/.config/solana/id.json
 surfpool = "anchor run test-cargo && anchor run test-integration"
 test-cargo = "cargo test"
-test-integration = "npx jest ./tests/*.ts"
+test-integration = "npx jest -i ./tests/*.ts"
 
 [test]
 startup_wait = 20000

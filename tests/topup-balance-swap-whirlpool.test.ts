@@ -133,7 +133,7 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
       threshold: 1_000_000_000,
       op: "<",
     });
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => { });
     const recipe = composablePolicyRecipe({ forwardConfig, pre });
     warnSpy.mockRestore();
 
