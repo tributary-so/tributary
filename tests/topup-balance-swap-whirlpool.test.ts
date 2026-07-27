@@ -14,22 +14,18 @@ import {
   getPostValidationPda,
 } from "../packages/sdk/src/pda";
 import {
-  lighthouse,
-  resolveValidationTargets,
-  assembleComposableRemainingAccounts,
+  buildComposableExecutionPayload,
+  composablePolicyRecipe,
+  encodeMemo,
+  recipientOutputBalanceCheck,
   type ComposablePolicy,
+  type ForwardBuilder,
 } from "../packages/sdk/src";
 import {
   createWhirlpoolForward,
   whirlpoolForwardConfig,
 } from "../packages/forward-builders/src";
 import { USDC_MINT } from "./surfpool-helpers";
-import {
-  DISABLED_SPEC,
-  DISABLED_INIT,
-  programCallSpec,
-  validationInit,
-} from "./helpers/composable";
 import { setupTopupSwapEnv, type TopupSwapEnv } from "./helpers/topup-swap-env";
 import { sendV0WithAlt } from "./helpers/v0-alt";
 import {
@@ -61,6 +57,7 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
   let composablePolicyId: number;
 
   let whirlpool: PublicKey;
+  let forwardBuilder: ForwardBuilder;
 
   beforeAll(async () => {
     env = await setupTopupSwapEnv();
@@ -114,35 +111,46 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
       },
     };
 
-    const memo = new Array(32).fill(0);
-    Buffer.from("Topup WSOL whirlpool").copy(Buffer.from(memo));
+    const memo = encodeMemo("Topup WSOL whirlpool", 32);
 
-    // whirlpoolForwardConfig is async — fetches pool to derive aToB and
-    // validate mints against the pool's tokenMintA/tokenMintB.
+    // tier-1 forward config (async: fetches pool to derive aToB + validate
+    // mints against the pool's tokenMintA/tokenMintB).
     const forwardConfig = await whirlpoolForwardConfig(env.connection, {
       inputMint: USDC_MINT,
       outputMint: NATIVE_MINT,
       pool: whirlpool,
     });
 
-    // Lighthouse: assert hotWallet WSOL balance < 1 WSOL before topping up.
-    const guard = lighthouse
-      .tokenAccount(env.atas.hotWalletWsol)
-      .amount(1_000_000_000, "<")
-      .build();
+    // tier-2 pre-swap trigger: recipient WSOL balance < 1 WSOL.
+    // tier-3 composablePolicyRecipe composes the bundle + applies the
+    // enforcement posture (warn on deliver-transform-no-post, ADR-0033).
+    // Whirlpool has no createSwapWhenBalanceLow named recipe (out of
+    // ADR-0033 day-one scope), so compose tiers 1+2+3 directly — the
+    // documented escape hatch for the long tail.
+    const pre = recipientOutputBalanceCheck({
+      recipient: env.wallets.hotWallet.publicKey,
+      outputMint: NATIVE_MINT,
+      threshold: 1_000_000_000,
+      op: "<",
+    });
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const recipe = composablePolicyRecipe({ forwardConfig, pre });
+    warnSpy.mockRestore();
+
+    forwardBuilder = createWhirlpoolForward({
+      pool: whirlpool,
+      slippageBps: FORWARD_SLIPPAGE_BPS,
+    });
 
     const ix = await program.methods
       .createComposablePolicy(
         policyType,
         memo,
-        forwardConfig,
-        programCallSpec(LIGHTHOUSE_PUBKEY),
-        validationInit(
-          [guard.accounts[0]?.pubkey ?? PublicKey.default],
-          guard.data
-        ),
-        DISABLED_SPEC,
-        DISABLED_INIT
+        recipe.forwardConfig,
+        recipe.preValidation,
+        recipe.preValidationInit,
+        recipe.postValidation,
+        recipe.postValidationInit
       )
       .accountsStrict({
         feePayer: env.wallets.hotWallet.publicKey,
@@ -223,41 +231,18 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
       composablePolicyPDA
     )) as unknown as ComposablePolicy;
 
-    const forwardPayload = await createWhirlpoolForward({
-      pool: whirlpool,
-      slippageBps: FORWARD_SLIPPAGE_BPS,
-    }).build({
-      connection: env.connection,
-      policy,
-      composablePolicyPda: composablePolicyPDA,
-      face,
-    });
-
-    const [preTargets, postTargets] = await Promise.all([
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.preValidation,
-        program.programId,
-        "pre"
-      ),
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.postValidation,
-        program.programId,
-        "post"
-      ),
-    ]);
-
-    const remainingAccounts = assembleComposableRemainingAccounts({
-      preTargets,
-      forwardAccounts: forwardPayload.forwardAccounts,
-      postTargets,
-    });
+    const { instructionData, remainingAccounts } =
+      await buildComposableExecutionPayload({
+        connection: env.connection,
+        policy,
+        composablePolicyPda: composablePolicyPDA,
+        programId: program.programId,
+        forwardBuilder,
+        face,
+      });
 
     const ix = await program.methods
-      .executeComposable(forwardPayload.instructionData, face)
+      .executeComposable(instructionData, face)
       .accountsStrict({
         feePayer: env.wallets.coldWallet.publicKey,
         paymentsDelegate: env.pdas.paymentsDelegate,
@@ -349,49 +334,29 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
       composablePolicyPDA
     )) as unknown as ComposablePolicy;
 
-    const forwardPayload = await createWhirlpoolForward({
-      pool: whirlpool,
-      slippageBps: FORWARD_SLIPPAGE_BPS,
-    }).build({
-      connection: env.connection,
-      policy,
-      composablePolicyPda: composablePolicyPDA,
-      face,
-    });
+    const { instructionData, remainingAccounts } =
+      await buildComposableExecutionPayload({
+        connection: env.connection,
+        policy,
+        composablePolicyPda: composablePolicyPDA,
+        programId: program.programId,
+        forwardBuilder,
+        face,
+      });
 
     // Corrupt: replace the pool account at forward-account slot 4
     // (the whirlpool account in swap_v2) with a different pubkey.
+    // remainingAccounts layout is [...preTargets(1), ...forwardAccounts(17),
+    // ...postTargets(0)] — pre has exactly 1 target from the
+    // recipientOutputBalanceCheck recipe, so forward-slot 4 → index 5.
     const fakePool = PublicKey.unique();
-    const corruptedAccounts = forwardPayload.forwardAccounts.map((acc, i) =>
-      i === 4 ? { ...acc, pubkey: fakePool } : acc
+    const corruptedAccounts = remainingAccounts.map((acc, i) =>
+      i === 5 ? { ...acc, pubkey: fakePool } : acc
     );
-
-    const [preTargets, postTargets] = await Promise.all([
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.preValidation,
-        program.programId,
-        "pre"
-      ),
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.postValidation,
-        program.programId,
-        "post"
-      ),
-    ]);
-
-    const remainingAccounts = assembleComposableRemainingAccounts({
-      preTargets,
-      forwardAccounts: corruptedAccounts,
-      postTargets,
-    });
 
     try {
       const ix = await program.methods
-        .executeComposable(forwardPayload.instructionData, face)
+        .executeComposable(instructionData, face)
         .accountsStrict({
           feePayer: env.wallets.coldWallet.publicKey,
           paymentsDelegate: env.pdas.paymentsDelegate,
@@ -416,7 +381,7 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
-        .remainingAccounts(remainingAccounts)
+        .remainingAccounts(corruptedAccounts)
         .instruction();
 
       await sendV0WithAlt(env.connection, [ix], [env.wallets.coldWallet]);
@@ -447,44 +412,21 @@ describe("Composable Topup-Swap Flow — Orca Whirlpool (USDC → WSOL)", () => 
       composablePolicyPDA
     )) as unknown as ComposablePolicy;
 
-    const forwardPayload = await createWhirlpoolForward({
-      pool: whirlpool,
-      slippageBps: FORWARD_SLIPPAGE_BPS,
-    }).build({
-      connection: env.connection,
-      policy,
-      composablePolicyPda: composablePolicyPDA,
-      face,
-    });
+    const { instructionData, remainingAccounts } =
+      await buildComposableExecutionPayload({
+        connection: env.connection,
+        policy,
+        composablePolicyPda: composablePolicyPDA,
+        programId: program.programId,
+        forwardBuilder,
+        face,
+      });
 
     // Corrupt: flip the aToB byte at offset 41.
     // swap_v2 data: disc[0..8] | amount[8..16] | otherThreshold[16..24]
     // | sqrtPriceLimit[24..40] | amountSpecifiedIsInput[40] | aToB[41]
-    const corruptedData = Buffer.from(forwardPayload.instructionData);
+    const corruptedData = Buffer.from(instructionData);
     corruptedData[41] = corruptedData[41] === 0 ? 1 : 0;
-
-    const [preTargets, postTargets] = await Promise.all([
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.preValidation,
-        program.programId,
-        "pre"
-      ),
-      resolveValidationTargets(
-        env.connection,
-        composablePolicyPDA,
-        policy.postValidation,
-        program.programId,
-        "post"
-      ),
-    ]);
-
-    const remainingAccounts = assembleComposableRemainingAccounts({
-      preTargets,
-      forwardAccounts: forwardPayload.forwardAccounts,
-      postTargets,
-    });
 
     try {
       const ix = await program.methods
