@@ -8,7 +8,7 @@ import {
   observeTick,
   observeTxConfirm,
   wrapConnectionWithMetrics,
-} from "../apps/scheduler/src/metrics";
+} from "./metrics";
 
 // ponytail: single self-check file for the metrics module. Covers
 // registration, recording helpers, Connection Proxy, and that the
