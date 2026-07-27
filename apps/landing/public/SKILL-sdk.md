@@ -1,1 +1,0 @@
-../../../skills/tributary/SKILL-sdk.md
