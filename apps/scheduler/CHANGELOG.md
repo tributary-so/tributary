@@ -1,3 +1,10 @@
+# [@tributary-so/scheduler-v2.5.0](https://github.com/tributary-so/tributary/compare/@tributary-so/scheduler-v2.4.0...@tributary-so/scheduler-v2.5.0) (2026-07-28)
+
+
+### Features
+
+* **composable:** add forward_program named account + CLMM swap via v0 ALT ([25a165b](https://github.com/tributary-so/tributary/commit/25a165bb78d7f5bf961b020024963409c6084ea6))
+
 # [@tributary-so/scheduler-v2.4.0](https://github.com/tributary-so/tributary/compare/@tributary-so/scheduler-v2.3.1...@tributary-so/scheduler-v2.4.0) (2026-07-22)
 
 # [@tributary-so/scheduler-v2.3.1](https://github.com/tributary-so/tributary/compare/@tributary-so/scheduler-v2.3.0...@tributary-so/scheduler-v2.3.1) (2026-07-22)
