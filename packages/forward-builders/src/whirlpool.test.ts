@@ -41,20 +41,15 @@ jest.mock("@orca-so/whirlpools", () => ({
 
 // ── Mock @solana/kit minimally ────────────────────────────────────
 // The builder uses createSolanaRpc, createNoopSigner, address,
-// getBase64Decoder, isWritableRole — all from @solana/kit.
-// We mock only what the builder calls.
+// isWritableRole — all from @solana/kit. Instruction.data in kit 2.x is
+// a ReadonlyUint8Array (already-decoded bytes), not a base64 string.
 
 const FAKE_RPC = {};
-let mockBase64Decode: ((data: string) => Uint8Array) | null = null;
 
 jest.mock("@solana/kit", () => ({
   createSolanaRpc: () => FAKE_RPC,
   createNoopSigner: (addr: string) => ({ address: addr }),
   address: (s: string) => s,
-  getBase64Decoder: () => ({
-    decode: (data: string) =>
-      mockBase64Decode ? mockBase64Decode(data) : Buffer.from(data, "base64"),
-  }),
   isWritableRole: (role: number) => role === 1 || role === 3, // WRITABLE or WRITABLE_SIGNER
   AccountRole: {
     READONLY: 0,
@@ -93,7 +88,7 @@ function setSwapInstructions(
       {
         programAddress: "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
         accounts: accounts.map((a) => ({ address: a.address, role: a.role })),
-        data: data.toString("base64"),
+        data: new Uint8Array(data),
       },
     ],
   };
@@ -107,7 +102,6 @@ const PDA = new PublicKey("4tNUhEg9oxfAuFDo7N8fto5229D8soQGE1RGyYfvfSwU");
 describe("createWhirlpoolForward", () => {
   beforeEach(() => {
     mockSwapInstructions = null;
-    mockBase64Decode = null;
   });
 
   test("returns a ForwardBuilder (implements the interface)", () => {
