@@ -9,7 +9,7 @@ use anchor_lang::prelude::Pubkey;
 use proptest::prelude::*;
 use tributary::shared::fees::calculate_fees;
 use tributary::shared::schedule::{advance_policy, validate_policy_execution, MilestoneSigners};
-use tributary::state::PolicyType;
+use tributary::state::{PaymentFrequency, PolicyType};
 
 // ============================================================================
 // calculate_fees — unified fee model (ADR-0018)
@@ -189,12 +189,12 @@ proptest! {
     #[test]
     fn prop_payg_accepts_valid_chunk(
         max_chunk in 1u64..1_000_000_000,
-        max_per_period in 1u64..1_000_000_000,
+        max_extra in 0u64..1_000_000_000,
         period_secs in 1u64..1_000_000_000,
         period_start in 0i64..2_000_000_000i64,
         chunk_factor in 1u64..1000,
     ) {
-        prop_assume!(max_chunk <= max_per_period);
+        let max_per_period = max_chunk + max_extra;
         let chunk = chunk_factor.min(max_chunk);
         let pt = PolicyType::PayAsYouGo {
             max_amount_per_period: max_per_period,
@@ -219,14 +219,14 @@ proptest! {
 proptest! {
     #[test]
     fn prop_payg_never_completes(
-        max_per_period in 1u64..1_000_000_000,
         max_chunk in 1u64..1_000_000_000,
+        max_extra in 0u64..1_000_000_000,
         period_secs in 1u64..1_000_000_000,
         period_start in 0i64..2_000_000_000i64,
         now in 0i64..2_000_000_000i64,
         amount in 0u64..1_000_000_000,
     ) {
-        prop_assume!(max_chunk <= max_per_period);
+        let max_per_period = max_chunk + max_extra;
         let mut pt = PolicyType::PayAsYouGo {
             max_amount_per_period: max_per_period,
             max_chunk_amount: max_chunk,
@@ -261,12 +261,12 @@ proptest! {
     #[test]
     fn prop_upto_always_completes(
         max_amount in 0u64..u64::MAX,
-        valid_after in 0i64..i64::MAX,
-        deadline in 1i64..i64::MAX,
+        valid_after in 0i64..1_000_000_000,
+        deadline_extra in 1i64..1_000_000_000,
         settle in 0u64..u64::MAX,
         now in 0i64..i64::MAX,
     ) {
-        prop_assume!(deadline > valid_after);
+        let deadline = valid_after + deadline_extra;
         let mut pt = PolicyType::UpTo {
             max_amount,
             valid_after,
@@ -431,9 +431,10 @@ proptest! {
         tier0 in 0u16..=10_000,
         tier1 in 0u16..=10_000,
     ) {
-        // tier_bps must sum to 10000 (validated at gateway creation)
+        // Construct tier_bps summing to exactly 10000 (validated at gateway
+        // creation) instead of rejecting when tier0+tier1 > 10000.
+        let tier1 = tier1.min(10_000u16.saturating_sub(tier0));
         let tier2 = 10000u16.saturating_sub(tier0).saturating_sub(tier1);
-        prop_assume!(tier0 + tier1 + tier2 == 10000);
 
         // Replicate the referral math (checked arithmetic like the real code):
         // pool = gateway_fee * allocation_bps / 10000
@@ -570,5 +571,145 @@ proptest! {
         keys[corrupt_at] = Pubkey::new_unique(); // different from pk0
         prop_assert!(!ic.pins_match(&keys, forward_start),
             "pins_match must be false when a pubkey is at the wrong position");
+    }
+}
+
+// ============================================================================
+// validate_policy_execution — remaining variants (Subscription / OneTime /
+// UpTo / Milestone). Closes bean tributary-ya7m Layer-1 todo "all 4
+// PolicyType variants". The PAYG variant is covered above.
+// ============================================================================
+
+proptest! {
+    /// Subscription: Ok(amount) iff current_time >= next_payment_due, else
+    /// PaymentNotDue. provided_amount is ignored.
+    #[test]
+    fn prop_subscription_due_gate(
+        amount in 1u64..1_000_000_000,
+        next_due in 0i64..2_000_000_000i64,
+        delta in 0i64..1_000_000,
+    ) {
+        let pt = PolicyType::Subscription {
+            amount,
+            auto_renew: true,
+            max_renewals: None,
+            payment_frequency: PaymentFrequency::Monthly,
+            next_payment_due: next_due,
+            padding: [0u8; 97],
+        };
+        // Before due → Err
+        let before = next_due.saturating_sub(delta);
+        let r = validate_policy_execution(&pt, before, None, &MilestoneSigners::none());
+        prop_assert!(r.is_err(), "before due must reject");
+        // At/after due → Ok(amount)
+        let at = next_due;
+        let r = validate_policy_execution(&pt, at, None, &MilestoneSigners::none());
+        prop_assert!(r.is_ok_and(|v| v == amount), "at due must return amount");
+    }
+
+    /// OneTime: due_date <= 0 means immediate; expiry_date Some(>0) gates
+    /// current_time <= expiry (boundary permitted).
+    #[test]
+    fn prop_onetime_due_and_expiry(
+        amount in 1u64..1_000_000_000,
+        due in 0i64..1_000_000_000i64,
+        expiry_offset in 1i64..1_000_000_000i64,
+    ) {
+        let expiry = due + expiry_offset;
+        let pt = PolicyType::OneTime {
+            amount,
+            due_date: due,
+            expiry_date: Some(expiry),
+            padding: [0u8; 103],
+        };
+        // before due → Err
+        prop_assert!(validate_policy_execution(&pt, due - 1, None, &MilestoneSigners::none()).is_err());
+        // at due, before expiry → Ok
+        prop_assert!(validate_policy_execution(&pt, due, None, &MilestoneSigners::none()).is_ok());
+        // exactly expiry boundary → Ok (<= permitted)
+        prop_assert!(validate_policy_execution(&pt, expiry, None, &MilestoneSigners::none()).is_ok());
+        // past expiry → Err
+        prop_assert!(validate_policy_execution(&pt, expiry + 1, None, &MilestoneSigners::none()).is_err());
+    }
+
+    /// UpTo: actual bounded by max; valid_after gate; strict deadline (<).
+    #[test]
+    fn prop_upto_bounds(
+        max_amount in 1u64..1_000_000_000,
+        valid_after in 1i64..1_000_000_000i64,
+        deadline_extra in 1i64..1_000_000,
+        actual in 0u64..1_000_000_000,
+    ) {
+        let deadline = valid_after + deadline_extra;
+        let pt = PolicyType::UpTo {
+            max_amount,
+            valid_after,
+            deadline,
+            padding: [0u8; 104],
+        };
+        // oversize actual → Err
+        if actual > max_amount {
+            prop_assert!(validate_policy_execution(&pt, valid_after, Some(actual), &MilestoneSigners::none()).is_err());
+        }
+        // before valid_after → Err
+        prop_assert!(validate_policy_execution(&pt, valid_after - 1, Some(actual.min(max_amount)), &MilestoneSigners::none()).is_err());
+        // at deadline (==) → Err (strict <)
+        prop_assert!(validate_policy_execution(&pt, deadline, Some(actual.min(max_amount)), &MilestoneSigners::none()).is_err());
+        // valid window, in-bounds actual → Ok(actual)
+        let ok_actual = actual.min(max_amount);
+        let r = validate_policy_execution(&pt, valid_after, Some(ok_actual), &MilestoneSigners::none());
+        prop_assert!(r.is_ok_and(|v| v == ok_actual), "valid window + bounded actual must return actual");
+    }
+}
+
+// ============================================================================
+// advance_policy — PAYG period reset (bean tributary-ya7m Layer-1 todo).
+// Crossing period_length_seconds resets current_period_total to `amount`;
+// within-period accumulates. The empirical twin of A2 (qedspec period_bounded).
+// ============================================================================
+
+proptest! {
+    /// Crossing the period boundary resets current_period_start and
+    /// current_period_total. Within-period accumulates (checked_add).
+    #[test]
+    fn prop_payg_period_reset(
+        max_per_period in 1u64..1_000_000_000,
+        period_secs in 1u64..10_000_000,
+        period_start in 0i64..2_000_000_000i64,
+        elapsed in 1i64..1_000_000_000i64,
+        first in 1u64..1_000,
+        second in 1u64..1_000,
+    ) {
+        prop_assume!(first <= max_per_period && second <= max_per_period);
+        let mut pt = PolicyType::PayAsYouGo {
+            max_amount_per_period: max_per_period,
+            max_chunk_amount: max_per_period,
+            period_length_seconds: period_secs,
+            current_period_start: period_start,
+            current_period_total: first,
+            expiry_date: None,
+            padding: [0u8; 79],
+        };
+        // After boundary: reset. current_period_total becomes `second`.
+        let now = period_start + period_secs as i64 + elapsed;
+        advance_policy(&mut pt, now, second).unwrap();
+        match &pt {
+            PolicyType::PayAsYouGo { current_period_start, current_period_total, .. } => {
+                prop_assert_eq!(*current_period_start, now, "period start resets to now");
+                prop_assert_eq!(*current_period_total, second, "period total resets to amount");
+            }
+            _ => panic!("variant unchanged"),
+        }
+
+        // Within the new period: accumulate.
+        let now2 = now + 1;
+        let prev_total = second;
+        advance_policy(&mut pt, now2, first).unwrap();
+        match &pt {
+            PolicyType::PayAsYouGo { current_period_total, .. } => {
+                prop_assert_eq!(*current_period_total, prev_total + first, "within-period accumulates");
+            }
+            _ => panic!("variant unchanged"),
+        }
     }
 }

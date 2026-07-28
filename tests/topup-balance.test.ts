@@ -499,11 +499,21 @@ describe("Composable Topup Balance Flow", () => {
   test("Execute topup — succeeds (hotWallet below threshold)", async () => {
     await sdk.updateWallet(coldWallet);
 
-    // Pre-execution balance check
+    // Pre-execution balance check. admin/feeRecipient ATAs are shared across
+    // tests in this file (and potentially across parallel suites), so we
+    // snapshot before the tx and assert the delta, not the absolute balance.
     const hotBalanceBefore = await connection.getTokenAccountBalance(
       hotWalletUsdcAta
     );
     expect(hotBalanceBefore.value.uiAmount).toBe(40);
+
+    const adminBalanceBefore = Number(
+      (await connection.getTokenAccountBalance(adminUsdcAta)).value.amount
+    );
+    const feeRecipientBalanceBefore = Number(
+      (await connection.getTokenAccountBalance(feeRecipientUsdcAta)).value
+        .amount
+    );
 
     // Forward is disabled (target_program = default), so instruction_data
     // is unused — the program skips both byte-range validation and the
@@ -539,6 +549,7 @@ describe("Composable Topup Balance Flow", () => {
       config: configPDA,
       preValidationProgram: LIGHTHOUSE_PUBKEY,
       postValidationProgram: SystemProgram.programId,
+      forwardProgram: SystemProgram.programId,
       preValidationPda: preValidationPDA,
       postValidationPda: postValidationPDA,
       userTokenAccount: coldWalletUsdcAta,
@@ -593,17 +604,22 @@ describe("Composable Topup Balance Flow", () => {
       1_000_000_000 - inputAmount
     );
 
-    // Protocol fee account should have received the fee
+    // Protocol fee account should have received the fee (delta, not absolute —
+    // other tests in the suite may also route protocol fees here).
     const adminBalanceAfter = await connection.getTokenAccountBalance(
       adminUsdcAta
     );
-    expect(Number(adminBalanceAfter.value.amount)).toBe(protocolFee);
+    expect(Number(adminBalanceAfter.value.amount)).toBe(
+      adminBalanceBefore + protocolFee
+    );
 
-    // Gateway fee = 0, so feeRecipient gets nothing
+    // Gateway fee = 0, so feeRecipient gets nothing (delta = 0).
     const feeRecipientBalance = await connection.getTokenAccountBalance(
       feeRecipientUsdcAta
     );
-    expect(Number(feeRecipientBalance.value.amount)).toBe(0);
+    expect(Number(feeRecipientBalance.value.amount)).toBe(
+      feeRecipientBalanceBefore
+    );
 
     // ── Verify policy state ─────────────────────────────────────────────
     const policy = await program.account.composablePolicy.fetch(
@@ -661,6 +677,7 @@ describe("Composable Topup Balance Flow", () => {
           config: configPDA,
           preValidationProgram: LIGHTHOUSE_PUBKEY,
           postValidationProgram: SystemProgram.programId,
+          forwardProgram: SystemProgram.programId,
           preValidationPda: preValidationPDA,
           postValidationPda: postValidationPDA,
           userTokenAccount: coldWalletUsdcAta,

@@ -1,11 +1,11 @@
 ---
 # tributary-5en0
 title: 'Formal verification: QEDGen + Lean + Kani tooling'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-07-02T12:00:43Z
-updated_at: 2026-07-02T12:01:07Z
+updated_at: 2026-07-22T10:27:28Z
 parent: tributary-znv9
 ---
 

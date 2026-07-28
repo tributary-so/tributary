@@ -12,7 +12,6 @@
  * so `.instruction()` encodes locally (Anchor's instruction coder needs no
  * connection). Pattern mirrors tests/scheduler-evaluator.test.ts.
  */
-import * as anchor from "@coral-xyz/anchor";
 import {
   Keypair,
   PublicKey,
@@ -557,6 +556,8 @@ describe("executeComposable ATA ensures", () => {
     const protocolFeeRecipient = Keypair.generate().publicKey;
     (sdk as any).program.account.paymentGateway.fetch = async () => ({
       feeRecipient,
+      signer: sdk.provider.publicKey,
+      schedulerShareBps: 0,
     });
     (sdk as any).program.account.programConfig.fetch = async () => ({
       feeRecipient: protocolFeeRecipient,
@@ -588,6 +589,8 @@ describe("executeComposable ATA ensures", () => {
     });
     (sdk as any).program.account.paymentGateway.fetch = async () => ({
       feeRecipient: Keypair.generate().publicKey,
+      signer: sdk.provider.publicKey,
+      schedulerShareBps: 0,
     });
     (sdk as any).program.account.programConfig.fetch = async () => ({
       feeRecipient: Keypair.generate().publicKey,
@@ -622,6 +625,8 @@ describe("executeComposable ATA ensures", () => {
     });
     (sdk as any).program.account.paymentGateway.fetch = async () => ({
       feeRecipient: Keypair.generate().publicKey,
+      signer: sdk.provider.publicKey,
+      schedulerShareBps: 0,
     });
     (sdk as any).program.account.programConfig.fetch = async () => ({
       feeRecipient: Keypair.generate().publicKey,

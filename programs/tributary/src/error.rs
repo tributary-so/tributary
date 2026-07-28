@@ -108,6 +108,8 @@ pub enum TributaryError {
     IntermediateAccountAlreadyExists,
     #[msg("Forward CPI requires at least one remaining account")]
     MissingForwardAccounts,
+    #[msg("forward_program account does not match the policy's instruction_constraint.program_id")]
+    ForwardProgramMismatch,
     #[msg("Forward CPI produced no output (intermediate output balance is zero)")]
     ForwardProducedNoOutput,
     #[msg("Forward disabled (target_program = default) requires input_mint == output_mint")]

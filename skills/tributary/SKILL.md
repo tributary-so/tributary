@@ -1,3 +1,13 @@
+---
+name: tributary
+description: >-
+  Automated recurring payments on Solana using token delegation. Pull-based
+  PaymentPolicy (subscription, milestone, pay-as-you-go, one-time, up-to) and
+  ComposablePolicy (programmable pull + Lighthouse validation + swap
+  forwarding), plus the SDK, CLI, payments, and forward-builder integration
+  surface. Load the whole skill; open a reference only for the area in hand.
+---
+
 # Tributary
 
 Automated recurring payments on Solana using token delegation. Pull-based: gateways execute payments against pre-approved token delegations. No custodial vaults, no lockups.
@@ -5,7 +15,7 @@ Automated recurring payments on Solana using token delegation. Pull-based: gatew
 ## Core Concepts
 
 - **PaymentPolicy** — direct pull payments (subscription, milestone, pay-as-you-go, one-time, up-to)
-- **ComposablePolicy** — programmable pull payments with optional validation (Lighthouse) and token forwarding (Meteora DLMM)
+- **ComposablePolicy** — programmable pull payments with optional validation (Lighthouse) and token forwarding (Meteora DLMM / Raydium CPMM / Raydium CLMM / Orca Whirlpool)
 - **PaymentGateway** — routes payments, collects fees, signs execution transactions
 - **UserPayment** — per-user-per-mint account tracking policies and delegating token transfers
 
@@ -31,23 +41,28 @@ npx @tributary-so/cli@latest -k wallet.json subscription create \
   --memo "Pro plan"
 ```
 
-## Sub-Guides
+## References
 
-| Guide                                       | Scope                                                      | URL                               |
-| ------------------------------------------- | ---------------------------------------------------------- | --------------------------------- |
-| [CLI Reference](SKILL-cli.md)               | All CLI commands, workflows, PDA utilities                 | tributary.so/SKILL-cli.md         |
-| [SDK Integration](SKILL-sdk.md)             | Architecture, package relationships, integration recipes   | tributary.so/SKILL-sdk.md         |
-| [Composable Policies](SKILL-composables.md) | Composable anatomy, Lighthouse assertions, forward configs | tributary.so/SKILL-composables.md |
+This entry point covers the essentials. Open a reference for depth in one area
+(progressive disclosure — load only what the task needs):
+
+| Reference | When to load | Path |
+| --------- | ------------ | ---- |
+| CLI Reference | Authoring commands, PDA utilities, structured-JSON output | [references/cli.md](references/cli.md) |
+| SDK Integration | Architecture, package map, the `Tributary` class, integration recipes | [references/sdk.md](references/sdk.md) |
+| Composable Policies | Composable anatomy, Lighthouse assertions, `ForwardConfig`, settlement shapes | [references/composables.md](references/composables.md) |
+| Composable Recipes | `@tributary-so/forward-builders` recipe layer, `createSwapWhenBalanceLow`, auto-topup flows | [references/composable-recipes.md](references/composable-recipes.md) |
 
 ## Packages
 
-| Package                   | Purpose                                               |
-| ------------------------- | ----------------------------------------------------- |
-| `@tributary-so/cli`       | Command-line interface (oclif)                        |
-| `@tributary-so/sdk`       | TypeScript SDK — `Tributary` class                    |
-| `@tributary-so/sdk-react` | React hooks and UI components                         |
-| `@tributary-so/sdk-x402`  | x402 / HTTP-402 middleware for paywalled APIs         |
-| `@tributary-so/payments`  | Checkout sessions, payment tracking, JWT verification |
+| Package                            | Purpose                                               |
+| ---------------------------------- | ----------------------------------------------------- |
+| `@tributary-so/cli`                | Command-line interface (oclif)                        |
+| `@tributary-so/sdk`                | TypeScript SDK — `Tributary` class                    |
+| `@tributary-so/sdk-react`          | React hooks and UI components                         |
+| `@tributary-so/sdk-x402`           | x402 / HTTP-402 middleware for paywalled APIs         |
+| `@tributary-so/payments`           | Checkout sessions, payment tracking, JWT verification |
+| `@tributary-so/forward-builders`   | Concrete `ForwardBuilder` impls (opt-in per swap DEX) |
 
 ## Program ID
 

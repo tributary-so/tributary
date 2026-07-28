@@ -10,6 +10,7 @@
  *  - `instructionData` is the raw swap instruction data
  */
 import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
 import type { ComposablePolicy, ForwardBuilder } from "@tributary-so/sdk";
 
@@ -27,6 +28,7 @@ jest.mock("@meteora-ag/dlmm", () => ({
 import {
   createMeteoraDlmmForward,
   meteoraDlmmForwardConfig,
+  createSwapWhenBalanceLow,
   METEORA_DLMM_SWAP_DISCRIMINATOR,
 } from "./meteora-dlmm";
 import { METEORA_DLMM_PUBKEY } from "./constants";
@@ -247,5 +249,165 @@ describe("meteoraDlmmForwardConfig", () => {
     });
     expect(cfg.forwardFlags).toBe(1);
     expect(cfg.outputMint.equals(OUTPUT_MINT)).toBe(true);
+  });
+});
+
+describe("createSwapWhenBalanceLow", () => {
+  const RECIPIENT = new PublicKey(
+    "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+  );
+  const POLICY_TYPE = {
+    subscription: {
+      amount: new BN(1_000_000),
+      paymentFrequency: new BN(86400),
+      maxRenewals: 12,
+      autoRenew: true,
+      nextPaymentDue: new BN(0),
+    },
+  } as any;
+
+  let warnSpy: jest.SpyInstance;
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  test("returns { create, forwardBuilder } with the full bundle shape", () => {
+    const { create, forwardBuilder } = createSwapWhenBalanceLow({
+      policyType: POLICY_TYPE,
+      memo: "hot wallet topup",
+      recipient: RECIPIENT,
+      inputMint: INPUT_MINT,
+      outputMint: OUTPUT_MINT,
+      pool: POOL,
+      slippageBps: 100,
+      threshold: 50_000_000,
+      op: "<",
+    });
+    expect(create.policyType).toBe(POLICY_TYPE);
+    expect(create.memo).toBe("hot wallet topup");
+    expect(create.recipient.equals(RECIPIENT)).toBe(true);
+    // forwardConfig half
+    expect(
+      create.forwardConfig.instructionConstraint.programId.equals(
+        METEORA_DLMM_PUBKEY
+      )
+    ).toBe(true);
+    expect(create.forwardConfig.inputMint.equals(INPUT_MINT)).toBe(true);
+    expect(create.forwardConfig.outputMint.equals(OUTPUT_MINT)).toBe(true);
+    // pre/post spec+init present
+    expect("programCall" in create.preValidation).toBe(true);
+    expect("disabled" in create.postValidation).toBe(true);
+    expect(create.preValidationInit.pinnedAccounts.length).toBeGreaterThan(0);
+    // forwardBuilder implements the interface
+    expect(typeof forwardBuilder.build).toBe("function");
+  });
+
+  test("pre-validation targets the recipient's output ATA", () => {
+    const { create } = createSwapWhenBalanceLow({
+      policyType: POLICY_TYPE,
+      memo: "topup",
+      recipient: RECIPIENT,
+      inputMint: INPUT_MINT,
+      outputMint: OUTPUT_MINT,
+      pool: POOL,
+      slippageBps: 50,
+      threshold: 1,
+      op: "<",
+    });
+    const expectedAta = getAssociatedTokenAddressSync(OUTPUT_MINT, RECIPIENT);
+    expect(
+      create.preValidationInit.pinnedAccounts[0]!.pubkey.equals(expectedAta)
+    ).toBe(true);
+  });
+
+  test("deliver-transform swap without post emits the economic warning", () => {
+    createSwapWhenBalanceLow({
+      policyType: POLICY_TYPE,
+      memo: "topup",
+      recipient: RECIPIENT,
+      inputMint: INPUT_MINT,
+      outputMint: OUTPUT_MINT,
+      pool: POOL,
+      slippageBps: 100,
+      threshold: 50_000_000,
+      op: "<",
+    });
+    const warned = warnSpy.mock.calls
+      .map((c) => String(c[0]))
+      .some((m) => /deliver-transform/.test(m));
+    expect(warned).toBe(true);
+  });
+
+  test("pins the pool on-chain (constraint half of the pair)", () => {
+    const { create } = createSwapWhenBalanceLow({
+      policyType: POLICY_TYPE,
+      memo: "topup",
+      recipient: RECIPIENT,
+      inputMint: INPUT_MINT,
+      outputMint: OUTPUT_MINT,
+      pool: POOL,
+      slippageBps: 100,
+      threshold: 1,
+      op: "<",
+    });
+    expect(
+      create.forwardConfig.instructionConstraint.pinnedAccounts[0]!.pubkey.equals(
+        POOL
+      )
+    ).toBe(true);
+  });
+
+  test("threads unwrapNativeSol + applyHostFeeInFix through both halves", () => {
+    const { create, forwardBuilder } = createSwapWhenBalanceLow({
+      policyType: POLICY_TYPE,
+      memo: "topup",
+      recipient: RECIPIENT,
+      inputMint: INPUT_MINT,
+      outputMint: OUTPUT_MINT,
+      pool: POOL,
+      slippageBps: 100,
+      threshold: 1,
+      op: "<",
+      unwrapNativeSol: true,
+      applyHostFeeInFix: true,
+    });
+    expect(create.forwardConfig.forwardFlags).toBe(1);
+    // forwardBuilder carries the host-fee fix (verified by building with a
+    // SystemProgram key present — reuses the existing applyHostFeeInFix test
+    // path, so just assert the builder is the right shape).
+    expect(typeof forwardBuilder.build).toBe("function");
+  });
+
+  test("accepts a caller-supplied post-validation override", () => {
+    const post = {
+      spec: { programCall: { programId: PublicKey.unique() } } as any,
+      init: {
+        numPinnedAccounts: 0,
+        pinnedAccounts: [],
+        validationData: Buffer.alloc(0),
+      } as any,
+    };
+    const { create } = createSwapWhenBalanceLow({
+      policyType: POLICY_TYPE,
+      memo: "topup",
+      recipient: RECIPIENT,
+      inputMint: INPUT_MINT,
+      outputMint: OUTPUT_MINT,
+      pool: POOL,
+      slippageBps: 100,
+      threshold: 1,
+      op: "<",
+      post,
+    });
+    expect(create.postValidation).toBe(post.spec);
+    expect(create.postValidationInit).toBe(post.init);
+    // post supplied for deliver-transform → no deliver-transform warning
+    const warned = warnSpy.mock.calls
+      .map((c) => String(c[0]))
+      .some((m) => /deliver-transform/.test(m));
+    expect(warned).toBe(false);
   });
 });

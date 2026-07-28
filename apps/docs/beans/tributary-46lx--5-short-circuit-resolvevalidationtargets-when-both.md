@@ -1,7 +1,7 @@
 ---
 # tributary-46lx
-title: '#5 Short-circuit resolveValidationTargets when both ValidationSpecs Disabled'
-status: todo
+title: "#5 Short-circuit resolveValidationTargets when both ValidationSpecs Disabled"
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-21T09:24:26Z
@@ -21,14 +21,14 @@ Compounds with bug #1: 100 dups x 2 wasted calls = 200 wasted RPCs per tick on a
 
 Guard the calls:
 
-  const [preTargets, postTargets] = await Promise.all([
-    isValidationEnabled(policy.account.preValidation)
-      ? resolveValidationTargets(this.sdk.connection, policy.publicKey, policy.account.preValidation, this.sdk.programId, 'pre')
-      : [],
-    isValidationEnabled(policy.account.postValidation)
-      ? resolveValidationTargets(this.sdk.connection, policy.publicKey, policy.account.postValidation, this.sdk.programId, 'post')
-      : [],
-  ]);
+const [preTargets, postTargets] = await Promise.all([
+isValidationEnabled(policy.account.preValidation)
+? resolveValidationTargets(this.sdk.connection, policy.publicKey, policy.account.preValidation, this.sdk.programId, 'pre')
+: [],
+isValidationEnabled(policy.account.postValidation)
+? resolveValidationTargets(this.sdk.connection, policy.publicKey, policy.account.postValidation, this.sdk.programId, 'post')
+: [],
+]);
 
 Check if @tributary-so/sdk already exports an isValidationEnabled helper (it exports isForwardEnabled used at composable.ts:456 - mirror that). If not, add one: ValidationSpec::Disabled variant check. Don't compare against SystemProgram directly (sentinel semantics differ between ValidationSpec and ForwardConfig per ADR-0021).
 
@@ -38,10 +38,12 @@ assembleComposableRemainingAccounts already handles empty arrays correctly - no 
 
 - For a policy with both validations disabled: confirm via debug log that resolveValidationTargets is NOT called.
 - For a policy with preValidation enabled only: confirm only pre call happens.
-- Existing happy-path tests (tests/topup-balance*.test.ts) still pass.
-
-
+- Existing happy-path tests (tests/topup-balance\*.test.ts) still pass.
 
 ## Tags
 
 scheduler, ops
+
+## Summary of Changes
+
+- **`composable.ts`**: Added explicit `preEnabled`/`postEnabled` guards (same `programCall` check as `hasValidation`) before calling `resolveValidationTargets` in `fire()`. When a ValidationSpec is Disabled, the call is skipped entirely (returns `[]`) instead of entering the function. Note: `resolveValidationTargets` in the SDK already had an internal early-return guard (`if (!("programCall" in spec)) return []`), so this avoids the function call overhead but doesn't change behavior — the RPC was already not hit for disabled specs.

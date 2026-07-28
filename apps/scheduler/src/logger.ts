@@ -43,8 +43,6 @@ if (logFile) {
 const ANCHOR_ERROR_RE =
   /Program log: AnchorError (?:thrown in (.+):(\d+))?\. Error Code: (\w+)\. Error Number: (\d+)\. Error Message: (.+)\./;
 
-// Matches plain custom program errors: "custom program error: 0x1770"
-const CUSTOM_ERROR_RE = /custom program error: (0x[0-9a-fA-F]+)/;
 
 export interface ParsedProgramError {
   kind: "anchor" | "program" | "unknown";

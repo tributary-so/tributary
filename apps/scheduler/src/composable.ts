@@ -11,7 +11,7 @@ import {
   type AccountInfo,
 } from "@solana/web3.js";
 import BN from "bn.js";
-import { createMeteoraDlmmForward } from "@tributary-so/forward-builders";
+import { getForwardBuilderFor } from "@tributary-so/forward-builders";
 import {
   Tributary as TributarySDK,
   PaymentGateway,
@@ -19,8 +19,7 @@ import {
   getPreValidationPda,
   parseValidationPda,
   isForwardEnabled,
-  resolveValidationTargets,
-  assembleComposableRemainingAccounts,
+  buildComposableExecutionPayload,
   type ValidationPdaAccount,
 } from "@tributary-so/sdk";
 import { exit } from "process";
@@ -30,11 +29,21 @@ import {
   isScheduleReady,
 } from "./evaluator.js";
 import { logger, parseErrorFromLogs } from "./logger.js";
+import {
+  wrapConnectionWithMetrics,
+  recordTx,
+  recordTxFail,
+  setWatchedCount,
+  setCooldownCount,
+  observeTick,
+  observeTxConfirm,
+} from "./metrics.js";
 
 const POLL_INTERVAL_MS = 30_000;
 const RESCAN_INTERVAL_MS = 10 * 60_000;
 const MAX_FAILURES = 3;
 const COOLDOWN_MS = 5 * 60_000;
+const COOLDOWN_MAX_MS = 30 * 60_000;
 
 // ponytail: pool is pinned on the policy (pinnedAccounts[0], ADR-0030);
 // slippage + host-fee-fix are scheduler-side tuning knobs with no per-pair
@@ -51,6 +60,7 @@ interface WatchedPolicy {
   publicKey: PublicKey;
   account: ComposablePolicy;
   gateway: PaymentGateway;
+  signerKeypair: Keypair;
 }
 
 interface SchedulerConfig {
@@ -67,7 +77,7 @@ class ComposableScheduler {
   private gatewayKeypairs: Keypair[];
   private relayerKeypairs: Keypair[];
   private config: SchedulerConfig;
-  private watched: Map<string, WatchedPolicy[]> = new Map();
+  private watched: Map<string, WatchedPolicy> = new Map();
   private cooldowns: Map<string, CooldownEntry> = new Map();
   private pollTimer?: ReturnType<typeof setInterval>;
   private rescanTimer?: ReturnType<typeof setInterval>;
@@ -82,7 +92,10 @@ class ComposableScheduler {
     this.relayerKeypairs = [];
 
     const connection = new Connection(config.connectionUrl, "confirmed");
-    this.sdk = new TributarySDK(connection, this.gatewayKeypairs[0]);
+    // Wrap once: every RPC call (SDK-internal too) bumps rpc_calls_total.
+    // Would have surfaced the y0g1 runaway within one tick.
+    const instrumented = wrapConnectionWithMetrics(connection);
+    this.sdk = new TributarySDK(instrumented, this.gatewayKeypairs[0]);
 
     if (config.gatewayKeypairPath) {
       this.gatewayKeypairs.push(
@@ -198,7 +211,10 @@ class ComposableScheduler {
 
   private async rescanAll(): Promise<void> {
     logger.info("Rescanning composable policies...");
-    this.cooldowns.clear();
+
+    // Build fresh map keyed by policy pubkey — replaces previous entries,
+    // dedupes automatically. Policy pubkeys are globally unique.
+    const fresh = new Map<string, WatchedPolicy>();
 
     for (const keypair of this.gatewayKeypairs) {
       const gatewayPdas =
@@ -214,27 +230,21 @@ class ComposableScheduler {
             },
           ]);
 
-          const watched: WatchedPolicy[] = [];
           for (const { publicKey, account } of policies) {
             const gateway = this.paymentGateways.get(gatewayPda.toString());
             if (gateway) {
-              watched.push({
+              fresh.set(publicKey.toBase58(), {
                 publicKey,
                 account,
                 gateway,
+                signerKeypair: keypair,
               });
             }
           }
 
-          // Aggregate policies across all gateways this signer manages
-          const existing = this.watched.get(keypair.publicKey.toBase58()) ?? [];
-          this.watched.set(keypair.publicKey.toBase58(), [
-            ...existing,
-            ...watched,
-          ]);
           logger.info(
             `Gateway ${gatewayPda.toString()}: ${
-              watched.length
+              policies.length
             } composable policies (signer ${keypair.publicKey.toString()})`
           );
         } catch (error) {
@@ -245,6 +255,14 @@ class ComposableScheduler {
         }
       }
     }
+
+    this.watched = fresh;
+    setWatchedCount("composable", fresh.size);
+
+    // Prune orphaned cooldown entries (policies deleted/closed on-chain)
+    for (const key of [...this.cooldowns.keys()]) {
+      if (!this.watched.has(key)) this.cooldowns.delete(key);
+    }
   }
 
   private hasValidation(policy: ComposablePolicy): boolean {
@@ -252,14 +270,25 @@ class ComposableScheduler {
   }
 
   private async tick(): Promise<void> {
+    const tickStart = Date.now();
     const currentTime = Math.floor(Date.now() / 1000);
 
+    let totalWatched = 0;
+    let totalFireable = 0;
+    let totalFired = 0;
+    let totalErrors = 0;
+
     for (const keypair of this.gatewayKeypairs) {
-      const gatewayKey = keypair.publicKey.toBase58();
-      const policies = this.watched.get(gatewayKey) ?? [];
+      const signerKey = keypair.publicKey.toBase58();
+      const policies = [...this.watched.values()].filter(
+        (p) => p.signerKeypair.publicKey.toBase58() === signerKey
+      );
       if (policies.length === 0) continue;
 
+      totalWatched += policies.length;
+
       const fireable = await this.prefilter(policies, currentTime);
+      totalFireable += fireable.length;
       if (fireable.length === 0) continue;
 
       logger.info(
@@ -274,12 +303,23 @@ class ComposableScheduler {
 
       await Promise.all(
         fireable.map((p) =>
-          this.fire(p, signer).catch((e) =>
-            logger.error(`fire error for ${p.publicKey.toString()}:`, e)
-          )
+          this.fire(p, signer)
+            .then(() => totalFired++)
+            .catch((e) => {
+              totalErrors++;
+              logger.error(`fire error for ${p.publicKey.toString()}:`, e);
+            })
         )
       );
     }
+
+    logger.info(
+      `Composable tick: watched=${totalWatched} fireable=${totalFireable} fired=${totalFired} errors=${totalErrors} cooldowns=${
+        this.cooldowns.size
+      } duration=${Date.now() - tickStart}ms`
+    );
+    observeTick("composable", (Date.now() - tickStart) / 1000);
+    setCooldownCount("composable", this.cooldowns.size);
   }
 
   private async prefilter(
@@ -412,6 +452,7 @@ class ComposableScheduler {
       logger.debug(
         `[DRY-RUN] Would fire composable ${policy.publicKey.toString()} (face: ${face.toString()}, signer: ${signer.publicKey.toString()})`
       );
+      recordTx("composable", "dry_run");
       return;
     }
 
@@ -431,54 +472,32 @@ class ComposableScheduler {
       const isPayAsYouGo = !!(policy.account.policyType as any).payAsYouGo;
       const forwardAmount = isPayAsYouGo ? face : null;
 
-      const forwardPayload = isForwardEnabled(policy.account)
-        ? await createMeteoraDlmmForward({
-            // pool is pinned on-chain at InstructionConstraint.pinnedAccounts[0]
-            // (index=0 → forward-account slot 0 = lbPair for DLMM swap).
-            pool: policy.account.forwardConfig.instructionConstraint
-              .pinnedAccounts[0].pubkey,
+      const forwardBuilder = isForwardEnabled(policy.account)
+        ? getForwardBuilderFor(policy.account, {
             slippageBps: FORWARD_SLIPPAGE_BPS,
             applyHostFeeInFix: FORWARD_APPLY_HOST_FEE_IN_FIX,
-          }).build({
-            connection: this.sdk.connection,
-            policy: policy.account,
-            composablePolicyPda: policy.publicKey,
-            face,
           })
-        : { instructionData: Buffer.alloc(0), forwardAccounts: [] };
+        : undefined;
 
-      // ── remaining_accounts (ADR-0016, no ValidationPda in slice) ────
-      // Program contract (execute_composable.rs run_validation_cpi):
-      //   [...preLighthouseTargets, ...forwardAccounts, ...postLighthouseTargets, (scheduler_ata?)]
-      // The scheduler_ata (permissionless path) is appended by the SDK
-      // facade (sdk.executeComposable) via deriveSchedulerAta — the
-      // scheduler does NOT include it here.
-      const [preTargets, postTargets] = await Promise.all([
-        resolveValidationTargets(
-          this.sdk.connection,
-          policy.publicKey,
-          policy.account.preValidation,
-          this.sdk.programId,
-          "pre"
-        ),
-        resolveValidationTargets(
-          this.sdk.connection,
-          policy.publicKey,
-          policy.account.postValidation,
-          this.sdk.programId,
-          "post"
-        ),
-      ]);
-
-      const remainingAccounts = assembleComposableRemainingAccounts({
-        preTargets,
-        forwardAccounts: forwardPayload.forwardAccounts,
-        postTargets,
-      });
+      // ── payload construction (ADR-0030 orchestrator) ───────────────
+      // buildComposableExecutionPayload owns forward-build + validation
+      // resolution + remaining_accounts assembly in ADR-0016 order
+      // ([...preTargets, ...forwardAccounts, ...postTargets]). The
+      // scheduler_ata (permissionless path) is appended by the SDK facade
+      // (sdk.executeComposable) via deriveSchedulerAta.
+      const { instructionData, remainingAccounts } =
+        await buildComposableExecutionPayload({
+          connection: this.sdk.connection,
+          policy: policy.account,
+          composablePolicyPda: policy.publicKey,
+          programId: this.sdk.programId,
+          forwardBuilder,
+          face,
+        });
 
       const ixs = await this.sdk.executeComposable(
         policy.publicKey,
-        forwardPayload.instructionData,
+        instructionData,
         forwardAmount,
         remainingAccounts
       );
@@ -502,6 +521,7 @@ class ComposableScheduler {
         );
       }
 
+      const confirmStart = Date.now();
       const signature = await this.sdk.provider.sendAndConfirm(
         transaction,
         [],
@@ -510,17 +530,50 @@ class ComposableScheduler {
           skipPreflight: false,
         }
       );
+      observeTxConfirm("composable", (Date.now() - confirmStart) / 1000);
 
       logger.debug(
         `✅ Composable executed: ${policy.publicKey.toString()} → ${signature}`
       );
       this.cooldowns.delete(policy.publicKey.toBase58());
+      recordTx("composable", "success");
+
+      // Refresh cached account so tick() sees post-execution state
+      // (advanced nextPaymentDue, incremented paymentCount, etc.)
+      // without waiting up to 10 min for the next rescan.
+      try {
+        const updated = await this.sdk.program.account.composablePolicy.fetch(
+          policy.publicKey
+        );
+        if (updated) {
+          this.watched.set(policy.publicKey.toBase58(), {
+            ...policy,
+            account: updated as ComposablePolicy,
+          });
+        } else {
+          // Account closed (completed/deleted) — stop watching
+          this.watched.delete(policy.publicKey.toBase58());
+        }
+      } catch {
+        // ponytail: best-effort — stale snapshot corrected on next rescan
+      }
     } catch (error) {
       logger.error(`🚩 Composable failed: ${policy.publicKey.toString()}`);
       logger.error((error as Error).message);
+      let errorCode = "unknown";
       if (error instanceof SendTransactionError) {
-        logger.error(parseErrorFromLogs(error?.logs ?? []).code);
+        errorCode = parseErrorFromLogs(error?.logs ?? []).code ?? "unknown";
+        logger.error(errorCode);
+      } else if (
+        error instanceof Error &&
+        error.message.startsWith("simulation failed:")
+      ) {
+        // pre-flight sim rejection — extract code already in the message
+        const m = error.message.match(/\((\w+)\)$/);
+        errorCode = m?.[1] ?? "SimulationFailed";
       }
+      recordTx("composable", "fail");
+      recordTxFail("composable", errorCode);
       this.recordFailure(policy.publicKey);
     }
   }
@@ -533,9 +586,17 @@ class ComposableScheduler {
     };
     entry.consecutiveFailures += 1;
     if (entry.consecutiveFailures >= MAX_FAILURES) {
-      entry.cooldownUntil = Date.now() + COOLDOWN_MS;
+      const backoffExp = Math.min(
+        Math.floor((entry.consecutiveFailures - MAX_FAILURES) / MAX_FAILURES),
+        6
+      );
+      const multiplier = Math.pow(2, backoffExp);
+      const cooldownMs = Math.min(COOLDOWN_MS * multiplier, COOLDOWN_MAX_MS);
+      entry.cooldownUntil = Date.now() + cooldownMs;
       logger.warn(
-        `${key} hit ${MAX_FAILURES} strikes — cooldown ${COOLDOWN_MS / 1000}s`
+        `${key} hit ${entry.consecutiveFailures} strikes — cooldown ${
+          cooldownMs / 1000
+        }s (backoff 2^${backoffExp})`
       );
     }
     this.cooldowns.set(key, entry);

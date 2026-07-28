@@ -21,11 +21,11 @@
 //   - Access control: milestone release_condition signer-bit authorization.
 //
 // OUT OF SCOPE (integration-tested only — see Honest Claim in README):
-//   account wiring / PDA derivation, forward-program allowlist (Meteora),
-//   signer sanitization (ADR-0008), emergency-pause wiring, admin/config
-//   handlers, post_validation assertions (Lighthouse). Swap-output
-//   conservation is Meteora DLMM's responsibility. `delegated_amount` is
-//   SPL Token program state (read-only here).
+//   account wiring / PDA derivation, forward-program allowlist (Meteora DLMM
+//   + Raydium CPMM), signer sanitization (ADR-0008), emergency-pause wiring,
+//   admin/config handlers, post_validation assertions (Lighthouse). Swap-
+//   output conservation is the forward program's responsibility.
+//   `delegated_amount` is SPL Token program state (read-only here).
 
 spec Tributary
 program_id "TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ"
@@ -128,6 +128,15 @@ type InstructionConstraint = {
 ref_impl bps_mul (amount : U64) (bps : U16) : U64 =
   mul_div_floor(amount, bps, BPS_DENOMINATOR)
 
+// fee_cut(base, fee_bps, share_bps) = bps_mul(bps_mul(base, fee_bps), share_bps).
+// Computes a carve-out (protocol/scheduler/referral) from the SAME total_fee
+// value. Needed because DSL effect blocks use simultaneous assignment (all RHS
+// read OLD state) — referencing a newly-assigned `total_fee` would read the
+// stale pre-transition value. This helper inlines the total_fee expression so
+// every cut is computed from the same base.
+ref_impl fee_cut (base : U64) (fee_bps : U16) (share_bps : U16) : U64 =
+  bps_mul(bps_mul(base, fee_bps), share_bps)
+
 // ── create_payment_policy ───────────────────────────────────────────
 // Establishes the PAYG envelope bounds. The period invariant holds
 // trivially at creation (current_period_total = 0 <= max_amount_per_period),
@@ -174,6 +183,11 @@ handler create_payment_policy
   establishes recipient_net_of_fee
   establishes pull_bounded
   establishes residual_nonnegative
+  establishes referral_pool_bounded
+  establishes sweep_nonnegative
+  establishes composable_fee_basis_is_face
+  establishes composable_gross_pull_matches_face_plus_fee
+  establishes composable_period_accumulates_gross
 }
 
 // ── execute_payment (PAYG branch) ───────────────────────────────────
@@ -201,12 +215,12 @@ handler execute_payment (chunk : U64) (current_time : U64) : State -> State {
           pulled_amount        := chunk
           payment_amount       := chunk
           total_fee            := bps_mul(chunk, gateway_fee_bps)
-          protocol_cut         := bps_mul(total_fee, protocol_share_bps)
-          scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
-          gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
-          recipient_amount     := payment_amount - total_fee
-          total_from_user      := payment_amount
+          protocol_cut         := fee_cut(chunk, gateway_fee_bps, protocol_share_bps)
+          scheduler_cut        := fee_cut(chunk, gateway_fee_bps, scheduler_share_bps)
+          referral_pool        := if is_referral_enabled == 1 then fee_cut(chunk, gateway_fee_bps, referral_allocation_bps) else 0
+          gateway_residual     := bps_mul(chunk, gateway_fee_bps) - fee_cut(chunk, gateway_fee_bps, protocol_share_bps) - fee_cut(chunk, gateway_fee_bps, scheduler_share_bps) - (if is_referral_enabled == 1 then fee_cut(chunk, gateway_fee_bps, referral_allocation_bps) else 0)
+          recipient_amount     := chunk - bps_mul(chunk, gateway_fee_bps)
+          total_from_user      := chunk
         }
     // Same period AND accumulation stays within cap (A2 guard).
     | current_time < current_period_start + period_length_seconds
@@ -216,12 +230,12 @@ handler execute_payment (chunk : U64) (current_time : U64) : State -> State {
           pulled_amount        := chunk
           payment_amount       := chunk
           total_fee            := bps_mul(chunk, gateway_fee_bps)
-          protocol_cut         := bps_mul(total_fee, protocol_share_bps)
-          scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
-          gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
-          recipient_amount     := payment_amount - total_fee
-          total_from_user      := payment_amount
+          protocol_cut         := fee_cut(chunk, gateway_fee_bps, protocol_share_bps)
+          scheduler_cut        := fee_cut(chunk, gateway_fee_bps, scheduler_share_bps)
+          referral_pool        := if is_referral_enabled == 1 then fee_cut(chunk, gateway_fee_bps, referral_allocation_bps) else 0
+          gateway_residual     := bps_mul(chunk, gateway_fee_bps) - fee_cut(chunk, gateway_fee_bps, protocol_share_bps) - fee_cut(chunk, gateway_fee_bps, scheduler_share_bps) - (if is_referral_enabled == 1 then fee_cut(chunk, gateway_fee_bps, referral_allocation_bps) else 0)
+          recipient_amount     := chunk - bps_mul(chunk, gateway_fee_bps)
+          total_from_user      := chunk
         }
     // Any accepted chunk that would breach the per-period cap is rejected.
     | _ => abort InsufficientDelegatedAmount
@@ -271,11 +285,11 @@ handler execute_composable (face : U64) (current_time : U64) : State -> State {
           pulled_amount        := face + bps_mul(face, gateway_fee_bps)
           payment_amount       := face
           total_fee            := bps_mul(face, gateway_fee_bps)
-          protocol_cut         := bps_mul(total_fee, protocol_share_bps)
-          scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
-          gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
-          recipient_amount     := payment_amount
+          protocol_cut         := fee_cut(face, gateway_fee_bps, protocol_share_bps)
+          scheduler_cut        := fee_cut(face, gateway_fee_bps, scheduler_share_bps)
+          referral_pool        := if is_referral_enabled == 1 then fee_cut(face, gateway_fee_bps, referral_allocation_bps) else 0
+          gateway_residual     := bps_mul(face, gateway_fee_bps) - fee_cut(face, gateway_fee_bps, protocol_share_bps) - fee_cut(face, gateway_fee_bps, scheduler_share_bps) - (if is_referral_enabled == 1 then fee_cut(face, gateway_fee_bps, referral_allocation_bps) else 0)
+          recipient_amount     := face
           total_from_user      := face + bps_mul(face, gateway_fee_bps)
         }
     // Same period AND gross accumulation stays within cap.
@@ -286,11 +300,11 @@ handler execute_composable (face : U64) (current_time : U64) : State -> State {
           pulled_amount        := face + bps_mul(face, gateway_fee_bps)
           payment_amount       := face
           total_fee            := bps_mul(face, gateway_fee_bps)
-          protocol_cut         := bps_mul(total_fee, protocol_share_bps)
-          scheduler_cut        := bps_mul(total_fee, scheduler_share_bps)
-          referral_pool        := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
-          gateway_residual     := total_fee - protocol_cut - scheduler_cut - referral_pool
-          recipient_amount     := payment_amount
+          protocol_cut         := fee_cut(face, gateway_fee_bps, protocol_share_bps)
+          scheduler_cut        := fee_cut(face, gateway_fee_bps, scheduler_share_bps)
+          referral_pool        := if is_referral_enabled == 1 then fee_cut(face, gateway_fee_bps, referral_allocation_bps) else 0
+          gateway_residual     := bps_mul(face, gateway_fee_bps) - fee_cut(face, gateway_fee_bps, protocol_share_bps) - fee_cut(face, gateway_fee_bps, scheduler_share_bps) - (if is_referral_enabled == 1 then fee_cut(face, gateway_fee_bps, referral_allocation_bps) else 0)
+          recipient_amount     := face
           total_from_user      := face + bps_mul(face, gateway_fee_bps)
         }
     // Any accepted face whose gross pull would breach the per-period cap
@@ -361,11 +375,11 @@ handler release_milestone (current_time : U64) (due_timestamp : U64) : State -> 
   effect {
     pulled_amount    := payment_amount
     total_fee        := bps_mul(payment_amount, gateway_fee_bps)
-    protocol_cut     := bps_mul(total_fee, protocol_share_bps)
-    scheduler_cut    := bps_mul(total_fee, scheduler_share_bps)
-    referral_pool    := if is_referral_enabled == 1 then bps_mul(total_fee, referral_allocation_bps) else 0
-    gateway_residual := total_fee - protocol_cut - scheduler_cut - referral_pool
-    recipient_amount := payment_amount - total_fee
+    protocol_cut     := fee_cut(payment_amount, gateway_fee_bps, protocol_share_bps)
+    scheduler_cut    := fee_cut(payment_amount, gateway_fee_bps, scheduler_share_bps)
+    referral_pool    := if is_referral_enabled == 1 then fee_cut(payment_amount, gateway_fee_bps, referral_allocation_bps) else 0
+    gateway_residual := bps_mul(payment_amount, gateway_fee_bps) - fee_cut(payment_amount, gateway_fee_bps, protocol_share_bps) - fee_cut(payment_amount, gateway_fee_bps, scheduler_share_bps) - (if is_referral_enabled == 1 then fee_cut(payment_amount, gateway_fee_bps, referral_allocation_bps) else 0)
+    recipient_amount := payment_amount - bps_mul(payment_amount, gateway_fee_bps)
     total_from_user  := payment_amount
   }
 }
@@ -381,7 +395,7 @@ handler release_milestone (current_time : U64) (due_timestamp : U64) : State -> 
 // don't touch period fields, so they preserve trivially.
 property period_bounded :
   state.current_period_total <= state.max_amount_per_period
-  preserved_by all except [create_payment_policy]
+  preserved_by all except []
 
 // The per-period cap is immutable after creation (no handler widens it).
 // create_payment_policy is the only writer, so it is excluded.
@@ -401,29 +415,31 @@ property fee_conservation :
 // Nonlinear (mul/div) — the Lean + Kani discharge targets.
 property fee_is_bps_decomposition :
   state.total_fee == bps_mul(state.payment_amount, state.gateway_fee_bps)
-  preserved_by all except [create_payment_policy, transfer]
+  preserved_by all except [create_payment_policy]
 
 // Gross-mode recipient receives payment minus the full fee (no hidden tax).
 // Scoped to gross mode via `requires is_net_mode == 0` on execute handlers;
 // net mode satisfies recipient_amount == payment_amount (different identity,
 // not claimed here). Nonlinear via total_fee — Lean + Kani discharge targets.
+// Composable (ADR-0026) is EXCLUDED: its fee path is input-side (fees skimmed
+// before settlement), so recipient_amount = face, NOT face - fee.
 property recipient_net_of_fee :
   (state.recipient_amount + state.total_fee) == state.payment_amount
-  preserved_by all except [create_payment_policy, transfer]
+  preserved_by all except [create_payment_policy, execute_composable_case_0, execute_composable_case_1]
 
 // Pull bound (PAYG-specific): the chunk moved never exceeds max_chunk_amount.
 // transfer and release_milestone pull amounts governed by different bounds
 // (transfer: caller amount; milestone: escrow), so they are excluded.
 property pull_bounded :
   state.pulled_amount <= state.max_chunk_amount
-  preserved_by all except [create_payment_policy, transfer, release_milestone]
+  preserved_by all except [transfer, release_milestone]
 
 // Residual is non-negative (guaranteed by checked_sub construction; the
 // property makes the invariant explicit and guards against a future
 // re-ordering of the subtraction).
 property residual_nonnegative :
   state.gateway_residual <= state.total_fee
-  preserved_by all except [create_payment_policy, transfer]
+  preserved_by all except []
 
 // ── Composable-specific properties (Layer 1 spec-model; Layer 2 covers
 // the real code via hand-rolled Kani/proptest — see kani_pure_fns.rs and
@@ -434,7 +450,7 @@ property residual_nonnegative :
 // is a SUBSET of the fee, not an addition to it.
 property referral_pool_bounded :
   state.referral_pool <= state.total_fee
-  preserved_by all except [create_payment_policy, transfer]
+  preserved_by all except []
 
 // Sweep non-negativity (composable settlement, ADR-0010 amended):
 // after fee deduction, the recipient receives a non-negative amount.
@@ -448,7 +464,7 @@ property referral_pool_bounded :
 // subtracted from recipient_amount. PaymentPolicy still subtracts.
 property sweep_nonnegative :
   state.recipient_amount <= state.payment_amount
-  preserved_by all except [create_payment_policy, transfer]
+  preserved_by all except []
 
 // ── Composable v2.2 properties (ADR-0026) ───────────────────────────
 // Headline guarantees of the input-side gross-pull fee rebase.
@@ -457,28 +473,34 @@ property sweep_nonnegative :
 // face is the amount the forward consumes (== payment_amount in the
 // execute_composable effect). The PULL is gross (face + fee); the FEE is
 // computed on face alone. This is the NET-on-pull-hardcoded invariant.
-// Nonlinear via bps_mul — Lean + Kani discharge targets. Exclusive to
-// execute_composable (PaymentPolicy still gates on is_net_mode).
+// Nonlinear via bps_mul — Lean + Kani discharge targets. Identical predicate
+// to fee_is_bps_decomposition — kept as a separate named obligation for the
+// composable code path. All handlers preserve it (total_fee is always
+// bps_mul(payment_amount, gateway_fee_bps) after the inlining fix).
 property composable_fee_basis_is_face :
   state.total_fee == bps_mul(state.payment_amount, state.gateway_fee_bps)
-  preserved_by [execute_composable]
+  preserved_by all except [create_payment_policy]
 
 // Gross-pull accounting: the user pays face + fee. total_from_user tracks
 // the gross pull (what left the user's token account). Linear identity over
-// the effect — auto-discharges.
+// the effect — auto-discharges. PaymentPolicy and release_milestone are
+// EXCLUDED: their total_from_user == payment_amount (net pull), not
+// payment_amount + total_fee.
 property composable_gross_pull_matches_face_plus_fee :
   state.total_from_user == state.payment_amount + state.total_fee
-  preserved_by [execute_composable]
+  preserved_by all except [create_payment_policy, execute_payment_case_0, execute_payment_case_1, release_milestone]
 
 // PayAsYouGo period accumulator binds on GROSS for composable (ADR-0026):
 // the rolling period total reflects gross pulls, not face amounts. A fee-bps
 // hike can fail a subsequent execute at the cap (accepted consequence).
 // This STRENGTHENS period_bounded for composable — caps now bind tighter.
 // Linear conservation: current_period_total accumulates `face + total_fee`
-// per call, never `face` alone.
+// per call, never `face` alone. Same predicate as period_bounded — kept as
+// a separate named obligation for the composable code path. All handlers
+// preserve it.
 property composable_period_accumulates_gross :
   state.current_period_total <= state.max_amount_per_period
-  preserved_by [execute_composable]
+  preserved_by all except []
 
 // ════════════════════════════════════════════════════════════════════
 // INVARIANTS (documentation + Lean predicate obligations)
@@ -493,6 +515,15 @@ invariant fee_share_sum_bounded :
 // the code uses an else-if chain (first-set-wins), so at most one bit fires.
 invariant milestone_signer_bits_mutually_exclusive :
   (state.release_requires_gateway + state.release_requires_owner + state.release_requires_recipient) <= 1
+
+// Companion invariant for period_bounded (A2) preservation. Without this,
+// omega cannot close period_bounded_preserved_by_execute_*: the guard gives
+// chunk ≤ max_chunk_amount, but the goal needs chunk ≤ max_amount_per_period.
+// Established at create_payment_policy (abort theorem InvalidAmount_2 already
+// enforces max_chunk ≤ max_per_period). Trivially preserved (neither field
+// is written by any execute/transfer/release handler).
+invariant max_chunk_le_max_period :
+  state.max_chunk_amount <= state.max_amount_per_period
 
 // ── Forward-CPI pin invariants (bean tributary-qpi6) ──────────────────
 // These are CONSTRAINT-LEVEL invariants over an InstructionConstraint value,
@@ -542,10 +573,10 @@ invariant milestone_signer_bits_mutually_exclusive :
 //                           when emergency_pause != 0 or policy_status != 0
 //                           (see the `requires` guards on each handler).
 //   cpi_boundary_documented : signer sanitization (ADR-0008), the forward
-//                           allowlist (Meteora DLMM), and the validation
-//                           allowlist (Lighthouse) are enforced on-chain
-//                           and verified by integration tests + fuzzing,
-//                           not by a state predicate in this spec.
+//                           allowlist (Meteora DLMM + Raydium CPMM), and the
+//                           validation allowlist (Lighthouse) are enforced
+//                           on-chain and verified by integration tests +
+//                           fuzzing, not by a state predicate in this spec.
 //
 // ── Composable v2.2 (ADR-0026) documentation invariants ─────────────
 // Account-wiring and mode-conditional rules — real guarantees but live in

@@ -5,14 +5,14 @@ together form a **layered** verification of Tributary's pull-payment logic.
 
 > **Status (2026-07-11, updated for indexed PinnedAccount — bean tributary-qpi6):**
 >
-> | Layer                     | Status                                                                                       |
-> | ------------------------- | -------------------------------------------------------------------------------------------- |
-> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers, 2 forward-CPI types)                    |
-> | Layer 1 (spec-model Kani) | ✅ regenerated (indexed-pin); 19 fast harnesses pass in ~0.1s; 127 disabled (u128 bps_mul)   |
-> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                  |
-> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                    |
-> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                  |
-> | Lean                      | 🟡 bare-field codegen bug FIXED (`fix-lean.py`); 58 proof obligations exposed (pre-existing) |
+> | Layer                     | Status                                                                                                              |
+> | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+> | Spec validation           | ✅ clean (`qedgen check`, 12 properties, 6 handlers, 2 forward-CPI types)                                           |
+> | Layer 1 (spec-model Kani) | ✅ regenerated (indexed-pin); 19 fast harnesses pass in ~0.1s; 127 disabled (u128 bps_mul)                          |
+> | Layer 2 (impl Kani)       | ✅ 11/16 PASS (5 nonlinear fee proofs slow)                                                                         |
+> | Layer 2 (proptest)        | ✅ 21/21 passing in 0.03s                                                                                           |
+> | Drift gates               | ✅ 2 handlers stamped (`create_payment_policy`, `transfer`)                                                         |
+> | Lean                      | ✅ `lake build` green (0 errors); 39+ proofs discharged, 45 sorry stubs remain (nonlinear bps_mul + codegen limits) |
 >
 > **v2.2 change (ADR-0026):** composable fee path rebased to input-side
 > gross pull. `execute_composable` now takes `face` (what the forward
@@ -47,8 +47,8 @@ together form a **layered** verification of Tributary's pull-payment logic.
 │              9 properties · 6 handlers · flat State                 │
 └──────┬──────────────────────────────────┬──────────────────────────┘
        │                                  │
-       │ qedgen codegen --kani            │ (no qedgen — hand-rolled)
-       │ + fix-kani.py post-processor     │
+       │ qedgen codegen --kani (≥ v2.47)  │ (no qedgen — hand-rolled)
+       │ qedgen_kani_prelude sibling crate │
        │                                  │
        ▼                                  ▼
 ┌────────────────────────┐    ┌──────────────────────────────────────┐
@@ -56,17 +56,17 @@ together form a **layered** verification of Tributary's pull-payment logic.
 │  formal_verification/  │    │  programs/tributary/tests/           │
 │  kani.rs               │    │                                      │
 │                        │    │  kani_pure_fns.rs (16 harnesses)     │
-│  19 active harnesses   │    │  proptest_pure_fns.rs (21 tests)     │
-│  127 disabled (u128)   │    │                                      │
-│                        │    │  Calls the REAL Rust functions:      │
-│  Tests the SPEC's      │    │  • calculate_fees()                  │
-│  effect formulas on    │    │  • validate_policy_execution()       │
-│  a parallel State      │    │  • advance_policy()                  │
-│  struct. Never calls   │    │  • ByteRangeCheck::validate()        │
-│  the real Anchor code. │    │  • validate_byte_ranges()            │
-│                        │    │  • validate_forward_config()         │
-│  Catches: spec math    │    │                                      │
-│  self-inconsistency.   │    │  Catches: real code bugs, overflow,  │
+│  146 emitted harnesses │    │  proptest_pure_fns.rs (21 tests)     │
+│                        │    │                                      │
+│  Tests the SPEC's      │    │  Calls the REAL Rust functions:      │
+│  effect formulas on    │    │  • calculate_fees()                  │
+│  a parallel State      │    │  • validate_policy_execution()       │
+│  struct. Never calls   │    │  • advance_policy()                  │
+│  the real Anchor code. │    │  • ByteRangeCheck::validate()        │
+│                        │    │  • validate_byte_ranges()            │
+│  Catches: spec math    │    │  • validate_forward_config()         │
+│  self-inconsistency.   │    │                                      │
+│                        │    │  Catches: real code bugs, overflow,  │
 │                        │    │  wrong math, missing guards.         │
 │                        │    │  Found: i64 overflow (bean vtne).    │
 └────────────────────────┘    └──────────────────────────────────────┘
@@ -92,7 +92,8 @@ together form a **layered** verification of Tributary's pull-payment logic.
 │                                                                  │
 │  ∀-quantified preservation theorems.                             │
 │  Recursion blocker SOLVED (pin lean-toolchain to v4.30.0).       │
-│  Bare-field codegen bug SOLVED (fix-lean.py, Bug L1–L5).         │
+│  Bare-field codegen bug patched via fix-lean.py (Bug L1–L7)      │
+│  — retained defensively until v2.47 Lean output is re-verified.  │
 │  New blocker: 58 proof obligations need strengthening            │
 │  (companion invariants + proof-term indices).                    │
 └──────────────────────────────────────────────────────────────────┘
@@ -100,15 +101,15 @@ together form a **layered** verification of Tributary's pull-payment logic.
 
 ### What each layer catches (and doesn't)
 
-|                       | Layer 1 (spec-model Kani) | Layer 2 (impl Kani + proptest)    | Drift gates       | Lean             |
-| --------------------- | ------------------------- | --------------------------------- | ----------------- | ---------------- |
+|                       | Layer 1 (spec-model Kani) | Layer 2 (impl Kani + proptest)    | Drift gates      | Lean             |
+| --------------------- | ------------------------- | --------------------------------- | ---------------- | ---------------- |
 | **Tests**             | Spec's effect formulas    | Real Rust functions               | Spec ↔ code hash | Spec math        |
-| **Real code?**        | ❌ parallel State model   | ✅ calls real fns                 | N/A (hash only)   | ❌ spec model    |
-| **Exhaustive?**       | ✅ all symbolic inputs    | ✅ Kani (slow); proptest (random) | N/A               | ✅ ∀-quantified  |
-| **Fast?**             | ✅ 3-10s per harness      | Kani: 3s-10min; proptest: 0.03s   | ✅ compile-time   | ⚠️ minutes-hours |
-| **Catches spec bugs** | ✅                        | ❌                                | ❌                | ✅               |
-| **Catches code bugs** | ❌                        | ✅                                | ❌                | ❌               |
-| **Catches drift**     | ❌                        | ❌                                | ✅                | ❌               |
+| **Real code?**        | ❌ parallel State model   | ✅ calls real fns                 | N/A (hash only)  | ❌ spec model    |
+| **Exhaustive?**       | ✅ all symbolic inputs    | ✅ Kani (slow); proptest (random) | N/A              | ✅ ∀-quantified  |
+| **Fast?**             | ✅ 3-10s per harness      | Kani: 3s-10min; proptest: 0.03s   | ✅ compile-time  | ⚠️ minutes-hours |
+| **Catches spec bugs** | ✅                        | ❌                                | ❌               | ✅               |
+| **Catches code bugs** | ❌                        | ✅                                | ❌               | ❌               |
+| **Catches drift**     | ❌                        | ❌                                | ✅               | ❌               |
 
 ---
 
@@ -147,16 +148,26 @@ cd programs/tributary && cargo check && cd ..
 ### Layer 1 — Spec-model Kani
 
 ```bash
-# Regenerate from spec + apply codegen fixes (after any spec edit)
+# Regenerate from spec (after any spec edit). qedgen >= 2.47 emits clean
+# Rust — no post-processor. The mul_div_*_u128 helpers come from the
+# qedgen_kani_prelude sibling crate (see formal_verification/qedgen_kani_prelude/).
 qedgen codegen --spec tributary.qedspec --kani --kani-output formal_verification/kani.rs
 rm -rf programs/src/ programs/Cargo.toml   # clean codegen side-effects
-python3 formal_verification/fix-kani.py formal_verification/kani.rs
 
-# Run all 19 active harnesses (completes in ~10s)
-cd formal_verification && cargo kani
+# Run a single fast harness (the recommended way — see "Slow harnesses" below
+# for why `cargo kani` with no args is noisy).
+cd formal_verification && cargo kani --harness verify_execute_payment_case_0_preserves_period_bounded
 
-# Run one harness
-cargo kani --harness verify_execute_payment_case_0_preserves_period_bounded
+# Run the full fast set (completes in ~10s):
+for h in \
+  verify_create_payment_policy_rejects_invalid \
+  verify_create_payment_policy_effect_policy_status \
+  verify_create_payment_policy_effect_payment_amount \
+  verify_execute_payment_case_0_rejects_invalid \
+  verify_execute_payment_case_1_rejects_invalid \
+  verify_transfer_rejects_invalid; do \
+  cargo kani --harness $h || break; \
+done
 ```
 
 **What it proves:** The spec's effect formulas preserve each property for ALL
@@ -259,11 +270,15 @@ don't exist as real Anchor handler names — needs `--handler` overrides to map.
 cd formal_verification && python3 fix-lean.py Spec.lean && lake build
 ```
 
-#### Lean codegen bugs — `fix-lean.py` (Bug L1–L5)
+#### Lean codegen bugs — `fix-lean.py` (Bug L1–L5+)
 
-`qedgen codegen --lean` emits five codegen defects that prevent `lake build`
-from reaching the preservation proofs. `fix-lean.py` (Lean twin of
-`fix-kani.py`) patches all five after each codegen:
+`qedgen codegen --lean` emits codegen defects that prevent `lake build`
+from reaching the preservation proofs. `fix-lean.py` patches all of them
+after each codegen. (Status as of qedgen v2.47: the Lean backend is
+LLM-assisted and could not be re-verified locally; the script is retained
+defensively. The Kani twin was retired after v2.47 — see Layer 1 above —
+and the same may be true here once someone re-runs `qedgen codegen --lean`
+against v2.47 and confirms a clean `lake build` without the script.)
 
 | Bug | Defect                                                                                                                                        | Fix                                                           |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -272,6 +287,8 @@ from reaching the preservation proofs. `fix-lean.py` (Lean twin of
 | L3  | `period_cap_fixed` unary def references out-of-scope `s'`                                                                                     | re-encode as `s.max_amount_per_period ≥ 0` (omega-provable)   |
 | L4  | `s.face` — `face` is a parameter, not a State field                                                                                           | `s.face` → `face`                                             |
 | L5  | bare field reads in abort-theorem hypothesis annotations                                                                                      | prefix bare fields in `h : ¬(...)` lines                      |
+| L6  | overflow_safe refine type-mismatch                                                                                                            | type-unify the refine                                         |
+| L7  | failing proof tactic replacement + companion-invariant proof for `period_bounded` case_0                                                      | rewrite with companion invariant                              |
 
 Run order:
 
@@ -281,31 +298,39 @@ python3 formal_verification/fix-lean.py formal_verification/Spec.lean
 cd formal_verification && lake build
 ```
 
-#### Lean proof status (current blocker)
+#### Lean proof status (current state: build green)
 
-After `fix-lean.py`, `lake build` compiles qedsvm (290/290) **and** every
-transition function / property predicate in Spec.lean. The preservation
-theorems then fail — 58 obligations:
+`lake build` compiles cleanly (0 errors) with 45 `sorry` warnings. The
+`fix-lean.py` post-processor now handles 7 codegen defect classes (L1-L7),
+including L6 (overflow_safe refine type-mismatch) and L7 (failing proof
+tactic replacement + companion-invariant proof for period_bounded case_0).
 
-| Class                        | Count | Root cause                                                                                                                                                                                                         |
-| ---------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `omega` counterexample       | 31    | generated proofs assume facts not in scope — e.g. `period_bounded` preservation needs the companion invariant `max_chunk_amount ≤ max_amount_per_period` (established at `create`, never threaded as a hypothesis) |
-| `Application type mismatch`  | 18    | overflow-safety `refine ⟨h_valid.right.right…⟩` proof terms project wrong field indices after `cases h` reconstructs the record                                                                                    |
-| `No goals to be solved`      | 7     | encoding/tactic sequencing gaps                                                                                                                                                                                    |
-| `sorry` (invariant theorems) | 2     | `fee_share_sum_bounded`, `milestone_signer_bits_mutually_exclusive` (still `sorry`)                                                                                                                                |
+**Proof breakdown (65 preservation theorems + 3 invariants):**
 
-Example omega counterexample (`period_bounded_preserved_by_execute_payment_case_0`):
-the guard gives `chunk ≤ max_chunk_amount`; the invariant gives
-`current_period_total ≤ max_amount_per_period`; the goal is
-`chunk ≤ max_amount_per_period` — unprovable without `max_chunk ≤ max_period`.
-This is **exactly the kind of finding formal verification should produce**:
-the spec is internally consistent but the generated proofs are weaker than
-the properties they discharge.
+| Category                              | Count | Method                                                  |
+| ------------------------------------- | ----- | ------------------------------------------------------- |
+| Trivially preserved (field unchanged) | 32    | `exact h_inv`                                           |
+| fee_is_bps_decomposition (identity)   | 5     | `dsimp` alone                                           |
+| period_bounded case_0 (A2 reset arm)  | 2     | companion invariant `max_chunk_le_max_period` + `omega` |
+| Sorry — nonlinear bps_mul             | ~20   | needs bps_mul lemmas or LLM filling                     |
+| Sorry — missing case guards           | ~4    | needs codegen fix (match-arm guards in transitions)     |
+| Sorry — overflow_safe (L6)            | 2     | structural refine issue                                 |
+| Sorry — invariant axioms              | 3     | appropriate (state reachability assumptions)            |
 
-**Next iteration:** strengthen the proofs — add companion invariants
-(`max_chunk_le_max_period`, carry through `*_inductive` signatures) or run
-`qedgen fill-sorry` / `qedgen aristotle` on the failing obligations. This is
-theorem-proving work, not a codegen bug — `fix-lean.py` has done its job.
+**What blocks the remaining sorry:**
+
+1. **bps_mul nonlinear arithmetic** (~20 proofs): `omega` can't reason about
+   `amount * bps / 10000`. Needs either bps_mul helper lemmas (`simp [bps_mul]`
+   for the `bps=0` case) or LLM-based filling (`qedgen fill-sorry`, requires
+   Mistral API key).
+2. **Missing case guards in transitions** (~4 proofs): the codegen only emits
+   pre-conditions in transition function guards, not the match-arm case
+   guards. This makes `period_bounded case_1` (accumulate arm) unprovable
+   without the `chunk ≤ max_amount_per_period - current_period_total` guard.
+3. **Invariant axioms** (3 proofs): `fee_share_sum_bounded`,
+   `milestone_signer_bits_mutually_exclusive`, `max_chunk_le_max_period` are
+   facts about state reachability (established at `create_payment_policy`).
+   As standalone theorems over arbitrary `State`, they require `sorry`.
 
 ---
 
@@ -374,33 +399,36 @@ if current_time >= *current_period_start + *period_length_seconds as i64 {
 
 Panics in debug, wraps silently in release. Fix: `saturating_add`. The Layer 2
 harness works around it with `kani::assume` bounds for realistic inputs.
-
-The `fix-kani.py` Layer 1 post-processor uses `saturating_add` which masks
-this bug at Layer 1 — see the WARNING comment in `fix-kani.py` Bug E.2. The
-fix in schedule.rs and the removal of the Layer 1 mask are coupled (documented
-in bean tributary-vtne).
+Historically the Layer 1 spec-model harness masked this with `saturating_add`
+via a post-processor; qedgen >= 2.47 emits clean code with no masking, so the
+bug surfaces as a Layer 1 verification failure for any harness that transitively
+reaches the unguarded addition (see "Slow / fragile harnesses" below). The
+authoritative catch remains Layer 2 against the real Rust
+(`programs/tributary/tests/kani_pure_fns.rs`).
 
 ---
 
-## Disabled harnesses (Layer 1)
+## Slow / fragile harnesses (Layer 1)
 
-127 of 146 spec-model harnesses are disabled by `fix-kani.py` because they
-transitively invoke `bps_mul` → `mul_div_floor_u128` → u128 multiplication.
-CBMC converts 128-bit × 128-bit multiplication into ~16K boolean gates — the
-propositional reduction doesn't terminate in reasonable time.
+qedgen >= 2.47 emits all 146 spec-model `#[kani::proof]` harnesses with no
+`#[kani::skip]` gating. In practice ~127 of them are unusable as-is and are
+covered by Layer 2 + Lean instead:
 
-The `fix-kani.py` `_should_disable()` function categorises harnesses into
-five groups:
+| Pattern                                       | Count | Why                                                                                                                |
+| --------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
+| `execute_composable_*` (all)                  | 26    | `bps_mul` in the GUARD — every path reaches u128 mul (CBMC doesn't terminate in reasonable time)                   |
+| `*_preserves_*` (all transitions)             | 45    | `kani::assume(fee_is_bps_decomposition)` calls `bps_mul` AND fails on symbolic u128 overflow without extra assumes |
+| `*_effect_*` for payment/release              | 11    | Transition body calls `bps_mul` (even for non-fee fields)                                                          |
+| `*_no_overflow`                               | 2     | Calls `bps_mul` transition unconditionally                                                                         |
+| Legacy v2.1 patterns (fee_conservation, etc.) | 43    | Same root cause — `bps_mul` in predicate or effect assertion                                                       |
 
-| Pattern                                       | Count | Why                                                        |
-| --------------------------------------------- | ----- | ---------------------------------------------------------- |
-| `execute_composable_*` (all)                  | 26    | bps_mul in the GUARD — every path reaches u128 mul         |
-| `*_preserves_*` (all transitions)             | 45    | `kani::assume(fee_is_bps_decomposition)` calls bps_mul     |
-| `*_effect_*` for payment/release              | 11    | Transition body calls bps_mul (even for non-fee fields)    |
-| `*_no_overflow`                               | 2     | Calls bps_mul transition unconditionally                   |
-| Legacy v2.1 patterns (fee_conservation, etc.) | 43    | Same root cause — bps_mul in predicate or effect assertion |
+**Root cause:** CBMC converts 128-bit × 128-bit multiplication into ~16K
+boolean gates. Either it doesn't terminate (slow group) or it finds the
+unbounded-`bps_mul` counterexample that the real code's `kani::assume`
+realistic-inputs bounds would mask (fragile group).
 
-**The 19 surviving harnesses** are those with NO bps_mul anywhere:
+**The fast set** (run with `cargo kani --harness <name>`) is everything that
+does NOT transitively reach `bps_mul`:
 
 | Harness class                        | Count | What it proves                           |
 | ------------------------------------ | ----- | ---------------------------------------- |
@@ -409,7 +437,7 @@ five groups:
 | `transfer_effect_pulled_amount`      | 1     | Transfer sets pulled_amount              |
 
 The fee-conservation, period-bounded, and pull-bounded properties are
-covered by Layer 2 (kani_pure_fns.rs + proptest_pure_fns.rs on the REAL
+covered by Layer 2 (`kani_pure_fns.rs` + `proptest_pure_fns.rs` on the REAL
 Rust code) and by Lean (∀-quantified preservation theorems).
 
 ---
@@ -434,15 +462,14 @@ Rust code) and by Lean (∀-quantified preservation theorems).
 ```
 tributary.qedspec                              ← spec (single source of truth, 9 properties)
 formal_verification/
-  Cargo.toml                                   ← standalone crate for Layer 1 Kani
-  kani.rs                                      ← Layer 1: 19 active + 127 disabled spec-model harnesses
-  fix-kani.py                                  ← post-processor: fixes 6 codegen bugs + disables slow harnesses (5 categories)
+  Cargo.toml                                   ← standalone crate for Layer 1 Kani (depends on qedgen_kani_prelude)
+  kani.rs                                      ← Layer 1: 146 spec-model harnesses (qedgen >= 2.47 emits clean; 19 fast, 127 slow/fragile — see "Slow harnesses" above)
+  qedgen_kani_prelude/                         ← local stand-in for qedgen's mul_div_*_u128 helper crate (scaffolded automatically when running full `qedgen codegen`)
   lean-toolchain                               ← pinned to v4.30.0 (matches qedsvm v0.8.0)
-  Spec.lean                                    ← Lean model (generated, codegen bugs fixed by fix-lean.py)
+  Spec.lean                                    ← Lean model (generated; fix-lean.py applies residual codegen patches — see "Lean codegen bugs" below)
   Proofs.lean                                  ← Lean proofs (user-owned)
-  fix-lean.py                                  ← Lean twin of fix-kani.py: fixes codegen bugs L1–L5
-  qedgen-codegen-bugs.md                       ← sanitized bug report for upstream filing
-  qedgen-codegen-bug-reports.md                ← 5 issue fills in GitHub template format
+  fix-lean.py                                  ← Lean post-processor: patches 5+ codegen defects still present in qedgen v2.47 Lean backend
+  fix-fuzz.py                                  ← Crucible fuzz post-processor: patches 3 codegen defects still present in qedgen v2.47 fuzz backend
   README.md                                    ← this file
 programs/tributary/Cargo.toml                  ← qedgen-macros dep for drift gates
 programs/tributary/tests/

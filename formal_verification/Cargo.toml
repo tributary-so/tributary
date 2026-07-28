@@ -6,4 +6,10 @@ edition = "2021"
 [lib]
 path = "kani.rs"
 
+[dependencies]
+qedgen-kani-prelude = { path = "qedgen_kani_prelude" }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)'] }
+
 [workspace]

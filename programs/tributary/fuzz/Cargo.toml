@@ -1,0 +1,33 @@
+[package]
+name = "tributary-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# Standalone workspace root — keeps the fuzz crate out of the repo workspace
+# (it must build with a separate nightly+sanitizer toolchain via cargo-fuzz).
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tributary = { path = ".." }
+anchor-lang = "0.31.1"
+
+# ── Fuzz targets (bean tributary-ya7m) ───────────────────────────────────
+# Priority 1: composable forward byte-range attack surface. The 4
+# ByteRangeCheck entries pin the forward instruction selector at offset 0.
+# This target mutates instruction_data + the constraint config and asserts:
+#   (a) no panic / OOB on arbitrary bytes, and
+#   (b) validate_byte_ranges either rejects (ByteRangeCheckFailed) or the
+#       data satisfies every active check — never a spurious accept.
+# Coverage-guided crash hunting on the selector-pinning logic.
+#
+# Run:  cd programs/tributary/fuzz && cargo +nightly fuzz run composable_byte_range_attack
+[[bin]]
+name = "composable_byte_range_attack"
+path = "fuzz_targets/composable_byte_range_attack.rs"
+test = false
+doc = false

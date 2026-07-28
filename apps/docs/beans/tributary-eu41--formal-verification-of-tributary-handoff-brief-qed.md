@@ -1,7 +1,7 @@
 ---
 # tributary-eu41
 title: Formal verification of Tributary — handoff brief (QEDGen, audit-first)
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-07-01T06:51:07Z
@@ -24,7 +24,7 @@ Program ID: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`. Read `AGENTS.md` + `C
 
 1. **Tool: QEDGen (B2).** Spec-driven via `.qedspec` as single source of truth; `qedgen codegen --all` derives Kani + proptest + Lean + CI. Binary installed at `$HOME/.agents/skills/qedgen/tools/qedgen` (v2.21.0). Skill at `~/.config/opencode/skills/qedgen/`.
 2. **PAYG depth: A2 (cross-call period invariant).** Prove "no chunk sequence, across period resets, extracts more than `max_amount_per_period` per period." Not just per-call bounds.
-3. **Entry point: audit-first (NOT adapt-first).** The QEDGen README recommends audit-first for brownfield: *"Spec-writing from a cold start is unmotivated work; the audit gives you something to write the spec about."* Use the `qedgen-auditor` skill (available in this env) or `qedgen probe --fuzz`. Surfaces real findings with reproducers, maps them to spec constructs via `skills/qedgen-auditor/references/finding_to_spec.md`.
+3. **Entry point: audit-first (NOT adapt-first).** The QEDGen README recommends audit-first for brownfield: _"Spec-writing from a cold start is unmotivated work; the audit gives you something to write the spec about."_ Use the `qedgen-auditor` skill (available in this env) or `qedgen probe --fuzz`. Surfaces real findings with reproducers, maps them to spec constructs via `skills/qedgen-auditor/references/finding_to_spec.md`.
 4. **Token-conservation of the SWAP output is OUT of scope** — Meteora DLMM owns it. Tributary owns: pull→fee-split→route conservation, `min_output_amount` net check, delegation bounds, access control.
 5. **`delegated_amount` is NOT Tributary's responsibility** — it is SPL Token program state. Verified: Tributary only READS it (`execute_payment.rs:199`, `execute_composable.rs:897`), never writes. Out of scope for proofs.
 
@@ -34,13 +34,14 @@ Program ID: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`. Read `AGENTS.md` + `C
 
 **The security-critical logic is already factored into PURE functions.** This is the key enabler — formal verification is cheap because the hard math is already extractable:
 
-| Function | Location | Signature | Why it matters |
-|---|---|---|---|
-| `validate_policy_execution` | `programs/tributary/src/shared/schedule.rs:282` | `(&PolicyType, i64, Option<u64>, &MilestoneSigners) -> Result<u64>` | The "can't drain" core. Per-policy pull-amount decision + bounds. PURE (no AccountInfo, no CPI). |
-| `advance_policy` | `programs/tributary/src/shared/schedule.rs:397` | `(&mut PolicyType, i64, u64) -> Result<bool>` | Post-execution state advance (PAYG period reset/accumulate, subscription renewal decrement). PURE. |
-| `calculate_fees` | `programs/tributary/src/shared/fees.rs:30` | `(u64,u16,u16,u16,u16,bool,bool) -> Result<FeeBreakdown>` | Unified fee decomposition. PURE. Residual is the balancing item → `sum(carve-outs) == total_fee` by construction. |
+| Function                    | Location                                        | Signature                                                           | Why it matters                                                                                                    |
+| --------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `validate_policy_execution` | `programs/tributary/src/shared/schedule.rs:282` | `(&PolicyType, i64, Option<u64>, &MilestoneSigners) -> Result<u64>` | The "can't drain" core. Per-policy pull-amount decision + bounds. PURE (no AccountInfo, no CPI).                  |
+| `advance_policy`            | `programs/tributary/src/shared/schedule.rs:397` | `(&mut PolicyType, i64, u64) -> Result<bool>`                       | Post-execution state advance (PAYG period reset/accumulate, subscription renewal decrement). PURE.                |
+| `calculate_fees`            | `programs/tributary/src/shared/fees.rs:30`      | `(u64,u16,u16,u16,u16,bool,bool) -> Result<FeeBreakdown>`           | Unified fee decomposition. PURE. Residual is the balancing item → `sum(carve-outs) == total_fee` by construction. |
 
 **Other findings:**
+
 - **Composable reuses `calculate_fees`** (`execute_composable.rs:403` inside `process_output_and_sweep` at :353). So composable fee/sweep conservation is the SAME proof as PaymentPolicy, not a second one. `sweep_amount = output_amount - total_fee` (exact `checked_sub`); `min_output` is a one-line `require!`.
 - **`execute_payment.rs` and `execute_composable.rs` have 0 Rust unit tests.** All execution correctness is at TS integration level (~19K lines in `tests/*.test.ts` against Surfpool).
 - **proptest exists in exactly ONE place:** `shared/schedule.rs:1375` (differential vs chrono). Nowhere else.
@@ -52,6 +53,7 @@ Program ID: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`. Read `AGENTS.md` + `C
 ## Scope
 
 **IN (provable — the claim):**
+
 - Pull-amount bounds for all 4 `PolicyType` variants (Subscription / Milestone / PayAsYouGo / OneTime) via `validate_policy_execution`.
 - PAYG cross-period drain-resistance (A2): `property period_bounded preserved_by [execute_payment, execute_composable]`.
 - Fee conservation: `calculate_fees` residual ≥ 0, no overflow, `sum == total_fee`, for ALL inputs.
@@ -61,6 +63,7 @@ Program ID: `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`. Read `AGENTS.md` + `C
 **Handlers in scope (~6):** `create_payment_policy`, `create_composable_policy`, `execute_payment`, `execute_composable`, `transfer`, `create_user_payment`.
 
 **OUT (integration-tested only — document as such in the claim):**
+
 - Account wiring (right ATA → right recipient), PDA seed derivation, forward-program allowlist (Meteora-only), signer sanitization (ADR-0008 privilege boundary), emergency pause, all 15 admin/config handlers (gateway CRUD, referral CRUD, delete/status changes, `initialize`).
 
 ---
@@ -102,7 +105,7 @@ Does `--kani-impl` fabricate a viable `Context<ExecutePayment>` (token accounts,
 
 ## Honest claim template (for README/investors)
 
-> *"Pull-amount bounds and fee-conservation logic are formally verified: the protocol state machine is specified in `.qedspec` and model-checked (QEDGen / Lean 4), with Kani bounded model checking over the core pull-gating and fee Rust functions for all inputs. Account wiring, PDA derivation, CPI allowlisting, signer sanitization (ADR-0008), and the emergency-pause flag are verified by integration tests (Surfpool) and coverage-guided fuzzing (Crucible). Swap-output conservation is the responsibility of the third-party forward program (Meteora DLMM)."*
+> _"Pull-amount bounds and fee-conservation logic are formally verified: the protocol state machine is specified in `.qedspec` and model-checked (QEDGen / Lean 4), with Kani bounded model checking over the core pull-gating and fee Rust functions for all inputs. Account wiring, PDA derivation, CPI allowlisting, signer sanitization (ADR-0008), and the emergency-pause flag are verified by integration tests (Surfpool) and coverage-guided fuzzing (Crucible). Swap-output conservation is the responsibility of the third-party forward program (Meteora DLMM)."_
 
 Do NOT shorten to "formally verified, period" — that oversells the handler/CPI surface which is integration-tested, not proven.
 
@@ -118,25 +121,27 @@ Do NOT shorten to "formally verified, period" — that oversells the handler/CPI
 - [~] codegen --kani-impl — generated, but BLOCKED: QEDGen v2.38 Rust codegen bug (bare field reads + ML-syntax ref_impl calls); see formal_verification/README.md §Blocker 2. Open empirical question answered: codegen runs but output does not compile.
 - [~] codegen --lean — Spec.lean + Proofs.lean scaffold generated; lake build BLOCKED at qedsvm dep (WP-tactic kernel recursion, Lean 4.31 mismatch); sorry-filling pending. See formal_verification/README.md §Blocker 1.
 - [ ] DEFERRED: qedgen probe --crucible (Crucible not installed; optional per plan; sibling Mollusk bean covers Layer-2 fuzz)
-- [ ] #[qed(verified)] drift gates + CI workflow (codegen --ci)
-- [ ] Publish scoped honest claim on README
+- [x] #[qed(verified)] drift gates + CI workflow (codegen --ci)
+- [x] Publish scoped honest claim on README
 
 ## Update — fuzzing coordination (sibling bean)
 
 Layer 2 fuzzing is now specified in a sibling bean as **Mollusk + cargo-fuzz, standalone** (NOT Crucible-primary). Two coordination seams:
 
 1. **Authority oracle:** the fuzzer's must-fail list CONSUMES this bean's `.qedspec` preconditions — a new `requires`/`guard` here ⇒ a new must-fail case there. Keep in sync.
-2. **A2 PAYG property:** the fuzzer's PAYG sequence target is the *empirical twin* of the A2 formal proof here. A fuzzer counterexample to `current_period_total <= max_amount_per_period` is a counterexample to the A2 Kani/Lean claim and must be reconciled both sides.
+2. **A2 PAYG property:** the fuzzer's PAYG sequence target is the _empirical twin_ of the A2 formal proof here. A fuzzer counterexample to `current_period_total <= max_amount_per_period` is a counterexample to the A2 Kani/Lean claim and must be reconciled both sides.
 
 Crucible (`qedgen probe --crucible`) remains in this bean's step 5 as an OPTIONAL secondary input — do not block the Mollusk fuzzer on it. Full fuzzing spec: see sibling bean (Behavior/sequence fuzzing — Mollusk).
 
 ## Summary of Changes
 
 **Toolchain installed (bean's Locked-decision #1 was FALSE — corrected):**
+
 - QEDGen v2.38.0 installed from github.com/qedgen/solana-skills (bean claimed v2.21.0 at a path that did not exist; the skill shipped only SKILL.md with no binary/install.sh/references). Skill tools/ + references/ now populated; binary on PATH.
 - Lean 4.31.0 + Lake 5.0.0, Kani 0.64.0 installed (via Arch packages by user). Crucible NOT installed (optional; deferred).
 
 **Authored tributary.qedspec** (supersedes the empty 302-line adapt skeleton):
+
 - Flat verification State capturing PAYG period envelope + unified-fee-model fields + milestone release flags (re-modeled as booleans — DSL has no bitwise ops).
 - 6 in-scope handlers with match-arm period reset/accumulate semantics mirroring validate_policy_execution + advance_policy + calculate_fees.
 - 7 preservation properties: period_bounded (A2), period_cap_fixed, fee_conservation, fee_is_bps_decomposition, recipient_net_of_fee, pull_bounded, residual_nonnegative.
@@ -147,6 +152,7 @@ Crucible (`qedgen probe --crucible`) remains in this bean's step 5 as an OPTIONA
 **Generated artifacts (formal_verification/):** Spec.lean, Proofs.lean (sorry scaffold), kani.rs (131 harnesses), lakefile.lean, lean-toolchain, README.md (status + blocker reproductions).
 
 **Empirical answers to the bean's open questions:**
+
 1. Does the toolchain exist as claimed? NO — had to install qedgen from the real org (qedgen/solana-skills); the GitHub-search hit beardedwheatgrasswalkupapartment951/solana-skills is malware, not the source.
 2. Does --kani-impl / codegen produce a compiling harness? NO — two QEDGen v2.38 Rust-backend codegen bugs (bare field reads; ML-syntax ref_impl calls). Lean backend unaffected by the ML-syntax bug.
 3. Does lake build reach Spec.lean? NO — blocked at the qedsvm dependency (WP-tactic kernel recursion under Lean 4.31).
@@ -154,6 +160,7 @@ Crucible (`qedgen probe --crucible`) remains in this bean's step 5 as an OPTIONA
 **Honest status:** the protocol's pull-payment + fee state machine is formally SPECIFIED and validation-clean. The executable proofs (Kani BMC, Lean theorems) are scaffolded but blocked on documented QEDGen v2.38 tooling issues, not on the spec. Do NOT claim 'formally verified' until Blockers 1 & 2 resolve.
 
 **Remaining todos (depend on tooling fixes → follow-up beans):**
+
 - #[qed(verified)] drift gates + CI (needs compiling harnesses first)
 - Publish scoped honest claim on README (partial — see formal_verification/README.md; will finalize once a backend executes)
 - Crucible fuzz (optional, sibling Mollusk bean covers Layer-2)
@@ -171,7 +178,6 @@ Crucible (`qedgen probe --crucible`) remains in this bean's step 5 as an OPTIONA
 **Honest status:** pull-payment + fee state machine is formally SPECIFIED and validation-clean. Executable proofs (Kani/Lean) are scaffolded but blocked on documented QEDGen v2.38 tooling issues, not the spec. Do NOT claim 'formally verified' until Blockers 1 & 2 (formal_verification/README.md) resolve.
 
 **Remaining (depend on tooling fixes):** #[qed(verified)] drift gates + CI; finalize README claim once a backend executes; Crucible fuzz (optional, sibling Mollusk bean covers Layer-2).
-
 
 ---
 
@@ -192,7 +198,7 @@ faithfulness / scope gaps, not parse errors. Grouped by severity.
   (fees.rs:57-67) branches: in net mode `recipient_amount = payment_amount` and
   `total_from_user = payment_amount + total_fee`. The spec carries
   `is_net_mode : U8` in State but **no handler reads it** and **no `requires
-  is_net_mode == 0`** guards the property. README §"What is specified" labels
+is_net_mode == 0`** guards the property. README §"What is specified" labels
   the property "Gross-mode" in prose, but the spec itself doesn't constrain it.
   → A successful Kani/Lean proof of this property does NOT transfer to the
   net-mode code path. **Fix: add `requires is_net_mode == 0` to the three
@@ -208,7 +214,7 @@ faithfulness / scope gaps, not parse errors. Grouped by severity.
   `fee_conservation` still holds (residual is the balancing item either way),
   but the spec's `gateway_residual` value diverges from the code's whenever
   referral is disabled — i.e. the spec models a state transition the program
-  never takes. Benign for the *properties*; misleading as a model of
+  never takes. Benign for the _properties_; misleading as a model of
   `calculate_fees`. Fix: branch on `is_referral_enabled`, or add
   `requires is_referral_enabled == 1` and note the scope.
 
@@ -231,11 +237,11 @@ properties, or shrink the bean's IN-scope claim to match.
 ### S4 — Minor / faithfulness
 
 - **Milestone `else if` chain vs independent `requires`.** Code
-  (schedule.rs:329-344) evaluates RELEASE_GATEWAY → else-if OWNER → else-if
+  (schedule.rs:329-344) evaluates RELEASE*GATEWAY → else-if OWNER → else-if
   RECIPIENT (first-set-wins). Spec models the three as independent `requires`
   (all evaluated). Sound only given the creation-time mutual-exclusivity
   invariant (enforced in `policies/milestone.rs`, not in this spec). Spec is
-  *stricter* than code (over-approximates auth), so not a hole — but imprecise.
+  \_stricter* than code (over-approximates auth), so not a hole — but imprecise.
   Consider an `invariant milestone_signer_bits_mutually_exclusive` to pin the
   assumption the spec relies on.
 - **`current_period_start` not initialized** in `create_payment_policy` effect.
@@ -255,7 +261,7 @@ properties, or shrink the bean's IN-scope claim to match.
 - `fee_conservation` (residual as balancing item) holds in both gross and net,
   referral on/off — structurally sound. ✓
 - `fee_is_bps_decomposition` (`total_fee == bps_mul(payment_amount,
-  gateway_fee_bps)`) — mode-independent. ✓
+gateway_fee_bps)`) — mode-independent. ✓
 - `residual_nonnegative` via checked_sub chain. ✓
 - Milestone bit decomposition matches `RELEASE_DUE_DATE=0b0001`,
   `RELEASE_GATEWAY=0b0010`, `RELEASE_OWNER=0b0100`, `RELEASE_RECIPIENT=0b1000`
@@ -271,7 +277,6 @@ properties, or shrink the bean's IN-scope claim to match.
 3. **S3 decision** — either model Subscription/OneTime/UpTo (expands the claim)
    or tighten the bean + README scope line to "PAYG + Milestone".
 4. S4 is cleanup; not blocking.
-
 
 ---
 
@@ -315,7 +320,6 @@ scope deferred to user.
 
 Tried qedgen codegen --kani-impl. Result: 0 harnesses generated (infrastructure only, no #[kani::proof] functions). Our spec has no ensures clauses — kani-impl generates harnesses that assert ensures postconditions; without ensures, nothing to emit. Even with ensures: (1) context builders are todo!() stubs, (2) struct names don't match real Anchor structs, (3) Anchor account validation can't be bypassed symbolically. NOT viable for Tributary. Layer 2 hand-rolled (kani_pure_fns.rs) is the path.
 
-
 ## Update — Lean, proptests, drift gates (2026-07-01)
 
 ### Lean — recursion blocker SOLVED
@@ -344,6 +348,7 @@ Lean-aware fixer or manual editing. Bean tributary-kqhl updated.
 `programs/tributary/tests/proptest_pure_fns.rs` — 13 hand-rolled proptests
 calling the real `calculate_fees`, `validate_policy_execution`, and
 `advance_policy` directly. All pass in 0.02s. Tests:
+
 - Fee conservation, residual nonneg, bps decomposition, gross/net mode,
   referral-disabled zeros pool, overflow returns Err
 - PAYG rejects zero/oversize chunk, accepts valid chunk
@@ -355,6 +360,7 @@ random sampling (non-exhaustive) vs symbolic (exhaustive).
 ### Drift gates — partial
 
 `qedgen adapt --program programs/tributary --spec tributary.qedspec`:
+
 - `create_payment_policy` → HASHED ✅ (found in real Anchor #[program] mod)
 - `transfer` → HASHED ✅
 - `execute_payment_case_0/1`, `execute_composable_case_0/1`,
@@ -366,3 +372,19 @@ The match-arm split is a spec-model concept. To get drift gates on the
 execute handlers, either: (a) rename the spec handlers to match Anchor
 (`execute_payment` instead of `execute_payment_case_0`), or (b) use
 `--handler` overrides on `qedgen adapt`.
+
+## Final Summary — CI workflow + README claim (2026-07-22)
+
+**CI workflow created** (`.github/workflows/formal-verification.yml`):
+- Runs `qedgen check --spec tributary.qedspec` (spec internal consistency) on every push/PR touching the spec, formal_verification/, drift-gate sources, or test harnesses.
+- Runs `cargo check` on the program (drift-gate compile-time enforcement).
+- Documents Kani/Lean as local-only (too slow / blocked for CI).
+- Proptests already covered by existing `program-tests.yml` (via `cargo test` inside `anchor run surfpool`).
+
+**README honest claim published** (`README.md` Security section):
+- Added formal-verification bullet with scoped claim: spec + Kani BMC + proptests + drift gates, linking to `formal_verification/README.md` for details.
+- Honest about coverage: 2/6 drift-gate handlers (rest blocked on QEDGen v2.38 match-arm handler-mapping limitation), Lean proofs at 58 open obligations.
+
+**Drift-gate expansion attempted**: `qedgen adapt --handler` overrides for execute_payment/execute_composable match-arm spec names → still unmapped (QEDGen v2.38 limitation: spec match-arm handler names don't resolve to real Anchor handler names even with `--handler` overrides). 2/6 coverage is the current ceiling without renaming spec handlers (risky — could break `qedgen check`).
+
+**State at completion**: spec validation-clean (exit 0), proptests 23/23 pass, drift-gate hashes verified stable, CI workflow valid YAML. Lean proof strengthening remains in sibling bean tributary-kqhl (todo). Crucible fuzz remains deferred (optional).

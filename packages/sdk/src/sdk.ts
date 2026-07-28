@@ -2910,6 +2910,17 @@ export class Tributary {
       );
     }
 
+    // Security warning (ADR-0031): act mode has no on-chain output guard.
+    // Warn when an act-mode policy is created without a post_validation.
+    const actModeWarn = actModePostValidationWarning(
+      forwardConfig,
+      postValidation
+    );
+    if (actModeWarn) {
+      // eslint-disable-next-line no-console
+      console.warn(actModeWarn);
+    }
+
     const user = this.provider.publicKey;
     const { address: configPda } = getConfigPda(this.programId);
     const { address: userPaymentPda } = this.getUserPaymentPda(user, tokenMint);
@@ -3470,6 +3481,12 @@ export class Tributary {
       config: configPda,
       preValidationProgram: specProgramOrDefault(policy.preValidation),
       postValidationProgram: specProgramOrDefault(policy.postValidation),
+      forwardProgram:
+        policy.forwardConfig.instructionConstraint.programId.equals(
+          PublicKey.default
+        )
+          ? SystemProgram.programId
+          : policy.forwardConfig.instructionConstraint.programId,
       preValidationPda: preValidationPdaAddress,
       postValidationPda: postValidationPdaAddress,
       userTokenAccount,
@@ -4466,7 +4483,14 @@ function specProgramOrDefault(spec: ValidationSpec): PublicKey {
   return pc ? pc.programId : SystemProgram.programId;
 }
 
-function makeValidationInit(
+/**
+ * Build the on-chain `ValidationInit` struct (indexed pinned accounts +
+ * assertion data) for a composable policy validation phase.
+ *
+ * Exported so the validation-recipe layer (`validation-recipes.ts`) can
+ * produce the same struct without duplicating the padding/indexing logic.
+ */
+export function makeValidationInit(
   pinnedAccounts: PublicKey[],
   data: Buffer
 ): {
@@ -4489,6 +4513,46 @@ function makeValidationInit(
     pinnedAccounts: pins,
     validationData: data,
   };
+}
+
+// ── Act-mode post_validation warning (ADR-0031) ─────────────────────
+
+const ACT_MODE_POST_VALIDATION_WARNING =
+  "[Tributary] Act-mode composable policy created without post_validation. " +
+  "Act mode has no on-chain output guard — the forward consumes input " +
+  "for a non-token settlement and Tributary cannot verify delivery. " +
+  "Add a post_validation assertion on the external settlement account. " +
+  "See: https://docs.tributary.so/protocol-reference/composable-policy/security-model/#7-settlement-output-guards-what-the-on-chain-0-covers-and-what-it-doesnt";
+
+/**
+ * Returns the act-mode post_validation warning message if the config
+ * warrants one, otherwise `null`. Pure function — the caller emits the
+ * side-effect (`console.warn`).
+ *
+ * Act mode (ADR-0026) has no on-chain output guard. The owner's
+ * `post_validation` is the only backstop. This warns (does not throw)
+ * because the post_validation target is use-case-specific — Tributary
+ * cannot validate it on-chain. See ADR-0031.
+ *
+ * @param forwardConfig - the composable forward config
+ * @param postValidation - the post-validation spec
+ * @returns warning string, or `null` when no warning is warranted
+ */
+export function actModePostValidationWarning(
+  forwardConfig: ForwardConfig,
+  postValidation: ValidationSpec
+): string | null {
+  const forwardEnabled = !forwardConfig.instructionConstraint.programId.equals(
+    PublicKey.default
+  );
+  if (
+    forwardEnabled &&
+    forwardConfig.outputMint.equals(PublicKey.default) &&
+    !isProgramCall(postValidation)
+  ) {
+    return ACT_MODE_POST_VALIDATION_WARNING;
+  }
+  return null;
 }
 
 // Legacy export for backward compatibility

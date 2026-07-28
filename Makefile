@@ -89,18 +89,18 @@ build:
 	make -C apps/docs build
 
 bump:
-	echo "$(TODAY): $(MESSAGE)" >> apps/scheduler/README.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/app/README.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/docs/README.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/checkout/README.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/lando/README.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/api/README.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/cli/README.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/sdk/README.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/README.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/README.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/payments/README.md
-	echo "$(TODAY): $(MESSAGE)" >> programs/tributary/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/scheduler/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/app/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/docs/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/checkout/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/lando/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/api/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/cli/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/payments/CHANGELOG.md
+	echo "$(TODAY): $(MESSAGE)" >> programs/tributary/CHANGELOG.md
 
 lint:
 	pnpm run -r --filter "./programs/*" lint

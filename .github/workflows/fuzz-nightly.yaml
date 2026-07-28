@@ -1,0 +1,121 @@
+name: Nightly Fuzz
+
+# Bean tributary-ya7m — behavior/sequence fuzzing. Nightly 10-min run on
+# develop + manual dispatch. NO PR gating (fuzzing that blocks every PR is CI
+# cancer — Layer 1 proptests + the Mollusk oracle `cargo test` run per-commit
+# in the regular suite; this workflow is the deep, long-running coverage dive).
+#
+# Layers exercised:
+#   1. proptest_pure_fns — cranked to 100k cases (the fast regression net)
+#   2. mollusk_oracle     — SVM conservation + authority oracles (real .so)
+#   3. cargo-fuzz         — coverage-guided byte-range attack (nightly deep dive)
+#   4. crucible (QEDGen)  — protocol-mode Crucible harness, post-state guards
+#                          (bean tributary-c1jy — required fix-fuzz.py post-processor)
+
+on:
+  schedule:
+    # 03:30 UTC — off-peak, 10-min run
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      fuzz_seconds:
+        description: "cargo-fuzz max run time (seconds)"
+        required: false
+        default: "600"
+      solana_version:
+        type: string
+        required: false
+        default: ""
+      anchor_version:
+        type: string
+        required: false
+        default: ""
+      # Optional cargo features to pass to `anchor build` (e.g. "mainnet").
+      features:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  fuzz:
+    name: Fuzz (proptest + Mollusk + cargo-fuzz)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: |
+          pnpm install
+          corepack enable
+
+      - name: Extract versions
+        if: inputs.solana_version == '' || inputs.anchor_version == ''
+        uses: solana-developers/github-actions/extract-versions@v0.2.5
+        id: versions
+
+      - name: Setup toolchain
+        uses: solana-developers/github-actions/setup-all@v0.2.5
+        with:
+          solana_version: ${{ inputs.solana_version || steps.versions.outputs.solana_version }}
+          anchor_version: ${{ inputs.anchor_version || steps.versions.outputs.anchor_version }}
+          node_version: 22
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: fuzz-${{ runner.os }}-${{ hashFiles('programs/tributary/Cargo.toml', 'Cargo.lock') }}
+
+      - name: Build program (.so for Mollusk)
+        run: cargo build-sbf --manifest-path programs/tributary/Cargo.toml
+
+      - name: Layer 1 — proptests (cranked)
+        run: PROPTEST_CASES=100000 cargo test --manifest-path programs/tributary/Cargo.toml --test proptest_pure_fns
+
+      - name: Layer 1 — milestone release_condition enumeration
+        run: cargo test --manifest-path programs/tributary/Cargo.toml --test milestone_release_enumeration
+
+      - name: Layer 2 — Mollusk conservation + authority oracles
+        run: cargo test --manifest-path programs/tributary/Cargo.toml --test mollusk_oracle -- --nocapture
+
+      - name: Layer 2 — cargo-fuzz byte-range attack (10 min)
+        working-directory: programs/tributary/fuzz
+        run: |
+          cargo +nightly fuzz run composable_byte_range_attack -- \
+            -max_total_time=${{ github.event.inputs.fuzz_seconds || 600 }} \
+            -print_final_stats=1
+
+      - name: Install QEDGen + Crucible (for Layer 3)
+        run: |
+          cargo install qedgen --quiet || true
+          cargo install --git https://github.com/asymmetric-research/crucible crucible-fuzz-cli --quiet || true
+
+      - name: Layer 3 — QEDGen Crucible harness (synth + fix-fuzz.py + run)
+        working-directory: programs/tributary
+        run: |
+          # Synthesise the harness (dry run — emits source, no build/fuzz).
+          qedgen probe --fuzz 0 --root . --no-smoke
+          # Apply the post-processor that fixes 3 qedgen v2.47 codegen seams:
+          #   Bug A: shrink [u8; N>32] padding in idls/tributary.json (Default)
+          #   Bug B: rewrite bare-identifier call args to typed expressions
+          #   Bug C: repath ctx.add_program() to the workspace-rooted .so
+          python3 ../../formal_verification/fix-fuzz.py .qed/fuzz/tributary/src/main.rs
+          # Run — 0 crashes = green. Post-state guards (lamport conservation,
+          # ownership, rent, realloc, token-balance conserved) are the detector.
+          cd .qed/fuzz
+          crucible run tributary invariant_test \
+            --timeout ${{ github.event.inputs.fuzz_seconds || 600 }} \
+            -j 4

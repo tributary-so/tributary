@@ -70,7 +70,7 @@ impl<'info> CreatePaymentPolicy<'info> {
         spec = "../../tributary.qedspec",
         handler = "create_payment_policy",
         hash = "46d488d88d37f4a2",
-        spec_hash = "6c144b6f017bd22f"
+        spec_hash = "aac1743900b759ae"
     )]
     pub fn handler_create_payment_policy(
         ctx: Context<CreatePaymentPolicy>,

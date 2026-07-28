@@ -1,11 +1,11 @@
 ---
 # tributary-ben2
 title: Operational fixes — rescan, cooldown, RPC, logging
-status: todo
+status: completed
 type: epic
 priority: critical
 created_at: 2026-07-21T09:21:50Z
-updated_at: 2026-07-21T09:21:50Z
+updated_at: 2026-07-22T11:03:52Z
 parent: tributary-y0g1
 ---
 

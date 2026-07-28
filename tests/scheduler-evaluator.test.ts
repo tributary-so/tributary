@@ -12,6 +12,9 @@ const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
 
+// Mock gateway with 0 fee bps — PayAsYouGo face == gross when feeBps = 0.
+const MOCK_GATEWAY = { gatewayFeeBps: 0 } as any;
+
 function mockSystemAccount(lamports: number): any {
   return {
     lamports,
@@ -167,7 +170,7 @@ describe("isScheduleReady", () => {
       policyType: {},
       paymentCount: 0,
     } as any;
-    expect(isScheduleReady(policy, now).ready).toBe(false);
+    expect(isScheduleReady(policy, now, MOCK_GATEWAY).ready).toBe(false);
   });
 
   test("subscription — due and under max renewals → ready", () => {
@@ -182,7 +185,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    const result = isScheduleReady(policy, now);
+    const result = isScheduleReady(policy, now, MOCK_GATEWAY);
     expect(result.ready).toBe(true);
     expect(result.amount?.toNumber()).toBe(1_000_000);
   });
@@ -199,7 +202,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    expect(isScheduleReady(policy, now).ready).toBe(false);
+    expect(isScheduleReady(policy, now, MOCK_GATEWAY).ready).toBe(false);
   });
 
   test("subscription — max renewals reached → not ready", () => {
@@ -214,7 +217,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    expect(isScheduleReady(policy, now).ready).toBe(false);
+    expect(isScheduleReady(policy, now, MOCK_GATEWAY).ready).toBe(false);
   });
 
   test("milestone — time-based, current due → ready", () => {
@@ -235,7 +238,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    const result = isScheduleReady(policy, now);
+    const result = isScheduleReady(policy, now, MOCK_GATEWAY);
     expect(result.ready).toBe(true);
     expect(result.amount?.toNumber()).toBe(500);
   });
@@ -254,7 +257,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    expect(isScheduleReady(policy, now).ready).toBe(false);
+    expect(isScheduleReady(policy, now, MOCK_GATEWAY).ready).toBe(false);
   });
 
   test("payAsYouGo — headroom in current period → ready", () => {
@@ -271,7 +274,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    const result = isScheduleReady(policy, now);
+    const result = isScheduleReady(policy, now, MOCK_GATEWAY);
     expect(result.ready).toBe(true);
     expect(result.amount?.toNumber()).toBe(50_000_000); // capped at chunk
   });
@@ -290,7 +293,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    expect(isScheduleReady(policy, now).ready).toBe(false);
+    expect(isScheduleReady(policy, now, MOCK_GATEWAY).ready).toBe(false);
   });
 
   test("payAsYouGo — period rolled over → ready (total resets)", () => {
@@ -308,7 +311,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    const result = isScheduleReady(policy, now);
+    const result = isScheduleReady(policy, now, MOCK_GATEWAY);
     expect(result.ready).toBe(true);
     expect(result.amount?.toNumber()).toBe(50_000_000); // chunk size, period reset
   });
@@ -327,7 +330,7 @@ describe("isScheduleReady", () => {
         },
       },
     } as any;
-    const result = isScheduleReady(policy, now);
+    const result = isScheduleReady(policy, now, MOCK_GATEWAY);
     expect(result.ready).toBe(true);
     expect(result.amount?.toNumber()).toBe(25_000_000); // min(chunk, headroom)
   });
