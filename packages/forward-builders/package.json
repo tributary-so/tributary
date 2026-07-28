@@ -17,6 +17,7 @@
     "release": "semantic-release -e semantic-release-monorepo"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
     "@tributary-so/sdk": "workspace:*",
     "bn.js": "^5.2.2"
