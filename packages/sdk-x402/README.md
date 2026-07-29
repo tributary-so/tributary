@@ -625,4 +625,7 @@ MIT License - see LICENSE file for details.
 ---
 
 Built with ❤️ for the x402 community. Part of the Tributary ecosystem for Web3 subscriptions.</content>
-<parameter name="filePath">README.md
+
+## Bumps
+
+2026-07-29: minor bump to up and sync packages

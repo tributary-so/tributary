@@ -707,3 +707,7 @@ MIT License - see [LICENSE](../../LICENSE) file for details.
 - **Protocol Repository**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
 - **NPM Package**: [npmjs.com/package/@tributary-so/sdk](https://www.npmjs.com/package/@tributary-so/sdk)
 - **Discord**: Community discussions and support
+
+## Bump
+
+2026-07-29: minor bump to up and sync packages
