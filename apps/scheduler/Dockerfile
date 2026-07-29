@@ -26,6 +26,5 @@ ENV NODE_ENV=production
 # Set METRICS_ENABLED=false to disable entirely.
 ENV METRICS_PORT=9100
 EXPOSE 9100
-COPY --from=builder /app/apps/scheduler/dist/index.js /app/dist/index.js
-COPY --from=builder /app/apps/scheduler/dist/index.js.map /app/dist/index.js.map
+COPY --from=builder /app/apps/scheduler/dist/ /app/dist/
 CMD ["node", "dist/index.js"]
