@@ -9,7 +9,8 @@
   "type": "module",
   "description": "Concrete ForwardBuilder implementations for Tributary composable execution (ADR-0030).",
   "scripts": {
-    "lint": "exit 0",
+"lint": "eslint .",
+"lint:fix": "eslint . --fix",
     "test": "jest",
     "clean": "rm -rf ./dist",
     "build": "npx tsup",
@@ -43,6 +44,10 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "eslint": "^10.0.0",
+    "globals": "^16.4.0",
+    "typescript-eslint": "^8.59.0",
     "@meteora-ag/dlmm": "^1.0.0",
     "@orca-so/whirlpools": "^8.0.1",
     "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha",

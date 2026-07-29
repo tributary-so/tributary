@@ -204,7 +204,7 @@ app.get("/metering", (req: express.Request, res: express.Response) => {
 
 console.log("✓ /metering endpoint registered");
 
-app.get("/", (req: express.Request, res: express.Response) => {
+app.get("/", (_req: express.Request, res: express.Response) => {
   console.log("\n🔗 Root endpoint called");
   res.json({
     name: "x402 v2 Demo Server",
@@ -235,7 +235,7 @@ console.log("✓ / endpoint registered");
 app.get(
   "/premium",
   x402Middleware,
-  (req: express.Request, res: express.Response) => {
+  (_req: express.Request, res: express.Response) => {
     console.log("\n💰 /premium endpoint - Payment verified!");
     console.log("  ✓ JWT valid, subscription active");
     console.log("  ✓ Accessing premium content");

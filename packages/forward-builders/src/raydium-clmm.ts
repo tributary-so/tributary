@@ -27,8 +27,6 @@ import {
 import { RAYDIUM_CLMM_PUBKEY } from "./constants";
 import {
   raydiumClmmForwardConfig,
-  RAYDIUM_CLMM_SWAP_V2_DISCRIMINATOR,
-  type RaydiumClmmForwardConfigOptions,
 } from "./config/raydium-clmm";
 export {
   raydiumClmmForwardConfig,

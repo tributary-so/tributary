@@ -334,7 +334,6 @@ describe("UsageTracker", () => {
 
       tracker.trackUsage("req-1", { requests: 1 });
 
-      const after = Date.now() + 1000;
 
       tracker.trackUsage("req-2", { requests: 1 });
 

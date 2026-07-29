@@ -19,8 +19,6 @@ import {
 import { METEORA_DLMM_PUBKEY } from "./constants";
 import {
   meteoraDlmmForwardConfig,
-  METEORA_DLMM_SWAP_DISCRIMINATOR,
-  type MeteoraDlmmForwardConfigOptions,
 } from "./config/meteora-dlmm";
 export {
   meteoraDlmmForwardConfig,

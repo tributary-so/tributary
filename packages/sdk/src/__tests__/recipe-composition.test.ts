@@ -54,7 +54,7 @@ function forwardConfig(
 let warnCalls: string[];
 beforeEach(() => {
   warnCalls = [];
-  const orig = console.warn;
+  const _orig = console.warn;
   console.warn = ((m: string) => warnCalls.push(m)) as typeof console.warn;
 });
 

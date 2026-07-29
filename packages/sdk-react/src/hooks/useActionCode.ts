@@ -251,7 +251,7 @@ export const useActionCode = () => {
 
         let txSig = null;
 
-        for await (const state of clientRef?.current!.relay.observe(
+        for await (const state of clientRef.current!.relay.observe(
           "solana",
           currentActionCode
         )) {

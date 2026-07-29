@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
 import { useTributarySDK } from "./useTributarySDK";
 import {
   CreatePayAsYouGoParams,

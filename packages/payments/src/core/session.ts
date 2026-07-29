@@ -404,7 +404,7 @@ export class CheckoutSessionManager {
       new PublicKey(data.tm);
       new PublicKey(data.r);
       if (data.g) new PublicKey(data.g);
-    } catch (error) {
+    } catch {
       throw new Error("Invalid public key format");
     }
 
@@ -564,7 +564,7 @@ export class CheckoutSessionManager {
   private parseLineItems(raw: string): LineItem[] | undefined {
     try {
       return JSON.parse(raw);
-    } catch (error) {
+    } catch {
       console.warn("Failed to parse line items, using empty array");
       return undefined;
     }

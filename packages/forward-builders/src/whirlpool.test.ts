@@ -61,7 +61,6 @@ jest.mock("@solana/kit", () => ({
 import {
   createWhirlpoolForward,
 } from "./whirlpool";
-import { WHIRLPOOL_PUBKEY } from "./constants";
 
 function policy(inputMint: PublicKey, outputMint: PublicKey): ComposablePolicy {
   return {

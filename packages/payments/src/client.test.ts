@@ -4,17 +4,10 @@
 import { PaymentsClient } from "./index";
 
 describe("PaymentsClient", () => {
-  let mockConnection: any;
   let mockTributary: any;
   let client: PaymentsClient;
 
   beforeEach(() => {
-    mockConnection = {
-      getAccountInfo: jest.fn(),
-      getParsedTransaction: jest.fn(),
-      getSignaturesForAddress: jest.fn(),
-    };
-
     mockTributary = {
       getUserPaymentPda: jest
         .fn()

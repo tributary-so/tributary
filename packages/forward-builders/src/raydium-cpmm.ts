@@ -28,8 +28,6 @@ import {
 import { RAYDIUM_CPMM_PUBKEY } from "./constants";
 import {
   raydiumCpmmForwardConfig,
-  RAYDIUM_CPMM_SWAP_BASE_INPUT_DISCRIMINATOR,
-  type RaydiumCpmmForwardConfigOptions,
 } from "./config/raydium-cpmm";
 export {
   raydiumCpmmForwardConfig,

@@ -9,7 +9,7 @@
 //
 // Run: npx tsx --test src/__tests__/composable-policy-recipe.test.ts
 
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { PublicKey } from "@solana/web3.js";
 import {
@@ -63,11 +63,11 @@ function recipeOutput(
 }
 
 let warnCalls: string[];
-let originalWarn: typeof console.warn;
+let _originalWarn: typeof console.warn;
 
 beforeEach(() => {
   warnCalls = [];
-  originalWarn = console.warn;
+  _originalWarn = console.warn;
   console.warn = ((msg: string) => warnCalls.push(msg)) as typeof console.warn;
 });
 

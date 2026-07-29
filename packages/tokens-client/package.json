@@ -30,7 +30,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "lint": "exit 0",
+"lint": "eslint .",
+"lint:fix": "eslint . --fix",
     "test": "npx tsx src/devnetFallback.test.ts && npx tsx src/client.test.ts",
     "clean": "rm -rf ./dist",
     "prepack": "pnpm run build",
@@ -49,6 +50,10 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "eslint": "^10.0.0",
+    "globals": "^16.4.0",
+    "typescript-eslint": "^8.59.0",
     "@tanstack/react-query": "^5.89.0",
     "@types/node": "^24.5.2",
     "@types/react": "^19.2.0",

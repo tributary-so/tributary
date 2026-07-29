@@ -59,11 +59,6 @@ describe("CheckoutSessionManager cluster round-trip", () => {
   });
 
   it("falls back to mainnet when encoded cluster is garbage", () => {
-    const url = manager.encodeUrl({ ...baseSubscription, cluster: "devnet" });
-    const blob = url.split("/subscribe/")[1];
-    // Tamper: inject an invalid cluster value into the decoded blob.
-    // Decode → mutate → re-encode by hand to simulate a malformed link.
-    const tampered = blob + "|c=fake";
     // Easiest path: encode raw JSON with a bad cluster, base64url it.
     const bad = Buffer.from(
       JSON.stringify({
