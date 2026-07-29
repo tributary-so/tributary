@@ -21,7 +21,7 @@ import {
   getUserPaymentPda,
   getComposablePolicyPda,
 } from "@tributary-so/sdk";
-import { meteoraDlmmForwardConfig } from "@tributary-so/forward-builders";
+import { meteoraDlmmForwardConfig } from "@tributary-so/forward-builders/config";
 import type { TopupFormState } from "@/lib/form";
 import { getUsdcMint, WSOL_MINT } from "@/lib/pools";
 import { usdcToRaw, solToLamports } from "@/lib/units";

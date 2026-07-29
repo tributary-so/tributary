@@ -15,8 +15,6 @@ import type { ForwardBuilder } from "@tributary-so/sdk";
 
 import {
   createSwapWhenBalanceLow,
-  raydiumClmmForwardConfig,
-  RAYDIUM_CLMM_SWAP_V2_DISCRIMINATOR,
 } from "./raydium-clmm";
 import { RAYDIUM_CLMM_PUBKEY } from "./constants";
 
@@ -41,43 +39,6 @@ const POLICY_TYPE = {
     nextPaymentDue: new BN(0),
   },
 } as any;
-
-describe("raydiumClmmForwardConfig", () => {
-  test("pins programId = CLMM, pool + ammConfig, and mints", () => {
-    const cfg = raydiumClmmForwardConfig({
-      inputMint: INPUT_MINT,
-      outputMint: OUTPUT_MINT,
-      pool: POOL,
-      ammConfig: AMM_CONFIG,
-    });
-    expect(
-      cfg.instructionConstraint.programId.equals(RAYDIUM_CLMM_PUBKEY)
-    ).toBe(true);
-    expect(cfg.instructionConstraint.numPinnedAccounts).toBe(2);
-    expect(
-      cfg.instructionConstraint.pinnedAccounts[0]!.pubkey.equals(POOL)
-    ).toBe(true);
-    expect(
-      cfg.instructionConstraint.pinnedAccounts[1]!.pubkey.equals(AMM_CONFIG)
-    ).toBe(true);
-    expect(cfg.forwardFlags).toBe(0);
-  });
-
-  test("pins the swap_v2 discriminator at dataChecks[0]", () => {
-    const cfg = raydiumClmmForwardConfig({
-      inputMint: INPUT_MINT,
-      outputMint: OUTPUT_MINT,
-      pool: POOL,
-      ammConfig: AMM_CONFIG,
-    });
-    const check = cfg.instructionConstraint.dataChecks[0]!;
-    expect(check.offset).toBe(0);
-    expect(check.length).toBe(8);
-    expect(Array.from(check.expected)).toEqual([
-      ...RAYDIUM_CLMM_SWAP_V2_DISCRIMINATOR,
-    ]);
-  });
-});
 
 describe("createSwapWhenBalanceLow (CLMM)", () => {
   let warnSpy: jest.SpyInstance;
