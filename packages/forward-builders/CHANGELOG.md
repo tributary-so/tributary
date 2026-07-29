@@ -15,5 +15,12 @@
   for Raydium CPMM `swap_base_input` composable forward (program
   `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C`). Zero-RPC account
   derivation, dual-pin (pool_state + amm_config), bps-floor slippage default.
+- **config subpath:** New `@tributary-so/forward-builders/config` entry that
+  exports ONLY the pure setup-time symbols (pubkeys, discriminators,
+  `*ForwardConfig` builders + option types) with zero venue-SDK imports.
+  Browser/setup-only consumers can import the constraint builders without
+  dragging `@orca-so/whirlpools-core`'s wasm (or any venue SDK) into a Vite
+  browser graph. Fire-time builders stay on the main entry (`"."`) for Node
+  consumers (scheduler). Additive — the main entry is unchanged.
 
 ## 1.0.0 (2026-07-22)

@@ -68,6 +68,10 @@
     ".": {
       "types": "./dist/packages/forward-builders/src/index.d.ts",
       "default": "./dist/packages/forward-builders/src/index.js"
+    },
+    "./config": {
+      "types": "./dist/packages/forward-builders/src/config.d.ts",
+      "default": "./dist/packages/forward-builders/src/config.js"
     }
   },
   "publishConfig": {
