@@ -1,3 +1,4 @@
+TODAY := $(shell date +%Y-%m-%d)
 DEPLOY_KEY_PATH := $(or $(TRIBUTRAY_DEPLOY_KEY_PATH),~/.config/solana/id.json)
 PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.json
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
@@ -88,19 +89,24 @@ build:
 	pnpm run -r --filter "./apps/*" build
 	make -C apps/docs build
 
-bump:
-	echo "$(TODAY): $(MESSAGE)" >> apps/scheduler/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/app/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/docs/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/checkout/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/lando/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/api/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> apps/cli/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/sdk/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> packages/payments/CHANGELOG.md
-	echo "$(TODAY): $(MESSAGE)" >> programs/tributary/CHANGELOG.md
+bump_apps:
+	echo "$(TODAY): $(MESSAGE)" >> apps/scheduler/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/app/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/docs/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/checkout/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/lando/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/api/README.md
+	echo "$(TODAY): $(MESSAGE)" >> apps/cli/README.md
+
+bump_packages:
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-react/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/sdk-x402/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/payments/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/forward-builders/README.md
+
+bump_programs:
+	echo "$(TODAY): $(MESSAGE)" >> programs/tributary/README.md
 
 lint:
 	pnpm run -r --filter "./programs/*" lint
