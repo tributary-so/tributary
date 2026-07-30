@@ -1,11 +1,11 @@
 ---
 # tributary-s8y9
 title: pools module in apps/api — sync + index + /v1/pools routes
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-07-29T19:08:06Z
-updated_at: 2026-07-30T09:07:14Z
+updated_at: 2026-07-30T13:22:57Z
 parent: tributary-gq0p
 blocked_by:
     - tributary-ergr
