@@ -1,11 +1,11 @@
 ---
 # tributary-gq0p
 title: Pool resolver service — free-text pool search with trust enrichment (Raydium-first)
-status: in-progress
+status: completed
 type: milestone
 priority: high
 created_at: 2026-07-29T19:08:06Z
-updated_at: 2026-07-30T09:07:14Z
+updated_at: 2026-07-30T13:23:38Z
 ---
 
 Server-side multi-venue pool resolver. Free-text → ranked REAL pools, with
