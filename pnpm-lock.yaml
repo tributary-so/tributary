@@ -1409,6 +1409,30 @@ importers:
         specifier: ^8.59.0
         version: 8.59.4(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
 
+  packages/pools-client:
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.35.0
+        version: 9.39.4
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.12.2
+      eslint:
+        specifier: ^10.0.0
+        version: 10.0.0(jiti@2.6.1)
+      globals:
+        specifier: ^16.4.0
+        version: 16.4.0
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.59.0
+        version: 8.59.4(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+
   packages/sdk:
     dependencies:
       '@coral-xyz/anchor':
