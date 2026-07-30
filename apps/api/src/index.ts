@@ -13,6 +13,7 @@ import { requestLogger, errorHandler, notFoundHandler } from "./middleware";
 
 import { WebSocketService } from "./services/websocket";
 import { KafkaPaymentConsumer } from "./services/kafkaConsumer";
+import { startPoolsSync } from "./services/pools-sync";
 
 import apiRoutes from "./routes";
 import jwksRouter from "./routes/jwks";
@@ -96,6 +97,10 @@ if (require.main === module) {
   wsService = new WebSocketService(httpServer, REDIS_URL);
 
   startAutoRotationCheck();
+
+  // Proactive pool-index sync (separate DB pool — never starves requests).
+  // No-op until a venue normalizer registers (milestone tributary-gq0p).
+  startPoolsSync();
 
   if (KAFKA_BROKERS.length > 0) {
     const consumer = new KafkaPaymentConsumer(KAFKA_BROKERS);

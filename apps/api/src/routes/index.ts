@@ -16,6 +16,7 @@ import tokensRouter from "./tokens";
 import adminRouter from "./admin";
 import gatewayRouter from "./gateway";
 import assetsRouter from "./assets";
+import poolsRouter from "./pools";
 
 const router: Router = Router();
 
@@ -62,5 +63,8 @@ router.use("/gateway", gatewayRouter);
 
 // Asset catalog proxy (tokens.xyz — see ADR-0028)
 router.use("/assets", assetsRouter);
+
+// Pool resolver — free-text pool search over the cached index (milestone tributary-gq0p)
+router.use("/pools", poolsRouter);
 
 export default router;
