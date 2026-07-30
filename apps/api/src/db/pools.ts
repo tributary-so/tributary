@@ -14,7 +14,7 @@
  * Index Scan, not a Sort (see pools-schema.integration.test.ts).
  */
 
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getDb } from ".";
@@ -56,7 +56,7 @@ function parseTerms(raw: string): {
   const mints: string[] = [];
   const symbols: string[] = [];
   for (const t of raw
-    .split(/[\s/]+/)
+    .split(/[/\-\s_]+/)
     .map((s) => s.trim())
     .filter(Boolean)) {
     const key = t.toLowerCase();
@@ -71,11 +71,11 @@ function parseTerms(raw: string): {
 /**
  * Search the cached pools index. Empty (never throws) — callers wrap in their
  * own empty-not-500 posture for the HTTP layer; the data layer itself just
- * returns what the index has.
+ * returns what the index has. `venue` is optional: omitted → search all venues.
  */
 export async function searchPools(
   query: string,
-  opts: { venue: string; limit?: number }
+  opts: { venue?: string; limit?: number }
 ): Promise<PoolSearchHit[]> {
   const db = getDb();
   if (!db) return [];
@@ -106,7 +106,13 @@ export async function searchPools(
     symConds.push(eq(pools.symbolA, symbols[0]), eq(pools.symbolB, symbols[0]));
   }
 
-  const match = and(eq(pools.venue, opts.venue), or(...mintConds, ...symConds));
+  // venue is optional — the Mill fixes it to template.lane, but the route
+  // accepts an unscoped search when omitted.
+  const matchConds: SQL[] = [];
+  if (opts.venue) matchConds.push(eq(pools.venue, opts.venue));
+  const matchExpr = or(...mintConds, ...symConds);
+  if (matchExpr) matchConds.push(matchExpr);
+  const match = and(...matchConds);
 
   const rows = await db
     .select({ pool: pools, tokenA: tokens, tokenB })

@@ -1,18 +1,19 @@
 /**
- * Unit tests for the /v1/pools route contract (bean tributary-ssvc wiring).
+ * Unit tests for the /v1/pools route contract (beans tributary-ssvc + g6uq).
  *
- * The data layer (db/pools searchPools) is mocked at the module boundary; the
- * route's contract — envelope shape (tokenX/tokenY), query/venue validation,
- * and the empty-not-500 failure stance — is what these pin down. The live-PG
- * ranking/index behaviors live in pools-schema.integration.test.ts (xrn2).
+ * The cached search (services/pools-search) is mocked at the module boundary;
+ * the route's contract — envelope shape (tokenX/tokenY), query validation,
+ * optional venue, and the empty-not-500 failure stance — is what these pin
+ * down. The live-PG ranking/index behaviors live in pools-schema.integration
+ * .test.ts (xrn2); the cache behavior in pools-search.service.test.ts (g6uq).
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express, { Application } from "express";
 
-jest.mock("../db/pools", () => ({
-  searchPools: jest.fn(),
+jest.mock("../services/pools-search", () => ({
+  searchPoolsCached: jest.fn(),
 }));
 
 // Bypass IP rate limit so test runs aren't throttled.
@@ -24,10 +25,10 @@ jest.mock("../middleware/rateLimit", () => ({
 
 import poolsRouter from "../routes/pools";
 import { errorHandler } from "../middleware/errorHandler";
-import * as poolsDb from "../db/pools";
+import * as poolsSearch from "../services/pools-search";
 
-const searchPools = poolsDb.searchPools as jest.MockedFunction<
-  typeof poolsDb.searchPools
+const searchPoolsCached = poolsSearch.searchPoolsCached as jest.MockedFunction<
+  typeof poolsSearch.searchPoolsCached
 >;
 
 function createApp(): Application {
@@ -88,7 +89,7 @@ describe("/v1/pools routes", () => {
 
   describe("GET /v1/pools/search", () => {
     it("returns 200 with the ranked envelope, shaping tokenX/tokenY", async () => {
-      searchPools.mockResolvedValueOnce([SAMPLE_HIT as any]);
+      searchPoolsCached.mockResolvedValueOnce([SAMPLE_HIT as any]);
 
       const res = await request(app).get(
         "/v1/pools/search?q=SOL/USDC&venue=raydium&limit=10"
@@ -116,20 +117,20 @@ describe("/v1/pools routes", () => {
         decimals: 6,
         logoUri: "https://img/usdc.png",
       });
-      expect(searchPools).toHaveBeenCalledWith("SOL/USDC", {
+      expect(searchPoolsCached).toHaveBeenCalledWith("SOL/USDC", {
         venue: "raydium",
         limit: 10,
       });
     });
 
     it("defaults limit to 20 when not provided", async () => {
-      searchPools.mockResolvedValueOnce([]);
+      searchPoolsCached.mockResolvedValueOnce([]);
 
       await request(app)
         .get("/v1/pools/search?q=sol&venue=raydium")
         .expect(200);
 
-      expect(searchPools).toHaveBeenCalledWith("sol", {
+      expect(searchPoolsCached).toHaveBeenCalledWith("sol", {
         venue: "raydium",
         limit: 20,
       });
@@ -141,20 +142,25 @@ describe("/v1/pools routes", () => {
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.error).toMatch(/q.*required/i);
-      expect(searchPools).not.toHaveBeenCalled();
+      expect(searchPoolsCached).not.toHaveBeenCalled();
     });
 
-    it("returns 400 when venue is missing", async () => {
+    it("treats venue as optional — omitted searches all venues (200)", async () => {
+      searchPoolsCached.mockResolvedValueOnce([]);
+
       const res = await request(app).get("/v1/pools/search?q=sol");
 
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error).toMatch(/venue.*required/i);
-      expect(searchPools).not.toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.venue).toBeNull();
+      expect(searchPoolsCached).toHaveBeenCalledWith("sol", {
+        venue: undefined,
+        limit: 20,
+      });
     });
 
-    it("returns 200 with empty results when searchPools throws (empty-not-500)", async () => {
-      searchPools.mockRejectedValueOnce(new Error("db down"));
+    it("returns 200 with empty results when searchPoolsCached throws (empty-not-500)", async () => {
+      searchPoolsCached.mockRejectedValueOnce(new Error("db down"));
 
       const res = await request(app).get(
         "/v1/pools/search?q=sol&venue=raydium"
@@ -166,7 +172,7 @@ describe("/v1/pools routes", () => {
     });
 
     it("returns 200 with empty results on a clean miss", async () => {
-      searchPools.mockResolvedValueOnce([]);
+      searchPoolsCached.mockResolvedValueOnce([]);
 
       const res = await request(app).get(
         "/v1/pools/search?q=nope&venue=raydium"

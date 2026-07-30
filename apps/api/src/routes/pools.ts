@@ -15,7 +15,8 @@
 import { Router, Request, Response } from "express";
 import { asyncHandler } from "../middleware";
 import { ipRateLimit } from "../middleware/rateLimit";
-import { searchPools, type PoolSearchHit } from "../db/pools";
+import { searchPoolsCached } from "../services/pools-search";
+import type { PoolSearchHit } from "../db/pools";
 
 const router: Router = Router();
 
@@ -45,7 +46,7 @@ interface PoolResult {
 function toLeg(
   mint: string,
   token: PoolSearchHit["tokenA"],
-  fallbackSymbol: string | null,
+  fallbackSymbol: string | null
 ): PoolTokenLeg {
   return {
     mint,
@@ -85,36 +86,33 @@ router.get(
       });
       return;
     }
-    if (!venue) {
-      res.status(400).json({
-        success: false,
-        error: "Query parameter 'venue' is required",
-        timestamp: Date.now(),
-      });
-      return;
-    }
+    // venue is optional — the Mill fixes it to template.lane; omitted searches
+    // all venues.
     const rawLimit = Number.parseInt(String(req.query.limit ?? "20"), 10);
     const limit = Number.isFinite(rawLimit) ? rawLimit : 20;
 
     let results: PoolResult[] = [];
     try {
-      const hits = await searchPools(q, { venue, limit });
+      const hits = await searchPoolsCached(q, {
+        venue: venue || undefined,
+        limit,
+      });
       results = hits.map(toResult);
     } catch (err) {
       // ADR-0028 D3: empty, not 500.
       console.error(
         "[pools] search failed:",
-        err instanceof Error ? err.message : err,
+        err instanceof Error ? err.message : err
       );
       results = [];
     }
 
     res.json({
       success: true,
-      data: { query: q, venue, results },
+      data: { query: q, venue: venue || null, results },
       timestamp: Date.now(),
     });
-  }),
+  })
 );
 
 export default router;
