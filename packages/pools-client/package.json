@@ -27,6 +27,7 @@
     "build": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "test": "npx tsx src/client.test.ts && npx tsx src/react.test.ts",
     "clean": "rm -rf ./dist",
     "prepack": "pnpm run build",
     "release": "semantic-release -e semantic-release-monorepo"
@@ -52,6 +53,7 @@
     "@types/node": "^24.5.2",
     "@types/react": "^19.2.0",
     "react": "^19.2.3",
+    "react-test-renderer": "^19.2.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
