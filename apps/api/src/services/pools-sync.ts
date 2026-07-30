@@ -33,12 +33,18 @@ export interface RegisteredNormalizer {
   sync: PoolNormalizer;
 }
 
+/** A post-sync enrichment pass (token refresh + star precompute). */
+export type PostSyncHook = () => Promise<void>;
+
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
 
 let syncClient: postgres.Sql<Record<string, never>> | null = null;
 let syncDb: ReturnType<typeof drizzle> | null = null;
 
 const normalizers: RegisteredNormalizer[] = [];
+/** Post-sync enrichment hooks (e.g. token refresh + star precompute). Run after
+ * venue normalizers each tick, with per-hook error isolation. */
+const postSyncHooks: PostSyncHook[] = [];
 let intervalHandle: NodeJS.Timeout | null = null;
 let running = false;
 
@@ -66,7 +72,7 @@ export function getSyncDb(): ReturnType<typeof drizzle> {
 /** Register a venue's full-sync function. Idempotent per venue. */
 export function registerPoolNormalizer(
   venue: string,
-  sync: PoolNormalizer,
+  sync: PoolNormalizer
 ): void {
   const existing = normalizers.find((n) => n.venue === venue);
   if (existing) {
@@ -76,9 +82,15 @@ export function registerPoolNormalizer(
   normalizers.push({ venue, sync });
 }
 
+/** Register a post-sync enrichment hook (token refresh + star precompute). */
+export function registerPostSyncHook(hook: PostSyncHook): void {
+  if (!postSyncHooks.includes(hook)) postSyncHooks.push(hook);
+}
+
 /**
- * Run one sync tick across every registered venue. Per-venue error isolation:
- * a throwing normalizer is logged and skipped; the others still run.
+ * Run one sync tick across every registered venue, then the post-sync hooks.
+ * Per-venue / per-hook error isolation: a throwing unit is logged and skipped;
+ * the others still run.
  */
 export async function runPoolsSyncTick(): Promise<void> {
   if (normalizers.length === 0) return;
@@ -88,7 +100,17 @@ export async function runPoolsSyncTick(): Promise<void> {
     } catch (err) {
       console.error(
         `[pools-sync] normalizer for venue "${venue}" failed:`,
-        err instanceof Error ? err.message : err,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  for (const hook of postSyncHooks) {
+    try {
+      await hook();
+    } catch (err) {
+      console.error(
+        "[pools-sync] post-sync hook failed:",
+        err instanceof Error ? err.message : err
       );
     }
   }
@@ -114,19 +136,19 @@ export function startPoolsSync(intervalMs: number = DEFAULT_INTERVAL_MS): void {
   console.log(
     `[pools-sync] starting sync loop (${normalizers.length} venue(s), every ${
       intervalMs / 1000
-    }s)`,
+    }s)`
   );
 
   // Fire one tick shortly after boot (don't block startup), then on the interval.
   setTimeout(() => {
     runPoolsSyncTick().catch((err) =>
-      console.error("[pools-sync] initial tick failed:", err),
+      console.error("[pools-sync] initial tick failed:", err)
     );
   }, 10_000);
 
   intervalHandle = setInterval(() => {
     runPoolsSyncTick().catch((err) =>
-      console.error("[pools-sync] tick failed:", err),
+      console.error("[pools-sync] tick failed:", err)
     );
   }, intervalMs);
 }

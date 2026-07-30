@@ -76,6 +76,7 @@ interface UpstreamResolveEnvelope {
   decimals?: number | null;
   imageUrl?: string | null;
   category?: string | null;
+  trustTier?: string | null;
 }
 
 function pickPrimaryVariant(
@@ -194,6 +195,7 @@ export async function resolveAsset(
       decimals: typeof upstream.decimals === "number" ? upstream.decimals : 6,
       imageUrl: upstream.imageUrl ?? null,
       category: upstream.category ?? null,
+      tier: upstream.trustTier ?? null,
     };
   }
 

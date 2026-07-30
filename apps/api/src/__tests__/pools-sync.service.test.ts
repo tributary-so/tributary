@@ -18,6 +18,7 @@ import {
 
 import {
   registerPoolNormalizer,
+  registerPostSyncHook,
   runPoolsSyncTick,
   startPoolsSync,
   stopPoolsSync,
@@ -94,5 +95,23 @@ describe("pools-sync orchestrator", () => {
 
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs post-sync hooks after normalizers, with per-hook error isolation", async () => {
+    const norm = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const hookOk = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const hookBoom = jest
+      .fn<() => Promise<void>>()
+      .mockRejectedValue(new Error("refresh failed"));
+    registerPoolNormalizer("raydium", norm);
+    registerPostSyncHook(hookBoom);
+    registerPostSyncHook(hookOk);
+
+    await expect(runPoolsSyncTick()).resolves.toBeUndefined();
+
+    // normalizer first, then both hooks — the throwing one never blocks the other
+    expect(norm).toHaveBeenCalled();
+    expect(hookBoom).toHaveBeenCalledTimes(1);
+    expect(hookOk).toHaveBeenCalledTimes(1);
   });
 });

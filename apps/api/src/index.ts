@@ -13,8 +13,13 @@ import { requestLogger, errorHandler, notFoundHandler } from "./middleware";
 
 import { WebSocketService } from "./services/websocket";
 import { KafkaPaymentConsumer } from "./services/kafkaConsumer";
-import { startPoolsSync, registerPoolNormalizer } from "./services/pools-sync";
+import {
+  startPoolsSync,
+  registerPoolNormalizer,
+  registerPostSyncHook,
+} from "./services/pools-sync";
 import { raydiumSync } from "./services/raydium-sync";
+import { refreshPoolsTokens } from "./services/pools-tokens";
 
 import apiRoutes from "./routes";
 import jwksRouter from "./routes/jwks";
@@ -103,6 +108,10 @@ if (require.main === module) {
   // No-op until a venue normalizer registers (milestone tributary-gq0p).
   registerPoolNormalizer("raydium", async () => {
     await raydiumSync();
+  });
+  // tokens.xyz trust enrichment + star precompute (runs after each venue sync).
+  registerPostSyncHook(async () => {
+    await refreshPoolsTokens();
   });
   startPoolsSync();
 

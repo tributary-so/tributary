@@ -219,6 +219,30 @@ export async function getToken(
 }
 
 /**
+ * Distinct mints from the `pools` index that have NO fresh `tokens` row (missing
+ * entirely, or `refreshed_at` older than the cutoff). Bounds the token-refresh
+ * tick to only stale mints. Capped by `limit`.
+ */
+export async function getMintsNeedingRefresh(
+  db: PoolsDb,
+  opts: { maxAgeMs: number; limit?: number }
+): Promise<string[]> {
+  const cutoff = new Date(Date.now() - opts.maxAgeMs);
+  const limit = opts.limit ?? 200;
+  const rows = (await db.execute(sql`
+    SELECT DISTINCT mint FROM (
+      SELECT ${pools.mintA} AS mint FROM ${pools}
+      UNION
+      SELECT ${pools.mintB} AS mint FROM ${pools}
+    ) m
+    LEFT JOIN ${tokens} ON ${tokens.mint} = m.mint
+    WHERE ${tokens.mint} IS NULL OR ${tokens.refreshedAt} < ${cutoff}
+    LIMIT ${limit}
+  `)) as unknown as Array<{ mint: string }>;
+  return rows.map((r) => r.mint).filter(Boolean);
+}
+
+/**
  * Recompute `stars` + `tier1` for every pool touching `mint`, reading the live
  * `tokens` rows for both legs. Star precompute (milestone §4):
  *   stars = (a.known ? 1 : 0) + (b.known ? 1 : 0)   # 0|1|2
