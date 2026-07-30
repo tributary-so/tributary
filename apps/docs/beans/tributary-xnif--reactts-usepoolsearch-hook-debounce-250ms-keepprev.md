@@ -1,14 +1,14 @@
 ---
 # tributary-xnif
 title: react.ts usePoolSearch hook (debounce 250ms, keepPreviousData, staleTime 30s, enabled gate)
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-07-29T19:08:07Z
-updated_at: 2026-07-30T10:11:17Z
+updated_at: 2026-07-30T10:14:08Z
 parent: tributary-30yg
 blocked_by:
-    - tributary-c09c
+  - tributary-c09c
 ---
 
 assigned: implementer
@@ -31,3 +31,5 @@ Package config updates to support the `./react` subpath:
 - `tsconfig.json`: added `"jsx": "react-jsx"`
 
 Verified: lint clean, build green (`dist/react.js` + `dist/react.d.ts` emitted).
+
+Landed in commit `fa64aa11` (`react.ts` + `./react` export map + `jsx: react-jsx`). Status flip rides in this follow-up commit — code was verified green before completion.
