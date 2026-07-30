@@ -27,7 +27,7 @@
     "build": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "npx tsx src/client.test.ts && npx tsx src/react.test.ts",
+    "test": "npx tsx src/client.test.ts && npx tsx src/react.test.ts && npx tsx src/picker.test.ts",
     "clean": "rm -rf ./dist",
     "prepack": "pnpm run build",
     "release": "semantic-release -e semantic-release-monorepo"

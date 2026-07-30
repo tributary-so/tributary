@@ -11,6 +11,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createPoolsClient, type PoolsClient } from "./client";
 import type { PoolSearchResponse, PoolVenue } from "./types";
 
+// Presentational PoolPicker (rows + uniform onSelect + direction helpers).
+// Re-exported here so `@tributary-so/pools-client/react` is the single React
+// entry — hooks + picker. See bean tributary-i2nd.
+export * from "./picker";
+
 export interface UsePoolsClientOptions {
   baseUrl: string;
   fetch?: typeof fetch;
@@ -49,7 +54,7 @@ function useClient({ baseUrl, fetch }: UsePoolsClientOptions): PoolsClient {
 export function usePoolSearch(
   query: string,
   clientOpts: UsePoolsClientOptions,
-  opts: UsePoolSearchOptions
+  opts: UsePoolSearchOptions,
 ) {
   const client = useClient(clientOpts);
   const { venue, enabled = true, limit = 20, debounceMs = 250 } = opts;
