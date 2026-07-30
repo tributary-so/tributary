@@ -13,7 +13,8 @@ import { requestLogger, errorHandler, notFoundHandler } from "./middleware";
 
 import { WebSocketService } from "./services/websocket";
 import { KafkaPaymentConsumer } from "./services/kafkaConsumer";
-import { startPoolsSync } from "./services/pools-sync";
+import { startPoolsSync, registerPoolNormalizer } from "./services/pools-sync";
+import { raydiumSync } from "./services/raydium-sync";
 
 import apiRoutes from "./routes";
 import jwksRouter from "./routes/jwks";
@@ -100,6 +101,9 @@ if (require.main === module) {
 
   // Proactive pool-index sync (separate DB pool — never starves requests).
   // No-op until a venue normalizer registers (milestone tributary-gq0p).
+  registerPoolNormalizer("raydium", async () => {
+    await raydiumSync();
+  });
   startPoolsSync();
 
   if (KAFKA_BROKERS.length > 0) {
