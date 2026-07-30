@@ -1,11 +1,11 @@
 ---
 # tributary-yk1m
 title: Rewire param-field.tsx PoolControl — drop if(lane===raydium), POOL_SOURCES[lane]={venue:lane}
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-07-29T19:08:07Z
-updated_at: 2026-07-30T11:21:11Z
+updated_at: 2026-07-30T11:54:24Z
 parent: tributary-24g9
 blocked_by:
     - tributary-i2nd
