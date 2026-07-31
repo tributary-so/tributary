@@ -54,6 +54,8 @@ export interface ResolveResult {
   decimals: number | null;
   imageUrl: string | null;
   category: AssetCategory;
+  /** Trust tier from tokens.xyz (e.g. "tier1"), when upstream surfaces it. */
+  tier?: string | null;
 }
 
 /** Options accepted by the client `search()` call. */

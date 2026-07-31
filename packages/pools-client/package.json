@@ -1,0 +1,66 @@
+{
+  "name": "@tributary-so/pools-client",
+  "repository": {
+    "url": "https://github.com/tributary-so/tributary",
+    "type": "git"
+  },
+  "license": "MIT",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Pure-fetch client for the Tributary /v1/pools/search endpoint (pool resolver service). No React, no globals.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "npx tsx src/client.test.ts && npx tsx src/react.test.ts && npx tsx src/picker.test.ts",
+    "clean": "rm -rf ./dist",
+    "prepack": "pnpm run build",
+    "release": "semantic-release -e semantic-release-monorepo"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "eslint": "^10.0.0",
+    "globals": "^16.4.0",
+    "typescript-eslint": "^8.59.0",
+    "@tanstack/react-query": "^5.89.0",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.2.0",
+    "react": "^19.2.3",
+    "react-test-renderer": "^19.2.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "release": {
+    "extends": "semantic-release-monorepo",
+    "branches": [
+      "main"
+    ]
+  }
+}

@@ -1409,6 +1409,42 @@ importers:
         specifier: ^8.59.0
         version: 8.59.4(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
 
+  packages/pools-client:
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.35.0
+        version: 9.39.4
+      '@tanstack/react-query':
+        specifier: 5.90.20
+        version: 5.90.20(react@19.2.3)
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.12.2
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.14
+      eslint:
+        specifier: ^10.0.0
+        version: 10.0.0(jiti@2.6.1)
+      globals:
+        specifier: ^16.4.0
+        version: 16.4.0
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-test-renderer:
+        specifier: ^19.2.3
+        version: 19.2.8(react@19.2.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.59.0
+        version: 8.59.4(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+
   packages/sdk:
     dependencies:
       '@coral-xyz/anchor':
@@ -13101,6 +13137,9 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
+  react-is@19.2.8:
+    resolution: {integrity: sha512-s5un28nYxKJw5gvUHyW5PCC28CvBqLu9r3cWgzHT4Vo/5fqqkFcdRYsGcKf50WMPpjjFZS5d76fn3YCo2njKwQ==}
+
   react-lifecycles-compat@3.0.4:
     resolution: {integrity: sha512-fBASbA6LnOU9dOU2eW7aQ8xmYBSXUIWr+UmF9b1efZBazGNO+rcXT/icdKnYm2pTwcRylVUYwW7H1PHfLekVzA==}
 
@@ -13213,6 +13252,11 @@ packages:
     resolution: {integrity: sha512-DgXrc+AZF47+HvAPEmn7Ua/1p10jNoVZVI/LoPiYdtY+OM+/nG5yefLHKJwdKqY1adMuHFbeyBaG9j64ML7vTw==}
     peerDependencies:
       react: '>= 0.14.0'
+
+  react-test-renderer@19.2.8:
+    resolution: {integrity: sha512-GHKPaDRaNYU24PHTLG8Bx8VMY9t+qNfxQbt/Yjp7aMWBkKU6766SR0n6TnYu7P5I1MfEuAMUadqiyDHyI4Yy9Q==}
+    peerDependencies:
+      react: ^19.2.8
 
   react-textarea-autosize@8.5.9:
     resolution: {integrity: sha512-U1DGlIQN5AwgjTyOEnI1oCcMuEr1pv1qOtklB2l4nyMGbHzWrI0eFsYK0zos2YWqAolJyG0IWJaqWmWj5ETh0A==}
@@ -38467,6 +38511,8 @@ snapshots:
 
   react-is@18.3.1: {}
 
+  react-is@19.2.8: {}
+
   react-lifecycles-compat@3.0.4: {}
 
   react-modal@3.16.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
@@ -38804,6 +38850,12 @@ snapshots:
       prismjs: 1.30.0
       react: 19.2.3
       refractor: 3.6.0
+
+  react-test-renderer@19.2.8(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-is: 19.2.8
+      scheduler: 0.27.0
 
   react-textarea-autosize@8.5.9(@types/react@19.2.0)(react@19.2.3):
     dependencies:
