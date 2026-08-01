@@ -387,3 +387,4 @@ cd ../sdk-react && pnpm run build
 ## License
 
 MIT License
+2026-08-01: new pools-client

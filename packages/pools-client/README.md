@@ -318,3 +318,4 @@ flag is the caller's knob). The hook itself is network-agnostic.
 ## License
 
 MIT — see [repository root](../../LICENSE).
+2026-08-01: new pools-client

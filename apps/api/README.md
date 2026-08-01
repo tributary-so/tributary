@@ -1494,3 +1494,4 @@ Solution: Limit query parameters to 3 or fewer when calling `/v1/subscriptions`.
 ## License
 
 MIT
+2026-08-01: new pools-client

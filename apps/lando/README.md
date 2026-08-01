@@ -149,3 +149,4 @@ lando/
 ## License
 
 MIT
+2026-08-01: new pools-client

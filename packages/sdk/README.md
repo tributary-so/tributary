@@ -711,3 +711,4 @@ MIT License - see [LICENSE](../../LICENSE) file for details.
 ## Bump
 
 2026-07-29: minor bump to up and sync packages
+2026-08-01: new pools-client

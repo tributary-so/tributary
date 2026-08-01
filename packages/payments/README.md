@@ -819,3 +819,4 @@ MIT
 
 2026-06-11: fee subsidize
 2026-07-29: minor bump to up and sync packages
+2026-08-01: new pools-client

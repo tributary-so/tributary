@@ -278,3 +278,4 @@ themselves are network-agnostic — `enabled` is the caller's knob.
 MIT — see [repository root](../../LICENSE).
 
 ## Bumps
+2026-08-01: new pools-client
