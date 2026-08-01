@@ -8,9 +8,7 @@
     "lint": "rustfmt src/**/*.rs",
     "release": "semantic-release"
   },
-  "dependencies": {},
-  "devDependencies": {},
-  "version": "1.6.1",
+  "version": "2.2.0",
   "release": {
     "extends": "semantic-release-monorepo",
     "branches": [

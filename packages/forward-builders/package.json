@@ -5,7 +5,7 @@
     "type": "git"
   },
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Concrete ForwardBuilder implementations for Tributary composable execution (ADR-0030).",
   "scripts": {

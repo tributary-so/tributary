@@ -1,7 +1,7 @@
 {
   "name": "@tributary/checkout",
   "private": true,
-  "version": "1.10.1",
+  "version": "2.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "release": "semantic-release"
   },
   "dependencies": {
+    "@heroui/react": "^2.8.10",
     "@radix-ui/themes": "^3.3.0",
     "@rollup/plugin-inject": "^5.0.5",
     "@solana/spl-token": "0.4.14",
@@ -19,7 +20,6 @@
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/wallet-adapter-wallets": "^0.19.32",
     "@solana/web3.js": "^1.98.4",
-    "@heroui/react": "^2.8.10",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-query": "^5.90.20",
     "@tributary-so/payments": "workspace:*",

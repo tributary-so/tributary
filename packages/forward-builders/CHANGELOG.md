@@ -1,3 +1,21 @@
+# [@tributary-so/forward-builders-v1.1.0](https://github.com/tributary-so/tributary/compare/@tributary-so/forward-builders-v1.0.1...@tributary-so/forward-builders-v1.1.0) (2026-07-28)
+
+
+* ♻️ refactor(forward-builders): move forward SDKs to optional peerDependencies ([ae6a002](https://github.com/tributary-so/tributary/commit/ae6a0026a98b765b98ed6d193cd729bc475c2d4a))
+
+
+### Features
+
+* **composable:** add forward_program named account + CLMM swap via v0 ALT ([25a165b](https://github.com/tributary-so/tributary/commit/25a165bb78d7f5bf961b020024963409c6084ea6))
+
+
+### BREAKING CHANGES
+
+* for existing consumers: @meteora-ag/dlmm is no longer
+bundled; must be installed separately.
+
+Refs: tributary-k4jr
+
 # @tributary-so/forward-builders
 
 ## Unreleased
