@@ -22,6 +22,13 @@
       "when": 1785403174916,
       "tag": "0002_melted_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785610994175,
+      "tag": "0003_first_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

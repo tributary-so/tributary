@@ -1,38 +1,18 @@
 import {
-  pgTable,
-  bigint,
+  pgSchema,
   text,
+  bigint,
   jsonb,
   timestamp,
   boolean,
-  customType,
 } from "drizzle-orm/pg-core";
 
-const bytea = customType<{ data: Buffer; notNull: true; default: false }>({
-  dataType() {
-    return "bytea";
-  },
-  toDriver(value: Buffer) {
-    return value;
-  },
-  fromDriver(value: unknown) {
-    if (typeof value === "string") {
-      return Buffer.from(value, "base64");
-    }
-    return value as Buffer;
-  },
-});
+// Dedicated `api` schema, owned + migrated by apps/api. Parallel to the
+// `pools` schema (schema-pools.ts). The foreign read-only `events` table
+// lives in schema-events.ts and is NOT managed by drizzle-kit.
+export const apiSchema = pgSchema("api");
 
-export const events = pgTable("events", {
-  id: bytea("id").primaryKey(),
-  slot: bigint("slot", { mode: "number" }).notNull(),
-  signature: text("signature").notNull(),
-  eventName: text("event_name").notNull(),
-  data: jsonb("data").notNull(),
-  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
-});
-
-export const webhooks = pgTable("webhooks", {
+export const webhooks = apiSchema.table("webhooks", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
   gatewayPubkey: text("gateway_pubkey").notNull(),
   endpointUrl: text("endpoint_url").notNull(),
@@ -42,7 +22,7 @@ export const webhooks = pgTable("webhooks", {
     .defaultNow(),
 });
 
-export const signingKeys = pgTable("signing_keys", {
+export const signingKeys = apiSchema.table("signing_keys", {
   kid: text("kid").primaryKey(),
   privateKey: text("private_key").notNull(),
   publicJwk: jsonb("public_jwk").notNull(),
@@ -55,8 +35,6 @@ export const signingKeys = pgTable("signing_keys", {
   rotatedAt: timestamp("rotated_at", { withTimezone: true }),
 });
 
-export type Event = typeof events.$inferSelect;
-export type NewEvent = typeof events.$inferInsert;
 export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
 export type SigningKey = typeof signingKeys.$inferSelect;

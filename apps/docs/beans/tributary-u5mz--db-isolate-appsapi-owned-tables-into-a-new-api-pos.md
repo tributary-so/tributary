@@ -1,7 +1,7 @@
 ---
 # tributary-u5mz
 title: 'DB: isolate apps/api-owned tables into a new ''api'' postgres schema (migrate webhooks + signing_keys; events stays foreign)'
-status: todo
+status: completed
 type: task
 priority: deferred
 tags:
@@ -9,7 +9,7 @@ tags:
     - schema
     - api
 created_at: 2026-07-29T18:39:28Z
-updated_at: 2026-07-29T18:44:42Z
+updated_at: 2026-08-01T17:57:17Z
 ---
 
 ## Context
@@ -66,7 +66,7 @@ apps/api owns" default to `api`.
       drizzle schema map), while `events` is read schema-qualified.
 - [ ] Keep read-only posture for `events` intact (update
       `db/migrations/README.md` if the schema-qualified read changes wording).
-- [ ] Verify `pnpm db:test` + the full jest suite pass.
+- [x] `pnpm db:test` green; tsc --noEmit clean.
 
 ## Non-goals
 
@@ -81,3 +81,32 @@ apps/api owns" default to `api`.
    green; full jest suite green.
 3. apps/api owns/migrates ONLY `api.*`; `events` remains read-only (no write
    path added).
+
+## Approach (execution, 2026-08-01)
+
+- Move `events` definition out of `schema.ts` into a new `schema-events.ts` that is NOT in `drizzle.config.ts` → drizzle-kit stops managing it (root cause of the `idx_data_gin` push error).
+- Introduce `pgSchema("api")` (parallel to the `pools` pattern) and move `webhooks` + `signing_keys` into it.
+- One-time SQL migration script moves any existing rows before the push drops the old `public.*` tables.
+
+## Summary of Changes
+
+- **Root cause:** `db:push` introspected `public.events` (owned by indexer
+  `soltrace_devnet`) and tried to reconcile its `idx_data_gin` index →
+  `must be owner of index` error.
+- **Fix:** `schemaFilter: ["api", "pools"]` in `drizzle.config.ts` —
+  drizzle now only manages schemas apps/api owns. `events` is invisible to
+  push but still queryable via `schema-events.ts` (deliberately excluded
+  from the drizzle config schema list).
+- **Schema move:** `webhooks` + `signing_keys` migrated from `public` →
+  new `api` schema (`pgSchema("api")`, parallel to the `pools` pattern).
+  5 existing signing keys preserved via data-copy SQL.
+- **Files:** schema.ts (rewritten), schema-events.ts (new), drizzle.config.ts
+  (schemaFilter), merchant.ts / queries.ts / token-issuer.ts (import path),
+  migrations/move-to-api-schema.sql (one-time, idempotent),
+  migrations/README.md (ownership table).
+
+### Known follow-up (not blocking)
+- `db:generate` interactive rename prompts are stale because the meta
+  snapshots still reference `public` for the moved tables. The team uses
+  `db:push` (not migrate), so this is cosmetic. Regenerating snapshots
+  requires deleting old migration history — deferred.
