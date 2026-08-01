@@ -523,3 +523,7 @@ MIT License - see [LICENSE](../../LICENSE) file for details.
 - **ADR-0008** (CPI privilege boundary): [composable CPI privilege boundary](https://github.com/tributary-so/tributary/blob/main/apps/docs/adr/0008-composable-cpi-privilege-boundary.md)
 - **Protocol Repository**: [github.com/tributary-so/tributary](https://github.com/tributary-so/tributary)
 - **NPM Package**: [npmjs.com/package/@tributary-so/forward-builders](https://www.npmjs.com/package/@tributary-so/forward-builders)
+
+## Bumps
+
+2026-07-29: minor bump to up and sync packages

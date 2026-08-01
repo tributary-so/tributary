@@ -1,3 +1,7 @@
+# [@tributary-so/forward-builders-v1.2.0](https://github.com/tributary-so/tributary/compare/@tributary-so/forward-builders-v1.1.1...@tributary-so/forward-builders-v1.2.0) (2026-07-29)
+
+# [@tributary-so/forward-builders-v1.1.1](https://github.com/tributary-so/tributary/compare/@tributary-so/forward-builders-v1.1.0...@tributary-so/forward-builders-v1.1.1) (2026-07-29)
+
 # [@tributary-so/forward-builders-v1.1.0](https://github.com/tributary-so/tributary/compare/@tributary-so/forward-builders-v1.0.1...@tributary-so/forward-builders-v1.1.0) (2026-07-28)
 
 

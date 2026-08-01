@@ -1,3 +1,5 @@
+# [@tributary-so/scheduler-v2.5.1](https://github.com/tributary-so/tributary/compare/@tributary-so/scheduler-v2.5.0...@tributary-so/scheduler-v2.5.1) (2026-07-29)
+
 # [@tributary-so/scheduler-v2.5.0](https://github.com/tributary-so/tributary/compare/@tributary-so/scheduler-v2.4.0...@tributary-so/scheduler-v2.5.0) (2026-07-28)
 
 
