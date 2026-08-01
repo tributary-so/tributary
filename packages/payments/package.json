@@ -4,7 +4,7 @@
     "url": "https://github.com/tributary-so/tributary",
     "type": "git"
   },
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Payments SDK for Tributary USDC subscriptions - zero API keys required",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,8 +19,8 @@
     "build": "tsc",
     "test": "jest --testPathIgnorePatterns='verification.e2e.test.ts'",
     "test:e2e": "npx tsx --test src/core/verification.e2e.test.ts",
-"lint": "eslint .",
-"lint:fix": "eslint . --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "prepack": "pnpm run build",
     "release": "semantic-release -e semantic-release-monorepo"
   },
@@ -31,15 +31,15 @@
     "jose": "^6.2.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "@types/node": "^22.0.0",
     "eslint": "^10.0.0",
-    "@eslint/js": "^9.35.0",
     "globals": "^16.4.0",
-    "typescript-eslint": "^8.59.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.59.0"
   },
   "release": {
     "extends": "semantic-release-monorepo",

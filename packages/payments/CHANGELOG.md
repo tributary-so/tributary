@@ -1,3 +1,5 @@
+# [@tributary-so/payments-v2.1.2](https://github.com/tributary-so/tributary/compare/@tributary-so/payments-v2.1.1...@tributary-so/payments-v2.1.2) (2026-08-01)
+
 # [@tributary-so/payments-v2.1.1](https://github.com/tributary-so/tributary/compare/@tributary-so/payments-v2.1.0...@tributary-so/payments-v2.1.1) (2026-07-29)
 
 # [@tributary-so/payments-v2.1.0](https://github.com/tributary-so/tributary/compare/@tributary-so/payments-v2.0.0...@tributary-so/payments-v2.1.0) (2026-07-17)
