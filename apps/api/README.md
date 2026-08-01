@@ -5,7 +5,7 @@ Modular Express API for Tributary subscription and payment services. Provides RE
 ## Key Features
 
 - **Modular Architecture**: Clean separation of routes, middleware, services, and types designed for easy microservice splitting
-- **RESTful API Design**: Standard REST endpoints with `/api/v1` prefix for consistent versioning
+- **RESTful API Design**: Standard REST endpoints with `/v1` prefix for consistent versioning
 - **WebSocket Support**: Real-time payment notifications via Socket.IO at `/ws/v1`
 - **Kafka Integration**: Consumes on-chain payment events and pushes real-time notifications to subscribed clients
 - **Webhook Management**: Register and manage webhooks for payment event notifications
@@ -28,7 +28,7 @@ Modular Express API for Tributary subscription and payment services. Provides RE
 - **Blockchain**: Solana Web3.js 1.95+ with SPL Token library
 - **Package Manager**: pnpm
 - **Testing**: Jest with ts-jest
-- **Build Tool**: TypeScript Compiler (tsc)
+- **Build Tool**: tsup (single self-contained CJS bundle — see `tsup.config.ts`; `noExternal: [/.*/]` inlines all deps including workspace packages, so the runtime image needs no `node_modules` apart from the two optional `ws` native addons)
 - **Linting**: (Inherited from workspace configuration)
 
 ## Prerequisites
@@ -263,7 +263,9 @@ Kafka Event → Kafka Consumer → WebhookService → HTTP POST → External End
 - `notFoundHandler`: 404 handler for undefined routes
 - `asyncHandler`: Wrapper to catch errors in async route handlers
 
-**Services (`src/services/`)**
+**Services (`src/services/`) — all boot in-process**
+
+All services start inside the single `node dist/index.js` process (see the `require.main === module` block in `src/index.ts`). **There are no separate service processes to run.** Each degrades gracefully when its dependency is unset (see Deployment).
 
 - `solana.ts`: Solana RPC connection management and token mint operations
 - `subscription.ts`: PaymentPolicyTracker integration for subscription status queries
@@ -272,6 +274,20 @@ Kafka Event → Kafka Consumer → WebhookService → HTTP POST → External End
 - `kafkaConsumer.ts`: Kafka consumer for `tributary_PaymentRecord` events
 - `webhookForwarder.ts`: Webhook delivery with retry logic (max 3 retries)
 - `paymentNotifications.ts`: Payment notification helpers
+- `gateway-auth.ts`: Gateway-authority auth — wallet-sign challenge → short-lived JWT (reuses the JWKS signing key)
+- `jwks.ts` / `jwks-queries.ts`: JWKS signing-key management (encrypted at rest) + automatic key rotation
+- `token-issuer.ts`: JWT issuance (jose) for gateway/subscription claims
+- `tx-verifier.ts`: On-chain transaction verification (decodes payment records / one-time claims)
+- `redis.ts`: Lazy Redis singleton for the assets/pools cache (best-effort — no `REDIS_URL` → passthrough)
+- `tokens-proxy.ts`: Upstream tokens.xyz client + cache + fallback (server-side key holder; the browser never sees the key)
+- **Pool resolver (POOL-API):**
+  - `pools-sync.ts`: Orchestrator — dedicated sync DB pool, normalizer/resolver registries, ~5min tick with per-venue error isolation
+  - `raydium-sync.ts`: Raydium CLMM normalizer (indexed — Raydium has no free-text upstream)
+  - `whirlpool-sync.ts`: Orca Whirlpool normalizer (indexed — `/v1/whirlpools` bulk-list)
+  - `meteora-resolver.ts`: Meteora live-proxy resolver (Meteora has free-text → no index; trust-joins inline)
+  - `pools-tokens.ts`: Post-sync token refresh + star precompute (tokens.xyz `resolveAsset`)
+  - `pools-search.ts`: Cached search + resolver-mode dispatch + paste-mint singleton fallback
+- `composable.ts`: Read-only access to the ComposablePolicy family (filtered list + single fetch)
 
 **Database Layer (`src/db/`)**
 
@@ -931,34 +947,69 @@ The `WebhookService` forwards payment records to registered webhooks:
 
 ## Environment Variables
 
-### Required
+The API boots and serves with minimal config, but each feature needs its own
+vars. **Unset vars degrade gracefully** (a no-op log line + that feature
+skipped), they do not crash the server — see Deployment › Graceful degradation.
+
+### Required (core)
 
 | Variable       | Description                  | How to Get             |
 | -------------- | ---------------------------- | ---------------------- |
 | `DATABASE_URL` | PostgreSQL connection string | Your database provider |
 
+### Conditionally required (per feature)
+
+Set these only if you run the corresponding feature; the server starts without them.
+
+| Variable                     | Feature                                                                                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TOKENS_XYZ_API_KEY`         | Pool resolver (`/v1/pools/*`) trust enrichment + paste-mint singleton. Without it, search works at 0★ and singleton identity won't resolve. |
+| `SIGNING_KEY_ENCRYPTION_KEY` | Gateway auth + JWKS (signing keys are encrypted at rest). Without it, JWKS/gateway-auth endpoints cannot serve.                             |
+| `ADMIN_API_KEY`              | Admin endpoints (`/v1/admin/*`). Without it, admin routes reject.                                                                           |
+
 ### Optional
 
-| Variable        | Description                     | Default                               |
-| --------------- | ------------------------------- | ------------------------------------- |
-| `PORT`          | Server port                     | `3002`                                |
-| `SOLANA_RPC`    | Solana RPC URL                  | `https://api.mainnet-beta.solana.com` |
-| `REDIS_URL`     | Redis URL for WebSocket adapter | None (single server mode)             |
-| `KAFKA_BROKERS` | Comma-separated Kafka brokers   | None (no Kafka integration)           |
+| Variable        | Description                                       | Default                                  |
+| --------------- | ------------------------------------------------- | ---------------------------------------- |
+| `PORT`          | Server port                                       | `3002`                                   |
+| `SOLANA_RPC`    | Solana RPC URL                                    | `https://api.mainnet-beta.solana.com`    |
+| `REDIS_URL`     | Redis for the WS adapter + the assets/pools cache | None (single server; caches passthrough) |
+| `KAFKA_BROKERS` | Comma-separated Kafka brokers                     | None (no Kafka integration)              |
+
+### JWT / JWKS tuning (all optional — sensible defaults)
+
+| Variable                       | Default                           |
+| ------------------------------ | --------------------------------- |
+| `JWT_ISSUER`                   | `https://api.tributary.so`        |
+| `JWT_AUDIENCE`                 | `tributary-checkout`              |
+| `JWT_DEFAULT_LIFETIME_SECONDS` | `3600`                            |
+| `JWT_GATEWAY_TTL_SECONDS`      | `900` (15 min)                    |
+| `JWT_MAX_TTL_DAYS`             | `30`                              |
+| `JWT_EXPIRY_BUFFER_MINUTES`    | `10`                              |
+| `KEY_ROTATION_DAYS`            | `30` (JWKS auto-rotation cadence) |
+
+### Pool resolver venue overrides (all optional)
+
+| Variable              | Description                                                 | Default                             |
+| --------------------- | ----------------------------------------------------------- | ----------------------------------- |
+| `TOKENS_XYZ_BASE_URL` | tokens.xyz upstream base                                    | `https://api.tokens.xyz/v1`         |
+| `RAYDIUM_API_BASE`    | Raydium CLMM list endpoint base                             | `https://api.raydium.io/v3/mainnet` |
+| `ORCA_API_BASE`       | Orca Whirlpool bulk-list base                               | `https://api.mainnet.orca.so`       |
+| `METEORA_API_BASE`    | Meteora DLMM live-proxy base                                | `https://dlmm-api.meteora.ag`       |
+| `METEORA_SEARCH_PATH` | Meteora free-text search path                               | `/pair/all_by_groups`               |
+| `POOLS_TVL_FLOOR`     | USD TVL floor for indexed venues (perf/dust cut, not trust) | `1000`                              |
 
 ### Environment Examples
 
-**Development:**
+**Development (minimal — most features off):**
 
 ```bash
 DATABASE_URL=postgresql://localhost:5432/tributary
 PORT=3002
 SOLANA_RPC=https://api.devnet.solana.com
-REDIS_URL=redis://localhost:6379/0
-KAFKA_BROKERS=localhost:9092
 ```
 
-**Production:**
+**Production (all features on):**
 
 ```bash
 DATABASE_URL=postgresql://user:pass@prod-db:5432/tributary
@@ -966,6 +1017,11 @@ PORT=3002
 SOLANA_RPC=https://api.mainnet-beta.solana.com
 REDIS_URL=redis://prod-redis:6379/0
 KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
+# pool resolver
+TOKENS_XYZ_API_KEY=...
+# gateway auth / JWKS
+SIGNING_KEY_ENCRYPTION_KEY=...
+ADMIN_API_KEY=...
 ```
 
 ## Available Scripts
@@ -1047,6 +1103,49 @@ Coverage reports are generated in `coverage/` directory:
 
 ## Deployment
 
+### One process, not many
+
+The container runs a **single `node dist/index.js`** that boots the Express
+server **and every in-process service** — WebSocket, Kafka consumer, JWKS
+rotation, and the proactive pool-index sync orchestrator (see Services). There
+are **no separate worker processes to start**. `tsup` bundles all deps into the
+one `dist/index.js`, so the runtime image carries no `node_modules` (only the
+two optional `ws` native addons, `bufferutil` / `utf-8-validate`, are external —
+`ws` falls back to JS if absent).
+
+### ⚠ Database migration is NOT in the image
+
+The Dockerfile ships `dist/index.js` only — **no migrations, no migrator**. The
+API does not run migrations at boot. You MUST apply the schema to the database
+before the container will serve correctly:
+
+- The `events` / `webhooks` / `signing_keys` tables (schema `api`), and
+- The **`pools` schema** (migration `0002`) — required by `/v1/pools/*` and the
+  sync loop. A fresh deploy without it makes pool search return empty and the
+  sync tick error each cycle.
+
+`pnpm db:push` (drizzle-kit) needs the full source tree, so run it from a
+build-capable context — **not** from the dist-only runtime image. Recommended
+patterns:
+
+- **Init/migration job** (separate one-shot container or CI step) that runs the
+  `.sql` files in `src/db/migrations/` before the API rolls out, or
+- **Wire drizzle's SQL migrator** into the container entrypoint (e.g. a
+  `migrate && node dist/index.js` CMD).
+
+### Graceful degradation
+
+Unset vars do not crash the server; the affected feature logs a no-op line and
+is skipped:
+
+| Missing                      | Effect                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `DATABASE_URL`               | Pool sync loop skips; `getDb()` returns null (DB-backed routes error).    |
+| `TOKENS_XYZ_API_KEY`         | Pool search works but at 0★; paste-mint singleton identity won't resolve. |
+| `KAFKA_BROKERS`              | Kafka consumer not started (no payment/webhook push).                     |
+| `REDIS_URL`                  | Single-server WebSocket; caches passthrough (no `cacheGet`/`cacheSet`).   |
+| `SIGNING_KEY_ENCRYPTION_KEY` | JWKS / gateway-auth endpoints cannot serve.                               |
+
 ### Docker
 
 Build and run with Docker:
@@ -1055,13 +1154,17 @@ Build and run with Docker:
 # Build image
 docker build -t tributary-api .
 
-# Run container
+# Run container (see Environment Variables for the full set)
 docker run -p 3002:3002 \
   -e DATABASE_URL=postgresql://... \
+  -e TOKENS_XYZ_API_KEY=... \
+  -e SIGNING_KEY_ENCRYPTION_KEY=... \
   -e REDIS_URL=redis://... \
   -e KAFKA_BROKERS=kafka:9092 \
   tributary-api
 ```
+
+> Remember to apply DB migrations (above) before the container serves traffic.
 
 ### Manual/VPS Deployment
 
