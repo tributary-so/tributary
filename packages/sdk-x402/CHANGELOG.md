@@ -1,3 +1,5 @@
+# [@tributary-so/sdk-x402-v2.0.2](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-x402-v2.0.1...@tributary-so/sdk-x402-v2.0.2) (2026-08-01)
+
 # [@tributary-so/sdk-x402-v2.0.1](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-x402-v2.0.0...@tributary-so/sdk-x402-v2.0.1) (2026-07-29)
 
 # [@tributary-so/sdk-x402-v2.0.0](https://github.com/tributary-so/tributary/compare/@tributary-so/sdk-x402-v1.5.3...@tributary-so/sdk-x402-v2.0.0) (2026-07-13)
