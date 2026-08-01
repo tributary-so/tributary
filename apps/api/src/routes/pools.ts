@@ -18,6 +18,10 @@ import { ipRateLimit } from "../middleware/rateLimit";
 import { searchPoolsCached } from "../services/pools-search";
 import type { PoolSearchHit } from "../db/pools";
 
+// Mirrors @tributary-so/pools-client PoolVenue. Kept local (not imported) so the
+// server never depends on its client package; the client is the wire contract.
+type PoolVenue = "meteora" | "raydium" | "whirlpool";
+
 const router: Router = Router();
 
 // IP rate limit at the router level.
@@ -33,11 +37,11 @@ interface PoolTokenLeg {
 
 interface PoolResult {
   address: string;
-  venue: string;
+  venue: PoolVenue;
   tokenX: PoolTokenLeg;
   tokenY: PoolTokenLeg;
-  tvl: string;
-  feeRate: string | null;
+  tvl: number | null;
+  feeRate: number | null;
   stars: number;
   tier1: boolean;
   extras: unknown;
@@ -58,14 +62,18 @@ function toLeg(
 }
 
 function toResult(hit: PoolSearchHit): PoolResult {
-  // tokenA ↔ mint_a (tokenX), tokenB ↔ mint_b (tokenY).
+  // Drizzle `numeric` serializes as string; the published client contract
+  // (pools-client/types.ts) is number. Coerce at the seam so the wire shape
+  // matches the client types (POOL-API §5 fix).
+  const tvlRaw = hit.pool.tvl;
+  const feeRaw = hit.pool.feeRate;
   return {
     address: hit.pool.address,
-    venue: hit.pool.venue,
+    venue: hit.pool.venue as PoolVenue,
     tokenX: toLeg(hit.pool.mintA, hit.tokenA, hit.pool.symbolA),
     tokenY: toLeg(hit.pool.mintB, hit.tokenB, hit.pool.symbolB),
-    tvl: hit.pool.tvl,
-    feeRate: hit.pool.feeRate,
+    tvl: tvlRaw != null ? Number(tvlRaw) : null,
+    feeRate: feeRaw != null ? Number(feeRaw) : null,
     stars: hit.pool.stars,
     tier1: hit.pool.tier1,
     extras: hit.pool.extras,

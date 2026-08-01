@@ -16,9 +16,12 @@ import { KafkaPaymentConsumer } from "./services/kafkaConsumer";
 import {
   startPoolsSync,
   registerPoolNormalizer,
+  registerPoolResolver,
   registerPostSyncHook,
 } from "./services/pools-sync";
 import { raydiumSync } from "./services/raydium-sync";
+import { whirlpoolSync } from "./services/whirlpool-sync";
+import { searchMeteoraLive } from "./services/meteora-resolver";
 import { refreshPoolsTokens } from "./services/pools-tokens";
 
 import apiRoutes from "./routes";
@@ -105,10 +108,17 @@ if (require.main === module) {
   startAutoRotationCheck();
 
   // Proactive pool-index sync (separate DB pool — never starves requests).
-  // No-op until a venue normalizer registers (milestone tributary-gq0p).
+  // Indexed venues (no free-text upstream, or cheap to mirror) register a
+  // normalizer; live-proxy venues (own free-text) register a resolver instead
+  // (POOL-API §3 — mode is server-internal, client-invisible).
   registerPoolNormalizer("raydium", async () => {
     await raydiumSync();
   });
+  registerPoolNormalizer("whirlpool", async () => {
+    await whirlpoolSync();
+  });
+  // Meteora already has free-text → live-proxy (no sync job; §6.1).
+  registerPoolResolver("meteora", searchMeteoraLive);
   // tokens.xyz trust enrichment + star precompute (runs after each venue sync).
   registerPostSyncHook(async () => {
     await refreshPoolsTokens();

@@ -23,10 +23,22 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as poolsSchema from "../db/schema-pools";
+import type { PoolSearchHit } from "../db/pools";
 
 /** A venue normalizer performs a full sync tick: fetch → normalize → persist
- * (upsert pools, refresh touched tokens, recompute stars) using `getSyncDb()`. */
+ * (upsert pools, refresh touched tokens, recompute stars) using `getSyncDb()`.
+ * Indexed venues register one of these. */
 export type PoolNormalizer = () => Promise<void>;
+
+/** A live-proxy resolver answers a free-text query per request (no index): fetch
+ * the venue's own free-text upstream, normalize to `PoolSearchHit`, trust-join.
+ * Live venues (own free-text — Meteora) register one of these instead of a
+ * normalizer. The route/client are mode-agnostic; the dispatch lives in
+ * `pools-search.ts`. */
+export type PoolResolver = (
+  query: string,
+  opts: { limit: number }
+) => Promise<PoolSearchHit[]>;
 
 export interface RegisteredNormalizer {
   venue: string;
@@ -42,6 +54,8 @@ let syncClient: postgres.Sql<Record<string, never>> | null = null;
 let syncDb: ReturnType<typeof drizzle> | null = null;
 
 const normalizers: RegisteredNormalizer[] = [];
+/** Live-proxy resolvers, keyed by venue (parallel to the indexed normalizers). */
+const liveResolvers = new Map<string, PoolResolver>();
 /** Post-sync enrichment hooks (e.g. token refresh + star precompute). Run after
  * venue normalizers each tick, with per-hook error isolation. */
 const postSyncHooks: PostSyncHook[] = [];
@@ -80,6 +94,17 @@ export function registerPoolNormalizer(
     return;
   }
   normalizers.push({ venue, sync });
+}
+
+/** Register a live-proxy resolver for a venue (owns free-text → no index).
+ * Idempotent per venue. */
+export function registerPoolResolver(venue: string, fn: PoolResolver): void {
+  liveResolvers.set(venue, fn);
+}
+
+/** Look up a live-proxy resolver for a venue, or undefined (→ indexed path). */
+export function getLiveResolver(venue: string): PoolResolver | undefined {
+  return liveResolvers.get(venue);
 }
 
 /** Register a post-sync enrichment hook (token refresh + star precompute). */

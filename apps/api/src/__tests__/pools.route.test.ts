@@ -117,6 +117,13 @@ describe("/v1/pools routes", () => {
         decimals: 6,
         logoUri: "https://img/usdc.png",
       });
+      // §5 wire-type fix: numeric serialized as string by drizzle, but the
+      // client contract is number — coerce at the route seam.
+      expect(result.venue).toBe("raydium");
+      expect(typeof result.tvl).toBe("number");
+      expect(result.tvl).toBe(5000);
+      expect(typeof result.feeRate).toBe("number");
+      expect(result.feeRate).toBe(0.0025);
       expect(searchPoolsCached).toHaveBeenCalledWith("SOL/USDC", {
         venue: "raydium",
         limit: 10,
@@ -180,6 +187,38 @@ describe("/v1/pools routes", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.results).toEqual([]);
+    });
+
+    it("coerces null tvl/feeRate to null (not string), venue to PoolVenue (§5)", async () => {
+      const nullFeeHit = {
+        pool: {
+          address: "PoolNull",
+          venue: "meteora",
+          mintA: SOL,
+          mintB: USDC,
+          symbolA: "SOL",
+          symbolB: "USDC",
+          tvl: null as unknown as string,
+          feeRate: null,
+          stars: 0,
+          tier1: false,
+          extras: {},
+          refreshedAt: new Date("2026-07-30T00:00:00Z"),
+        },
+        tokenA: null,
+        tokenB: null,
+      };
+      searchPoolsCached.mockResolvedValueOnce([nullFeeHit as any]);
+
+      const res = await request(app).get(
+        "/v1/pools/search?q=SOL&venue=meteora"
+      );
+
+      expect(res.status).toBe(200);
+      const result = res.body.data.results[0];
+      expect(result.venue).toBe("meteora");
+      expect(result.tvl).toBeNull();
+      expect(result.feeRate).toBeNull();
     });
   });
 });
