@@ -1,3 +1,5 @@
+# [@tributary-so/lando-v2.0.1](https://github.com/tributary-so/tributary/compare/@tributary-so/lando-v2.0.0...@tributary-so/lando-v2.0.1) (2026-08-01)
+
 # [@tributary-so/lando-v2.0.0](https://github.com/tributary-so/tributary/compare/@tributary-so/lando-v1.4.0...@tributary-so/lando-v2.0.0) (2026-07-14)
 
 
