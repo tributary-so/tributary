@@ -5,12 +5,12 @@
     "type": "git"
   },
   "license": "MIT",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "Concrete ForwardBuilder implementations for Tributary composable execution (ADR-0030).",
   "scripts": {
-"lint": "eslint .",
-"lint:fix": "eslint . --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "jest",
     "clean": "rm -rf ./dist",
     "build": "npx tsup",
@@ -45,9 +45,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
-    "eslint": "^10.0.0",
-    "globals": "^16.4.0",
-    "typescript-eslint": "^8.59.0",
     "@meteora-ag/dlmm": "^1.0.0",
     "@orca-so/whirlpools": "^8.0.1",
     "@raydium-io/raydium-sdk-v2": "^0.2.59-alpha",
@@ -56,10 +53,13 @@
     "@types/jest": "^29.0.3",
     "@types/node": "^22.10.6",
     "esbuild-fix-imports-plugin": "^1.0.23",
+    "eslint": "^10.0.0",
+    "globals": "^16.4.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.0.2",
     "tsup": "^8.0.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.59.0"
   },
   "engines": {
     "node": ">=16"
