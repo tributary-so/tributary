@@ -334,3 +334,4 @@ DESCRIPTION
 
 _See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/5.4.68/src/commands/plugins/update.ts)_
 <!-- commandsstop -->
+2026-08-01: new pools-client

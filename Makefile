@@ -105,6 +105,7 @@ bump_packages:
 	echo "$(TODAY): $(MESSAGE)" >> packages/payments/README.md
 	echo "$(TODAY): $(MESSAGE)" >> packages/forward-builders/README.md
 	echo "$(TODAY): $(MESSAGE)" >> packages/tokens-client/README.md
+	echo "$(TODAY): $(MESSAGE)" >> packages/pools-client/README.md
 
 bump_programs:
 	echo "$(TODAY): $(MESSAGE)" >> programs/tributary/README.md

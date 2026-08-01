@@ -108,12 +108,10 @@ export function composablePolicyRecipe(
   }
 
   if (isDeliverTransform && !hasPost) {
-    // eslint-disable-next-line no-console
     console.warn(DELIVER_TRANSFORM_NO_POST_WARN);
   }
 
   if (forwardEnabled && !hasPre) {
-    // eslint-disable-next-line no-console
     console.warn(FORWARD_NO_PRE_WARN);
   }
 

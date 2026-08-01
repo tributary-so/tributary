@@ -9,7 +9,8 @@
   "version": "2.3.1",
   "type": "module",
   "scripts": {
-    "lint": "exit 0",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "npx tsx --test src/__tests__/**/*.test.ts",
     "clean": "rm -rf ./dist",
     "build": "npx tsup",
@@ -32,6 +33,9 @@
   "devDependencies": {
     "@types/bn.js": "^5.2.0",
     "@types/node": "^22.10.6",
+    "@eslint/js": "^9.35.0",
+    "globals": "^16.4.0",
+    "typescript-eslint": "^8.59.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "esbuild-fix-imports-plugin": "^1.0.23",

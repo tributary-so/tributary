@@ -6,7 +6,7 @@ import { verifyTransactionPayment } from "./tx-verifier";
 import { encodeMemo } from "@tributary-so/sdk";
 import { PolicyLookupOptions } from "@tributary-so/payments";
 import { getDb } from "../db";
-import { events } from "../db/schema";
+import { events } from "../db/schema-events";
 import { OneTimePaymentClaim } from "../types";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { decodeMemo } from "@tributary-so/sdk";

@@ -17,7 +17,7 @@ import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from ".";
-import { events } from "./schema";
+import { events } from "./schema-events";
 
 // Program + seeds — frozen per ADR-0022 (no realloc / no seed changes).
 const PROGRAM_ID = new PublicKey("TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ");

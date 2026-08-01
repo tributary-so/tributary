@@ -128,7 +128,7 @@ export async function getTokenInfo(
       isMutable: metadata.isMutable,
       collection: collectionData,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }

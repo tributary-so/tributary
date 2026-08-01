@@ -24,7 +24,7 @@ const SIGNER_BITS_MASK = ~RELEASE_DUE_DATE & 0xff; // bits 1,2,3
 
 /** 2^63 - 1. Upper bound the on-chain validator enforces for Custom interval
  *  (subscription) and period_length_seconds (pay-as-you-go) — both cast to i64. */
-const I64_MAX = 9223372036854775807;
+const I64_MAX = Number(2n ** 63n - 1n);
 
 /**
  * Error thrown by the per-variant fail-fast validators. Carries enough

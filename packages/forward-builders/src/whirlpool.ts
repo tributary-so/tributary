@@ -13,9 +13,7 @@ import BN from "bn.js";
 import type {
   ComposablePolicy,
   ForwardBuilder,
-  ForwardConfig,
 } from "@tributary-so/sdk";
-import { WHIRLPOOL_PUBKEY } from "./constants";
 export {
   whirlpoolForwardConfig,
   WHIRLPOOL_SWAP_V2_DISCRIMINATOR,

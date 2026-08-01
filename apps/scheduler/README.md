@@ -230,3 +230,4 @@ Program ID: `TRibg8W8zmPHQqWtyAD1rEBRXEdy13Mu6qX1Sg42tJ`
 ## License
 
 See [root LICENSE](../../LICENSE).
+2026-08-01: new pools-client

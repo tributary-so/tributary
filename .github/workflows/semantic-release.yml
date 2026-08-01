@@ -66,6 +66,8 @@ jobs:
           pnpm run --filter ./packages/sdk-react release || true
           pnpm run --filter ./packages/sdk-x402 release || true
           pnpm run --filter ./packages/forward-builders release || true
+          pnpm run --filter ./packages/tokens-client release || true
+          pnpm run --filter ./packages/pools-client release || true
 
           # Apps to release
           pnpm run --filter ./apps/api release || true

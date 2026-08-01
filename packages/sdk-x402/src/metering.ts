@@ -198,7 +198,7 @@ export class ComputeMeter {
    */
   static calculateForEmbedding(
     model: string,
-    dimensions: number,
+    _dimensions: number,
     inputTokens: number,
   ): number {
     // Embedding models typically have fixed cost per token
@@ -308,7 +308,6 @@ export class UsageTracker implements MeteredService {
 
   getCurrentPeriod(): PeriodSummary {
     const now = Date.now();
-    const periodLength = this.config.periodLengthSeconds || 86400;
 
     return {
       startTime: this.currentPeriodStart,
@@ -441,9 +440,7 @@ export function createUsageTrackingMiddleware(
 
     // Capture response
     const originalSend = res.send;
-    let responseBody: any;
     res.send = function (body: any) {
-      responseBody = body;
       return originalSend.call(this, body);
     };
 

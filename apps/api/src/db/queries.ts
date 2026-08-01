@@ -1,6 +1,6 @@
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { getDb } from ".";
-import { events, type Event } from "./schema";
+import { events, type Event } from "./schema-events";
 import type {
   TributaryEventName,
   TributaryEventDataMap,

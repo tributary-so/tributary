@@ -1,36 +1,41 @@
-# Drizzle Migrations
+# Database Migrations
 
-This project connects to an existing, externally-managed PostgreSQL database in read-only mode. Therefore, **no migrations are run or maintained in this project**.
+## Schema ownership (three-way split)
 
-## Schema Definition
+apps/api shares a Postgres instance with two other data owners. Each owns a
+dedicated schema; drizzle only manages the ones apps/api controls.
 
-The schema in `src/db/schema.ts` reflects the existing database structure for the `events` table:
+| Schema   | Owner                | Tables                     | Drizzle manages?   |
+| -------- | -------------------- | -------------------------- | ------------------ |
+| `api`    | apps/api             | `webhooks`, `signing_keys` | **Yes**            |
+| `pools`  | apps/api (pool svc)  | `pools`, `tokens`          | **Yes**            |
+| `public` | indexer (`soltrace`) | `events` (+ indexer's own) | **No** — read-only |
 
-```typescript
-export const events = pgTable("events", {
-  id: bytea("id").primaryKey(),
-  slot: bigint("slot", { mode: "number" }).notNull(),
-  signature: text("signature").notNull(),
-  eventName: text("event_name").notNull(),
-  data: jsonb("data").notNull(),
-  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
-});
-```
+`drizzle.config.ts` sets `schemaFilter: ["api", "pools"]` so `db:push`
+never introspects or reconciles `public.events`. The `events` table is still
+queryable at runtime via the typed definition in `schema-events.ts` (kept
+out of `drizzle.config.ts`'s schema list on purpose).
 
-## Important Notes
-
-- Database schema changes must be made in the external database management system
-- If the schema changes, update `src/db/schema.ts` to match
-- This project only has read permissions to the database
-- No tables are created, modified, or dropped by this application
-
-## Verification
-
-To verify the schema matches the database:
+## Workflow
 
 ```bash
-# Push schema to compare (dry-run, read-only won't allow writes)
-pnpm drizzle-kit push
+pnpm db:push      # apply schema changes (introspects api + pools only)
+pnpm db:generate  # generate a SQL migration file (for the migrate workflow)
+pnpm db:studio    # browse data
+pnpm db:test      # smoke-test queries against the live DB
 ```
 
-Note: This will fail with permission errors due to read-only access, which is expected.
+## One-time migration (already applied to devnet)
+
+`migrations/move-to-api-schema.sql` moves `webhooks` + `signing_keys` from
+`public` into the `api` schema, preserving rows. Run it once on any
+environment that still has the tables in `public`. It is idempotent.
+
+## Adding a new apps/api-owned table
+
+1. Define it in `schema.ts` (or `schema-pools.ts`) using `apiSchema.table(...)`
+   (or `poolsSchema.table(...)`).
+2. `pnpm db:push` creates it.
+3. If the table should be queryable but managed externally (like `events`),
+   put its definition in a separate `schema-*.ts` file that is **not** listed
+   in `drizzle.config.ts`.
