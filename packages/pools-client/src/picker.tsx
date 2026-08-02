@@ -44,7 +44,7 @@ export type PoolSelectHandler = (
   tgtMint: string,
   extras: Record<string, unknown> | null,
   srcMeta: PoolLegMeta,
-  tgtMeta: PoolLegMeta,
+  tgtMeta: PoolLegMeta
 ) => void;
 
 // Curated stablecoin mints for the implied (display) direction —
@@ -56,27 +56,27 @@ export const STABLE_MINTS = new Set([
   "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr", // EURC
 ]);
 
-function legMeta(token: PoolSearchResult["token_x"]): PoolLegMeta {
+function legMeta(token: PoolSearchResult["tokenX"]): PoolLegMeta {
   return {
     mint: token.mint,
     // Unknown symbol → first 4 mint chars so the row never goes blank.
     symbol: token.symbol ?? token.mint.slice(0, 4),
     // ponytail: decimals default 6 (SPL-ish) when the index lacks it.
     decimals: token.decimals ?? 6,
-    logoUri: token.logo_uri,
+    logoUri: token.logoUri,
     tier: token.tier,
   };
 }
 
 /**
  * Resolve source/target legs from a pool + direction.
- * "Accumulate tokenX" (dir="tokenX") → targetMint = token_x, sourceMint =
- * token_y (you pay token_y to accumulate token_x). Mirrors Mill's prior
+ * "Accumulate tokenX" (dir="tokenX") → targetMint = tokenX, sourceMint =
+ * tokenY (you pay tokenY to accumulate tokenX). Mirrors Mill's prior
  * resolveDirection semantics so the migration is a drop-in.
  */
 export function resolvePoolDirection(
   pool: PoolSearchResult,
-  direction: Direction,
+  direction: Direction
 ): {
   srcMint: string;
   tgtMint: string;
@@ -84,8 +84,8 @@ export function resolvePoolDirection(
   tgtMeta: PoolLegMeta;
 } {
   const targetIsX = direction === "tokenX";
-  const src = targetIsX ? pool.token_y : pool.token_x;
-  const tgt = targetIsX ? pool.token_x : pool.token_y;
+  const src = targetIsX ? pool.tokenY : pool.tokenX;
+  const tgt = targetIsX ? pool.tokenX : pool.tokenY;
   return {
     srcMint: src.mint,
     tgtMint: tgt.mint,
@@ -101,10 +101,10 @@ export function resolvePoolDirection(
  */
 export function impliedPoolDirection(
   pool: PoolSearchResult,
-  stableMints: Set<string> = STABLE_MINTS,
+  stableMints: Set<string> = STABLE_MINTS
 ): Direction {
-  const xStable = stableMints.has(pool.token_x.mint);
-  const yStable = stableMints.has(pool.token_y.mint);
+  const xStable = stableMints.has(pool.tokenX.mint);
+  const yStable = stableMints.has(pool.tokenY.mint);
   return xStable && !yStable ? "tokenX" : "tokenY";
 }
 
@@ -112,7 +112,7 @@ export function impliedPoolDirection(
 export function selectPool(
   pool: PoolSearchResult,
   direction: Direction,
-  onSelect: PoolSelectHandler,
+  onSelect: PoolSelectHandler
 ): void {
   const r = resolvePoolDirection(pool, direction);
   onSelect(
@@ -121,7 +121,7 @@ export function selectPool(
     r.tgtMint,
     pool.extras,
     r.srcMeta,
-    r.tgtMeta,
+    r.tgtMeta
   );
 }
 
@@ -171,15 +171,15 @@ export function PoolRow({ pool, selected, className }: PoolRowProps) {
       className={`flex items-center gap-2 w-full min-w-0 ${className ?? ""}`}
     >
       <PairLogos
-        xUri={pool.token_x.logo_uri}
-        yUri={pool.token_y.logo_uri}
-        xSym={pool.token_x.symbol}
-        ySym={pool.token_y.symbol}
+        xUri={pool.tokenX.logoUri}
+        yUri={pool.tokenY.logoUri}
+        xSym={pool.tokenX.symbol}
+        ySym={pool.tokenY.symbol}
       />
       <span className="text-sm truncate flex-1 min-w-0">
-        {pool.token_x.symbol ?? pool.token_x.mint.slice(0, 4)}
+        {pool.tokenX.symbol ?? pool.tokenX.mint.slice(0, 4)}
         {" / "}
-        {pool.token_y.symbol ?? pool.token_y.mint.slice(0, 4)}
+        {pool.tokenY.symbol ?? pool.tokenY.mint.slice(0, 4)}
       </span>
       <TrustBadge stars={pool.stars} tier1={pool.tier1} />
       <span className="text-xs text-muted-foreground shrink-0 font-mono tabular-nums">

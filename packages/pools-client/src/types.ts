@@ -19,7 +19,7 @@ export interface PoolToken {
   mint: string;
   symbol: string | null;
   decimals: number | null;
-  logo_uri: string | null;
+  logoUri: string | null;
   tier: TokenTier;
 }
 
@@ -28,8 +28,8 @@ export interface PoolSearchResult {
   /** Pool account address (base58). */
   address: string;
   venue: PoolVenue;
-  token_x: PoolToken;
-  token_y: PoolToken;
+  tokenX: PoolToken;
+  tokenY: PoolToken;
   /** TVL in USD at last sync (NUMERIC on the server). */
   tvl: number | null;
   /** Pool fee rate (basis points or fraction — venue-dependent). */

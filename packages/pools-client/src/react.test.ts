@@ -107,18 +107,18 @@ async function main(): Promise<void> {
       {
         address: "PoolSOL11111111111111111111111111111111111",
         venue: "raydium",
-        token_x: {
+        tokenX: {
           mint: "So11111111111111111111111111111111111111112",
           symbol: "SOL",
           decimals: 9,
-          logo_uri: null,
+          logoUri: null,
           tier: "tier1",
         },
-        token_y: {
+        tokenY: {
           mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // gitleaks:allow — public USDC mint
           symbol: "USDC",
           decimals: 6,
-          logo_uri: null,
+          logoUri: null,
           tier: "tier1",
         },
         tvl: 9000,
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
       "hook should surface parsed results"
     );
     assert(
-      lastResult?.data?.results[0].token_x.symbol === "SOL",
+      lastResult?.data?.results[0].tokenX.symbol === "SOL",
       "hook result symbol mismatch"
     );
     act(() => root.unmount());

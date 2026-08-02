@@ -193,15 +193,15 @@ interface PoolToken {
   mint: string; // Solana base58
   symbol: string | null;
   decimals: number | null;
-  logo_uri: string | null;
+  logoUri: string | null;
   tier: TokenTier;
 }
 
 interface PoolSearchResult {
   address: string; // Pool account (base58)
   venue: PoolVenue;
-  token_x: PoolToken;
-  token_y: PoolToken;
+  tokenX: PoolToken;
+  tokenY: PoolToken;
   tvl: number | null; // USD at last sync
   feeRate: number | null; // FRACTION (0.0025 = 0.25%) — venue-normalized server-side
   stars: number; // 0|1|2 — one per known leg token
