@@ -51,37 +51,42 @@ mainnet_deploy_buffer:
 	solana program write-buffer $(SOL_ARGS) --buffer $(BUFFER) ./target/deploy/tributary.so
 	solana -k ${DEPLOY_KEY_PATH} balance
 
-mainnet_deploy:
+mainnet_deploy: verifiable-build mainnet_upload_program squads-tx
 	@echo "===================================="
-	@echo "UPLOAD NOW REQUIRES SQUADS MULTISIG!"
+	@echo "Once updated the program and submitted the squads-tx"
+	@echo "run:   make verify-submit"
 	@echo "===================================="
-	@exit 1;
+
+mainnet_upload_program:
 	solana -k ${DEPLOY_KEY_PATH} balance
 	#solana program deploy $(SOL_ARGS) --program-id $(PROGRAM_ID_PATH) ./target/deploy/tributary.so
 	solana program write-buffer $(SOL_ARGS) ./target/deploy/tributary.so
 	solana -k ${DEPLOY_KEY_PATH} balance
+	@echo "===================================="
+	@echo "UPLOAD NOW REQUIRES SQUADS MULTISIG!"
+	@echo "===================================="
 
 publish_idl:
 	anchor idl upgrade -f target/idl/tributary.json --provider.cluster $(SOLANA_API) --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
 
-submit-verifable-build:
-	yes | solana-verify verify-from-repo --remote \
-	--url  $(SOLANA_API) \
-	--program-id $(PROGRAM_ID) \
-	https://github.com/tributary-so/tributary \
-	--library-name tributary \
-	--commit-hash $(shell git show-ref -s origin/main) \
-	--keypair $(DEPLOY_KEY_PATH)
+# submit-verifable-build:
+# 	yes | solana-verify verify-from-repo --remote \
+# 	--url  $(SOLANA_API) \
+# 	--program-id $(PROGRAM_ID) \
+# 	https://github.com/tributary-so/tributary \
+# 	--library-name tributary \
+# 	--commit-hash $(shell git show-ref -s origin/main) \
+# 	--keypair $(DEPLOY_KEY_PATH)
+
+verifiable-build:
+	solana-verify build
+	solana-verify get-executable-hash ./target/deploy/tributary.so
 
 squads-tx:
 	solana-verify export-pda-tx https://github.com/tributary-so/tributary --program-id TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ --uploader 8NU2313J4MtANzEWeNnTUMy1Mf5Agavucf9oX4AagSaB --encoding base58 --compute-unit-price 0
 
 verify-submit:
 	solana-verify remote submit-job --program-id TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ --uploader 8NU2313J4MtANzEWeNnTUMy1Mf5Agavucf9oX4AagSaB
-
-verifiable-build:
-	solana-verify build
-	solana-verify get-executable-hash ./target/deploy/tributary.so
 
 build:
 	pnpm run -r --filter "./programs/*" build
