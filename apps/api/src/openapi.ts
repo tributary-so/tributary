@@ -105,6 +105,11 @@ const options: swaggerJsdoc.Options = {
         description:
           "Tokenized-asset catalog proxy (tokens.xyz). Type-ahead search + mint resolver.",
       },
+      {
+        name: "Pools",
+        description:
+          "Free-text liquidity-pool search over the cached index (Raydium, Whirlpool, Meteora live proxy).",
+      },
     ],
   },
   apis: ["./src/routes/*.ts"],

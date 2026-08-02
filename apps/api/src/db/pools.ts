@@ -14,7 +14,7 @@
  * Index Scan, not a Sort (see pools-schema.integration.test.ts).
  */
 
-import { and, eq, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, lt, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getDb } from ".";
@@ -178,6 +178,11 @@ export async function upsertPools(db: PoolsDb, rows: NewPool[]): Promise<void> {
 /**
  * Drain rows for a venue not refreshed since `cutoff` — the not-seen-in-N-sync
  * reconciliation (a pool that vanished upstream stops being served).
+ *
+ * Uses the drizzle builder API (not the raw `sql` tag) because the raw tag
+ * mis-serializes `Date` params into postgres-js, failing with
+ * `ERR_INVALID_ARG_TYPE` (wrapped opaquely as a DrizzleQueryError). The
+ * builder correctly type-tags the Date as a timestamptz param.
  */
 export async function drainStalePools(
   db: PoolsDb,
@@ -186,7 +191,7 @@ export async function drainStalePools(
 ): Promise<number> {
   const result = await db
     .delete(pools)
-    .where(sql`${pools.venue} = ${venue} AND ${pools.refreshedAt} < ${cutoff}`)
+    .where(and(eq(pools.venue, venue), lt(pools.refreshedAt, cutoff)))
     .returning({ address: pools.address });
   return result.length;
 }
@@ -228,6 +233,13 @@ export async function getToken(
  * Distinct mints from the `pools` index that have NO fresh `tokens` row (missing
  * entirely, or `refreshed_at` older than the cutoff). Bounds the token-refresh
  * tick to only stale mints. Capped by `limit`.
+ *
+ * Two fixes baked in:
+ *  - `SELECT DISTINCT m.mint` (qualified) — after the LEFT JOIN both `m.mint`
+ *    and `tokens.mint` are in scope, so the bare `mint` is ambiguous (PG 42702).
+ *  - `cutoff.toISOString()` — passing a `Date` into drizzle's raw `sql` tag
+ *    mis-serializes into postgres-js (`ERR_INVALID_ARG_TYPE`); ISO strings are
+ *    coerced to timestamptz correctly.
  */
 export async function getMintsNeedingRefresh(
   db: PoolsDb,
@@ -236,13 +248,15 @@ export async function getMintsNeedingRefresh(
   const cutoff = new Date(Date.now() - opts.maxAgeMs);
   const limit = opts.limit ?? 200;
   const rows = (await db.execute(sql`
-    SELECT DISTINCT mint FROM (
+    SELECT DISTINCT m.mint FROM (
       SELECT ${pools.mintA} AS mint FROM ${pools}
       UNION
       SELECT ${pools.mintB} AS mint FROM ${pools}
     ) m
     LEFT JOIN ${tokens} ON ${tokens.mint} = m.mint
-    WHERE ${tokens.mint} IS NULL OR ${tokens.refreshedAt} < ${cutoff}
+    WHERE ${tokens.mint} IS NULL OR ${
+    tokens.refreshedAt
+  } < ${cutoff.toISOString()}
     LIMIT ${limit}
   `)) as unknown as Array<{ mint: string }>;
   return rows.map((r) => r.mint).filter(Boolean);
@@ -254,6 +268,12 @@ export async function getMintsNeedingRefresh(
  *   stars = (a.known ? 1 : 0) + (b.known ? 1 : 0)   # 0|1|2
  *   tier1 = (a.tier = 'tier1') OR (b.tier = 'tier1')
  * Called by the token-refresher glue after a `tokens` row changes.
+ *
+ * `tier1` is wrapped in `COALESCE(..., false)`: when neither leg has a tokens
+ * row (or both have NULL tier), each `(SELECT tier ...) = 'tier1'` yields NULL,
+ * `NULL OR NULL` is NULL (three-valued logic), and the column is NOT NULL —
+ * so the bare expression trips PG 23502 on virtually every call (any pool
+ * where neither leg is tier1). COALESCE forces the NULL → false.
  */
 export async function recomputeStarsForMint(
   db: PoolsDb,
@@ -265,9 +285,10 @@ export async function recomputeStarsForMint(
         COALESCE((SELECT known FROM ${tokens} WHERE mint = ${pools.mintA})::int, 0)
         + COALESCE((SELECT known FROM ${tokens} WHERE mint = ${pools.mintB})::int, 0)
       ),
-      tier1 = (
+      tier1 = COALESCE(
         (SELECT tier FROM ${tokens} WHERE mint = ${pools.mintA}) = 'tier1'
-        OR (SELECT tier FROM ${tokens} WHERE mint = ${pools.mintB}) = 'tier1'
+        OR (SELECT tier FROM ${tokens} WHERE mint = ${pools.mintB}) = 'tier1',
+        false
       )
     WHERE ${pools.mintA} = ${mint} OR ${pools.mintB} = ${mint}
   `);

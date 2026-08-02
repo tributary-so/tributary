@@ -20,6 +20,7 @@ import { cacheGet, cacheSet } from "./redis";
 import { searchPools, type PoolSearchHit } from "../db/pools";
 import { getLiveResolver } from "./pools-sync";
 import { resolveAsset } from "./tokens-proxy";
+import { describeError } from "./errors";
 
 const CACHE_TTL = 30; // seconds
 
@@ -52,10 +53,7 @@ export async function searchPoolsCached(
       hits = await liveResolver(q, { limit });
     } catch (err) {
       // Live upstream failure → degrade to empty (the route applies empty-not-500).
-      console.warn(
-        "[pools-search] live resolver failed:",
-        err instanceof Error ? err.message : err
-      );
+      console.warn("[pools-search] live resolver failed:", describeError(err));
       hits = [];
     }
   } else {
@@ -91,7 +89,7 @@ async function singletonHit(
   } catch (err) {
     console.warn(
       "[pools-search] singleton resolveAsset failed:",
-      err instanceof Error ? err.message : err
+      describeError(err)
     );
     return [];
   }

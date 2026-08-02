@@ -69,14 +69,26 @@ interface UpstreamSearchEnvelope {
 }
 
 interface UpstreamResolveEnvelope {
-  mint?: string;
   assetId?: string;
-  symbol?: string;
-  name?: string;
-  decimals?: number | null;
-  imageUrl?: string | null;
-  category?: string | null;
-  trustTier?: string | null;
+  /** "mint" = real curated asset; "singleton" = tokens.xyz synthesised a
+   * placeholder (uncurated mint). Drives the `known` star-ranking flag. */
+  resolvedBy?: string;
+  mint?: string;
+  asset?: {
+    assetId?: string;
+    name?: string | null;
+    symbol?: string | null;
+    category?: string | null;
+  } | null;
+  variant?: {
+    mint?: string;
+    chain?: string;
+    kind?: string;
+    symbol?: string | null;
+    name?: string | null;
+    trustTier?: string | null;
+    liquidityTier?: string | null;
+  } | null;
 }
 
 function pickPrimaryVariant(
@@ -185,17 +197,36 @@ export async function resolveAsset(
     `/assets/resolve?${params.toString()}`
   );
 
+  // Upstream ships a nested envelope: {asset: {symbol,name,category}, variant:
+  // {trustTier, symbol, name}}. Variant-level identity is mint-specific and
+  // preferred; asset-level is the fallback. `resolvedBy: "singleton"` means
+  // tokens.xyz synthesised a placeholder (uncurated) — we still record the
+  // tier (tier3) for ranking, but `known` (star boost) is derived downstream
+  // from whether a real symbol was returned.
   let payload: ResolveResult | null = null;
-  if (upstream && (upstream.symbol || upstream.name)) {
+  if (upstream) {
+    const variant = upstream.variant ?? null;
+    const asset = upstream.asset ?? null;
+    const symbol = variant?.symbol ?? asset?.symbol ?? null;
+    const name = variant?.name ?? asset?.name ?? null;
+    const tier = variant?.trustTier ?? variant?.liquidityTier ?? null;
+    // Build a row whenever upstream answered — even singletons carry a useful
+    // tier. The old guard (`symbol || name`) dropped every uncurated mint,
+    // which is exactly the long tail we need to rank.
     payload = {
       mint,
-      assetId: upstream.assetId ?? null,
-      symbol: upstream.symbol ?? mint.slice(0, 4) + "...",
-      name: upstream.name ?? null,
-      decimals: typeof upstream.decimals === "number" ? upstream.decimals : 6,
-      imageUrl: upstream.imageUrl ?? null,
-      category: upstream.category ?? null,
-      tier: upstream.trustTier ?? null,
+      assetId: upstream.assetId ?? asset?.assetId ?? null,
+      // ResolveResult.symbol is non-null by type; keep the legacy display
+      // fallback for singletons (uncurated mints with no symbol). `known`
+      // is derived downstream from the tier, not the symbol's presence.
+      symbol: symbol ?? mint.slice(0, 4) + "...",
+      name,
+      // Upstream no longer ships decimals; keep the legacy default so the
+      // column is non-null (downstream code expects a number).
+      decimals: 6,
+      imageUrl: null,
+      category: asset?.category ?? null,
+      tier,
     };
   }
 

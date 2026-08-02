@@ -24,6 +24,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as poolsSchema from "../db/schema-pools";
 import type { PoolSearchHit } from "../db/pools";
+import { describeError } from "./errors";
 
 /** A venue normalizer performs a full sync tick: fetch → normalize → persist
  * (upsert pools, refresh touched tokens, recompute stars) using `getSyncDb()`.
@@ -125,7 +126,7 @@ export async function runPoolsSyncTick(): Promise<void> {
     } catch (err) {
       console.error(
         `[pools-sync] normalizer for venue "${venue}" failed:`,
-        err instanceof Error ? err.message : err
+        describeError(err)
       );
     }
   }
@@ -133,10 +134,7 @@ export async function runPoolsSyncTick(): Promise<void> {
     try {
       await hook();
     } catch (err) {
-      console.error(
-        "[pools-sync] post-sync hook failed:",
-        err instanceof Error ? err.message : err
-      );
+      console.error("[pools-sync] post-sync hook failed:", describeError(err));
     }
   }
 }
