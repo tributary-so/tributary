@@ -59,18 +59,18 @@ async function main(): Promise<void> {
       {
         address: "7QBQ6qXqLpMzHk8oM3pZ5nR1tY6uVxW2vK4jF3dCeGaH",
         venue: "raydium",
-        token_x: {
+        tokenX: {
           mint: "So11111111111111111111111111111111111111112",
           symbol: "SOL",
           decimals: 9,
-          logo_uri: null,
+          logoUri: null,
           tier: "tier1",
         },
-        token_y: {
+        tokenY: {
           mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // gitleaks:allow — public USDC mint
           symbol: "USDC",
           decimals: 6,
-          logo_uri: "https://x/usdc.png",
+          logoUri: "https://x/usdc.png",
           tier: "tier1",
         },
         tvl: 1_200_000.5,
@@ -88,10 +88,10 @@ async function main(): Promise<void> {
   assert(r.results.length === 1, "search should return 1 result");
   assert(r.venue === "raydium", "envelope venue mismatch");
   const pool = r.results[0];
-  assert(pool.token_x.symbol === "SOL", "token_x symbol mismatch");
+  assert(pool.tokenX.symbol === "SOL", "tokenX symbol mismatch");
   assert(
-    pool.token_y.mint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // gitleaks:allow — public USDC mint
-    "token_y mint mismatch"
+    pool.tokenY.mint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // gitleaks:allow — public USDC mint
+    "tokenY mint mismatch"
   );
   assert(pool.stars === 2, "stars mismatch");
   assert(pool.tier1 === true, "tier1 mismatch");
@@ -168,18 +168,18 @@ async function main(): Promise<void> {
       {
         address: "Po1PooooWoRtHlEss3333333333333333333333333",
         venue: "raydium",
-        token_x: {
+        tokenX: {
           mint: "UnkMintAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           symbol: null,
           decimals: null,
-          logo_uri: null,
+          logoUri: null,
           tier: null,
         },
-        token_y: {
+        tokenY: {
           mint: "UnkMintBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           symbol: null,
           decimals: null,
-          logo_uri: null,
+          logoUri: null,
           tier: null,
         },
         tvl: null,
@@ -192,7 +192,7 @@ async function main(): Promise<void> {
   );
   const thin = await client.searchPools("unk", { venue: "raydium" });
   assert(thin.results.length === 1, "thin pool should parse");
-  assert(thin.results[0].token_x.symbol === null, "null symbol should survive");
+  assert(thin.results[0].tokenX.symbol === null, "null symbol should survive");
   assert(thin.results[0].stars === 0, "0 stars should survive");
   assert(thin.results[0].tier1 === false, "tier1 false should survive");
 

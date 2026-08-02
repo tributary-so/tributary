@@ -35,18 +35,18 @@ function pool(overrides: Partial<PoolSearchResult> = {}): PoolSearchResult {
   return {
     address: "PoolAddr111111111111111111111111111111111111",
     venue: "raydium",
-    token_x: {
+    tokenX: {
       mint: SOL,
       symbol: "SOL",
       decimals: 9,
-      logo_uri: null,
+      logoUri: null,
       tier: "tier1",
     },
-    token_y: {
+    tokenY: {
       mint: USDC,
       symbol: "USDC",
       decimals: 6,
-      logo_uri: "https://x.test/usdc.png",
+      logoUri: "https://x.test/usdc.png",
       tier: "tier1",
     },
     tvl: 1_200_000,
@@ -65,32 +65,32 @@ function main(): void {
   const xDir = resolvePoolDirection(p, "tokenX");
   assert(
     xDir.tgtMint === SOL,
-    "tokenX direction: target should be token_x (SOL)",
+    "tokenX direction: target should be token_x (SOL)"
   );
   assert(
     xDir.srcMint === USDC,
-    "tokenX direction: source should be token_y (USDC)",
+    "tokenX direction: source should be token_y (USDC)"
   );
   assert(xDir.srcMeta.symbol === "USDC", "srcMeta symbol");
-  assert(xDir.tgtMeta.logoUri === null, "tgtMeta logo_uri passthrough");
+  assert(xDir.tgtMeta.logoUri === null, "tgtMeta logoUri passthrough");
 
   const yDir = resolvePoolDirection(p, "tokenY");
   assert(
     yDir.tgtMint === USDC,
-    "tokenY direction: target should be token_y (USDC)",
+    "tokenY direction: target should be token_y (USDC)"
   );
   assert(
     yDir.srcMint === SOL,
-    "tokenY direction: source should be token_x (SOL)",
+    "tokenY direction: source should be token_x (SOL)"
   );
 
   // --- legMeta fallbacks: unknown symbol/decimals never blank the row ---
   const unknown = pool({
-    token_x: {
+    tokenX: {
       mint: SCAM,
       symbol: null,
       decimals: null,
-      logo_uri: null,
+      logoUri: null,
       tier: null,
     },
   });
@@ -98,7 +98,7 @@ function main(): void {
   assert(unknownDir.srcMeta.symbol === "USDC", "known leg still resolves");
   assert(
     unknownDir.tgtMeta.symbol === SCAM.slice(0, 4),
-    "null symbol falls back to mint prefix",
+    "null symbol falls back to mint prefix"
   );
   assert(unknownDir.tgtMeta.decimals === 6, "null decimals default to 6");
 
@@ -106,49 +106,49 @@ function main(): void {
   // SOL/USDC → USDC is the stable (token_y) → accumulate tokenY.
   assert(
     impliedPoolDirection(p) === "tokenY",
-    "implied: accumulate the stable leg (USDC = tokenY)",
+    "implied: accumulate the stable leg (USDC = tokenY)"
   );
-  // Flip so stable is token_x → implied tokenX.
+  // Flip so stable is tokenX → implied tokenX.
   const stableX = pool({
-    token_x: {
+    tokenX: {
       mint: USDC,
       symbol: "USDC",
       decimals: 6,
-      logo_uri: null,
+      logoUri: null,
       tier: "tier1",
     },
-    token_y: {
+    tokenY: {
       mint: SOL,
       symbol: "SOL",
       decimals: 9,
-      logo_uri: null,
+      logoUri: null,
       tier: "tier1",
     },
   });
   assert(
     impliedPoolDirection(stableX) === "tokenX",
-    "implied: stable on token_x → tokenX",
+    "implied: stable on tokenX → tokenX"
   );
   // Neither stable → lexicographic default tokenY.
   const noStable = pool({
-    token_x: {
+    tokenX: {
       mint: SOL,
       symbol: "SOL",
       decimals: 9,
-      logo_uri: null,
+      logoUri: null,
       tier: null,
     },
-    token_y: {
+    tokenY: {
       mint: SCAM,
       symbol: "SCAM",
       decimals: 9,
-      logo_uri: null,
+      logoUri: null,
       tier: null,
     },
   });
   assert(
     impliedPoolDirection(noStable) === "tokenY",
-    "no stable → tokenY default",
+    "no stable → tokenY default"
   );
 
   // --- STABLE_MINTS sanity (display hint set) ---
@@ -167,7 +167,7 @@ function main(): void {
   assert(tgtMint === SOL, "onSelect arg2 = tgtMint (tokenX → token_x)");
   assert(
     extras === p.extras,
-    "onSelect arg3 = venue extras (ammConfig rides here, no client branch)",
+    "onSelect arg3 = venue extras (ammConfig rides here, no client branch)"
   );
   assert(srcMeta.decimals === 6, "onSelect arg4 srcMeta.decimals");
   assert(tgtMeta.tier === "tier1", "onSelect arg5 tgtMeta.tier passthrough");
