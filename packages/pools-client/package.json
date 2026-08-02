@@ -5,7 +5,7 @@
     "type": "git"
   },
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "description": "Pure-fetch client for the Tributary /v1/pools/search endpoint (pool resolver service). No React, no globals.",
