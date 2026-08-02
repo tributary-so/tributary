@@ -1,12 +1,13 @@
 /**
  * Raydium CLMM pool normalizer (bean tributary-jh0p).
  *
- * Syncs `GET {RAYDIUM_API_BASE}/pools/info/list-v2?poolType=concentrated&
- * sortType=desc&size=<N>&nextPageId=<cursor>` with an opaque `nextPageId`
- * cursor, normalizes each concentrated pool into a `pools` row, drops rows
- * below the ~$1k TVL floor (HANDOFF §3 — a perf/dust cut, NOT a trust cut),
- * idempotently upserts, and drains stale rows. Uses the DEDICATED sync pool
- * (`getSyncDb`) so the crawler never starves request-serving.
+ * Syncs `GET {RAYDIUM_API_BASE}/pools/info/list?poolType=concentrated&
+ * sortType=desc&pageSize=<N>&page=<n>` (page-based; Raydium api-v3 — the old
+ * api.raydium.io/v3/mainnet host and the list-v2 cursor endpoint are dead),
+ * normalizes each concentrated pool into a `pools` row, drops rows below the
+ * ~$1k TVL floor (HANDOFF §3 — a perf/dust cut, NOT a trust cut), idempotently
+ * upserts, and drains stale rows. Uses the DEDICATED sync pool (`getSyncDb`)
+ * so the crawler never starves request-serving.
  *
  * Registered via `registerPoolNormalizer("raydium", raydiumSync)` in index.ts.
  * Star precompute (stars/tier1) is podi's concern — this layer writes pool
@@ -24,7 +25,11 @@ import { drainStalePools, upsertPools } from "../db/pools";
 import { getSyncDb } from "./pools-sync";
 import type { NewPool } from "../db/schema-pools";
 
-const DEFAULT_API_BASE = "https://api.raydium.io/v3/mainnet";
+// api-v3 is the current documented host (docs.raydium.io). The legacy
+// api.raydium.io/v3/mainnet origin 404s; its list-v2 cursor endpoint also
+// rejects poolType=concentrated. Override via RAYDIUM_API_BASE if it moves
+// again.
+const DEFAULT_API_BASE = "https://api-v3.raydium.io";
 const DEFAULT_PAGE_SIZE = 1000;
 const DEFAULT_TVL_FLOOR = 1000;
 const DEFAULT_DRAIN_WINDOW_MS = 10 * 60 * 1000; // ~2 missed ticks at 5min
@@ -44,7 +49,7 @@ export interface RaydiumSyncOptions {
 
 export interface RaydiumListPage {
   data: unknown[];
-  nextPageId: string | number | null;
+  hasNextPage: boolean;
 }
 
 export interface RaydiumSyncResult {
@@ -117,27 +122,31 @@ export function normalizeRaydiumPool(
 }
 
 /**
- * Fetch one list-v2 page. Builds the cursor query, retries 429/5xx with
- * exponential backoff. Throws on persistent failure (the orchestrator isolates
- * per-venue errors, so one failing venue never blocks the others).
+ * Fetch one `/pools/info/list` page. Builds the page query, retries 429/5xx
+ * with exponential backoff. Throws on persistent failure (the orchestrator
+ * isolates per-venue errors, so one failing venue never blocks the others).
+ *
+ * Note on the envelope: Raydium api-v3 returns HTTP 200 with
+ * `{ success: false, msg }` on a bad query (e.g. wrong poolType). Without
+ * this check the sync would silently index nothing — surface it as a throw.
  */
 export async function fetchRaydiumPage(
-  opts: RaydiumSyncOptions & { nextPageId?: string | number | null }
+  opts: RaydiumSyncOptions & { page?: number }
 ): Promise<RaydiumListPage> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const size = pageSizeOf(opts);
+  const page = opts.page ?? 1;
   const retries = opts.retries ?? DEFAULT_RETRIES;
   const baseMs = opts.backoffBaseMs ?? DEFAULT_BACKOFF_BASE_MS;
 
   const params = new URLSearchParams({
     poolType: "concentrated",
+    poolSortField: "default", // required by api-v3; "default" = 24h volume (legacy behavior)
     sortType: "desc",
-    size: String(size),
+    pageSize: String(size),
+    page: String(page),
   });
-  if (opts.nextPageId != null && opts.nextPageId !== "") {
-    params.set("nextPageId", String(opts.nextPageId));
-  }
-  const url = `${apiBase(opts)}/pools/info/list-v2?${params.toString()}`;
+  const url = `${apiBase(opts)}/pools/info/list?${params.toString()}`;
 
   let lastStatus = 0;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -171,6 +180,11 @@ export async function fetchRaydiumPage(
     }
 
     const body = (await res.json()) as any;
+    if (body?.success === false) {
+      throw new Error(
+        `raydium upstream rejected query: ${body.msg ?? "unknown error"}`
+      );
+    }
     return extractPage(body);
   }
   throw new Error(
@@ -178,21 +192,20 @@ export async function fetchRaydiumPage(
   );
 }
 
-/** Pull the pool array + opaque cursor out of either envelope shape. */
+/** Pull the pool array + hasNextPage flag out of the envelope. */
 function extractPage(body: any): RaydiumListPage {
   const root = body?.data;
   let data: unknown[];
-  let nextPageId: string | number | null;
   if (Array.isArray(root)) {
     data = root;
-    nextPageId = body?.nextPageId ?? null;
   } else {
     data = root?.data ?? root?.pools ?? [];
-    nextPageId = root?.nextPageId ?? body?.nextPageId ?? null;
   }
   return {
     data: Array.isArray(data) ? data : [],
-    nextPageId: nextPageId ?? null,
+    hasNextPage: Boolean(
+      Array.isArray(root) ? body?.hasNextPage : root?.hasNextPage
+    ),
   };
 }
 
@@ -209,19 +222,19 @@ export async function raydiumSync(
   const drainWindow = opts.drainWindowMs ?? DEFAULT_DRAIN_WINDOW_MS;
 
   const rows: NewPool[] = [];
-  let nextPageId: string | number | null | undefined = undefined;
+  let page = 1;
   let pages = 0;
 
-  // Hard ceiling on pages guards against a misbehaving cursor loop.
+  // Hard ceiling on pages guards against a misbehaving pagination loop.
   for (let i = 0; i < 100; i++) {
-    const page = await fetchRaydiumPage({ ...opts, nextPageId });
+    const result = await fetchRaydiumPage({ ...opts, page });
     pages++;
-    for (const raw of page.data) {
+    for (const raw of result.data) {
       const row = normalizeRaydiumPool(raw, floor, now);
       if (row) rows.push(row);
     }
-    nextPageId = page.nextPageId;
-    if (nextPageId === null || nextPageId === undefined) break;
+    if (!result.hasNextPage) break;
+    page++;
   }
 
   await upsertPools(db, rows);

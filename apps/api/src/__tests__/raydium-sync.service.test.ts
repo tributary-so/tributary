@@ -4,7 +4,7 @@
  * Fetch is mocked (no live Raydium — and Raydium has no free-text upstream, so
  * the index is the feature). The DB layer (getSyncDb / upsertPools /
  * drainStalePools) is mocked at the module boundary. These pin the contract:
- * field normalization, TVL floor drop, opaque-cursor pagination, idempotent
+ * field normalization, TVL floor drop, page-based pagination, idempotent
  * upsert + drain, and 429/5xx exponential backoff.
  */
 
@@ -126,11 +126,11 @@ describe("normalizeRaydiumPool", () => {
 });
 
 describe("fetchRaydiumPage", () => {
-  it("builds the cursor query with poolType/sortType/size and returns data + nextPageId", async () => {
+  it("builds the page query with poolType/sortType/pageSize and returns data + hasNextPage", async () => {
     const fetchImpl = fetchMock().mockResolvedValue(
       makeResponse({
         success: true,
-        data: { data: [rawPool()], nextPageId: 42 },
+        data: { data: [rawPool()], hasNextPage: true },
       })
     );
 
@@ -141,35 +141,38 @@ describe("fetchRaydiumPage", () => {
     });
 
     const calledUrl = fetchImpl.mock.calls[0][0] as string;
-    expect(calledUrl).toContain("https://example.test/pools/info/list-v2");
+    expect(calledUrl).toContain("https://example.test/pools/info/list");
+    expect(calledUrl).not.toContain("list-v2");
     expect(calledUrl).toContain("poolType=concentrated");
+    expect(calledUrl).toContain("poolSortField=default");
     expect(calledUrl).toContain("sortType=desc");
-    expect(calledUrl).toContain("size=50");
-    expect(calledUrl).not.toContain("nextPageId"); // first page: no cursor
+    expect(calledUrl).toContain("pageSize=50");
+    expect(calledUrl).toContain("page=1");
 
     expect(page.data).toHaveLength(1);
-    expect(page.nextPageId).toBe(42);
+    expect(page.hasNextPage).toBe(true);
   });
 
-  it("appends the opaque nextPageId cursor on follow-up pages", async () => {
+  it("throws when the upstream returns success:false (bad query, HTTP 200)", async () => {
+    // Raydium api-v3 returns HTTP 200 with { success:false, msg } on a rejected
+    // query. Without this guard the sync would silently index nothing.
     const fetchImpl = fetchMock().mockResolvedValue(
-      makeResponse({ data: { data: [], nextPageId: null } })
+      makeResponse({ success: false, msg: "query poolType check error" })
     );
 
-    await fetchRaydiumPage({
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-      baseUrl: "https://example.test",
-      nextPageId: 42,
-    });
-
-    expect(fetchImpl.mock.calls[0][0] as string).toContain("nextPageId=42");
+    await expect(
+      fetchRaydiumPage({
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        baseUrl: "https://example.test",
+      })
+    ).rejects.toThrow(/query poolType check error/);
   });
 
   it("retries 429 with exponential backoff, then succeeds", async () => {
     const fetchImpl = fetchMock()
       .mockResolvedValueOnce(makeResponse({}, 429))
       .mockResolvedValueOnce(
-        makeResponse({ data: { data: [], nextPageId: null } })
+        makeResponse({ data: { data: [], hasNextPage: false } })
       );
 
     const page = await fetchRaydiumPage({
@@ -218,7 +221,7 @@ describe("raydiumSync", () => {
   });
 
   it("paginates to completion, floors, upserts survivors, and drains stale", async () => {
-    // page 1: 2 pools (one above floor, one below) + a cursor; page 2: 1 pool, no cursor.
+    // page 1: 2 pools (one above floor, one below) + hasNextPage; page 2: 1 pool, last page.
     const fetchImpl = fetchMock()
       .mockResolvedValueOnce(
         makeResponse({
@@ -227,7 +230,7 @@ describe("raydiumSync", () => {
               rawPool({ id: "P1", tvl: 5_000 }),
               rawPool({ id: "P2", tvl: 200 }),
             ],
-            nextPageId: "cur",
+            hasNextPage: true,
           },
         })
       )
@@ -235,7 +238,7 @@ describe("raydiumSync", () => {
         makeResponse({
           data: {
             data: [rawPool({ id: "P3", tvl: 50_000 })],
-            nextPageId: null,
+            hasNextPage: false,
           },
         })
       );
@@ -249,6 +252,12 @@ describe("raydiumSync", () => {
 
     expect(result.pages).toBe(2);
     expect(result.upserted).toBe(2); // P2 (tvl 200) dropped by the floor
+
+    // page counter incremented across calls
+    const url1 = fetchImpl.mock.calls[0][0] as string;
+    const url2 = fetchImpl.mock.calls[1][0] as string;
+    expect(url1).toContain("page=1");
+    expect(url2).toContain("page=2");
 
     expect(upsertPools).toHaveBeenCalledTimes(1);
     const upserted = upsertPools.mock.calls[0][1] as any[];
@@ -269,7 +278,7 @@ describe("raydiumSync", () => {
   it("upserts an empty batch when every pool is below the floor (no crash)", async () => {
     const fetchImpl = fetchMock().mockResolvedValueOnce(
       makeResponse({
-        data: { data: [rawPool({ id: "Dust", tvl: 5 })], nextPageId: null },
+        data: { data: [rawPool({ id: "Dust", tvl: 5 })], hasNextPage: false },
       })
     );
 
