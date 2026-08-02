@@ -23,6 +23,7 @@ import {
 } from "../db/pools";
 import { getSyncDb } from "./pools-sync";
 import { resolveAsset } from "./tokens-proxy";
+import { describeError } from "./errors";
 
 const STALE_MS = 60 * 60 * 1000; // refresh mints whose token row is >1h old
 const PER_TICK = 200; // bound the tick — tokens-proxy Redis-caches resolve (10m)
@@ -73,8 +74,12 @@ export async function refreshPoolsTokens(
         const asset = await resolveAsset(mint);
         await upsertToken(db, {
           mint,
-          // known = tokens.xyz has a real identity for it (curated or override).
-          known: !!asset,
+          // known = curated by tokens.xyz (tier1/tier2). tier3 singletons
+          // (tokens.xyz synthesised a placeholder) rank via their tier but
+          // don't get the +1 star boost — without this gate, every resolved
+          // mint scores stars=2 and the ranking flattens. Overrides (USDC,
+          // SOL, …) carry no tier → `undefined !== "tier3"` → known=true.
+          known: asset?.tier !== "tier3",
           tier: asset?.tier ?? null,
           symbol: asset?.symbol ?? null,
           name: asset?.name ?? null,
@@ -87,7 +92,7 @@ export async function refreshPoolsTokens(
       } catch (err) {
         console.warn(
           `[pools-tokens] refresh failed for ${mint}:`,
-          err instanceof Error ? err.message : err
+          describeError(err)
         );
       }
     }
