@@ -26,10 +26,13 @@ jobs:
     name: Detect Changed Packages
     runs-on: ubuntu-latest
     outputs:
-      has_programs: ${{ steps.detect.outputs.has_programs }}
-      has_sdk: ${{ steps.detect.outputs.has_sdk }}
-      has_sdk_react: ${{ steps.detect.outputs.has_sdk_react }}
-      has_sdk_x402: ${{ steps.detect.outputs.has_sdk_x402 }}
+      build_programs: ${{ steps.detect.outputs.build_programs }}
+      build_sdk: ${{ steps.detect.outputs.build_sdk }}
+      build_sdk_react: ${{ steps.detect.outputs.build_sdk_react }}
+      build_sdk_x402: ${{ steps.detect.outputs.build_sdk_x402 }}
+      build_lando: ${{ steps.detect.outputs.build_lando }}
+      build_app: ${{ steps.detect.outputs.build_app }}
+      build_api: ${{ steps.detect.outputs.build_api }}
       sdk_paths: ${{ steps.detect.outputs.sdk_paths }}
 
     steps:
@@ -54,43 +57,97 @@ jobs:
           echo "$CHANGED_FILES"
           echo ""
 
-          HAS_PROGRAMS=0
-          HAS_SDK=0
-          HAS_SDK_REACT=0
-          HAS_SDK_X402=0
+          BUILD_PROGRAMS=0
+          BUILD_SDK=0
+          BUILD_SCHEDULER=0
+          BUILD_CHECKOUT=0
+          BUILD_APP=0
+          BUILD_API=0
+          BUILD_FORWARD_BUILDER=0
+          BUILD_LANDO=0
+          BUILD_CLI=0
 
+          ELEMENTS="\"packages/sdk\","
+
+          ## Contract
           if echo "$CHANGED_FILES" | grep -q "^programs/"; then
-            HAS_PROGRAMS=1
+            BUILD_PROGRAMS=1
             echo "::notice::Programs changed"
           fi
+
+          ## Packages
           if echo "$CHANGED_FILES" | grep -q "^packages/sdk/"; then
-            HAS_SDK=1
+            BUILD_SDK=1
+            # require rebuild when sdk changes!
+            BUILD_API=1
+            BUILD_FORWARD_BUILDER=1
+            BUILD_APP=1
+            BUILD_CHECKOUT=1
+            BUILD_CLI=1
+            BUILD_SCHEDULER=1
             echo "::notice::SDK changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^packages/payments/"; then
+            ELEMENTS="${ELEMENTS}\"packages/payments\","
+            BUILD_CHECKOUT=1
+            echo "::notice::Payments changed"
+          fi
           if echo "$CHANGED_FILES" | grep -q "^packages/sdk-react/"; then
-            HAS_SDK_REACT=1
+            ELEMENTS="${ELEMENTS}\"packages/sdk-react\","
             echo "::notice::SDK-React changed"
           fi
           if echo "$CHANGED_FILES" | grep -q "^packages/sdk-x402/"; then
-            HAS_SDK_X402=1
+            ELEMENTS="${ELEMENTS}\"packages/sdk-x402\","
             echo "::notice::SDK-x402 changed"
           fi
+          if echo "$CHANGED_FILES" | grep -q "^packages/forward-builders/"; then
+            BUILD_FORWARD_BUILDER=1
+            BUILD_SCHEDULER=1
+            echo "::notice::api changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^packages/tokens-client/"; then
+            BUILD_API=1
+            echo "::notice::tokens-client changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^packages/pools-client/"; then
+            BUILD_API=1
+            echo "::notice::pools-client changed"
+          fi
 
-          echo "has_programs=$HAS_PROGRAMS" >> "$GITHUB_OUTPUT"
-          echo "has_sdk=$HAS_SDK" >> "$GITHUB_OUTPUT"
-          echo "has_sdk_react=$HAS_SDK_REACT" >> "$GITHUB_OUTPUT"
-          echo "has_sdk_x402=$HAS_SDK_X402" >> "$GITHUB_OUTPUT"
+          ## Apps
+          if echo "$CHANGED_FILES" | grep -q "^apps/lando/"; then
+            BUILD_LANDO=1
+            echo "::notice::lando changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/cli/"; then
+            BUILD_CLI=1
+            echo "::notice::cli changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/scheduler/"; then
+            BUILD_SCHEDULER=1
+            echo "::notice::Scheduler changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/checkout/"; then
+            BUILD_CHECKOUT=1
+            echo "::notice::Checkout app changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/app/"; then
+            BUILD_APP=1
+            echo "::notice::app changed"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^apps/api/"; then
+            BUILD_API=1
+            echo "::notice::api changed"
+          fi
 
-          ELEMENTS=""
-          if [ "$HAS_SDK" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"packages/sdk\","
-          fi
-          if [ "$HAS_SDK_REACT" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"packages/sdk-react\","
-          fi
-          if [ "$HAS_SDK_X402" = "1" ]; then
-            ELEMENTS="${ELEMENTS}\"packages/sdk-x402\","
-          fi
+          echo "build_programs=$BUILD_PROGRAMS" >> "$GITHUB_OUTPUT"
+          echo "build_sdk=$BUILD_SDK" >> "$GITHUB_OUTPUT"
+          echo "build_scheduler=$BUILD_SCHEDULER" >> "$GITHUB_OUTPUT"
+          echo "build_checkout=$BUILD_CHECKOUT" >> "$GITHUB_OUTPUT"
+          echo "build_lando=$BUILD_LANDO" >> "$GITHUB_OUTPUT"
+          echo "build_app=$BUILD_APP" >> "$GITHUB_OUTPUT"
+          echo "build_api=$BUILD_API" >> "$GITHUB_OUTPUT"
+          echo "build_cli=$BUILD_CLI" >> "$GITHUB_OUTPUT"
 
           if [ -n "$ELEMENTS" ]; then
             ELEMENTS=${ELEMENTS%,}
@@ -105,17 +162,12 @@ jobs:
   test-programs:
     name: Test Programs
     needs: detect-changes
-    if: needs.detect-changes.outputs.has_programs == '1' && github.event.inputs.skip_tests != 'true'
+    if: needs.detect-changes.outputs.build_programs == '1' && github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/program-tests.yml
 
   test-sdks:
     name: Test SDKs
     needs: detect-changes
-    if: >-
-      (needs.detect-changes.outputs.has_sdk == '1' ||
-       needs.detect-changes.outputs.has_sdk_react == '1' ||
-       needs.detect-changes.outputs.has_sdk_x402 == '1') &&
-       github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/sdk-tests.yml
     with:
       paths: ${{ needs.detect-changes.outputs.sdk_paths }}

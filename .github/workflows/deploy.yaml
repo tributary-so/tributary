@@ -1,0 +1,90 @@
+---
+name: Update Deployment
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        required: true
+        type: string
+      stack:
+        required: true
+        type: string
+      env:
+        required: true
+        type: string
+      package:
+        required: true
+        type: string
+
+jobs:
+  up:
+    name: Update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest ${{ inputs.package }} tag
+        id: get-tag
+        run: |
+          FULL_PACKAGE="${{ inputs.package }}"
+          PACKAGE=${FULL_PACKAGE#apps/}
+          LATEST_TAG=$(git tag --list "@tributary-so/${PACKAGE}-*" --sort=-version:refname | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::error::No ${PACKAGE} tag found"
+            exit 1
+          fi
+          VERSION=${LATEST_TAG#@tributary-so/${PACKAGE}-}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_name=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "::notice::Using ${PACKAGE} version: $VERSION"
+
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          repository: tributary-so/deployment
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Setup Python ✨
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - uses: snok/install-poetry@v1
+        with:
+          version: 1.8.2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Installing dependencies 📦️
+        working-directory: ${{ inputs.path }}
+        run: poetry install --no-interaction --no-root
+
+      - name: Install pulumi 💾
+        uses: pulumi/actions@v4
+
+      - name: Save new image version to ESC ⭐
+        run: |
+          pulumi org set-default tributary
+          pulumi env set ${{ inputs.env }} image_version ${{ steps.get-tag.outputs.version }}
+        working-directory: ${{ inputs.path }}
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          CONSUL_HTTP_ADDR: ${{ vars.CONSUL_HTTP_ADDR }}
+          NOMAD_ADDR: ${{ vars.NOMAD_ADDR }}
+          VAULT_ADDR: ${{ vars.VAULT_ADDR }}
+          CONSUL_HTTP_AUTH: ${{ secrets.CONSUL_HTTP_AUTH }}
+          NOMAD_TOKEN: ${{ secrets.NOMAD_TOKEN }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+          SOLANA_API: ${{ secrets.SOLANA_API }}
+
+      - name: Applying infrastructure 🚀
+        uses: pulumi/actions@v4
+        with:
+          command: up
+          work-dir: ${{ inputs.path }}
+          stack-name: "${{ inputs.stack }}"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}

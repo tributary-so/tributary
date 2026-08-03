@@ -46,10 +46,14 @@ permissions:
   pull-requests: write
   id-token: write
 
+env:
+  NODE_VERSION: "22"
+
 jobs:
   detect-changes:
     name: Detect Changed Packages
     runs-on: ubuntu-latest
+    environment: mainnet
     outputs:
       build_programs: ${{ steps.detect.outputs.build_programs }}
       build_sdk: ${{ steps.detect.outputs.build_sdk }}
@@ -69,6 +73,9 @@ jobs:
       - name: Detect changed packages
         id: detect
         run: |
+          echo "Previous HEAD: ${{ github.event.before }}"
+          echo "Current HEAD: ${{ github.sha }}"
+
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Diffing against: $PREV_TAG"
           echo ""
@@ -181,7 +188,6 @@ jobs:
           echo "build_api=$BUILD_API" >> "$GITHUB_OUTPUT"
           echo "build_cli=$BUILD_CLI" >> "$GITHUB_OUTPUT"
 
-
           if [ -n "$ELEMENTS" ]; then
             ELEMENTS=${ELEMENTS%,}
             PATHS="[$ELEMENTS]"
@@ -280,3 +286,15 @@ jobs:
     if: always() && (needs.detect-changes.outputs.build_lando == '1' || github.event.inputs.post_release == 'true')
     secrets: inherit
     uses: ./.github/workflows/lando-page.yaml
+
+  # deploy
+  deploy_api:
+    uses: ./.github/workflows/deploy.yaml
+    secrets: inherit
+    needs: build-api-docker
+    if: always() && (needs.detect-changes.outputs.build_api == '1' || github.event.inputs.post_release == 'true')
+    with:
+      package: apps/api
+      stack: tributary/api/mainnet
+      env: mainnet-api
+      path: api/
