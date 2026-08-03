@@ -126,7 +126,18 @@ router.get(
  *               type: object
  *               properties:
  *                 success: { type: boolean, example: true }
- *                 data: { $ref: '#/components/schemas/ResolveResult' }
+ *                 data:
+ *                   type: object
+ *                   required: [mint, assetId, symbol, name, decimals, imageUrl, category]
+ *                   properties:
+ *                     mint: { type: string, description: Solana base58 mint. }
+ *                     assetId: { type: string, nullable: true }
+ *                     symbol: { type: string, nullable: true, description: "Token symbol, or null when no source (tokens.xyz/venue/on-chain) provides one; clients render a fallback." }
+ *                     name: { type: string, nullable: true }
+ *                     decimals: { type: integer, nullable: true }
+ *                     imageUrl: { type: string, format: uri, nullable: true }
+ *                     category: { type: string, nullable: true }
+ *                     tier: { type: string, nullable: true, description: tokens.xyz trust tier. }
  *                 timestamp: { type: integer }
  *       400:
  *         description: Missing or invalid mint parameter.

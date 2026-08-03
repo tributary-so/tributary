@@ -50,11 +50,16 @@ interface PoolResult {
 function toLeg(
   mint: string,
   token: PoolSearchHit["tokenA"],
-  fallbackSymbol: string | null
+  venueSymbol: string | null
 ): PoolTokenLeg {
   return {
     mint,
-    symbol: token?.symbol ?? fallbackSymbol,
+    // The venue/pool row carries the pair's real symbol (Raydium/Whirlpool
+    // ship it). Prefer it over tokens.xyz, which is null for uncurated
+    // (tier3) mints — a registry gap must never shadow a symbol the pool
+    // already gave us. tokens.xyz stays the fallback for pools whose venue
+    // recorded no symbol at all.
+    symbol: venueSymbol ?? token?.symbol ?? null,
     decimals: token?.decimals ?? null,
     logoUri: token?.logoUri ?? null,
     tier: token?.tier ?? null,
