@@ -207,27 +207,29 @@ export async function resolveAsset(
   if (upstream) {
     const variant = upstream.variant ?? null;
     const asset = upstream.asset ?? null;
+    const assetId = upstream.assetId ?? asset?.assetId ?? null;
     const symbol = variant?.symbol ?? asset?.symbol ?? null;
     const name = variant?.name ?? asset?.name ?? null;
     const tier = variant?.trustTier ?? variant?.liquidityTier ?? null;
-    // Build a row whenever upstream answered — even singletons carry a useful
-    // tier. The old guard (`symbol || name`) dropped every uncurated mint,
-    // which is exactly the long tail we need to rank.
-    payload = {
-      mint,
-      assetId: upstream.assetId ?? asset?.assetId ?? null,
-      // ResolveResult.symbol is non-null by type; keep the legacy display
-      // fallback for singletons (uncurated mints with no symbol). `known`
-      // is derived downstream from the tier, not the symbol's presence.
-      symbol: symbol ?? mint.slice(0, 4) + "...",
-      name,
-      // Upstream no longer ships decimals; keep the legacy default so the
-      // column is non-null (downstream code expects a number).
-      decimals: 6,
-      imageUrl: null,
-      category: asset?.category ?? null,
-      tier,
-    };
+    // Build a row only when upstream gave us something to rank or show — a
+    // tier, symbol, name, or assetId. A singleton (uncurated mint) carries a
+    // tier3 and ranks via it; an empty body knows nothing and is a miss (→
+    // null → MINT_OVERRIDES fallback). Identity is honest: `symbol` is null
+    // when no source has one; display fallbacks live client-side.
+    if (tier || symbol || name || assetId) {
+      payload = {
+        mint,
+        assetId,
+        symbol,
+        name,
+        // Upstream no longer ships decimals; keep the legacy default so the
+        // column is non-null (downstream code expects a number).
+        decimals: 6,
+        imageUrl: null,
+        category: asset?.category ?? null,
+        tier,
+      };
+    }
   }
 
   // Fallback to baked-in MINT_OVERRIDES when upstream is unavailable.

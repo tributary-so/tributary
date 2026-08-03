@@ -15,7 +15,7 @@
 export type Network = "mainnet" | "devnet" | "testnet" | "localnet";
 
 export interface TokenMetadata {
-  symbol: string;
+  symbol: string | null;
   name?: string;
   decimals?: number;
   logoURI?: string;

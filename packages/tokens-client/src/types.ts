@@ -49,7 +49,7 @@ export interface AssetSearchResponse {
 export interface ResolveResult {
   mint: string;
   assetId: string | null;
-  symbol: string;
+  symbol: string | null;
   name: string | null;
   decimals: number | null;
   imageUrl: string | null;

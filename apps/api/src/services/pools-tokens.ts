@@ -79,7 +79,7 @@ export async function refreshPoolsTokens(
           // don't get the +1 star boost — without this gate, every resolved
           // mint scores stars=2 and the ranking flattens. Overrides (USDC,
           // SOL, …) carry no tier → `undefined !== "tier3"` → known=true.
-          known: asset?.tier !== "tier3",
+          known: asset != null && asset.tier !== "tier3",
           tier: asset?.tier ?? null,
           symbol: asset?.symbol ?? null,
           name: asset?.name ?? null,

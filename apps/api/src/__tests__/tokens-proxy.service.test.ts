@@ -182,13 +182,19 @@ describe("tokens-proxy service", () => {
       (global as any).fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          mint: MINT,
           assetId: "usd",
-          symbol: "USDC",
-          name: "USD Coin",
-          decimals: 6,
-          imageUrl: null,
-          category: "stablecoin",
+          variant: {
+            mint: MINT,
+            symbol: "USDC",
+            name: "USD Coin",
+            trustTier: "tier1",
+          },
+          asset: {
+            assetId: "usd",
+            symbol: "USDC",
+            name: "USD Coin",
+            category: "stablecoin",
+          },
         }),
       });
 

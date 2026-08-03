@@ -26,6 +26,7 @@ jest.mock("../middleware/rateLimit", () => ({
 import poolsRouter from "../routes/pools";
 import { errorHandler } from "../middleware/errorHandler";
 import * as poolsSearch from "../services/pools-search";
+import type { PoolSearchHit } from "../db/pools";
 
 const searchPoolsCached = poolsSearch.searchPoolsCached as jest.MockedFunction<
   typeof poolsSearch.searchPoolsCached
@@ -128,6 +129,51 @@ describe("/v1/pools routes", () => {
         venue: "raydium",
         limit: 10,
       });
+    });
+
+    it("prefers the venue symbol over a stale/uncurated tokens.xyz symbol", async () => {
+      // Regression (MOON/SPCX): tokens.xyz returns tier3 (uncurated) and the
+      // indexed `tokens` row still holds a synthetic slice ("8zTZ...") from
+      // the old writer. The pool row already carries "MOON" — the venue
+      // symbol must win; a registry gap can never shadow a symbol the pool
+      // already gave us.
+      const hit: PoolSearchHit = {
+        pool: {
+          address: "PoolMOON",
+          venue: "raydium",
+          mintA: "8zTZRwvifDrCe237kxKtKWgnQvhfVA7ncMQ7P7qApew",
+          mintB: USDC,
+          symbolA: "MOON",
+          symbolB: "USDC",
+          tvl: "9000",
+          feeRate: "0.03",
+          stars: 0,
+          tier1: false,
+          extras: {},
+          refreshedAt: new Date("2026-08-02T00:00:00Z"),
+        },
+        tokenA: {
+          mint: "8zTZRwvifDrCe237kxKtKWgnQvhfVA7ncMQ7P7qApew",
+          known: false,
+          tier: "tier3",
+          symbol: "8zTZ...",
+          name: null,
+          decimals: 6,
+          logoUri: null,
+          refreshedAt: new Date("2026-08-02T00:00:00Z"),
+        },
+        tokenB: null,
+      };
+      searchPoolsCached.mockResolvedValueOnce([hit]);
+
+      const res = await request(app).get("/v1/pools/search?q=MOON&venue=raydium");
+
+      expect(res.status).toBe(200);
+      const tokenX = res.body.data.results[0].tokenX;
+      expect(tokenX.symbol).toBe("MOON");
+      // enrichment (tier/decimals) still flows from tokens.xyz, untouched.
+      expect(tokenX.tier).toBe("tier3");
+      expect(tokenX.decimals).toBe(6);
     });
 
     it("defaults limit to 20 when not provided", async () => {
