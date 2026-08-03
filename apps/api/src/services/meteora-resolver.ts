@@ -8,22 +8,22 @@
  * logos. Same `PoolResult`, same stars — the live-vs-indexed split is entirely
  * server-internal (`mode` is client-invisible; dispatch lives in pools-search).
  *
- * ⚠ Endpoint reachability: `dlmm-api.meteora.ag` is unreachable from some
- * environments (Cloudflare 404 on every path). The default path/shape below are
- * the publicly-attested `/pair/all_by_groups?search_term=` form, kept
- * defensive (multiple envelope shapes) + env-overridable. The path is isolated
- * in ONE function — a one-line fix when the deploy host can reach upstream.
+ * Upstream: `https://dlmm.datapi.meteora.ag/pools` (the public DLMM data API,
+ * bean tributary-gdm4). The old `dlmm-api.meteora.ag/pair/all_by_groups` host
+ * was retired (Cloudflare 404 on every path). Override at deploy time via
+ * METEORA_API_BASE / METEORA_SEARCH_PATH if Meteora moves again.
  *
  * No TVL floor on the live path (D6 floor is an indexed-venue perf cut);
- * Meteora's own `sort_by=tvl:desc` + `is_blacklisted=false` ranks upstream.
+ * Meteora's own `sort_by=tvl:desc` + `filter_by=is_blacklisted=false` ranks
+ * upstream.
  */
 
 import { resolveAsset } from "./tokens-proxy";
 import type { PoolSearchHit } from "../db/pools";
 import type { Pool, PoolToken } from "../db/schema-pools";
 
-const DEFAULT_API_BASE = "https://dlmm-api.meteora.ag";
-const DEFAULT_SEARCH_PATH = "/pair/all_by_groups";
+const DEFAULT_API_BASE = "https://dlmm.datapi.meteora.ag";
+const DEFAULT_SEARCH_PATH = "/pools";
 const DEFAULT_LIMIT = 20;
 const REQUEST_TIMEOUT_MS = 8_000;
 const RESOLVE_CONCURRENCY = 6;
@@ -67,25 +67,45 @@ interface RawMeteoraPool {
  * Normalize one raw Meteora pool (defensive field reads; tolerates shape drift)
  * into the identity needed for a `PoolSearchHit`. Returns null when the entry
  * lacks a usable identity (address + both mints).
+ *
+ * Field cascade covers BOTH the current `dlmm.datapi.meteora.ag/pools` shape
+ * (token_x.address / pool_config.bin_step / dynamic_fee_pct) and the retired
+ * `/pair/all_by_groups` shape (mint_x / bin_step / fee_percentage). The old
+ * aliases stay so a minor upstream shape change doesn't break the resolver.
  */
 export function normalizeMeteoraPool(raw: unknown): RawMeteoraPool | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, any>;
+  const tx = r.token_x as Record<string, any> | undefined;
+  const ty = r.token_y as Record<string, any> | undefined;
+  const cfg = r.pool_config as Record<string, any> | undefined;
 
   const address = r.address ?? r.pairAddress ?? r.id;
-  const mintA = r.mint_x ?? r.mintX ?? r.tokenXMint;
-  const mintB = r.mint_y ?? r.mintY ?? r.tokenYMint;
+  // Current shape nests mints under token_{x,y}.address; the old shape had
+  // them at the top level (mint_x / mintX / tokenXMint).
+  const mintA = tx?.address ?? r.mint_x ?? r.mintX ?? r.tokenXMint;
+  const mintB = ty?.address ?? r.mint_y ?? r.mintY ?? r.tokenYMint;
   if (!address || !mintA || !mintB) return null;
 
   return {
     address: String(address),
     mintA: String(mintA),
     mintB: String(mintB),
-    symbolA: r.name_x ?? r.symbol_x ?? r.symbolX ?? null,
-    symbolB: r.name_y ?? r.symbol_y ?? r.symbolY ?? null,
+    symbolA:
+      tx?.symbol ?? tx?.name ?? r.name_x ?? r.symbol_x ?? r.symbolX ?? null,
+    symbolB:
+      ty?.symbol ?? ty?.name ?? r.name_y ?? r.symbol_y ?? r.symbolY ?? null,
     tvl: asNumber(r.tvl ?? r.tvlUsd ?? r.liquidity ?? r.liquidityUsd),
-    feeRate: r.fee_percentage ?? r.feePercentage ?? r.baseFeePct ?? null,
-    binStep: r.bin_step ?? r.binStep ?? null,
+    // dynamic_fee_pct (current) = base + variable; fall back to the configured
+    // base_fee_pct, then the retired top-level aliases.
+    feeRate:
+      r.dynamic_fee_pct ??
+      cfg?.base_fee_pct ??
+      r.fee_percentage ??
+      r.feePercentage ??
+      r.baseFeePct ??
+      null,
+    binStep: cfg?.bin_step ?? r.bin_step ?? r.binStep ?? null,
   };
 }
 
@@ -131,11 +151,11 @@ export async function fetchMeteoraSearch(
   const timeout = opts.timeoutMs ?? REQUEST_TIMEOUT_MS;
 
   const params = new URLSearchParams({
-    search_term: query,
-    sort_key: "tvl",
-    order_by: "desc",
+    query,
+    sort_by: "tvl:desc",
+    filter_by: "is_blacklisted=false",
+    page: "1",
     page_size: String(limit),
-    include_unknown: "false",
   });
   const url = `${apiBase(opts)}${searchPath(opts)}?${params.toString()}`;
 

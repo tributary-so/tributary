@@ -1,11 +1,12 @@
 /**
  * Unit tests for the Meteora live-proxy resolver (POOL-API §6.1).
  *
- * Fetch + resolveAsset are mocked (the Meteora API is unreachable from some
- * environments; the path/shape are isolated + env-overridable, tested here
- * against the attested `/pair/all_by_groups` nested-`groups` shape and the flat
- * fallback). Pins: query forwarding, defensive normalization, the inline
- * trust-join (stars = known(a)+known(b)), and isolation of per-mint failures.
+ * Fetch + resolveAsset are mocked (no network in CI). Pins: query forwarding
+ * to the current `dlmm.datapi.meteora.ag/pools` contract (params: query,
+ * sort_by=tvl:desc, filter_by=is_blacklisted=false), defensive normalization
+ * across the new nested token_x/token_y/pool_config shape AND the retired
+ * flat mint_x/fee_percentage shape (the cascade stays), the inline trust-join
+ * (stars = known(a)+known(b)), and isolation of per-mint failures.
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
@@ -30,7 +31,31 @@ const SOL = "So11111111111111111111111111111111111111112";
 const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SCAM = "Scam11111111111111111111111111111111111111111";
 
+/**
+ * Current dlmm.datapi.meteora.ag /pools entry shape: mints and metadata are
+ * nested under token_x/token_y, bin_step under pool_config, fee is
+ * dynamic_fee_pct. The normalizer reads this as the primary path.
+ */
 function rawPool(o: Record<string, any> = {}) {
+  return {
+    address: "Met1",
+    name: "SOL-USDC",
+    token_x: { address: SOL, symbol: "SOL", name: "SOL", decimals: 9 },
+    token_y: { address: USDC, symbol: "USDC", name: "USDC", decimals: 6 },
+    tvl: 5_000_000,
+    dynamic_fee_pct: 0.25,
+    pool_config: { bin_step: 25, base_fee_pct: 1.0 },
+    is_blacklisted: false,
+    ...o,
+  };
+}
+
+/**
+ * Retired /pair/all_by_groups shape (flat mint_x/name_x/fee_percentage/
+ * bin_step at the top level). Kept so the defensive cascade is pinned — a
+ * minor upstream shape regression shouldn't blank the resolver.
+ */
+function legacyRawPool(o: Record<string, any> = {}) {
   return {
     address: "Met1",
     mint_x: SOL,
@@ -59,7 +84,7 @@ function fetchMock() {
 }
 
 describe("normalizeMeteoraPool", () => {
-  it("maps the pair fields onto a raw identity", () => {
+  it("maps the current nested token_x/token_y/pool_config shape", () => {
     expect(normalizeMeteoraPool(rawPool())).toMatchObject({
       address: "Met1",
       mintA: SOL,
@@ -72,14 +97,39 @@ describe("normalizeMeteoraPool", () => {
     });
   });
 
+  it("still tolerates the retired flat mint_x/fee_percentage shape (defensive cascade)", () => {
+    expect(normalizeMeteoraPool(legacyRawPool())).toMatchObject({
+      address: "Met1",
+      mintA: SOL,
+      mintB: USDC,
+      symbolA: "SOL",
+      symbolB: "USDC",
+      tvl: 5_000_000,
+      feeRate: 0.25,
+      binStep: 25,
+    });
+  });
+
+  it("falls back to pool_config.base_fee_pct when dynamic_fee_pct is absent", () => {
+    const p = rawPool({ dynamic_fee_pct: undefined });
+    // base_fee_pct is 1.0 in the fixture → feeRate falls through to it.
+    expect(normalizeMeteoraPool(p)?.feeRate).toBe(1.0);
+  });
+
   it("drops entries missing a usable identity", () => {
     expect(normalizeMeteoraPool(rawPool({ address: undefined }))).toBeNull();
-    expect(normalizeMeteoraPool(rawPool({ mint_x: undefined }))).toBeNull();
+    expect(
+      normalizeMeteoraPool(rawPool({ token_x: { address: undefined } }))
+    ).toBeNull();
   });
 });
 
 describe("extractMeteoraPools", () => {
-  it("flattens the groups:[{pools:[...]}] nested shape", () => {
+  it("reads the {data:[...]} envelope the current /pools endpoint returns", () => {
+    expect(extractMeteoraPools({ data: [rawPool()] })).toHaveLength(1);
+  });
+
+  it("still flattens the retired groups:[{pools:[...]}] nested shape", () => {
     const body = {
       groups: [
         { pools: [rawPool()] },
@@ -89,32 +139,39 @@ describe("extractMeteoraPools", () => {
     expect(extractMeteoraPools(body)).toHaveLength(2);
   });
 
-  it("tolerates a flat array and {data:[...]} envelopes", () => {
+  it("tolerates a flat array and {rows:[...]} envelopes", () => {
     expect(extractMeteoraPools([rawPool()])).toHaveLength(1);
-    expect(extractMeteoraPools({ data: [rawPool()] })).toHaveLength(1);
     expect(extractMeteoraPools({ rows: [rawPool()] })).toHaveLength(1);
   });
 });
 
 describe("fetchMeteoraSearch", () => {
-  it("forwards search_term + sort params to the configured path", async () => {
-    const f = fetchMock().mockResolvedValue(makeResponse([rawPool()]));
+  it("forwards the current /pools contract: query, sort_by=tvl:desc, filter_by, page, page_size", async () => {
+    const f = fetchMock().mockResolvedValue(
+      makeResponse({ data: [rawPool()] })
+    );
     await fetchMeteoraSearch("SOL", 5, {
       fetchImpl: f,
       baseUrl: "https://x.test",
-      searchPath: "/pair/all_by_groups",
+      searchPath: "/pools",
     });
     const url = f.mock.calls[0][0] as string;
-    expect(url).toContain("https://x.test/pair/all_by_groups");
-    expect(url).toContain("search_term=SOL");
-    expect(url).toContain("sort_key=tvl");
+    expect(url).toContain("https://x.test/pools");
+    expect(url).toContain("query=SOL");
+    expect(url).toContain("sort_by=tvl%3Adesc"); // colon encoded
+    expect(url).toContain("filter_by=is_blacklisted%3Dfalse");
+    expect(url).toContain("page=1");
     expect(url).toContain("page_size=5");
+    // Old params must NOT be sent anymore.
+    expect(url).not.toContain("search_term=");
+    expect(url).not.toContain("sort_key=");
+    expect(url).not.toContain("include_unknown=");
   });
 
   it("retries 429 once then succeeds", async () => {
     const f = fetchMock()
       .mockResolvedValueOnce(makeResponse({}, 429))
-      .mockResolvedValueOnce(makeResponse([]));
+      .mockResolvedValueOnce(makeResponse({ data: [] }));
     const out = await fetchMeteoraSearch("SOL", 5, {
       fetchImpl: f,
       baseUrl: "https://x.test",
@@ -138,7 +195,7 @@ describe("searchMeteoraLive", () => {
 
   it("trust-joins: stars = known(a)+known(b); tokenA/B carry identity", async () => {
     const f = fetchMock().mockResolvedValue(
-      makeResponse({ groups: [{ pools: [rawPool()] }] })
+      makeResponse({ data: [rawPool()] })
     );
     resolveAsset
       .mockResolvedValueOnce({
@@ -154,7 +211,12 @@ describe("searchMeteoraLive", () => {
         imageUrl: "u2",
       } as any);
 
-    const out = await searchMeteoraLive("SOL", { limit: 5, fetchImpl: f, baseUrl: "https://x.test", searchPath: "/pair/all_by_groups" });
+    const out = await searchMeteoraLive("SOL", {
+      limit: 5,
+      fetchImpl: f,
+      baseUrl: "https://x.test",
+      searchPath: "/pools",
+    });
 
     expect(out).toHaveLength(1);
     const hit = out[0];
@@ -168,13 +230,18 @@ describe("searchMeteoraLive", () => {
 
   it("isolates a per-mint resolveAsset failure (unknown leg → 0★ contribution)", async () => {
     const f = fetchMock().mockResolvedValue(
-      makeResponse({ groups: [{ pools: [rawPool({ mint_y: SCAM })] }] })
+      makeResponse({ data: [rawPool({ token_y: { address: SCAM } })] })
     );
     resolveAsset
       .mockResolvedValueOnce({ symbol: "SOL", tier: "tier1" } as any) // SOL ok
       .mockRejectedValueOnce(new Error("boom")); // SCAM resolve fails
 
-    const out = await searchMeteoraLive("SOL", { limit: 5, fetchImpl: f, baseUrl: "https://x.test", searchPath: "/pair/all_by_groups" });
+    const out = await searchMeteoraLive("SOL", {
+      limit: 5,
+      fetchImpl: f,
+      baseUrl: "https://x.test",
+      searchPath: "/pools",
+    });
 
     expect(out).toHaveLength(1);
     expect(out[0].pool.stars).toBe(1); // only SOL known; SCAM failure → not known
@@ -182,10 +249,14 @@ describe("searchMeteoraLive", () => {
   });
 
   it("returns [] when upstream matches nothing (empty-not-500 upstream of route)", async () => {
-    const f = fetchMock().mockResolvedValue(makeResponse({ groups: [] }));
+    const f = fetchMock().mockResolvedValue(makeResponse({ data: [] }));
     resolveAsset.mockResolvedValue(null);
 
-    const out = await searchMeteoraLive("NOPE", { limit: 5, fetchImpl: f, baseUrl: "https://x.test" });
+    const out = await searchMeteoraLive("NOPE", {
+      limit: 5,
+      fetchImpl: f,
+      baseUrl: "https://x.test",
+    });
     expect(out).toEqual([]);
     expect(resolveAsset).not.toHaveBeenCalled(); // no identities → no trust-join
   });
@@ -194,13 +265,9 @@ describe("searchMeteoraLive", () => {
     // Two pools sharing SOL → SOL resolved once.
     const f = fetchMock().mockResolvedValue(
       makeResponse({
-        groups: [
-          {
-            pools: [
-              rawPool({ address: "A" }),
-              rawPool({ address: "B", mint_y: SCAM }),
-            ],
-          },
+        data: [
+          rawPool({ address: "A" }),
+          rawPool({ address: "B", token_y: { address: SCAM } }),
         ],
       })
     );
@@ -209,7 +276,12 @@ describe("searchMeteoraLive", () => {
       .mockResolvedValueOnce({ symbol: "USDC" } as any) // USDC
       .mockResolvedValueOnce(null); // SCAM (uncurated)
 
-    await searchMeteoraLive("SOL", { limit: 5, fetchImpl: f, baseUrl: "https://x.test", searchPath: "/pair/all_by_groups" });
+    await searchMeteoraLive("SOL", {
+      limit: 5,
+      fetchImpl: f,
+      baseUrl: "https://x.test",
+      searchPath: "/pools",
+    });
 
     // 3 unique mints (SOL, USDC, SCAM) → 3 resolveAsset calls, not 4.
     expect(resolveAsset).toHaveBeenCalledTimes(3);
