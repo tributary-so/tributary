@@ -5,7 +5,7 @@
     "type": "git"
   },
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "type": "module",
   "description": "Client + React hooks for the Tributary /v1/assets proxy (tokens.xyz catalog). Server-fetch client, react-query hooks, and the shared MINT_OVERRIDES fallback map.",
