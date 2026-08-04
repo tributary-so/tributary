@@ -1,7 +1,7 @@
 {
   "name": "@tributary-so/api",
   "private": false,
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "Tributary API - Modular Express API for subscription and payment services",
   "main": "dist/index.js",
   "scripts": {

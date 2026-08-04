@@ -1,3 +1,5 @@
+# [@tributary-so/api-v2.2.4](https://github.com/tributary-so/tributary/compare/@tributary-so/api-v2.2.3...@tributary-so/api-v2.2.4) (2026-08-04)
+
 # [@tributary-so/api-v2.2.3](https://github.com/tributary-so/tributary/compare/@tributary-so/api-v2.2.2...@tributary-so/api-v2.2.3) (2026-08-03)
 
 # [@tributary-so/api-v2.2.2](https://github.com/tributary-so/tributary/compare/@tributary-so/api-v2.2.1...@tributary-so/api-v2.2.2) (2026-08-03)
