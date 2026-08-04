@@ -10,32 +10,41 @@ and the create-time / execute-time checks that enforce them.
 Defined in `programs/tributary/src/constants.rs`:
 
 ```rust
-pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] =
-    &[pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo")]; // Meteora DLMM
+pub const ALLOWED_FORWARD_PROGRAMS: &[Pubkey] = &[
+    pubkey!("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"), // Meteora DLMM
+    pubkey!("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"), // Raydium CPMM
+    pubkey!("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"), // Raydium CLMM
+    pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"), // Orca Whirlpool
+];
 
 pub const ALLOWED_VALIDATION_PROGRAMS: &[Pubkey] =
     &[pubkey!("L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95")]; // Lighthouse
 ```
 
-| Constant                      | Currently contains     | Used by                                    |
-| ----------------------------- | ---------------------- | ------------------------------------------ |
-| `ALLOWED_FORWARD_PROGRAMS`    | Meteora DLMM (1 entry) | `validate_forward_config`, execute handler |
-| `ALLOWED_VALIDATION_PROGRAMS` | Lighthouse (1 entry)   | `create_composable_policy`                 |
+| Constant                      | Currently contains                                                   | Used by                                    |
+| ----------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| `ALLOWED_FORWARD_PROGRAMS`    | Meteora DLMM, Raydium CPMM, Raydium CLMM, Orca Whirlpool (4 entries) | `validate_forward_config`, execute handler |
+| `ALLOWED_VALIDATION_PROGRAMS` | Lighthouse (1 entry)                                                 | `create_composable_policy`                 |
 
-Allowlisting exists because both hooks receive `invoke_signed`-style
-authority over the ComposablePolicy PDA's intermediate ATAs. An arbitrary
-program in either slot could move transient balances to attacker accounts.
-Hard-allowlisting caps the blast radius to two well-audited programs whose
-instruction semantics Tributary understands (and, in the forward case, pins
-via `ByteRangeCheck` discriminator checks — see
-[forward-hook.md](forward-hook.md)).
+Allowlisting exists because the **forward** hook receives `invoke_signed`
+authority over the ComposablePolicy PDA's intermediate ATAs — an arbitrary
+program in that slot could move transient balances to attacker accounts.
+Hard-allowlisting caps the blast radius to four well-audited DEX programs
+whose instruction semantics Tributary pins via `ByteRangeCheck`
+discriminator checks (see [forward-hook.md](forward-hook.md)).
+
+The **validation** hook is read-only and uses plain `invoke` with **no**
+signer seeds (C-1 fix, [security-model.md](security-model.md) §CPI signer
+sanitization) — so the validation allowlist is defense-in-depth rather
+than a privilege boundary. Lighthouse is the only entry.
 
 ## Sentinel conventions
 
-| Hook       | Disabled when…                                           | Sentinel            |
-| ---------- | -------------------------------------------------------- | ------------------- |
-| Forward    | `instruction_constraint.program_id == Pubkey::default()` | `Pubkey::default()` |
-| Validation | `ValidationSpec::Disabled`                               | enum variant        |
+| Hook / shape          | Disabled / activated when…                                                | Sentinel            |
+| --------------------- | ------------------------------------------------------------------------- | ------------------- |
+| Forward               | `instruction_constraint.program_id == Pubkey::default()`                  | `Pubkey::default()` |
+| Validation (pre/post) | `ValidationSpec::Disabled`                                                | enum variant        |
+| **Act mode**          | forward **enabled** AND `forward_config.output_mint == Pubkey::default()` | `Pubkey::default()` |
 
 The two hooks use **different** sentinel conventions. Forward uses a
 pubkey sentinel (`Pubkey::default()` on `instruction_constraint.program_id`)
@@ -43,6 +52,13 @@ since program ID is the single gate. Validation uses an enum variant
 (`ValidationSpec::Disabled`) because the spec carries no pubkey — when
 disabled no assertion data is stored, no `ValidationPda` is allocated, and
 the caller passes `SystemProgram` as the program account.
+
+A third sentinel — `output_mint == Pubkey::default()` **with forward
+enabled** — selects **act mode** (ADR-0026): the forward CPI consumes the
+input for non-fungible settlement (e.g. a Velocity subaccount deposit).
+No output ATA is created, no deliver sweep runs, and the `>0` output guard
+is skipped. This is distinct from forward-disabled same-mint topup
+(`output_mint == input_mint`), which is deliver-no-transform.
 
 ### Forward-disabled invariants
 
@@ -141,8 +157,9 @@ Where `validate_spec_and_program` dispatches on the enum:
 And `validate_init` ensures:
 
 - When `Disabled`: `validation_data` must be empty (no assertion to store).
-- When `ProgramCall`: `validation_data` must be non-empty and ≤ 1024 bytes,
-  pins must be non-default, indices unique, within bounds.
+- When `ProgramCall`: `validation_data` must be non-empty and ≤ 512 bytes
+  (`MAX_VALIDATION_DATA_SIZE`), pins must be non-default, indices unique,
+  within bounds.
 
 The handler also re-pins the named `input_mint` / `output_mint` accounts
 against the caller-supplied `forward_config` Pubkeys and runs the full
@@ -161,13 +178,13 @@ from on-chain state, so a directly-serialized malformed account (or a
 regression in create-time validation) must not be able to trigger a panic
 or privilege escalation.
 
-| Re-check                                                                                  | Source report |
-| ----------------------------------------------------------------------------------------- | ------------- |
-| `validate_mint_compatible(input_mint)` AND `(output_mint)` (Token-2022 extensions mutate) | L-02          |
-| `n <= checks.len()` before indexing `data_checks[i]`                                      | H-04          |
-| `ByteRangeCheck::validate` rejects `length > 8` rather than panicking                     | H-06          |
-| `pre_validation.program_id() == pre_program_info.key()` (+ same for post)                 | C-1           |
-| `forward_config.target_program` allowlist (transitively, via stored state)                | —             |
+| Re-check                                                                                      | Source report |
+| --------------------------------------------------------------------------------------------- | ------------- |
+| `validate_mint_compatible(input_mint)` AND `(output_mint)` (Token-2022 extensions mutate)     | L-02          |
+| `n <= checks.len()` before indexing `data_checks[i]`                                          | H-04          |
+| `ByteRangeCheck::validate` rejects `length > 8` rather than panicking                         | H-06          |
+| `pre_validation.program_id() == pre_program_info.key()` (+ same for post)                     | C-1           |
+| `forward_config.instruction_constraint.program_id` allowlist (transitively, via stored state) | —             |
 
 ## Emergency pause
 

@@ -1,11 +1,11 @@
 ---
 # tributary-udx0
 title: 'MIGRATION.md: dual-delegate migration note'
-status: draft
+status: completed
 type: task
 priority: high
 created_at: 2026-07-13T11:12:29Z
-updated_at: 2026-07-13T11:12:29Z
+updated_at: 2026-08-04T20:06:46Z
 parent: tributary-9825
 ---
 
@@ -27,3 +27,7 @@ parent: tributary-9825
 **Per ADR:** ADR-0001 (delegate model)
 
 **Acceptance:** v1 teams understand they're not affected. New teams understand which delegate model applies.
+
+## Summary of Changes
+
+apps/docs/docs/migration.md (108 lines) was already complete: dual-delegate model (legacy global PaymentsDelegate vs UserPayment PDA), v1 teams no action needed, v2 SDK defaults to UserPayment PDA, no forced migration, counter independence documented. Verified, no edits needed.

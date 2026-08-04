@@ -6,8 +6,10 @@ policy pull one token from the user and deliver a different token to the
 recipient — e.g. pull USDC, swap to WSOL via Meteora DLMM, then settle in
 WSOL (or native SOL — see [native-output.md](native-output.md)).
 
-The only forward target currently allowlisted is **Meteora DLMM**
-(`LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`).
+The currently allowlisted forward targets are **Meteora DLMM**, **Raydium
+CPMM**, **Raydium CLMM**, and **Orca Whirlpool** (see
+[allowlists-and-sentinels.md](allowlists-and-sentinels.md) and ADR-0032 for
+the Raydium CPMM addition).
 
 ## ForwardConfig (on-policy)
 
@@ -135,11 +137,30 @@ impl ByteRangeCheck {
 | `instruction_constraint.program_id` in `ALLOWED_FORWARD_PROGRAMS`                 | `InvalidForwardProgram`           |
 | forward enabled ⟹ `1 <= instruction_constraint.num_data_checks <= 4`              | `InsufficientByteRangeChecks`     |
 | forward enabled ⟹ `instruction_constraint.num_pinned_accounts <= 2`               | `InsufficientPinnedAccounts`      |
-| no duplicate indices among active `pinned_accounts`                               | `DuplicatePinnedAccountIndex`     |
+| **forward enabled ⟹ `has_effective_pins()` (≥ 1 non-default pin)**                | `DegenerateForwardPins`           |
+| no duplicate indices among active `pinned_accounts`                               | `DuplicatePinIndex`               |
 | for each active check: `offset + length <= 1024`                                  | `ByteRangeCheckFailed`            |
 | for each active check: `length <= 8`                                              | `ByteRangeCheckFailed`            |
 | at least one check with `offset == 0 && length > 0`                               | `DiscriminatorCheckRequired`      |
 | `forward_flags & FORWARD_FLAG_NATIVE_OUTPUT` ⟹ `output_mint == NATIVE_MINT`       | `NativeOutputRequiresWsol`        |
+
+The **degenerate-pin guard** rejects a forward-enabled constraint with
+zero effective pins. Without it, a gateway could swap in an arbitrary
+remaining-account at the forward slot — the pin set is what binds the
+forward CPI to a specific account layout (see CF-001,
+[security-model.md](security-model.md)).
+
+### `output_mint` — three settlement shapes
+
+The combination of `output_mint` and whether forward is enabled selects
+one of three settlement shapes (ADR-0026, see also
+[overview.md](overview.md) Phase 5):
+
+| `output_mint`            | Forward  | Shape                    | Behaviour                                                                                           |
+| ------------------------ | -------- | ------------------------ | --------------------------------------------------------------------------------------------------- |
+| `== input_mint`          | disabled | **deliver-no-transform** | Intermediate input swept directly to recipient. No swap.                                            |
+| concrete mint `!= input` | enabled  | **deliver-transform**    | Forward swaps input → output; output swept; `>0` guard KEPT.                                        |
+| `Pubkey::default()`      | enabled  | **act mode**             | Forward consumes input for non-fungible settlement. No output ATA, no deliver sweep, no `>0` guard. |
 
 ### Execute-time re-validation
 

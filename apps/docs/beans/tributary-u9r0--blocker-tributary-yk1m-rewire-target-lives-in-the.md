@@ -1,11 +1,11 @@
 ---
 # tributary-u9r0
 title: 'BLOCKER: tributary-yk1m rewire target lives in the Mill repo (separate git/herdr lane) + @tributary-so/pools-client is unpublished'
-status: draft
+status: scrapped
 type: task
 priority: high
 created_at: 2026-07-30T11:05:13Z
-updated_at: 2026-07-30T11:05:13Z
+updated_at: 2026-08-04T19:43:48Z
 ---
 
 Cross-repo mis-dispatch. yk1m ('Rewire param-field.tsx PoolControl') cannot be implemented from the tributary worktree.

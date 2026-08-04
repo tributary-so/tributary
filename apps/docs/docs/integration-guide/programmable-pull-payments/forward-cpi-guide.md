@@ -30,8 +30,9 @@ ForwardConfig
 └── forwardFlags: u8                  ← bit0 = native SOL unwrap
 ```
 
-Currently `ALLOWED_FORWARD_PROGRAMS` contains only **Meteora DLMM**
-(`LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo`).
+Currently `ALLOWED_FORWARD_PROGRAMS` contains **Meteora DLMM**, **Raydium
+CPMM**, **Raydium CLMM**, and **Orca Whirlpool** (see ADR-0032 and
+`programs/tributary/src/constants.rs`).
 
 ## Step 1: Extract the discriminator
 
@@ -43,7 +44,7 @@ instruction type.
 import DLMM from "@meteora-ag/dlmm";
 
 const METEORA_DLMM_PUBKEY = new PublicKey(
-  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
 );
 
 // Build the swap ix once with a dummy user — you only need the data layout
@@ -70,7 +71,10 @@ const forwardConfig = {
       { offset: 0, length: 0, expected: Buffer.alloc(8) }, // unused
     ],
     numPinnedAccounts: 0,
-    pinnedAccounts: [],
+    pinnedAccounts: [
+      { index: 0, pubkey: PublicKey.default },
+      { index: 0, pubkey: PublicKey.default },
+    ], // fixed-size [PinnedAccount; 2] — must have 2 entries even when unused
   },
   inputMint: USDC_MINT,
   outputMint: NATIVE_MINT,
@@ -78,16 +82,23 @@ const forwardConfig = {
 };
 ```
 
-### PinnedAccounts (optional)
+!!! warning "At least one pin required when forward is enabled"
+A forward-enabled constraint with zero effective pins is rejected at
+create (`DegenerateForwardPins`). If you leave `numPinnedAccounts: 0`,
+you must also disable forward (`programId: PublicKey.default`). To
+enable forward without pinning a specific account, pin any required
+account (typically the pool) at its index — see below.
 
-If the forward instruction has accounts that must be a specific pubkey (e.g.
-the pool address), pin them by their **index** in the forward-account slice:
+### PinnedAccounts (required when forward is enabled)
+
+Pin specific pubkeys to specific slots in the forward-account slice. At
+least one pin must be active when `programId != PublicKey.default`:
 
 ```typescript
 // Suppose the DLMM pool is at index 2 in the swap instruction's accounts
 pinnedAccounts: [
   { index: 2, pubkey: DLMM_POOL },
-  // up to 2 pins total
+  { index: 0, pubkey: PublicKey.default }, // pad to [PinnedAccount; 2]
 ],
 numPinnedAccounts: 1,
 ```
@@ -95,6 +106,16 @@ numPinnedAccounts: 1,
 At execute time, Tributary checks
 `remaining_accounts[fwd_base + pin.index].pubkey == pin.pubkey` for each
 active pin. No duplicate indices allowed.
+
+### Cold-relayer safety net (ADR-0016)
+
+If the execute caller is not the gateway signer, the user, or the
+recipient (a "cold relayer" / pure scheduler), Tributary additionally
+requires **either** `post_validation` is `ProgramCall` **or** the
+forward constraint has at least one active pin (a "route pin"). This
+blocks the obvious "scheduler drains arbitrary output to its own ATA"
+attack. A bare PayAsYouGo policy with no validation and no pins is only
+executable by the trusted three.
 
 ## Step 3: The three settlement shapes
 
@@ -131,7 +152,7 @@ const execIxs = await sdk.executeComposable(
   composablePolicyPDA,
   Buffer.from(swapIx.data), // the raw instruction data (selector must match)
   new anchor.BN(amount), // pull amount (null for subscription)
-  remainingAccounts,
+  remainingAccounts
 );
 ```
 
@@ -201,7 +222,7 @@ const remaining = assembleComposableRemainingAccounts({
     composablePolicyPDA,
     policy.preValidation,
     validationProgramId,
-    "pre",
+    "pre"
   ),
   forwardAccounts: fwd.forwardAccounts,
   postTargets: await resolveValidationTargets(
@@ -209,7 +230,7 @@ const remaining = assembleComposableRemainingAccounts({
     composablePolicyPDA,
     policy.postValidation,
     validationProgramId,
-    "post",
+    "post"
   ),
 });
 
@@ -217,7 +238,7 @@ const execIxs = await sdk.executeComposable(
   composablePolicyPDA,
   fwd.instructionData,
   face,
-  remaining,
+  remaining
 );
 ```
 

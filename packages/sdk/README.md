@@ -112,7 +112,7 @@ import {
   lighthouse,
   LIGHTHOUSE_PROGRAM_ID,
 } from "@tributary-so/sdk";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import BN from "bn.js";
 
 const USDC = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -128,14 +128,44 @@ const ixs = await sdk.createComposable(
   USDC,
   recipient,
   gateway,
-  { payAsYouGo: { maxAmountPerPeriod: new BN(1_000_000_000) /* ... */ } },
+  {
+    payAsYouGo: {
+      maxAmountPerPeriod: new BN(1_000_000_000), // 1000 USDC / month
+      maxChunkAmount: new BN(50_000_000), // 50 USDC / call
+      periodLengthSeconds: new BN(30 * 24 * 3600),
+      currentPeriodStart: new BN(Math.floor(Date.now() / 1000)),
+      currentPeriodTotal: new BN(0),
+      expiryDate: null,
+      padding: new Array(79).fill(0),
+    },
+  },
   "Conditional payment",
   {
-    /* forwardConfig — disabled for same-mint */
+    // Forward disabled — same-mint (USDC → USDC), deliver-no-transform
+    instructionConstraint: {
+      programId: PublicKey.default, // sentinel: forward disabled (no parens)
+      numDataChecks: 0,
+      dataChecks: Array(4).fill({
+        offset: 0,
+        length: 0,
+        expected: Buffer.alloc(8),
+      }),
+      numPinnedAccounts: 0,
+      pinnedAccounts: [
+        { index: 0, pubkey: PublicKey.default },
+        { index: 0, pubkey: PublicKey.default },
+      ], // fixed-size [PinnedAccount; 2]
+    },
+    inputMint: USDC,
+    outputMint: USDC, // == inputMint ⇒ deliver-no-transform
+    forwardFlags: 0,
   },
   { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
   [recipientUsdcAta], // prePinnedAccounts
-  guard.data // preValidationData
+  guard.data, // preValidationData
+  { disabled: {} }, // postValidation
+  [], // postPinnedAccounts
+  Buffer.alloc(0) // postValidationData
 );
 
 await connection.sendTransaction(new Transaction().add(...ixs), [wallet]);

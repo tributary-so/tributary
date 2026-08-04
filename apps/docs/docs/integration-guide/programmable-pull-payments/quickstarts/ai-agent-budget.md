@@ -21,7 +21,7 @@ guard. The agent pulls USDC only when its wallet dips below a threshold.
 
 ```typescript
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, Connection, Keypair } from "@solana/web3.js";
+import { PublicKey, Connection, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Tributary, lighthouse, LIGHTHOUSE_PROGRAM_ID } from "@tributary-so/sdk";
 
@@ -82,7 +82,7 @@ const policyType = {
 // Forward disabled — same-mint (USDC → USDC), no swap
 const forwardConfig = {
   instructionConstraint: {
-    programId: PublicKey.default(), // sentinel: forward disabled
+    programId: PublicKey.default, // sentinel: forward disabled (static getter, no parens)
     numDataChecks: 0,
     dataChecks: Array(4).fill({
       offset: 0,
@@ -90,10 +90,13 @@ const forwardConfig = {
       expected: Buffer.alloc(8),
     }),
     numPinnedAccounts: 0,
-    pinnedAccounts: [],
+    pinnedAccounts: [
+      { index: 0, pubkey: PublicKey.default },
+      { index: 0, pubkey: PublicKey.default },
+    ], // fixed-size [PinnedAccount; 2] — must have 2 entries even when disabled
   },
   inputMint: USDC_MINT,
-  outputMint: USDC_MINT,
+  outputMint: USDC_MINT, // == inputMint ⇒ deliver-no-transform settlement
   forwardFlags: 0,
 };
 
@@ -107,8 +110,11 @@ const ixs = await sdk.createComposable(
   { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
   [agentUsdcAta], // prePinnedAccounts
   guard.data, // preValidationData
+  { disabled: {} }, // postValidation (disabled — pre-validation is enough here)
+  [], // postPinnedAccounts
+  Buffer.alloc(0), // postValidationData
   undefined, // feePayer (defaults to provider)
-  new anchor.BN(CAP_MONTHLY) // approvalAmount
+  new anchor.BN(CAP_MONTHLY) // approvalAmount (delegate approval cap)
 );
 
 // Send the transaction

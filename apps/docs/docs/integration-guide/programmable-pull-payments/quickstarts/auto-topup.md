@@ -28,6 +28,8 @@ import {
   Connection,
   Transaction,
   sendAndConfirmTransaction,
+  SystemProgram,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, NATIVE_MINT } from "@solana/spl-token";
 import {
@@ -137,7 +139,10 @@ const forwardConfig = {
       { offset: 0, length: 0, expected: Buffer.alloc(8) },
     ],
     numPinnedAccounts: 0,
-    pinnedAccounts: [],
+    pinnedAccounts: [
+      { index: 0, pubkey: PublicKey.default },
+      { index: 0, pubkey: PublicKey.default },
+    ], // fixed-size [PinnedAccount; 2] — must have 2 entries
   },
   inputMint: USDC_MINT,
   outputMint: NATIVE_MINT, // WSOL delivery
@@ -154,7 +159,10 @@ const ixs = await sdk.createComposable(
   { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // preValidation
   [hotWalletUsdcAta], // prePinnedAccounts
   guard.data, // preValidationData
-  undefined,
+  { disabled: {} }, // postValidation (disabled — pre-validation gates the pull)
+  [], // postPinnedAccounts
+  Buffer.alloc(0), // postValidationData
+  undefined, // feePayer
   new anchor.BN(200_000_000) // approvalAmount
 );
 

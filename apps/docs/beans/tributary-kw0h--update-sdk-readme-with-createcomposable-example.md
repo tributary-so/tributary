@@ -1,11 +1,11 @@
 ---
 # tributary-kw0h
 title: Update SDK README with createComposable() example
-status: draft
+status: completed
 type: task
 priority: high
 created_at: 2026-07-13T11:12:29Z
-updated_at: 2026-07-13T11:12:29Z
+updated_at: 2026-08-04T20:06:46Z
 parent: tributary-9825
 ---
 
@@ -23,3 +23,7 @@ parent: tributary-9825
 **Current code anchors:** packages/sdk/src/instructions/composable.ts, packages/sdk/src/
 
 **Acceptance:** README has a working composable example. A developer reading the README knows composable exists and can copy the example.
+
+## Summary of Changes
+
+packages/sdk/README.md composable example fixed: expanded placeholder /* forwardConfig */ to full disabled-ForwardConfig literal, expanded /* ... */ payAsYouGo to full struct, added Transaction import, fixed createComposable arg misalignment (added postValidation params), pinnedAccounts 2-entry fixed-size array. Example now compiles against current SDK.

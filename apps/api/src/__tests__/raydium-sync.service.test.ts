@@ -42,7 +42,18 @@ const NOW = new Date("2026-07-30T00:00:00Z");
 function rawPool(overrides: Record<string, any> = {}) {
   return {
     id: "PoolAddr1",
-    ammConfig: { id: "cfgA", index: 1, tradeFeeRate: 100, tickSpacing: 1 },
+    // Real api-v3 shape: the ammConfig account lives under `config`, and its
+    // `id` is the on-chain ammConfig address (what extras.ammConfig must carry).
+    config: {
+      id: "cfgA",
+      index: 1,
+      protocolFeeRate: 120000,
+      tradeFeeRate: 100,
+      tickSpacing: 1,
+      fundFeeRate: 40000,
+      defaultRange: 0.1,
+      defaultRangePoint: [0.01, 0.05, 0.1, 0.2, 0.5],
+    },
     mintA: {
       address: "So11111111111111111111111111111111111111112",
       decimals: 9,
@@ -87,7 +98,7 @@ describe("normalizeRaydiumPool", () => {
       refreshedAt: NOW,
     });
     expect(row?.extras).toEqual({
-      ammConfig: { id: "cfgA", index: 1, tradeFeeRate: 100, tickSpacing: 1 },
+      ammConfig: "cfgA",
     });
   });
 

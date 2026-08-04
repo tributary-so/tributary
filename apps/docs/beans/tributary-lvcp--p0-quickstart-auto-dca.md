@@ -1,11 +1,11 @@
 ---
 # tributary-lvcp
 title: 'P0 Quickstart: auto-DCA'
-status: draft
+status: completed
 type: task
 priority: critical
 created_at: 2026-07-13T11:12:23Z
-updated_at: 2026-07-13T11:12:23Z
+updated_at: 2026-08-04T20:06:46Z
 parent: tributary-9825
 ---
 
@@ -27,3 +27,7 @@ parent: tributary-9825
 **Per ADR:** ADR-0021 (InstructionConstraint), ADR-0026 (deliver-transform shape)
 
 **Acceptance:** A developer can copy-paste and have a scheduled DCA running. Forward instruction data and ByteRangeCheck must be correct for actual Meteora DLMM. remainingAccounts order correct.
+
+## Summary of Changes
+
+File existed with substantial content but had compile-breaking bugs. Fixed: missing imports (Transaction, sendAndConfirmTransaction, SystemProgram, TransactionInstruction), PublicKey.default()→PublicKey.default (static getter, no parens), pinnedAccounts: [] → 2-entry fixed-size array (Borsh [PinnedAccount; 2]), createComposable arg misalignment (11 args → 14 args with post-validation params inserted), paymentFrequency type (BN → { custom: BN } enum), subscription padding size (72→97 per IDL), auto-dca added post-validation price guard example.
