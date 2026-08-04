@@ -105,7 +105,12 @@ export function normalizeRaydiumPool(
   const tvl = asNumber(r.tvl ?? r.tvlUsd ?? r.liquidityUsd);
   if (tvl < floor) return null;
 
-  const feeRate = r.ammConfig?.tradeFeeRate ?? r.feeRate ?? r.fee_rate ?? null;
+  // Raydium api-v3 returns the ammConfig account under `config` (with
+  // `config.id` = the on-chain ammConfig address). Older guesses
+  // (`ammConfig`/`ammConfigId`) never matched the live shape; kept as
+  // last-ditch fallbacks for resilience to upstream renames.
+  const config = r.config ?? r.ammConfig;
+  const feeRate = config?.tradeFeeRate ?? r.feeRate ?? r.fee_rate ?? null;
 
   return {
     address: String(address),
@@ -116,7 +121,10 @@ export function normalizeRaydiumPool(
     symbolB: mintBRaw?.symbol ?? r.symbolB ?? null,
     tvl: String(tvl),
     feeRate: feeRate != null ? String(feeRate) : null,
-    extras: { ammConfig: r.ammConfig ?? r.ammConfigId ?? null },
+    // extras.ammConfig is consumed as a base58 address string downstream
+    // (new PublicKey(...) in Mill's composer); storing the object would
+    // String() into "[object Object]".
+    extras: { ammConfig: config?.id ?? r.ammConfigId ?? null },
     refreshedAt: now,
   };
 }
