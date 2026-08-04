@@ -292,3 +292,70 @@ Enforcing `post_validation = ProgramCall` on-chain is rejected (ADR-0031):
 
 See [ADR-0031](../../../adr/0031-settlement-output-post-validation-posture.md)
 for the full decision and rejected alternatives.
+
+## 8. Cold-relayer safety net (ADR-0016 amended)
+
+`execute_composable` is permissionless — any signer that the gateway
+allows may call it. To prevent a bare drain vector when the caller is
+neither the gateway signer, the user, nor the recipient (the "cold
+relayer" / pure-scheduler case), the handler enforces an OR-gate at the
+top of Phase 0:
+
+```rust
+// execute_composable.rs — Phase 0 gate
+let is_trusted = fee_payer == gateway.signer
+    || fee_payer == user_payment.owner
+    || fee_payer == recipient;
+
+if !is_trusted {
+    require!(
+        composable_policy.post_validation.is_program_call()
+            || composable_policy.forward_config
+                .instruction_constraint.has_route_pin(),
+        TributaryError::PermissionlessExecutionRequiresSafetyNet
+    );
+}
+```
+
+A non-trusted caller may only execute policies that carry **either** a
+post-validation hook (an owner-controlled settlement floor) **or** at
+least one `pinned_account` on the forward constraint (a route pin that
+binds the swap destination). This blocks the obvious "scheduler drains
+arbitrary output to its own ATA" attack: a bare PayAsYouGo policy with
+no validation and no pins is only executable by the trusted three.
+
+## 9. CF-001 — indexed `PinnedAccount` (cross-account drain fix)
+
+The original forward design carried `pinned_accounts: [Pubkey; 4]` — a
+positional array. The execute handler checked that the slice at
+positions `[forward_start .. forward_start + n]` matched the stored
+pubkeys, but the _binding between pin and slot_ was implicit. A gateway
+that controlled account ordering could re-order the forward-account
+slice so a different account landed on a given pin's slot — a
+cross-account substitution vector.
+
+The fix (CF-001) makes each pin **indexed**:
+
+```rust
+pub struct PinnedAccount {
+    pub index: u8,    // position in remaining_accounts, relative to forward_start
+    pub pubkey: Pubkey,
+}
+```
+
+`InstructionConstraint::pins_match` now verifies that
+`remaining_accounts[forward_start + pin.index].key() == pin.pubkey` for
+**every** active pin. The pin and its slot are bound at create time and
+re-validated at execute time. Combined with the signer sanitization in
+section 2, this means a forward CPI can only ever land on accounts the
+owner named when the policy was created.
+
+## 10. Anchor `accountsStrict` validation
+
+`ExecuteComposable` uses Anchor's `#[derive(Accounts)]` builder with
+explicit constraints on every account: owner checks, `has_one` for the
+`composable_policy.user_payment` ↔ `user_payment` link, seed-derivation
+checks on every PDA, `mint` matches on every ATA, and `Program<...>`
+types for `token_program` / `associated_token_program` / `system_program`.
+The handler does not rely on positional account matching alone — every
+account is independently validated before the first instruction runs.

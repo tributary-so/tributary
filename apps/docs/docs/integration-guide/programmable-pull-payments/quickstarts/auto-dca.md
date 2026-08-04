@@ -28,6 +28,8 @@ import {
   Connection,
   Transaction,
   sendAndConfirmTransaction,
+  SystemProgram,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, NATIVE_MINT } from "@solana/spl-token";
 import {
@@ -116,11 +118,11 @@ const WEEK_S = 7 * 24 * 3600;
 const policyType = {
   subscription: {
     amount: new anchor.BN(DCA_AMOUNT), // 100 USDC
-    paymentFrequency: new anchor.BN(WEEK_S),
+    paymentFrequency: { custom: new anchor.BN(WEEK_S) }, // weekly via custom seconds
     nextPaymentDue: new anchor.BN(Math.floor(Date.now() / 1000) + WEEK_S),
     maxRenewals: 52, // 1 year of weekly DCA
     autoRenew: true,
-    padding: new Array(72).fill(0),
+    padding: new Array(97).fill(0), // [u8; 97] per IDL
   },
 };
 
@@ -135,7 +137,10 @@ const forwardConfig = {
       { offset: 0, length: 0, expected: Buffer.alloc(8) },
     ],
     numPinnedAccounts: 0,
-    pinnedAccounts: [],
+    pinnedAccounts: [
+      { index: 0, pubkey: PublicKey.default },
+      { index: 0, pubkey: PublicKey.default },
+    ], // fixed-size [PinnedAccount; 2] — must have 2 entries
   },
   inputMint: USDC_MINT,
   outputMint: NATIVE_MINT, // WSOL delivery
@@ -148,7 +153,15 @@ const ixs = await sdk.createComposable(
   gatewayPDA,
   policyType,
   "Weekly DCA",
-  forwardConfig
+  forwardConfig,
+  { disabled: {} }, // preValidation (no pre-guard; post-validation checks output)
+  [], // prePinnedAccounts
+  Buffer.alloc(0), // preValidationData
+  { programCall: { programId: LIGHTHOUSE_PROGRAM_ID } }, // postValidation (price guard)
+  [outputSolAta], // postPinnedAccounts (read-accounts for post-validation)
+  postGuard.data, // postValidationData
+  undefined, // feePayer
+  undefined // approvalAmount (optional — subscription amount suffices)
 );
 
 await sendAndConfirmTransaction(connection, new Transaction().add(...ixs), [
@@ -156,10 +169,29 @@ await sendAndConfirmTransaction(connection, new Transaction().add(...ixs), [
 ]);
 ```
 
-!!! info "No validation guard?"
-This DCA runs unconditionally on schedule. To add a price guard (e.g. only
-buy SOL when price < $200), add a pre-validation Lighthouse assertion. See
-the [Lighthouse facade guide](../lighthouse-facade.md).
+!!! info "Post-validation price guard"
+This DCA adds a **post-validation** guard: after the swap but before
+settle, Lighthouse asserts the recipient's WSOL ATA received at least
+`MIN_OUTPUT_LAMPORTS`. This is the "floor on output" pattern from
+ADR-0031 — the on-chain `>0` guard stays, and `post_validation`
+generalizes it as the owner's enforced minimum.
+
+Build the guard the same way as a pre-validation guard, but pass it
+through `postValidation` / `postPinnedAccounts` / `postValidationData`
+(the 10th–12th `createComposable` args above):
+
+```typescript
+const MIN_OUTPUT_LAMPORTS = new anchor.BN(0); // floor: any non-zero amount
+
+const postGuard = lighthouse
+  .tokenAccount(outputSolAta) // WSOL ATA after the swap
+  .amount(MIN_OUTPUT_LAMPORTS, ">=")
+  .build();
+```
+
+If you don't want a price guard, set `postValidation: { disabled: {} }`
+and skip the `postPinnedAccounts` / `postValidationData` args — the DCA
+will run unconditionally on schedule.
 
 ## Step 3: Execute (permissionless)
 

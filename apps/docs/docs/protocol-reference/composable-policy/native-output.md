@@ -64,7 +64,16 @@ recipient_token_account (recipient's system account, native SOL)
    ↑ PLUS the closed ATA's rent lamports (side-effect bonus)
 ```
 
-Source: `process_output_and_sweep` in `execute_composable.rs`.
+Source: `sweep_output_to_recipient` in `execute_composable.rs`.
+
+!!! warning "Distinct from act mode"
+This native-output path requires `output_mint == NATIVE_MINT` and
+`FORWARD_FLAG_NATIVE_OUTPUT` set, with a real WSOL intermediate ATA and
+a deliver sweep. It is **different from act mode**
+(`output_mint == Pubkey::default()` + forward enabled, ADR-0026), where
+the forward consumes the input for non-fungible settlement and there is
+no output ATA, no deliver sweep, and no `>0` guard. See
+[overview.md](overview.md) Phase 5.
 
 !!! note "Fees are input-side (Phase 1b)"
 Despite the output-focused flow above, fees are **not** taken from the

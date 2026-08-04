@@ -52,10 +52,10 @@ Source: `programs/tributary/src/state/composable_policy.rs`.
 
 The assertion payload for each active slot lives in its own PDA:
 
-| PDA                 | Seeds                                               | Max size                     |
-| ------------------- | --------------------------------------------------- | ---------------------------- |
-| `PreValidationPda`  | `["composable_validation_pre", composable_policy]`  | 8 (disc) + 76 (header) + 512 |
-| `PostValidationPda` | `["composable_validation_post", composable_policy]` | 8 (disc) + 76 (header) + 512 |
+| PDA                 | Seeds                                               | Max size                           |
+| ------------------- | --------------------------------------------------- | ---------------------------------- |
+| `PreValidationPda`  | `["composable_validation_pre", composable_policy]`  | 8 (disc) + 68 (header) + 512 = 588 |
+| `PostValidationPda` | `["composable_validation_post", composable_policy]` | 8 (disc) + 68 (header) + 512 = 588 |
 
 ```rust
 pub const MAX_VALIDATION_DATA_SIZE: usize = 512;
