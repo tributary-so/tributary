@@ -1,11 +1,11 @@
 ---
 # tributary-okhd
 title: 'Investigation: dynamic-size PDAs (realloc pattern) for future Tributary accounts'
-status: draft
+status: scrapped
 type: epic
 priority: low
 created_at: 2026-07-02T10:50:23Z
-updated_at: 2026-07-02T10:50:23Z
+updated_at: 2026-08-04T19:44:13Z
 ---
 
 Investigation epic (NOT current work). Inspired by Squads smart-account-program's dynamic realloc approach.
