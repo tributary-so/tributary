@@ -259,15 +259,27 @@ does; the same primitive with the knobs turned is autonomous capital.
 
 ## Business model
 
-- **Protocol fee** — 1% of every flow by default, with volume-based discounts
-  (0.25%–1%) and admin-granted per-gateway overrides (may be zero, to
-  subsidize a strategic partner).
-- **Gateway fees** — set by each gateway operator (typical 2–3%, up to 10%),
-  routed to the gateway's fee recipient. Gateways are the merchant/acquirer
-  layer; Tributary is the rail.
-- **Referral program** — gateways opt into a 3-tier referral reward pool (up
-  to 25% of the gateway fee carved into the pool, split across direct /
-  level-2 / level-3), scoped per gateway.
+Tributary earns as a **share of the gateway fee**, not as an independent
+line item. There is exactly one fee per flow — `gateway_fee_bps`, set by
+the gateway authority — and it is decomposed into carve-outs at settle
+time (ADR-0018):
+
+- **Gateway fee** — the single economic knob. Set by each gateway
+  operator; the gateway is the merchant/acquirer layer, Tributary is the
+  rail.
+- **Protocol cut** — a fixed **share of the gateway fee** (default 20%
+  via the global `protocol_share_bps`), not a standalone bps-of-payment.
+  No absolute floor: the protocol earns in proportion to whatever a
+  gateway charges. A per-gateway admin-granted override
+  (`FEATURE_CUSTOM_PROTOCOL_FEE`) may lower it to zero to subsidize a
+  strategic partner.
+- **Scheduler cut** — a per-gateway share of the gateway fee, paid
+  on-chain to whoever executes the pull. This is the incentive that makes
+  permissionless execution real (ADR-0016): a third-party scheduler has an
+  economic reason to crank a payment.
+- **Referral program** — gateways opt into a 3-tier referral reward pool
+  carved from the gateway fee (split across direct / level-2 / level-3),
+  scoped per gateway.
 - **No custody, no TVL, no balance-sheet exposure.** Funds never leave user
   wallets; only SPL delegation is used. \$0 counterparty risk by design.
 
