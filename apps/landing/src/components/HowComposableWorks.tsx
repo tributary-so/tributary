@@ -39,7 +39,7 @@ const FLOWS: Flow[] = [
       {
         num: "2",
         title: "SETTLE",
-        desc: "Single CPI transfer: amount → recipient. Protocol fee (100 bps) + gateway fee split on-chain. No custody, no escrow.",
+        desc: "Amount → recipient. One gateway-set fee, split on-chain into protocol (20% share) · scheduler · gateway cuts. No custody, no escrow.",
         path: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
       },
     ],
@@ -49,9 +49,9 @@ const tx = await tributary.executePayment({
   gatewaySigner: gateway.keypair,
 });
 
-// → transfer(userAta, recipientAta, amount)
-// → transfer(userAta, protocolFeeAta, amount * 100 / 10000)
-// → transfer(userAta, gatewayFeeAta, gatewayBps)
+// → transfer(userAta, recipientAta, amount − fee)
+// → fee = amount × gatewayFeeBps / 10000, split:
+//     protocol 20% share · scheduler cut · gateway residual
 // One signature. Permissionless. Non-custodial.`,
   },
   {

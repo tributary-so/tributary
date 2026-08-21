@@ -130,8 +130,8 @@ User → createUserPayment(owner, mint)
 ```
 
 Execution is a single CPI `transfer` from the user's token account to the
-recipient's ATA, with protocol fee (100 bps) and gateway fee deducted and
-routed to their respective fee recipients. The delegate on the user's token
+recipient's ATA, with the total gateway fee deducted and split on-chain into
+protocol / scheduler / referral / gateway cuts (ADR-0018). The delegate on the user's token
 account **must** be the UserPayment PDA with sufficient `delegated_amount`.
 
 ### PolicyType (shared by both policy families)
