@@ -73,7 +73,7 @@ export function FeesSection({ account, authority, onMutated }: FeesSectionProps)
       <header>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Fees</h2>
         <p className="text-xs text-muted-foreground">
-          Gateway fee charged on every payment. Combined gateway + protocol fee must stay below 100%.
+          Total fee charged on every payment. Split on-chain into protocol, scheduler, referral and gateway cuts.
         </p>
       </header>
 
@@ -97,11 +97,11 @@ export function FeesSection({ account, authority, onMutated }: FeesSectionProps)
                 onValueChange={setFeeBps}
                 min={0}
                 max={MAX_BPS - 1}
-                description="Basis points (100 bps = 1%). Combined with protocol fee must be < 10000."
+                description="Basis points (100 bps = 1%). This is the total fee — the protocol share is carved out of it, not added on top."
                 classNames={{ inputWrapper: 'border border-border' }}
               />
               {!feeValid && feeBps.length > 0 && (
-                <p className="text-xs text-overdue-600">Invalid: combined bps must stay below 10000.</p>
+                <p className="text-xs text-overdue-600">Invalid: total fee must stay below 10000 bps.</p>
               )}
             </div>
           }

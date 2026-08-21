@@ -198,7 +198,7 @@ Use case: Dynamic pricing, A/B testing, conversion tracking
 | Setup time          | Seconds               | Days (KYC, approval)          |
 | Backend required    | No                    | Yes                           |
 | Bank account needed | No                    | Yes                           |
-| Fees                | 1%                    | 2.9% + 30¢                    |
+| Fees                | ~1% (gateway-set)     | 2.9% + 30¢                    |
 | Settlement          | Instant               | 2-7 business days             |
 | Chargebacks         | No                    | Yes (fraud risk)              |
 | Recurring payments  | Native                | Complex setup                 |
@@ -242,7 +242,7 @@ Use the `@tributary-so/payments` SDK to programmatically generate checkout links
 
 **Fair Economics**
 
-- Low, transparent fees (1%)
+- Low, transparent fees (~1%, gateway-set)
 - No hidden costs or tiered pricing
 - Funds settle immediately
 

@@ -386,17 +386,19 @@ PolicyType::PayAsYouGo {
 
 Fees are computed in `programs/tributary/src/shared/fees.rs`:
 
-- **Protocol fee** — default `100 bps` (1%), stored on `ProgramConfig.protocol_fee_bps`.
-- **Gateway fee** — configurable `gateway_fee_bps` (0..10000), stored per-gateway.
-- **Custom protocol fee** — per-gateway override (bit 2 of `feature_flags`).
-- **Combined guard** — `gateway_fee_bps + protocol_fee_bps < 10000` is enforced (recipient must receive > 0).
+- **Total fee** — one `gateway_fee_bps` (0..=10000), gateway-authority-set, stored per-gateway. There is no separate protocol fee (ADR-0018).
+- **Protocol cut** — `total_fee × protocol_share_bps / 10000`. Global default `2000` (20% of the fee) on `ProgramConfig`; per-gateway admin-granted override via `FEATURE_CUSTOM_PROTOCOL_FEE` (bit 2 of `feature_flags`, may be zero).
+- **Scheduler cut** — `total_fee × scheduler_share_bps / 10000` (per-gateway) — pays the execute-tx signer.
+- **Referral pool** — `total_fee × referral_allocation_bps / 10000` when referral is enabled (see below).
+- **Gateway residual** — the remainder → `gateway.fee_recipient` (the balancing item; truncation dust lands here).
+- **Share guard** — `protocol_share + scheduler_share + referral_allocation ≤ 10000` enforced at every gateway-config write site (not at execute time).
 
 Two amount modes (`PaymentGateway.feature_flags` bit 1):
 
-- **Gross (default)** — recipient = `payment_amount − gateway_fee − protocol_fee`.
-- **Net** — recipient receives exactly `payment_amount`; fees are added on top and pulled from the user.
+- **Gross (default)** — recipient = `payment_amount − total_fee`.
+- **Net** — recipient receives exactly `payment_amount`; the total fee is added on top and pulled from the user.
 
-Math: `(amount * bps) / 10000` (rounds down; dust goes to protocol).
+Math: `(amount * bps) / 10000` (rounds down; dust goes to the gateway residual).
 
 ### Referral Program
 

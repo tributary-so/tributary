@@ -405,7 +405,7 @@ export default function Futardio() {
                         Protocol Fees
                       </div>
                       <div className="font-mono text-sm">
-                        1% of every transfer
+                        20% of every gateway fee
                         <sup className="text-emerald-800">*</sup>,
                         auto-deposited to treasury
                       </div>
@@ -451,8 +451,8 @@ export default function Futardio() {
                   <sup className="mr-3 text-emerald-800">*</sup>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  To boost growth, we allow to reduce protocol fees for limited
-                  time on a per business basis.
+                  To boost growth, we can grant a reduced protocol share for
+                  limited time on a per business basis.
                 </div>
               </div>
             </div>

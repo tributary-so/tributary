@@ -593,16 +593,16 @@ function TheBusiness() {
 
       <Lead>Model</Lead>
       <p className="text-foreground/50 mb-4">
-        1% of every transaction. ~100% margin. No balance-sheet risk.
+        20% of every gateway fee. ~100% margin. No balance-sheet risk.
       </p>
       <div className="grid md:grid-cols-3 gap-px bg-border mb-6">
         <div className="bg-background p-5">
           <p className="text-[11px] uppercase tracking-[0.12em] text-primary mb-1">
-            Protocol fee
+            Protocol take
           </p>
-          <p className="text-2xl font-bold text-foreground mb-1">1%</p>
+          <p className="text-2xl font-bold text-foreground mb-1">20%</p>
           <p className="text-xs text-foreground/50">
-            Every transaction. Auto-deposited to treasury.
+            Of every gateway fee. Auto-deposited to treasury.
           </p>
         </div>
         <div className="bg-background p-5">
