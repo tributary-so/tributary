@@ -1,0 +1,528 @@
+/*
+ * @tributary-so/ui — canonical design tokens.
+ * Fonts: import "@tributary-so/ui/styles/fonts" from main.tsx.
+ *
+ * Single source of truth for ALL Tributary colors, fonts, radii and motion.
+ * Apps import this after tailwindcss and define nothing locally:
+ *
+ *   @import "tailwindcss";
+ *   @import "@tributary-so/ui/styles";
+ *   @source "../node_modules/@tributary-so/ui/dist";
+ *   (HeroUI apps) @plugin "@tributary-so/ui/dist/styles/theme-heroui.js";
+ *
+ * Anchor hue: blue 221° (light) / 217° (dark) — synced with theme-heroui.ts.
+ * HeroUI's color generator needs literal values, so the primary hues are
+ * duplicated there. Keep both layers in sync when changing the brand blue.
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* shadcn HSL contract → Tailwind utilities */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-marketing: hsl(var(--marketing));
+  --color-marketing-foreground: hsl(var(--marketing-foreground));
+
+  /* Tributary domain scales (policy families + lifecycle statuses) */
+  --color-policy: hsl(224 76% 48%);
+  --color-policy-50: hsl(224 100% 97%);
+  --color-policy-100: hsl(224 95% 93%);
+  --color-policy-200: hsl(225 92% 85%);
+  --color-policy-300: hsl(224 89% 74%);
+  --color-policy-400: hsl(224 83% 62%);
+  --color-policy-500: hsl(224 76% 48%);
+  --color-policy-600: hsl(224 76% 38%);
+  --color-policy-700: hsl(224 72% 30%);
+  --color-policy-800: hsl(225 67% 23%);
+  --color-policy-900: hsl(225 61% 17%);
+  --color-policy-foreground: hsl(0 0% 100%);
+
+  /* subscription aliases the policy scale (kept for call-site compat) */
+  --color-subscription: hsl(224 76% 48%);
+  --color-subscription-50: hsl(224 100% 97%);
+  --color-subscription-100: hsl(224 95% 93%);
+  --color-subscription-200: hsl(225 92% 85%);
+  --color-subscription-300: hsl(224 89% 74%);
+  --color-subscription-400: hsl(224 83% 62%);
+  --color-subscription-500: hsl(224 76% 48%);
+  --color-subscription-600: hsl(224 76% 38%);
+  --color-subscription-700: hsl(224 72% 30%);
+  --color-subscription-800: hsl(225 67% 23%);
+  --color-subscription-900: hsl(225 61% 17%);
+  --color-subscription-foreground: hsl(0 0% 100%);
+
+  --color-milestone: hsl(38 92% 50%);
+  --color-milestone-50: hsl(42 100% 95%);
+  --color-milestone-100: hsl(40 97% 89%);
+  --color-milestone-200: hsl(39 96% 77%);
+  --color-milestone-300: hsl(38 95% 64%);
+  --color-milestone-400: hsl(38 92% 50%);
+  --color-milestone-500: hsl(36 80% 43%);
+  --color-milestone-600: hsl(33 72% 36%);
+  --color-milestone-700: hsl(30 64% 28%);
+  --color-milestone-800: hsl(27 55% 21%);
+  --color-milestone-900: hsl(23 48% 15%);
+  --color-milestone-foreground: hsl(0 0% 100%);
+
+  --color-payasyougo: hsl(160 84% 39%);
+  --color-payasyougo-50: hsl(160 100% 96%);
+  --color-payasyougo-100: hsl(162 93% 87%);
+  --color-payasyougo-200: hsl(161 88% 73%);
+  --color-payasyougo-300: hsl(161 82% 58%);
+  --color-payasyougo-400: hsl(160 84% 39%);
+  --color-payasyougo-500: hsl(161 82% 33%);
+  --color-payasyougo-600: hsl(162 76% 27%);
+  --color-payasyougo-700: hsl(163 67% 22%);
+  --color-payasyougo-800: hsl(163 58% 17%);
+  --color-payasyougo-900: hsl(164 52% 13%);
+  --color-payasyougo-foreground: hsl(0 0% 100%);
+
+  --color-onetime: hsl(262 83% 58%);
+  --color-onetime-50: hsl(260 100% 97%);
+  --color-onetime-100: hsl(262 95% 94%);
+  --color-onetime-200: hsl(262 92% 86%);
+  --color-onetime-300: hsl(262 88% 75%);
+  --color-onetime-400: hsl(262 85% 65%);
+  --color-onetime-500: hsl(262 83% 58%);
+  --color-onetime-600: hsl(263 78% 50%);
+  --color-onetime-700: hsl(264 72% 42%);
+  --color-onetime-800: hsl(265 67% 33%);
+  --color-onetime-900: hsl(266 61% 24%);
+  --color-onetime-foreground: hsl(0 0% 100%);
+
+  --color-upto: hsl(290 84% 52%);
+  --color-upto-50: hsl(290 100% 97%);
+  --color-upto-100: hsl(290 95% 94%);
+  --color-upto-200: hsl(290 92% 86%);
+  --color-upto-300: hsl(290 88% 75%);
+  --color-upto-400: hsl(290 85% 65%);
+  --color-upto-500: hsl(290 84% 52%);
+  --color-upto-600: hsl(291 78% 44%);
+  --color-upto-700: hsl(292 72% 36%);
+  --color-upto-800: hsl(293 67% 28%);
+  --color-upto-900: hsl(294 61% 21%);
+  --color-upto-foreground: hsl(0 0% 100%);
+
+  --color-status-active: hsl(142 71% 45%);
+  --color-status-active-50: hsl(142 76% 94%);
+  --color-status-active-100: hsl(141 77% 87%);
+  --color-status-active-200: hsl(142 76% 73%);
+  --color-status-active-300: hsl(142 72% 58%);
+  --color-status-active-400: hsl(142 71% 45%);
+  --color-status-active-500: hsl(142 69% 38%);
+  --color-status-active-600: hsl(143 64% 32%);
+  --color-status-active-700: hsl(143 54% 26%);
+  --color-status-active-800: hsl(144 45% 20%);
+  --color-status-active-900: hsl(145 36% 15%);
+  --color-status-active-foreground: hsl(0 0% 100%);
+
+  --color-status-paused: hsl(32 95% 44%);
+  --color-status-paused-50: hsl(33 100% 95%);
+  --color-status-paused-100: hsl(34 100% 90%);
+  --color-status-paused-200: hsl(32 99% 78%);
+  --color-status-paused-300: hsl(31 97% 66%);
+  --color-status-paused-400: hsl(32 95% 44%);
+  --color-status-paused-500: hsl(28 88% 38%);
+  --color-status-paused-600: hsl(25 77% 32%);
+  --color-status-paused-700: hsl(23 63% 26%);
+  --color-status-paused-800: hsl(21 51% 20%);
+  --color-status-paused-900: hsl(18 40% 15%);
+  --color-status-paused-foreground: hsl(0 0% 100%);
+
+  --color-status-cancelled: hsl(220 9% 46%);
+  --color-status-cancelled-50: hsl(220 11% 96%);
+  --color-status-cancelled-100: hsl(220 10% 90%);
+  --color-status-cancelled-200: hsl(220 9% 79%);
+  --color-status-cancelled-300: hsl(220 8% 66%);
+  --color-status-cancelled-400: hsl(220 9% 46%);
+  --color-status-cancelled-500: hsl(220 9% 38%);
+  --color-status-cancelled-600: hsl(220 9% 32%);
+  --color-status-cancelled-700: hsl(220 8% 26%);
+  --color-status-cancelled-800: hsl(220 7% 20%);
+  --color-status-cancelled-900: hsl(220 6% 15%);
+  --color-status-cancelled-foreground: hsl(0 0% 100%);
+
+  --color-status-completed: hsl(217 91% 60%);
+  --color-status-completed-50: hsl(217 100% 97%);
+  --color-status-completed-100: hsl(217 100% 92%);
+  --color-status-completed-200: hsl(217 97% 81%);
+  --color-status-completed-300: hsl(217 94% 70%);
+  --color-status-completed-400: hsl(217 91% 60%);
+  --color-status-completed-500: hsl(217 79% 51%);
+  --color-status-completed-600: hsl(217 72% 43%);
+  --color-status-completed-700: hsl(217 63% 36%);
+  --color-status-completed-800: hsl(217 53% 28%);
+  --color-status-completed-900: hsl(217 44% 21%);
+  --color-status-completed-foreground: hsl(0 0% 100%);
+
+  --color-status-overdue: hsl(0 72% 51%);
+  --color-status-overdue-50: hsl(0 86% 97%);
+  --color-status-overdue-100: hsl(0 93% 94%);
+  --color-status-overdue-200: hsl(0 96% 89%);
+  --color-status-overdue-300: hsl(0 94% 82%);
+  --color-status-overdue-400: hsl(0 91% 71%);
+  --color-status-overdue-500: hsl(0 72% 51%);
+  --color-status-overdue-600: hsl(0 74% 42%);
+  --color-status-overdue-700: hsl(0 70% 35%);
+  --color-status-overdue-800: hsl(0 63% 28%);
+  --color-status-overdue-900: hsl(0 55% 21%);
+  --color-status-overdue-foreground: hsl(0 0% 100%);
+
+  /* Typography */
+  --font-sans: 'GT Cinetype', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Roboto Mono', 'GT Cinetype', monospace;
+
+  /* Radius — the Tributary look is sharp corners */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Motion */
+  --animate-fade-in: fadeIn 0.5s ease-in-out;
+  --animate-slide-up: slideUp 0.6s ease-out;
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-slide-left: slide-left 15s linear infinite;
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes slide-left {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+}
+
+@layer base {
+  @font-face {
+    font-family: 'GT Cinetype';
+    src: url('../fonts/gt-cinetype.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Denim';
+    src: url('../fonts/denim.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --font-primary: 'GT Cinetype', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-secondary: 'Denim', 'Antonio', 'Impact', sans-serif;
+    --radius: 0;
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* marketing gradient partner (landing hero gradients) — kit-owned */
+    --marketing: 161.4 93.5% 30.4%;
+    --marketing-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --marketing: 161.4 93.5% 30.4%;
+    --marketing-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 217.2 91.2% 59.8%;
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    overflow-x: clip;
+  }
+
+  body {
+    font-family: var(--font-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  pre {
+    font-size: 0.85em;
+  }
+}
+
+/* HeroUI no-radius overrides (sharp-corner brand voice) */
+[data-slot='base'],
+[data-slot='trigger'],
+[data-slot='input'],
+[data-slot='wrapper'],
+.heroui-button,
+.heroui-input,
+.heroui-select,
+.heroui-select-trigger,
+.heroui-dropdown,
+.heroui-dropdown-menu,
+.heroui-dropdown-item,
+.heroui-card,
+.heroui-modal,
+.heroui-popover,
+.heroui-alert,
+.heroui-checkbox,
+.heroui-switch,
+.heroui-tabs,
+.heroui-tab {
+  border-radius: 0px !important;
+}
+
+/* wallet-adapter button theming */
+.wallet-adapter-button-start-icon img {
+  height: 12px !important;
+  width: 12px !important;
+}
+.wallet-adapter-button-trigger {
+  font-family: var(--font-secondary) !important;
+  text-transform: uppercase !important;
+  border-radius: 0px !important;
+  border: 1px solid hsl(var(--border)) !important;
+  background-color: transparent !important;
+  color: hsl(var(--primary)) !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+  height: 1.55rem !important;
+  font-weight: normal !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+}
+
+.wallet-adapter-button-trigger:hover:not(:disabled) {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-dropdown {
+  font-family: var(--font-primary) !important;
+}
+
+.wallet-adapter-dropdown-list {
+  background-color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--primary)) !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+.wallet-adapter-dropdown-list-item {
+  font-family: var(--font-primary) !important;
+  color: hsl(var(--primary)) !important;
+  font-weight: normal !important;
+  font-size: 13px !important;
+  padding: 10px;
+  text-transform: uppercase !important;
+}
+
+.wallet-adapter-dropdown-list-item:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* marketing gradient text primitive */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--marketing)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ------------------------------------------------------------------ */
+/* Backdrop — token-driven decorative stage behind heroes (§ UI plan)  */
+/* ------------------------------------------------------------------ */
+.ui-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ui-backdrop--fixed {
+  position: fixed;
+}
+
+.ui-backdrop--subtle {
+  opacity: 0.35;
+}
+.ui-backdrop--normal {
+  opacity: 0.6;
+}
+.ui-backdrop--bold {
+  opacity: 1;
+}
+
+/* blueprint grid fading from a primary-tinted center */
+.ui-backdrop--grid {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.09), transparent 70%),
+    linear-gradient(to right, hsl(var(--foreground) / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--foreground) / 0.055) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    2rem 2rem,
+    2rem 2rem;
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+}
+
+/* layered radial mesh from brand anchors */
+.ui-backdrop--mesh {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 0%, hsl(var(--primary) / 0.14), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 85% 10%, hsl(var(--marketing) / 0.1), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, hsl(var(--primary) / 0.08), transparent 70%);
+}
+
+/* CRT scanline texture */
+.ui-backdrop--scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    hsl(var(--foreground) / 0.04) 0px,
+    hsl(var(--foreground) / 0.04) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.dark .ui-backdrop--grid {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.16), transparent 70%),
+    linear-gradient(to right, hsl(var(--foreground) / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--foreground) / 0.07) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    2rem 2rem,
+    2rem 2rem;
+}

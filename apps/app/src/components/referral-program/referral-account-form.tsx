@@ -262,10 +262,7 @@ export default function ReferralAccountForm({
         </div>
 
         <div>
-          <label
-            htmlFor="referralCode"
-            className="text-xs font-medium text-(--color-primary) uppercase mb-1 block"
-          >
+          <label htmlFor="referralCode" className="text-xs font-medium text-(--color-primary) uppercase mb-1 block">
             Referral Code
           </label>
           <Input
@@ -328,10 +325,7 @@ export default function ReferralAccountForm({
         </div>
 
         <div>
-          <label
-            htmlFor="referrerCode"
-            className="text-xs font-medium text-(--color-primary) uppercase mb-1 block"
-          >
+          <label htmlFor="referrerCode" className="text-xs font-medium text-(--color-primary) uppercase mb-1 block">
             Referrer Code
           </label>
           <Input

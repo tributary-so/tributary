@@ -2,8 +2,8 @@
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Suspense } from "react";
-import { AppHeader } from "./components/app-header";
-import { AppFooter } from "./components/app-footer";
+import { Navbar, Footer } from "@tributary-so/ui";
+import { WalletButton, ClusterUiSelect } from "@tributary-so/ui/solana";
 import { Landing } from "./landing";
 import { PayPage } from "./pay-page";
 import { SuccessPage } from "./pages/success-page";
@@ -22,7 +22,15 @@ function LoadingFallback() {
 export default function App() {
   return (
     <div className="min-h-screen bg-background antialiased font-sans">
-      <AppHeader />
+      <Navbar
+        items={[{ label: "Docs", href: "https://docs.tributary.so", external: true }]}
+        actions={
+          <>
+            <WalletButton />
+            <ClusterUiSelect />
+          </>
+        }
+      />
       <main className="mx-auto max-w-5xl px-4">
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
@@ -36,7 +44,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
-      <AppFooter />
+      <Footer />
     </div>
   );
 }

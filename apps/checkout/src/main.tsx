@@ -4,6 +4,7 @@ import { HashRouter } from "react-router-dom";
 import { AppProviders } from "./components/app-providers";
 import App from "./app.tsx";
 import "./index.css";
+import "@tributary-so/ui/styles/fonts";
 
 createRoot(document.getElementById("root")!).render(
   <AppProviders>

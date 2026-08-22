@@ -1,7 +1,5 @@
-import { ReactQueryProvider } from './react-query-provider'
-import { ClusterProvider } from '@/components/cluster/cluster-data-access'
-import { SolanaProvider } from '@/components/solana/solana-provider'
-import { TokenMetadataProvider } from './token-metadata-provider'
+import { ReactQueryProvider, ClusterProvider, SolanaProvider } from '@tributary-so/ui/solana'
+import { TokenMetadataProvider } from '@tributary-so/ui/tributary'
 import { HeroUIProvider, ToastProvider } from '@heroui/react'
 
 import React from 'react'

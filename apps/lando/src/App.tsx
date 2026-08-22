@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import { AppHeader } from "./components/AppHeader";
-import { AppFooter } from "./components/AppFooter";
+import { Footer as AppFooter } from "@tributary-so/ui";
 import { Landing } from "./components/Landing";
 import { Subscribe } from "./components/Subscribe";
 

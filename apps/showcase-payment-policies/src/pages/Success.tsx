@@ -4,7 +4,7 @@ import { useTributaryToken } from '@tributary-so/sdk-react'
 import { API_BASE_URL } from '@/constants'
 // ponytail: third copy of PaymentDetails → extract on next reuse.
 // For now mirror showcase-payments + apps/checkout.
-import { PaymentDetails } from '@/components/payment-details'
+import { PaymentDetails } from '@tributary-so/ui/tributary'
 
 export default function Success() {
   const { token, payload, loading } = useTributaryToken(undefined, API_BASE_URL)

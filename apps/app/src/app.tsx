@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router'
 import { lazy, Suspense } from 'react'
 import { AppProviders } from '@/components/app-providers'
 import { AppHeader } from '@/components/app-header'
-import { AppFooter } from '@/components/app-footer'
+import { Footer as AppFooter } from '@tributary-so/ui'
 
 const Dashboard = lazy(() => import('@/components/dashboard/dashboard-feature'))
 const Account = lazy(() => import('@/components/account/account-page'))

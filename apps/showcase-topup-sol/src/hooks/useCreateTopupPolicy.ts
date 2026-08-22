@@ -25,7 +25,7 @@ import { meteoraDlmmForwardConfig } from "@tributary-so/forward-builders/config"
 import type { TopupFormState } from "@/lib/form";
 import { getUsdcMint, WSOL_MINT } from "@/lib/pools";
 import { usdcToRaw, solToLamports } from "@/lib/units";
-import { useCluster } from "@/components/cluster/cluster-data-access";
+import { useCluster } from "@tributary-so/ui/solana";
 
 export interface CreateResult {
   signature: string;

@@ -9,7 +9,7 @@ import {
 } from '@tributary-so/sdk-react'
 import { Copy, Check, Trash2 } from '@/icons'
 import type { PaymentPolicyFormData } from './policy-inputs'
-import { getTokenPrecisionAtom } from '@/lib/token-store'
+import { getTokenPrecisionAtom } from '@tributary-so/ui/tributary'
 import { useAtomValue } from 'jotai'
 import { BN } from '@coral-xyz/anchor'
 import { PublicKey } from '@solana/web3.js'

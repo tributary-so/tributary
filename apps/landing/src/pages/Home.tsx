@@ -31,7 +31,8 @@ import IntegrationsWall from "@/components/IntegrationsWall";
 import Mentions from "@/components/Mentions";
 import HowToProcessor from "@/components/HowToProcessor";
 import HowComposableWorks from "@/components/HowComposableWorks";
-import TerminalCard from "@/components/TerminalCard";
+import { TerminalCard } from "@tributary-so/ui";
+import { Backdrop } from "@tributary-so/ui";
 import FutardioBanner from "@/components/futardio-banner";
 
 const stats = [
@@ -273,7 +274,8 @@ export default function HomeContent() {
   return (
     <main className="mx-auto max-w-6xl px-4">
       {/* ─── Hero (the Resolution motif) ─── */}
-      <section id="hero" className="py-20">
+      <section id="hero" className="relative py-20">
+        <Backdrop variant="grid" />
         <div className="flex flex-col gap-6 text-center lg:text-left lg:items-start">
           <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/5 px-3 py-1.5 text-accent text-xs font-mono">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />

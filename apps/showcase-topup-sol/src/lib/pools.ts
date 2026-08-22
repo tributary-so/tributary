@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { ClusterNetwork } from "@/components/cluster/cluster-data-access";
+import { ClusterNetwork } from "@tributary-so/ui/solana";
 
 /**
  * Meteora DLMM program id — the sole entry in Tributary's

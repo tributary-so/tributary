@@ -1,0 +1,4 @@
+/* Storybook-only entry: pulls Tailwind + the kit's canonical tokens. */
+@import 'tailwindcss';
+@import './tokens.css';
+@source '../**/*.{ts,tsx}';

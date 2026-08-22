@@ -1,0 +1,20 @@
+/* @tributary-so/ui — brand fonts. Import from JS (main.tsx):
+ *   import "@tributary-so/ui/styles/fonts";
+ * Vite's CSS pipeline resolves + hashes the ttf assets. Do NOT @import this
+ * from another stylesheet — Tailwind v4 does not rebase url() in inlined imports. */
+
+@font-face {
+  font-family: 'GT Cinetype';
+  src: url('../fonts/gt-cinetype.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Denim';
+  src: url('../fonts/denim.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import TerminalCard from "./TerminalCard";
+import { TerminalCard } from "@tributary-so/ui";
 
 // ponytail: one component, two flows, internal toggle. Reuses HowToProcessor's
 // step-node visual language (numbered badge + icon node + connecting rule).

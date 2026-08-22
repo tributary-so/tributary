@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ExplorerLink } from "@/components/cluster/cluster-ui";
+import { ExplorerLink } from "@tributary-so/ui/solana";
 
 /**
  * Success state — success-check appear transition (fade + rotate + blur + Y-bob

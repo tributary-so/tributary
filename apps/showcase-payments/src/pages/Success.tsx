@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { useTributaryToken } from "@tributary-so/sdk-react";
 import { API_BASE_URL } from "@/constants";
-import { PaymentDetails } from "@/components/PaymentDetails";
+import { PaymentDetails } from "@tributary-so/ui/tributary";
 
 export default function Success() {
   const { token, payload, loading } = useTributaryToken(

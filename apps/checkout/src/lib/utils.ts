@@ -1,12 +1,7 @@
+import type { Connection, PublicKey } from "@solana/web3.js";
 import { getTokenSymbol as gts } from "@tributary-so/sdk";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-export async function getTokenSymbol(connection: any, mintAddress: any) {
+export async function getTokenSymbol(connection: Connection, mintAddress: string | PublicKey) {
   if (mintAddress == "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU") {
     return "USDC (devnet)";
   }

@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
         "node-fetch": "isomorphic-fetch",
         "@": path.resolve(__dirname, "./src"),
       },
+      // single react-router instance: @tributary-so/ui's peers must resolve
+      // to the app's copy, not a second hoisted version
+      dedupe: ["react-router", "react-router-dom"],
     },
     server: {
       allowedHosts: ["tributary.so.local"],

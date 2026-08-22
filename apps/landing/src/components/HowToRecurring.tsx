@@ -1,5 +1,5 @@
 import { useState } from "react";
-import TerminalCard from "./TerminalCard";
+import { TerminalCard } from "@tributary-so/ui";
 
 const features = [
   {

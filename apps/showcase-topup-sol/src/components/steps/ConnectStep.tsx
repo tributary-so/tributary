@@ -2,7 +2,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { getUsdcMint } from "@/lib/pools";
-import { useCluster } from "@/components/cluster/cluster-data-access";
+import { useCluster } from "@tributary-so/ui/solana";
 import { rawToUsdc } from "@/lib/units";
 import { SkeletonReveal } from "@/components/transitions";
 import { StepShell } from "@/components/StepShell";

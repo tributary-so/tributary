@@ -8,7 +8,7 @@ import {
 import { useCheckoutSession, useTrackingId } from "@tributary-so/sdk-react";
 import { Banknote } from "lucide-react";
 import { useTrackingIdLocalStorage } from "@/hooks/useTrackingIdLocalStorage";
-import { PaymentDetails } from "@/components/PaymentDetails";
+import { PaymentDetails } from "@tributary-so/ui/tributary";
 
 export default function CheckoutDemo() {
   const [recipient, setRecipient] = useState("");

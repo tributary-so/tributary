@@ -13,11 +13,11 @@
   "iconLibrary": "lucide",
   "rtl": false,
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@tributary-so/ui",
+    "utils": "@tributary-so/ui",
+    "ui": "@tributary-so/ui",
+    "lib": "@tributary-so/ui",
+    "hooks": "@tributary-so/ui"
   },
   "registries": {}
 }

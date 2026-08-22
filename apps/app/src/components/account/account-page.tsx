@@ -32,8 +32,13 @@ import {
 } from '../../icons'
 import { addToast } from '@heroui/react'
 import { formatDistanceToNow, formatDuration, intervalToDuration, differenceInSeconds, addSeconds } from 'date-fns'
-import { PublicKeyComponent } from '../ui/public-key'
-import { getTokenPrecisionAtom, getTokenSymbolAtom, setTokenMetadataAtom, tokenMetadataAtom } from '@/lib/token-store'
+import { PublicKeyComponent } from '@tributary-so/ui/tributary'
+import {
+  getTokenPrecisionAtom,
+  getTokenSymbolAtom,
+  setTokenMetadataAtom,
+  tokenMetadataAtom,
+} from '@tributary-so/ui/tributary'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useResolveMints } from '@tributary-so/tokens-client/react'
 import { API_BASE_URL } from '@/lib/api'
