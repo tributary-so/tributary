@@ -9,9 +9,10 @@
 - `pnpm -r run lint` - Lint every workspace that declares a `lint` script
 - `pnpm --filter <pkg> run lint:fix` - Auto-fix lint issues in one package (not all packages define `lint:fix`)
 - `make build` - build every component of the repo (programs + packages + apps + docs)
-- `make prep` - Setup Solana toolchain (v1.18.20, Anchor 0.31.0)
+- `make prep` - Switch avm to Anchor 1.2.0 (Agave 3.1.10 via solana-cli; builds emit sBPFv3 — ADR-0035)
 - `anchor test` - Run all Solana program tests (Rust + the `tests/` jest suite against a local validator)
 - `cd tests && npx jest` - Run only the `tests/` TypeScript integration suite (requires Surfpool: `make run_surfpool`)
+- `make verify-sbf` - Assert every built ELF is sBPFv3 (readelf e_flags 0x3) — guard for SIMD-0500
 - `make test_surfpool` - Full suite (Rust + every jest suite) against a running Surfpool instance
 - `pnpm --filter @tributary-so/api test` - API unit tests (e2e + integration excluded; use `test:e2e` / `test:integration` to opt in)
 - `cd packages/sdk && pnpm run build` - Build SDK package
@@ -38,7 +39,7 @@
 ### Repository Layout
 
 ```
-programs/tributary/   Rust smart contract (Anchor 0.31.0)
+programs/tributary/   Rust smart contract (Anchor 1.2.0, sBPFv3 — ADR-0035)
 packages/sdk/         TypeScript SDK + manager CLI (@tributary-so/sdk)
 packages/sdk-react/   React hooks bindings
 packages/sdk-x402/    x402 / HTTP-402 payment integration
@@ -514,6 +515,8 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 | [0031] | Settlement output post_validation — on-chain `>0` guard stays; no enforcement; SDK warns |
 | [0032] | Raydium CPMM as a second `ALLOWED_FORWARD_PROGRAM`                                      |
 | [0033] | Validation recipe layer — three-tier recipes + policy recipe + fire helper               |
+| [0034] | Tributary-so UI package boundary                                                  |
+| [0035] | sBPFv3 toolchain migration — Anchor 1.2, v3-only builds                              |
 
 [0001]: apps/docs/adr/0001-account-topology-and-delegate-model.md
 [0002]: apps/docs/adr/0002-policytype-three-variants-128-byte-fixed-layout.md
@@ -547,6 +550,8 @@ ADR. Use the format in `apps/docs/adr/0001-…md` as the template.
 [0031]: apps/docs/adr/0031-settlement-output-post-validation-posture.md
 [0032]: apps/docs/adr/0032-raydium-cpmm-forward.md
 [0033]: apps/docs/adr/0033-validation-recipe-layer.md
+[0034]: apps/docs/adr/0034-tributary-so-ui-package-boundary.md
+[0035]: apps/docs/adr/0035-sbpfv3-toolchain-migration.md
 
 ## SDK
 

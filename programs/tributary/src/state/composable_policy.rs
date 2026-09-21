@@ -353,7 +353,7 @@ mod tests {
             index: 3,
             pubkey: Pubkey::new_unique(),
         };
-        let bytes = pa.try_to_vec().unwrap();
+        let bytes = borsh::to_vec(&pa).unwrap();
         let restored: PinnedAccount = PinnedAccount::try_from_slice(&bytes).unwrap();
         assert_eq!(restored, pa);
     }
@@ -570,7 +570,7 @@ mod tests {
             pubkey: Pubkey::new_unique(),
         };
 
-        let bytes = ic.try_to_vec().unwrap();
+        let bytes = borsh::to_vec(&ic).unwrap();
         let restored: InstructionConstraint =
             InstructionConstraint::try_from_slice(&bytes).unwrap();
         assert_eq!(restored, ic);
@@ -587,7 +587,7 @@ mod tests {
             ValidationSpec::Inline { reserved: 0 },
         ];
         for vs in cases {
-            let bytes = vs.try_to_vec().unwrap();
+            let bytes = borsh::to_vec(&vs).unwrap();
             let restored: ValidationSpec = ValidationSpec::try_from_slice(&bytes).unwrap();
             assert_eq!(restored, vs);
         }

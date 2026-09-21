@@ -18,8 +18,9 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 mainnet = []
 
 [dependencies]
-anchor-lang = "0.31.1"
-anchor-spl = "0.31.1"
+anchor-lang = "1.2"
+anchor-spl = "1.2"
+borsh = "1"
 bytemuck = { version = "1.14", features = ["derive"] }
 
 # https://solana.stackexchange.com/a/21694
@@ -52,5 +53,6 @@ mollusk-svm-programs-token-2022 = "0.14"
 # bridging to anchor's 2.x Pubkey only at account-struct field sites.
 solana-account = "4"
 solana-instruction = "3"
+solana-sha256-hasher = "3"
 solana-pubkey = "4"
 solana-rent = "4"

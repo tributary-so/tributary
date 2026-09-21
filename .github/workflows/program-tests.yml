@@ -100,6 +100,10 @@ jobs:
           CARGO_INCREMENTAL: 1
           CARGO_NET_RETRY: 10
           RUST_BACKTRACE: 1
+          # anchor 1.2 defaults to v3, but pin it: SIMD-0500 (Agave v4.4)
+          # rejects non-v3 deploys/upgrades, and a default flip upstream
+          # must not silently change our bytecode format.
+          ANCHOR_BUILD_SBF_ARCH: v3
         run: |
           echo "Building program: tributary"
           FEATURES="${{ inputs.features }}"
@@ -109,6 +113,13 @@ jobs:
             anchor build
           fi
           test -f target/deploy/tributary.so
+          # sBPFv3 guard: e_flags must be 0x3 (CPU Version 3). A v0 ELF here
+          # deploys today but is rejected for upgrades once SIMD-0500 activates.
+          FLAGS="$(readelf -h target/deploy/tributary.so | sed -n 's/^  Flags: *//p')"
+          case "$FLAGS" in
+            *0x3*) echo "sBPFv3 OK: Flags: $FLAGS" ;;
+            *) echo "::error::tributary.so is not sBPFv3 (Flags: '$FLAGS' — expected 0x3, CPU Version 3)"; exit 1 ;;
+          esac
 
       # ── Surfpool: install + start + warm up ──────────────────────────────
       - name: Install Surfpool

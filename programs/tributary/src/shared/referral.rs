@@ -421,9 +421,9 @@ fn transfer_referral_reward<'a, 'info>(
         authority: authority_info.clone(),
     };
     let cpi_ctx = match authority_mode {
-        AuthorityMode::Direct => CpiContext::new(token_program.clone(), cpi_accounts),
+        AuthorityMode::Direct => CpiContext::new(token_program.key(), cpi_accounts),
         AuthorityMode::PdaSigner(seeds) => {
-            CpiContext::new_with_signer(token_program.clone(), cpi_accounts, seeds)
+            CpiContext::new_with_signer(token_program.key(), cpi_accounts, seeds)
         }
     };
     token_interface::transfer_checked(cpi_ctx, reward, mint_decimals)?;

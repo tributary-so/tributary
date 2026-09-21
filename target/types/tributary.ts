@@ -59,7 +59,7 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "user_payment.token_mint",
+                "path": "userPayment.tokenMint",
                 "account": "userPayment"
               }
             ]
@@ -579,12 +579,12 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "user_payment.owner",
+                "path": "userPayment.owner",
                 "account": "userPayment"
               },
               {
                 "kind": "account",
-                "path": "user_payment.token_mint",
+                "path": "userPayment.tokenMint",
                 "account": "userPayment"
               }
             ]
@@ -1196,7 +1196,7 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "user_payment.token_mint",
+                "path": "userPayment.tokenMint",
                 "account": "userPayment"
               }
             ]
@@ -1616,12 +1616,12 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "composable_policy.user_payment",
+                "path": "composablePolicy.userPayment",
                 "account": "composablePolicy"
               },
               {
                 "kind": "account",
-                "path": "composable_policy.policy_id",
+                "path": "composablePolicy.policyId",
                 "account": "composablePolicy"
               }
             ]
@@ -1659,12 +1659,12 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "user_payment.owner",
+                "path": "userPayment.owner",
                 "account": "userPayment"
               },
               {
                 "kind": "account",
-                "path": "user_payment.token_mint",
+                "path": "userPayment.tokenMint",
                 "account": "userPayment"
               }
             ]
@@ -1919,7 +1919,7 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "payment_policy.policy_id",
+                "path": "paymentPolicy.policyId",
                 "account": "paymentPolicy"
               }
             ]
@@ -1949,12 +1949,12 @@ export type Tributary = {
               },
               {
                 "kind": "account",
-                "path": "user_payment.owner",
+                "path": "userPayment.owner",
                 "account": "userPayment"
               },
               {
                 "kind": "account",
-                "path": "user_payment.token_mint",
+                "path": "userPayment.tokenMint",
                 "account": "userPayment"
               }
             ]
@@ -2848,7 +2848,7 @@ export type Tributary = {
     {
       "code": 6003,
       "name": "unauthorized",
-      "msg": "unauthorized"
+      "msg": "Unauthorized"
     },
     {
       "code": 6004,

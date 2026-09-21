@@ -44,7 +44,7 @@ pub mod tributary {
     }
 
     pub fn create_referral_account<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateReferralAccount<'info>>,
+        ctx: Context<'_, CreateReferralAccount<'info>>,
         referral_code: [u8; 6],
     ) -> Result<()> {
         CreateReferralAccount::handler_create_referral_account(ctx, referral_code)
@@ -77,7 +77,7 @@ pub mod tributary {
     }
 
     pub fn execute_payment<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ExecutePayment<'info>>,
+        ctx: Context<'info, ExecutePayment<'info>>,
         payment_amount: Option<u64>,
     ) -> Result<()> {
         ExecutePayment::handler(ctx, payment_amount)
@@ -147,7 +147,7 @@ pub mod tributary {
     }
 
     pub fn transfer<'info>(
-        ctx: Context<'_, '_, 'info, 'info, TransferTokens<'info>>,
+        ctx: Context<'info, TransferTokens<'info>>,
         amount: u64,
         memo: [u8; 64],
     ) -> Result<()> {
@@ -179,7 +179,7 @@ pub mod tributary {
     }
 
     pub fn execute_composable<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ExecuteComposable<'info>>,
+        ctx: Context<'info, ExecuteComposable<'info>>,
         instruction_data: Vec<u8>,
         forward_amount: Option<u64>,
     ) -> Result<()> {

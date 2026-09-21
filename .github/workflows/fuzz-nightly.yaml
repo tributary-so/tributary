@@ -80,7 +80,7 @@ jobs:
           key: fuzz-${{ runner.os }}-${{ hashFiles('programs/tributary/Cargo.toml', 'Cargo.lock') }}
 
       - name: Build program (.so for Mollusk)
-        run: cargo build-sbf --manifest-path programs/tributary/Cargo.toml
+        run: cargo build-sbf --arch v3 --tools-version v1.57 --manifest-path programs/tributary/Cargo.toml
 
       - name: Layer 1 — proptests (cranked)
         run: PROPTEST_CASES=100000 cargo test --manifest-path programs/tributary/Cargo.toml --test proptest_pure_fns

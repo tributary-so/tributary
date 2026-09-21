@@ -69,11 +69,11 @@ impl<'info> TransferTokens<'info> {
         verified,
         spec = "../../tributary.qedspec",
         handler = "transfer",
-        hash = "85195375ee7ac9aa",
+        hash = "d54e56579d75532f",
         spec_hash = "e767195b8aee07ac"
     )]
     pub fn handler(
-        ctx: Context<'_, '_, 'info, 'info, TransferTokens<'info>>,
+        ctx: Context<'info, TransferTokens<'info>>,
         amount: u64,
         memo: [u8; 64],
     ) -> Result<()> {
@@ -153,7 +153,7 @@ impl<'info> TransferTokens<'info> {
                 to: to_info,
                 authority: authority_info.clone(),
             };
-            let cpi_ctx = CpiContext::new(token_program_info.clone(), cpi_accounts);
+            let cpi_ctx = CpiContext::new(token_program_info.key(), cpi_accounts);
             token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
         }
 
@@ -164,7 +164,7 @@ impl<'info> TransferTokens<'info> {
                 to: gateway_fee_info,
                 authority: authority_info.clone(),
             };
-            let cpi_ctx = CpiContext::new(token_program_info.clone(), cpi_accounts);
+            let cpi_ctx = CpiContext::new(token_program_info.key(), cpi_accounts);
             token_interface::transfer_checked(cpi_ctx, gateway_amount, mint_decimals)?;
         }
 
@@ -175,7 +175,7 @@ impl<'info> TransferTokens<'info> {
                 to: protocol_fee_info,
                 authority: authority_info,
             };
-            let cpi_ctx = CpiContext::new(token_program_info, cpi_accounts);
+            let cpi_ctx = CpiContext::new(token_program_info.key(), cpi_accounts);
             token_interface::transfer_checked(cpi_ctx, protocol_cut, mint_decimals)?;
         }
 

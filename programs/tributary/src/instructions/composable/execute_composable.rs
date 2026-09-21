@@ -120,7 +120,7 @@ fn close_token_account<'info>(
         authority: authority.clone(),
     };
     let seeds = [signer_seeds];
-    let cpi_ctx = CpiContext::new_with_signer(token_program.clone(), close_accounts, &seeds);
+    let cpi_ctx = CpiContext::new_with_signer(token_program.key(), close_accounts, &seeds);
     token_interface::close_account(cpi_ctx)
 }
 
@@ -438,7 +438,7 @@ fn skim_input_fees<'info>(
                     authority: intermediate_owner_info.clone(),
                 };
                 let cpi_ctx = CpiContext::new_with_signer(
-                    token_program.clone(),
+                    token_program.key(),
                     cpi_accounts,
                     intermediate_owner_seeds,
                 );
@@ -453,7 +453,7 @@ fn skim_input_fees<'info>(
                     authority: intermediate_owner_info.clone(),
                 };
                 let cpi_ctx = CpiContext::new_with_signer(
-                    token_program.clone(),
+                    token_program.key(),
                     cpi_accounts,
                     intermediate_owner_seeds,
                 );
@@ -473,7 +473,7 @@ fn skim_input_fees<'info>(
                     authority: intermediate_owner_info.clone(),
                 };
                 let cpi_ctx = CpiContext::new_with_signer(
-                    token_program.clone(),
+                    token_program.key(),
                     cpi_accounts,
                     intermediate_owner_seeds,
                 );
@@ -491,7 +491,7 @@ fn skim_input_fees<'info>(
             authority: intermediate_owner_info.clone(),
         };
         let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
+            token_program.key(),
             cpi_accounts,
             intermediate_owner_seeds,
         );
@@ -550,7 +550,7 @@ fn sweep_output_to_recipient<'info>(
             authority: intermediate_owner_info.clone(),
         };
         let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
+            token_program.key(),
             cpi_accounts,
             intermediate_owner_seeds,
         );
@@ -583,7 +583,7 @@ fn sweep_input_residual_to_user<'info>(
             authority: intermediate_owner_info.clone(),
         };
         let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
+            token_program.key(),
             cpi_accounts,
             intermediate_owner_seeds,
         );
@@ -613,7 +613,7 @@ fn sweep_input_to_recipient<'info>(
             authority: intermediate_owner_info.clone(),
         };
         let cpi_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
+            token_program.key(),
             cpi_accounts,
             intermediate_owner_seeds,
         );
@@ -805,7 +805,7 @@ pub struct ExecuteComposable<'info> {
 
 impl<'info> ExecuteComposable<'info> {
     pub fn handler(
-        ctx: Context<'_, '_, 'info, 'info, ExecuteComposable<'info>>,
+        ctx: Context<'info, ExecuteComposable<'info>>,
         instruction_data: Vec<u8>,
         forward_amount: Option<u64>,
     ) -> Result<()> {
@@ -1241,7 +1241,7 @@ impl<'info> ExecuteComposable<'info> {
                 authority: pull_authority.clone(),
             };
             let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, pull_seeds);
+                CpiContext::new_with_signer(token_program_info.key(), cpi_accounts, pull_seeds);
             token_interface::transfer_checked(cpi_ctx, gross_pull, input_mint_decimals)?;
         }
 
@@ -1552,7 +1552,6 @@ mod tests {
             data,
             Box::leak(Box::new(Pubkey::default())),
             false,
-            0,
         )
     }
 

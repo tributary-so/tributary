@@ -91,7 +91,6 @@ mod tests {
             Box::leak(vec![0u8; data_len].into_boxed_slice()),
             Box::leak(Box::new(owner)),
             false,
-            0,
         )
     }
 
@@ -174,8 +173,8 @@ mod tests {
         pda.data_len = 7;
         pda.data[..7].copy_from_slice(&[9, 8, 7, 6, 5, 4, 3]);
 
-        let bytes = pda.try_to_vec().unwrap();
-        // try_to_vec does NOT include the 8-byte Anchor discriminator — it
+        let bytes = borsh::to_vec(&pda).unwrap();
+        // borsh::to_vec does NOT include the 8-byte Anchor discriminator — it
         // serialises the inner struct only. Prepend the discriminator to
         // mimic on-chain layout, then deserialise the way the program
         // would (AccountDeserialize::try_deserialize expects the disc).

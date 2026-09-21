@@ -11,11 +11,11 @@ use crate::error::TributaryError;
 /// a stored `rent_payer` field), we cannot use the static `close = <account>`
 /// attribute, so we replicate *both* halves here.
 ///
-/// The close routine matches Anchor 0.31 byte-for-behaviour:
+/// The close routine matches Anchor 1.2's `anchor_lang::common::close`:
 /// 1. Drain all lamports from `info` into `destination` (checked add).
 /// 2. Zero `info`'s lamport balance.
 /// 3. Reassign `info` ownership to the System Program via `assign`.
-/// 4. Shrink `info` data to 0 bytes via `realloc(0, false)`.
+/// 4. Shrink `info` data to 0 bytes via `resize(0)`.
 ///
 /// Two independent lifetimes so an account sourced from `ctx.remaining_accounts`
 /// can be closed against a destination derived from a named struct field without
@@ -41,7 +41,7 @@ pub fn close_account<'info, 'dest>(
     **info.try_borrow_mut_lamports()? = 0;
 
     info.assign(&system_program::ID);
-    info.realloc(0, false)?;
+    info.resize(0)?;
 
     Ok(())
 }

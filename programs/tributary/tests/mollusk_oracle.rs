@@ -111,7 +111,7 @@ fn anchor_bytes<T: anchor_lang::AccountSerialize>(acc: &T) -> Vec<u8> {
 
 /// 8-byte Anchor instruction discriminator = sha256("global:<name>")[..8].
 fn ix_discriminator(name: &str) -> [u8; 8] {
-    let h = anchor_lang::solana_program::hash::hash(name.as_bytes());
+    let h = solana_sha256_hasher::hash(name.as_bytes());
     let mut d = [0u8; 8];
     d.copy_from_slice(&h.to_bytes()[..8]);
     d

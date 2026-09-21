@@ -10,7 +10,7 @@ SOL_ARGS:=--keypair $(DEPLOY_KEY_PATH) \
 		  #--max-sign-attempts 1000
 
 prep:
-	avm use 0.31.0
+	avm use 1.2.0
 
 run_surfpool:
 	surfpool start --legacy-anchor-compatibility --watch
@@ -28,6 +28,7 @@ devnet_expand:
 
 devnet_build:
 	anchor build
+	@$(MAKE) --no-print-directory verify-sbf
 
 devnet_deploy:
 	solana -k ${DEPLOY_KEY_PATH} balance
@@ -45,6 +46,7 @@ mainnet_expand:
 
 mainnet_build:
 	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p tributary -- --features mainnet
+	@$(MAKE) --no-print-directory verify-sbf
 
 mainnet_deploy_buffer:
 	solana -k ${DEPLOY_KEY_PATH} balance
@@ -79,8 +81,21 @@ publish_idl:
 # 	--keypair $(DEPLOY_KEY_PATH)
 
 verifiable-build:
-	solana-verify build
+	solana-verify build --arch v3
 	solana-verify get-executable-hash ./target/deploy/tributary.so
+	@$(MAKE) --no-print-directory verify-sbf
+
+# sBPFv3 guard (SIMD-0500 / Agave v4.4): once the feature gate activates, the
+# network rejects deployments, upgrades, and buffer finalizations of v0-v2
+# bytecode. Every ELF we ship must carry e_flags 0x3 ("CPU Version: 3").
+verify-sbf:
+	@set -e; for so in target/deploy/*.so; do \
+		flags=$$(readelf -h "$$so" | sed -n 's/^  Flags: *//p'); \
+		case "$$flags" in \
+			*0x3*) echo "✓ $$so → $$flags" ;; \
+			*) echo "✗ $$so → $$flags (expected '0x3, CPU Version: 3')"; exit 1 ;; \
+		esac; \
+	done
 
 squads-tx:
 	solana-verify export-pda-tx https://github.com/tributary-so/tributary --program-id TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ --uploader 8NU2313J4MtANzEWeNnTUMy1Mf5Agavucf9oX4AagSaB --encoding base58 --compute-unit-price 0

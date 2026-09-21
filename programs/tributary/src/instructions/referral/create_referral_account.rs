@@ -38,7 +38,7 @@ pub struct CreateReferralAccount<'info> {
 
 impl<'info> CreateReferralAccount<'info> {
     pub fn handler_create_referral_account(
-        ctx: Context<'_, '_, 'info, 'info, CreateReferralAccount<'info>>,
+        ctx: Context<'_, CreateReferralAccount<'info>>,
         referral_code: [u8; 6],
     ) -> Result<()> {
         let clock = Clock::get()?;

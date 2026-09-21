@@ -104,7 +104,7 @@ mod tests {
     fn run_validate(data: &mut [u8], owner: Pubkey) -> Result<()> {
         let key = Pubkey::new_unique();
         let mut lamports = 0u64;
-        let info = AccountInfo::new(&key, false, false, &mut lamports, data, &owner, false, 0);
+        let info = AccountInfo::new(&key, false, false, &mut lamports, data, &owner, false);
         validate_mint_compatible(&info)
     }
 

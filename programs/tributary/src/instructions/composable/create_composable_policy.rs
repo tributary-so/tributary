@@ -462,7 +462,7 @@ fn init_validation_pda<'info>(
     };
     let mut account_data = pda_info.try_borrow_mut_data()?;
     account_data[..8].copy_from_slice(ValidationPda::DISCRIMINATOR);
-    let fields = typed.try_to_vec()?;
+    let fields = borsh::to_vec(&typed)?;
     account_data[8..8 + fields.len()].copy_from_slice(&fields);
     Ok(())
 }

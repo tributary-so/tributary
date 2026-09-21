@@ -106,7 +106,7 @@ pub struct ExecutePayment<'info> {
 
 impl<'info> ExecutePayment<'info> {
     pub fn handler(
-        ctx: Context<'_, '_, 'info, 'info, ExecutePayment<'info>>,
+        ctx: Context<'info, ExecutePayment<'info>>,
         payment_amount: Option<u64>,
     ) -> Result<()> {
         // Re-validate the mint at execution time: Token-2022 extensions
@@ -263,7 +263,7 @@ impl<'info> ExecutePayment<'info> {
                 authority: authority_info.clone(),
             };
             let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                CpiContext::new_with_signer(token_program_info.key(), cpi_accounts, seeds);
             token_interface::transfer_checked(cpi_ctx, recipient_amount, mint_decimals)?;
         }
 
@@ -301,7 +301,7 @@ impl<'info> ExecutePayment<'info> {
                     authority: authority_info.clone(),
                 };
                 let cpi_ctx =
-                    CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                    CpiContext::new_with_signer(token_program_info.key(), cpi_accounts, seeds);
                 token_interface::transfer_checked(cpi_ctx, scheduler_cut, mint_decimals)?;
             }
 
@@ -313,7 +313,7 @@ impl<'info> ExecutePayment<'info> {
                     authority: authority_info.clone(),
                 };
                 let cpi_ctx =
-                    CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                    CpiContext::new_with_signer(token_program_info.key(), cpi_accounts, seeds);
                 token_interface::transfer_checked(
                     cpi_ctx,
                     fee_breakdown.gateway_residual,
@@ -334,7 +334,7 @@ impl<'info> ExecutePayment<'info> {
                     authority: authority_info.clone(),
                 };
                 let cpi_ctx =
-                    CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                    CpiContext::new_with_signer(token_program_info.key(), cpi_accounts, seeds);
                 token_interface::transfer_checked(cpi_ctx, gateway_amount, mint_decimals)?;
             }
         }
@@ -347,7 +347,7 @@ impl<'info> ExecutePayment<'info> {
                 authority: authority_info.clone(),
             };
             let cpi_ctx =
-                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, seeds);
+                CpiContext::new_with_signer(token_program_info.key(), cpi_accounts, seeds);
             token_interface::transfer_checked(cpi_ctx, protocol_cut, mint_decimals)?;
         }
 
