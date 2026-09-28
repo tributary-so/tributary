@@ -14,7 +14,6 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 tributary = { path = ".." }
-anchor-lang = "0.31.1"
 
 # ── Fuzz targets (bean tributary-ya7m) ───────────────────────────────────
 # Priority 1: composable forward byte-range attack surface. The 4

@@ -1,0 +1,8 @@
+# Host toolchain for host-side crates (cargo test, mollusk oracles, clippy).
+# Program builds go through `anchor build` / `cargo build-sbf`, which use the
+# platform-tools bundled Rust — this file does not affect them. `cargo +nightly`
+# (fuzz) explicitly overrides it.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

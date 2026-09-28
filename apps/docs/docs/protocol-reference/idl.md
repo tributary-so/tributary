@@ -19,7 +19,7 @@ Anchor stores the IDL in a PDA derived from the program ID. Recover it with
 the Anchor CLI:
 
 ```bash
-# Requires anchor 0.31.x and a Solana RPC in solana config
+# Requires anchor 1.2.x and a Solana RPC in solana config
 anchor idl fetch TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
 ```
 

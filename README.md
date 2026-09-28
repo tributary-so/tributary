@@ -75,8 +75,8 @@ Both reuse the same `PolicyType` enum, the same `UserPayment` account, the same
 
 | Layer           | Technology                                                                          |
 | --------------- | ----------------------------------------------------------------------------------- |
-| Smart Contract  | Rust, Anchor `0.31.1`, `anchor-spl` (Token / Associated Token)                      |
-| Blockchain      | Solana (cluster `2.2.11`), program ID `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ` |
+| Smart Contract  | Rust, Anchor `1.2.0` (sBPFv3 — ADR-0035), `anchor-spl` (Token / Associated Token)   |
+| Blockchain      | Solana / Agave `3.1.10`, program ID `TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ`  |
 | SDKs            | TypeScript, `@coral-xyz/anchor`, `@solana/web3.js`, `@solana/spl-token`             |
 | Frontend        | React 19, Vite 7, Tailwind 4, HeroUI, Wallet Adapter, TanStack Query, Jotai         |
 | API Server      | Express 4, Drizzle ORM, PostgreSQL (`postgres`), Redis, Socket.io, KafkaJS          |
@@ -94,13 +94,13 @@ Both reuse the same `PolicyType` enum, the same `UserPayment` account, the same
 - **Node.js** 20.19+ or 22.12+
 - **pnpm** 9.6.0+ (root uses `10.28.2` via `corepack`)
 - **Rust** stable toolchain
-- **Anchor** `0.31.0` (install via `avm`)
-- **Solana CLI** `2.2.11`
+- **Anchor** `1.2.0` (install via `avm`)
+- **Solana CLI** `3.1.10` (Agave)
 - **Docker** (optional, for API / scheduler images and local DBs)
 - **[Surfpool](https://surfpool.dev)** (required for integration tests)
 
-> [!TIP] > `make prep` runs `avm use 0.31.0` to pin the Anchor version. Run it once before
-> building or testing the program.
+> [!TIP] > `make prep` runs `avm install 1.2.0 && avm use 1.2.0` to install and pin the Anchor
+> version. Run it once before building or testing the program.
 
 ## Getting Started
 
@@ -129,7 +129,7 @@ Build the smart contract and all publishable packages:
 make build
 
 # Or build individually:
-anchor build                                    # Rust program -> target/deploy/tributary.so
+anchor build                                    # Rust program -> target/deploy/tributary.so (sBPFv3)
 pnpm --filter @tributary-so/sdk build           # Core SDK (tsup)
 pnpm --filter @tributary-so/sdk-react build     # React SDK
 pnpm --filter @tributary-so/sdk-x402 build      # x402 middleware
@@ -217,7 +217,7 @@ Open [http://localhost:8000](http://localhost:8000).
 ### Monorepo Layout
 
 ```
-├── programs/tributary/        # Solana program (Rust / Anchor 0.31.1)
+├── programs/tributary/        # Solana program (Rust / Anchor 1.2.0, sBPFv3)
 │   └── src/
 │       ├── lib.rs             # 21 instruction entrypoints + security.txt
 │       ├── constants.rs       # PDA seeds, allowlisted CPI programs
@@ -717,7 +717,8 @@ Each app documents its own variables in its `.env.example`. See
 | `pnpm install`        | Install all workspace dependencies                                           |
 | `pnpm run lint`       | Lint all workspaces                                                          |
 | `pnpm run lint:fix`   | Auto-fix lint issues                                                         |
-| `make prep`           | Pin Anchor (`avm use 0.31.0`)                                                |
+| `make prep`           | Install + pin Anchor `1.2.0` (`avm install && avm use`)                       |
+| `make verify-sbf`    | Assert every built ELF is sBPFv3 (readelf e_flags `0x3`) — SIMD-0500 guard   |
 | `make build`          | Build contract + all packages + all apps + docs                              |
 | `make run_surfpool`   | Start Surfpool mainnet-fork (`--legacy-anchor-compatibility`)                |
 | `make test_surfpool`  | Run the full suite against Surfpool (`anchor run surfpool`)                  |

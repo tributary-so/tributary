@@ -4,13 +4,28 @@ PROGRAM_ID_PATH := ~/.config/solana/TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ.
 PROGRAM_ID := TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ
 SOLANA_API := $(or $(SOLANA_API),https://api.mainnet-beta.solana.com)
 SOLANA_WS := $(subst https://,wss://,$(SOLANA_API))
+
+ANCHOR_VERSION ?= 1.2.0
+ANCHOR_COMMAND ?= anchor-$(ANCHOR_VERSION)
+
+# sBPFv3 bytecode (SIMD-0500 / ADR-0035). Anchor 1.2 defaults to --arch v3,
+# but pin arch + platform-tools explicitly instead of relying on defaults:
+# older platform-tools silently emit non-v3 bytecode when passed --arch v3.
+SBPF_ARCH ?= v3
+SBPF_TOOLS ?= v1.57
+ANCHOR_BUILD_FLAGS := --arch $(SBPF_ARCH) --tools-version $(SBPF_TOOLS)
+
 SOL_ARGS:=--keypair $(DEPLOY_KEY_PATH) \
 		  --ws $(SOLANA_WS) # \
           #--with-compute-unit-price 1000 \
 		  #--max-sign-attempts 1000
 
+.PHONY: prep run_surfpool test_surfpool all_tests verify-sbf build lint test
+
 prep:
-	avm use 1.2.0
+	avm install $(ANCHOR_VERSION)
+	avm use $(ANCHOR_VERSION)
+
 
 run_surfpool:
 	surfpool start --legacy-anchor-compatibility --watch
@@ -18,7 +33,7 @@ run_surfpool:
 # Full suite (Rust + every jest suite) against a running Surfpool instance.
 # Start `make run_surfpool` in a separate terminal first.
 test_surfpool:
-	anchor run surfpool
+	$(ANCHOR_COMMAND) run surfpool
 
 all_tests: test_surfpool
 
@@ -27,7 +42,7 @@ devnet_expand:
 	solana program extend $(PROGRAM_ID) 20480
 
 devnet_build:
-	anchor build
+	$(ANCHOR_COMMAND) build $(ANCHOR_BUILD_FLAGS)
 	@$(MAKE) --no-print-directory verify-sbf
 
 devnet_deploy:
@@ -45,7 +60,7 @@ mainnet_expand:
 	solana program extend -k $(DEPLOY_KEY_PATH) $(PROGRAM_ID) 20480
 
 mainnet_build:
-	anchor build --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p tributary -- --features mainnet
+	$(ANCHOR_COMMAND) build $(ANCHOR_BUILD_FLAGS) --provider.wallet ${DEPLOY_KEY_PATH} --provider.cluster mainnet -p tributary -- --features mainnet
 	@$(MAKE) --no-print-directory verify-sbf
 
 mainnet_deploy_buffer:
@@ -69,7 +84,7 @@ mainnet_upload_program:
 	@echo "===================================="
 
 publish_idl:
-	anchor idl upgrade -f target/idl/tributary.json --provider.cluster $(SOLANA_API) --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
+	$(ANCHOR_COMMAND) idl upgrade -f target/idl/tributary.json --provider.cluster $(SOLANA_API) --provider.wallet $(DEPLOY_KEY_PATH) $(PROGRAM_ID)
 
 # submit-verifable-build:
 # 	yes | solana-verify verify-from-repo --remote \
@@ -87,14 +102,21 @@ verifiable-build:
 
 # sBPFv3 guard (SIMD-0500 / Agave v4.4): once the feature gate activates, the
 # network rejects deployments, upgrades, and buffer finalizations of v0-v2
-# bytecode. Every ELF we ship must carry e_flags 0x3 ("CPU Version: 3").
+# bytecode. Every ELF we ship must carry e_flags 0x3 ("CPU Version: 3") and
+# e_machine BPF (247) — agave 3.1.x's sbpf rejects non-247 v3 ELFs. Stale
+# artifacts fail too: a green test run against a pre-v3 .so is worse than red.
 verify-sbf:
 	@set -e; for so in target/deploy/*.so; do \
-		flags=$$(readelf -h "$$so" | sed -n 's/^  Flags: *//p'); \
+		hdr=$$(readelf -h "$$so"); \
+		flags=$$(echo "$$hdr" | sed -n 's/^  Flags: *//p'); \
 		case "$$flags" in \
-			*0x3*) echo "✓ $$so → $$flags" ;; \
+			*0x3*) ;; \
 			*) echo "✗ $$so → $$flags (expected '0x3, CPU Version: 3')"; exit 1 ;; \
 		esac; \
+		echo "$$hdr" | grep -Eq 'Machine:.*BPF' || { echo "✗ $$so e_machine is not BPF (247) — wrong target?"; exit 1; }; \
+		stale=$$(find programs -name '*.rs' -newer "$$so" -print -quit); \
+		if [ -n "$$stale" ]; then echo "✗ $$so is stale ($$stale is newer) — run 'make devnet_build' first"; exit 1; fi; \
+		echo "✓ $$so → $$flags"; \
 	done
 
 squads-tx:
@@ -104,6 +126,8 @@ verify-submit:
 	solana-verify remote submit-job --program-id TRibg8W8zmPHQqWtyAD1rEBRXEdyU13Mu6qX1Sg42tJ --uploader 8NU2313J4MtANzEWeNnTUMy1Mf5Agavucf9oX4AagSaB
 
 build:
+	$(ANCHOR_COMMAND) build $(ANCHOR_BUILD_FLAGS)
+	@$(MAKE) --no-print-directory verify-sbf
 	pnpm run -r --filter "./programs/*" build
 	pnpm run -r --filter "./packages/*" build
 	pnpm run -r --filter "./apps/*" build
@@ -140,4 +164,4 @@ surfpool:
 	killall -9 surfpool; surfpool start --legacy-anchor-compatibility
 
 test:
-	anchor run surfpool
+	$(ANCHOR_COMMAND) run surfpool
