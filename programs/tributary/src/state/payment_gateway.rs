@@ -102,7 +102,19 @@ impl PaymentGateway {
 
     /// Validate that referral tier percentages sum to 100% (10000 bps)
     pub fn validate_referral_tiers(&self) -> Result<()> {
-        let total: u16 = self.referral_tiers_bps.iter().sum();
+        Self::validate_tier_candidate(&self.referral_tiers_bps)
+    }
+
+    /// SZ-M-3 (Slot Zero 2026-11-08 §T3): the write-time gate for referral
+    /// tier candidates. Tiers must sum to exactly 10000 bps no matter when
+    /// they are stored — pre-fix, garbage tiers could be stored while
+    /// referral was dormant (or pre-upgrade) and later go live through the
+    /// feature-flags path, which validated nothing. Every write site that
+    /// stores tiers or leaves referral enabled MUST route through this.
+    pub fn validate_tier_candidate(tiers: &[u16; 3]) -> Result<()> {
+        // u32 accumulation: a u16 sum overflows (panics) on exactly the
+        // malicious candidates it must reject — 3 × 65535 = 196605.
+        let total: u32 = tiers.iter().map(|t| *t as u32).sum();
         require!(total == 10000, TributaryError::InvalidReferralTiers);
         Ok(())
     }
@@ -201,6 +213,28 @@ mod tests {
         gw.referral_allocation_bps = 2000;
         // 5000 + 4000 + 2000 = 11000 > 10000
         assert!(gw.validate_share_constraint(5000).is_err());
+    }
+
+    // ── SZ-M-3 (Slot Zero 2026-11-08 §T3): tier candidates validated at
+    // every write site — dormant-garbage stores can never go live. ──
+
+    #[test]
+    fn tier_candidate_rejects_overflowing_tiers() {
+        // The review's attack: [65535; 3] stored while referral was off,
+        // then referral enabled — each level paid pool × 6.5535.
+        assert!(
+            PaymentGateway::validate_tier_candidate(&[65535, 65535, 65535]).is_err()
+        );
+    }
+
+    #[test]
+    fn tier_candidate_rejects_zero_sum() {
+        assert!(PaymentGateway::validate_tier_candidate(&[0, 0, 0]).is_err());
+    }
+
+    #[test]
+    fn tier_candidate_accepts_full_split() {
+        assert!(PaymentGateway::validate_tier_candidate(&[5000, 3000, 2000]).is_ok());
     }
 
     #[test]

@@ -51,6 +51,16 @@ impl<'info> UpdateGatewayFeatureFlags<'info> {
             & (PaymentGateway::FEATURE_REFERRAL | PaymentGateway::FEATURE_NET_AMOUNT))
             | preserved_bits;
 
+        // SZ-M-3 (Slot Zero 2026-11-08 §T3): enabling referral must also
+        // validate the STORED tiers when a live allocation exists. This
+        // path previously validated nothing, so tiers stored while dormant
+        // (possibly garbage, or pre-dating the write-time gate) could go
+        // live and debit payers beyond the documented fee bound. Mirrors
+        // the live-state guard in update_gateway_referral_settings.
+        if gateway.is_referral_enabled() && gateway.referral_allocation_bps > 0 {
+            gateway.validate_referral_tiers()?;
+        }
+
         msg!(
             "Gateway feature flags updated: flags={}",
             gateway.feature_flags
@@ -133,5 +143,25 @@ mod tests {
             | preserved_bits;
         assert!(gw.is_referral_enabled());
         assert!(gw.is_amount_net());
+    }
+
+    /// SZ-M-3 (Slot Zero 2026-11-08 §T3): enabling referral via the flags
+    /// path must validate STORED tiers when a live allocation exists — the
+    /// store-garbage-while-dormant, flip-the-flag sequence debited payers
+    /// beyond the documented fee bound pre-fix (10.933 USDC on a 10 USDC
+    /// gross policy in the review's repro).
+    #[test]
+    fn enabling_referral_with_live_allocation_rejects_garbage_stored_tiers() {
+        let mut gw = make_gateway(0);
+        gw.referral_allocation_bps = 1000;
+        gw.referral_tiers_bps = [65535, 65535, 65535]; // stored pre-fix
+        // Handler write: only REFERRAL / NET_AMOUNT toggle freely.
+        gw.feature_flags = PaymentGateway::FEATURE_REFERRAL;
+        let guard = gw.is_referral_enabled() && gw.referral_allocation_bps > 0;
+        assert!(guard, "the live-state guard must fire once referral is on");
+        assert!(
+            gw.validate_referral_tiers().is_err(),
+            "garbage stored tiers must block enabling referral"
+        );
     }
 }

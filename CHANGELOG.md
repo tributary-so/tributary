@@ -53,3 +53,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stays un-creatable by anyone (no signature exists) — delete + recreate
   remains the exit for that burn-the-rent variant.
   (SZ-M-2, Slot Zero 2026-11-08 §T2; bean tributary-cpqp)
+
+- **Referral tiers are validated at every write, and distribution is
+  pool-bounded.** A gateway authority could store arbitrary
+  `referral_tiers_bps` while referral was dormant, enable referral via
+  `update_gateway_feature_flags` (which validated nothing), and let
+  `process_referral_rewards` pay `pool × tier_bps / 10000` per level with
+  no sum cap — debiting payers beyond the documented fee bound (review
+  repro: 10.933 USDC on a 10 USDC gross policy). Three independent gates
+  now close it: explicit tier writes validate at write time, enabling
+  referral (flags path) validates the stored tiers whenever a live
+  allocation exists, and `compute_tier_rewards` caps the distributed sum
+  at the pool with u128 intermediates (also fixing the latent u16-sum
+  overflow in `validate_referral_tiers`, which panicked on exactly the
+  malicious candidates it had to reject). Dormant today — no gateway has
+  referral enabled.
+  (SZ-M-3, Slot Zero 2026-11-08 §T3; bean tributary-k84k)

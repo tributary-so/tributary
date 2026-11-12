@@ -100,6 +100,27 @@ fn validate_referral_chain_topology(
     Ok(())
 }
 
+
+/// SZ-M-3 (Slot Zero 2026-11-08 §T3): split the referral pool across the
+/// tier levels with a hard sequential cap — the distributed SUM can never
+/// exceed the pool, even if a pre-fix gateway stored tiers summing above
+/// 10000. With valid tiers (sum == 10000) the split is exact. u128
+/// intermediates: a max-u64 pool at 65535 bps must not overflow.
+fn compute_tier_rewards(
+    pool: u64,
+    tiers: &[u16; MAX_REFERRAL_CHAIN_DEPTH],
+) -> [u64; MAX_REFERRAL_CHAIN_DEPTH] {
+    let mut remaining = pool;
+    let mut rewards = [0u64; MAX_REFERRAL_CHAIN_DEPTH];
+    for i in 0..MAX_REFERRAL_CHAIN_DEPTH {
+        let ideal = ((pool as u128 * tiers[i] as u128) / 10000) as u64;
+        let reward = ideal.min(remaining);
+        rewards[i] = reward;
+        remaining -= reward;
+    }
+    rewards
+}
+
 /// Distribute referral rewards from a gateway fee.
 ///
 /// Two-stage split:
@@ -167,24 +188,12 @@ pub fn process_referral_rewards<'a, 'info>(
         return Ok(0);
     }
 
-    // Stage 2: split the pool across the 3 levels (tier_bps = share of pool).
-    let tier_rewards: [u64; MAX_REFERRAL_CHAIN_DEPTH] = [
-        referral_pool
-            .checked_mul(gateway.referral_tiers_bps[0] as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?,
-        referral_pool
-            .checked_mul(gateway.referral_tiers_bps[1] as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?,
-        referral_pool
-            .checked_mul(gateway.referral_tiers_bps[2] as u64)
-            .ok_or(TributaryError::ArithmeticOverflow)?
-            .checked_div(10000)
-            .ok_or(TributaryError::ArithmeticOverflow)?,
-    ];
+    // Stage 2: split the pool across the 3 levels (tier_bps = share of
+    // pool). SZ-M-3: the sequential cap inside compute_tier_rewards bounds
+    // the distributed SUM at the pool — value beyond the gateway-fee
+    // carve-out can never be pulled from the payer, whatever was stored.
+    let tier_rewards: [u64; MAX_REFERRAL_CHAIN_DEPTH] =
+        compute_tier_rewards(referral_pool, &gateway.referral_tiers_bps);
 
     // Build the event payload: tier index = chain depth (L1=direct referrer).
     let mut rewards: [Option<ReferralReward>; MAX_REFERRAL_CHAIN_DEPTH] = [None, None, None];
@@ -525,5 +534,33 @@ mod tests {
         let l2 = pk(2);
         let chain = vec![(l1, l2), (l2, Pubkey::default())];
         assert!(validate_referral_chain_topology(l1, &chain).is_ok());
+    }
+
+    // ── SZ-M-3 (Slot Zero 2026-11-08 §T3): pool-bounded tier rewards ──
+
+    #[test]
+    fn tier_rewards_capped_at_pool_with_malicious_tiers() {
+        // [65535; 3] would pay ~19.66x the pool; the sequential cap bounds
+        // the SUM at exactly the pool regardless of stored tiers.
+        let rewards = compute_tier_rewards(1_000_000, &[65535, 65535, 65535]);
+        let sum: u64 = rewards.iter().sum();
+        assert!(sum <= 1_000_000, "sum {sum} must not exceed the pool");
+        assert_eq!(rewards[0], 1_000_000);
+        assert_eq!(rewards[1], 0);
+        assert_eq!(rewards[2], 0);
+    }
+
+    #[test]
+    fn tier_rewards_exact_split_with_valid_tiers() {
+        let rewards = compute_tier_rewards(1_000_000, &[5000, 3000, 2000]);
+        assert_eq!(rewards, [500_000, 300_000, 200_000]);
+    }
+
+    #[test]
+    fn tier_rewards_no_overflow_on_max_pool() {
+        // u64-max pool x 65535 bps must not overflow (u128 intermediates).
+        let rewards = compute_tier_rewards(u64::MAX, &[65535, 65535, 65535]);
+        assert!(rewards.iter().all(|r| *r <= u64::MAX));
+        assert!(rewards.iter().sum::<u64>() <= u64::MAX);
     }
 }

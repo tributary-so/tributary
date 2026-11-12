@@ -69,8 +69,14 @@ impl<'info> UpdateGatewayReferralSettings<'info> {
             gateway.referral_allocation_bps = allocation;
         }
 
-        // Update tier percentages if provided
+        // Update tier percentages if provided.
+        // SZ-M-3 (Slot Zero 2026-11-08 §T3): an EXPLICIT tier write is
+        // validated at write time even while referral is dormant — garbage
+        // tiers can never be stored for later activation via the flags
+        // path. (The dormant DEFAULT [0,0,0] from create is untouched;
+        // the CF-012 dormant-default allowance below still governs it.)
         if let Some(tiers) = args.referral_tiers_bps {
+            PaymentGateway::validate_tier_candidate(&tiers)?;
             gateway.referral_tiers_bps = tiers;
         }
 
