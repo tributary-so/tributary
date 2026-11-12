@@ -28,3 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before `should_pause_policy` is evaluated. Off-chain indexers that assumed
   0-indexed records must add 1 to historical data or display
   `payment_count - 1` for backward compatibility.
+
+### Fixed
+
+- **`Subscription` with `auto_renew = false` and no `max_renewals` no longer
+  charges forever.** `advance_policy` only checked `auto_renew` inside the
+  `Some(max_renewals)` branch, so such a policy never reached `Completed` and
+  the scheduler kept charging the payer every period (7 live mainnet policies
+  affected; one already double-charged). `auto_renew = false` now completes
+  the policy after one execution regardless of whether a renewal ceiling is
+  set, matching the documented "pauses after next payment" semantics.
+  (SZ-M-1, Slot Zero 2026-11-08 §T1; bean tributary-lull)

@@ -19,7 +19,7 @@ sections are program-local findings registered in the Accord repo
 
 | ID | Severity | Title | Status |
 |---|---|---|---|
-| SZ-M-1 | 🟡 Medium | `auto_renew = false` + `max_renewals = None` subscription never completes — charged every period (7 live policies) | 🟥 Open |
+| SZ-M-1 | 🟡 Medium | `auto_renew = false` + `max_renewals = None` subscription never completes — charged every period (7 live policies) | ✅ Fixed 2026-11-12 |
 | SZ-M-2 | 🟡 Medium | Pre-funding the deterministic intermediate ATA / validation PDAs (~0.00065 SOL) permanently bricks a composable policy | 🟥 Open |
 | SZ-M-3 | 🟡 Medium | Referral tiers storable unvalidated, referral flag flips without validation → payer debit beyond the documented fee bound | 🟥 Open |
 | SZ-L-1 | 🟢 Low | Pre-ADR-0024 PayAsYouGo accounts mis-deserialize (borsh `None` = 1 byte, not 9) — 2 live policies + their UserPayments permanently bricked; needs migration | 🟥 Open |

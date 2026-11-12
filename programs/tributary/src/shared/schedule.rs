@@ -510,11 +510,17 @@ pub fn advance_policy(
             *next_payment_due =
                 calculate_next_payment_due(*next_payment_due, payment_frequency, current_time)?;
 
-            let should_complete = if let Some(ref mut max) = max_renewals {
-                *max = max.saturating_sub(1);
-                *max == 0 || !*auto_renew
-            } else {
-                false
+            let should_complete = match max_renewals {
+                Some(max) => {
+                    *max = max.saturating_sub(1);
+                    *max == 0 || !*auto_renew
+                }
+                // SZ-M-1 (Slot Zero 2026-11-08 §T1): auto_renew = false
+                // authorizes ONE charge ("pauses after next payment" per
+                // the docs) regardless of whether a renewal ceiling was
+                // set. Returning false here kept such policies Active
+                // forever, so the scheduler charged the payer every period.
+                None => !*auto_renew,
             };
 
             Ok(should_complete)
@@ -639,6 +645,20 @@ mod tests {
         assert!(
             should,
             "auto_renew=false must complete even with max remaining"
+        );
+    }
+
+    /// SZ-M-1 (Slot Zero 2026-11-08 §T1): `auto_renew = false` must complete
+    /// the subscription regardless of `max_renewals` — with `None` the old
+    /// code returned `false` forever, so the scheduler kept charging the
+    /// payer every period. Docs: auto_renew=false "pauses after next payment".
+    #[test]
+    fn subscription_completes_when_auto_renew_false_and_no_max() {
+        let mut pt = subscription(100, PaymentFrequency::Monthly, JAN_31_2024, None, false);
+        let should = advance_policy(&mut pt, FEB_29_2024, 100).unwrap();
+        assert!(
+            should,
+            "auto_renew=false + max_renewals=None must complete after one execution (SZ-M-1)"
         );
     }
 
