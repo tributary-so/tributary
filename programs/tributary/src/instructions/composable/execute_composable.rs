@@ -56,9 +56,41 @@ fn read_token_amount(account_info: &AccountInfo) -> Result<u64> {
     ))
 }
 
-/// Create an associated token account via CPI. The account MUST NOT
-/// already exist — this is a security requirement to prevent stale or
-/// attacker-controlled intermediate accounts.
+/// SZ-M-2 (Slot Zero 2026-11-08 §T2): does `ata` already hold the exact SPL
+/// token account `create_ata` would build at this deterministic address?
+/// Data owned by the expected token program, `mint` and token-account
+/// `owner` fields matching the policy PDA. The ATA derivation already pins
+/// owner + mint, but an attacker can pre-create the account (ATA
+/// `CreateIdempotent`), so the pull destination is re-validated in depth
+/// before adoption — a wrong owner/mint account must never receive the
+/// gross pull. A non-zero amount does NOT disqualify: settlement sweeps the
+/// full intermediate balance, and requiring zero would re-open the grief
+/// via a 1-token donation.
+fn is_expected_intermediate(
+    ata: &AccountInfo<'_>,
+    expected_owner: &Pubkey,
+    expected_mint: &Pubkey,
+    token_program: &Pubkey,
+) -> Result<bool> {
+    if ata.owner != token_program {
+        return Ok(false);
+    }
+    let data = ata.try_borrow_data()?;
+    if data.len() < 64 {
+        return Ok(false);
+    }
+    Ok(&data[0..32] == expected_mint.as_ref() && &data[32..64] == expected_owner.as_ref())
+}
+
+/// Create the intermediate ATA — or adopt the exact equivalent if the
+/// deterministic address is already occupied (SZ-M-2, Slot Zero
+/// 2026-11-08 §T2). The address is public and empty between executions, so
+/// occupying it cost an attacker one rent payment; adoption only accepts
+/// the precisely-derived account (`is_expected_intermediate`), never a
+/// foreign one. Creation still requires a nonexistent address: a raw SOL
+/// pre-fund can never be created over (nobody can sign for the ATA PDA),
+/// so that variant stays a burn-the-rent grief whose only exit is
+/// delete + recreate under a new policy id.
 fn create_ata<'info>(
     ata: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,
@@ -68,6 +100,9 @@ fn create_ata<'info>(
     token_program: &AccountInfo<'info>,
     associated_token_program: &AccountInfo<'info>,
 ) -> Result<()> {
+    if is_expected_intermediate(ata, owner.key, mint.key, token_program.key)? {
+        return Ok(());
+    }
     require!(
         ata.lamports() == 0,
         TributaryError::IntermediateAccountAlreadyExists
@@ -1743,5 +1778,94 @@ mod tests {
             "num_checks > MAX_BYTE_RANGE_CHECKS must be rejected, got {:?}",
             res
         );
+    }
+
+    // ── SZ-M-2 (Slot Zero 2026-11-08 §T2): intermediate-ATA adoption ──
+
+    /// Bind an SPL-token-account-shaped `AccountInfo` to the current scope:
+    /// `[mint: 32][owner: 32][amount: 8]…` under the given owning program.
+    /// Borrows the locals it declares — no `Box::leak` (rs-box-leak).
+    macro_rules! token_account_info {
+        ($info:ident, $data_owner:expr, $mint:expr, $token_owner:expr, $amount:expr) => {
+            let key = Pubkey::new_unique();
+            let mut lamports: u64 = 0;
+            let mut data = vec![0u8; 165];
+            data[0..32].copy_from_slice(($mint).as_ref());
+            data[32..64].copy_from_slice(($token_owner).as_ref());
+            data[64..72].copy_from_slice(&($amount).to_le_bytes());
+            let data_owner: Pubkey = $data_owner;
+            let $info = AccountInfo::new(
+                &key,
+                false,
+                true,
+                &mut lamports,
+                &mut data[..],
+                &data_owner,
+                false,
+            );
+        };
+    }
+
+    #[test]
+    fn preexisting_intermediate_accepted_when_exact() {
+        // Attacker ran ATA CreateIdempotent at the deterministic address:
+        // fully valid account, mint + owner pinned by derivation. It must
+        // be accepted so execution survives (SZ-M-2). A non-zero amount
+        // (donation) must NOT disqualify it — settlement sweeps the full
+        // balance, and requiring zero would re-open a 1-token grief.
+        let token_program = anchor_spl::token::ID;
+        let mint = Pubkey::new_unique();
+        let policy_pda = Pubkey::new_unique();
+        token_account_info!(ata, token_program, &mint, &policy_pda, 123u64);
+        assert!(is_expected_intermediate(&ata, &policy_pda, &mint, &token_program).unwrap());
+    }
+
+    #[test]
+    fn preexisting_intermediate_rejected_when_owner_mismatches() {
+        // The token-account OWNER field must be the policy PDA — anything
+        // else would receive the gross pull (user funds). Never adopt.
+        let token_program = anchor_spl::token::ID;
+        let mint = Pubkey::new_unique();
+        let policy_pda = Pubkey::new_unique();
+        let attacker = Pubkey::new_unique();
+        token_account_info!(ata, token_program, &mint, &attacker, 0u64);
+        assert!(!is_expected_intermediate(&ata, &policy_pda, &mint, &token_program).unwrap());
+    }
+
+    #[test]
+    fn preexisting_intermediate_rejected_when_mint_mismatches() {
+        let token_program = anchor_spl::token::ID;
+        let mint = Pubkey::new_unique();
+        let other_mint = Pubkey::new_unique();
+        let policy_pda = Pubkey::new_unique();
+        token_account_info!(ata, token_program, &other_mint, &policy_pda, 0u64);
+        assert!(!is_expected_intermediate(&ata, &policy_pda, &mint, &token_program).unwrap());
+    }
+
+    #[test]
+    fn preexisting_intermediate_rejected_when_foreign_program_owns_data() {
+        let token_program = anchor_spl::token::ID;
+        let rogue_program = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let policy_pda = Pubkey::new_unique();
+        token_account_info!(ata, rogue_program, &mint, &policy_pda, 0u64);
+        assert!(!is_expected_intermediate(&ata, &policy_pda, &mint, &token_program).unwrap());
+    }
+
+    #[test]
+    fn preexisting_intermediate_rejected_when_raw_sol_prefund() {
+        // Raw SOL at the address (system-owned, data-less): the address can
+        // never be created over — documents the residual burn-the-rent
+        // grief variant (delete + recreate is the owner's only exit).
+        let token_program = anchor_spl::token::ID;
+        let mint = Pubkey::new_unique();
+        let policy_pda = Pubkey::new_unique();
+        let key = Pubkey::new_unique();
+        let mut lamports: u64 = 650_240;
+        let mut data = [0u8; 0];
+        let data_owner = anchor_lang::solana_program::system_program::ID;
+        let prefund =
+            AccountInfo::new(&key, false, true, &mut lamports, &mut data[..], &data_owner, false);
+        assert!(!is_expected_intermediate(&prefund, &policy_pda, &mint, &token_program).unwrap());
     }
 }

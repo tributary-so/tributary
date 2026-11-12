@@ -39,3 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the policy after one execution regardless of whether a renewal ceiling is
   set, matching the documented "pauses after next payment" semantics.
   (SZ-M-1, Slot Zero 2026-11-08 §T1; bean tributary-lull)
+
+- **A pre-funded intermediate account no longer bricks composable
+  execution.** The deterministic intermediate ATA and validation-PDA
+  addresses are public and empty between uses, so a griefer could occupy
+  them for ~0.00065 SOL and fail every later `execute_composable` /
+  `create_composable_policy`. Execution now adopts an already-created
+  intermediate after validating data-owner program, mint, and token-owner
+  (the policy PDA) in depth — a non-zero donated balance is swept by
+  settlement and does not disqualify. Policy create adopts a raw-SOL
+  pre-funded validation PDA via `allocate` + `assign` + rent top-up (the
+  PDA signs for itself). Residual: raw SOL at the canonical ATA address
+  stays un-creatable by anyone (no signature exists) — delete + recreate
+  remains the exit for that burn-the-rent variant.
+  (SZ-M-2, Slot Zero 2026-11-08 §T2; bean tributary-cpqp)

@@ -59,6 +59,21 @@ impl ValidationPda {
     pub fn is_fresh(info: &AccountInfo) -> bool {
         info.lamports() == 0 && info.owner == &anchor_lang::solana_program::system_program::ID
     }
+
+    /// SZ-M-2 (Slot Zero 2026-11-08 §T2): the deterministic address was
+    /// pre-funded with raw SOL — lamports > 0, still system-owned, no data.
+    /// `create_account` cannot run here (it requires zero lamports), but
+    /// this PDA signs for itself, so the account is adoptable via
+    /// `allocate` + `assign` + rent top-up at the create site instead of
+    /// bricking the policy create. Nobody but this program can ever write
+    /// data at this address (only these seeds sign for it), so adoption is
+    /// integrity-preserving; any data-carrying or foreign-owned account is
+    /// NOT adoptable (M-02 posture unchanged).
+    pub fn is_adoptable(info: &AccountInfo) -> bool {
+        info.lamports() > 0
+            && info.owner == &anchor_lang::solana_program::system_program::ID
+            && info.data_len() == 0
+    }
 }
 
 impl Default for ValidationPda {
@@ -115,6 +130,47 @@ mod tests {
         let rogue = Pubkey::new_unique();
         let info = make_info(0, rogue, 32);
         assert!(!ValidationPda::is_fresh(&info));
+    }
+
+    // ── SZ-M-2 (Slot Zero 2026-11-08 §T2): pre-funded PDA adoption ──
+
+    #[test]
+    fn is_adoptable_accepts_funded_dataless_system_account() {
+        let info = make_info(
+            650_240,
+            anchor_lang::solana_program::system_program::ID,
+            0,
+        );
+        assert!(
+            ValidationPda::is_adoptable(&info),
+            "raw-SOL pre-fund of the deterministic address must be adoptable"
+        );
+    }
+
+    #[test]
+    fn is_adoptable_rejects_unfunded_account() {
+        // Zero-lamport accounts are `is_fresh` — the normal create path.
+        let info = make_info(0, anchor_lang::solana_program::system_program::ID, 0);
+        assert!(!ValidationPda::is_adoptable(&info));
+    }
+
+    #[test]
+    fn is_adoptable_rejects_data_carrying_account() {
+        // Any data at this address means someone else initialized it —
+        // impossible via these seeds, but rejected regardless (M-02).
+        let info = make_info(
+            650_240,
+            anchor_lang::solana_program::system_program::ID,
+            32,
+        );
+        assert!(!ValidationPda::is_adoptable(&info));
+    }
+
+    #[test]
+    fn is_adoptable_rejects_foreign_owner() {
+        let rogue = Pubkey::new_unique();
+        let info = make_info(650_240, rogue, 0);
+        assert!(!ValidationPda::is_adoptable(&info));
     }
 
     /// SIZE must accommodate the discriminator + every fixed field.

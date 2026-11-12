@@ -1,11 +1,11 @@
 ---
 # tributary-cpqp
 title: 'SZ-M-2: pre-funding intermediate ATA / validation PDAs permanently bricks a composable policy for ~0.00065 SOL'
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-11-12T12:15:24Z
-updated_at: 2026-11-12T12:15:24Z
+updated_at: 2026-11-12T13:27:43Z
 ---
 
 Slot Zero 2026-11-08 §T2 (ID SZ-M-2, programs/tributary/security-checklist.md).
@@ -17,3 +17,12 @@ FIX (per report): accept an already-funded/already-created intermediate (top up 
 ACCEPTANCE: griefing regression test — pre-fund the intermediate ATA + validation PDA addresses, then execute/create must succeed (or at minimum remain functional after recreate); control without pre-funding unchanged.
 
 Program change ⇒ update tributary.qedspec and regenerate formal_verification per AGENTS.md.
+
+## Summary of Changes
+
+Fixed in three layers, RED-then-GREEN:
+1. execute_composable create_ata: an already-created intermediate ATA is ADOPTED after in-depth validation (data-owner == expected token program, mint field == input mint, token-owner field == policy PDA — the address derivation pins these; the checks are defense-in-depth per Fabian's requirement). Non-zero donated balances do NOT disqualify: settlement sweeps the full intermediate balance, so requiring zero would re-open the grief via a 1-token donation. Foreign/short accounts still fail IntermediateAccountAlreadyExists.
+2. create_composable_policy init_validation_pda: a raw-SOL pre-funded, data-less, system-owned PDA address is adopted via system allocate + assign (the PDA signs for itself via invoke_signed) + rent top-up from the fee payer. Data-carrying/foreign accounts remain rejected (M-02 posture unchanged).
+3. Residual documented: raw SOL at the canonical ATA address is permanently un-creatable (no signature exists for an ATA-program PDA) — that burn-the-rent variant still forces delete + recreate, at 0.00065 SOL burned per attempt for the attacker.
+
+Tests: 9 host unit tests (is_expected_intermediate x5, ValidationPda::is_adoptable x4) + Surfpool e2e tests/composable-intermediate-adoption.test.ts (attacker CreateIdempotent + 1-unit donation -> execute SUCCEEDS, recipient gets face + donation, payer debited exactly face, intermediate closed). Full lib suite 205/205, clippy clean.

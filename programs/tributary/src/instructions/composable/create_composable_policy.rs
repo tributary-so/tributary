@@ -418,25 +418,66 @@ fn init_validation_pda<'info>(
     let lamports = rent.minimum_balance(space);
 
     let pda_info = pda_account.to_account_info();
-    require!(
-        ValidationPda::is_fresh(&pda_info),
-        TributaryError::IntermediateAccountAlreadyExists
-    );
 
     let seeds: Vec<Vec<u8>> = vec![seed.to_vec(), policy_key.as_ref().to_vec(), vec![pda_key.1]];
     let seed_slices: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
 
-    anchor_lang::solana_program::program::invoke_signed(
-        &anchor_lang::solana_program::system_instruction::create_account(
-            &fee_payer.key(),
-            &pda_info.key(),
-            lamports,
-            space as u64,
-            program_id,
-        ),
-        &[fee_payer.clone(), pda_info.clone()],
-        &[&seed_slices],
-    )?;
+    if ValidationPda::is_fresh(&pda_info) {
+        anchor_lang::solana_program::program::invoke_signed(
+            &anchor_lang::solana_program::system_instruction::create_account(
+                &fee_payer.key(),
+                &pda_info.key(),
+                lamports,
+                space as u64,
+                program_id,
+            ),
+            &[fee_payer.clone(), pda_info.clone()],
+            &[&seed_slices],
+        )?;
+    } else {
+        // SZ-M-2 (Slot Zero 2026-11-08 §T2): the deterministic address was
+        // pre-funded with raw SOL. `create_account` cannot run here (it
+        // requires zero lamports), but this PDA signs for itself — adopt
+        // the account via allocate + assign + rent top-up instead of
+        // bricking the create. Data-carrying or foreign-owned addresses
+        // stay rejected (M-02 posture unchanged); an over-payment just
+        // locks the excess until the PDA is closed.
+        require!(
+            ValidationPda::is_adoptable(&pda_info),
+            TributaryError::IntermediateAccountAlreadyExists
+        );
+        // Intermediate array: a literal `&[pda_info.clone()]` trips
+        // clippy::cloned_ref_to_slice_refs, whose suggested
+        // `slice::from_ref` would not typecheck against `&[AccountInfo]`.
+        let adopt_accounts = [pda_info.clone()];
+        anchor_lang::solana_program::program::invoke_signed(
+            &anchor_lang::solana_program::system_instruction::allocate(
+                &pda_info.key(),
+                space as u64,
+            ),
+            &adopt_accounts,
+            &[&seed_slices],
+        )?;
+        anchor_lang::solana_program::program::invoke_signed(
+            &anchor_lang::solana_program::system_instruction::assign(
+                &pda_info.key(),
+                program_id,
+            ),
+            &adopt_accounts,
+            &[&seed_slices],
+        )?;
+        let deficit = lamports.saturating_sub(pda_info.lamports());
+        if deficit > 0 {
+            anchor_lang::solana_program::program::invoke(
+                &anchor_lang::solana_program::system_instruction::transfer(
+                    &fee_payer.key(),
+                    &pda_info.key(),
+                    deficit,
+                ),
+                &[fee_payer.clone(), pda_info.clone()],
+            )?;
+        }
+    }
 
     let typed = ValidationPda {
         bump: pda_key.1,
